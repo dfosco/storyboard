@@ -1,6 +1,8 @@
 import type { Node, NodeTypes } from "reactflow";
 import { PositionLoggerNode } from "./PositionLoggerNode";
 import { RenderBox } from "./RenderBox";
+import { RenderBoxB } from "./RenderBoxB";
+import { RenderBoxC } from "./RenderBoxC";
 import { TextUpdaterNode } from "./TextUpdaterNode";
 
 export const initialNodes = [
@@ -30,7 +32,13 @@ export const initialNodes = [
   },
   {
     id: "f",
-    type: "text-updater",
+    type: "render-box-b",
+    position: { x: 0, y: 400 },
+    data: { markup: "<em style={{'background': 'blue'}}> aaa hello</em>" },
+  },
+  {
+    id: "g",
+    type: "render-box-c",
     position: { x: 0, y: 200 },
     data: { label: "Text Updater" },
   },
@@ -42,6 +50,8 @@ export const initialNodes = [
 export const nodeTypes = {
   "position-logger": PositionLoggerNode,
   "render-box": RenderBox,
+  "render-box-b": RenderBoxB,
+  "render-box-c": RenderBoxC,
   "text-updater": TextUpdaterNode,
   // Add any of your custom nodes here!
 } satisfies NodeTypes;

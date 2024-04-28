@@ -9,9 +9,13 @@
 		"preview": "vite preview"
 	},
 	"dependencies": {
+		"@codemirror/autocomplete": "^6.16.0",
+		"@codesandbox/sandpack-react": "^2.13.10",
+		"@codesandbox/sandpack-themes": "^2.0.21",
 		"@radix-ui/colors": "^3.0.0",
 		"@radix-ui/react-switch": "^1.0.3",
 		"react": "^18.2.0",
+		"react-ace": "^11.0.1",
 		"react-dom": "^18.2.0",
 		"react-live": "^4.1.6",
 		"reactflow": "^11.10.3",

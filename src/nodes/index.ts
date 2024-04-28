@@ -1,6 +1,7 @@
 import type { Node, NodeTypes } from "reactflow";
 import { PositionLoggerNode } from "./PositionLoggerNode";
 import { RenderBox } from "./RenderBox";
+import { TextUpdaterNode } from "./TextUpdaterNode";
 
 export const initialNodes = [
   { id: "a", 
@@ -25,20 +26,22 @@ export const initialNodes = [
     id: "e",
     type: "render-box",
     position: { x: 0, y: 400 },
-    focusable: true,
-    selectable: true,
-    deletable: true,
     data: { markup: "<em style={{'background': 'blue'}}> aaa hello</em>" },
+  },
+  {
+    id: "f",
+    type: "text-updater",
+    position: { x: 0, y: 200 },
+    data: { label: "Text Updater" },
   },
 
 ] satisfies Node[];
 
-
 // const nodeTypes = useMemo(() => ({ textUpdater: TextUpdaterNode }), []);
-
 
 export const nodeTypes = {
   "position-logger": PositionLoggerNode,
   "render-box": RenderBox,
+  "text-updater": TextUpdaterNode,
   // Add any of your custom nodes here!
 } satisfies NodeTypes;

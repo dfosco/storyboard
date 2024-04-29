@@ -1,29 +1,44 @@
-// import { useCallback } from 'react';
+import { useState } from 'react';
 import { Sandpack } from "@codesandbox/sandpack-react"
 import { dracula } from "@codesandbox/sandpack-themes";
 
-// import * as Switch from '@radix-ui/react-switch';
-import './switch.css';
+// import textfile from "./text.txt";
 
-const handleStyle = { left: 10 };
 
-export function RenderBox({data}:any) {
+
+
+export function RenderBox() {
     // const initialCode = "<em>hello</em>";
     // const scope = {Switch}
 
     const files = {
+        '/Text.txt': {
+            code: `<em>heeey</em>`,
+            hidden: true,
+            active: true
+        },
         '/App.js': {
             code: 
-`export default function App() {
-    return <h1>Hello world</h1>
-}`,
-            active: false,
-            hidden: false
-          },
-        '/Button.js': {
-          code: `export default () => <button />`,
-          active: true, 
-          hidden: false
+`
+import { useState } from 'react';
+import textfile from "/Text.txt";
+
+function Notes() {
+    const [text, setText] = useState();
+    fetch(textfile)
+        .then((response) => response.text())
+        .then((textContent) => {
+            setText(textContent);
+        });
+    return <div dangerouslySetInnerHTML={{ __html: text }} />;
+}
+
+export default function App() {
+    return <>{Notes()}</>
+}
+`,
+            hidden: true,
+            active: false
         }
     }
 

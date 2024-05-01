@@ -1,13 +1,9 @@
-import { useState } from 'react';
 import { Sandpack } from "@codesandbox/sandpack-react"
 import { dracula } from "@codesandbox/sandpack-themes";
 
 // import textfile from "./text.txt";
 
-
-
-
-export function RenderBox() {
+export function SandPackSync() {
     // const initialCode = "<em>hello</em>";
     // const scope = {Switch}
 

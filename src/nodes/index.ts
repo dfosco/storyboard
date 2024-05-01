@@ -1,8 +1,8 @@
 import type { Node, NodeTypes } from "reactflow";
 import { PositionLoggerNode } from "./PositionLoggerNode";
-import { RenderBox } from "./RenderBox";
-import { RenderBoxB } from "./RenderBoxB";
-import { RenderBoxC } from "./RenderBoxC";
+import { SandPackSync } from "./SandPackSync";
+import { SandPackEditor } from "./SandPackEditor";
+import { ReactLiveEditor } from "./ReactLiveEditor";
 import { TextUpdaterNode } from "./TextUpdaterNode";
 
 export const initialNodes = [
@@ -26,19 +26,19 @@ export const initialNodes = [
   },  
   {
     id: "e",
-    type: "render-box",
+    type: "sandpack-sync",
     position: { x: 0, y: 400 },
     data: { markup: "<em style={{'background': 'blue'}}> aaa hello</em>" },
   },
   {
     id: "f",
-    type: "render-box-b",
+    type: "sandpack-editor",
     position: { x: 0, y: 400 },
     data: { markup: "<em style={{'background': 'blue'}}> aaa hello</em>" },
   },
   {
     id: "g",
-    type: "render-box-c",
+    type: "react-live-editor",
     position: { x: 0, y: 200 },
     data: { label: "Text Updater" },
   },
@@ -49,9 +49,9 @@ export const initialNodes = [
 
 export const nodeTypes = {
   "position-logger": PositionLoggerNode,
-  "render-box": RenderBox,
-  "render-box-b": RenderBoxB,
-  "render-box-c": RenderBoxC,
+  "sandpack-sync": SandPackSync,
+  "sandpack-editor": SandPackEditor,
+  "react-live-editor": ReactLiveEditor,
   "text-updater": TextUpdaterNode,
   // Add any of your custom nodes here!
 } satisfies NodeTypes;

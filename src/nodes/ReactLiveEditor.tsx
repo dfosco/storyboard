@@ -8,7 +8,7 @@ import './switch.css';
 
 const handleStyle = { left: 10 };
 
-export function RenderBoxC({data}:any) {
+export function ReactLiveEditor({data}:any) {
     const initialCode = "<em>hello</em>";
     const scope = {Switch}
     return (

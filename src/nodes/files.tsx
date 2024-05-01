@@ -1,5 +1,7 @@
 // App.js
-const AppJs = `import Hello from './Hello.js'
+const AppJs = `
+import * as Switch from '@radix-ui/react-switch';
+import Hello from './Hello.js'
 
 export default function App () {
   return <Hello name="Chris" />
@@ -21,3 +23,18 @@ export const files = {
     code: HelloJs
   }
 }
+
+
+
+// App.js
+import * as Switch from '@radix-ui/react-switch';
+
+const Banana = `
+import * as Switch from '@radix-ui/react-switch';
+
+export default function App () {
+  return(
+    <>hello</>
+  )
+}
+`

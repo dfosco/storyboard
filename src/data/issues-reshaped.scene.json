@@ -1,0 +1,18 @@
+{
+  "sceneMeta": {
+    "route": "/issues",
+    "author": "dfosco"
+  },
+  "signup": {
+    "fullName": "Jane Doe",
+    "organization": {
+      "name": "Acme Cloud",
+      "size": "11-50",
+      "role": "developer"
+    },
+    "workspace": {
+      "region": "us-east-1",
+      "plan": "growth"
+    }
+  }
+}

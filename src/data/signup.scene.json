@@ -1,0 +1,22 @@
+{
+  "sceneMeta": {
+    "route": "/Signup",
+    "author": "dfosco"
+  },
+  "signup": {
+    "fullName": "",
+    "email": "",
+    "password": "",
+    "organization": {
+      "name": "",
+      "size": "",
+      "role": ""
+    },
+    "workspace": {
+      "region": "",
+      "plan": "starter",
+      "newsletter": false,
+      "agreeTerms": false
+    }
+  }
+}

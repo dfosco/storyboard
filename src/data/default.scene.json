@@ -1,4 +1,8 @@
 {
+  "sceneMeta": {
+    "route": "/issues",
+    "author": "dfosco"
+  },
   "user": { "$ref": "jane-doe" },
   "navigation": { "$ref": "navigation" },
   "projects": [
@@ -23,21 +27,5 @@
     "theme": "dark_dimmed",
     "notifications": true,
     "language": "en"
-  },
-  "signup": {
-    "fullName": "",
-    "email": "",
-    "password": "",
-    "organization": {
-      "name": "",
-      "size": "",
-      "role": ""
-    },
-    "workspace": {
-      "region": "",
-      "plan": "starter",
-      "newsletter": false,
-      "agreeTerms": false
-    }
   }
 }

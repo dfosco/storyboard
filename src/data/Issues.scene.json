@@ -1,8 +1,10 @@
 {
   "sceneMeta": {
-    "route": "/issues",
+    "route": "/Issues",
     "author": "dfosco"
   },
+  "user": { "$ref": "jane-doe" },
+  "navigation": { "$ref": "navigation" },
   "signup": {
     "fullName": "Jane Doe",
     "organization": {

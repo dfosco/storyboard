@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Avatar, Label, Stack, StateLabel, Text } from '@primer/react'
 import { useSceneData, useRecords } from '@dfosco/storyboard-react'
 import Application from '../../templates/Application/Application.jsx'
+import styles from './issues.module.css'
 
 import {
   IssueOpenedIcon,
@@ -52,13 +53,12 @@ function IssueRow({ issue }) {
   return (
     <Link
       to={`/primer-issues/${issue.id}`}
+      className={styles.issueRow}
       style={{
         display: 'flex',
         alignItems: 'flex-start',
         gap: 'var(--base-size-12)',
         padding: 'var(--base-size-8) var(--base-size-16)',
-        textDecoration: 'none',
-        color: 'inherit',
         borderBottom: '1px solid var(--borderColor-default)',
       }}
     >

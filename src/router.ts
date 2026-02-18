@@ -8,11 +8,13 @@ export type Path =
   | `/Dashboard`
   | `/Signup`
   | `/primer-issues`
+  | `/primer-issues/:id`
   | `/reshaped-issues`
   | `/reshaped-issues/:id`
   | `/viewfinder`
 
 export type Params = {
+  '/primer-issues/:id': { id: string }
   '/reshaped-issues/:id': { id: string }
 }
 

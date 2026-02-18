@@ -102,6 +102,8 @@ function CreateIssueModal({ active, onClose, issueCount }) {
   )
 }
 
+function str(v) { return typeof v === 'string' ? v : '' }
+
 export default function IssuesIndex() {
   const [createOpen, setCreateOpen, clearCreateOpen] = useOverride('ui.createModal')
   const isCreateOpen = createOpen === 'true'
@@ -120,9 +122,9 @@ export default function IssuesIndex() {
 
           <View.Item columns={2}>
             <AppSidebar
-              orgName={orgName}
+              orgName={str(orgName)}
               activePage="Issues"
-              userInfo={{ name: fullName, role }}
+              userInfo={{ name: str(fullName), role: str(role) }}
             />
           </View.Item>
 

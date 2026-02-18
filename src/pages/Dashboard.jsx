@@ -15,7 +15,7 @@ import { useSceneData } from '@dfosco/storyboard-react'
 import AppSidebar from '../components/AppSidebar/AppSidebar.jsx'
 
 function display(v) {
-  if (v == null || v === '') return '—'
+  if (v == null || v === '' || typeof v === 'object') return '—'
   return String(v)
 }
 

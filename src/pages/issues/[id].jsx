@@ -76,6 +76,8 @@ function EditIssueModal({ issue, active, onClose }) {
   )
 }
 
+function str(v) { return typeof v === 'string' ? v : '' }
+
 export default function IssueDetail() {
   const [editOpen, setEditOpen, clearEditOpen] = useOverride('ui.editModal')
   const isEditOpen = editOpen === 'true'
@@ -90,7 +92,7 @@ export default function IssueDetail() {
         <View backgroundColor="page" minHeight="100vh" padding={12}>
           <View direction="row" align="start" gap={8} wrap="no-wrap">
             <View.Item columns={2}>
-              <AppSidebar orgName={orgName} activePage="Issues" userInfo={{ name: fullName, role }} />
+              <AppSidebar orgName={str(orgName)} activePage="Issues" userInfo={{ name: str(fullName), role: str(role) }} />
             </View.Item>
             <View.Item grow>
               <View direction="column" gap={4} align="center" paddingBlock={16}>
@@ -112,7 +114,7 @@ export default function IssueDetail() {
 
           {/* Sidebar */}
           <View.Item columns={2}>
-            <AppSidebar orgName={orgName} activePage="Issues" userInfo={{ name: fullName, role }} />
+            <AppSidebar orgName={str(orgName)} activePage="Issues" userInfo={{ name: str(fullName), role: str(role) }} />
           </View.Item>
 
           {/* Main content */}
@@ -127,7 +129,7 @@ export default function IssueDetail() {
                     <View direction="row" gap={2} align="center">
                       <Link to="/issues" style={{ textDecoration: 'none' }}>
                         <Text variant="caption-1" color="neutral-faded">
-                          {orgName || 'Workspace'}
+                          {str(orgName) || 'Workspace'}
                         </Text>
                       </Link>
                       <Text variant="caption-1" color="neutral-faded">›</Text>

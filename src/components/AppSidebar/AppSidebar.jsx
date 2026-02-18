@@ -9,6 +9,8 @@ const navItems = [
   { label: 'Views', path: '/Dashboard' },
 ]
 
+function str(v) { return typeof v === 'string' ? v : '' }
+
 export default function AppSidebar({ orgName, activePage, userInfo }) {
   const navigate = useNavigate()
 
@@ -16,7 +18,7 @@ export default function AppSidebar({ orgName, activePage, userInfo }) {
     <Card padding={4}>
       <View direction="column" gap={2}>
         <Text variant="featured-3" weight="bold">
-          {orgName || '—'}
+          {str(orgName) || '—'}
         </Text>
         <Divider />
         <nav>
@@ -39,8 +41,8 @@ export default function AppSidebar({ orgName, activePage, userInfo }) {
           <>
             <Divider />
             <View direction="column" gap={1} paddingTop={1}>
-              <Text variant="caption-1" color="neutral-faded">{userInfo.name || '—'}</Text>
-              <Text variant="caption-1" color="neutral-faded">{userInfo.role || '—'}</Text>
+              <Text variant="caption-1" color="neutral-faded">{str(userInfo.name) || '—'}</Text>
+              <Text variant="caption-1" color="neutral-faded">{str(userInfo.role) || '—'}</Text>
             </View>
           </>
         )}

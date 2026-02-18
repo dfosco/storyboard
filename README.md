@@ -126,6 +126,28 @@ npm run preview      # Preview the build locally
 | `npm run lint` | Run ESLint |
 | `npm run test` | Run tests |
 
+## Updating Storyboard Packages
+
+To update the Storyboard framework packages to the latest version:
+
+```bash
+npm install @dfosco/storyboard-core@latest @dfosco/storyboard-react@latest @dfosco/storyboard-react-primer@latest @dfosco/storyboard-react-reshaped@latest
+```
+
+To check if updates are available without installing them:
+
+```bash
+npm outdated @dfosco/storyboard-core @dfosco/storyboard-react @dfosco/storyboard-react-primer @dfosco/storyboard-react-reshaped
+```
+
+After updating, verify everything works:
+
+```bash
+npm run build
+```
+
+> **Note:** If you removed one of the design system packages (Primer or Reshaped), omit its corresponding `@dfosco/storyboard-react-*` package from the commands above.
+
 ## Learn More
 
 - [Storyboard Source](https://github.com/dfosco/storyboard-source) — Framework source code

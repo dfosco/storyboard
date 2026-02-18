@@ -43,7 +43,7 @@ jobs:
           echo "Base path: ${REPO_BASE}${FOLDER}/"
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
       - name: Build with custom base path
         run: npm run build

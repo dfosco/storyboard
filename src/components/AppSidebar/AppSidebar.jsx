@@ -4,7 +4,7 @@ import styles from './AppSidebar.module.css'
 
 const navItems = [
   { label: 'Overview', path: '/Dashboard' },
-  { label: 'Issues', path: '/issues' },
+  { label: 'Issues', path: '/reshaped-issues' },
   { label: 'Projects', path: '/Dashboard' },
   { label: 'Views', path: '/Dashboard' },
 ]

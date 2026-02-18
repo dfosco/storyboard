@@ -98,7 +98,7 @@ export default function IssueDetail() {
               <View direction="column" gap={4} align="center" paddingBlock={16}>
                 <Text variant="featured-2" weight="bold">Issue not found</Text>
                 <Text variant="body-3" color="neutral-faded">The issue you're looking for doesn't exist.</Text>
-                <Link to="/issues">← Back to all issues</Link>
+                <Link to="/reshaped-issues">← Back to all issues</Link>
               </View>
             </View.Item>
           </View>
@@ -127,7 +127,7 @@ export default function IssueDetail() {
                   {/* Breadcrumb */}
                   <View direction="row" gap={2} align="center" justify="space-between">
                     <View direction="row" gap={2} align="center">
-                      <Link to="/issues" style={{ textDecoration: 'none' }}>
+                      <Link to="/reshaped-issues" style={{ textDecoration: 'none' }}>
                         <Text variant="caption-1" color="neutral-faded">
                           {str(orgName) || 'Workspace'}
                         </Text>

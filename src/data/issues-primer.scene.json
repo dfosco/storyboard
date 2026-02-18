@@ -1,6 +1,6 @@
 {
   "sceneMeta": {
-    "route": "/Issues",
+    "route": "/primer-issues",
     "author": "dfosco"
   },
   "user": { "$ref": "jane-doe" },

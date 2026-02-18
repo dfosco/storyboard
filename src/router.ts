@@ -5,12 +5,15 @@ import { components, hooks, utils } from '@generouted/react-router/client'
 
 export type Path =
   | `/`
-  | `/Issues`
-  | `/issues`
-  | `/issues/:id`
+  | `/Dashboard`
+  | `/Signup`
+  | `/primer-issues`
+  | `/reshaped-issues`
+  | `/reshaped-issues/:id`
+  | `/viewfinder`
 
 export type Params = {
-  '/issues/:id': { id: string }
+  '/reshaped-issues/:id': { id: string }
 }
 
 export type ModalPath = never

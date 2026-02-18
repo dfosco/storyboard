@@ -79,7 +79,7 @@ function CreateIssueModal({ active, onClose, issueCount }) {
 
     clearDraftParams('draft.create')
     onClose({ reason: 'save' })
-    navigate(`/issues/${newId}`)
+    navigate(`/reshaped-issues/${newId}`)
   }
 
   const handleCancel = () => {
@@ -185,7 +185,7 @@ export default function IssuesIndex() {
 function IssueRow({ issue }) {
   return (
     <>
-      <Link to={`/issues/${issue.id}`} className={styles.issueRow}>
+      <Link to={`/reshaped-issues/${issue.id}`} className={styles.issueRow}>
         <View direction="row" align="center" gap={3} padding={3}>
           <Text variant="body-3" color="neutral-faded" attributes={{ style: { minWidth: 20 } }}>
             {statusIcons[issue.status] || '○'}

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Avatar, Label, Stack, StateLabel, Text } from '@primer/react'
 import { useSceneData, useRecords } from '@dfosco/storyboard-react'
-import Application from '../templates/Application/Application.jsx'
+import Application from '../../templates/Application/Application.jsx'
 
 import {
   IssueOpenedIcon,
@@ -22,7 +22,7 @@ import {
 
 const topnav = [
   { icon: CodeIcon, label: 'Code', url: '/' },
-  { icon: IssueOpenedIcon, label: 'Issues', counter: 10, url: '/Issues', current: true },
+  { icon: IssueOpenedIcon, label: 'Issues', counter: 10, url: '/primer-issues', current: true },
   { icon: GitPullRequestIcon, label: 'Pull Requests', counter: 3 },
   { icon: CommentDiscussionIcon, label: 'Discussions' },
   { icon: PlayIcon, label: 'Actions' },
@@ -51,7 +51,7 @@ function IssueRow({ issue }) {
 
   return (
     <Link
-      to={`/Issues/${issue.id}`}
+      to={`/primer-issues/${issue.id}`}
       style={{
         display: 'flex',
         alignItems: 'flex-start',

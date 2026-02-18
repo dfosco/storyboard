@@ -3,7 +3,7 @@ import { Viewfinder } from '@dfosco/storyboard-react'
 
 const pageModules = import.meta.glob('/src/pages/*.jsx')
 
-export default function IndexPage() {
+export default function ViewfinderPage() {
   return (
     <Viewfinder
       scenes={scenes}

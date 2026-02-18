@@ -12,10 +12,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@dfosco/storyboard-core": "^1.7.0",
-    "@dfosco/storyboard-react": "^1.7.0",
-    "@dfosco/storyboard-react-primer": "^1.7.0",
-    "@dfosco/storyboard-react-reshaped": "^1.7.0",
+    "@dfosco/storyboard-core": "^1.7.1",
+    "@dfosco/storyboard-react": "^1.7.1",
+    "@dfosco/storyboard-react-primer": "^1.7.1",
+    "@dfosco/storyboard-react-reshaped": "^1.7.1",
     "@generouted/react-router": "^1.19.11",
     "@primer/octicons-react": "^19.21.1",
     "@primer/primitives": "^11.3.2",

@@ -16,7 +16,8 @@
     "./vite/server": "./src/vite/server-plugin.js",
     "./comments": "./src/comments/index.js",
     "./comments/ui/comments.css": "./src/comments/ui/comments.css",
-    "./workshop/ui/mount.js": "./src/workshop/ui/mount.js"
+    "./workshop/ui/mount.js": "./src/workshop/ui/mount.js",
+    "./modes.css": "./src/modes.css"
   },
   "dependencies": {
     "alpinejs": "^3.15.8",

@@ -1,0 +1,58 @@
+/**
+ * Base styles for the storyboard design-mode system.
+ *
+ * Each mode applies a `storyboard-mode-{name}` class on <html>.
+ * Use these classes to conditionally show/hide or restyle content per mode.
+ */
+
+:root {
+  --mode-color: #fcfcfc;
+  --color-orange: #dfb490;
+  --color-green: #2a9d8f;
+  --color-blue: #52637f;
+  --color-purple: #7655a4;
+  --color-dark: #2a2a2a;
+}
+
+html.storyboard-mode-present   { --mode-color: var(--color-green); }
+html.storyboard-mode-canvas    { --mode-color: var(--color-blue); }
+html.storyboard-mode-inspect   { --mode-color: var(--color-purple); }
+html.storyboard-mode-prototype     { --mode-color: var(--color-dark); }
+
+html.storyboard-mode-present,
+html.storyboard-mode-canvas,
+html.storyboard-mode-prototype,
+html.storyboard-mode-inspect {
+  padding: 12px;
+  background-color: var(--mode-color);
+  transition: background-color 0.2s ease, padding 0.2s ease;
+}
+
+html.storyboard-mode-prototype {
+  padding: 0;
+}
+
+html.storyboard-mode-present > body > #root,
+html.storyboard-mode-canvas > body > #root,
+html.storyboard-mode-inspect > body > #root {
+  overflow-x: hidden;
+  overflow-y: hidden;
+  border-radius: var(--borderRadius-default);
+  /* box-shadow: 0 0 80px 40px var(--mode-color); */
+}
+
+#root > * {
+  overflow-y: auto;
+}
+
+html.storyboard-mode-present > body > #root {
+  box-shadow: 0 0 7px 2px rgb(42 157 143 / 60%);
+}
+
+html.storyboard-mode-canvas > body > #root {
+  box-shadow: 0 0 7px 2px rgb(82 99 127 / 60%);
+}
+
+html.storyboard-mode-inspect > body > #root {
+  box-shadow: 0 0 7px 2px rgb(118 85 164 / 60%);
+}

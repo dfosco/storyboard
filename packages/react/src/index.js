@@ -20,12 +20,17 @@ export { useLocalStorage } from './hooks/useLocalStorage.js'
 export { useHideMode } from './hooks/useHideMode.js'
 export { useUndoRedo } from './hooks/useUndoRedo.js'
 export { useFeatureFlag } from './hooks/useFeatureFlag.js'
+export { useMode } from './hooks/useMode.js'
 
 // React Router integration
 export { installHashPreserver } from './hashPreserver.js'
 
 // Form context (for design system packages to use)
 export { FormContext } from './context/FormContext.js'
+
+// Design mode toolbar
+export { default as ModeSwitch } from './ModeSwitch.jsx'
+export { default as ToolbarShell } from './ToolbarShell.jsx'
 
 // Viewfinder dashboard
 export { default as Viewfinder } from './Viewfinder.jsx'

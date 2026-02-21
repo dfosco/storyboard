@@ -8,20 +8,18 @@ Designers and developers currently need a code editor to create pages, upload as
 
 This plan has **two layers**:
 
-1. **Core dev-server infrastructure** (always-on, not toggleable) — a Vite plugin in `@dfosco/storyboard-core` that provides a dev middleware backbone. It mounts a base router at `/_storyboard/`, reads `storyboard.config.json`, and gives each enabled plugin a server context to register API routes and spawn subprocesses. Workshop's server-side capabilities (API routes for page creation, etc.) live here — they always run during dev.
+1. **Core dev-server infrastructure** (always-on, not toggleable) — a Vite plugin in `@dfosco/storyboard-react` that provides a dev middleware backbone. It mounts a base router at `/_storyboard/`, reads `storyboard.config.json` → `plugins`, and gives each enabled plugin a server context to register API routes and spawn subprocesses. This is the foundation that Workshop (and future plugins, and potentially core features) build on.
 
-2. **Workshop UI** (opt-in via `workshop` config) — the browser-side Dev Panel that exposes Workshop capabilities to users. Controlled by the top-level `workshop` key in `storyboard.config.json`. Disabling it hides the UI but the vite server routes remain available.
+2. **Workshop plugin** (opt-in via `plugins.workshop`) — the first consumer of the core infrastructure. Registers its API routes (page creation, etc.) and injects a Dev Panel UI into the browser.
 
 ### Key design principles
 
-1. **Core infrastructure is always-on**: The dev-server plugin is part of the storyboard core. It cannot be disabled — it's just plumbing. Workshop API routes are part of this layer and always run during dev.
-2. **Workshop is core, not a plugin**: Workshop provides source-editing capabilities (page creation, file upload, data editing) that are too low-level to be a plugin. The `workshop` config is a top-level key that controls which Dev Panel UIs are shown in the browser — disabling it hides the UI, but the server routes remain.
-3. **Single config interface**: `storyboard.config.json` is the only dev-facing configuration file. `vite.config.js` imports the server plugin but does not configure plugins — the server plugin reads `storyboard.config.json` and auto-discovers everything.
-4. **Plugin architecture**: Storyboard plugins (devtools, comments, future extensions) live under `storyboard.config.json` → `plugins`. Removing a plugin entry + its package folder = fully removed.
-5. **Feature flags within Workshop**: Each capability (page creation, file upload, data editor) is individually togglable via `workshop.features`.
-6. **Dev-only**: Both the core middleware and Workshop UI only exist during `vite dev`. Production builds are unaffected.
-7. **Alpine.js + Tachyons**: Workshop's Dev Panel UI follows the comments system pattern — Alpine.js for reactivity, Tachyons for utility CSS, `sb-*` custom properties for theming.
-8. **Separation from DevTools**: Workshop gets its own floating trigger button (separate from the beaker). This begins the Command Panel (deployed features) vs. Dev Panel (local-only features) split.
+1. **Core infrastructure is always-on**: The dev-server plugin is part of the storyboard core. It cannot be disabled — it's just plumbing. If no plugins are enabled, it simply mounts nothing.
+2. **Plugin architecture**: All storyboard plugins live under `storyboard.config.json` → `plugins`. Removing a plugin entry + its package folder = fully removed.
+3. **Feature flags within plugins**: Each capability within Workshop (page creation, file upload, data editor) is individually togglable.
+4. **Dev-only**: Both the core middleware and plugin UI only exist during `vite dev`. Production builds are unaffected.
+5. **Alpine.js + Tachyons**: Workshop's Dev Panel UI follows the comments system pattern — Alpine.js for reactivity, Tachyons for utility CSS, `sb-*` custom properties for theming.
+6. **Separation from DevTools**: Workshop gets its own floating trigger button (separate from the beaker). This begins the Command Panel (deployed features) vs. Dev Panel (local-only features) split.
 
 ---
 
@@ -29,102 +27,102 @@ This plan has **two layers**:
 
 ### Layer 1: Core Dev-Server Plugin
 
-Lives in `@dfosco/storyboard-core` — the server plugin, workshop, and all framework-agnostic infrastructure belong here (alongside devtools and comments):
+Lives in the existing `@dfosco/storyboard-react` package alongside the data plugin:
 
 ```
-packages/core/src/vite/
+packages/react/src/vite/
+  ├─ data-plugin.js              ← existing data discovery plugin
   └─ server-plugin.js            ← NEW: dev middleware backbone
 ```
 
 **`server-plugin.js`** exports `storyboardServer()` — a Vite plugin that:
 
-- Reads `storyboard.config.json` at startup (workshop config + plugins)
+- Reads `storyboard.config.json` → `plugins` at startup
 - In `configureServer()`, mounts a base middleware router under `/_storyboard/`
-- Wires Workshop API routes directly based on `workshop.features`
-- Provides a **plugin registry** — a simple API that plugins call to register:
+- Provides a **plugin registry** — a simple API that Workshop (or any plugin) calls to register:
   - **API routes**: `registerRoutes(prefix, handler)` → mounts under `/_storyboard/{prefix}/`
   - **Client scripts**: `registerClientScript(url)` → injected via `transformIndexHtml`
 - Handles common middleware concerns: JSON body parsing, error responses, CORS (same-origin only)
 - Passes each plugin a **server context**: `{ server, root, config, features }`
 
 ```js
-// vite.config.js — no plugin configuration needed, reads storyboard.config.json
+// vite.config.js — registration
 import storyboardData from '@dfosco/storyboard-react/vite'
-import storyboardServer from '@dfosco/storyboard-core/vite/server'
+import storyboardServer from '@dfosco/storyboard-react/vite/server'
+import workshop from '@dfosco/storyboard-workshop'
 
 export default defineConfig({
   plugins: [
     storyboardData(),
-    storyboardServer(),  // reads storyboard.config.json, mounts workshop routes + plugins
+    storyboardServer({ plugins: [workshop()] }),  // core infra + plugin registration
     react(),
     generouted(),
   ],
 })
 ```
 
-### Layer 2: Workshop
-
-Workshop is core infrastructure, not a plugin. Everything lives in `packages/core/` — the server-side API routes alongside the server plugin, and the client-side UI alongside devtools and comments:
+### Layer 2: Workshop Plugin
 
 ```
-packages/core/src/
-  ├─ vite/
-  │   ├─ server-plugin.js         ← dev middleware backbone
-  │   └─ workshop/
-  │       └─ pages.js             ← page creation + listing API handlers
-  └─ workshop/
-      ├─ ui/
-      │   ├─ mount.js             ← Dev Panel (floating button + menu)
-      │   ├─ workshop.css         ← Workshop-specific styles (extends sb-* tokens)
-      │   └─ createPage.js        ← page creation form (Alpine component)
-      └─ templates/
-          └─ blank.html           ← default blank page template
+packages/workshop/               ← new workspace package: @dfosco/storyboard-workshop
+  ├─ src/
+  │   ├─ index.js                ← plugin entry — returns { name, setup(ctx) }
+  │   ├─ api/                    ← server-side route handlers
+  │   │   └─ pages.js            ← page creation + listing
+  │   ├─ client/                 ← browser-side UI (Alpine.js + Tachyons)
+  │   │   ├─ mount.js            ← Dev Panel (floating button + menu)
+  │   │   ├─ workshop.css        ← Workshop-specific styles (extends sb-* tokens)
+  │   │   └─ createPage.js       ← page creation form (Alpine component)
+  │   └─ templates/              ← page scaffolding templates
+  │       └─ blank.jsx.tpl       ← default blank page template
+  └─ package.json
 ```
 
-The server plugin reads `storyboard.config.json` → `workshop.features` to decide which API routes to mount, and injects the Workshop client script when any feature is enabled:
+Workshop exports a **plugin factory** that the core server-plugin calls:
 
 ```js
-// Inside server-plugin.js — workshop is wired directly, not via plugin registry
-if (workshopConfig?.features?.pages) {
-  mountRoute('/_storyboard/workshop/pages', pagesHandler)
-}
-if (hasAnyWorkshopFeature(workshopConfig)) {
-  injectClientScript('/@dfosco/storyboard-core/workshop/ui/mount.js')
+// packages/workshop/src/index.js
+export default function workshop() {
+  return {
+    name: 'workshop',
+    setup(ctx) {
+      // ctx = { server, root, config, features, registerRoutes, registerClientScript }
+      if (ctx.features.pages) {
+        ctx.registerRoutes('workshop', pagesHandler)
+      }
+      ctx.registerClientScript('/@dfosco/storyboard-workshop/client/mount.js')
+    }
+  }
 }
 ```
 
 ### Config schema (storyboard.config.json)
 
-`workshop` is a top-level key (core infrastructure). Plugins live under `plugins`. The server plugin reads the entire config — `storyboard.config.json` is the single dev-facing configuration interface.
-
 ```jsonc
 {
   "repository": { "owner": "dfosco", "name": "storyboard-source" },
-  "workshop": {
-    "features": {
-      "pages": true,      // page creation + optional scene
-      "upload": false,     // file upload (future)
-      "dataEditor": false  // data file editor (future)
-    }
-  },
+  "comments": { ... },
   "plugins": {
-    "devtools": {
-      "enabled": true
-    },
-    "comments": {
+    "workshop": {
       "enabled": true,
-      "discussions": { "category": "General" }
+      "features": {
+        "pages": true,      // page creation + optional scene
+        "upload": false,     // file upload (future)
+        "dataEditor": false  // data file editor (future)
+      }
     }
+    // future: "comments": { "enabled": true, ... }
   }
 }
 ```
 
 ### How it works end-to-end
 
-1. `storyboardServer()` reads `storyboard.config.json`, mounts Workshop API routes under `/_storyboard/workshop/` (always-on), and loads enabled plugins.
-2. If any `workshop.features` are enabled, the server plugin injects the Workshop client script via `transformIndexHtml`.
-3. In the browser, Workshop's `mount.js` renders the Dev Panel button + menu (only showing enabled features).
-4. User clicks "Create page" → form calls `POST /_storyboard/workshop/pages` → server writes files → Vite HMR picks them up.
+1. `storyboardServer()` reads config, finds `plugins.workshop.enabled === true`, calls `workshop().setup(ctx)`.
+2. Workshop registers its API routes under `/_storyboard/workshop/` and its client script.
+3. Core plugin's `transformIndexHtml` injects all registered client scripts as `<script type="module">` tags.
+4. In the browser, Workshop's `mount.js` renders the Dev Panel button + menu.
+5. User clicks "Create page" → form calls `POST /_storyboard/workshop/pages` → server writes files → Vite HMR picks them up.
 
 ---
 
@@ -149,14 +147,20 @@ if (hasAnyWorkshopFeature(workshopConfig)) {
   - Template selector (just "Blank" for now)
   - Submit → calls API → shows success/error toast → navigates to new page
 
-### Templates (`templates/blank.html`)
+### Templates (`templates/blank.jsx.tpl`)
 
-A minimal Alpine.js + Tachyons page scaffold (matching the comments system pattern):
+A minimal Primer-ready page scaffold:
 
-```html
-<div x-data="sb{{PageName}}()" class="pa4">
-  <h1 class="f3 sb-fg">{{PageName}}</h1>
-</div>
+```jsx
+import { useSceneData } from '@dfosco/storyboard-react'
+
+export default function {{PageName}}() {
+  return (
+    <div style={{ padding: '2rem' }}>
+      <h1>{{PageName}}</h1>
+    </div>
+  )
+}
 ```
 
 ### Scene template (created when `createScene: true`)
@@ -169,37 +173,30 @@ A minimal Alpine.js + Tachyons page scaffold (matching the comments system patte
 
 ---
 
-## Implementation Status
+## Todos
 
-All MVP items are complete and verified.
+### Core Infrastructure
+1. **Implement `server-plugin.js`** — core Vite plugin in `packages/react/src/vite/`. Reads config, mounts `/_storyboard/` middleware, provides plugin registry API (`registerRoutes`, `registerClientScript`), JSON body parsing, `transformIndexHtml` injection.
+2. **Export from `@dfosco/storyboard-react/vite/server`** — add package.json exports entry + vite.config.js alias.
 
-### Core Infrastructure ✅
-1. **`server-plugin.js`** — `packages/core/src/vite/server-plugin.js`. Reads `storyboard.config.json`, mounts `/_storyboard/` middleware with base-path awareness, wires Workshop routes directly, injects client scripts via `transformIndexHtml` using `/@fs/` paths through Vite's module pipeline.
-2. **Exported from `@dfosco/storyboard-core/vite/server`** — package.json exports entry + vite.config.js worktree alias.
+### Workshop Plugin
+3. **Create `packages/workshop/` workspace package** — `package.json` with alpinejs + tachyons deps, plugin factory entry point.
+4. **Implement page creation API** — `api/pages.js` (page + optional scene file write, validation, listing).
+5. **Implement Dev Panel UI** — `client/mount.js` (floating button, menu) + `client/workshop.css` (Alpine.js + Tachyons + sb-* tokens).
+6. **Implement page creation form** — `client/createPage.js` (Alpine.js component with form, API call, navigation).
+7. **Add page templates** — `templates/blank.jsx.tpl` + scene skeleton.
 
-### Workshop ✅
-3. **Page creation API** — `packages/core/src/vite/workshop/pages.js`. GET lists pages, POST creates page + optional scene. PascalCase validation, duplicate detection, reserved name checking.
-4. **Dev Panel UI** — `packages/core/src/workshop/ui/mount.js` + `workshop.css`. Floating wrench button (bottom-right, left of beaker), dropdown menu, Alpine.js + Tachyons + sb-* tokens.
-5. **Page creation form** — `packages/core/src/workshop/ui/createPage.js`. Alpine.js component with live route preview, scene checkbox, base-path-aware API calls, post-creation navigation.
-6. **Page template** — `packages/core/src/workshop/templates/blank.html`. Minimal scaffold with `{{PageName}}` substitution.
-
-### Integration ✅
-7. **`storyboard.config.json`** — top-level `workshop` config with `features.pages: true`.
-8. **`vite.config.js`** — `storyboardServer()` import + plugin entry + worktree aliases.
-9. **Tested end-to-end** — 365 tests passing, production build clean, page creation verified via browser and curl.
-
-### Implementation Notes
-
-- **Base path handling**: The middleware strips the Vite base path (e.g. `/storyboard-source/`) before matching `/_storyboard/` routes. Client scripts are injected with the base prefix for browser resolution.
-- **`/@fs/` module resolution**: Client scripts use absolute filesystem paths with Vite's `/@fs/` prefix so they go through Vite's module transform pipeline (resolving Alpine.js imports, injecting CSS).
-- **`jsonc-parser` dependency**: Added to `@dfosco/storyboard-core` for reading `storyboard.config.json` with comments/trailing commas support.
+### Integration
+8. **Update `storyboard.config.json`** — add `plugins.workshop` config block.
+9. **Update `vite.config.js`** — add `storyboardServer({ plugins: [workshop()] })` to plugins array.
+10. **Test end-to-end** — create a page (with and without scene) from the browser, verify HMR + route generation + scene loading.
 
 ## Notes
 
-- The core server-plugin is always-on plumbing — it reads `storyboard.config.json` as the single configuration interface.
-- Workshop is core infrastructure, not a plugin. Its API routes always run during dev; only the browser UI is togglable via `workshop.features`.
-- The `/_storyboard/` URL prefix namespaces all API routes (workshop + plugins) and avoids collision with app routes.
+- The core server-plugin is always-on plumbing — it doesn't appear in config and can't be disabled. It's just the backbone.
+- The `/_storyboard/` URL prefix namespaces all plugin API routes and avoids collision with app routes.
 - Workshop client UI uses Alpine.js + Tachyons + `sb-*` custom properties, matching the comments system pattern.
 - generouted watches `src/pages/` and auto-regenerates routes on file changes — no extra wiring needed.
 - The storyboard data plugin already watches for `.scene.json` changes — scene files trigger automatic HMR reload.
-- Plugins (devtools, comments, future extensions) follow the `{ name, setup(ctx) }` factory pattern and are auto-discovered from `storyboard.config.json` → `plugins`.
+- Future plugins follow the same pattern: export a `{ name, setup(ctx) }` factory, register routes + client scripts via the context.
+- The `plugins` config key establishes the pattern for all future storyboard plugins (comments will migrate here too).

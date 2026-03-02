@@ -33,7 +33,7 @@ export {
 } from './api.js'
 
 // Cache
-export { getCachedComments, setCachedComments, clearCachedComments } from './commentCache.js'
+export { getCachedComments, setCachedComments, clearCachedComments, savePendingComment, getPendingComments, removePendingComment } from './commentCache.js'
 
 // GraphQL client (for advanced use)
 export { graphql } from './graphql.js'

@@ -53,3 +53,57 @@ export function clearCachedComments(route) {
     // ignore
   }
 }
+
+// --- Pending (failed) comments ---
+
+const PENDING_PREFIX = 'sb-pending-comments:'
+
+/**
+ * Save a pending comment that failed to submit.
+ * @param {string} route
+ * @param {{ id: string, x: number, y: number, text: string, author: object }} comment
+ */
+export function savePendingComment(route, comment) {
+  try {
+    const pending = getPendingComments(route)
+    // Replace if same id already exists, else append
+    const idx = pending.findIndex(c => c.id === comment.id)
+    if (idx >= 0) pending[idx] = comment
+    else pending.push(comment)
+    localStorage.setItem(PENDING_PREFIX + route, JSON.stringify(pending))
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Get all pending (failed) comments for a route.
+ * @param {string} route
+ * @returns {Array<{ id: string, x: number, y: number, text: string, author: object }>}
+ */
+export function getPendingComments(route) {
+  try {
+    const raw = localStorage.getItem(PENDING_PREFIX + route)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Remove a pending comment (after successful retry or dismissal).
+ * @param {string} route
+ * @param {string} pendingId
+ */
+export function removePendingComment(route, pendingId) {
+  try {
+    const pending = getPendingComments(route).filter(c => c.id !== pendingId)
+    if (pending.length > 0) {
+      localStorage.setItem(PENDING_PREFIX + route, JSON.stringify(pending))
+    } else {
+      localStorage.removeItem(PENDING_PREFIX + route)
+    }
+  } catch {
+    // ignore
+  }
+}

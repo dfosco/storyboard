@@ -7,10 +7,10 @@
 
 import Alpine from 'alpinejs'
 import { isCommentsEnabled } from '../config.js'
-import { isAuthenticated } from '../auth.js'
+import { isAuthenticated, getCachedUser } from '../auth.js'
 import { toggleCommentMode, setCommentMode, isCommentModeActive, subscribeToCommentMode } from '../commentMode.js'
-import { fetchRouteCommentsSummary, fetchCommentDetail, moveComment } from '../api.js'
-import { getCachedComments, setCachedComments, clearCachedComments } from '../commentCache.js'
+import { fetchRouteCommentsSummary, fetchCommentDetail, moveComment, createComment } from '../api.js'
+import { getCachedComments, setCachedComments, clearCachedComments, savePendingComment, getPendingComments, removePendingComment } from '../commentCache.js'
 import { showComposer } from './composer.js'
 import { openAuthModal } from './authModal.js'
 import { showCommentWindow, closeCommentWindow } from './commentWindow.js'
@@ -27,17 +27,19 @@ function esc(str) {
   return d.innerHTML
 }
 
-function getContentContainer() {
-  return document.body
-}
-
 function ensureOverlay() {
   if (overlay) return overlay
-  const container = getContentContainer()
 
   overlay = document.createElement('div')
-  overlay.className = 'sb-comment-overlay absolute top-0 right-0 bottom-0 left-0 pe-none'
-  container.appendChild(overlay)
+  overlay.className = 'sb-comment-overlay'
+  document.body.appendChild(overlay)
+
+  // Click handler for placing comments lives on the overlay itself
+  overlay.addEventListener('click', (e) => {
+    if (!isCommentModeActive()) return
+    if (e.target.closest('.sb-composer') || e.target.closest('.sb-comment-pin') || e.target.closest('.sb-comment-window')) return
+    handleOverlayClick(e)
+  })
 
   return overlay
 }
@@ -74,6 +76,99 @@ function reloadComments() {
   loadAndRenderComments()
 }
 
+/**
+ * Render an optimistic pin immediately after the user submits a comment.
+ * Returns callbacks to mark it as succeeded or failed.
+ */
+function renderOptimisticPin(ov, xPct, yPct, text, user) {
+  const pendingId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const pin = document.createElement('div')
+  pin.className = 'sb-comment-pin sb-comment-pin-pending absolute br-100 sb-bg pointer sb-shadow pe-auto overflow-hidden'
+  pin.style.left = `${xPct}%`
+  pin.style.top = `${yPct}%`
+  pin.title = `${user?.login ?? 'you'}: ${text.slice(0, 80)}`
+
+  pin.innerHTML = user?.avatarUrl
+    ? `<img class="br-100 db sb-pin-img" src="${esc(user.avatarUrl)}" alt="${esc(user.login)}" draggable="false" />`
+    : ''
+
+  ov.appendChild(pin)
+  renderedPins.push(pin)
+
+  return {
+    pendingId,
+    succeed: () => {
+      pin.classList.remove('sb-comment-pin-pending')
+    },
+    fail: () => {
+      pin.classList.remove('sb-comment-pin-pending')
+      pin.classList.add('sb-comment-pin-failed')
+      pin.title = `⚠ Failed to post — click to retry: ${text.slice(0, 60)}`
+
+      // Save to localStorage for persistence
+      const route = getCurrentRoute()
+      savePendingComment(route, { id: pendingId, x: xPct, y: yPct, text, author: user })
+
+      // Click to retry
+      pin.addEventListener('click', async (e) => {
+        e.stopPropagation()
+        pin.classList.remove('sb-comment-pin-failed')
+        pin.classList.add('sb-comment-pin-pending')
+        pin.title = 'Retrying…'
+        try {
+          await createComment(route, xPct, yPct, text)
+          removePendingComment(route, pendingId)
+          pin.classList.remove('sb-comment-pin-pending')
+          reloadComments()
+        } catch {
+          pin.classList.remove('sb-comment-pin-pending')
+          pin.classList.add('sb-comment-pin-failed')
+          pin.title = `⚠ Failed to post — click to retry: ${text.slice(0, 60)}`
+        }
+      })
+    },
+  }
+}
+
+/**
+ * Render pins for pending (failed) comments from localStorage.
+ */
+function renderPendingPins(ov) {
+  const route = getCurrentRoute()
+  const pending = getPendingComments(route)
+  for (const p of pending) {
+    const pin = document.createElement('div')
+    pin.className = 'sb-comment-pin sb-comment-pin-failed absolute br-100 sb-bg pointer sb-shadow pe-auto overflow-hidden'
+    pin.style.left = `${p.x}%`
+    pin.style.top = `${p.y}%`
+    pin.title = `⚠ Failed to post — click to retry: ${p.text?.slice(0, 60) ?? ''}`
+
+    pin.innerHTML = p.author?.avatarUrl
+      ? `<img class="br-100 db sb-pin-img" src="${esc(p.author.avatarUrl)}" alt="${esc(p.author.login)}" draggable="false" />`
+      : ''
+
+    pin.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      pin.classList.remove('sb-comment-pin-failed')
+      pin.classList.add('sb-comment-pin-pending')
+      pin.title = 'Retrying…'
+      try {
+        await createComment(route, p.x, p.y, p.text)
+        removePendingComment(route, p.id)
+        pin.remove()
+        reloadComments()
+      } catch {
+        pin.classList.remove('sb-comment-pin-pending')
+        pin.classList.add('sb-comment-pin-failed')
+        pin.title = `⚠ Failed to post — click to retry: ${p.text?.slice(0, 60) ?? ''}`
+      }
+    })
+
+    ov.appendChild(pin)
+    renderedPins.push(pin)
+  }
+}
+
 function renderPin(ov, comment, index) {
   const hue = Math.round((index * 137.5) % 360)
   const pin = document.createElement('div')
@@ -97,21 +192,19 @@ function renderPin(ov, comment, index) {
   pin.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return
     dragged = false
-    const container = getContentContainer()
-    const containerRect = container.getBoundingClientRect()
     const startX = e.clientX
     const startY = e.clientY
-    const startLeft = (parseFloat(pin.style.left) / 100) * containerRect.width
-    const startTop = (parseFloat(pin.style.top) / 100) * containerRect.height
+    const startLeftPct = parseFloat(pin.style.left)
+    const startTopPct = parseFloat(pin.style.top)
 
     const onMove = (ev) => {
       const dx = ev.clientX - startX
       const dy = ev.clientY - startY
       if (!dragged && Math.abs(dx) < 4 && Math.abs(dy) < 4) return
       dragged = true
-      const cr = container.getBoundingClientRect()
-      const xPct = Math.round(((startLeft + dx) / cr.width) * 1000) / 10
-      const yPct = Math.round(((startTop + dy) / cr.height) * 1000) / 10
+      const xPct = Math.round((startLeftPct + (dx / window.innerWidth) * 100) * 10) / 10
+      const docHeight = document.documentElement.scrollHeight
+      const yPct = Math.round((startTopPct + (dy / docHeight) * 100) * 10) / 10
       pin.style.left = `${xPct}%`
       pin.style.top = `${yPct}%`
     }
@@ -121,11 +214,11 @@ function renderPin(ov, comment, index) {
       document.removeEventListener('mouseup', onUp)
       if (!dragged) return
 
-      const cr = container.getBoundingClientRect()
       const dx = ev.clientX - startX
       const dy = ev.clientY - startY
-      const xPct = Math.round(((startLeft + dx) / cr.width) * 1000) / 10
-      const yPct = Math.round(((startTop + dy) / cr.height) * 1000) / 10
+      const xPct = Math.round((startLeftPct + (dx / window.innerWidth) * 100) * 10) / 10
+      const docHeight = document.documentElement.scrollHeight
+      const yPct = Math.round((startTopPct + (dy / docHeight) * 100) * 10) / 10
       comment.meta = { ...comment.meta, x: xPct, y: yPct }
 
       try {
@@ -183,6 +276,7 @@ function renderCachedPins() {
       renderPin(ov, comment, i)
     }
   })
+  renderPendingPins(ov)
 }
 
 async function loadAndRenderComments() {
@@ -206,13 +300,17 @@ async function loadAndRenderComments() {
       setCachedComments(route, discussion)
     }
     clearPins()
-    if (!discussion?.comments?.length) return
+    if (!discussion?.comments?.length) {
+      renderPendingPins(ov)
+      return
+    }
 
     discussion.comments.forEach((comment, i) => {
       if (comment.meta?.x != null && comment.meta?.y != null) {
         renderPin(ov, comment, i)
       }
     })
+    renderPendingPins(ov)
 
     autoOpenCommentFromUrl(ov, discussion)
   } catch (err) {
@@ -228,9 +326,9 @@ async function autoOpenCommentFromUrl(ov, discussion) {
   if (!comment) return
 
   if (comment.meta?.y != null) {
-    const container = getContentContainer()
-    const yPx = (comment.meta.y / 100) * container.scrollHeight
-    const viewTop = container.scrollTop || window.scrollY
+    const docHeight = document.documentElement.scrollHeight
+    const yPx = (comment.meta.y / 100) * docHeight
+    const viewTop = window.scrollY
     const viewBottom = viewTop + window.innerHeight
     if (yPx < viewTop || yPx > viewBottom) {
       const scrollTarget = Math.max(0, yPx - window.innerHeight / 3)
@@ -272,17 +370,29 @@ function handleOverlayClick(e) {
     activeComposer = null
   }
 
-  const container = getContentContainer()
-  const rect = container.getBoundingClientRect()
-  const xPct = Math.round(((e.clientX - rect.left) / rect.width) * 1000) / 10
-  const yPct = Math.round(((e.clientY - rect.top + container.scrollTop) / container.scrollHeight) * 1000) / 10
+  // x as percentage of viewport width, y as percentage of full document height
+  const xPct = Math.round((e.clientX / window.innerWidth) * 1000) / 10
+  const docHeight = document.documentElement.scrollHeight
+  const yPct = Math.round(((e.clientY + window.scrollY) / docHeight) * 1000) / 10
 
   const ov = ensureOverlay()
-  activeComposer = showComposer(ov, xPct, yPct, getCurrentRoute(), {
+  const route = getCurrentRoute()
+  activeComposer = showComposer(ov, xPct, yPct, route, {
     onCancel: () => { activeComposer = null },
-    onSubmit: () => {
+    onSubmitOptimistic: (text) => {
       activeComposer = null
-      reloadComments()
+      const user = getCachedUser()
+      const opt = renderOptimisticPin(ov, xPct, yPct, text, user)
+      // Fire API call in background
+      createComment(route, xPct, yPct, text)
+        .then(() => {
+          opt.succeed()
+          reloadComments()
+        })
+        .catch((err) => {
+          console.error('[storyboard] Failed to post comment:', err)
+          opt.fail()
+        })
     },
   })
 }
@@ -326,17 +436,6 @@ export function mountComments() {
   Alpine.start()
 
   subscribeToCommentMode(setBodyCommentMode)
-
-  // Click handler for placing comments — uses document so devtools/modals can be excluded
-  document.addEventListener('click', (e) => {
-    if (!isCommentModeActive()) return
-    // Let devtools, modals, drawers, and existing comment UI handle their own clicks
-    if (e.target.closest('.sb-devtools-wrapper') || e.target.closest('.sb-auth-backdrop') ||
-        e.target.closest('.sb-comments-drawer') || e.target.closest('.sb-comments-drawer-backdrop') ||
-        e.target.closest('.sb-composer') || e.target.closest('.sb-comment-pin') ||
-        e.target.closest('.sb-comment-window')) return
-    handleOverlayClick(e)
-  })
 
   window.addEventListener('keydown', (e) => {
     const tag = e.target.tagName

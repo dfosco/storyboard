@@ -21,12 +21,16 @@ vi.mock('../api.js', () => ({
   fetchRouteCommentsSummary: vi.fn(),
   fetchCommentDetail: vi.fn(),
   moveComment: vi.fn(),
+  createComment: vi.fn(),
 }))
 
 vi.mock('../commentCache.js', () => ({
   getCachedComments: vi.fn(() => null),
   setCachedComments: vi.fn(),
   clearCachedComments: vi.fn(),
+  savePendingComment: vi.fn(),
+  getPendingComments: vi.fn(() => []),
+  removePendingComment: vi.fn(),
 }))
 
 vi.mock('./composer.js', () => ({
@@ -74,11 +78,15 @@ describe('mount.js', () => {
       fetchRouteCommentsSummary: vi.fn(),
       fetchCommentDetail: vi.fn(),
       moveComment: vi.fn(),
+      createComment: vi.fn(),
     }))
     vi.doMock('../commentCache.js', () => ({
       getCachedComments: vi.fn(() => null),
       setCachedComments: vi.fn(),
       clearCachedComments: vi.fn(),
+      savePendingComment: vi.fn(),
+      getPendingComments: vi.fn(() => []),
+      removePendingComment: vi.fn(),
     }))
     vi.doMock('./composer.js', () => ({ showComposer: vi.fn() }))
     vi.doMock('./authModal.js', () => ({ openAuthModal: vi.fn() }))

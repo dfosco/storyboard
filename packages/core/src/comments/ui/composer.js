@@ -5,7 +5,6 @@
  * Styled with Tachyons + sb-* custom classes for light/dark mode support.
  */
 
-import { createComment } from '../api.js'
 import { getCachedUser } from '../auth.js'
 
 /**
@@ -16,7 +15,7 @@ import { getCachedUser } from '../auth.js'
  * @param {string} route - Current route path
  * @param {object} [callbacks] - Optional callbacks
  * @param {() => void} [callbacks.onCancel] - Called when composer is dismissed
- * @param {(comment: object) => void} [callbacks.onSubmit] - Called after successful submit
+ * @param {(text: string) => void} [callbacks.onSubmitOptimistic] - Called with text for optimistic submission
  * @returns {{ el: HTMLElement, destroy: () => void }}
  */
 export function showComposer(container, xPct, yPct, route, callbacks = {}) {
@@ -47,8 +46,8 @@ export function showComposer(container, xPct, yPct, route, callbacks = {}) {
       </template>
       <div class="flex items-center justify-end pa3">
         <button class="sb-btn-cancel ph3 pv2 br2 f7 fw5 pointer mr1" @click="cancel()">Cancel</button>
-        <button class="sb-btn-success ph3 pv2 br2 f7 fw5 pointer bn" :disabled="submitting"
-                @click="submit()" x-text="submitting ? 'Posting…' : 'Comment'">Comment</button>
+        <button class="sb-btn-success ph3 pv2 br2 f7 fw5 pointer bn"
+                @click="submit()">Comment</button>
       </div>
     </div>
   `
@@ -81,22 +80,13 @@ export function showComposer(container, xPct, yPct, route, callbacks = {}) {
       submitting: false,
       error: null,
 
-      async submit() {
+      submit() {
         const val = this.text.trim()
         if (!val) return
 
-        this.submitting = true
-        this.error = null
-
-        try {
-          const comment = await createComment(route, xPct, yPct, val)
-          destroy()
-          callbacks.onSubmit?.(comment)
-        } catch (err) {
-          this.error = err.message
-          this.submitting = false
-          console.error('[storyboard] Failed to post comment:', err)
-        }
+        // Close composer immediately and hand off to optimistic handler
+        destroy()
+        callbacks.onSubmitOptimistic?.(val)
       },
 
       cancel() {

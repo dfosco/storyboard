@@ -176,6 +176,8 @@ const X_ICON = '<svg viewBox="0 0 16 16"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0
 const EYE_ICON = '<svg viewBox="0 0 16 16"><path d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14s-3.671-.992-4.933-2.078C1.797 10.831.88 9.577.43 8.899a1.62 1.62 0 0 1 0-1.798c.45-.678 1.367-1.932 2.637-3.023C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.758 6.527 12.5 8 12.5s2.823-.742 3.955-1.715c1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.824 4.242 9.473 3.5 8 3.5s-2.824.742-3.955 1.715c-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z"/></svg>'
 const EYE_CLOSED_ICON = '<svg viewBox="0 0 16 16"><path d="M.143 2.31a.75.75 0 0 1 1.047-.167l14.5 10.5a.75.75 0 1 1-.88 1.214l-2.248-1.628C11.346 13.19 9.792 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.831.88 9.577.43 8.899a1.62 1.62 0 0 1 0-1.798c.35-.527 1.06-1.476 2.019-2.398L.31 3.357A.75.75 0 0 1 .143 2.31Zm3.386 3.378a14.21 14.21 0 0 0-1.85 2.244.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.758 6.527 12.5 8 12.5c1.195 0 2.31-.488 3.29-1.191L9.063 9.695A2 2 0 0 1 6.058 7.39L3.529 5.688ZM8 3.5c-.516 0-1.017.09-1.499.251a.75.75 0 1 1-.473-1.423A6.23 6.23 0 0 1 8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.11.166-.248.365-.41.587a.75.75 0 1 1-1.21-.887c.14-.191.26-.367.36-.524a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.824 4.242 9.473 3.5 8 3.5Z"/></svg>'
 const CHECK_ICON = '<svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg>'
+const ZAP_ICON = '<svg viewBox="0 0 16 16"><path d="M9.504.43a1.516 1.516 0 0 1 2.437 1.713L10.415 5.5h2.123c1.57 0 2.346 1.909 1.22 3.004l-7.34 7.142a1.249 1.249 0 0 1-.871.354h-.302a1.25 1.25 0 0 1-1.157-1.723L5.633 10.5H3.462c-1.57 0-2.346-1.909-1.22-3.004Z"/></svg>'
+const ARROW_LEFT_ICON = '<svg viewBox="0 0 16 16"><path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z"/></svg>'
 
 function getSceneName() {
   return new URLSearchParams(window.location.search).get('scene') || 'default'
@@ -247,42 +249,69 @@ export function mountDevTools(options = {}) {
   menu.appendChild(resetBtn)
   menu.appendChild(hideModeBtn)
 
-  // Feature flag menu items (injected dynamically)
-  function refreshFeatureFlagItems() {
-    menu.querySelectorAll('[data-sb-flag-item]').forEach((el) => el.remove())
-    menu.querySelectorAll('[data-sb-flag-separator]').forEach((el) => el.remove())
-    menu.querySelectorAll('[data-sb-flag-header]').forEach((el) => el.remove())
+  // Track menu view: 'main' or 'flags'
+  let menuView = 'main'
 
-    const flagKeys = getFlagKeys()
-    if (flagKeys.length === 0) return
+  // Main menu items container
+  const mainItems = [viewfinderBtn, showInfoBtn, resetBtn, hideModeBtn]
+
+  // Feature flags entry (shown in main menu)
+  const featureFlagsBtn = document.createElement('button')
+  featureFlagsBtn.className = 'sb-devtools-menu-item'
+  featureFlagsBtn.innerHTML = `${ZAP_ICON} Feature Flags`
+  featureFlagsBtn.addEventListener('click', () => {
+    showFlagsView()
+  })
+
+  function showMainView() {
+    menuView = 'main'
+    // Clear and rebuild main menu
+    while (menu.firstChild) menu.removeChild(menu.firstChild)
+    for (const item of mainItems) menu.appendChild(item)
+    // Add feature flags entry if flags exist
+    if (getFlagKeys().length > 0) {
+      const sep = document.createElement('div')
+      sep.className = 'sb-devtools-separator'
+      menu.appendChild(sep)
+      menu.appendChild(featureFlagsBtn)
+    }
+    // Re-inject comment items
+    refreshCommentMenuItems()
+    menu.appendChild(hint)
+  }
+
+  function showFlagsView() {
+    menuView = 'flags'
+    renderFlagsView()
+  }
+
+  function renderFlagsView() {
+    while (menu.firstChild) menu.removeChild(menu.firstChild)
+
+    // Back button
+    const backBtn = document.createElement('button')
+    backBtn.className = 'sb-devtools-menu-item'
+    backBtn.innerHTML = `${ARROW_LEFT_ICON} Back`
+    backBtn.addEventListener('click', () => showMainView())
+    menu.appendChild(backBtn)
+
+    const sep = document.createElement('div')
+    sep.className = 'sb-devtools-separator'
+    menu.appendChild(sep)
 
     const flags = getAllFlags()
-    const insertBefore = hint
-
-    const separator = document.createElement('div')
-    separator.className = 'sb-devtools-separator'
-    separator.setAttribute('data-sb-flag-separator', '')
-    menu.insertBefore(separator, insertBefore)
-
-    const header = document.createElement('div')
-    header.className = 'sb-devtools-group-header'
-    header.setAttribute('data-sb-flag-header', '')
-    header.textContent = 'Feature Flags'
-    menu.insertBefore(header, insertBefore)
-
-    for (const key of flagKeys) {
+    for (const key of getFlagKeys()) {
       const btn = document.createElement('button')
       btn.className = 'sb-devtools-menu-item'
-      btn.setAttribute('data-sb-flag-item', '')
       const icon = flags[key].current
         ? `<span style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;">${CHECK_ICON}</span>`
         : '<span style="width:16px;height:16px;"></span>'
       btn.innerHTML = `${icon} ${key}`
       btn.addEventListener('click', () => {
         toggleFlag(key)
-        refreshFeatureFlagItems()
+        renderFlagsView()
       })
-      menu.insertBefore(btn, insertBefore)
+      menu.appendChild(btn)
     }
   }
 
@@ -314,8 +343,7 @@ export function mountDevTools(options = {}) {
 
   // Refresh dynamic items when menu opens
   trigger.addEventListener('click', () => {
-    refreshFeatureFlagItems()
-    refreshCommentMenuItems()
+    showMainView()
     updateHideModeBtn()
   })
 
@@ -422,10 +450,11 @@ export function mountDevTools(options = {}) {
     menu.classList.remove('open')
   })
 
-  // Close menu when clicking outside
+  // Close menu when clicking outside — reset to main view
   document.addEventListener('click', (e) => {
     if (menuOpen && !wrapper.contains(e.target)) {
       menuOpen = false
+      menuView = 'main'
       menu.classList.remove('open')
     }
   })

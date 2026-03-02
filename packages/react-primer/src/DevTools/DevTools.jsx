@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useSyncExternalStore } from 'react'
 import { ActionMenu, ActionList } from '@primer/react'
 import { loadScene, getAllFlags, toggleFlag, getFlagKeys, subscribeToHash, getHashSnapshot } from '@dfosco/storyboard-core'
-import { BeakerIcon, InfoIcon, SyncIcon, XIcon, ScreenFullIcon, CheckIcon } from '@primer/octicons-react'
+import { BeakerIcon, InfoIcon, SyncIcon, XIcon, ScreenFullIcon, CheckIcon, ZapIcon, ArrowLeftIcon } from '@primer/octicons-react'
 import styles from './DevTools.module.css'
 
 function getSceneName() {
@@ -22,6 +22,8 @@ export default function DevTools() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [sceneData, setSceneData] = useState(null)
   const [sceneError, setSceneError] = useState(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuView, setMenuView] = useState('main') // 'main' | 'flags'
 
   // Cmd+. keyboard shortcut to toggle toolbar
   useEffect(() => {
@@ -98,7 +100,7 @@ export default function DevTools() {
 
       {/* Floating toolbar */}
       <div className={styles.wrapper}>
-        <ActionMenu>
+        <ActionMenu open={menuOpen} onOpenChange={(open) => { setMenuOpen(open); if (!open) setMenuView('main') }}>
           <ActionMenu.Anchor>
             <button
               className={styles.trigger}
@@ -109,29 +111,16 @@ export default function DevTools() {
           </ActionMenu.Anchor>
           <ActionMenu.Overlay align="center" side="outside-top" sideOffset={16}>
             <ActionList>
-              <ActionList.Item onSelect={handleViewfinder}>
-                <ActionList.LeadingVisual>
-                  <ScreenFullIcon size={16} />
-                </ActionList.LeadingVisual>
-                See viewfinder
-              </ActionList.Item>
-              <ActionList.Item onSelect={handleShowSceneInfo}>
-                <ActionList.LeadingVisual>
-                  <InfoIcon size={16} />
-                </ActionList.LeadingVisual>
-                Show scene info
-              </ActionList.Item>
-              <ActionList.Item onSelect={handleResetParams}>
-                <ActionList.LeadingVisual>
-                  <SyncIcon size={16} />
-                </ActionList.LeadingVisual>
-                Reset all params
-              </ActionList.Item>
-              <FeatureFlagItems />
-              <div className={styles.shortcutHint}>
-                Press <code>⌘ + .</code> to hide
-              </div>
-              
+              {menuView === 'main' ? (
+                <MainMenuItems
+                  onViewfinder={handleViewfinder}
+                  onShowSceneInfo={handleShowSceneInfo}
+                  onResetParams={handleResetParams}
+                  onFeatureFlags={() => setMenuView('flags')}
+                />
+              ) : (
+                <FlagMenuItems onBack={() => setMenuView('main')} />
+              )}
             </ActionList>
           </ActionMenu.Overlay>
         </ActionMenu>
@@ -141,30 +130,74 @@ export default function DevTools() {
 }
 
 /**
- * Feature flag toggle items for the DevTools menu.
- * Only renders when flags are registered.
+ * Main menu items for the DevTools dropdown.
  */
-function FeatureFlagItems() {
+function MainMenuItems({ onViewfinder, onShowSceneInfo, onResetParams, onFeatureFlags }) {
   const flagKeys = getFlagKeys()
-  // Subscribe to hash changes so toggles trigger re-render
-  useSyncExternalStore(subscribeToHash, getHashSnapshot)
-  const flags = getAllFlags()
-
-  if (flagKeys.length === 0) return null
 
   return (
     <>
-      <ActionList.Divider />
-      <ActionList.Group title="Feature Flags">
-        {flagKeys.map((key) => (
-          <ActionList.Item key={key} onSelect={() => toggleFlag(key)}>
+      <ActionList.Item onSelect={onViewfinder}>
+        <ActionList.LeadingVisual>
+          <ScreenFullIcon size={16} />
+        </ActionList.LeadingVisual>
+        See viewfinder
+      </ActionList.Item>
+      <ActionList.Item onSelect={onShowSceneInfo}>
+        <ActionList.LeadingVisual>
+          <InfoIcon size={16} />
+        </ActionList.LeadingVisual>
+        Show scene info
+      </ActionList.Item>
+      <ActionList.Item onSelect={onResetParams}>
+        <ActionList.LeadingVisual>
+          <SyncIcon size={16} />
+        </ActionList.LeadingVisual>
+        Reset all params
+      </ActionList.Item>
+      {flagKeys.length > 0 && (
+        <>
+          <ActionList.Divider />
+          <ActionList.Item onSelect={(e) => { e.preventDefault(); onFeatureFlags() }}>
             <ActionList.LeadingVisual>
-              {flags[key]?.current ? <CheckIcon size={16} /> : <span style={{ width: 16 }} />}
+              <ZapIcon size={16} />
             </ActionList.LeadingVisual>
-            {key}
+            Feature Flags
           </ActionList.Item>
-        ))}
-      </ActionList.Group>
+        </>
+      )}
+      <div className={styles.shortcutHint}>
+        Press <code>⌘ + .</code> to hide
+      </div>
+    </>
+  )
+}
+
+/**
+ * Feature flag toggle list — replaces the main menu when active.
+ */
+function FlagMenuItems({ onBack }) {
+  const flagKeys = getFlagKeys()
+  useSyncExternalStore(subscribeToHash, getHashSnapshot)
+  const flags = getAllFlags()
+
+  return (
+    <>
+      <ActionList.Item onSelect={(e) => { e.preventDefault(); onBack() }}>
+        <ActionList.LeadingVisual>
+          <ArrowLeftIcon size={16} />
+        </ActionList.LeadingVisual>
+        Back
+      </ActionList.Item>
+      <ActionList.Divider />
+      {flagKeys.map((key) => (
+        <ActionList.Item key={key} onSelect={(e) => { e.preventDefault(); toggleFlag(key) }}>
+          <ActionList.LeadingVisual>
+            {flags[key]?.current ? <CheckIcon size={16} /> : <span style={{ width: 16 }} />}
+          </ActionList.LeadingVisual>
+          {key}
+        </ActionList.Item>
+      ))}
     </>
   )
 }

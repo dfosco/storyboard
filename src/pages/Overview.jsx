@@ -1,4 +1,4 @@
-import { Text, Button, Flash } from '@primer/react'
+import { Text, Button, Banner } from '@primer/react'
 import Application from '../templates/Application/Application.jsx'
 import styles from "./overview.module.css";
 import { useFeatureFlag } from '@dfosco/storyboard-react'
@@ -32,9 +32,11 @@ function Overview() {
     return (
       <Application title="Primer" subtitle="React" topnav={topnav}>
           {showBanner && (
-            <Flash variant="success" style={{ marginBottom: '12px' }}>
-              🚩 Feature flag <strong>show-banner</strong> is enabled! Toggle it in DevTools.
-            </Flash>
+            <Banner
+              title="Feature flag demo"
+              variant="info"
+              description="The show-banner feature flag is enabled. Toggle it off in DevTools."
+            />
           )}
           <Text as="h1" className={styles.title} fontSize="larger">Overview</Text>
           <div className={styles.card}>

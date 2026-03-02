@@ -24,17 +24,18 @@ export default function DevTools() {
   // Subscribe to hash for flag reactivity
   useSyncExternalStore(subscribeToHash, getHashSnapshot)
 
-  // Close menu on outside click
+  // Close menu on outside click — use mousedown so it fires before
+  // React re-renders remove the clicked element from the DOM
   useEffect(() => {
     if (!menuOpen) return
-    function handleClick(e) {
+    function handleMouseDown(e) {
       if (!e.target.closest(`.${styles.wrapper}`)) {
         setMenuOpen(false)
         setMenuView('main')
       }
     }
-    document.addEventListener('click', handleClick)
-    return () => document.removeEventListener('click', handleClick)
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
   }, [menuOpen])
 
   // Cmd+. keyboard shortcut to toggle toolbar

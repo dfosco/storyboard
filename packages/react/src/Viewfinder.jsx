@@ -92,11 +92,15 @@ function getCurrentBranch(basePath) {
  * @param {string} [props.title] - Header title (defaults to "Viewfinder")
  * @param {string} [props.subtitle] - Optional subtitle displayed below the title
  * @param {boolean} [props.showThumbnails] - Show thumbnail previews (defaults to false)
+ * @param {boolean} [props.hideDefaultScene] - Hide the "default" scene from the list (defaults to false)
  */
-export default function Viewfinder({ scenes = {}, pageModules = {}, basePath, title = 'Viewfinder', subtitle, showThumbnails = false }) {
+export default function Viewfinder({ scenes = {}, pageModules = {}, basePath, title = 'Viewfinder', subtitle, showThumbnails = false, hideDefaultScene = false }) {
   const [branches, setBranches] = useState(null)
 
-  const sceneNames = useMemo(() => Object.keys(scenes), [scenes])
+  const sceneNames = useMemo(() => {
+    const names = Object.keys(scenes)
+    return hideDefaultScene ? names.filter(n => n !== 'default') : names
+  }, [scenes, hideDefaultScene])
 
   const knownRoutes = useMemo(() =>
     Object.keys(pageModules)
@@ -176,6 +180,7 @@ export default function Viewfinder({ scenes = {}, pageModules = {}, basePath, ti
           <div className={showThumbnails ? styles.grid : styles.list}>
             {sceneNames.map((name) => {
               const meta = getSceneMeta(name)
+              const displayName = meta?.name || name
               return (
                 <a key={name} href={resolveSceneRoute(name, knownRoutes)} className={showThumbnails ? styles.card : styles.listItem}>
                   {showThumbnails && (
@@ -184,7 +189,7 @@ export default function Viewfinder({ scenes = {}, pageModules = {}, basePath, ti
                     </div>
                   )}
                   <div className={styles.cardBody}>
-                    <p className={styles.sceneName}>{name}</p>
+                    <p className={styles.sceneName}>{displayName}</p>
                     {meta?.author && (() => {
                       const authors = Array.isArray(meta.author) ? meta.author : [meta.author]
                       return (

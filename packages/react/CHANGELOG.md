@@ -1,5 +1,13 @@
 # @dfosco/storyboard-react
 
+## 1.17.2
+
+### Patch Changes
+
+-   Fixup title case on scene names in Viewfinder
+-   Updated dependencies
+    -   @dfosco/storyboard-core@1.17.2
+
 ## 1.17.1
 
 ### Patch Changes

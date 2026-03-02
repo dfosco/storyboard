@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 1.17.2
+
+### Patch Changes
+
+-   Fixup title case on scene names in Viewfinder
+
 ## 1.17.1
 
 ### Patch Changes

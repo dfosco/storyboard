@@ -203,3 +203,44 @@ code {
   width: 16px;
   height: 16px;
 }
+
+.flagsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-4);
+}
+
+.flagPanelItem {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  width: 100%;
+  padding: var(--base-size-8) var(--base-size-10);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--borderRadius-medium);
+  color: var(--fgColor-default);
+  font-size: var(--text-body-size-medium);
+  font-family: var(--fontStack-system);
+  text-align: left;
+  cursor: pointer;
+}
+
+.flagPanelItem:hover {
+  background-color: var(--control-transparent-bgColor-hover);
+  border-color: var(--borderColor-muted);
+}
+
+.flagPanelCheck {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--fgColor-accent);
+}
+
+.noFlags {
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+}

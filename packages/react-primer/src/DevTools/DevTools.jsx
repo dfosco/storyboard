@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useSyncExternalStore } from 'react'
-import { loadScene, getAllFlags, toggleFlag, getFlagKeys, subscribeToHash, getHashSnapshot } from '@dfosco/storyboard-core'
-import { BeakerIcon, InfoIcon, SyncIcon, XIcon, ScreenFullIcon, CheckIcon, ZapIcon, ArrowLeftIcon } from '@primer/octicons-react'
+import { useState, useEffect, useCallback } from 'react'
+import { loadScene, getFlagKeys } from '@dfosco/storyboard-core'
+import { BeakerIcon, InfoIcon, SyncIcon, XIcon, ScreenFullIcon, ZapIcon } from '@primer/octicons-react'
 import styles from './DevTools.module.css'
+import FeatureFlagsPanel from './FeatureFlagsPanel.jsx'
 
 function getSceneName() {
   return new URLSearchParams(window.location.search).get('scene') || 'default'
@@ -16,13 +17,10 @@ function getSceneName() {
 export default function DevTools() {
   const [visible, setVisible] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [menuView, setMenuView] = useState('main') // 'main' | 'flags'
   const [panelOpen, setPanelOpen] = useState(false)
+  const [flagsPanelOpen, setFlagsPanelOpen] = useState(false)
   const [sceneData, setSceneData] = useState(null)
   const [sceneError, setSceneError] = useState(null)
-
-  // Subscribe to hash for flag reactivity
-  useSyncExternalStore(subscribeToHash, getHashSnapshot)
 
   // Close menu on outside click — use mousedown so it fires before
   // React re-renders remove the clicked element from the DOM
@@ -31,7 +29,6 @@ export default function DevTools() {
     function handleMouseDown(e) {
       if (!e.target.closest(`.${styles.wrapper}`)) {
         setMenuOpen(false)
-        setMenuView('main')
       }
     }
     document.addEventListener('mousedown', handleMouseDown)
@@ -46,6 +43,7 @@ export default function DevTools() {
         setVisible((v) => !v)
         if (visible) {
           setPanelOpen(false)
+          setFlagsPanelOpen(false)
           setMenuOpen(false)
         }
       }
@@ -56,7 +54,6 @@ export default function DevTools() {
 
   const openMenu = useCallback(() => {
     setMenuOpen((v) => !v)
-    setMenuView('main')
   }, [])
 
   const handleShowSceneInfo = useCallback(() => {
@@ -80,10 +77,14 @@ export default function DevTools() {
     window.location.href = (document.querySelector('base')?.href || '/') + 'viewfinder'
   }, [])
 
+  const handleOpenFlagsPanel = useCallback(() => {
+    setMenuOpen(false)
+    setFlagsPanelOpen(true)
+  }, [])
+
   if (!visible) return null
 
-  const flagKeys = getFlagKeys()
-  const flags = getAllFlags()
+  const hasFlags = getFlagKeys().length > 0
 
   return (
     <>
@@ -107,50 +108,32 @@ export default function DevTools() {
           </div>
         </div>
       )}
+      <FeatureFlagsPanel open={flagsPanelOpen} onClose={() => setFlagsPanelOpen(false)} />
 
       {/* Floating toolbar */}
       <div className={styles.wrapper}>
         {menuOpen && (
           <div className={styles.menu}>
-            {menuView === 'main' ? (
+            <button className={styles.menuItem} onClick={handleViewfinder}>
+              <ScreenFullIcon size={16} /> See viewfinder
+            </button>
+            <button className={styles.menuItem} onClick={handleShowSceneInfo}>
+              <InfoIcon size={16} /> Show scene info
+            </button>
+            <button className={styles.menuItem} onClick={handleResetParams}>
+              <SyncIcon size={16} /> Reset all params
+            </button>
+            {hasFlags && (
               <>
-                <button className={styles.menuItem} onClick={handleViewfinder}>
-                  <ScreenFullIcon size={16} /> See viewfinder
-                </button>
-                <button className={styles.menuItem} onClick={handleShowSceneInfo}>
-                  <InfoIcon size={16} /> Show scene info
-                </button>
-                <button className={styles.menuItem} onClick={handleResetParams}>
-                  <SyncIcon size={16} /> Reset all params
-                </button>
-                {flagKeys.length > 0 && (
-                  <>
-                    <div className={styles.separator} />
-                    <button className={styles.menuItem} onClick={() => setMenuView('flags')}>
-                      <ZapIcon size={16} /> Feature Flags
-                    </button>
-                  </>
-                )}
-                <div className={styles.shortcutHint}>
-                  Press <code>⌘ + .</code> to hide
-                </div>
-              </>
-            ) : (
-              <>
-                <button className={styles.menuItem} onClick={() => setMenuView('main')}>
-                  <ArrowLeftIcon size={16} /> Back
-                </button>
                 <div className={styles.separator} />
-                {flagKeys.map((key) => (
-                  <button key={key} className={styles.menuItem} onClick={() => toggleFlag(key)}>
-                    <span className={styles.flagIcon}>
-                      {flags[key]?.current ? <CheckIcon size={16} /> : null}
-                    </span>
-                    {key}
-                  </button>
-                ))}
+                <button className={styles.menuItem} onClick={handleOpenFlagsPanel}>
+                  <ZapIcon size={16} /> Feature Flags
+                </button>
               </>
             )}
+            <div className={styles.shortcutHint}>
+              Press <code>⌘ + .</code> to hide
+            </div>
           </div>
         )}
         <button className={styles.trigger} aria-label="Storyboard DevTools" onClick={openMenu}>

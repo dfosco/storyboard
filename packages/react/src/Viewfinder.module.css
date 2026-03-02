@@ -179,6 +179,9 @@
   background-repeat: no-repeat;
   background-position: right 12px center;
   min-width: 140px;
+  max-width: 220px;
+  text-overflow: ellipsis;
+  overflow: hidden;
   transition: border-color 0.15s ease;
 }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useSyncExternalStore } from 'react'
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react'
 import { ActionMenu, ActionList } from '@primer/react'
 import { loadScene, getAllFlags, toggleFlag, getFlagKeys, subscribeToHash, getHashSnapshot } from '@dfosco/storyboard-core'
 import { BeakerIcon, InfoIcon, SyncIcon, XIcon, ScreenFullIcon, CheckIcon, ZapIcon, ArrowLeftIcon } from '@primer/octicons-react'
@@ -24,6 +24,31 @@ export default function DevTools() {
   const [sceneError, setSceneError] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuView, setMenuView] = useState('main') // 'main' | 'flags'
+  const keepOpenRef = useRef(false)
+
+  const handleOpenChange = useCallback((open) => {
+    if (!open && keepOpenRef.current) {
+      keepOpenRef.current = false
+      return
+    }
+    setMenuOpen(open)
+    if (!open) setMenuView('main')
+  }, [])
+
+  const switchToFlags = useCallback(() => {
+    keepOpenRef.current = true
+    setMenuView('flags')
+  }, [])
+
+  const switchToMain = useCallback(() => {
+    keepOpenRef.current = true
+    setMenuView('main')
+  }, [])
+
+  const handleToggleFlag = useCallback((key) => {
+    keepOpenRef.current = true
+    toggleFlag(key)
+  }, [])
 
   // Cmd+. keyboard shortcut to toggle toolbar
   useEffect(() => {
@@ -100,7 +125,7 @@ export default function DevTools() {
 
       {/* Floating toolbar */}
       <div className={styles.wrapper}>
-        <ActionMenu open={menuOpen} onOpenChange={(open) => { setMenuOpen(open); if (!open) setMenuView('main') }}>
+        <ActionMenu open={menuOpen} onOpenChange={handleOpenChange}>
           <ActionMenu.Anchor>
             <button
               className={styles.trigger}
@@ -116,10 +141,10 @@ export default function DevTools() {
                   onViewfinder={handleViewfinder}
                   onShowSceneInfo={handleShowSceneInfo}
                   onResetParams={handleResetParams}
-                  onFeatureFlags={() => setMenuView('flags')}
+                  onFeatureFlags={switchToFlags}
                 />
               ) : (
-                <FlagMenuItems onBack={() => setMenuView('main')} />
+                <FlagMenuItems onBack={switchToMain} onToggle={handleToggleFlag} />
               )}
             </ActionList>
           </ActionMenu.Overlay>
@@ -158,7 +183,7 @@ function MainMenuItems({ onViewfinder, onShowSceneInfo, onResetParams, onFeature
       {flagKeys.length > 0 && (
         <>
           <ActionList.Divider />
-          <ActionList.Item onSelect={(e) => { e.preventDefault(); onFeatureFlags() }}>
+          <ActionList.Item onSelect={onFeatureFlags}>
             <ActionList.LeadingVisual>
               <ZapIcon size={16} />
             </ActionList.LeadingVisual>
@@ -176,14 +201,14 @@ function MainMenuItems({ onViewfinder, onShowSceneInfo, onResetParams, onFeature
 /**
  * Feature flag toggle list — replaces the main menu when active.
  */
-function FlagMenuItems({ onBack }) {
+function FlagMenuItems({ onBack, onToggle }) {
   const flagKeys = getFlagKeys()
   useSyncExternalStore(subscribeToHash, getHashSnapshot)
   const flags = getAllFlags()
 
   return (
     <>
-      <ActionList.Item onSelect={(e) => { e.preventDefault(); onBack() }}>
+      <ActionList.Item onSelect={onBack}>
         <ActionList.LeadingVisual>
           <ArrowLeftIcon size={16} />
         </ActionList.LeadingVisual>
@@ -191,7 +216,7 @@ function FlagMenuItems({ onBack }) {
       </ActionList.Item>
       <ActionList.Divider />
       {flagKeys.map((key) => (
-        <ActionList.Item key={key} onSelect={(e) => { e.preventDefault(); toggleFlag(key) }}>
+        <ActionList.Item key={key} onSelect={() => onToggle(key)}>
           <ActionList.LeadingVisual>
             {flags[key]?.current ? <CheckIcon size={16} /> : <span style={{ width: 16 }} />}
           </ActionList.LeadingVisual>

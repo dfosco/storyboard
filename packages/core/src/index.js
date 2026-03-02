@@ -37,5 +37,8 @@ export { mountSceneDebug } from './sceneDebug.js'
 // Viewfinder utilities
 export { hash, resolveSceneRoute, getSceneMeta } from './viewfinder.js'
 
+// Feature flags
+export { initFeatureFlags, getFlag, setFlag, toggleFlag, getAllFlags, resetFlags, getFlagKeys } from './featureFlags.js'
+
 // Comments system
 export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comments/config.js'

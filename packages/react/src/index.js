@@ -19,6 +19,7 @@ export { useRecordOverride } from './hooks/useRecordOverride.js'
 export { useLocalStorage } from './hooks/useLocalStorage.js'
 export { useHideMode } from './hooks/useHideMode.js'
 export { useUndoRedo } from './hooks/useUndoRedo.js'
+export { useFeatureFlag } from './hooks/useFeatureFlag.js'
 
 // React Router integration
 export { installHashPreserver } from './hashPreserver.js'

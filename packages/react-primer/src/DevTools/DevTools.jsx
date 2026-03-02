@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react'
 import { ActionMenu, ActionList } from '@primer/react'
-import { loadScene } from '@dfosco/storyboard-core'
-import { BeakerIcon, InfoIcon, SyncIcon, XIcon, ScreenFullIcon } from '@primer/octicons-react'
+import { loadScene, getAllFlags, toggleFlag, getFlagKeys, subscribeToHash, getHashSnapshot } from '@dfosco/storyboard-core'
+import { BeakerIcon, InfoIcon, SyncIcon, XIcon, ScreenFullIcon, CheckIcon } from '@primer/octicons-react'
 import styles from './DevTools.module.css'
 
 function getSceneName() {
@@ -127,6 +127,7 @@ export default function DevTools() {
                 </ActionList.LeadingVisual>
                 Reset all params
               </ActionList.Item>
+              <FeatureFlagItems />
               <div className={styles.shortcutHint}>
                 Press <code>⌘ + .</code> to hide
               </div>
@@ -135,6 +136,35 @@ export default function DevTools() {
           </ActionMenu.Overlay>
         </ActionMenu>
       </div>
+    </>
+  )
+}
+
+/**
+ * Feature flag toggle items for the DevTools menu.
+ * Only renders when flags are registered.
+ */
+function FeatureFlagItems() {
+  const flagKeys = getFlagKeys()
+  // Subscribe to hash changes so toggles trigger re-render
+  useSyncExternalStore(subscribeToHash, getHashSnapshot)
+  const flags = getAllFlags()
+
+  if (flagKeys.length === 0) return null
+
+  return (
+    <>
+      <ActionList.Divider />
+      <ActionList.Group title="Feature Flags">
+        {flagKeys.map((key) => (
+          <ActionList.Item key={key} onSelect={() => toggleFlag(key)}>
+            <ActionList.LeadingVisual>
+              {flags[key]?.current ? <CheckIcon size={16} /> : <span style={{ width: 16 }} />}
+            </ActionList.LeadingVisual>
+            {key}
+          </ActionList.Item>
+        ))}
+      </ActionList.Group>
     </>
   )
 }

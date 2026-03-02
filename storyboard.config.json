@@ -7,5 +7,6 @@
     "discussions": {
       "category": "General"
     }
-  }
+  },
+  "featureFlags": {}
 }

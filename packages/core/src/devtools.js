@@ -16,6 +16,7 @@
 import { loadScene } from './loader.js'
 import { isCommentsEnabled } from './comments/config.js'
 import { isHideMode, activateHideMode, deactivateHideMode } from './hideMode.js'
+import { getAllFlags, toggleFlag, getFlagKeys } from './featureFlags.js'
 
 const STYLES = `
 .sb-devtools-wrapper {
@@ -151,6 +152,19 @@ const STYLES = `
   word-break: break-word;
 }
 .sb-devtools-error { color: #f85149; }
+.sb-devtools-separator {
+  height: 1px;
+  background-color: #21262d;
+  margin: 4px 0;
+}
+.sb-devtools-group-header {
+  padding: 6px 16px 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #8b949e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
 `
 
 // SVG icons (inline to avoid external deps)
@@ -161,6 +175,7 @@ const VIEWFINDER_ICON = '<svg viewBox="0 0 16 16"><path d="M8.5 1.75a.75.75 0 0 
 const X_ICON = '<svg viewBox="0 0 16 16"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>'
 const EYE_ICON = '<svg viewBox="0 0 16 16"><path d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14s-3.671-.992-4.933-2.078C1.797 10.831.88 9.577.43 8.899a1.62 1.62 0 0 1 0-1.798c.45-.678 1.367-1.932 2.637-3.023C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.758 6.527 12.5 8 12.5s2.823-.742 3.955-1.715c1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.824 4.242 9.473 3.5 8 3.5s-2.824.742-3.955 1.715c-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z"/></svg>'
 const EYE_CLOSED_ICON = '<svg viewBox="0 0 16 16"><path d="M.143 2.31a.75.75 0 0 1 1.047-.167l14.5 10.5a.75.75 0 1 1-.88 1.214l-2.248-1.628C11.346 13.19 9.792 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.831.88 9.577.43 8.899a1.62 1.62 0 0 1 0-1.798c.35-.527 1.06-1.476 2.019-2.398L.31 3.357A.75.75 0 0 1 .143 2.31Zm3.386 3.378a14.21 14.21 0 0 0-1.85 2.244.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.758 6.527 12.5 8 12.5c1.195 0 2.31-.488 3.29-1.191L9.063 9.695A2 2 0 0 1 6.058 7.39L3.529 5.688ZM8 3.5c-.516 0-1.017.09-1.499.251a.75.75 0 1 1-.473-1.423A6.23 6.23 0 0 1 8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.11.166-.248.365-.41.587a.75.75 0 1 1-1.21-.887c.14-.191.26-.367.36-.524a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.824 4.242 9.473 3.5 8 3.5Z"/></svg>'
+const CHECK_ICON = '<svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg>'
 
 function getSceneName() {
   return new URLSearchParams(window.location.search).get('scene') || 'default'
@@ -232,6 +247,45 @@ export function mountDevTools(options = {}) {
   menu.appendChild(resetBtn)
   menu.appendChild(hideModeBtn)
 
+  // Feature flag menu items (injected dynamically)
+  function refreshFeatureFlagItems() {
+    menu.querySelectorAll('[data-sb-flag-item]').forEach((el) => el.remove())
+    menu.querySelectorAll('[data-sb-flag-separator]').forEach((el) => el.remove())
+    menu.querySelectorAll('[data-sb-flag-header]').forEach((el) => el.remove())
+
+    const flagKeys = getFlagKeys()
+    if (flagKeys.length === 0) return
+
+    const flags = getAllFlags()
+    const insertBefore = hint
+
+    const separator = document.createElement('div')
+    separator.className = 'sb-devtools-separator'
+    separator.setAttribute('data-sb-flag-separator', '')
+    menu.insertBefore(separator, insertBefore)
+
+    const header = document.createElement('div')
+    header.className = 'sb-devtools-group-header'
+    header.setAttribute('data-sb-flag-header', '')
+    header.textContent = 'Feature Flags'
+    menu.insertBefore(header, insertBefore)
+
+    for (const key of flagKeys) {
+      const btn = document.createElement('button')
+      btn.className = 'sb-devtools-menu-item'
+      btn.setAttribute('data-sb-flag-item', '')
+      const icon = flags[key].current
+        ? `<span style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;">${CHECK_ICON}</span>`
+        : '<span style="width:16px;height:16px;"></span>'
+      btn.innerHTML = `${icon} ${key}`
+      btn.addEventListener('click', () => {
+        toggleFlag(key)
+        refreshFeatureFlagItems()
+      })
+      menu.insertBefore(btn, insertBefore)
+    }
+  }
+
   // Comments menu items (injected dynamically if comments are enabled)
   function refreshCommentMenuItems() {
     // Remove old comment items
@@ -260,6 +314,7 @@ export function mountDevTools(options = {}) {
 
   // Refresh dynamic items when menu opens
   trigger.addEventListener('click', () => {
+    refreshFeatureFlagItems()
     refreshCommentMenuItems()
     updateHideModeBtn()
   })

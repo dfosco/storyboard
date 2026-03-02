@@ -59,7 +59,21 @@ function buildIndex(root) {
  * Reads each data file, parses JSONC at build time, and emits pre-parsed
  * JavaScript objects — no runtime parsing needed.
  */
-function generateModule(index) {
+/**
+ * Read storyboard.config.json from the project root (if it exists).
+ * Returns the parsed config object, or null if not found.
+ */
+function readConfig(root) {
+  const configPath = path.resolve(root, 'storyboard.config.json')
+  try {
+    const raw = fs.readFileSync(configPath, 'utf-8')
+    return { config: parseJsonc(raw), configPath }
+  } catch {
+    return { config: null, configPath }
+  }
+}
+
+function generateModule(index, root) {
   const declarations = []
   const entries = { scene: [], object: [], record: [] }
   let i = 0
@@ -74,8 +88,18 @@ function generateModule(index) {
     }
   }
 
+  const imports = [`import { init } from '@dfosco/storyboard-core'`]
+  const initCalls = [`init({ scenes, objects, records })`]
+
+  // Feature flags from storyboard.config.json
+  const { config } = readConfig(root)
+  if (config?.featureFlags && Object.keys(config.featureFlags).length > 0) {
+    imports.push(`import { initFeatureFlags } from '@dfosco/storyboard-core'`)
+    initCalls.push(`initFeatureFlags(${JSON.stringify(config.featureFlags)})`)
+  }
+
   return [
-    `import { init } from '@dfosco/storyboard-core'`,
+    imports.join('\n'),
     '',
     declarations.join('\n'),
     '',
@@ -83,7 +107,7 @@ function generateModule(index) {
     `const objects = {\n${entries.object.join(',\n')}\n}`,
     `const records = {\n${entries.record.join(',\n')}\n}`,
     '',
-    `init({ scenes, objects, records })`,
+    initCalls.join('\n'),
     '',
     `export { scenes, objects, records }`,
     `export const index = { scenes, objects, records }`,
@@ -126,7 +150,7 @@ export default function storyboardDataPlugin() {
     load(id) {
       if (id !== RESOLVED_ID) return null
       if (!index) index = buildIndex(root)
-      return generateModule(index)
+      return generateModule(index, root)
     },
 
     configureServer(server) {
@@ -145,9 +169,26 @@ export default function storyboardDataPlugin() {
         }
       }
 
+      // Watch storyboard.config.json for changes
+      const { configPath } = readConfig(root)
+      watcher.add(configPath)
+      const invalidateConfig = (filePath) => {
+        if (path.resolve(filePath) === configPath) {
+          index = null
+          const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
+          if (mod) {
+            server.moduleGraph.invalidateModule(mod)
+            server.ws.send({ type: 'full-reload' })
+          }
+        }
+      }
+
       watcher.on('add', invalidate)
       watcher.on('unlink', invalidate)
-      watcher.on('change', invalidate)
+      watcher.on('change', (filePath) => {
+        invalidate(filePath)
+        invalidateConfig(filePath)
+      })
     },
 
     // Rebuild index on each build start

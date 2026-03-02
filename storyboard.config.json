@@ -9,6 +9,6 @@
     }
   },
   "featureFlags": {
-    "show-banner": false
+    "show-banner": true
   }
 }

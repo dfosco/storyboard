@@ -1,7 +1,6 @@
-import { Text, Button, Banner } from '@primer/react'
+import { Text, Button } from '@primer/react'
 import Application from '../templates/Application/Application.jsx'
 import styles from "./overview.module.css";
-import { useFeatureFlag } from '@dfosco/storyboard-react'
 
 import {
   IssueOpenedIcon,
@@ -27,17 +26,8 @@ const topnav = [
 ];
 
 function Overview() {
-    const showBanner = useFeatureFlag('show-banner')
-
     return (
       <Application title="Primer" subtitle="React" topnav={topnav}>
-          {showBanner && (
-            <Banner
-              title="Feature flag demo"
-              variant="info"
-              description="The show-banner feature flag is enabled. Toggle it off in DevTools."
-            />
-          )}
           <Text as="h1" className={styles.title} fontSize="larger">Overview</Text>
           <div className={styles.card}>
           <Text as="p" className={styles.cardText} fontSize="medium">This is a card in the overview</Text>

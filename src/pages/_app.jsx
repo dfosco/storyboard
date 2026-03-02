@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
-import { StoryboardProvider } from '@dfosco/storyboard-react'
+import { StoryboardProvider, useFeatureFlag } from '@dfosco/storyboard-react'
 
 function PageLoading() {
   return (
@@ -23,9 +23,27 @@ function PageLoading() {
 export default function App() {
   return (
     <StoryboardProvider>
+      <FeatureFlagBanner />
       <Suspense fallback={<PageLoading />}>
         <Outlet />
       </Suspense>
     </StoryboardProvider>
+  )
+}
+
+function FeatureFlagBanner() {
+  const showBanner = useFeatureFlag('show-banner')
+  if (!showBanner) return null
+  return (
+    <div style={{
+      padding: '12px 16px',
+      backgroundColor: '#1f6feb',
+      color: '#ffffff',
+      fontSize: '14px',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
+      textAlign: 'center',
+    }}>
+      🚩 Feature flag <strong>show-banner</strong> is enabled — toggle it off in DevTools.
+    </div>
   )
 }

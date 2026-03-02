@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 1.17.1
+
+### Patch Changes
+
+-   Fix and improve viewfinder design
+
 ## 1.17.0
 
 ### Minor Changes

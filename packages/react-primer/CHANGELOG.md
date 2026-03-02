@@ -1,5 +1,13 @@
 # @dfosco/storyboard-react-primer
 
+## 1.17.1
+
+### Patch Changes
+
+-   Fix and improve viewfinder design
+-   Updated dependencies
+    -   @dfosco/storyboard-react@1.17.1
+
 ## 1.17.0
 
 ### Minor Changes

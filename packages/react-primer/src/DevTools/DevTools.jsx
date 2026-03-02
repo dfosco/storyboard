@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react'
-import { ActionMenu, ActionList } from '@primer/react'
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react'
 import { loadScene, getAllFlags, toggleFlag, getFlagKeys, subscribeToHash, getHashSnapshot } from '@dfosco/storyboard-core'
 import { BeakerIcon, InfoIcon, SyncIcon, XIcon, ScreenFullIcon, CheckIcon, ZapIcon, ArrowLeftIcon } from '@primer/octicons-react'
 import styles from './DevTools.module.css'
@@ -11,44 +10,32 @@ function getSceneName() {
 /**
  * Storyboard DevTools — a floating toolbar for development.
  *
- * Features:
- *  - Floating button (bottom-center) that opens a menu
- *  - "Show scene info" — translucent overlay panel with resolved scene JSON
- *  - "Reset all params" — clears all URL hash session params
- *  - Cmd+. (Mac) / Ctrl+. (other) toggles the toolbar visibility
+ * Uses a custom dropdown menu (no Primer ActionMenu) so that
+ * view-swapping and flag toggling don't auto-close the panel.
  */
 export default function DevTools() {
   const [visible, setVisible] = useState(true)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuView, setMenuView] = useState('main') // 'main' | 'flags'
   const [panelOpen, setPanelOpen] = useState(false)
   const [sceneData, setSceneData] = useState(null)
   const [sceneError, setSceneError] = useState(null)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [menuView, setMenuView] = useState('main') // 'main' | 'flags'
-  const keepOpenRef = useRef(false)
 
-  const handleOpenChange = useCallback((open) => {
-    if (!open && keepOpenRef.current) {
-      keepOpenRef.current = false
-      return
+  // Subscribe to hash for flag reactivity
+  useSyncExternalStore(subscribeToHash, getHashSnapshot)
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return
+    function handleClick(e) {
+      if (!e.target.closest(`.${styles.wrapper}`)) {
+        setMenuOpen(false)
+        setMenuView('main')
+      }
     }
-    setMenuOpen(open)
-    if (!open) setMenuView('main')
-  }, [])
-
-  const switchToFlags = useCallback(() => {
-    keepOpenRef.current = true
-    setMenuView('flags')
-  }, [])
-
-  const switchToMain = useCallback(() => {
-    keepOpenRef.current = true
-    setMenuView('main')
-  }, [])
-
-  const handleToggleFlag = useCallback((key) => {
-    keepOpenRef.current = true
-    toggleFlag(key)
-  }, [])
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [menuOpen])
 
   // Cmd+. keyboard shortcut to toggle toolbar
   useEffect(() => {
@@ -58,6 +45,7 @@ export default function DevTools() {
         setVisible((v) => !v)
         if (visible) {
           setPanelOpen(false)
+          setMenuOpen(false)
         }
       }
     }
@@ -65,13 +53,17 @@ export default function DevTools() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [visible])
 
+  const openMenu = useCallback(() => {
+    setMenuOpen((v) => !v)
+    setMenuView('main')
+  }, [])
+
   const handleShowSceneInfo = useCallback(() => {
-    const sceneName = getSceneName()
+    setMenuOpen(false)
     setPanelOpen(true)
     setSceneError(null)
-
     try {
-      setSceneData(loadScene(sceneName))
+      setSceneData(loadScene(getSceneName()))
     } catch (err) {
       setSceneError(err.message)
     }
@@ -79,44 +71,36 @@ export default function DevTools() {
 
   const handleResetParams = useCallback(() => {
     window.location.hash = ''
+    setMenuOpen(false)
   }, [])
 
   const handleViewfinder = useCallback(() => {
+    setMenuOpen(false)
     window.location.href = (document.querySelector('base')?.href || '/') + 'viewfinder'
   }, [])
 
   if (!visible) return null
+
+  const flagKeys = getFlagKeys()
+  const flags = getAllFlags()
 
   return (
     <>
       {/* Scene info overlay panel */}
       {panelOpen && (
         <div className={styles.overlay}>
-          <div
-            className={styles.overlayBackdrop}
-            onClick={() => setPanelOpen(false)}
-          />
+          <div className={styles.overlayBackdrop} onClick={() => setPanelOpen(false)} />
           <div className={styles.panel}>
             <div className={styles.panelHeader}>
-              <span className={styles.panelTitle}>
-                Scene: {getSceneName()}
-              </span>
-              <button
-                className={styles.panelClose}
-                onClick={() => setPanelOpen(false)}
-                aria-label="Close panel"
-              >
+              <span className={styles.panelTitle}>Scene: {getSceneName()}</span>
+              <button className={styles.panelClose} onClick={() => setPanelOpen(false)} aria-label="Close panel">
                 <XIcon size={16} />
               </button>
             </div>
             <div className={styles.panelBody}>
-              {sceneError && (
-                <span className={styles.error}>{sceneError}</span>
-              )}
+              {sceneError && <span className={styles.error}>{sceneError}</span>}
               {!sceneError && sceneData && (
-                <pre className={styles.codeBlock}>
-                  {JSON.stringify(sceneData, null, 2)}
-                </pre>
+                <pre className={styles.codeBlock}>{JSON.stringify(sceneData, null, 2)}</pre>
               )}
             </div>
           </div>
@@ -125,104 +109,53 @@ export default function DevTools() {
 
       {/* Floating toolbar */}
       <div className={styles.wrapper}>
-        <ActionMenu open={menuOpen} onOpenChange={handleOpenChange}>
-          <ActionMenu.Anchor>
-            <button
-              className={styles.trigger}
-              aria-label="Storyboard DevTools"
-            >
-              <BeakerIcon className={styles.triggerIcon} size={16} />
-            </button>
-          </ActionMenu.Anchor>
-          <ActionMenu.Overlay align="center" side="outside-top" sideOffset={16}>
-            <ActionList>
-              {menuView === 'main' ? (
-                <MainMenuItems
-                  onViewfinder={handleViewfinder}
-                  onShowSceneInfo={handleShowSceneInfo}
-                  onResetParams={handleResetParams}
-                  onFeatureFlags={switchToFlags}
-                />
-              ) : (
-                <FlagMenuItems onBack={switchToMain} onToggle={handleToggleFlag} />
-              )}
-            </ActionList>
-          </ActionMenu.Overlay>
-        </ActionMenu>
+        {menuOpen && (
+          <div className={styles.menu}>
+            {menuView === 'main' ? (
+              <>
+                <button className={styles.menuItem} onClick={handleViewfinder}>
+                  <ScreenFullIcon size={16} /> See viewfinder
+                </button>
+                <button className={styles.menuItem} onClick={handleShowSceneInfo}>
+                  <InfoIcon size={16} /> Show scene info
+                </button>
+                <button className={styles.menuItem} onClick={handleResetParams}>
+                  <SyncIcon size={16} /> Reset all params
+                </button>
+                {flagKeys.length > 0 && (
+                  <>
+                    <div className={styles.separator} />
+                    <button className={styles.menuItem} onClick={() => setMenuView('flags')}>
+                      <ZapIcon size={16} /> Feature Flags
+                    </button>
+                  </>
+                )}
+                <div className={styles.shortcutHint}>
+                  Press <code>⌘ + .</code> to hide
+                </div>
+              </>
+            ) : (
+              <>
+                <button className={styles.menuItem} onClick={() => setMenuView('main')}>
+                  <ArrowLeftIcon size={16} /> Back
+                </button>
+                <div className={styles.separator} />
+                {flagKeys.map((key) => (
+                  <button key={key} className={styles.menuItem} onClick={() => toggleFlag(key)}>
+                    <span className={styles.flagIcon}>
+                      {flags[key]?.current ? <CheckIcon size={16} /> : null}
+                    </span>
+                    {key}
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+        <button className={styles.trigger} aria-label="Storyboard DevTools" onClick={openMenu}>
+          <BeakerIcon className={styles.triggerIcon} size={16} />
+        </button>
       </div>
-    </>
-  )
-}
-
-/**
- * Main menu items for the DevTools dropdown.
- */
-function MainMenuItems({ onViewfinder, onShowSceneInfo, onResetParams, onFeatureFlags }) {
-  const flagKeys = getFlagKeys()
-
-  return (
-    <>
-      <ActionList.Item onSelect={onViewfinder}>
-        <ActionList.LeadingVisual>
-          <ScreenFullIcon size={16} />
-        </ActionList.LeadingVisual>
-        See viewfinder
-      </ActionList.Item>
-      <ActionList.Item onSelect={onShowSceneInfo}>
-        <ActionList.LeadingVisual>
-          <InfoIcon size={16} />
-        </ActionList.LeadingVisual>
-        Show scene info
-      </ActionList.Item>
-      <ActionList.Item onSelect={onResetParams}>
-        <ActionList.LeadingVisual>
-          <SyncIcon size={16} />
-        </ActionList.LeadingVisual>
-        Reset all params
-      </ActionList.Item>
-      {flagKeys.length > 0 && (
-        <>
-          <ActionList.Divider />
-          <ActionList.Item onSelect={onFeatureFlags}>
-            <ActionList.LeadingVisual>
-              <ZapIcon size={16} />
-            </ActionList.LeadingVisual>
-            Feature Flags
-          </ActionList.Item>
-        </>
-      )}
-      <div className={styles.shortcutHint}>
-        Press <code>⌘ + .</code> to hide
-      </div>
-    </>
-  )
-}
-
-/**
- * Feature flag toggle list — replaces the main menu when active.
- */
-function FlagMenuItems({ onBack, onToggle }) {
-  const flagKeys = getFlagKeys()
-  useSyncExternalStore(subscribeToHash, getHashSnapshot)
-  const flags = getAllFlags()
-
-  return (
-    <>
-      <ActionList.Item onSelect={onBack}>
-        <ActionList.LeadingVisual>
-          <ArrowLeftIcon size={16} />
-        </ActionList.LeadingVisual>
-        Back
-      </ActionList.Item>
-      <ActionList.Divider />
-      {flagKeys.map((key) => (
-        <ActionList.Item key={key} onSelect={() => onToggle(key)}>
-          <ActionList.LeadingVisual>
-            {flags[key]?.current ? <CheckIcon size={16} /> : <span style={{ width: 16 }} />}
-          </ActionList.LeadingVisual>
-          {key}
-        </ActionList.Item>
-      ))}
     </>
   )
 }

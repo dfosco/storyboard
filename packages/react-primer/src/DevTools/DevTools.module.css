@@ -151,3 +151,55 @@ code {
   margin-left: auto;
   font-family: var(--fontStack-monospace);
 }
+
+/* Custom dropdown menu */
+.menu {
+  position: absolute;
+  bottom: 56px;
+  right: 0;
+  min-width: 200px;
+  background-color: var(--overlay-bgColor);
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-large);
+  box-shadow: var(--shadow-floating-large);
+  overflow: hidden;
+  padding: var(--base-size-4) 0;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  width: 100%;
+  padding: var(--base-size-8) var(--base-size-16);
+  background: none;
+  border: none;
+  color: var(--fgColor-default);
+  font-size: var(--text-body-size-medium);
+  font-family: var(--fontStack-system);
+  cursor: pointer;
+  text-align: left;
+}
+
+.menuItem:hover {
+  background-color: var(--control-transparent-bgColor-hover);
+}
+
+.menuItem svg {
+  flex-shrink: 0;
+  color: var(--fgColor-muted);
+}
+
+.separator {
+  height: 1px;
+  background-color: var(--borderColor-muted);
+  margin: var(--base-size-4) 0;
+}
+
+.flagIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}

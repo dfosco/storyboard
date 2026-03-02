@@ -4,6 +4,7 @@
   {"folder":"branch--comments-next","branch":"comments-next"},
   {"folder":"branch--comments-system","branch":"comments-system"},
   {"folder":"branch--design-modes","branch":"design-modes"},
+  {"folder":"branch--feature-flags","branch":"feature-flags"},
   {"folder":"branch--security-ux","branch":"security-ux"},
   {"folder":"branch--viewfinder-branches","branch":"viewfinder-branches"}
 ]

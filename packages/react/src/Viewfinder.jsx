@@ -3,6 +3,13 @@ import { useState, useEffect, useMemo } from 'react'
 import { hash, resolveSceneRoute, getSceneMeta } from '@dfosco/storyboard-core'
 import styles from './Viewfinder.module.css'
 
+function formatSceneName(name) {
+  return name
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 function PlaceholderGraphic({ name }) {
   const seed = hash(name)
   const rects = []
@@ -180,7 +187,7 @@ export default function Viewfinder({ scenes = {}, pageModules = {}, basePath, ti
           <div className={showThumbnails ? styles.grid : styles.list}>
             {sceneNames.map((name) => {
               const meta = getSceneMeta(name)
-              const displayName = meta?.name || name
+              const displayName = meta?.title || meta?.name || formatSceneName(name)
               return (
                 <a key={name} href={resolveSceneRoute(name, knownRoutes)} className={showThumbnails ? styles.card : styles.listItem}>
                   {showThumbnails && (

@@ -36,12 +36,13 @@ function FeatureFlagBanner() {
   if (!showBanner) return null
   return (
     <div style={{
-      padding: '12px 16px',
+      padding: '8px 16px',
       backgroundColor: '#1f6feb',
       color: '#ffffff',
-      fontSize: '14px',
+      fontSize: '13px',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
       textAlign: 'center',
+      borderBottom: '1px solid #388bfd',
     }}>
       🚩 Feature flag <strong>show-banner</strong> is enabled — toggle it off in DevTools.
     </div>

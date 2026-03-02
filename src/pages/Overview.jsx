@@ -1,6 +1,7 @@
-import { Text, Button } from '@primer/react'
+import { Text, Button, Flash } from '@primer/react'
 import Application from '../templates/Application/Application.jsx'
 import styles from "./overview.module.css";
+import { useFeatureFlag } from '@dfosco/storyboard-react'
 
 import {
   IssueOpenedIcon,
@@ -26,8 +27,15 @@ const topnav = [
 ];
 
 function Overview() {
+    const showBanner = useFeatureFlag('show-banner')
+
     return (
-      <Application title="Primer" subtitle="React" topnav={topnav}>          
+      <Application title="Primer" subtitle="React" topnav={topnav}>
+          {showBanner && (
+            <Flash variant="success" style={{ marginBottom: '12px' }}>
+              🚩 Feature flag <strong>show-banner</strong> is enabled! Toggle it in DevTools.
+            </Flash>
+          )}
           <Text as="h1" className={styles.title} fontSize="larger">Overview</Text>
           <div className={styles.card}>
           <Text as="p" className={styles.cardText} fontSize="medium">This is a card in the overview</Text>

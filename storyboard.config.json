@@ -8,5 +8,7 @@
       "category": "General"
     }
   },
-  "featureFlags": {}
+  "featureFlags": {
+    "show-banner": false
+  }
 }

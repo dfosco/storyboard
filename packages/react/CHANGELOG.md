@@ -1,5 +1,16 @@
 # @dfosco/storyboard-react
 
+## 1.17.0
+
+### Minor Changes
+
+-   Update Storyboard index page customization
+
+### Patch Changes
+
+-   Updated dependencies
+    -   @dfosco/storyboard-core@1.17.0
+
 ## 1.16.0
 
 ### Minor Changes

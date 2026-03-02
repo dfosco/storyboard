@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 1.17.0
+
+### Minor Changes
+
+-   Update Storyboard index page customization
+
 ## 1.16.0
 
 ### Minor Changes

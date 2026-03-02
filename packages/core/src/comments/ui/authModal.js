@@ -34,7 +34,7 @@ export function openAuthModal() {
         </div>
         <div class="pa4">
           <p class="ma0 mb3 lh-copy sb-fg-muted sb-f-sm">
-            Create a <a class="sb-fg-accent no-underline" href="https://github.com/settings/tokens/new?scopes=repo&description=Storyboard+Comments" target="_blank" rel="noopener">GitHub Personal Access Token</a> with access to <b>github/storyboard</b> repository and <b>Discussions</b> read/write scope. Then enter the token below to sign in and enable commenting features.
+            Create a <a class="sb-fg-accent no-underline" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub Fine-Grained Personal Access Token</a> with access to <b>github/storyboard</b> repository and <b>Discussions</b> read/write scope. Then enter the token below to sign in and enable commenting features.
           </p>
           <label class="db mb1 fw5 sb-fg sb-f-sm" for="sb-auth-token-input">Personal Access Token</label>
           <input class="sb-input w-100 ph3 pv2 br2 f6 code db" id="sb-auth-token-input" type="password"

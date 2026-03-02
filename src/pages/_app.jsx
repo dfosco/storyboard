@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import { StoryboardProvider, useFeatureFlag } from '@dfosco/storyboard-react'
+import appStyles from './_app.module.css'
 
 function PageLoading() {
   return (
@@ -35,15 +36,7 @@ function FeatureFlagBanner() {
   const showBanner = useFeatureFlag('show-banner')
   if (!showBanner) return null
   return (
-    <div style={{
-      padding: '8px 16px',
-      backgroundColor: '#1f6feb',
-      color: '#ffffff',
-      fontSize: '13px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
-      textAlign: 'center',
-      borderBottom: '1px solid #388bfd',
-    }}>
+    <div className={appStyles.banner}>
       🚩 Feature flag <strong>show-banner</strong> is enabled — toggle it off in DevTools.
     </div>
   )

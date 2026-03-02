@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 1.17.3
+
+### Patch Changes
+
+-   Fix comment overlay and optimistic submission, fix link to PAT generation
+
 ## 1.17.2
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @dfosco/storyboard-react
 
+## 1.17.3
+
+### Patch Changes
+
+-   Fix comment overlay and optimistic submission, fix link to PAT generation
+-   Updated dependencies
+    -   @dfosco/storyboard-core@1.17.3
+
 ## 1.17.2
 
 ### Patch Changes

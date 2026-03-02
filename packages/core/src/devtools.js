@@ -68,7 +68,7 @@ const STYLES = `
   border: none;
   color: #c9d1d9;
   font-size: 14px;
-  font-family: inherit;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   cursor: pointer;
   text-align: left;
 }
@@ -102,6 +102,7 @@ const STYLES = `
   width: 100%;
   max-width: 640px;
   max-height: 60vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   background-color: #0d1117;
   border: 1px solid #30363d;
   border-radius: 12px;
@@ -177,7 +178,6 @@ const EYE_ICON = '<svg viewBox="0 0 16 16"><path d="M8 2c1.981 0 3.671.992 4.933
 const EYE_CLOSED_ICON = '<svg viewBox="0 0 16 16"><path d="M.143 2.31a.75.75 0 0 1 1.047-.167l14.5 10.5a.75.75 0 1 1-.88 1.214l-2.248-1.628C11.346 13.19 9.792 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.831.88 9.577.43 8.899a1.62 1.62 0 0 1 0-1.798c.35-.527 1.06-1.476 2.019-2.398L.31 3.357A.75.75 0 0 1 .143 2.31Zm3.386 3.378a14.21 14.21 0 0 0-1.85 2.244.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.758 6.527 12.5 8 12.5c1.195 0 2.31-.488 3.29-1.191L9.063 9.695A2 2 0 0 1 6.058 7.39L3.529 5.688ZM8 3.5c-.516 0-1.017.09-1.499.251a.75.75 0 1 1-.473-1.423A6.23 6.23 0 0 1 8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.11.166-.248.365-.41.587a.75.75 0 1 1-1.21-.887c.14-.191.26-.367.36-.524a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.824 4.242 9.473 3.5 8 3.5Z"/></svg>'
 const CHECK_ICON = '<svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg>'
 const ZAP_ICON = '<svg viewBox="0 0 16 16"><path d="M9.504.43a1.516 1.516 0 0 1 2.437 1.713L10.415 5.5h2.123c1.57 0 2.346 1.909 1.22 3.004l-7.34 7.142a1.249 1.249 0 0 1-.871.354h-.302a1.25 1.25 0 0 1-1.157-1.723L5.633 10.5H3.462c-1.57 0-2.346-1.909-1.22-3.004Z"/></svg>'
-const ARROW_LEFT_ICON = '<svg viewBox="0 0 16 16"><path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z"/></svg>'
 
 function getSceneName() {
   return new URLSearchParams(window.location.search).get('scene') || 'default'
@@ -244,76 +244,11 @@ export function mountDevTools(options = {}) {
   hint.className = 'sb-devtools-hint'
   hint.innerHTML = 'Press <code>⌘ + .</code> to hide'
 
-  menu.appendChild(viewfinderBtn)
-  menu.appendChild(showInfoBtn)
-  menu.appendChild(resetBtn)
-  menu.appendChild(hideModeBtn)
-
-  // Track menu view: 'main' or 'flags'
-  let menuView = 'main'
-
-  // Main menu items container
-  const mainItems = [viewfinderBtn, showInfoBtn, resetBtn, hideModeBtn]
-
-  // Feature flags entry (shown in main menu)
+  // Feature flags entry (opens a dedicated panel)
   const featureFlagsBtn = document.createElement('button')
   featureFlagsBtn.className = 'sb-devtools-menu-item'
   featureFlagsBtn.innerHTML = `${ZAP_ICON} Feature Flags`
-  featureFlagsBtn.addEventListener('click', () => {
-    showFlagsView()
-  })
-
-  function showMainView() {
-    menuView = 'main'
-    // Clear and rebuild main menu
-    while (menu.firstChild) menu.removeChild(menu.firstChild)
-    for (const item of mainItems) menu.appendChild(item)
-    // Add feature flags entry if flags exist
-    if (getFlagKeys().length > 0) {
-      const sep = document.createElement('div')
-      sep.className = 'sb-devtools-separator'
-      menu.appendChild(sep)
-      menu.appendChild(featureFlagsBtn)
-    }
-    // Re-inject comment items
-    refreshCommentMenuItems()
-    menu.appendChild(hint)
-  }
-
-  function showFlagsView() {
-    menuView = 'flags'
-    renderFlagsView()
-  }
-
-  function renderFlagsView() {
-    while (menu.firstChild) menu.removeChild(menu.firstChild)
-
-    // Back button
-    const backBtn = document.createElement('button')
-    backBtn.className = 'sb-devtools-menu-item'
-    backBtn.innerHTML = `${ARROW_LEFT_ICON} Back`
-    backBtn.addEventListener('click', () => showMainView())
-    menu.appendChild(backBtn)
-
-    const sep = document.createElement('div')
-    sep.className = 'sb-devtools-separator'
-    menu.appendChild(sep)
-
-    const flags = getAllFlags()
-    for (const key of getFlagKeys()) {
-      const btn = document.createElement('button')
-      btn.className = 'sb-devtools-menu-item'
-      const icon = flags[key].current
-        ? `<span style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;">${CHECK_ICON}</span>`
-        : '<span style="width:16px;height:16px;"></span>'
-      btn.innerHTML = `${icon} ${key}`
-      btn.addEventListener('click', () => {
-        toggleFlag(key)
-        renderFlagsView()
-      })
-      menu.appendChild(btn)
-    }
-  }
+  featureFlagsBtn.addEventListener('click', openFlagsPanel)
 
   // Comments menu items (injected dynamically if comments are enabled)
   function refreshCommentMenuItems() {
@@ -341,19 +276,104 @@ export function mountDevTools(options = {}) {
     })
   }
 
+  function renderMainMenu() {
+    while (menu.firstChild) menu.removeChild(menu.firstChild)
+    menu.appendChild(viewfinderBtn)
+    menu.appendChild(showInfoBtn)
+    menu.appendChild(resetBtn)
+    menu.appendChild(hideModeBtn)
+    if (getFlagKeys().length > 0) {
+      const sep = document.createElement('div')
+      sep.className = 'sb-devtools-separator'
+      menu.appendChild(sep)
+      menu.appendChild(featureFlagsBtn)
+    }
+    refreshCommentMenuItems()
+    menu.appendChild(hint)
+  }
+
   // Refresh dynamic items when menu opens
   trigger.addEventListener('click', () => {
-    showMainView()
+    renderMainMenu()
     updateHideModeBtn()
   })
 
-  menu.appendChild(hint)
+  // Build initial (closed) menu content so tests and static DOM inspection work.
+  renderMainMenu()
   wrapper.appendChild(menu)
   wrapper.appendChild(trigger)
   container.appendChild(wrapper)
 
-  // Overlay (created lazily)
+  // Overlays (created lazily)
   let overlay = null
+  let flagsOverlay = null
+
+  function closeFlagsPanel() {
+    if (flagsOverlay) {
+      flagsOverlay.remove()
+      flagsOverlay = null
+    }
+  }
+
+  function openFlagsPanel() {
+    menuOpen = false
+    menu.classList.remove('open')
+    closeFlagsPanel()
+
+    flagsOverlay = document.createElement('div')
+    flagsOverlay.className = 'sb-devtools-overlay'
+
+    const backdrop = document.createElement('div')
+    backdrop.className = 'sb-devtools-backdrop'
+    backdrop.addEventListener('click', closeFlagsPanel)
+
+    const panel = document.createElement('div')
+    panel.className = 'sb-devtools-panel'
+
+    const header = document.createElement('div')
+    header.className = 'sb-devtools-panel-header'
+    header.innerHTML = '<span class="sb-devtools-panel-title">Feature Flags</span>'
+
+    const closeBtn = document.createElement('button')
+    closeBtn.className = 'sb-devtools-panel-close'
+    closeBtn.setAttribute('aria-label', 'Close feature flags panel')
+    closeBtn.innerHTML = X_ICON
+    closeBtn.addEventListener('click', closeFlagsPanel)
+    header.appendChild(closeBtn)
+
+    const body = document.createElement('div')
+    body.className = 'sb-devtools-panel-body'
+
+    function renderFlagItems() {
+      body.innerHTML = ''
+      const keys = getFlagKeys()
+      if (keys.length === 0) {
+        body.innerHTML = '<span class="sb-devtools-hint">No feature flags are configured.</span>'
+        return
+      }
+      const flags = getAllFlags()
+      for (const key of keys) {
+        const btn = document.createElement('button')
+        btn.className = 'sb-devtools-menu-item'
+        const icon = flags[key].current
+          ? `<span style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;">${CHECK_ICON}</span>`
+          : '<span style="width:16px;height:16px;"></span>'
+        btn.innerHTML = `${icon} ${key}`
+        btn.addEventListener('click', () => {
+          toggleFlag(key)
+          renderFlagItems()
+        })
+        body.appendChild(btn)
+      }
+    }
+    renderFlagItems()
+
+    panel.appendChild(header)
+    panel.appendChild(body)
+    flagsOverlay.appendChild(backdrop)
+    flagsOverlay.appendChild(panel)
+    container.appendChild(flagsOverlay)
+  }
 
   function openPanel() {
     menuOpen = false
@@ -454,7 +474,6 @@ export function mountDevTools(options = {}) {
   document.addEventListener('click', (e) => {
     if (menuOpen && !wrapper.contains(e.target)) {
       menuOpen = false
-      menuView = 'main'
       menu.classList.remove('open')
     }
   })
@@ -469,6 +488,7 @@ export function mountDevTools(options = {}) {
         menuOpen = false
         menu.classList.remove('open')
         closePanel()
+        closeFlagsPanel()
       }
     }
   })

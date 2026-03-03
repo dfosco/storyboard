@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 1.18.0
+
+### Minor Changes
+
+-   Add feature-flag module
+
 ## 1.17.3
 
 ### Patch Changes

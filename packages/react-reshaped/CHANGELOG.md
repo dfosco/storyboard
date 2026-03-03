@@ -1,5 +1,16 @@
 # @dfosco/storyboard-react-reshaped
 
+## 1.18.0
+
+### Minor Changes
+
+-   Add feature-flag module
+
+### Patch Changes
+
+-   Updated dependencies
+    -   @dfosco/storyboard-react@1.18.0
+
 ## 1.17.3
 
 ### Patch Changes

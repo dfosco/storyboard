@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 1.20.0
+
+### Minor Changes
+
+-   Fix config for devtool plugin
+
 ## 1.19.0
 
 ### Minor Changes

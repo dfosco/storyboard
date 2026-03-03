@@ -1,5 +1,16 @@
 # @dfosco/storyboard-react-primer
 
+## 1.20.0
+
+### Minor Changes
+
+-   Fix config for devtool plugin
+
+### Patch Changes
+
+-   Updated dependencies
+    -   @dfosco/storyboard-react@1.20.0
+
 ## 1.19.0
 
 ### Minor Changes

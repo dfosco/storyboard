@@ -1,5 +1,16 @@
 # @dfosco/storyboard-react
 
+## 1.19.0
+
+### Minor Changes
+
+-   Add devtools on/off config flag
+
+### Patch Changes
+
+-   Updated dependencies
+    -   @dfosco/storyboard-core@1.19.0
+
 ## 1.18.0
 
 ### Minor Changes

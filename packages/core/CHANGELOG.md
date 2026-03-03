@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 1.19.0
+
+### Minor Changes
+
+-   Add devtools on/off config flag
+
 ## 1.18.0
 
 ### Minor Changes

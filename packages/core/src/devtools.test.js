@@ -97,4 +97,11 @@ describe('mountDevTools', () => {
     const wrapper = document.body.querySelector('.sb-devtools-wrapper')
     expect(wrapper).not.toBeNull()
   })
+
+  it('does not mount when plugins option disables devtools', () => {
+    mountDevTools({ plugins: { devtools: false } })
+
+    const wrapper = document.body.querySelector('.sb-devtools-wrapper')
+    expect(wrapper).toBeNull()
+  })
 })

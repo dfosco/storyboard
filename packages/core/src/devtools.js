@@ -17,7 +17,7 @@ import { loadScene } from './loader.js'
 import { isCommentsEnabled } from './comments/config.js'
 import { isHideMode, activateHideMode, deactivateHideMode } from './hideMode.js'
 import { getAllFlags, toggleFlag, getFlagKeys } from './featureFlags.js'
-import { isPluginEnabled } from './plugins.js'
+import { isPluginEnabled, initPlugins } from './plugins.js'
 
 const STYLES = `
 .sb-devtools-wrapper {
@@ -190,8 +190,13 @@ function getSceneName() {
  *
  * @param {object} [options]
  * @param {HTMLElement} [options.container=document.body] - Where to mount
+ * @param {Record<string, boolean>} [options.plugins] - Plugin config from storyboard.config.json
  */
 export function mountDevTools(options = {}) {
+  // Allow callers to pass plugins config directly (avoids timing issues
+  // where mountDevTools runs before the Vite virtual module calls initPlugins)
+  if (options.plugins) initPlugins(options.plugins)
+
   // Skip when devtools plugin is disabled via storyboard.config.json
   if (!isPluginEnabled('devtools')) return
 

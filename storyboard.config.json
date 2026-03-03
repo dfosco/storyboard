@@ -9,9 +9,9 @@
     }
   },
   "plugins": {
-    "devtools": false
+    "devtools": true
   },
   "featureFlags": {
-    "show-banner": true
+    "show-banner": false
   }
 }

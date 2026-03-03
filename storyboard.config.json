@@ -9,7 +9,7 @@
     }
   },
   "plugins": {
-    "devtools": true
+    "devtools": false
   },
   "featureFlags": {
     "show-banner": true

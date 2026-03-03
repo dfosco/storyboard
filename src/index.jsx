@@ -8,7 +8,7 @@ import './globals.css'
 
 import ColorModeSwitcher from './components/ColorModeSwitcher'
 import { installHashPreserver } from '@dfosco/storyboard-react/hash-preserver'
-import { installHideParamListener, installHistorySync, installBodyClassSync, mountDevTools } from '@dfosco/storyboard-core'
+import { installHideParamListener, installHistorySync, installBodyClassSync, mountDevTools, initPlugins } from '@dfosco/storyboard-core'
 import { initCommentsConfig, mountComments } from '@dfosco/storyboard-core/comments'
 import '@dfosco/storyboard-core/comments/ui/comments.css'
 import storyboardConfig from '../storyboard.config.json'
@@ -22,6 +22,7 @@ installHideParamListener()
 installHistorySync()
 installBodyClassSync()
 initCommentsConfig(storyboardConfig, { basePath: import.meta.env.BASE_URL })
+initPlugins(storyboardConfig.plugins || {})
 mountDevTools({ basePath: import.meta.env.BASE_URL })
 mountComments()
 

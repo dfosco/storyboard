@@ -494,6 +494,49 @@ function ScenePicker() {
 
 ---
 
+## Feature Flags
+
+Feature flags are configured in `storyboard.config.json` and automatically initialized at startup by the Storyboard Vite plugin.
+
+```json
+{
+  "featureFlags": {
+    "show-banner": true,
+    "new-navigation": false
+  }
+}
+```
+
+### Reading a flag in React
+
+Use `useFeatureFlag()` from `@dfosco/storyboard-react`:
+
+```jsx
+import { useFeatureFlag } from '@dfosco/storyboard-react'
+
+function Banner() {
+  const showBanner = useFeatureFlag('show-banner')
+  if (!showBanner) return null
+  return <div>Feature-enabled content</div>
+}
+```
+
+### Changing flags at runtime
+
+- **DevTools UI:** Open DevTools → **Feature Flags** and toggle any configured flag.
+- **URL hash override (shareable):** Set `#flag.show-banner=true` or `#flag.show-banner=false`.
+- **Programmatic API:** Use `setFlag()`, `toggleFlag()`, or `resetFlags()` from `@dfosco/storyboard-core`.
+
+Flag resolution priority is:
+
+```
+URL hash override  →  localStorage  →  storyboard.config.json default
+```
+
+Use plain flag keys in hooks/APIs (for example, `show-banner`). The `flag.` prefix is only for URL/hash storage keys.
+
+---
+
 ## Routing
 
 Routes are auto-generated from the file structure in `src/pages/` via [@generouted/react-router](https://github.com/oedotme/generouted) with lazy loading for automatic route-level code splitting:
@@ -585,6 +628,7 @@ Use `:global()` to reference body classes from CSS Modules:
 | `useLocalStorage(path)` | `[value, setValue, clearValue]` | Persist overrides in localStorage. Read priority: hash → localStorage → scene data. |
 | `useHideMode()` | `[isHidden, toggle]` | Toggle clean-URL mode. When active, overrides read/write to localStorage shadow keys instead of the URL hash. |
 | `useUndoRedo()` | `{ canUndo, canRedo, undo, redo }` | Undo/redo for override history snapshots. |
+| `useFeatureFlag(key)` | `boolean` | Read a feature flag by key. Reactively updates when hash/localStorage-backed flag values change. |
 
 ### Components
 
@@ -628,6 +672,13 @@ Use `:global()` to reference body classes from CSS Modules:
 | `installBodyClassSync()` | Mirrors active overrides and scene to `<body>` CSS classes. Returns unsubscribe function. |
 | `setSceneClass(name)` | Sets `sb-scene--{name}` class on `<body>`. Called automatically by `StoryboardProvider`. |
 | `syncOverrideClasses()` | Manually sync override classes (called automatically by `installBodyClassSync`). |
+| `initFeatureFlags(defaults)` | Initialize feature flags from config defaults. Called automatically by the Vite plugin when `featureFlags` is present in `storyboard.config.json`. |
+| `getFlag(key)` | Read a feature flag value. Resolution order: hash → localStorage → config defaults. |
+| `setFlag(key, value)` | Set a flag value by writing an override to URL hash (`flag.{key}`). |
+| `toggleFlag(key)` | Toggle a flag value by key. |
+| `getAllFlags()` | Get all configured flags as `{ key: { default, current } }`. |
+| `resetFlags()` | Clear all flag overrides from hash and localStorage; values revert to config defaults. |
+| `getFlagKeys()` | Get all configured feature flag keys. |
 
 ### Utilities (`@dfosco/storyboard-react`)
 

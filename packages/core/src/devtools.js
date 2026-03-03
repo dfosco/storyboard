@@ -17,6 +17,7 @@ import { loadScene } from './loader.js'
 import { isCommentsEnabled } from './comments/config.js'
 import { isHideMode, activateHideMode, deactivateHideMode } from './hideMode.js'
 import { getAllFlags, toggleFlag, getFlagKeys } from './featureFlags.js'
+import { isPluginEnabled } from './plugins.js'
 
 const STYLES = `
 .sb-devtools-wrapper {
@@ -191,6 +192,9 @@ function getSceneName() {
  * @param {HTMLElement} [options.container=document.body] - Where to mount
  */
 export function mountDevTools(options = {}) {
+  // Skip when devtools plugin is disabled via storyboard.config.json
+  if (!isPluginEnabled('devtools')) return
+
   const container = options.container || document.body
   const basePath = options.basePath || '/'
 

@@ -8,6 +8,9 @@
       "category": "General"
     }
   },
+  "plugins": {
+    "devtools": true
+  },
   "featureFlags": {
     "show-banner": true
   }

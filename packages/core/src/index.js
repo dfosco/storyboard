@@ -40,5 +40,8 @@ export { hash, resolveSceneRoute, getSceneMeta } from './viewfinder.js'
 // Feature flags
 export { initFeatureFlags, getFlag, setFlag, toggleFlag, getAllFlags, resetFlags, getFlagKeys } from './featureFlags.js'
 
+// Plugin configuration
+export { initPlugins, isPluginEnabled, getPluginsConfig } from './plugins.js'
+
 // Comments system
 export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comments/config.js'

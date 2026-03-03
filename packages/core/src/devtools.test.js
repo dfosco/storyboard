@@ -5,11 +5,14 @@ vi.mock('./loader.js', () => ({
 }))
 
 import { mountDevTools } from './devtools.js'
+import { initPlugins } from './plugins.js'
 
 afterEach(() => {
   // Clean up any devtools DOM nodes between tests
   document.body.innerHTML = ''
   document.head.querySelectorAll('style').forEach((el) => el.remove())
+  // Reset plugin config to default (enabled)
+  initPlugins({})
 })
 
 describe('mountDevTools', () => {
@@ -77,5 +80,21 @@ describe('mountDevTools', () => {
 
     const menu = document.body.querySelector('.sb-devtools-menu')
     expect(menu.classList.contains('open')).toBe(false)
+  })
+
+  it('does not mount when devtools plugin is disabled', () => {
+    initPlugins({ devtools: false })
+    mountDevTools()
+
+    const wrapper = document.body.querySelector('.sb-devtools-wrapper')
+    expect(wrapper).toBeNull()
+  })
+
+  it('mounts normally when devtools plugin is explicitly enabled', () => {
+    initPlugins({ devtools: true })
+    mountDevTools()
+
+    const wrapper = document.body.querySelector('.sb-devtools-wrapper')
+    expect(wrapper).not.toBeNull()
   })
 })

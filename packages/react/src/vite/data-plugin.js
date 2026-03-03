@@ -98,6 +98,12 @@ function generateModule(index, root) {
     initCalls.push(`initFeatureFlags(${JSON.stringify(config.featureFlags)})`)
   }
 
+  // Plugin configuration from storyboard.config.json
+  if (config?.plugins && Object.keys(config.plugins).length > 0) {
+    imports.push(`import { initPlugins } from '@dfosco/storyboard-core'`)
+    initCalls.push(`initPlugins(${JSON.stringify(config.plugins)})`)
+  }
+
   return [
     imports.join('\n'),
     '',

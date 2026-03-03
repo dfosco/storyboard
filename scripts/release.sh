@@ -25,7 +25,21 @@ git add -A
 git commit -m "chore: version packages"
 
 echo "🚀 Publishing to npm..."
-npx changeset publish
+if [ "${CI:-}" = "true" ]; then
+  if [ -n "${NPM_TOKEN:-}" ] || [ -n "${NODE_AUTH_TOKEN:-}" ]; then
+    echo "  ℹ️  CI detected; using changeset publish..."
+    npx changeset publish
+  else
+    echo "  ❌ CI publish requires NPM_TOKEN or NODE_AUTH_TOKEN."
+    exit 1
+  fi
+else
+  echo "  ℹ️  Local release detected; using npm publish (passkey/web auth compatible)..."
+  npm publish --workspace @dfosco/storyboard-core --access public
+  npm publish --workspace @dfosco/storyboard-react --access public
+  npm publish --workspace @dfosco/storyboard-react-primer --access public
+  npm publish --workspace @dfosco/storyboard-react-reshaped --access public
+fi
 
 echo "⬆️  Pushing with tags..."
 git push --follow-tags

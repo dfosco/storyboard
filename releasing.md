@@ -192,13 +192,18 @@ Use the release script which runs lint, tests, build, publishes to npm, and crea
 ./scripts/release.sh
 ```
 
+For local runs, the script always uses workspace `npm publish` (web/passkey auth compatible).
+
 Or run each step manually:
 
 ```bash
 npm login
 npx changeset version   # bump versions locally
 git add -A && git commit -m "chore: version packages"
-npx changeset publish   # publish to npm
+npm publish --workspace @dfosco/storyboard-core --access public
+npm publish --workspace @dfosco/storyboard-react --access public
+npm publish --workspace @dfosco/storyboard-react-primer --access public
+npm publish --workspace @dfosco/storyboard-react-reshaped --access public
 git push --follow-tags
 
 # Create GitHub Releases from the new tags (requires gh CLI)
@@ -207,6 +212,8 @@ for pkg in core react react-primer react-reshaped; do
   gh release create "$TAG" --title "$TAG" --generate-notes
 done
 ```
+
+`changeset publish` still works for CI token/OIDC flows, but local passkey-only npm accounts should use `npm publish` because changesets does not support npm's web/passkey OTP flow yet.
 
 ---
 

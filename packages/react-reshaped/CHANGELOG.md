@@ -1,5 +1,16 @@
 # @dfosco/storyboard-react-reshaped
 
+## 1.21.0
+
+### Minor Changes
+
+-   Add useRecord hooks
+
+### Patch Changes
+
+-   Updated dependencies
+    -   @dfosco/storyboard-react@1.21.0
+
 ## 1.20.0
 
 ### Minor Changes

@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 1.21.0
+
+### Minor Changes
+
+-   Add useRecord hooks
+
 ## 1.20.0
 
 ### Minor Changes

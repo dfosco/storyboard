@@ -169,22 +169,30 @@ A minimal Alpine.js + Tachyons page scaffold (matching the comments system patte
 
 ---
 
-## Todos
+## Implementation Status
 
-### Core Infrastructure
-1. **Implement `server-plugin.js`** — core Vite plugin in `packages/core/src/vite/`. Reads `storyboard.config.json`, mounts `/_storyboard/` middleware, provides plugin registry API (`registerRoutes`, `registerClientScript`), JSON body parsing, `transformIndexHtml` injection. Workshop API routes are wired directly here.
-2. **Export from `@dfosco/storyboard-core/vite/server`** — add package.json exports entry + vite.config.js alias.
+All MVP items are complete and verified.
 
-### Workshop
-3. **Implement page creation API** — `packages/core/src/vite/workshop/pages.js` (page + optional scene file write, validation, listing).
-4. **Implement Dev Panel UI** — `packages/core/src/workshop/ui/mount.js` (floating button, menu) + `workshop.css` (Alpine.js + Tachyons + sb-* tokens).
-5. **Implement page creation form** — `packages/core/src/workshop/ui/createPage.js` (Alpine.js component with form, API call, navigation).
-6. **Add page templates** — `packages/core/src/workshop/templates/blank.html` + scene skeleton.
+### Core Infrastructure ✅
+1. **`server-plugin.js`** — `packages/core/src/vite/server-plugin.js`. Reads `storyboard.config.json`, mounts `/_storyboard/` middleware with base-path awareness, wires Workshop routes directly, injects client scripts via `transformIndexHtml` using `/@fs/` paths through Vite's module pipeline.
+2. **Exported from `@dfosco/storyboard-core/vite/server`** — package.json exports entry + vite.config.js worktree alias.
 
-### Integration
-8. **Update `storyboard.config.json`** — add top-level `workshop` config block with features.
-9. **Update `vite.config.js`** — add `storyboardServer()` to plugins array.
-10. **Test end-to-end** — create a page (with and without scene) from the browser, verify HMR + route generation + scene loading.
+### Workshop ✅
+3. **Page creation API** — `packages/core/src/vite/workshop/pages.js`. GET lists pages, POST creates page + optional scene. PascalCase validation, duplicate detection, reserved name checking.
+4. **Dev Panel UI** — `packages/core/src/workshop/ui/mount.js` + `workshop.css`. Floating wrench button (bottom-right, left of beaker), dropdown menu, Alpine.js + Tachyons + sb-* tokens.
+5. **Page creation form** — `packages/core/src/workshop/ui/createPage.js`. Alpine.js component with live route preview, scene checkbox, base-path-aware API calls, post-creation navigation.
+6. **Page template** — `packages/core/src/workshop/templates/blank.html`. Minimal scaffold with `{{PageName}}` substitution.
+
+### Integration ✅
+7. **`storyboard.config.json`** — top-level `workshop` config with `features.pages: true`.
+8. **`vite.config.js`** — `storyboardServer()` import + plugin entry + worktree aliases.
+9. **Tested end-to-end** — 365 tests passing, production build clean, page creation verified via browser and curl.
+
+### Implementation Notes
+
+- **Base path handling**: The middleware strips the Vite base path (e.g. `/storyboard-source/`) before matching `/_storyboard/` routes. Client scripts are injected with the base prefix for browser resolution.
+- **`/@fs/` module resolution**: Client scripts use absolute filesystem paths with Vite's `/@fs/` prefix so they go through Vite's module transform pipeline (resolving Alpine.js imports, injecting CSS).
+- **`jsonc-parser` dependency**: Added to `@dfosco/storyboard-core` for reading `storyboard.config.json` with comments/trailing commas support.
 
 ## Notes
 

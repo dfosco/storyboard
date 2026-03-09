@@ -13,5 +13,13 @@
   },
   "featureFlags": {
     "show-banner": true
+  },
+  "workshop": {
+    "enabled": false,
+    "features": {
+      "createPage": true,
+      "upload": false,
+      "dataEditor": false
+    }
   }
 }

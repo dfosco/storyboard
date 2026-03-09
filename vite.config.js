@@ -3,6 +3,7 @@ import path from 'path'
 import react from '@vitejs/plugin-react'
 import generouted from '@generouted/react-router/plugin'
 import storyboardData from '@dfosco/storyboard-react/vite'
+import storyboardServer from '@dfosco/storyboard-core/vite/server'
 import postcssGlobalData from '@csstools/postcss-global-data'
 import postcssPresetEnv from 'postcss-preset-env'
 import browsers from '@github/browserslist-config'
@@ -25,6 +26,8 @@ export default defineConfig(() => {
         alias: {
             // In git worktrees, npm resolves workspace packages to the main
             // worktree. Force local resolution so edits here take effect.
+            '@dfosco/storyboard-core/vite/server': path.resolve(__dirname, 'packages/core/src/vite/server-plugin.js'),
+            '@dfosco/storyboard-core/workshop/ui/mount.js': path.resolve(__dirname, 'packages/core/src/workshop/ui/mount.js'),
             '@dfosco/storyboard-core/comments/ui/comments.css': path.resolve(__dirname, 'packages/core/src/comments/ui/comments.css'),
             '@dfosco/storyboard-core/comments': path.resolve(__dirname, 'packages/core/src/comments/index.js'),
             '@dfosco/storyboard-core': path.resolve(__dirname, 'packages/core/src/index.js'),
@@ -37,6 +40,7 @@ export default defineConfig(() => {
     },
     plugins: [
         storyboardData(),
+        storyboardServer(),
         react(),
         generouted(),
         {

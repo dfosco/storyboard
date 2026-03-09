@@ -13,11 +13,14 @@
   ],
   "exports": {
     ".": "./src/index.js",
+    "./vite/server": "./src/vite/server-plugin.js",
     "./comments": "./src/comments/index.js",
-    "./comments/ui/comments.css": "./src/comments/ui/comments.css"
+    "./comments/ui/comments.css": "./src/comments/ui/comments.css",
+    "./workshop/ui/mount.js": "./src/workshop/ui/mount.js"
   },
   "dependencies": {
     "alpinejs": "^3.15.8",
+    "jsonc-parser": "^3.3.1",
     "tachyons": "^4.12.0"
   }
 }

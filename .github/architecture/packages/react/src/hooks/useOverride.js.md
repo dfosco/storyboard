@@ -40,5 +40,4 @@ export function useOverride(path) {
 ## Dependents
 
 - [`packages/react/src/index.js`](../index.js.md) — Re-exports as `useOverride` and deprecated `useSession`
-- [`packages/react/src/hooks/useRecordOverride.js`](./useRecordOverride.js.md) — Delegates to `useOverride` with a constructed path
 - [`packages/react/src/hooks/useSession.js`](./useSession.js.md) — Re-exports as deprecated alias

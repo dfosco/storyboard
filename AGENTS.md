@@ -62,7 +62,7 @@ After any meaningful refactor, ask the user if the architecture documents should
 
 - **DO NOT EVER USE** `<Box>` components
 - **DO NOT EVER USE** `sx` styled-components
-- **DO NOT USE `useState` in pages or components.** All state management must happen through storyboard hooks (`useSceneData`, `useOverride`, `useObject`, `useRecord`, `useRecordOverride`, etc.). Storyboard state lives in the URL hash — not in React component state.
+- **DO NOT USE `useState` in pages or components.** All state management must happen through storyboard hooks (`useSceneData`, `useOverride`, `useObject`, `useRecord`, etc.). Storyboard state lives in the URL hash — not in React component state.
 
 ---
 

@@ -54,7 +54,6 @@ Reactivity is achieved through two `useSyncExternalStore` subscriptions: [`subsc
 - [`packages/react/src/hooks/useSceneData.js`](./packages/react/src/hooks/useSceneData.js.md) — Read scene data by dot-notation path with override merging
 - [`packages/react/src/hooks/useOverride.js`](./packages/react/src/hooks/useOverride.js.md) — Read/write overrides (hash or shadow depending on mode)
 - [`packages/react/src/hooks/useRecord.js`](./packages/react/src/hooks/useRecord.js.md) — Load record entries with hash override support
-- [`packages/react/src/hooks/useRecordOverride.js`](./packages/react/src/hooks/useRecordOverride.js.md) — Override individual record entry fields
 - [`packages/react/src/hooks/useScene.js`](./packages/react/src/hooks/useScene.js.md) — Read current scene name and switch scenes
 - [`packages/react/src/hooks/useLocalStorage.js`](./packages/react/src/hooks/useLocalStorage.js.md) — Persistent localStorage overrides
 - [`packages/react/src/hooks/useHideMode.js`](./packages/react/src/hooks/useHideMode.js.md) — Read/control hide mode
@@ -66,7 +65,6 @@ Reactivity is achieved through two `useSyncExternalStore` subscriptions: [`subsc
 - [`packages/react/src/hooks/useSceneData.test.js`](./packages/react/src/hooks/useSceneData.test.js.md) — Tests for scene data reads and override merging
 - [`packages/react/src/hooks/useOverride.test.js`](./packages/react/src/hooks/useOverride.test.js.md) — Tests for override read/write
 - [`packages/react/src/hooks/useRecord.test.js`](./packages/react/src/hooks/useRecord.test.js.md) — Tests for record loading and hash overrides
-- [`packages/react/src/hooks/useRecordOverride.test.js`](./packages/react/src/hooks/useRecordOverride.test.js.md) — Tests for record field overrides
 - [`packages/react/src/hooks/useScene.test.js`](./packages/react/src/hooks/useScene.test.js.md) — Tests for scene name and switching
 - [`packages/react/src/hooks/useLocalStorage.test.js`](./packages/react/src/hooks/useLocalStorage.test.js.md) — Tests for persistent overrides
 - [`packages/react/src/hooks/useHideMode.test.js`](./packages/react/src/hooks/useHideMode.test.js.md) — Tests for hide mode toggle

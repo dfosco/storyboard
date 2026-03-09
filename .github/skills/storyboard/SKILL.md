@@ -268,7 +268,6 @@ All state management must happen through storyboard hooks. Storyboard state live
 | `useObject(name, path?)` | Load an object data file directly by name, without a scene. Supports dot-notation path and hash overrides (`object.{name}.{field}`). |
 | `useRecord(name, param?)` | Load a single record entry matched by URL param (defaults to `'id'`) |
 | `useRecords(name)` | Load all entries from a record collection |
-| `useRecordOverride(name, entryId, field)` | Read/write hash-param overrides on a record entry field |
 | `useSceneLoading()` | Returns true while scene is loading |
 
 **Why:** Storyboard is a prototyping framework where all data flows through the URL hash. This makes every state change shareable via URL, inspectable in the address bar, and framework-portable. Using `useState` breaks this contract — the state becomes invisible, unshareable, and tied to React.

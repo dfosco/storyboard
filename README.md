@@ -320,18 +320,18 @@ function BlogIndex() {
 
 #### Updating a record entry at runtime
 
-Use `useRecordOverride()` to override a specific field on a specific entry. The override is stored in the URL hash:
+Use `useOverride()` to override a specific field on a specific entry. The override is stored in the URL hash. The hash convention for record overrides is: `record.{name}.{entryId}.{field}=value`
 
 ```jsx
-import { useRecordOverride } from '@dfosco/storyboard-react'
+import { useOverride } from '@dfosco/storyboard-react'
 
 // Override the title of a specific post
-const [title, setTitle] = useRecordOverride('posts', 'welcome-to-storyboard', 'title')
+const [title, setTitle] = useOverride('record.posts.welcome-to-storyboard.title')
 setTitle('New Title')
 // URL becomes: #record.posts.welcome-to-storyboard.title=New%20Title
 ```
 
-The hash convention for record overrides is: `record.{name}.{entryId}.{field}=value`
+Both `useRecord` and `useRecords` automatically pick up these overrides — no extra wiring needed.
 
 #### Creating a new record entry at runtime
 
@@ -348,7 +348,7 @@ When `useRecords('posts')` runs, it sees overrides for an id (`my-new-post`) tha
 To "delete" an entry from a list, override its `id` to an empty string. The entry still exists in the array, but components that filter on `id` will skip it:
 
 ```jsx
-const [id, setId] = useRecordOverride('posts', 'welcome-to-storyboard', 'id')
+const [id, setId] = useOverride('record.posts.welcome-to-storyboard.id')
 setId('')  // "deletes" this entry
 ```
 
@@ -486,6 +486,20 @@ Values are buffered locally while typing. On submit, they flush to the URL hash:
 ```
 
 Available form components: `TextInput`, `Textarea`, `Select`, `Checkbox`. They look and behave identically to Primer React originals — just import from `'@storyboard/primer'` instead of `'@primer/react'`. Equivalent Reshaped form components are available from `'@storyboard/reshaped'`.
+
+### Override Namespaces
+
+`useOverride(path)` works with three namespaces. The path you pass determines what gets overridden:
+
+| Namespace | Path format | Example | What it overrides |
+|-----------|------------|---------|-------------------|
+| **Scene data** | `{field}` | `useOverride('user.name')` | A field in the current scene |
+| **Object data** | `object.{name}.{field}` | `useOverride('object.jane-doe.name')` | A field in an object loaded via `useObject()` |
+| **Record data** | `record.{name}.{entryId}.{field}` | `useOverride('record.posts.post-1.title')` | A field in a record entry loaded via `useRecord()`/`useRecords()` |
+
+All three follow the same read priority: **hash override → fallback → undefined**. The fallback is scene data when inside a `<StoryboardProvider>`, or nothing when used standalone.
+
+`useRecord`, `useRecords`, and `useObject` all pick up overrides automatically — you only need `useOverride` when you want to **write** an override from a component.
 
 ---
 
@@ -657,7 +671,6 @@ Use `:global()` to reference body classes from CSS Modules:
 | `useObject(name, path?)` | `any` | Load an object data file directly by name, without a scene. Supports dot-notation path and hash overrides (`object.{name}.{field}`). |
 | `useRecord(name, param)` | `object \| null` | Load a single record entry. `name` = record file name, `param` = route param matched against `id`. |
 | `useRecords(name)` | `Array` | Load all entries from a record collection. |
-| `useRecordOverride(name, entryId, field)` | `[value, setValue, clearValue]` | Read/write hash overrides on a specific record entry field. Builds path as `record.{name}.{entryId}.{field}`. |
 | `useLocalStorage(path)` | `[value, setValue, clearValue]` | Persist overrides in localStorage. Read priority: hash → localStorage → scene data. |
 | `useHideMode()` | `[isHidden, toggle]` | Toggle clean-URL mode. When active, overrides read/write to localStorage shadow keys instead of the URL hash. |
 | `useUndoRedo()` | `{ canUndo, canRedo, undo, redo }` | Undo/redo for override history snapshots. |

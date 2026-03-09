@@ -95,6 +95,16 @@ export function mountWorkshop() {
 
   document.body.appendChild(container)
   Alpine.initTree(container)
+
+  // Cmd+. / Ctrl+. toggles workshop visibility (matches devtools shortcut)
+  const wrapper = container.querySelector('.sb-workshop-wrapper')
+  let visible = true
+  window.addEventListener('keydown', (e) => {
+    if (e.key === '.' && (e.metaKey || e.ctrlKey)) {
+      visible = !visible
+      wrapper.style.display = visible ? '' : 'none'
+    }
+  })
 }
 
 // Auto-mount

@@ -86,6 +86,10 @@ export default function storyboardServer() {
 
     configureServer(server) {
       const workshopConfig = config.workshop || {}
+
+      // If workshop is explicitly disabled, skip everything
+      if (workshopConfig.enabled === false) return
+
       const enabledFeatures = workshopConfig.features || {}
 
       // Wire workshop API routes for each enabled feature

@@ -1,5 +1,16 @@
 # @dfosco/storyboard-react
 
+## 1.22.0
+
+### Minor Changes
+
+-   Iterate FF system and add dedicated `sb-ff-name` class on body
+
+### Patch Changes
+
+-   Updated dependencies
+    -   @dfosco/storyboard-core@1.22.0
+
 ## 1.21.0
 
 ### Minor Changes

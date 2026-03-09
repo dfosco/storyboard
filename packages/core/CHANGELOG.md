@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 1.22.0
+
+### Minor Changes
+
+-   Iterate FF system and add dedicated `sb-ff-name` class on body
+
 ## 1.21.0
 
 ### Minor Changes

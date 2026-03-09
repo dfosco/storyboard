@@ -12,6 +12,6 @@
     "devtools": true
   },
   "featureFlags": {
-    "show-banner": false
+    "show-banner": true
   }
 }

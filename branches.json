@@ -6,5 +6,6 @@
   {"folder":"branch--design-modes","branch":"design-modes"},
   {"folder":"branch--feature-flags","branch":"feature-flags"},
   {"folder":"branch--security-ux","branch":"security-ux"},
-  {"folder":"branch--viewfinder-branches","branch":"viewfinder-branches"}
+  {"folder":"branch--viewfinder-branches","branch":"viewfinder-branches"},
+  {"folder":"branch--workshop","branch":"workshop"}
 ]

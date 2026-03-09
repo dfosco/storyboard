@@ -1,4 +1,4 @@
-import { init, loadScene, listScenes, sceneExists, loadRecord, findRecord, deepMerge } from './loader.js'
+import { init, loadScene, listScenes, sceneExists, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
 
 const makeIndex = () => ({
   scenes: {
@@ -35,6 +35,10 @@ const makeIndex = () => ({
     },
     'circular-obj-b': {
       nested: { $ref: 'circular-obj-a' },
+    },
+    'team-info': {
+      team: 'Engineering',
+      lead: { $ref: 'jane-doe' },
     },
   },
   records: {
@@ -241,5 +245,33 @@ describe('deepMerge', () => {
     const result = deepMerge(target, source)
     expect(result.a).toBeNull()
     expect(result.c).toBeUndefined()
+  })
+})
+
+describe('loadObject', () => {
+  it('loads object by name', () => {
+    const obj = loadObject('jane-doe')
+    expect(obj).toEqual({ name: 'Jane Doe', role: 'admin' })
+  })
+
+  it('resolves $ref within object', () => {
+    const obj = loadObject('team-info')
+    expect(obj.team).toBe('Engineering')
+    expect(obj.lead).toEqual({ name: 'Jane Doe', role: 'admin' })
+  })
+
+  it('throws for missing object', () => {
+    expect(() => loadObject('nonexistent')).toThrow()
+  })
+
+  it('returns deep clone (mutations do not affect index)', () => {
+    const obj1 = loadObject('jane-doe')
+    obj1.name = 'Modified'
+    const obj2 = loadObject('jane-doe')
+    expect(obj2.name).toBe('Jane Doe')
+  })
+
+  it('detects circular $ref and throws', () => {
+    expect(() => loadObject('circular-obj-a')).toThrow(/circular/i)
   })
 })

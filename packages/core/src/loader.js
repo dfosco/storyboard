@@ -209,4 +209,17 @@ export function findRecord(recordName, id) {
   return records.find((entry) => entry.id === id) ?? null
 }
 
+/**
+ * Loads an object data file by name, resolves any nested $ref references,
+ * and returns a deep clone.
+ *
+ * @param {string} objectName - Name of the object file (e.g., "jane-doe")
+ * @returns {object|Array} Resolved object data
+ */
+export function loadObject(objectName) {
+  const data = loadDataFile(objectName, 'objects')
+  const resolved = resolveRefs(structuredClone(data))
+  return resolved
+}
+
 export { deepMerge }

@@ -16,6 +16,7 @@ export { useOverride as useSession } from './hooks/useOverride.js' // deprecated
 export { useScene } from './hooks/useScene.js'
 export { useRecord, useRecords } from './hooks/useRecord.js'
 export { useRecordOverride } from './hooks/useRecordOverride.js'
+export { useObject } from './hooks/useObject.js'
 export { useLocalStorage } from './hooks/useLocalStorage.js'
 export { useHideMode } from './hooks/useHideMode.js'
 export { useUndoRedo } from './hooks/useUndoRedo.js'

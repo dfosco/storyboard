@@ -3,9 +3,6 @@
     "route": "/example",
     "author": "dfosco"
   },
-  "navigation": {
-    "$ref": "navigation"
-  },
   "user": {
     "name": "John Doe",
     "username": "johndoe",

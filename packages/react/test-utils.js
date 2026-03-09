@@ -21,8 +21,9 @@ export const TEST_RECORDS = {
   ],
 }
 
-const TEST_OBJECTS = {
+export const TEST_OBJECTS = {
   navigation: { items: [{ label: 'Home', href: '/' }] },
+  'jane-doe': { name: 'Jane Doe', role: 'admin', profile: { bio: 'Engineer', location: 'SF' } },
 }
 
 /**

@@ -8,8 +8,8 @@
 // Data index initialization
 export { init } from './loader.js'
 
-// Scene & record loading
-export { loadScene, listScenes, sceneExists, loadRecord, findRecord, deepMerge } from './loader.js'
+// Scene, object & record loading
+export { loadScene, listScenes, sceneExists, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
 
 // Dot-notation path utilities
 export { getByPath, setByPath, deepClone } from './dotPath.js'

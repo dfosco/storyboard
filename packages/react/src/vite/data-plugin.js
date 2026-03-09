@@ -67,7 +67,11 @@ function readConfig(root) {
   const configPath = path.resolve(root, 'storyboard.config.json')
   try {
     const raw = fs.readFileSync(configPath, 'utf-8')
-    return { config: parseJsonc(raw), configPath }
+    const errors = []
+    const config = parseJsonc(raw, errors)
+    // Treat malformed JSON (e.g. mid-edit partial saves) as missing config
+    if (errors.length > 0) return { config: null, configPath }
+    return { config, configPath }
   } catch {
     return { config: null, configPath }
   }

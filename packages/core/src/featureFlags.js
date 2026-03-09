@@ -21,16 +21,16 @@ let _defaults = {}
 
 /**
  * Initialize the feature flag system with config defaults.
- * Seeds localStorage with defaults (doesn't overwrite existing values).
+ * Syncs localStorage with config defaults on every call.
  * @param {Record<string, boolean>} defaults - Flag key → default value
  */
 export function initFeatureFlags(defaults = {}) {
   _defaults = { ...defaults }
-  // Seed localStorage with defaults (don't overwrite existing)
+  // Sync localStorage with config defaults — always overwrite so config
+  // changes take effect. User overrides live in the URL hash, which is
+  // checked first by getFlag(), so this is safe.
   for (const [key, value] of Object.entries(_defaults)) {
-    if (getLocal(FLAG_PREFIX + key) === null) {
-      setLocal(FLAG_PREFIX + key, String(value))
-    }
+    setLocal(FLAG_PREFIX + key, String(value))
   }
 }
 

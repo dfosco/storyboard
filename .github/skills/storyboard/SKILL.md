@@ -264,7 +264,8 @@ All state management must happen through storyboard hooks. Storyboard state live
 | Hook | Purpose |
 |------|---------|
 | `useSceneData(path?)` | Read scene data by dot-notation path |
-| `useOverride(path)` | Read/write hash-param overrides on scene data |
+| `useOverride(path)` | Read/write hash-param overrides on scene or object data. Works with or without `<StoryboardProvider>`. |
+| `useObject(name, path?)` | Load an object data file directly by name, without a scene. Supports dot-notation path and hash overrides (`object.{name}.{field}`). |
 | `useRecord(name, param?)` | Load a single record entry matched by URL param (defaults to `'id'`) |
 | `useRecords(name)` | Load all entries from a record collection |
 | `useRecordOverride(name, entryId, field)` | Read/write hash-param overrides on a record entry field |
@@ -323,6 +324,7 @@ Before finishing data structuring, verify:
 - [ ] `$ref` and `$global` use **names** (not relative paths)
 - [ ] Data files use the correct suffix: `.scene.json`, `.object.json`, `.record.json`
 - [ ] The component uses `useSceneData()` for all externalized data
+- [ ] Shared data objects use `useObject()` when not part of a scene
 - [ ] Dynamic route pages use `useRecord()` for parameterized content
 - [ ] Data objects use realistic placeholder values
 - [ ] The scene name matches the page name or flow

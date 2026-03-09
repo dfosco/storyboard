@@ -58,9 +58,14 @@ describe('useOverride', () => {
     expect(window.location.hash).not.toContain('settings.theme')
   })
 
-  it('throws when used outside StoryboardProvider', () => {
-    expect(() => {
-      renderHook(() => useOverride('settings.theme'))
-    }).toThrow('useOverride must be used within a <StoryboardProvider>')
+  it('works without StoryboardProvider for object overrides', () => {
+    window.location.hash = '#object.jane-doe.name=Alice'
+    const { result } = renderHook(() => useOverride('object.jane-doe.name'))
+    expect(result.current[0]).toBe('Alice')
+  })
+
+  it('returns undefined without provider when no override exists', () => {
+    const { result } = renderHook(() => useOverride('object.jane-doe.name'))
+    expect(result.current[0]).toBeUndefined()
   })
 })

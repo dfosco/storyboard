@@ -106,9 +106,30 @@ Add a `.object.json` file anywhere in the repo (typically in `src/data/`). The n
 
 Then reference it from any scene with `{ "$ref": "acme-org" }`.
 
+#### Using an object directly (without a scene)
+
+Objects can also be loaded directly by components using `useObject()`, without wiring them through a scene file:
+
+```jsx
+import { useObject } from '@dfosco/storyboard-react'
+
+const user = useObject('jane-doe')                       // full object
+const bio = useObject('jane-doe', 'profile.bio')         // dot-notation path
+```
+
+This is useful when a component needs shared data (e.g., navigation, user profile) but the page doesn't use a scene, or when you want to avoid duplicating `$ref` entries across multiple scenes.
+
+`useObject` supports URL hash overrides with the `object.{name}.{field}` namespace:
+
+```
+#object.jane-doe.name=Alice    → useObject('jane-doe') returns { name: 'Alice', ... }
+```
+
 #### Updating an object at runtime
 
-Objects are read-only JSON — you don't modify the file at runtime. Instead, use `useOverride()` to override individual fields via the URL hash:
+Objects are read-only JSON — you don't modify the file at runtime. Instead, use `useOverride()` to override individual fields via the URL hash.
+
+When the object is accessed through a scene (via `$ref`), override by the scene path:
 
 ```jsx
 const [name, setName] = useOverride('user.name')
@@ -116,6 +137,17 @@ setName('Alice')
 // URL becomes: #user.name=Alice
 // Components reading user.name now see "Alice" instead of "Jane Doe"
 ```
+
+When the object is accessed directly via `useObject()`, override by the object namespace:
+
+```jsx
+const [name, setName] = useOverride('object.jane-doe.name')
+setName('Alice')
+// URL becomes: #object.jane-doe.name=Alice
+// useObject('jane-doe') now returns { name: 'Alice', ... }
+```
+
+`useOverride` works both inside and outside a `<StoryboardProvider>`, so you can override object fields from any component.
 
 The JSON file stays unchanged. The override lives in the URL and can be cleared at any time, reverting to the original value.
 
@@ -620,8 +652,9 @@ Use `:global()` to reference body classes from CSS Modules:
 |------|---------|-------------|
 | `useSceneData(path?)` | `any` | Read scene data (overrides applied transparently). Dot-notation path. Omit path for entire scene. |
 | `useSceneLoading()` | `boolean` | `true` while scene is loading |
-| `useOverride(path)` | `[value, setValue, clearValue]` | Read/write hash overrides on scene data. Use when you need to set or clear a value. |
+| `useOverride(path)` | `[value, setValue, clearValue]` | Read/write hash overrides on scene or object data. Works with any namespace (`settings.theme`, `object.jane-doe.name`, `record.posts.post-1.title`). Works with or without a `<StoryboardProvider>`. |
 | `useScene()` | `{ sceneName, switchScene }` | Current scene name + switch function |
+| `useObject(name, path?)` | `any` | Load an object data file directly by name, without a scene. Supports dot-notation path and hash overrides (`object.{name}.{field}`). |
 | `useRecord(name, param)` | `object \| null` | Load a single record entry. `name` = record file name, `param` = route param matched against `id`. |
 | `useRecords(name)` | `Array` | Load all entries from a record collection. |
 | `useRecordOverride(name, entryId, field)` | `[value, setValue, clearValue]` | Read/write hash overrides on a specific record entry field. Builds path as `record.{name}.{entryId}.{field}`. |
@@ -652,6 +685,7 @@ Use `:global()` to reference body classes from CSS Modules:
 |----------|-------------|
 | `init({ scenes, objects, records })` | Seed the data index. Called automatically by the Vite plugin. |
 | `loadScene(name)` | Low-level scene loader. Returns resolved scene data. |
+| `loadObject(name)` | Low-level object loader. Resolves `$ref`s, returns deep clone. |
 | `loadRecord(name)` | Low-level record loader. Returns full array. |
 | `findRecord(name, id)` | Find a single entry in a record collection by id. |
 | `sceneExists(name)` | Check if a scene file exists. |

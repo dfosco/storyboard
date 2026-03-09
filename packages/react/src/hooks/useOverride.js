@@ -7,7 +7,7 @@ import { isHideMode, getShadow, setShadow, removeShadow } from '@dfosco/storyboa
 import { subscribeToStorage, getStorageSnapshot } from '@dfosco/storyboard-core'
 
 /**
- * Read/write overrides on top of scene data.
+ * Read/write overrides on top of scene data or object data.
  *
  * **Normal mode:**
  *   Read priority:  URL hash param → Scene JSON value → undefined
@@ -20,19 +20,23 @@ import { subscribeToStorage, getStorageSnapshot } from '@dfosco/storyboard-core'
  * Every write also mirrors to localStorage shadow keys, so hide mode
  * can hot-swap without data loss.
  *
+ * Works with any override namespace — scene paths (e.g. 'settings.theme'),
+ * object paths (e.g. 'object.jane-doe.name'), or record paths
+ * (e.g. 'record.posts.post-1.title').
+ *
+ * When used outside a StoryboardProvider (e.g. for object overrides),
+ * the scene fallback is skipped and value resolves to override ?? undefined.
+ *
  * @param {string} path - Dot-notation key (e.g. 'settings.theme')
  * @returns {[any, function, function]}
- *   [0] current value (override ?? scene default)
+ *   [0] current value (override ?? scene default ?? undefined)
  *   [1] setValue(newValue)  – write an override
  *   [2] clearValue()       – remove the override, reverting to scene default
  */
 export function useOverride(path) {
   const context = useContext(StoryboardContext)
-  if (context === null) {
-    throw new Error('useOverride must be used within a <StoryboardProvider>')
-  }
 
-  const { data } = context
+  const data = context?.data
   const hidden = isHideMode()
 
   // Scene default for this path (fallback when no override exists)

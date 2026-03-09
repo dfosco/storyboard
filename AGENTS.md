@@ -62,7 +62,7 @@ After any meaningful refactor, ask the user if the architecture documents should
 
 - **DO NOT EVER USE** `<Box>` components
 - **DO NOT EVER USE** `sx` styled-components
-- **DO NOT USE `useState` in pages or components.** All state management must happen through storyboard hooks (`useSceneData`, `useOverride`, `useRecord`, `useRecordOverride`, etc.). Storyboard state lives in the URL hash — not in React component state.
+- **DO NOT USE `useState` in pages or components.** All state management must happen through storyboard hooks (`useSceneData`, `useOverride`, `useObject`, `useRecord`, `useRecordOverride`, etc.). Storyboard state lives in the URL hash — not in React component state.
 
 ---
 
@@ -178,12 +178,16 @@ The storyboard system is split into two layers:
 The `StoryboardProvider` wraps the app and loads scene data into React context:
 
 ```jsx
-import { useSceneData, useSceneLoading, useRecord, useRecords } from '../storyboard'
+import { useSceneData, useSceneLoading, useObject, useRecord, useRecords } from '../storyboard'
 
 // Scene data (dot-notation paths)
 const user = useSceneData('user')
 const userName = useSceneData('user.profile.name')
 const allData = useSceneData() // entire scene object
+
+// Objects (direct access, no scene needed)
+const nav = useObject('navigation')              // full object
+const bio = useObject('jane-doe', 'profile.bio') // dot-notation path
 
 // Records (dynamic routes)
 const post = useRecord('posts')             // single entry by URL param (defaults to 'id')
@@ -200,9 +204,12 @@ const loading = useSceneLoading()
 - `StoryboardProvider` — React context provider
 - `useSceneData(path?)` — Access scene data by dot-notation path
 - `useSceneLoading()` — Returns true while scene is loading
+- `useOverride(path)` — Read/write hash overrides (works with or without StoryboardProvider)
+- `useObject(name, path?)` — Load object data directly by name, without a scene
 - `useRecord(name, param?)` — Load single record entry by URL param (defaults to `'id'`)
 - `useRecords(name)` — Load all entries from a record collection
 - `loadScene(name)` — Low-level scene loader
+- `loadObject(name)` — Low-level object loader (resolves `$ref`s)
 - `loadRecord(name)` — Low-level record loader
 - `findRecord(name, id)` — Find record entry by id
 - `sceneExists(name)` — Check if a scene file exists

@@ -11,9 +11,11 @@ import { getAllParams } from './session.js'
 import { isHideMode, getAllShadows } from './hideMode.js'
 import { subscribeToHash } from './hashSubscribe.js'
 import { subscribeToStorage } from './localStorage.js'
+import { syncFlagBodyClasses } from './featureFlags.js'
 
 const PREFIX = 'sb-'
 const SCENE_PREFIX = 'sb-scene--'
+const FF_PREFIX = 'sb-ff-'
 
 /**
  * Sanitize a string for use in a CSS class name.
@@ -41,13 +43,13 @@ function overrideClass(key, value) {
 }
 
 /**
- * Get all current sb- classes on body (excluding scene classes).
+ * Get all current sb- classes on body (excluding scene and feature-flag classes).
  * @returns {Set<string>}
  */
 function getCurrentOverrideClasses() {
   const classes = new Set()
   for (const cls of document.body.classList) {
-    if (cls.startsWith(PREFIX) && !cls.startsWith(SCENE_PREFIX)) {
+    if (cls.startsWith(PREFIX) && !cls.startsWith(SCENE_PREFIX) && !cls.startsWith(FF_PREFIX)) {
       classes.add(cls)
     }
   }
@@ -108,8 +110,10 @@ export function setSceneClass(name) {
  */
 export function installBodyClassSync() {
   syncOverrideClasses()
-  const unsubHash = subscribeToHash(syncOverrideClasses)
-  const unsubStorage = subscribeToStorage(syncOverrideClasses)
+  syncFlagBodyClasses()
+  const sync = () => { syncOverrideClasses(); syncFlagBodyClasses() }
+  const unsubHash = subscribeToHash(sync)
+  const unsubStorage = subscribeToStorage(sync)
   return () => {
     unsubHash()
     unsubStorage()

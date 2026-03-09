@@ -25,7 +25,7 @@ let _defaults = {}
  * Adds `sb-ff-{name}` for every flag that resolves to true,
  * removes it for every flag that resolves to false.
  */
-function syncFlagBodyClasses() {
+export function syncFlagBodyClasses() {
   if (typeof document === 'undefined') return
   for (const key of Object.keys(_defaults)) {
     const cls = BODY_CLASS_PREFIX + key

@@ -38,7 +38,7 @@ export { mountSceneDebug } from './sceneDebug.js'
 export { hash, resolveSceneRoute, getSceneMeta } from './viewfinder.js'
 
 // Feature flags
-export { initFeatureFlags, getFlag, setFlag, toggleFlag, getAllFlags, resetFlags, getFlagKeys } from './featureFlags.js'
+export { initFeatureFlags, getFlag, setFlag, toggleFlag, getAllFlags, resetFlags, getFlagKeys, syncFlagBodyClasses } from './featureFlags.js'
 
 // Plugin configuration
 export { initPlugins, isPluginEnabled, getPluginsConfig } from './plugins.js'

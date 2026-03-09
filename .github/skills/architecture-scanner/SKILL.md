@@ -1,3 +1,11 @@
+---
+name: architecture-scanner
+description: Architecture scanner and documentation generator. Use when scanning the codebase architecture, updating architecture docs, or generating architecture documentation.
+metadata:
+  author: Daniel Fosco
+  version: "2026.3.09"
+---
+
 # Architecture Scanner Skill
 
 > Triggered by: "scan the codebase architecture", "update the architecture", "update arch", "generate architecture docs", "scan arch"

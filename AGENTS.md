@@ -1,4 +1,4 @@
-# Copilot Instructions
+# AGENTS.md
 
 ## General instructions
 
@@ -9,19 +9,13 @@
 
 ## Skills
 
-- **Frontend Design** (`.github/skills/frontend-design/SKILL.md`) — Skill for implementing great designs based on instructions. Always use it when implementing frontend -- but defer to other skills if they have overlapping advice. **This is the general skill for frontend design.**
-
-- **Primer Builder** (`.github/skills/primer-screenshot-builder/primer-screenshot-builder.md`) — Self-contained skill for converting screenshots or UI descriptions into working Primer React pages. Includes page archetypes with JSX scaffolding, build rules, inline component and token references, scene data structuring, and visual fidelity checklist. **This is the primary skill for screenshot-to-code workflows.**
-
 - **Primer Primitives** (`.github/skills/primer-primitives/primer-primitives.md`) — Complete reference of all `@primer/primitives` CSS design tokens. **Only consult when you need tokens not covered by the Primer Builder's inline token tables** (e.g., motion, controls, overlays, breakpoints, component-specific colors).
 
-- **Primer Components Catalog** (`.github/skills/primer-components-catalog/primer-components-catalog.md`) — Full catalog of all `@primer/react` components with props and sub-components. **Only consult when you need details on a component not covered by the Primer Builder's inline quick reference.**
+- **Storyboard** (`.github/skills/storyboard/SKILL.md`) — Detailed guide for data structuring. **Only consult for standalone data tasks** (refactoring, creating scenes outside the builder flow). The Primer Builder skill has inline data structuring guidance.
 
-- **Storyboard Data** (`.github/skills/storyboard-data/storyboard-data.md`) — Detailed guide for data structuring. **Only consult for standalone data tasks** (refactoring, creating scenes outside the builder flow). The Primer Builder skill has inline data structuring guidance.
+- **Architecture Scanner** (`.github/skills/architecture-scanner/SKILL.md`) Scans the codebase and generates architecture documentation in `.github/architecture/`. Invoke with: "scan the codebase architecture", "update the architecture", "update arch".
 
-- **Architecture Scanner** (`.github/skills/architecture-scanner/architecture-scanner.md`) Scans the codebase and generates architecture documentation in `.github/architecture/`. Invoke with: "scan the codebase architecture", "update the architecture", "update arch".
-
-- **Worktree** (`.github/skills/worktree/worktree.md`) — Creates a git worktree in `.worktrees/<branch-name>` and switches into it. Invoke with: "create worktree", "worktree for X", or just "worktree X".
+- **Worktree** (`.github/skills/worktree/SKILL.md`) — Creates a git worktree in `.worktrees/<branch-name>` and switches into it. Invoke with: "create worktree", "worktree for X", or just "worktree X".
 
 ---
 

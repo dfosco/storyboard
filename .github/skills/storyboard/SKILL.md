@@ -1,4 +1,12 @@
-# Storyboard Data Structuring
+---
+name: storyboard
+description: Storyboard data structuring and management system. Use when creating scene data, setting up storyboard data, creating data objects, or structuring data for a prototype page.
+metadata:
+  author: Daniel Fosco
+  version: "2026.3.09"
+---
+
+# Storyboard
 
 > Triggered by: when building a new page or route in storyboard, "create scene data", "set up storyboard data", "create data objects", "create new page", "create new route", when structuring data for a prototype page
 

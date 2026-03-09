@@ -9,18 +9,18 @@
   --mode-color: #fcfcfc;
   --color-orange: #dfb490;
   --color-green: #2a9d8f;
-  --color-blue: #52637f;
+  --color-blue: #4a7fad;
   --color-purple: #7655a4;
   --color-dark: #2a2a2a;
 }
 
 html.storyboard-mode-present   { --mode-color: var(--color-green); }
-html.storyboard-mode-canvas    { --mode-color: var(--color-blue); }
+html.storyboard-mode-plan      { --mode-color: var(--color-blue); }
 html.storyboard-mode-inspect   { --mode-color: var(--color-purple); }
-html.storyboard-mode-prototype     { --mode-color: var(--color-dark); }
+html.storyboard-mode-prototype { --mode-color: var(--color-dark); }
 
 html.storyboard-mode-present,
-html.storyboard-mode-canvas,
+html.storyboard-mode-plan,
 html.storyboard-mode-prototype,
 html.storyboard-mode-inspect {
   padding: 12px;
@@ -33,7 +33,7 @@ html.storyboard-mode-prototype {
 }
 
 html.storyboard-mode-present > body > #root,
-html.storyboard-mode-canvas > body > #root,
+html.storyboard-mode-plan > body > #root,
 html.storyboard-mode-inspect > body > #root {
   overflow-x: hidden;
   overflow-y: hidden;
@@ -49,8 +49,8 @@ html.storyboard-mode-present > body > #root {
   box-shadow: 0 0 7px 2px rgb(42 157 143 / 60%);
 }
 
-html.storyboard-mode-canvas > body > #root {
-  box-shadow: 0 0 7px 2px rgb(82 99 127 / 60%);
+html.storyboard-mode-plan > body > #root {
+  box-shadow: 0 0 7px 2px rgb(74 127 173 / 60%);
 }
 
 html.storyboard-mode-inspect > body > #root {

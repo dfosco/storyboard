@@ -15,6 +15,45 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
 }
 
+:global(html.storyboard-mode-present) .modeSwitch,
+:global(html.storyboard-mode-plan) .modeSwitch,
+:global(html.storyboard-mode-inspect) .modeSwitch {
+  background: color-mix(in srgb, var(--mode-color) 40%, black);
+  transition: background 0.2s ease;
+}
+
+/* All modes: white text, mode-colored active pill */
+:global(html.storyboard-mode-prototype) .modeButton,
+:global(html.storyboard-mode-present) .modeButton,
+:global(html.storyboard-mode-plan) .modeButton,
+:global(html.storyboard-mode-inspect) .modeButton {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+:global(html.storyboard-mode-prototype) .modeButton:hover,
+:global(html.storyboard-mode-present) .modeButton:hover,
+:global(html.storyboard-mode-plan) .modeButton:hover,
+:global(html.storyboard-mode-inspect) .modeButton:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+:global(html.storyboard-mode-prototype) .modeButtonActive,
+:global(html.storyboard-mode-present) .modeButtonActive,
+:global(html.storyboard-mode-plan) .modeButtonActive,
+:global(html.storyboard-mode-inspect) .modeButtonActive {
+  background: rgba(255, 255, 255, 0.85);
+  color: color-mix(in srgb, var(--mode-color) 70%, black);
+}
+
+:global(html.storyboard-mode-prototype) .modeButtonActive:hover,
+:global(html.storyboard-mode-present) .modeButtonActive:hover,
+:global(html.storyboard-mode-plan) .modeButtonActive:hover,
+:global(html.storyboard-mode-inspect) .modeButtonActive:hover {
+  background: rgba(255, 255, 255, 0.85);
+  color: color-mix(in srgb, var(--mode-color) 70%, black);
+}
+
 .modeButton {
   appearance: none;
   border: none;

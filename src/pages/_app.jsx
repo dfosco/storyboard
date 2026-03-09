@@ -6,10 +6,10 @@ import '@dfosco/storyboard-core/modes.css'
 import appStyles from './_app.module.css'
 
 // Register default modes
-registerMode('prototype', { label: 'Prototype' })
-registerMode('present', { label: 'Present' })
-registerMode('canvas', { label: 'Canvas' })
-registerMode('inspect', { label: 'Inspect' })
+registerMode('prototype', { label: 'Navigate' })
+registerMode('inspect', { label: 'Develop' })
+registerMode('present', { label: 'Collaborate' })
+registerMode('plan', { label: 'Canvas' })
 
 // Apply classes for whichever mode is active on page load
 syncModeClasses()

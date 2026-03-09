@@ -8,19 +8,12 @@ export type Path =
     | `/Dashboard`
     | `/Example`
     | `/Forms`
-    | `/Issues`
-    | `/Overview`
-    | `/Repositories`
-    | `/SecurityAdvisory`
     | `/Signup`
-    | `/issues`
-    | `/issues/:id`
     | `/posts`
     | `/posts/:id`
     | `/viewfinder`
 
 export type Params = {
-    '/issues/:id': { id: string }
     '/posts/:id': { id: string }
 }
 

@@ -8,7 +8,6 @@ import {
 
 import MonaLoadingImage from '../images/mona-loading.gif'
 import styles from './playground.module.css'
-import { SceneDataDemo } from '@dfosco/storyboard-react-primer'
 
 function Playground() {
     /*
@@ -23,7 +22,6 @@ function Playground() {
             className={styles.container}
         >
             <MarkGithubIcon size={24} />
-            <SceneDataDemo />
             <Stack
                 padding="spacious"
                 className={styles.contentBox}

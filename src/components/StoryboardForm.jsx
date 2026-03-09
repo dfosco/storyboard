@@ -1,7 +1,6 @@
-import { useRef, useCallback, createContext } from 'react'
+import { useRef, useCallback } from 'react'
 import { setParam, isHideMode, setShadow } from '@dfosco/storyboard-core'
-
-export const FormContext = createContext(null)
+import { FormContext } from './FormContext.jsx'
 
 /**
  * A form wrapper that buffers input values locally and only

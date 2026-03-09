@@ -27,7 +27,7 @@ function parseJsonBody(req) {
     req.on('end', () => {
       if (!body) return resolve({})
       try { resolve(JSON.parse(body)) }
-      catch (err) { reject(new Error('Invalid JSON body')) }
+      catch { reject(new Error('Invalid JSON body')) }
     })
     req.on('error', reject)
   })

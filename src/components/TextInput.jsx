@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect } from 'react'
 import { TextInput as PrimerTextInput } from '@primer/react'
-import { FormContext } from './StoryboardForm.jsx'
+import { FormContext } from './FormContext.jsx'
 import { useOverride } from '@dfosco/storyboard-react'
 
 /**

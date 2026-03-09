@@ -111,4 +111,3 @@ export default function IssueFormFields({ prefix }) {
   )
 }
 
-export { statusLabels, priorityLabels }

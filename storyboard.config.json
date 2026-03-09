@@ -17,9 +17,7 @@
   "workshop": {
     "enabled": false,
     "features": {
-      "createPage": true,
-      "upload": false,
-      "dataEditor": false
+      "createPage": true
     }
   }
 }

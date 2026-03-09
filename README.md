@@ -581,6 +581,15 @@ URL hash override  →  localStorage  →  storyboard.config.json default
 
 Use plain flag keys in hooks/APIs (for example, `show-banner`). The `flag.` prefix is only for URL/hash storage keys.
 
+### Body CSS classes
+
+Every flag that resolves to `true` adds a `sb-ff-{name}` class to `<body>` (e.g. `sb-ff-show-banner`). Classes are synced automatically on init, toggle, set, and reset — so you can use them in CSS without any JavaScript:
+
+```css
+.promo-banner { display: none; }
+body.sb-ff-show-banner .promo-banner { display: block; }
+```
+
 ---
 
 ## Routing

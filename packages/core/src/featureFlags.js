@@ -15,9 +15,27 @@ import { getParam, setParam, removeParam, getAllParams } from './session.js'
 import { getLocal, setLocal, removeLocal, getAllLocal } from './localStorage.js'
 
 const FLAG_PREFIX = 'flag.'
+const BODY_CLASS_PREFIX = 'sb-ff-'
 
 /** Module-level storage for config defaults */
 let _defaults = {}
+
+/**
+ * Sync body classes for active feature flags.
+ * Adds `sb-ff-{name}` for every flag that resolves to true,
+ * removes it for every flag that resolves to false.
+ */
+function syncFlagBodyClasses() {
+  if (typeof document === 'undefined') return
+  for (const key of Object.keys(_defaults)) {
+    const cls = BODY_CLASS_PREFIX + key
+    if (getFlag(key)) {
+      document.body.classList.add(cls)
+    } else {
+      document.body.classList.remove(cls)
+    }
+  }
+}
 
 /**
  * Initialize the feature flag system with config defaults.
@@ -32,6 +50,7 @@ export function initFeatureFlags(defaults = {}) {
   for (const [key, value] of Object.entries(_defaults)) {
     setLocal(FLAG_PREFIX + key, String(value))
   }
+  syncFlagBodyClasses()
 }
 
 /**
@@ -59,6 +78,7 @@ export function getFlag(key) {
  */
 export function setFlag(key, value) {
   setParam(FLAG_PREFIX + key, String(value))
+  syncFlagBodyClasses()
 }
 
 /**
@@ -101,6 +121,7 @@ export function resetFlags() {
       removeLocal(localKey)
     }
   }
+  syncFlagBodyClasses()
 }
 
 /**

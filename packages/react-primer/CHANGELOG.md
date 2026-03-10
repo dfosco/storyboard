@@ -1,5 +1,16 @@
 # @dfosco/storyboard-react-primer
 
+## 1.23.0
+
+### Minor Changes
+
+-   Add workshop dev-server under the hood (inactice for now)
+
+### Patch Changes
+
+-   Updated dependencies
+    -   @dfosco/storyboard-react@1.23.0
+
 ## 1.22.0
 
 ### Minor Changes

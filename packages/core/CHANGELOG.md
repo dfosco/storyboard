@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 1.23.0
+
+### Minor Changes
+
+-   Add workshop dev-server under the hood (inactice for now)
+
 ## 1.22.0
 
 ### Minor Changes

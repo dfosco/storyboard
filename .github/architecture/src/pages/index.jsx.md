@@ -15,8 +15,8 @@ The root page component (`/` route). Renders the `Playground` component and the 
 ## Composition
 
 ```js
-import Playground from '../components/Playground.jsx'
-import ColorModeSwitcher from '../components/ColorModeSwitcher.jsx'
+import Playground from '@/components/Playground.jsx'
+import ColorModeSwitcher from '@/components/ColorModeSwitcher.jsx'
 
 function Code() {
   return (

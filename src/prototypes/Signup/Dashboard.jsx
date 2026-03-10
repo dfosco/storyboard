@@ -12,7 +12,7 @@ import {
 import 'reshaped/themes/reshaped/theme.css'
 import 'reshaped/themes/reshaped/media.css'
 import { useFlowData } from '@dfosco/storyboard-react'
-import AppSidebar from '../components/AppSidebar/AppSidebar.jsx'
+import AppSidebar from '@/components/AppSidebar/AppSidebar.jsx'
 
 function display(v) {
   if (v == null || v === '') return '—'

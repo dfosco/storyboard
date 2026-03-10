@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import { StoryboardProvider, useFeatureFlag } from '@dfosco/storyboard-react'
 import { registerMode, syncModeClasses } from '@dfosco/storyboard-core'
+import { mountDesignModesUI } from '@dfosco/storyboard-svelte-ui/design-modes'
 import '@dfosco/storyboard-core/modes.css'
 import appStyles from './_app.module.css'
 
@@ -13,6 +14,9 @@ registerMode('plan', { label: 'Canvas' })
 
 // Apply classes for whichever mode is active on page load
 syncModeClasses()
+
+// Mount Svelte-based design-mode UI (ModeSwitch + ToolbarShell)
+mountDesignModesUI()
 
 function PageLoading() {
   return (
@@ -39,8 +43,6 @@ export default function App() {
       <Suspense fallback={<PageLoading />}>
         <Outlet />
       </Suspense>
-      <ModeSwitch />
-      <ToolbarShell />
     </StoryboardProvider>
   )
 }

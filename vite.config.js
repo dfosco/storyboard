@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import path from 'path'
 import react from '@vitejs/plugin-react'
+import { svelte } from '@sveltejs/vite-plugin-svelte'
 import generouted from '@generouted/react-router/plugin'
 import storyboardData from '@dfosco/storyboard-react/vite'
 import storyboardServer from '@dfosco/storyboard-core/vite/server'
@@ -38,11 +39,15 @@ export default defineConfig(() => {
             '@dfosco/storyboard-react': path.resolve(__dirname, 'packages/react/src/index.js'),
             '@dfosco/storyboard-react-primer': path.resolve(__dirname, 'packages/react-primer/src/index.js'),
             '@dfosco/storyboard-react-reshaped': path.resolve(__dirname, 'packages/react-reshaped/src/index.js'),
+            '@dfosco/storyboard-svelte-ui/design-modes': path.resolve(__dirname, 'packages/svelte-ui/src/plugins/design-modes.ts'),
+            '@dfosco/storyboard-svelte-ui/styles/base.css': path.resolve(__dirname, 'packages/svelte-ui/src/styles/base.css'),
+            '@dfosco/storyboard-svelte-ui': path.resolve(__dirname, 'packages/svelte-ui/src/index.ts'),
         },
     },
     plugins: [
         storyboardData(),
         storyboardServer(),
+        svelte(),
         react(),
         generouted(),
         {

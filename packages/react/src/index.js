@@ -28,9 +28,8 @@ export { installHashPreserver } from './hashPreserver.js'
 // Form context (for design system packages to use)
 export { FormContext } from './context/FormContext.js'
 
-// Design mode toolbar
-export { default as ModeSwitch } from './ModeSwitch.jsx'
-export { default as ToolbarShell } from './ToolbarShell.jsx'
+// Design mode hook (keep — React apps may still read mode state)
+// ModeSwitch and ToolbarShell UI moved to @dfosco/storyboard-svelte-ui
 
 // Viewfinder dashboard
 export { default as Viewfinder } from './Viewfinder.jsx'

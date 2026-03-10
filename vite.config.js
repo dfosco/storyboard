@@ -50,7 +50,26 @@ export default defineConfig(() => {
         storyboardServer(),
         svelte(),
         react(),
-        generouted({ source: { routes: 'src/prototypes', modals: 'src/prototypes' } }),
+        generouted({
+            source: {
+                routes: './src/prototypes/**/[\\w[-]*.{jsx,tsx,mdx}',
+                modals: './src/prototypes/**/[+]*.{jsx,tsx,mdx}',
+            },
+        }),
+        // generouted's built-in watcher only listens for /src/pages/ changes.
+        // This plugin triggers a full reload when prototypes are added/removed.
+        {
+            name: 'prototypes-watcher',
+            configureServer(server) {
+                const listener = (file = '') => {
+                    if (file.includes(path.normalize('/src/prototypes/'))) {
+                        server.ws.send({ type: 'full-reload' })
+                    }
+                }
+                server.watcher.on('add', listener)
+                server.watcher.on('unlink', listener)
+            },
+        },
         {
             name: 'base-redirect',
             configureServer(server) {

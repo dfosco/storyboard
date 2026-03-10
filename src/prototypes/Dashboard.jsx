@@ -11,7 +11,7 @@ import {
 } from 'reshaped'
 import 'reshaped/themes/reshaped/theme.css'
 import 'reshaped/themes/reshaped/media.css'
-import { useSceneData } from '@dfosco/storyboard-react'
+import { useFlowData } from '@dfosco/storyboard-react'
 import AppSidebar from '../components/AppSidebar/AppSidebar.jsx'
 
 function display(v) {
@@ -57,12 +57,12 @@ const schedule = [
 ]
 
 export default function Dashboard() {
-  const fullName = useSceneData('signup.fullName')
-  const orgName = useSceneData('signup.organization.name')
-  const orgSize = useSceneData('signup.organization.size')
-  const role = useSceneData('signup.organization.role')
-  const region = useSceneData('signup.workspace.region')
-  const plan = useSceneData('signup.workspace.plan')
+  const fullName = useFlowData('signup.fullName')
+  const orgName = useFlowData('signup.organization.name')
+  const orgSize = useFlowData('signup.organization.size')
+  const role = useFlowData('signup.organization.role')
+  const region = useFlowData('signup.workspace.region')
+  const plan = useFlowData('signup.workspace.plan')
 
   return (
     <Reshaped defaultTheme="reshaped" defaultColorMode="dark">

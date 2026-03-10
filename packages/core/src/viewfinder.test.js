@@ -1,17 +1,17 @@
 import { init } from './loader.js'
-import { hash, resolveSceneRoute, getSceneMeta } from './viewfinder.js'
+import { hash, resolveFlowRoute, getFlowMeta, resolveSceneRoute, getSceneMeta } from './viewfinder.js'
 
 const makeIndex = () => ({
-  scenes: {
+  flows: {
     default: { title: 'Default Scene' },
     Dashboard: { heading: 'Dashboard' },
     'custom-route': { route: 'Overview', title: 'Custom' },
     'absolute-route': { route: '/Forms', title: 'Absolute' },
     'no-route': { title: 'No route key' },
-    'meta-route': { sceneMeta: { route: 'Repositories' }, title: 'Meta Route' },
-    'meta-author': { sceneMeta: { author: 'dfosco' }, title: 'With Author' },
-    'meta-authors': { sceneMeta: { author: ['dfosco', 'heyamie', 'branonconor'] }, title: 'Multi Author' },
-    'meta-both': { sceneMeta: { route: '/Overview', author: 'octocat' }, title: 'Both' },
+    'meta-route': { flowMeta: { route: 'Repositories' }, title: 'Meta Route' },
+    'meta-author': { flowMeta: { author: 'dfosco' }, title: 'With Author' },
+    'meta-authors': { flowMeta: { author: ['dfosco', 'heyamie', 'branonconor'] }, title: 'Multi Author' },
+    'meta-both': { flowMeta: { route: '/Overview', author: 'octocat' }, title: 'Both' },
   },
   objects: {},
   records: {},
@@ -41,90 +41,112 @@ describe('hash', () => {
   })
 })
 
-describe('resolveSceneRoute', () => {
+describe('resolveFlowRoute', () => {
   const routes = ['Dashboard', 'Overview', 'Forms', 'Repositories']
 
-  it('matches scene name to route (exact case)', () => {
-    expect(resolveSceneRoute('Dashboard', routes)).toBe('/Dashboard')
+  it('matches flow name to route (exact case)', () => {
+    expect(resolveFlowRoute('Dashboard', routes)).toBe('/Dashboard')
   })
 
-  it('matches scene name to route (case-insensitive)', () => {
-    expect(resolveSceneRoute('dashboard', routes)).toBe('/Dashboard')
+  it('matches flow name to route (case-insensitive)', () => {
+    expect(resolveFlowRoute('dashboard', routes)).toBe('/Dashboard')
   })
 
-  it('uses route key from scene data when no route matches', () => {
-    expect(resolveSceneRoute('custom-route', routes)).toBe('/Overview?scene=custom-route')
+  it('uses route key from flow data when no route matches', () => {
+    expect(resolveFlowRoute('custom-route', routes)).toBe('/Overview?scene=custom-route')
   })
 
   it('handles absolute route key (with leading slash)', () => {
-    expect(resolveSceneRoute('absolute-route', routes)).toBe('/Forms?scene=absolute-route')
+    expect(resolveFlowRoute('absolute-route', routes)).toBe('/Forms?scene=absolute-route')
   })
 
   it('falls back to root when no match and no route key', () => {
-    expect(resolveSceneRoute('no-route', routes)).toBe('/?scene=no-route')
+    expect(resolveFlowRoute('no-route', routes)).toBe('/?scene=no-route')
   })
 
-  it('falls back to root for default scene', () => {
-    expect(resolveSceneRoute('default', routes)).toBe('/?scene=default')
+  it('falls back to root for default flow', () => {
+    expect(resolveFlowRoute('default', routes)).toBe('/?scene=default')
   })
 
-  it('falls back to root when scene does not exist', () => {
-    expect(resolveSceneRoute('nonexistent', routes)).toBe('/?scene=nonexistent')
+  it('falls back to root when flow does not exist', () => {
+    expect(resolveFlowRoute('nonexistent', routes)).toBe('/?scene=nonexistent')
   })
 
   it('works with empty routes array', () => {
-    expect(resolveSceneRoute('Dashboard', [])).toBe('/?scene=Dashboard')
+    expect(resolveFlowRoute('Dashboard', [])).toBe('/?scene=Dashboard')
   })
 
   it('works with no routes argument', () => {
-    expect(resolveSceneRoute('custom-route')).toBe('/Overview?scene=custom-route')
+    expect(resolveFlowRoute('custom-route')).toBe('/Overview?scene=custom-route')
   })
 
-  it('encodes special characters in scene name', () => {
+  it('encodes special characters in flow name', () => {
     init({
-      scenes: { 'has spaces': { title: 'Spaces' } },
+      flows: { 'has spaces': { title: 'Spaces' } },
       objects: {},
       records: {},
     })
-    expect(resolveSceneRoute('has spaces', [])).toBe('/?scene=has%20spaces')
+    expect(resolveFlowRoute('has spaces', [])).toBe('/?scene=has%20spaces')
   })
 
-  it('uses sceneMeta.route when no route matches', () => {
-    expect(resolveSceneRoute('meta-route', routes)).toBe('/Repositories?scene=meta-route')
+  it('uses flowMeta.route when no route matches', () => {
+    expect(resolveFlowRoute('meta-route', routes)).toBe('/Repositories?scene=meta-route')
   })
 
-  it('uses sceneMeta.route with absolute path', () => {
-    expect(resolveSceneRoute('meta-both', routes)).toBe('/Overview?scene=meta-both')
+  it('uses flowMeta.route with absolute path', () => {
+    expect(resolveFlowRoute('meta-both', routes)).toBe('/Overview?scene=meta-both')
   })
 
-  it('prefers sceneMeta.route over top-level route key', () => {
+  it('prefers flowMeta.route over top-level route key', () => {
     init({
-      scenes: { conflict: { route: 'Forms', sceneMeta: { route: 'Dashboard' } } },
+      flows: { conflict: { route: 'Forms', flowMeta: { route: 'Dashboard' } } },
       objects: {},
       records: {},
     })
-    expect(resolveSceneRoute('conflict', [])).toBe('/Dashboard?scene=conflict')
+    expect(resolveFlowRoute('conflict', [])).toBe('/Dashboard?scene=conflict')
   })
 })
 
-describe('getSceneMeta', () => {
-  it('returns sceneMeta when present', () => {
+describe('getFlowMeta', () => {
+  it('returns flowMeta when present', () => {
+    expect(getFlowMeta('meta-author')).toEqual({ author: 'dfosco' })
+  })
+
+  it('returns flowMeta with both fields', () => {
+    expect(getFlowMeta('meta-both')).toEqual({ route: '/Overview', author: 'octocat' })
+  })
+
+  it('returns flowMeta with array author', () => {
+    expect(getFlowMeta('meta-authors')).toEqual({ author: ['dfosco', 'heyamie', 'branonconor'] })
+  })
+
+  it('returns null when no flowMeta', () => {
+    expect(getFlowMeta('default')).toBeNull()
+  })
+
+  it('returns null for nonexistent flow', () => {
+    expect(getFlowMeta('nonexistent')).toBeNull()
+  })
+})
+
+// ── Deprecated aliases ──
+
+describe('resolveSceneRoute (deprecated alias)', () => {
+  it('is the same function as resolveFlowRoute', () => {
+    expect(resolveSceneRoute).toBe(resolveFlowRoute)
+  })
+
+  it('resolves a flow route', () => {
+    expect(resolveSceneRoute('Dashboard', ['Dashboard'])).toBe('/Dashboard')
+  })
+})
+
+describe('getSceneMeta (deprecated alias)', () => {
+  it('is the same function as getFlowMeta', () => {
+    expect(getSceneMeta).toBe(getFlowMeta)
+  })
+
+  it('returns flow meta', () => {
     expect(getSceneMeta('meta-author')).toEqual({ author: 'dfosco' })
-  })
-
-  it('returns sceneMeta with both fields', () => {
-    expect(getSceneMeta('meta-both')).toEqual({ route: '/Overview', author: 'octocat' })
-  })
-
-  it('returns sceneMeta with array author', () => {
-    expect(getSceneMeta('meta-authors')).toEqual({ author: ['dfosco', 'heyamie', 'branonconor'] })
-  })
-
-  it('returns null when no sceneMeta', () => {
-    expect(getSceneMeta('default')).toBeNull()
-  })
-
-  it('returns null for nonexistent scene', () => {
-    expect(getSceneMeta('nonexistent')).toBeNull()
   })
 })

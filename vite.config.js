@@ -50,7 +50,7 @@ export default defineConfig(() => {
         storyboardServer(),
         svelte(),
         react(),
-        generouted(),
+        generouted({ source: { routes: 'src/prototypes', modals: 'src/prototypes' } }),
         {
             name: 'base-redirect',
             configureServer(server) {
@@ -81,7 +81,7 @@ export default defineConfig(() => {
         warmup: {
             clientFiles: [
                 'src/index.jsx',
-                'src/pages/**/*.jsx',
+                'src/prototypes/**/*.jsx',
                 'src/components/**/*.jsx',
                 'src/templates/**/*.jsx',
                 'packages/react/src/**/*.{js,jsx}',

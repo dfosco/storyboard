@@ -17,7 +17,7 @@ vi.mock('react-router-dom', async () => {
 
 beforeEach(() => {
   init({
-    scenes: {
+    flows: {
       default: { title: 'Default Scene' },
       other: { title: 'Other Scene' },
     },
@@ -36,7 +36,7 @@ function ContextReader({ path }) {
 }
 
 describe('StoryboardProvider', () => {
-  it('renders children when scene loads successfully', () => {
+  it('renders children when flow loads successfully', () => {
     render(
       <StoryboardProvider>
         <span>child content</span>
@@ -45,7 +45,7 @@ describe('StoryboardProvider', () => {
     expect(screen.getByText('child content')).toBeInTheDocument()
   })
 
-  it('provides scene data via context', () => {
+  it('provides flow data via context', () => {
     render(
       <StoryboardProvider>
         <ContextReader path="title" />
@@ -54,7 +54,16 @@ describe('StoryboardProvider', () => {
     expect(screen.getByTestId('ctx')).toHaveTextContent('Default Scene')
   })
 
-  it('uses sceneName prop when provided', () => {
+  it('uses flowName prop when provided', () => {
+    render(
+      <StoryboardProvider flowName="other">
+        <ContextReader path="title" />
+      </StoryboardProvider>,
+    )
+    expect(screen.getByTestId('ctx')).toHaveTextContent('Other Scene')
+  })
+
+  it('uses sceneName prop for backward compat', () => {
     render(
       <StoryboardProvider sceneName="other">
         <ContextReader path="title" />
@@ -63,7 +72,7 @@ describe('StoryboardProvider', () => {
     expect(screen.getByTestId('ctx')).toHaveTextContent('Other Scene')
   })
 
-  it("falls back to 'default' scene when no ?scene= param", () => {
+  it("falls back to 'default' flow when no ?scene= param", () => {
     render(
       <StoryboardProvider>
         <ContextReader path="title" />
@@ -72,22 +81,35 @@ describe('StoryboardProvider', () => {
     expect(screen.getByTestId('ctx')).toHaveTextContent('Default Scene')
   })
 
-  it('shows error message when scene fails to load', () => {
+  it('shows error message when flow fails to load', () => {
     render(
-      <StoryboardProvider sceneName="nonexistent">
+      <StoryboardProvider flowName="nonexistent">
         <ContextReader />
       </StoryboardProvider>,
     )
-    expect(screen.getByText(/Error loading scene/)).toBeInTheDocument()
+    expect(screen.getByText(/Error loading flow/)).toBeInTheDocument()
   })
 
-  it('provides sceneName in context value', () => {
+  it('provides flowName in context value', () => {
+    function FlowNameReader() {
+      const ctx = useContext(StoryboardContext)
+      return <span data-testid="name">{ctx?.flowName}</span>
+    }
+    render(
+      <StoryboardProvider flowName="other">
+        <FlowNameReader />
+      </StoryboardProvider>,
+    )
+    expect(screen.getByTestId('name')).toHaveTextContent('other')
+  })
+
+  it('provides sceneName (backward compat) in context value', () => {
     function SceneNameReader() {
       const ctx = useContext(StoryboardContext)
       return <span data-testid="name">{ctx?.sceneName}</span>
     }
     render(
-      <StoryboardProvider sceneName="other">
+      <StoryboardProvider flowName="other">
         <SceneNameReader />
       </StoryboardProvider>,
     )
@@ -107,9 +129,9 @@ describe('StoryboardProvider', () => {
     expect(screen.getByTestId('loading')).toHaveTextContent('false')
   })
 
-  it('auto-matches scene by pathname and resolves $ref data', () => {
+  it('auto-matches flow by pathname and resolves $ref data', () => {
     init({
-      scenes: {
+      flows: {
         default: { title: 'Default' },
         Repositories: {
           '$global': ['navigation'],
@@ -133,9 +155,9 @@ describe('StoryboardProvider', () => {
     expect(screen.getByTestId('ctx')).toHaveTextContent('All repos')
   })
 
-  it('resolves $ref objects when auto-matching scene by pathname', () => {
+  it('resolves $ref objects when auto-matching flow by pathname', () => {
     init({
-      scenes: {
+      flows: {
         default: { title: 'Default' },
         Repositories: {
           '$global': ['navigation'],

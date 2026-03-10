@@ -6,8 +6,7 @@ import { parse as parseJsonc } from 'jsonc-parser'
 const VIRTUAL_MODULE_ID = 'virtual:storyboard-data-index'
 const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
 
-const SUFFIXES = ['scene', 'object', 'record']
-const GLOB_PATTERN = '**/*.{scene,object,record}.{json,jsonc}'
+const GLOB_PATTERN = '**/*.{flow,scene,object,record}.{json,jsonc}'
 
 /**
  * Extract the data name and type suffix from a file path.
@@ -16,9 +15,11 @@ const GLOB_PATTERN = '**/*.{scene,object,record}.{json,jsonc}'
  */
 function parseDataFile(filePath) {
   const base = path.basename(filePath)
-  const match = base.match(/^(.+)\.(scene|object|record)\.(jsonc?)$/)
+  const match = base.match(/^(.+)\.(flow|scene|object|record)\.(jsonc?)$/)
   if (!match) return null
-  return { name: match[1], suffix: match[2], ext: match[3] }
+  // Normalize .scene → .flow for backward compatibility
+  const suffix = match[2] === 'scene' ? 'flow' : match[2]
+  return { name: match[1], suffix, ext: match[3] }
 }
 
 /**
@@ -28,7 +29,7 @@ function buildIndex(root) {
   const ignore = ['node_modules/**', 'dist/**', '.git/**']
   const files = globSync(GLOB_PATTERN, { cwd: root, ignore, absolute: false })
 
-  const index = { scene: {}, object: {}, record: {} }
+  const index = { flow: {}, object: {}, record: {} }
   const seen = {} // "name.suffix" → absolute path (for duplicate detection)
 
   for (const relPath of files) {
@@ -79,10 +80,11 @@ function readConfig(root) {
 
 function generateModule(index, root) {
   const declarations = []
-  const entries = { scene: [], object: [], record: [] }
+  const INDEX_KEYS = ['flow', 'object', 'record']
+  const entries = { flow: [], object: [], record: [] }
   let i = 0
 
-  for (const suffix of SUFFIXES) {
+  for (const suffix of INDEX_KEYS) {
     for (const [name, absPath] of Object.entries(index[suffix])) {
       const varName = `_d${i++}`
       const raw = fs.readFileSync(absPath, 'utf-8')
@@ -93,7 +95,7 @@ function generateModule(index, root) {
   }
 
   const imports = [`import { init } from '@dfosco/storyboard-core'`]
-  const initCalls = [`init({ scenes, objects, records })`]
+  const initCalls = [`init({ flows, objects, records })`]
 
   // Feature flags from storyboard.config.json
   const { config } = readConfig(root)
@@ -119,14 +121,17 @@ function generateModule(index, root) {
     '',
     declarations.join('\n'),
     '',
-    `const scenes = {\n${entries.scene.join(',\n')}\n}`,
+    `const flows = {\n${entries.flow.join(',\n')}\n}`,
     `const objects = {\n${entries.object.join(',\n')}\n}`,
     `const records = {\n${entries.record.join(',\n')}\n}`,
     '',
+    '// Backward-compatible alias',
+    'const scenes = flows',
+    '',
     initCalls.join('\n'),
     '',
-    `export { scenes, objects, records }`,
-    `export const index = { scenes, objects, records }`,
+    `export { flows, scenes, objects, records }`,
+    `export const index = { flows, scenes, objects, records }`,
     `export default index`,
   ].join('\n')
 }
@@ -134,7 +139,7 @@ function generateModule(index, root) {
 /**
  * Vite plugin for storyboard data discovery.
  *
- * - Scans the repo for *.scene.json, *.object.json, *.record.json
+ * - Scans the repo for *.flow.json, *.scene.json (compat), *.object.json, *.record.json
  * - Validates no two files share the same name+suffix (hard build error)
  * - Generates a virtual module `virtual:storyboard-data-index`
  * - Watches for file additions/removals in dev mode

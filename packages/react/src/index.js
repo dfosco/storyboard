@@ -10,10 +10,12 @@ export { default as StoryboardProvider } from './context.jsx'
 export { StoryboardContext } from './StoryboardContext.js'
 
 // Hooks
+export { useFlowData, useFlowLoading } from './hooks/useSceneData.js'
+// Deprecated aliases
 export { useSceneData, useSceneLoading } from './hooks/useSceneData.js'
 export { useOverride } from './hooks/useOverride.js'
 export { useOverride as useSession } from './hooks/useOverride.js' // deprecated alias
-export { useScene } from './hooks/useScene.js'
+export { useFlow, useScene } from './hooks/useScene.js'
 export { useRecord, useRecords } from './hooks/useRecord.js'
 export { useObject } from './hooks/useObject.js'
 export { useLocalStorage } from './hooks/useLocalStorage.js'

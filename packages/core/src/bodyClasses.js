@@ -14,7 +14,7 @@ import { subscribeToStorage } from './localStorage.js'
 import { syncFlagBodyClasses } from './featureFlags.js'
 
 const PREFIX = 'sb-'
-const SCENE_PREFIX = 'sb-scene--'
+const FLOW_PREFIX = 'sb-scene--'
 const FF_PREFIX = 'sb-ff-'
 
 /**
@@ -49,7 +49,7 @@ function overrideClass(key, value) {
 function getCurrentOverrideClasses() {
   const classes = new Set()
   for (const cls of document.body.classList) {
-    if (cls.startsWith(PREFIX) && !cls.startsWith(SCENE_PREFIX) && !cls.startsWith(FF_PREFIX)) {
+    if (cls.startsWith(PREFIX) && !cls.startsWith(FLOW_PREFIX) && !cls.startsWith(FF_PREFIX)) {
       classes.add(cls)
     }
   }
@@ -86,20 +86,23 @@ export function syncOverrideClasses() {
 }
 
 /**
- * Set the scene class on <body>. Removes any previous scene class.
- * @param {string} name - Scene name (e.g. "Dashboard")
+ * Set the flow class on <body>. Removes any previous flow class.
+ * @param {string} name - Flow name (e.g. "Dashboard")
  */
-export function setSceneClass(name) {
-  // Remove any existing scene classes
+export function setFlowClass(name) {
+  // Remove any existing flow classes
   for (const cls of [...document.body.classList]) {
-    if (cls.startsWith(SCENE_PREFIX)) {
+    if (cls.startsWith(FLOW_PREFIX)) {
       document.body.classList.remove(cls)
     }
   }
   if (name) {
-    document.body.classList.add(`${SCENE_PREFIX}${sanitize(name)}`)
+    document.body.classList.add(`${FLOW_PREFIX}${sanitize(name)}`)
   }
 }
+
+/** @deprecated Use setFlowClass() */
+export const setSceneClass = setFlowClass
 
 /**
  * Install listeners that keep body classes in sync with overrides.

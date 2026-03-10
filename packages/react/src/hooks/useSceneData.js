@@ -7,24 +7,24 @@ import { isHideMode, getShadow, getAllShadows } from '@dfosco/storyboard-core'
 import { subscribeToStorage, getStorageSnapshot } from '@dfosco/storyboard-core'
 
 /**
- * Access scene data by dot-notation path.
- * Hash params override scene data — both exact matches and nested paths.
+ * Access flow data by dot-notation path.
+ * Hash params override flow data — both exact matches and nested paths.
  *
  * Examples:
- *   useSceneData('user.name') with #user.name=Alice → "Alice"
- *   useSceneData('repositories') with #repositories.0.name=Foo
+ *   useFlowData('user.name') with #user.name=Alice → "Alice"
+ *   useFlowData('repositories') with #repositories.0.name=Foo
  *     → deep clone of repositories array with [0].name overridden to "Foo"
  *
  * @param {string} [path] - Dot-notation path (e.g. 'user.profile.name').
- *                          Omit to get the entire scene object.
+ *                          Omit to get the entire flow object.
  * @returns {*} The resolved value. Returns {} if path is missing after loading.
  * @throws If used outside a StoryboardProvider.
  */
-export function useSceneData(path) {
+export function useFlowData(path) {
   const context = useContext(StoryboardContext)
 
   if (context === null) {
-    throw new Error('useSceneData must be used within a <StoryboardProvider>')
+    throw new Error('useFlowData must be used within a <StoryboardProvider>')
   }
 
   const { data, loading, error } = context
@@ -73,7 +73,7 @@ export function useSceneData(path) {
     }
 
     if (sceneValue === undefined) {
-      console.warn(`[useSceneData] Path "${path}" not found in scene data.`)
+      console.warn(`[useFlowData] Path "${path}" not found in flow data.`)
       return {}
     }
 
@@ -83,15 +83,21 @@ export function useSceneData(path) {
   return result
 }
 
+/** @deprecated Use useFlowData() */
+export const useSceneData = useFlowData
+
 /**
- * Returns true while scene data is still loading.
+ * Returns true while flow data is still loading.
  */
-export function useSceneLoading() {
+export function useFlowLoading() {
   const context = useContext(StoryboardContext)
 
   if (context === null) {
-    throw new Error('useSceneLoading must be used within a <StoryboardProvider>')
+    throw new Error('useFlowLoading must be used within a <StoryboardProvider>')
   }
 
   return context.loading
 }
+
+/** @deprecated Use useFlowLoading() */
+export const useSceneLoading = useFlowLoading

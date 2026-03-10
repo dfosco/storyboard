@@ -1,13 +1,13 @@
-import { scenes } from 'virtual:storyboard-data-index'
+import { flows } from 'virtual:storyboard-data-index'
 import { Viewfinder } from '@dfosco/storyboard-react'
 
-const pageModules = import.meta.glob('/src/pages/*.jsx')
+const pageModules = import.meta.glob('/src/prototypes/*.jsx')
 
-export default function IndexPage() {
+export default function ViewfinderPage() {
   return (
     <Viewfinder
       title="Storyboard"
-      scenes={scenes}
+      flows={flows}
       pageModules={pageModules}
       basePath={import.meta.env.BASE_URL}
     />

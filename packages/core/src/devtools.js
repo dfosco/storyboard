@@ -5,7 +5,7 @@
  *
  * Features:
  *  - Floating beaker button (bottom-right) that opens a menu
- *  - "Show scene info" — overlay panel with resolved scene JSON
+ *  - "Show flow info" — overlay panel with resolved scene JSON
  *  - "Reset all params" — clears all URL hash session params
  *  - Cmd+. (Mac) / Ctrl+. (other) toggles visibility
  *
@@ -13,7 +13,7 @@
  *   import { mountDevTools } from '@dfosco/storyboard-core'
  *   mountDevTools() // call once at app startup
  */
-import { loadScene } from './loader.js'
+import { loadFlow } from './loader.js'
 import { isCommentsEnabled } from './comments/config.js'
 import { isHideMode, activateHideMode, deactivateHideMode } from './hideMode.js'
 import { getAllFlags, toggleFlag, getFlagKeys } from './featureFlags.js'
@@ -180,7 +180,7 @@ const EYE_CLOSED_ICON = '<svg viewBox="0 0 16 16"><path d="M.143 2.31a.75.75 0 0
 const CHECK_ICON = '<svg viewBox="0 0 16 16"><path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/></svg>'
 const ZAP_ICON = '<svg viewBox="0 0 16 16"><path d="M9.504.43a1.516 1.516 0 0 1 2.437 1.713L10.415 5.5h2.123c1.57 0 2.346 1.909 1.22 3.004l-7.34 7.142a1.249 1.249 0 0 1-.871.354h-.302a1.25 1.25 0 0 1-1.157-1.723L5.633 10.5H3.462c-1.57 0-2.346-1.909-1.22-3.004Z"/></svg>'
 
-function getSceneName() {
+function getFlowName() {
   return new URLSearchParams(window.location.search).get('scene') || 'default'
 }
 
@@ -235,7 +235,7 @@ export function mountDevTools(options = {}) {
 
   const showInfoBtn = document.createElement('button')
   showInfoBtn.className = 'sb-devtools-menu-item'
-  showInfoBtn.innerHTML = `${INFO_ICON} Show scene info`
+  showInfoBtn.innerHTML = `${INFO_ICON} Show flow info`
 
   const resetBtn = document.createElement('button')
   resetBtn.className = 'sb-devtools-menu-item'
@@ -391,11 +391,11 @@ export function mountDevTools(options = {}) {
 
     if (overlay) overlay.remove()
 
-    const sceneName = getSceneName()
+    const sceneName = getFlowName()
     let sceneJson = ''
     let error = null
     try {
-      sceneJson = JSON.stringify(loadScene(sceneName), null, 2)
+      sceneJson = JSON.stringify(loadFlow(sceneName), null, 2)
     } catch (err) {
       error = err.message
     }
@@ -412,7 +412,7 @@ export function mountDevTools(options = {}) {
 
     const header = document.createElement('div')
     header.className = 'sb-devtools-panel-header'
-    header.innerHTML = `<span class="sb-devtools-panel-title">Scene: ${sceneName}</span>`
+    header.innerHTML = `<span class="sb-devtools-panel-title">Flow: ${sceneName}</span>`
 
     const closeBtn = document.createElement('button')
     closeBtn.className = 'sb-devtools-panel-close'

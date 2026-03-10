@@ -69,10 +69,13 @@ describe('storyboardDataPlugin', () => {
     const code = plugin.load(RESOLVED_ID)
 
     expect(code).toContain("import { init } from '@dfosco/storyboard-core'")
-    expect(code).toContain('init({ scenes, objects, records })')
+    expect(code).toContain('init({ flows, objects, records })')
     expect(code).toContain('"Test"')
     expect(code).toContain('"Jane"')
     expect(code).toContain('"First"')
+    // Backward-compat alias
+    expect(code).toContain('const scenes = flows')
+    expect(code).toContain('export { flows, scenes, objects, records }')
   })
 
   it('load returns null for other IDs', () => {
@@ -105,6 +108,19 @@ describe('storyboardDataPlugin', () => {
     const code = plugin.load(RESOLVED_ID)
 
     expect(code).toContain('"JSONC Scene"')
+  })
+
+  it('normalizes .scene files into flow category in the index', () => {
+    writeFileSync(
+      path.join(tmpDir, 'legacy.scene.json'),
+      JSON.stringify({ title: 'Legacy Scene' }),
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    // .scene.json files should be normalized to the flows category
+    expect(code).toContain('"Legacy Scene"')
+    expect(code).toContain('init({ flows, objects, records })')
   })
 
   it('buildStart resets the index cache', () => {

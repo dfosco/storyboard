@@ -2,27 +2,36 @@ import { useContext, useCallback } from 'react'
 import { StoryboardContext } from '../StoryboardContext.js'
 
 /**
- * Read the current scene name and programmatically switch scenes.
+ * Read the current flow name and programmatically switch flows.
  *
- * @returns {{ sceneName: string, switchScene: (name: string) => void }}
- *   - sceneName   – current active scene (e.g. "default")
- *   - switchScene – navigate to a different scene by updating ?scene= param
+ * @returns {{ flowName: string, switchFlow: (name: string) => void }}
+ *   - flowName    – current active flow (e.g. "default")
+ *   - switchFlow  – navigate to a different flow by updating ?scene= param
  */
-export function useScene() {
+export function useFlow() {
   const context = useContext(StoryboardContext)
   if (context === null) {
-    throw new Error('useScene must be used within a <StoryboardProvider>')
+    throw new Error('useFlow must be used within a <StoryboardProvider>')
   }
 
-  const switchScene = useCallback((name) => {
+  const switchFlow = useCallback((name) => {
     const url = new URL(window.location.href)
     url.searchParams.set('scene', name)
-    // Preserve hash params across scene switches
+    // Preserve hash params across flow switches
     window.location.href = url.toString()
   }, [])
 
   return {
-    sceneName: context.sceneName,
-    switchScene,
+    flowName: context.flowName,
+    switchFlow,
+  }
+}
+
+/** @deprecated Use useFlow() */
+export function useScene() {
+  const { flowName, switchFlow } = useFlow()
+  return {
+    sceneName: flowName,
+    switchScene: switchFlow,
   }
 }

@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useMemo } from 'react'
-import { hash, resolveSceneRoute, getSceneMeta } from '@dfosco/storyboard-core'
+import { hash, resolveFlowRoute, getFlowMeta } from '@dfosco/storyboard-core'
 import styles from './Viewfinder.module.css'
 
 function formatSceneName(name) {
@@ -101,17 +101,20 @@ function getCurrentBranch(basePath) {
  * @param {boolean} [props.showThumbnails] - Show thumbnail previews (defaults to false)
  * @param {boolean} [props.hideDefaultScene] - Hide the "default" scene from the list (defaults to false)
  */
-export default function Viewfinder({ scenes = {}, pageModules = {}, basePath, title = 'Viewfinder', subtitle, showThumbnails = false, hideDefaultScene = false }) {
+export default function Viewfinder({ scenes = {}, flows, pageModules = {}, basePath, title = 'Viewfinder', subtitle, showThumbnails = false, hideDefaultScene = false }) {
   const [branches, setBranches] = useState(null)
 
-  const sceneNames = useMemo(() => {
-    const names = Object.keys(scenes)
+  // Accept both flows (new) and scenes (deprecated) props
+  const flowIndex = flows || scenes
+
+  const flowNames = useMemo(() => {
+    const names = Object.keys(flowIndex)
     return hideDefaultScene ? names.filter(n => n !== 'default') : names
-  }, [scenes, hideDefaultScene])
+  }, [flowIndex, hideDefaultScene])
 
   const knownRoutes = useMemo(() =>
     Object.keys(pageModules)
-      .map(p => p.replace('/src/pages/', '').replace('.jsx', ''))
+      .map(p => p.replace('/src/prototypes/', '').replace('.jsx', ''))
       .filter(n => !n.startsWith('_') && n !== 'index' && n !== 'viewfinder'),
     [pageModules]
   )
@@ -175,21 +178,21 @@ export default function Viewfinder({ scenes = {}, pageModules = {}, basePath, ti
           )}
         </div>
         <p className={styles.sceneCount}>
-          {sceneNames.length} scene{sceneNames.length !== 1 ? 's' : ''}
+          {flowNames.length} flow{flowNames.length !== 1 ? 's' : ''}
         </p>
       </header>
 
-      {sceneNames.length === 0 ? (
-        <p className={styles.empty}>No scenes found. Add a <code>*.scene.json</code> file to get started.</p>
+      {flowNames.length === 0 ? (
+        <p className={styles.empty}>No flows found. Add a <code>*.flow.json</code> file to get started.</p>
       ) : (
         <section>
           {/* <h2 className={styles.sectionTitle}>Scenes</h2> */}
           <div className={showThumbnails ? styles.grid : styles.list}>
-            {sceneNames.map((name) => {
-              const meta = getSceneMeta(name)
+            {flowNames.map((name) => {
+              const meta = getFlowMeta(name)
               const displayName = meta?.title || meta?.name || formatSceneName(name)
               return (
-                <a key={name} href={resolveSceneRoute(name, knownRoutes)} className={showThumbnails ? styles.card : styles.listItem}>
+                <a key={name} href={resolveFlowRoute(name, knownRoutes)} className={showThumbnails ? styles.card : styles.listItem}>
                   {showThumbnails && (
                     <div className={styles.thumbnail}>
                       <PlaceholderGraphic name={name} />

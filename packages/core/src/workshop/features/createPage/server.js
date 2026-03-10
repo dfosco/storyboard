@@ -9,7 +9,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-const SCENE_SKELETON = JSON.stringify({ $global: [] }, null, 2) + '\n'
+const FLOW_SKELETON = JSON.stringify({ $global: [] }, null, 2) + '\n'
 
 /**
  * Convert a raw name to PascalCase for use as component name + filename.
@@ -66,7 +66,7 @@ function renderTemplate(templatesDir, templateName, pageName) {
  * List all existing page files in src/pages/.
  */
 function listPages(root) {
-  const pagesDir = path.join(root, 'src', 'pages')
+  const pagesDir = path.join(root, 'src', 'prototypes')
   if (!fs.existsSync(pagesDir)) return []
 
   return fs.readdirSync(pagesDir)
@@ -103,7 +103,7 @@ export function createPagesHandler(ctx, templatesDir) {
       }
 
       const { pascalName } = validation
-      const pagesDir = path.join(root, 'src', 'pages')
+      const pagesDir = path.join(root, 'src', 'prototypes')
       const pagePath = path.join(pagesDir, `${pascalName}.jsx`)
 
       if (fs.existsSync(pagePath)) {
@@ -124,18 +124,18 @@ export function createPagesHandler(ctx, templatesDir) {
 
       const result = {
         success: true,
-        path: `src/pages/${pascalName}.jsx`,
+        path: `src/prototypes/${pascalName}.jsx`,
         route: `/${pascalName}`,
       }
 
       if (createScene) {
         const dataDir = path.join(root, 'src', 'data')
-        const scenePath = path.join(dataDir, `${pascalName}.scene.json`)
+        const flowPath = path.join(dataDir, `${pascalName}.flow.json`)
 
-        if (!fs.existsSync(scenePath)) {
+        if (!fs.existsSync(flowPath)) {
           fs.mkdirSync(dataDir, { recursive: true })
-          fs.writeFileSync(scenePath, SCENE_SKELETON, 'utf-8')
-          result.scenePath = `src/data/${pascalName}.scene.json`
+          fs.writeFileSync(flowPath, FLOW_SKELETON, 'utf-8')
+          result.flowPath = `src/data/${pascalName}.flow.json`
         }
       }
 

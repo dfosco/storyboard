@@ -1,4 +1,4 @@
-import { loadScene } from './loader.js'
+import { loadFlow } from './loader.js'
 
 /**
  * Deterministic hash from a string — used for seeding generative placeholders.
@@ -14,52 +14,58 @@ export function hash(str) {
 }
 
 /**
- * Resolve the target route path for a scene.
+ * Resolve the target route path for a flow.
  *
- * 1. If scene name matches a known route (case-insensitive), use that route
- * 2. If scene data has a `sceneMeta.route` or `route` key, use that
+ * 1. If flow name matches a known route (case-insensitive), use that route
+ * 2. If flow data has a `flowMeta.route` or `sceneMeta.route` or `route` key, use that
  * 3. Fall back to root "/"
  *
- * @param {string} sceneName
+ * @param {string} flowName
  * @param {string[]} knownRoutes - Array of route names (e.g. ["Dashboard", "Repositories"])
  * @returns {string} Full path with ?scene= param
  */
-export function resolveSceneRoute(sceneName, knownRoutes = []) {
+export function resolveFlowRoute(flowName, knownRoutes = []) {
   // Case-insensitive match against known routes
   for (const route of knownRoutes) {
-    if (route.toLowerCase() === sceneName.toLowerCase()) {
-      // Scene name matches the route — no ?scene= needed,
+    if (route.toLowerCase() === flowName.toLowerCase()) {
+      // Flow name matches the route — no ?scene= needed,
       // StoryboardProvider auto-matches by page name
       return `/${route}`
     }
   }
 
-  // Check for explicit route in sceneMeta or top-level route key
+  // Check for explicit route in flowMeta/sceneMeta or top-level route key
   try {
-    const data = loadScene(sceneName)
-    const route = data?.sceneMeta?.route || data?.route
+    const data = loadFlow(flowName)
+    const route = data?.flowMeta?.route || data?.sceneMeta?.route || data?.route
     if (route) {
       const normalized = route.startsWith('/') ? route : `/${route}`
-      return `${normalized}?scene=${encodeURIComponent(sceneName)}`
+      return `${normalized}?scene=${encodeURIComponent(flowName)}`
     }
   } catch {
     // ignore load errors
   }
 
-  return `/?scene=${encodeURIComponent(sceneName)}`
+  return `/?scene=${encodeURIComponent(flowName)}`
 }
 
+/** @deprecated Use resolveFlowRoute() */
+export const resolveSceneRoute = resolveFlowRoute
+
 /**
- * Get sceneMeta for a scene (route, author, etc).
+ * Get flowMeta for a flow (route, author, etc).
  *
- * @param {string} sceneName
+ * @param {string} flowName
  * @returns {{ route?: string, author?: string | string[] } | null}
  */
-export function getSceneMeta(sceneName) {
+export function getFlowMeta(flowName) {
   try {
-    const data = loadScene(sceneName)
-    return data?.sceneMeta || null
+    const data = loadFlow(flowName)
+    return data?.flowMeta || data?.sceneMeta || null
   } catch {
     return null
   }
 }
+
+/** @deprecated Use getFlowMeta() */
+export const getSceneMeta = getFlowMeta

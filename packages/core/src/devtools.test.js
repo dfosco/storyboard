@@ -1,7 +1,7 @@
 import { vi } from 'vitest'
 
 vi.mock('./loader.js', () => ({
-  loadScene: vi.fn(() => ({ test: true })),
+  loadFlow: vi.fn(() => ({ test: true })),
 }))
 
 import { mountDevTools } from './devtools.js'
@@ -68,7 +68,7 @@ describe('mountDevTools', () => {
     expect(trigger.getAttribute('aria-label')).toBe('Storyboard DevTools')
   })
 
-  it('contains a menu with scene info and reset buttons', () => {
+  it('contains a menu with flow info and reset buttons', () => {
     mountDevTools()
 
     const menuItems = document.body.querySelectorAll('.sb-devtools-menu-item')

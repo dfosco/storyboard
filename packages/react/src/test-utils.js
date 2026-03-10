@@ -3,7 +3,7 @@ import { StoryboardContext } from './StoryboardContext.js'
 import { init } from '@dfosco/storyboard-core'
 
 // Default test data
-export const TEST_SCENES = {
+export const TEST_FLOWS = {
   default: {
     user: { name: 'Jane', profile: { bio: 'Dev' } },
     settings: { theme: 'dark' },
@@ -14,6 +14,9 @@ export const TEST_SCENES = {
     settings: { theme: 'light' },
   },
 }
+
+/** @deprecated Use TEST_FLOWS */
+export const TEST_SCENES = TEST_FLOWS
 
 export const TEST_OBJECTS = {
   'jane-doe': { name: 'Jane Doe', role: 'admin' },
@@ -27,15 +30,15 @@ export const TEST_RECORDS = {
 }
 
 export function seedTestData() {
-  init({ scenes: TEST_SCENES, objects: TEST_OBJECTS, records: TEST_RECORDS })
+  init({ flows: TEST_FLOWS, objects: TEST_OBJECTS, records: TEST_RECORDS })
 }
 
-// Wrapper that provides StoryboardContext with given scene data
-export function createWrapper(sceneData, sceneName = 'default') {
+// Wrapper that provides StoryboardContext with given flow data
+export function createWrapper(flowData, flowName = 'default') {
   return function Wrapper({ children }) {
     return createElement(
       StoryboardContext.Provider,
-      { value: { data: sceneData, error: null, loading: false, sceneName } },
+      { value: { data: flowData, error: null, loading: false, flowName, sceneName: flowName } },
       children
     )
   }

@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { loadScene, getFlagKeys } from '@dfosco/storyboard-core'
+import { loadFlow, getFlagKeys } from '@dfosco/storyboard-core'
 import { BeakerIcon, InfoIcon, SyncIcon, XIcon, ScreenFullIcon, ZapIcon } from '@primer/octicons-react'
 import styles from './DevTools.module.css'
 import FeatureFlagsPanel from './FeatureFlagsPanel.jsx'
 
-function getSceneName() {
+function getFlowName() {
   return new URLSearchParams(window.location.search).get('scene') || 'default'
 }
 
@@ -56,12 +56,12 @@ export default function DevTools() {
     setMenuOpen((v) => !v)
   }, [])
 
-  const handleShowSceneInfo = useCallback(() => {
+  const handleShowFlowInfo = useCallback(() => {
     setMenuOpen(false)
     setPanelOpen(true)
     setSceneError(null)
     try {
-      setSceneData(loadScene(getSceneName()))
+      setSceneData(loadFlow(getFlowName()))
     } catch (err) {
       setSceneError(err.message)
     }
@@ -88,13 +88,13 @@ export default function DevTools() {
 
   return (
     <>
-      {/* Scene info overlay panel */}
+      {/* Flow info overlay panel */}
       {panelOpen && (
         <div className={styles.overlay}>
           <div className={styles.overlayBackdrop} onClick={() => setPanelOpen(false)} />
           <div className={styles.panel}>
             <div className={styles.panelHeader}>
-              <span className={styles.panelTitle}>Scene: {getSceneName()}</span>
+              <span className={styles.panelTitle}>Flow: {getFlowName()}</span>
               <button className={styles.panelClose} onClick={() => setPanelOpen(false)} aria-label="Close panel">
                 <XIcon size={16} />
               </button>
@@ -117,8 +117,8 @@ export default function DevTools() {
             <button className={styles.menuItem} onClick={handleViewfinder}>
               <ScreenFullIcon size={16} /> See viewfinder
             </button>
-            <button className={styles.menuItem} onClick={handleShowSceneInfo}>
-              <InfoIcon size={16} /> Show scene info
+            <button className={styles.menuItem} onClick={handleShowFlowInfo}>
+              <InfoIcon size={16} /> Show flow info
             </button>
             <button className={styles.menuItem} onClick={handleResetParams}>
               <SyncIcon size={16} /> Reset all params

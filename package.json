@@ -1,6 +1,7 @@
 {
     "name": "storyboard-source",
     "private": true,
+    "version": "1.23.0",
     "type": "module",
     "workspaces": [
         "packages/*"

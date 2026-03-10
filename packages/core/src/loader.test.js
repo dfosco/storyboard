@@ -382,3 +382,37 @@ describe('resolveRecordName', () => {
     expect(resolveRecordName(null, 'posts')).toBe('posts')
   })
 })
+
+describe('error hints for scoped data', () => {
+  beforeEach(() => {
+    init({
+      flows: {
+        'Dashboard/signup': { title: 'Dashboard Signup' },
+        default: { title: 'Global Default' },
+      },
+      objects: {},
+      records: {
+        'Blog/posts': [{ id: '1' }],
+        tags: [{ id: 'js' }],
+      },
+    })
+  })
+
+  it('loadFlow error suggests scoped alternatives', () => {
+    expect(() => loadFlow('signup')).toThrow(/Did you mean: Dashboard\/signup/)
+  })
+
+  it('loadRecord error suggests scoped alternatives', () => {
+    expect(() => loadRecord('posts')).toThrow(/Did you mean: Blog\/posts/)
+  })
+
+  it('loadFlow error for truly missing name has no hint', () => {
+    expect(() => loadFlow('xyz')).toThrow(/Failed to load flow: xyz/)
+    expect(() => loadFlow('xyz')).not.toThrow(/Did you mean/)
+  })
+
+  it('loadRecord error for truly missing name has no hint', () => {
+    expect(() => loadRecord('xyz')).toThrow(/Record not found: xyz/)
+    expect(() => loadRecord('xyz')).not.toThrow(/Did you mean/)
+  })
+})

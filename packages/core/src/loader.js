@@ -80,7 +80,12 @@ function loadDataFile(name, type) {
     }
   }
 
-  throw new Error(`Data file not found: ${name}${type ? ` (type: ${type})` : ''}`)
+  const available = Object.keys(dataIndex[type] || {})
+  const scopedHints = available.filter(k => k.includes('/')).slice(0, 5)
+  const hint = scopedHints.length > 0
+    ? `\n  Scoped names in index: ${scopedHints.join(', ')}`
+    : ''
+  throw new Error(`Data file not found: ${name}${type ? ` (type: ${type})` : ''}${hint}`)
 }
 
 /**
@@ -159,7 +164,14 @@ export function loadFlow(flowName = 'default') {
   try {
     flowData = structuredClone(loadDataFile(flowName, 'flows'))
   } catch {
-    throw new Error(`Failed to load flow: ${flowName}`)
+    const available = listFlows()
+    const related = available.filter(k =>
+      k.endsWith('/' + flowName) || k.startsWith(flowName + '/')
+    )
+    const hint = related.length > 0
+      ? ` Did you mean: ${related.join(', ')}?`
+      : ''
+    throw new Error(`Failed to load flow: ${flowName}.${hint}`)
   }
 
   // Handle $global: root-level merge from referenced data files
@@ -199,7 +211,14 @@ export const loadScene = loadFlow
 export function loadRecord(recordName) {
   const data = dataIndex.records[recordName]
   if (data == null) {
-    throw new Error(`Record not found: ${recordName}`)
+    const available = Object.keys(dataIndex.records)
+    const related = available.filter(k =>
+      k.endsWith('/' + recordName) || k.startsWith(recordName + '/')
+    )
+    const hint = related.length > 0
+      ? ` Did you mean: ${related.join(', ')}?`
+      : ''
+    throw new Error(`Record not found: ${recordName}.${hint}`)
   }
   if (!Array.isArray(data)) {
     throw new Error(`Record "${recordName}" must be an array, got ${typeof data}`)

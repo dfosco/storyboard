@@ -96,7 +96,24 @@ describe('storyboardDataPlugin', () => {
     )
 
     const plugin = createPlugin()
-    expect(() => plugin.load(RESOLVED_ID)).toThrow(/Duplicate data file/)
+    expect(() => plugin.load(RESOLVED_ID)).toThrow(/Duplicate flow "dup"/)
+  })
+
+  it('duplicate objects show globally-scoped hint', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'data'), { recursive: true })
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Dashboard'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'data', 'user.object.json'),
+      JSON.stringify({ name: 'Global' }),
+    )
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'user.object.json'),
+      JSON.stringify({ name: 'Local' }),
+    )
+
+    const plugin = createPlugin()
+    expect(() => plugin.load(RESOLVED_ID)).toThrow(/Duplicate object "user"/)
+    expect(() => plugin.load(RESOLVED_ID)).toThrow(/globally scoped/)
   })
 
   it('handles JSONC files (with comments)', () => {

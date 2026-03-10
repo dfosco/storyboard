@@ -55,11 +55,17 @@ function buildIndex(root) {
     const absPath = path.resolve(root, relPath)
 
     if (seen[key]) {
+      const hint = parsed.suffix === 'object'
+        ? '  Objects are globally scoped — even inside src/prototypes/ they share a single namespace.\n' +
+          '  Rename one of the files to avoid the collision.'
+        : '  Flows and records are scoped to their prototype directory.\n' +
+          '  If both files are global (outside src/prototypes/), rename one to avoid the collision.'
+
       throw new Error(
-        `[storyboard-data] Duplicate data file: "${key}.json"\n` +
+        `[storyboard-data] Duplicate ${parsed.suffix} "${parsed.name}"\n` +
         `  Found at: ${seen[key]}\n` +
         `  And at:   ${absPath}\n` +
-        `  Every data file name+suffix must be unique across the repo.`
+        hint
       )
     }
 

@@ -231,4 +231,39 @@ export function loadObject(objectName) {
   return resolved
 }
 
+/**
+ * Resolve a flow name within a prototype scope.
+ * Tries the scoped name first ({scope}/{name}), then falls back to the plain name.
+ *
+ * @param {string|null} scope - Prototype name (e.g. "Dashboard"), or null for global-only
+ * @param {string} name - Flow name (e.g. "default" or "Dashboard/signup")
+ * @returns {string} The resolved flow name that exists in the index
+ */
+export function resolveFlowName(scope, name) {
+  if (scope) {
+    const scoped = `${scope}/${name}`
+    if (flowExists(scoped)) return scoped
+  }
+  if (flowExists(name)) return name
+  // Return the scoped name for better error messages even if it doesn't exist
+  return scope ? `${scope}/${name}` : name
+}
+
+/**
+ * Resolve a record name within a prototype scope.
+ * Tries the scoped name first ({scope}/{name}), then falls back to the plain name.
+ *
+ * @param {string|null} scope - Prototype name (e.g. "Dashboard"), or null for global-only
+ * @param {string} name - Record name (e.g. "posts")
+ * @returns {string} The resolved record name that exists in the index
+ */
+export function resolveRecordName(scope, name) {
+  if (scope) {
+    const scoped = `${scope}/${name}`
+    if (dataIndex.records[scoped] != null) return scoped
+  }
+  if (dataIndex.records[name] != null) return name
+  return scope ? `${scope}/${name}` : name
+}
+
 export { deepMerge }

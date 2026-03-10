@@ -10,6 +10,8 @@ export { init } from './loader.js'
 
 // Flow, object & record loading
 export { loadFlow, listFlows, flowExists, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
+// Scoped name resolution
+export { resolveFlowName, resolveRecordName } from './loader.js'
 // Deprecated scene aliases
 export { loadScene, listScenes, sceneExists } from './loader.js'
 

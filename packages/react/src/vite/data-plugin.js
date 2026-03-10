@@ -10,8 +10,12 @@ const GLOB_PATTERN = '**/*.{flow,scene,object,record}.{json,jsonc}'
 
 /**
  * Extract the data name and type suffix from a file path.
- * e.g. "src/data/default.scene.json" → { name: "default", suffix: "scene" }
- *      "anywhere/posts.record.jsonc" → { name: "posts", suffix: "record" }
+ * Flows and records inside src/prototypes/{Name}/ get prefixed with the
+ * prototype name (e.g. "Dashboard/default"). Objects are never prefixed.
+ *
+ * e.g. "src/data/default.flow.json"                → { name: "default",           suffix: "flow" }
+ *      "src/prototypes/Dashboard/default.flow.json" → { name: "Dashboard/default", suffix: "flow" }
+ *      "src/prototypes/Dashboard/helpers.object.json"→ { name: "helpers",           suffix: "object" }
  */
 function parseDataFile(filePath) {
   const base = path.basename(filePath)
@@ -19,7 +23,18 @@ function parseDataFile(filePath) {
   if (!match) return null
   // Normalize .scene → .flow for backward compatibility
   const suffix = match[2] === 'scene' ? 'flow' : match[2]
-  return { name: match[1], suffix, ext: match[3] }
+  let name = match[1]
+
+  // Scope flows and records inside src/prototypes/{Name}/ with a prefix
+  if (suffix !== 'object') {
+    const normalized = filePath.replace(/\\/g, '/')
+    const protoMatch = normalized.match(/(?:^|\/)src\/prototypes\/([^/]+)\//)
+    if (protoMatch) {
+      name = `${protoMatch[1]}/${name}`
+    }
+  }
+
+  return { name, suffix, ext: match[3] }
 }
 
 /**

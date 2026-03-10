@@ -1,11 +1,12 @@
-import { useMemo, useSyncExternalStore } from 'react'
+import { useContext, useMemo, useSyncExternalStore } from 'react'
 import { useParams } from 'react-router-dom'
-import { loadRecord } from '@dfosco/storyboard-core'
+import { loadRecord, resolveRecordName } from '@dfosco/storyboard-core'
 import { deepClone, setByPath } from '@dfosco/storyboard-core'
 import { getAllParams } from '@dfosco/storyboard-core'
 import { isHideMode, getAllShadows } from '@dfosco/storyboard-core'
 import { subscribeToHash, getHashSnapshot } from '@dfosco/storyboard-core'
 import { subscribeToStorage, getStorageSnapshot } from '@dfosco/storyboard-core'
+import { StoryboardContext } from '../StoryboardContext.js'
 
 /**
  * Collect overrides for a record and merge them into the base array.
@@ -91,6 +92,8 @@ function applyRecordOverrides(baseRecords, recordName) {
 export function useRecord(recordName, paramName = 'id') {
   const params = useParams()
   const paramValue = params[paramName]
+  const context = useContext(StoryboardContext)
+  const prototypeName = context?.prototypeName ?? null
 
   // Re-render on hash or localStorage changes so overrides are reactive
   const hashString = useSyncExternalStore(subscribeToHash, getHashSnapshot)
@@ -99,14 +102,15 @@ export function useRecord(recordName, paramName = 'id') {
   return useMemo(() => {
     if (!paramValue) return null
     try {
-      const base = loadRecord(recordName)
-      const merged = applyRecordOverrides(base, recordName)
+      const resolvedName = resolveRecordName(prototypeName, recordName)
+      const base = loadRecord(resolvedName)
+      const merged = applyRecordOverrides(base, resolvedName)
       return merged.find(e => e[paramName] === paramValue) ?? null
     } catch (err) {
       console.error(`[useRecord] ${err.message}`)
       return null
     }
-  }, [recordName, paramName, paramValue, hashString, storageString]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [recordName, paramName, paramValue, prototypeName, hashString, storageString]) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 /**
@@ -121,17 +125,21 @@ export function useRecord(recordName, paramName = 'id') {
  * const allPosts = useRecords('posts')
  */
 export function useRecords(recordName) {
+  const context = useContext(StoryboardContext)
+  const prototypeName = context?.prototypeName ?? null
+
   // Re-render on hash or localStorage changes so overrides are reactive
   const hashString = useSyncExternalStore(subscribeToHash, getHashSnapshot)
   const storageString = useSyncExternalStore(subscribeToStorage, getStorageSnapshot)
 
   return useMemo(() => {
     try {
-      const base = loadRecord(recordName)
-      return applyRecordOverrides(base, recordName)
+      const resolvedName = resolveRecordName(prototypeName, recordName)
+      const base = loadRecord(resolvedName)
+      return applyRecordOverrides(base, resolvedName)
     } catch (err) {
       console.error(`[useRecords] ${err.message}`)
       return []
     }
-  }, [recordName, hashString, storageString]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [recordName, prototypeName, hashString, storageString]) // eslint-disable-line react-hooks/exhaustive-deps
 }

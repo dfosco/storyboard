@@ -1,4 +1,4 @@
-import { init, loadFlow, listFlows, flowExists, loadScene, listScenes, sceneExists, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
+import { init, loadFlow, listFlows, flowExists, loadScene, listScenes, sceneExists, loadRecord, findRecord, loadObject, deepMerge, resolveFlowName, resolveRecordName } from './loader.js'
 
 const makeIndex = () => ({
   flows: {
@@ -311,5 +311,74 @@ describe('loadObject', () => {
 
   it('detects circular $ref and throws', () => {
     expect(() => loadObject('circular-obj-a')).toThrow(/circular/i)
+  })
+})
+
+describe('resolveFlowName', () => {
+  beforeEach(() => {
+    init({
+      flows: {
+        default: { title: 'Global Default' },
+        signup: { title: 'Global Signup' },
+        'Dashboard/default': { title: 'Dashboard Default' },
+        'Dashboard/signup': { title: 'Dashboard Signup' },
+        'Blog/default': { title: 'Blog Default' },
+      },
+      objects: {},
+      records: {},
+    })
+  })
+
+  it('returns scoped name when it exists', () => {
+    expect(resolveFlowName('Dashboard', 'default')).toBe('Dashboard/default')
+    expect(resolveFlowName('Dashboard', 'signup')).toBe('Dashboard/signup')
+  })
+
+  it('falls back to global name when scoped does not exist', () => {
+    expect(resolveFlowName('Blog', 'signup')).toBe('signup')
+  })
+
+  it('returns global name when scope is null', () => {
+    expect(resolveFlowName(null, 'default')).toBe('default')
+    expect(resolveFlowName(null, 'signup')).toBe('signup')
+  })
+
+  it('returns scoped name for error messages when neither exists', () => {
+    expect(resolveFlowName('Dashboard', 'nonexistent')).toBe('Dashboard/nonexistent')
+  })
+
+  it('returns plain name for error messages when scope is null and name does not exist', () => {
+    expect(resolveFlowName(null, 'nonexistent')).toBe('nonexistent')
+  })
+
+  it('handles already-scoped names (explicit cross-prototype)', () => {
+    expect(resolveFlowName('Blog', 'Dashboard/signup')).toBe('Dashboard/signup')
+  })
+})
+
+describe('resolveRecordName', () => {
+  beforeEach(() => {
+    init({
+      flows: {},
+      objects: {},
+      records: {
+        posts: [{ id: '1' }],
+        'Dashboard/metrics': [{ id: 'm1' }],
+        'Dashboard/posts': [{ id: 'd1' }],
+      },
+    })
+  })
+
+  it('returns scoped name when it exists', () => {
+    expect(resolveRecordName('Dashboard', 'metrics')).toBe('Dashboard/metrics')
+    expect(resolveRecordName('Dashboard', 'posts')).toBe('Dashboard/posts')
+  })
+
+  it('falls back to global when scoped does not exist', () => {
+    expect(resolveRecordName('Blog', 'posts')).toBe('posts')
+  })
+
+  it('returns global when scope is null', () => {
+    expect(resolveRecordName(null, 'posts')).toBe('posts')
   })
 })

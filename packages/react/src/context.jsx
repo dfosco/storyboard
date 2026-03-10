@@ -52,15 +52,18 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
   const activeFlowName = useMemo(() => {
     const requested = sceneParam || flowName || sceneName
     if (requested) {
-      // Explicit flow name — resolve with scoping (try Proto/name, then name)
       return resolveFlowName(prototypeName, requested)
     }
-    // Auto-detect: try scoped page flow, then unscoped, then default
+    // 1. Page-specific flow (e.g., Example/Forms)
     const scopedPageFlow = resolveFlowName(prototypeName, pageFlow)
     if (flowExists(scopedPageFlow)) return scopedPageFlow
-    if (flowExists(pageFlow)) return pageFlow
-    // Default: try scoped, then global
-    return resolveFlowName(prototypeName, 'default')
+    // 2. Prototype flow — named after the prototype folder (e.g., Example/example)
+    if (prototypeName) {
+      const protoFlow = resolveFlowName(prototypeName, prototypeName)
+      if (flowExists(protoFlow)) return protoFlow
+    }
+    // 3. Global default
+    return 'default'
   }, [sceneParam, flowName, sceneName, prototypeName, pageFlow])
 
   // Auto-install body class sync (sb-key--value classes on <body>)

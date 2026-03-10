@@ -197,4 +197,65 @@ describe('StoryboardProvider', () => {
     )
     expect(screen.getByTestId('ctx')).toHaveTextContent('Other Scene')
   })
+
+  it('loads prototype flow for sub-pages when no page-specific flow exists', () => {
+    init({
+      flows: {
+        default: { title: 'Global Default' },
+        'Example/example': { title: 'Example Flow' },
+      },
+      objects: {},
+      records: {},
+    })
+
+    // /Example/Forms — no Forms flow exists, should fall back to Example/example
+    mockUseLocation.mockReturnValue({ pathname: '/Example/Forms', search: '', hash: '' })
+
+    render(
+      <StoryboardProvider>
+        <ContextReader path="title" />
+      </StoryboardProvider>,
+    )
+    expect(screen.getByTestId('ctx')).toHaveTextContent('Example Flow')
+  })
+
+  it('page-specific flow takes priority over prototype flow', () => {
+    init({
+      flows: {
+        default: { title: 'Global Default' },
+        'Example/example': { title: 'Example Flow' },
+        'Example/Forms': { title: 'Forms Flow' },
+      },
+      objects: {},
+      records: {},
+    })
+
+    mockUseLocation.mockReturnValue({ pathname: '/Example/Forms', search: '', hash: '' })
+
+    render(
+      <StoryboardProvider>
+        <ContextReader path="title" />
+      </StoryboardProvider>,
+    )
+    expect(screen.getByTestId('ctx')).toHaveTextContent('Forms Flow')
+  })
+
+  it('falls to global default when no prototype flow exists', () => {
+    init({
+      flows: {
+        default: { title: 'Global Default' },
+      },
+      objects: {},
+      records: {},
+    })
+
+    mockUseLocation.mockReturnValue({ pathname: '/NoProto/SomePage', search: '', hash: '' })
+
+    render(
+      <StoryboardProvider>
+        <ContextReader path="title" />
+      </StoryboardProvider>,
+    )
+    expect(screen.getByTestId('ctx')).toHaveTextContent('Global Default')
+  })
 })

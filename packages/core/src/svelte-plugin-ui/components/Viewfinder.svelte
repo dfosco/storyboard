@@ -3,13 +3,13 @@
 
   Full-page component that lists prototypes as expandable groups,
   each showing its flows. Global flows (not belonging to any prototype)
-  appear in a separate section.
+  appear as an "Other flows" group.
 
   Mounted via mountViewfinder() from the viewfinder plugin entry point.
 -->
 
 <script lang="ts">
-  import { hash, resolveFlowRoute, getFlowMeta, buildPrototypeIndex } from '../../viewfinder.js'
+  import { buildPrototypeIndex } from '../../viewfinder.js'
 
   interface Props {
     title?: string
@@ -37,17 +37,40 @@
       : allGlobalFlows
   )
 
+  // Merge global flows into the prototype list as "Other flows"
+  const allGroups = $derived(
+    globalFlows.length > 0
+      ? [
+          ...prototypes,
+          {
+            name: 'Other flows',
+            dirName: '__global__',
+            description: null,
+            author: null,
+            icon: null,
+            team: null,
+            tags: null,
+            flows: globalFlows,
+          },
+        ]
+      : prototypes
+  )
+
   const totalFlows = $derived(
-    prototypes.reduce((sum: number, p: any) => sum + p.flows.length, 0) + globalFlows.length
+    allGroups.reduce((sum: number, p: any) => sum + p.flows.length, 0)
   )
 
   // Expanded state — all prototypes start expanded
   let expanded: Record<string, boolean> = $state(
-    Object.fromEntries(prototypes.map((p: any) => [p.dirName, true]))
+    Object.fromEntries(allGroups.map((p: any) => [p.dirName, true]))
   )
 
   function togglePrototype(dirName: string) {
     expanded[dirName] = !expanded[dirName]
+  }
+
+  function protoRoute(dirName: string): string {
+    return `/${dirName}`
   }
 
   function formatName(name: string): string {
@@ -72,7 +95,7 @@
       const w = 20 + (s * (i + 3)) % 80
       const ht = 8 + (s * (i + 7)) % 40
       const opacity = 0.06 + ((s * (i + 2)) % 20) / 100
-      const fill = i % 3 === 0 ? 'var(--vf-accent)' : i % 3 === 1 ? 'var(--vf-fg)' : 'var(--vf-muted)'
+      const fill = i % 3 === 0 ? 'var(--placeholder-accent)' : i % 3 === 1 ? 'var(--placeholder-fg)' : 'var(--placeholder-muted)'
       rects += `<rect x="${x}" y="${y}" width="${w}" height="${ht}" rx="2" fill="${fill}" opacity="${opacity}" />`
     }
 
@@ -80,15 +103,15 @@
     for (let i = 0; i < 6; i++) {
       const s = h * (i + 5)
       const y = 10 + (s % 180)
-      lines += `<line x1="0" y1="${y}" x2="320" y2="${y}" stroke="var(--vf-grid)" stroke-width="0.5" opacity="0.4" />`
+      lines += `<line x1="0" y1="${y}" x2="320" y2="${y}" stroke="var(--placeholder-grid)" stroke-width="0.5" opacity="0.4" />`
     }
     for (let i = 0; i < 8; i++) {
       const s = h * (i + 9)
       const x = 10 + (s % 300)
-      lines += `<line x1="${x}" y1="0" x2="${x}" y2="200" stroke="var(--vf-grid)" stroke-width="0.5" opacity="0.3" />`
+      lines += `<line x1="${x}" y1="0" x2="${x}" y2="200" stroke="var(--placeholder-grid)" stroke-width="0.5" opacity="0.3" />`
     }
 
-    return `<svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="320" height="200" fill="var(--vf-bg-inset)" />${lines}${rects}</svg>`
+    return `<svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="320" height="200" fill="var(--placeholder-bg)" />${lines}${rects}</svg>`
   }
 
   // Branch switching
@@ -130,22 +153,22 @@
   }
 </script>
 
-<div class="sb-vf">
-  <header class="sb-vf-header">
-    <div class="sb-vf-header-top">
+<div class="container">
+  <header class="header">
+    <div class="headerTop">
       <div>
-        <h1 class="sb-vf-title">{title}</h1>
+        <h1 class="title">{title}</h1>
         {#if subtitle}
-          <p class="sb-vf-subtitle">{subtitle}</p>
+          <p class="subtitle">{subtitle}</p>
         {/if}
       </div>
       {#if branches && branches.length > 0}
-        <div class="sb-vf-branch">
-          <svg class="sb-vf-branch-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <div class="branchDropdown">
+          <svg class="branchIcon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
             <path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.492 2.492 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z" />
           </svg>
           <select
-            class="sb-vf-branch-select"
+            class="branchSelect"
             onchange={handleBranchChange}
             aria-label="Switch branch"
           >
@@ -157,125 +180,127 @@
         </div>
       {/if}
     </div>
-    <p class="sb-vf-count">
-      {prototypes.length} prototype{prototypes.length !== 1 ? 's' : ''} · {totalFlows} flow{totalFlows !== 1 ? 's' : ''}
+    <p class="sceneCount">
+      {allGroups.length} prototype{allGroups.length !== 1 ? 's' : ''} · {totalFlows} flow{totalFlows !== 1 ? 's' : ''}
     </p>
   </header>
 
-  {#if prototypes.length === 0 && globalFlows.length === 0}
-    <p class="sb-vf-empty">No flows found. Add a <code>*.flow.json</code> file to get started.</p>
+  {#if allGroups.length === 0}
+    <p class="empty">No flows found. Add a <code>*.flow.json</code> file to get started.</p>
   {:else}
-    <!-- Prototype groups -->
-    {#each prototypes as proto (proto.dirName)}
-      <section class="sb-vf-proto">
-        <button
-          class="sb-vf-proto-header"
-          onclick={() => togglePrototype(proto.dirName)}
-          aria-expanded={expanded[proto.dirName]}
-        >
-          <span class="sb-vf-proto-chevron" class:sb-vf-proto-chevron-open={expanded[proto.dirName]}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
-            </svg>
-          </span>
-          <span class="sb-vf-proto-info">
-            <span class="sb-vf-proto-name">
-              {#if proto.icon}<span class="sb-vf-proto-icon">{proto.icon}</span>{/if}
-              {proto.name}
-            </span>
-            {#if proto.description}
-              <span class="sb-vf-proto-desc">{proto.description}</span>
-            {/if}
-          </span>
-          <span class="sb-vf-proto-meta">
-            {#if proto.author}
-              {@const authors = Array.isArray(proto.author) ? proto.author : [proto.author]}
-              <span class="sb-vf-avatars">
-                {#each authors as a (a)}
-                  <img
-                    src="https://github.com/{a}.png?size=32"
-                    alt={a}
-                    class="sb-vf-avatar"
-                  />
-                {/each}
+    <div class="list">
+      {#each allGroups as proto (proto.dirName)}
+        <section class="protoGroup">
+          {#if proto.flows.length > 0}
+            <!-- Expandable prototype with flows -->
+            <button
+              class="protoHeader"
+              onclick={() => togglePrototype(proto.dirName)}
+              aria-expanded={expanded[proto.dirName]}
+            >
+              <span class="protoChevron" class:protoChevronOpen={expanded[proto.dirName]}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                </svg>
               </span>
-            {/if}
-            {#if proto.tags}
-              <span class="sb-vf-tags">
-                {#each proto.tags as tag (tag)}
-                  <span class="sb-vf-tag">{tag}</span>
-                {/each}
-              </span>
-            {/if}
-            <span class="sb-vf-flow-count">
-              {proto.flows.length} flow{proto.flows.length !== 1 ? 's' : ''}
-            </span>
-          </span>
-        </button>
-
-        {#if expanded[proto.dirName]}
-          <div class="sb-vf-flow-list">
-            {#each proto.flows as flow (flow.key)}
-              <a href={flow.route} class="sb-vf-flow-item">
-                {#if showThumbnails}
-                  <div class="sb-vf-thumb">
-                    {@html placeholderSvg(flow.key)}
-                  </div>
+              <span class="protoInfo">
+                <span class="protoName">
+                  {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
+                  {proto.name}
+                </span>
+                {#if proto.description}
+                  <span class="protoDesc">{proto.description}</span>
                 {/if}
-                <div class="sb-vf-flow-body">
-                  <span class="sb-vf-flow-name">{flow.meta?.title || formatName(flow.name)}</span>
-                  {#if flow.meta?.author}
-                    {@const authors = Array.isArray(flow.meta.author) ? flow.meta.author : [flow.meta.author]}
-                    <span class="sb-vf-flow-authors">
-                      {#each authors as a (a)}
-                        <img src="https://github.com/{a}.png?size=32" alt={a} class="sb-vf-avatar sb-vf-avatar-sm" />
-                      {/each}
-                      <span class="sb-vf-author-name">{authors.join(', ')}</span>
-                    </span>
-                  {/if}
-                </div>
-              </a>
-            {/each}
-          </div>
-        {/if}
-      </section>
-    {/each}
-
-    <!-- Global flows -->
-    {#if globalFlows.length > 0}
-      <section class="sb-vf-proto sb-vf-global">
-        <div class="sb-vf-section-label">Global Flows</div>
-        <div class="sb-vf-flow-list">
-          {#each globalFlows as flow (flow.key)}
-            <a href={flow.route} class="sb-vf-flow-item">
-              {#if showThumbnails}
-                <div class="sb-vf-thumb">
-                  {@html placeholderSvg(flow.key)}
-                </div>
-              {/if}
-              <div class="sb-vf-flow-body">
-                <span class="sb-vf-flow-name">{flow.meta?.title || formatName(flow.name)}</span>
-                {#if flow.meta?.author}
-                  {@const authors = Array.isArray(flow.meta.author) ? flow.meta.author : [flow.meta.author]}
-                  <span class="sb-vf-flow-authors">
+              </span>
+              <span class="protoMeta">
+                {#if proto.author}
+                  {@const authors = Array.isArray(proto.author) ? proto.author : [proto.author]}
+                  <span class="authorAvatars">
                     {#each authors as a (a)}
-                      <img src="https://github.com/{a}.png?size=32" alt={a} class="sb-vf-avatar sb-vf-avatar-sm" />
+                      <img
+                        src="https://github.com/{a}.png?size=32"
+                        alt={a}
+                        class="authorAvatar"
+                      />
                     {/each}
-                    <span class="sb-vf-author-name">{authors.join(', ')}</span>
                   </span>
                 {/if}
-              </div>
+                {#if proto.tags}
+                  <span class="tags">
+                    {#each proto.tags as tag (tag)}
+                      <span class="tag">{tag}</span>
+                    {/each}
+                  </span>
+                {/if}
+                <span class="flowCount">
+                  {proto.flows.length} flow{proto.flows.length !== 1 ? 's' : ''}
+                </span>
+              </span>
+            </button>
+          {:else}
+            <!-- Prototype with no flows — navigates directly -->
+            <a
+              class="protoHeader protoHeaderLink"
+              href={protoRoute(proto.dirName)}
+            >
+              <span class="protoInfo">
+                <span class="protoName">
+                  {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
+                  {proto.name}
+                </span>
+                {#if proto.description}
+                  <span class="protoDesc">{proto.description}</span>
+                {/if}
+              </span>
+              <span class="protoMeta">
+                {#if proto.author}
+                  {@const authors = Array.isArray(proto.author) ? proto.author : [proto.author]}
+                  <span class="authorAvatars">
+                    {#each authors as a (a)}
+                      <img
+                        src="https://github.com/{a}.png?size=32"
+                        alt={a}
+                        class="authorAvatar"
+                      />
+                    {/each}
+                  </span>
+                {/if}
+                {#if proto.tags}
+                  <span class="tags">
+                    {#each proto.tags as tag (tag)}
+                      <span class="tag">{tag}</span>
+                    {/each}
+                  </span>
+                {/if}
+              </span>
             </a>
-          {/each}
-        </div>
-      </section>
-    {/if}
+          {/if}
+
+          {#if expanded[proto.dirName]}
+            <div class="flowList">
+              {#each proto.flows as flow (flow.key)}
+                <a href={flow.route} class="listItem">
+                  {#if showThumbnails}
+                    <div class="thumbnail">
+                      {@html placeholderSvg(flow.key)}
+                    </div>
+                  {/if}
+                  <div class="cardBody">
+                    <p class="sceneName">{flow.meta?.title || formatName(flow.name)}</p>
+                  </div>
+                </a>
+              {/each}
+            </div>
+          {/if}
+        </section>
+      {/each}
+    </div>
   {/if}
 </div>
 
 <style>
   /* ── Layout ─────────────────────────────────────────── */
-  .sb-vf {
+  .container {
     min-height: 100vh;
     background-color: var(--bgColor-default, #0d1117);
     color: var(--fgColor-default, #e6edf3);
@@ -284,17 +309,17 @@
   }
 
   /* ── Header ─────────────────────────────────────────── */
-  .sb-vf-header {
+  .header {
     max-width: 720px;
     margin: 0 auto 64px;
   }
-  .sb-vf-header-top {
+  .headerTop {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     gap: 16px;
   }
-  .sb-vf-title {
+  .title {
     font-size: 72px;
     font-weight: 400;
     margin: 0 0 12px;
@@ -302,13 +327,13 @@
     letter-spacing: -0.03em;
     line-height: 1;
   }
-  .sb-vf-subtitle {
+  .subtitle {
     font-size: 15px;
     color: var(--fgColor-muted, #848d97);
     margin: 4px 0 0;
     letter-spacing: 0.01em;
   }
-  .sb-vf-count {
+  .sceneCount {
     font-size: 13px;
     color: var(--fgColor-muted, #848d97);
     margin: 16px 0 0;
@@ -316,20 +341,21 @@
   }
 
   /* ── Branch switcher ────────────────────────────────── */
-  .sb-vf-branch {
+  .branchDropdown {
     display: flex;
     align-items: center;
+    gap: 0;
     flex-shrink: 0;
     position: relative;
   }
-  .sb-vf-branch-icon {
+  .branchIcon {
     position: absolute;
     left: 10px;
     color: var(--fgColor-muted, #848d97);
     pointer-events: none;
     z-index: 1;
   }
-  .sb-vf-branch-select {
+  .branchSelect {
     appearance: none;
     background-color: transparent;
     color: var(--fgColor-default, #e6edf3);
@@ -348,23 +374,32 @@
     overflow: hidden;
     transition: border-color 0.15s ease;
   }
-  .sb-vf-branch-select:hover {
+  .branchSelect:hover {
     border-color: var(--fgColor-muted, #848d97);
   }
-  .sb-vf-branch-select:focus-visible {
+  .branchSelect:focus-visible {
     outline: 2px solid var(--borderColor-accent-emphasis, #1f6feb);
     outline-offset: -1px;
   }
 
-  /* ── Prototype group ────────────────────────────────── */
-  .sb-vf-proto {
+  /* ── List ────────────────────────────────────────────── */
+  .list {
+    display: flex;
+    flex-direction: column;
     max-width: 720px;
-    margin: 0 auto 8px;
+    margin: 0 auto;
+    gap: 8px;
   }
-  .sb-vf-proto-header {
+
+  /* ── Prototype group ────────────────────────────────── */
+  .protoGroup {
+    display: flex;
+    flex-direction: column;
+  }
+  .protoHeader {
     appearance: none;
     border: 1px solid var(--borderColor-default, #30363d);
-    border-radius: 12px;
+    border-radius: 8px;
     background: var(--bgColor-muted, #161b22);
     color: inherit;
     width: 100%;
@@ -374,13 +409,20 @@
     padding: 16px 20px;
     cursor: pointer;
     text-align: left;
-    transition: border-color 0.15s ease, background 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
-  .sb-vf-proto-header:hover {
+  .protoHeader:hover {
     border-color: var(--borderColor-accent-emphasis, #1f6feb);
-    background: var(--bgColor-neutral-muted, rgba(110, 118, 129, 0.04));
+    box-shadow: 0 0 0 1px var(--borderColor-accent-emphasis, #1f6feb);
   }
-  .sb-vf-proto-chevron {
+  .protoHeaderLink {
+    text-decoration: none;
+    color: inherit;
+  }
+  .protoHeaderLink:hover {
+    text-decoration: none !important;
+  }
+  .protoChevron {
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -388,81 +430,76 @@
     transition: transform 0.15s ease;
     transform: rotate(0deg);
   }
-  .sb-vf-proto-chevron-open {
+  .protoChevronOpen {
     transform: rotate(90deg);
   }
-  .sb-vf-proto-info {
+  .protoInfo {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 2px;
     min-width: 0;
   }
-  .sb-vf-proto-name {
-    font-size: 20px;
-    font-weight: 500;
+  .protoName {
+    font-size: 28px;
+    font-weight: 400;
     color: var(--fgColor-default, #e6edf3);
-    letter-spacing: -0.01em;
-    line-height: 1.3;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
     display: flex;
     align-items: center;
     gap: 8px;
   }
-  .sb-vf-proto-icon {
-    font-size: 18px;
+  .protoIcon {
+    font-size: 24px;
   }
-  .sb-vf-proto-desc {
+  .protoDesc {
     font-size: 13px;
     color: var(--fgColor-muted, #848d97);
     line-height: 1.4;
   }
-  .sb-vf-proto-meta {
+  .protoMeta {
     display: flex;
     align-items: center;
     gap: 12px;
     flex-shrink: 0;
   }
-  .sb-vf-flow-count {
+  .flowCount {
     font-size: 12px;
     color: var(--fgColor-muted, #848d97);
     white-space: nowrap;
   }
 
-  /* ── Avatars ────────────────────────────────────────── */
-  .sb-vf-avatars {
+  /* ── Author avatars ─────────────────────────────────── */
+  .authorAvatars {
     display: flex;
     flex-direction: row;
   }
-  .sb-vf-avatars:hover .sb-vf-avatar {
+  .authorAvatars:hover .authorAvatar {
     margin-left: 2px;
   }
-  .sb-vf-avatars:hover .sb-vf-avatar:first-child {
+  .authorAvatars:hover .authorAvatar:first-child {
     margin-left: 0;
   }
-  .sb-vf-avatar {
-    width: 22px;
-    height: 22px;
+  .authorAvatar {
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     margin-left: -6px;
     transition: margin-left 0.15s ease;
-    outline: 2px solid var(--bgColor-muted, #161b22);
+    outline: 2px solid var(--bgColor-default, #0d1117);
     position: relative;
   }
-  .sb-vf-avatar:first-child {
+  .authorAvatar:first-child {
     margin-left: 0;
-  }
-  .sb-vf-avatar-sm {
-    width: 18px;
-    height: 18px;
-    outline-color: var(--bgColor-default, #0d1117);
   }
 
   /* ── Tags ───────────────────────────────────────────── */
-  .sb-vf-tags {
+  .tags {
     display: flex;
     gap: 4px;
   }
-  .sb-vf-tag {
+  .tag {
     font-size: 11px;
     padding: 2px 8px;
     border-radius: 999px;
@@ -471,83 +508,59 @@
     white-space: nowrap;
   }
 
-  /* ── Flow list (inside prototype) ───────────────────── */
-  .sb-vf-flow-list {
-    padding: 4px 0 0 28px;
+  /* ── Flow items (inside prototype) ──────────────────── */
+  .flowList {
+    padding: 0 0 0 28px;
     display: flex;
     flex-direction: column;
   }
-  .sb-vf-flow-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    border-radius: 8px;
+  .listItem {
+    display: block;
+    padding: 8px 0;
     text-decoration: none;
     color: inherit;
-    transition: background 0.12s ease;
   }
-  .sb-vf-flow-item:hover {
-    background: var(--bgColor-neutral-muted, rgba(110, 118, 129, 0.06));
+  .listItem:hover {
     text-decoration: none !important;
   }
-  .sb-vf-flow-body {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
+  .cardBody {
+    padding: 12px 16px;
   }
-  .sb-vf-flow-name {
-    font-size: 16px;
+  .cardBody:hover {
+    background-color: var(--bgColor-muted, #161b22);
+    border-radius: 8px;
+  }
+  .sceneName {
+    font-size: 28px;
     font-weight: 400;
     color: var(--fgColor-default, #e6edf3);
-    letter-spacing: -0.01em;
-  }
-  .sb-vf-flow-authors {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .sb-vf-author-name {
-    font-size: 12px;
-    color: var(--fgColor-muted, #848d97);
+    margin: 0;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    transition: font-style 0.15s ease;
   }
 
   /* ── Thumbnail ──────────────────────────────────────── */
-  .sb-vf-thumb {
-    width: 100px;
+  .thumbnail {
     aspect-ratio: 16 / 10;
-    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     overflow: hidden;
-    flex-shrink: 0;
     background: var(--bgColor-inset, #010409);
-    --vf-bg-inset: var(--bgColor-inset, #010409);
-    --vf-grid: var(--borderColor-default, #30363d);
-    --vf-accent: var(--fgColor-accent, #58a6ff);
-    --vf-fg: var(--fgColor-default, #c9d1d9);
-    --vf-muted: var(--fgColor-muted, #484f58);
+    --placeholder-bg: var(--bgColor-inset, #010409);
+    --placeholder-grid: var(--borderColor-default, #30363d);
+    --placeholder-accent: var(--fgColor-accent, #58a6ff);
+    --placeholder-fg: var(--fgColor-default, #c9d1d9);
+    --placeholder-muted: var(--fgColor-muted, #484f58);
   }
-  .sb-vf-thumb :global(svg) {
+  .thumbnail :global(svg) {
     width: 100%;
     height: 100%;
-    display: block;
-  }
-
-  /* ── Global section ─────────────────────────────────── */
-  .sb-vf-global {
-    margin-top: 32px;
-  }
-  .sb-vf-section-label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--fgColor-muted, #848d97);
-    padding: 0 0 12px;
   }
 
   /* ── Empty state ────────────────────────────────────── */
-  .sb-vf-empty {
+  .empty {
     text-align: center;
     padding: 80px 24px;
     color: var(--fgColor-muted, #848d97);

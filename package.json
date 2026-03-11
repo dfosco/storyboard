@@ -19,8 +19,8 @@
         "test:core": "vitest run packages/core",
         "test:react": "vitest run packages/react",
         "release": "./scripts/release.sh",
-        "release:beta": "./scripts/release.sh --beta",
-        "release:alpha": "./scripts/release.sh --alpha",
+        "release:beta": "PRERELEASE_TAG=beta ./scripts/release.sh",
+        "release:alpha": "PRERELEASE_TAG=alpha ./scripts/release.sh",
         "test:svelte": "vitest run --config packages/svelte-ui/vitest.config.ts"
     },
     "dependencies": {

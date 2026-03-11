@@ -5,11 +5,18 @@ set -euo pipefail
 # Runs lint + tests + build before creating a versioned release.
 #
 # Usage:
-#   ./scripts/release.sh            # stable release
-#   ./scripts/release.sh --beta     # beta prerelease
-#   ./scripts/release.sh --alpha    # alpha prerelease
+#   npm run release              # stable release
+#   npm run release:beta         # beta prerelease
+#   npm run release:alpha        # alpha prerelease
+#
+# Direct invocation also works:
+#   ./scripts/release.sh --beta
+#   ./scripts/release.sh --alpha
+#
+# Note: "npm run release --beta" does NOT work (npm eats the flag).
+# Always use "npm run release:beta" instead.
 
-PRE_TAG=""
+PRE_TAG="${PRERELEASE_TAG:-}"
 
 for arg in "$@"; do
   case "$arg" in
@@ -17,7 +24,7 @@ for arg in "$@"; do
     --alpha) PRE_TAG="alpha" ;;
     *)
       echo "❌ Unknown argument: $arg"
-      echo "Usage: ./scripts/release.sh [--beta|--alpha]"
+      echo "Usage: npm run release:beta | npm run release:alpha | npm run release"
       exit 1
       ;;
   esac
@@ -25,8 +32,11 @@ done
 
 if [ -n "$PRE_TAG" ]; then
   echo "🏷️  Prerelease mode: $PRE_TAG"
+else
+  echo "📦 Stable release"
 fi
 
+echo ""
 echo "🔍 Running lint..."
 npm run lint
 
@@ -46,15 +56,53 @@ echo "📝 Creating changeset..."
 npx changeset
 
 echo "📦 Bumping versions..."
-npx changeset version
+npm run version
+
+# Read the version that was just set
+VERSION=$(node -p "require('./packages/core/package.json').version")
+
+# Sanity check: prerelease versions must contain the tag
+if [ -n "$PRE_TAG" ] && [[ "$VERSION" != *"-${PRE_TAG}."* ]]; then
+  echo ""
+  echo "❌ ERROR: Expected a ${PRE_TAG} prerelease version but got ${VERSION}"
+  echo "   This usually means 'changeset pre enter' failed silently."
+  echo "   Aborting — no packages have been published."
+  echo ""
+  echo "   To fix: run 'npx changeset pre exit' and try again."
+  exit 1
+fi
+
+# Confirm before publishing
+echo ""
+echo "┌──────────────────────────────────────────┐"
+echo "│  About to publish version: ${VERSION}"
+if [ -n "$PRE_TAG" ]; then
+  echo "│  npm dist-tag: ${PRE_TAG}"
+else
+  echo "│  npm dist-tag: latest"
+fi
+echo "└──────────────────────────────────────────┘"
+echo ""
+read -r -p "Proceed? (y/N) " confirm
+if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+  echo "❌ Aborted."
+  # Roll back pre mode if we entered it
+  if [ -n "$PRE_TAG" ]; then
+    npx changeset pre exit 2>/dev/null || true
+  fi
+  exit 1
+fi
 
 echo "📌 Committing version bump..."
 git add -A
 if [ -n "$PRE_TAG" ]; then
-  git commit -m "chore: version packages ($PRE_TAG)"
+  git commit -m "chore: version packages (${PRE_TAG})"
 else
   git commit -m "chore: version packages"
 fi
+
+echo "🏷️  Creating git tags..."
+npx changeset tag
 
 echo "🚀 Publishing to npm..."
 if [ "${CI:-}" = "true" ]; then
@@ -90,7 +138,6 @@ git push --follow-tags
 
 echo "📢 Creating GitHub Release..."
 
-VERSION=$(node -p "require('./packages/core/package.json').version")
 TAG="@dfosco/storyboard-core@${VERSION}"
 CHANGELOG="packages/core/CHANGELOG.md"
 

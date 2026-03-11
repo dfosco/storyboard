@@ -189,8 +189,20 @@ Once the version PR is merged, the same action runs `changeset publish`, which p
 Use the release script which runs lint, tests, build, publishes to npm, and creates GitHub Releases:
 
 ```bash
-./scripts/release.sh
+npm run release              # stable release
+npm run release:beta         # beta prerelease (e.g. 1.25.0-beta.0)
+npm run release:alpha        # alpha prerelease
 ```
+
+> ⚠️ **Do not use `npm run release --beta`** — npm swallows the flag. Always use `npm run release:beta`.
+
+The script will:
+1. Run lint, tests, and build
+2. Enter prerelease mode (if beta/alpha)
+3. Create a changeset interactively
+4. Bump versions
+5. Show a confirmation prompt before publishing
+6. Publish to npm, create git tags, push, and create a GitHub Release
 
 For local runs, the script always uses workspace `npm publish` (web/passkey auth compatible).
 
@@ -198,19 +210,14 @@ Or run each step manually:
 
 ```bash
 npm login
-npx changeset version   # bump versions locally
+npm run version             # bump versions + sync root
+npx changeset tag           # create git tags
 git add -A && git commit -m "chore: version packages"
 npm publish --workspace @dfosco/storyboard-core --access public
 npm publish --workspace @dfosco/storyboard-react --access public
 npm publish --workspace @dfosco/storyboard-react-primer --access public
 npm publish --workspace @dfosco/storyboard-react-reshaped --access public
 git push --follow-tags
-
-# Create GitHub Releases from the new tags (requires gh CLI)
-for pkg in core react react-primer react-reshaped; do
-  TAG="@dfosco/storyboard-${pkg}@$(node -p "require('./packages/${pkg}/package.json').version")"
-  gh release create "$TAG" --title "$TAG" --generate-notes
-done
 ```
 
 `changeset publish` still works for CI token/OIDC flows, but local passkey-only npm accounts should use `npm publish` because changesets does not support npm's web/passkey OTP flow yet.
@@ -224,11 +231,11 @@ The release script supports publishing prerelease versions using changesets' bui
 ### Quick start
 
 ```bash
-npm run release:beta     # publish a beta prerelease (e.g. 1.3.0-beta.0)
-npm run release:alpha    # publish an alpha prerelease (e.g. 1.3.0-alpha.0)
+npm run release:beta     # publish a beta prerelease (e.g. 1.25.0-beta.0)
+npm run release:alpha    # publish an alpha prerelease (e.g. 1.25.0-alpha.0)
 ```
 
-Or pass the flag directly:
+Or invoke the script directly:
 
 ```bash
 ./scripts/release.sh --beta

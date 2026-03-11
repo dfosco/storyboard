@@ -18,7 +18,9 @@
         "test:watch": "vitest",
         "test:core": "vitest run packages/core",
         "test:react": "vitest run packages/react",
-        "release": "./scripts/release.sh"
+        "release": "./scripts/release.sh",
+        "release:beta": "./scripts/release.sh --beta",
+        "release:alpha": "./scripts/release.sh --alpha"
     },
     "dependencies": {
         "@generouted/react-router": "^1.19.11",

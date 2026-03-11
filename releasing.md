@@ -217,6 +217,54 @@ done
 
 ---
 
+## Prerelease versions (alpha / beta)
+
+The release script supports publishing prerelease versions using changesets' built-in prerelease mode.
+
+### Quick start
+
+```bash
+npm run release:beta     # publish a beta prerelease (e.g. 1.3.0-beta.0)
+npm run release:alpha    # publish an alpha prerelease (e.g. 1.3.0-alpha.0)
+```
+
+Or pass the flag directly:
+
+```bash
+./scripts/release.sh --beta
+./scripts/release.sh --alpha
+```
+
+### What happens
+
+1. The script enters changesets prerelease mode (`changeset pre enter <tag>`)
+2. You create a changeset and version as usual
+3. Versions are suffixed: `X.Y.Z-beta.0`, then `-beta.1`, `-beta.2`, etc.
+4. npm packages are published under the prerelease dist-tag (e.g. `npm install @dfosco/storyboard-core@beta`)
+5. The GitHub Release is marked as a prerelease
+6. Prerelease mode is exited automatically after publishing
+
+### Branch strategy (recommended)
+
+> **Do prereleases from a dedicated branch, not `main`.**
+
+If you enter prerelease mode on `main`, you cannot ship a stable hotfix until you exit pre mode. The recommended workflow:
+
+1. Create a branch for the prerelease cycle (e.g. `next`, `beta`, or a feature branch)
+2. Run `npm run release:beta` from that branch
+3. When the prerelease is ready for stable, merge to `main` and run a normal `npm run release`
+
+### Installing a prerelease
+
+```bash
+npm install @dfosco/storyboard-core@beta
+npm install @dfosco/storyboard-react@beta
+```
+
+Prerelease versions are never tagged as `latest` on npm, so they won't affect users installing without an explicit tag.
+
+---
+
 ## Installing @storyboard in a new project
 
 ### Minimal (React + Primer)

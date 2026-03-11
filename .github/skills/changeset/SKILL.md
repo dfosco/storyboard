@@ -131,3 +131,39 @@ npm view @dfosco/storyboard-core version
 - The `.changeset/config.json` has `"privatePackages": { "version": true, "tag": true }` — this is required because the package is `"private": true` and changesets skips private packages by default
 - All four `@dfosco/storyboard-*` packages use **fixed versioning** — every release bumps them to the same version regardless of which packages changed
 - For npm publishing to work, you need an npm token configured either locally (`npm login`) or as the `NPM_TOKEN` GitHub Actions secret (see `releasing.md`)
+
+---
+
+## Prerelease Workflow (alpha / beta)
+
+Changesets supports prerelease versions natively. The release script handles this automatically.
+
+### Usage
+
+```bash
+npm run release:beta     # beta prerelease (e.g. 1.3.0-beta.0)
+npm run release:alpha    # alpha prerelease (e.g. 1.3.0-alpha.0)
+```
+
+The script enters changesets prerelease mode, runs the normal workflow, and exits prerelease mode after publishing. Subsequent prereleases increment the suffix: `-beta.1`, `-beta.2`, etc.
+
+### Manual prerelease steps
+
+If running manually instead of using the script:
+
+```bash
+npx changeset pre enter beta    # enter prerelease mode
+npx changeset                    # create changeset as usual
+npx changeset version            # versions become X.Y.Z-beta.0
+git add -A && git commit -m "chore: version packages (beta)"
+npm publish --workspace @dfosco/storyboard-core --access public --tag beta
+# ... publish other workspaces with --tag beta
+npx changeset pre exit           # exit prerelease mode
+git push --follow-tags
+```
+
+**Important:** Always pass `--tag beta` (or `--tag alpha`) to `npm publish` so the prerelease doesn't become the `latest` tag on npm.
+
+### Branch strategy
+
+Do prereleases from a **dedicated branch** (not `main`). If prerelease mode is active on `main`, stable hotfixes are blocked until you exit it. See `releasing.md` for details.

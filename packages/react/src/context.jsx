@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useParams, useLocation } from 'react-router-dom'
 // Side-effect import: seeds the core data index via init()
 import 'virtual:storyboard-data-index'
-import { loadFlow, flowExists, findRecord, deepMerge, setFlowClass, installBodyClassSync, resolveFlowName, resolveRecordName } from '@dfosco/storyboard-core'
+import { loadFlow, flowExists, findRecord, deepMerge, setFlowClass, installBodyClassSync, resolveFlowName, resolveRecordName, isModesEnabled } from '@dfosco/storyboard-core'
 import { StoryboardContext } from './StoryboardContext.js'
 
 export { StoryboardContext }
@@ -68,6 +68,22 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
 
   // Auto-install body class sync (sb-key--value classes on <body>)
   useEffect(() => installBodyClassSync(), [])
+
+  // Mount design modes UI when enabled in storyboard.config.json
+  useEffect(() => {
+    if (!isModesEnabled()) return
+
+    let cleanup
+    import('@dfosco/storyboard-core/svelte-plugin-ui/design-modes')
+      .then(({ mountDesignModesUI }) => {
+        cleanup = mountDesignModesUI()
+      })
+      .catch(() => {
+        // Svelte UI not available — degrade gracefully
+      })
+
+    return () => cleanup?.()
+  }, [])
 
   const { data, error } = useMemo(() => {
     try {

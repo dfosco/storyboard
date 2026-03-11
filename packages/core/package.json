@@ -9,10 +9,12 @@
     "directory": "packages/core"
   },
   "files": [
-    "src"
+    "src",
+    "modes.config.json"
   ],
   "exports": {
     ".": "./src/index.js",
+    "./modes.config.json": "./modes.config.json",
     "./vite/server": "./src/vite/server-plugin.js",
     "./comments": "./src/comments/index.js",
     "./comments/ui/comments.css": "./src/comments/ui/comments.css",

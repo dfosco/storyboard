@@ -29,19 +29,19 @@
     hideDefaultFlow = false,
   }: Props = $props()
 
-  const { prototypes, globalFlows: allGlobalFlows } = buildPrototypeIndex(knownRoutes)
+  const prototypeIndex = $derived(buildPrototypeIndex(knownRoutes))
 
   const globalFlows = $derived(
     hideDefaultFlow
-      ? allGlobalFlows.filter((f: any) => f.key !== 'default')
-      : allGlobalFlows
+      ? prototypeIndex.globalFlows.filter((f: any) => f.key !== 'default')
+      : prototypeIndex.globalFlows
   )
 
   // Merge global flows into the prototype list as "Other flows"
   const allGroups = $derived(
     globalFlows.length > 0
       ? [
-          ...prototypes,
+          ...prototypeIndex.prototypes,
           {
             name: 'Other flows',
             dirName: '__global__',
@@ -54,7 +54,7 @@
             flows: globalFlows,
           },
         ]
-      : prototypes
+      : prototypeIndex.prototypes
   )
 
   const totalFlows = $derived(
@@ -62,9 +62,11 @@
   )
 
   // Expanded state — all prototypes start expanded
-  let expanded: Record<string, boolean> = $state(
-    Object.fromEntries(allGroups.map((p: any) => [p.dirName, true]))
-  )
+  let expanded: Record<string, boolean> = $state({})
+
+  function isExpanded(dirName: string): boolean {
+    return expanded[dirName] ?? true
+  }
 
   function togglePrototype(dirName: string) {
     expanded[dirName] = !expanded[dirName]
@@ -197,11 +199,11 @@
             <button
               class="listItem protoHeader"
               onclick={() => togglePrototype(proto.dirName)}
-              aria-expanded={expanded[proto.dirName]}
+              aria-expanded={isExpanded(proto.dirName)}
             >
               <div class="cardBody">
                 <p class="sceneName">
-                  <span class="protoChevron" class:protoChevronOpen={expanded[proto.dirName]}>
+                  <span class="protoChevron" class:protoChevronOpen={isExpanded(proto.dirName)}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                       <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
                     </svg>
@@ -263,7 +265,7 @@
             </a>
           {/if}
 
-          {#if expanded[proto.dirName] && proto.flows.length > 0}
+          {#if isExpanded(proto.dirName) && proto.flows.length > 0}
             <div class="flowList">
               {#each proto.flows as flow (flow.key)}
                 <a href={flow.route} class="listItem flowItem">

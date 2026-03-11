@@ -178,17 +178,30 @@ Plugins do NOT create their own toolbars, register new modes, or override mode b
 
 ## Todos
 
-### 1. Tool registry in modes.js
+### ✅ 1. Core mode auto-registration
+~~Move the 4 `registerMode()` calls from `_app.jsx` into `initModes()` in `modes.js`.~~
+
+**Done via data plugin approach:** The Vite data plugin reads `modes.config.json` and generates `registerMode()` calls in the virtual module at build time. No `initModes()` function needed — registration is declarative via config.
+
+### ✅ 2. modes.config.json
+Core mode definitions and tool declarations live in `packages/core/modes.config.json`. The data plugin reads this at build time. Tools section declares core dev tools per mode (or `*` for all modes).
+
+### ✅ 3. Auto-mount design modes UI
+StoryboardProvider mounts design modes UI automatically when `isModesEnabled()` is true. Consumer only needs `storyboard.config.json` — no manual imports or registration.
+
+### ✅ 4. Simplify _app.jsx
+All mode setup removed from consumer's `_app.jsx`. No mode-related imports, no `registerMode()` calls, no `mountDesignModesUI()`.
+
+### 🔲 5. Tool registry in modes.js
 Add `registerModeTool()`, `unregisterModeTool()`, `getToolsForMode()`, `subscribeToTools()` to `modes.js`. Internal `_modeTools` Map. Support single mode, array of modes, or `'*'` wildcard. Idempotent (same `id` overwrites). Tests.
 
-### 2. Core mode auto-registration
-Move the 4 `registerMode()` calls from `_app.jsx` into `initModes()` in `modes.js`. Called at startup. `_app.jsx` just calls `initModes()`.
+The data plugin should read the `tools` section from `modes.config.json` and generate `registerModeTool()` calls — wiring up the declarative config to the runtime API.
 
-### 3. Svelte tool store
+### 🔲 6. Svelte tool store
 Create `toolStore.ts` — readable Svelte store providing `{ tools, devTools }` for the current mode. Subscribes to both mode changes and tool registry changes.
 
-### 4. Redesign Toolbar + migrate devtools panel
-Rewrite `ToolbarShell.svelte` to read from the tool store. Render tool buttons with icon, label, active/disabled state, badge. Group into `tools` and `dev` sections.
+### 🔲 7. Redesign Toolbar + migrate devtools panel
+Rewrite `ToolbarShell.svelte` to read from the tool store (not from mode config arrays). Render tool buttons with icon, label, active/disabled state, badge. Group into `tools` and `dev` sections.
 
 Break the existing devtools panel (`devtools.js`) into individual tool registrations. Each becomes a `registerModeTool('*', ...)` call with `group: 'dev'`:
 
@@ -203,10 +216,10 @@ Break the existing devtools panel (`devtools.js`) into individual tool registrat
 
 All except comments register into `'*'` (all modes) as `group: 'dev'`. Comments stays as a plugin-owned registration into `'present'` mode. This replaces the monolithic devtools beaker menu with the toolbar's dev section.
 
-### 5. Update _app.jsx
-Simplify to `initModes()` + `mountDesignModesUI()`. Mode registration is internal. Core dev tools register as part of init. Plugin tool registration happens in each plugin's init.
+### 🔲 8. Relocate mount entry points
+`plugins/design-modes.ts` and `plugins/viewfinder.ts` should move out of `svelte-plugin-ui/plugins/`. The path leaks implementation details ("svelte", "plugins") into the public API. Candidate: `@dfosco/storyboard-core/ui/design-modes`, `@dfosco/storyboard-core/ui/viewfinder`.
 
-### 6. Active plugins panel (stretch)
+### 🔲 9. Active plugins panel (stretch)
 Define data shape for showing active plugins + their tools. Defer UI.
 
 ---

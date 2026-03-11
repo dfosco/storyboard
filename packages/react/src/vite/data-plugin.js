@@ -127,6 +127,40 @@ function readConfig(root) {
   }
 }
 
+/**
+ * Read modes.config.json from @dfosco/storyboard-core.
+ * Falls back to the core package's bundled config via require.resolve,
+ * or returns hardcoded defaults if not found.
+ */
+function readModesConfig(root) {
+  const fallback = [
+    { name: 'prototype', label: 'Navigate' },
+    { name: 'inspect', label: 'Develop' },
+    { name: 'present', label: 'Collaborate' },
+    { name: 'plan', label: 'Canvas' },
+  ]
+
+  // Try local workspace path first (monorepo), then node_modules
+  const candidates = [
+    path.resolve(root, 'packages/core/modes.config.json'),
+    path.resolve(root, 'node_modules/@dfosco/storyboard-core/modes.config.json'),
+  ]
+
+  for (const filePath of candidates) {
+    try {
+      const raw = fs.readFileSync(filePath, 'utf-8')
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed.modes) && parsed.modes.length > 0) {
+        return parsed.modes
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+
+  return fallback
+}
+
 function generateModule(index, root) {
   const declarations = []
   const INDEX_KEYS = ['flow', 'object', 'record', 'prototype']
@@ -170,8 +204,19 @@ function generateModule(index, root) {
 
   // Modes configuration from storyboard.config.json
   if (config?.modes) {
-    imports.push(`import { initModesConfig } from '@dfosco/storyboard-core'`)
+    imports.push(`import { initModesConfig, registerMode, syncModeClasses } from '@dfosco/storyboard-core'`)
     initCalls.push(`initModesConfig(${JSON.stringify(config.modes)})`)
+
+    if (config.modes.enabled) {
+      imports.push(`import '@dfosco/storyboard-core/modes.css'`)
+
+      const modesConfig = readModesConfig(root)
+      const modes = config.modes.defaults || modesConfig
+      for (const m of modes) {
+        initCalls.push(`registerMode(${JSON.stringify(m.name)}, { label: ${JSON.stringify(m.label)} })`)
+      }
+      initCalls.push(`syncModeClasses()`)
+    }
   }
 
   return [

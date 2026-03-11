@@ -274,6 +274,9 @@
                   {/if}
                   <div class="cardBody">
                     <p class="sceneName">{flow.meta?.title || formatName(flow.name)}</p>
+                    {#if flow.meta?.description}
+                      <p class="flowDesc">{flow.meta.description}</p>
+                    {/if}
                   </div>
                 </a>
               {/each}
@@ -506,6 +509,13 @@
 
   .flowItem .sceneName {
     font-size: 22px;
+  }
+
+  .flowDesc {
+    font-size: 13px;
+    color: var(--fgColor-muted, #848d97);
+    margin: 4px 0 0;
+    letter-spacing: 0.01em;
   }
 
   .thumbnail {

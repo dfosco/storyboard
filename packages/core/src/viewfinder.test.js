@@ -97,13 +97,13 @@ describe('resolveFlowRoute', () => {
     expect(resolveFlowRoute('meta-both', routes)).toBe('/Overview?scene=meta-both')
   })
 
-  it('prefers flowMeta.route over top-level route key', () => {
+  it('prefers top-level route over flowMeta.route', () => {
     init({
       flows: { conflict: { route: 'Forms', flowMeta: { route: 'Dashboard' } } },
       objects: {},
       records: {},
     })
-    expect(resolveFlowRoute('conflict', [])).toBe('/Dashboard?scene=conflict')
+    expect(resolveFlowRoute('conflict', [])).toBe('/Forms?scene=conflict')
   })
 })
 

@@ -17,7 +17,7 @@ export function hash(str) {
  * Resolve the target route path for a flow.
  *
  * 1. If flow name matches a known route (case-insensitive), use that route
- * 2. If flow data has a `flowMeta.route` or `sceneMeta.route` or `route` key, use that
+ * 2. If flow data has a top-level `route`, or `meta.route` / `sceneMeta.route`, use that
  * 3. Fall back to root "/"
  *
  * @param {string} flowName
@@ -34,10 +34,10 @@ export function resolveFlowRoute(flowName, knownRoutes = []) {
     }
   }
 
-  // Check for explicit route in flowMeta/sceneMeta or top-level route key
+  // Check for explicit route: top-level `route`, then meta.route, then legacy sceneMeta.route
   try {
     const data = loadFlow(flowName)
-    const route = data?.flowMeta?.route || data?.sceneMeta?.route || data?.route
+    const route = data?.route || data?.meta?.route || data?.flowMeta?.route || data?.sceneMeta?.route
     if (route) {
       const normalized = route.startsWith('/') ? route : `/${route}`
       return `${normalized}?scene=${encodeURIComponent(flowName)}`
@@ -53,15 +53,15 @@ export function resolveFlowRoute(flowName, knownRoutes = []) {
 export const resolveSceneRoute = resolveFlowRoute
 
 /**
- * Get flowMeta for a flow (route, author, etc).
+ * Get meta for a flow (title, description, author, etc).
  *
  * @param {string} flowName
- * @returns {{ route?: string, author?: string | string[] } | null}
+ * @returns {{ title?: string, description?: string, author?: string | string[] } | null}
  */
 export function getFlowMeta(flowName) {
   try {
     const data = loadFlow(flowName)
-    return data?.flowMeta || data?.sceneMeta || null
+    return data?.meta || data?.flowMeta || data?.sceneMeta || null
   } catch {
     return null
   }

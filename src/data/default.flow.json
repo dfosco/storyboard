@@ -1,6 +1,7 @@
 {
-  "sceneMeta": {
-    "route": "/example",
+  "route": "/example",
+  "meta": {
+    "title": "Default Flow",
     "author": ["dfosco", "heyamie", "branonconor"]
   },
   "user": { "$ref": "jane-doe" },

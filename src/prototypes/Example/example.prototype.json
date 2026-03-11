@@ -2,7 +2,7 @@
   "meta": {
     "title": "Examples",
     "description": "Reference prototypes showcasing storyboard features",
-    "icon": "📚",
-    "tags": ["reference", "demo"]
+    "tags": ["reference", "demo"],
+     "author": ["dfosco"]
   }
 }

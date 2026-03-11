@@ -139,11 +139,11 @@ function generateModule(index, root) {
       const raw = fs.readFileSync(absPath, 'utf-8')
       let parsed = parseJsonc(raw)
 
-      // Auto-fill author for prototype metadata from git history
-      if (suffix === 'prototype' && parsed && !parsed.author) {
+      // Auto-fill gitAuthor for prototype metadata from git history
+      if (suffix === 'prototype' && parsed && !parsed.gitAuthor) {
         const gitAuthor = getGitAuthor(root, absPath)
         if (gitAuthor) {
-          parsed = { ...parsed, author: [gitAuthor] }
+          parsed = { ...parsed, gitAuthor }
         }
       }
 

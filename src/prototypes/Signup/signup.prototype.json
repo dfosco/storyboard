@@ -1,4 +1,7 @@
 {
-  "name": "Signup",
-  "description": "User onboarding and registration flow"
+  "meta": {
+    "title": "Signup",
+    "description": "User onboarding and registration flow",
+    "author": ["dfosco", "heyamie", "branonconor"]
+  }
 }

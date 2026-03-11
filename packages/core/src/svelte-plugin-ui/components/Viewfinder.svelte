@@ -47,6 +47,7 @@
             dirName: '__global__',
             description: null,
             author: null,
+            gitAuthor: null,
             icon: null,
             team: null,
             tags: null,
@@ -225,6 +226,8 @@
                     </span>
                     <span class="authorName">{authors.join(', ')}</span>
                   </div>
+                {:else if proto.gitAuthor}
+                  <p class="authorPlain">{proto.gitAuthor}</p>
                 {/if}
               </div>
             </button>
@@ -253,6 +256,8 @@
                     </span>
                     <span class="authorName">{authors.join(', ')}</span>
                   </div>
+                {:else if proto.gitAuthor}
+                  <p class="authorPlain">{proto.gitAuthor}</p>
                 {/if}
               </div>
             </a>
@@ -483,6 +488,13 @@
   .authorName {
     font-size: 13px;
     color: var(--fgColor-muted, #848d97);
+    letter-spacing: 0.01em;
+  }
+
+  .authorPlain {
+    font-size: 13px;
+    color: var(--fgColor-muted, #848d97);
+    margin: 4px 0 0;
     letter-spacing: 0.01em;
   }
 

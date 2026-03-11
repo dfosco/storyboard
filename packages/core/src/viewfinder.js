@@ -87,15 +87,17 @@ export function buildPrototypeIndex(knownRoutes = []) {
 
   // Seed from .prototype.json metadata (even prototypes with no flows appear)
   for (const name of listPrototypes()) {
-    const meta = getPrototypeMetadata(name)
+    const raw = getPrototypeMetadata(name)
+    const meta = raw?.meta || raw || {}
     protoMap[name] = {
-      name: meta?.name || name,
+      name: meta.title || name,
       dirName: name,
-      description: meta?.description || null,
-      author: meta?.author || null,
-      icon: meta?.icon || null,
-      team: meta?.team || null,
-      tags: meta?.tags || null,
+      description: meta.description || null,
+      author: meta.author || null,
+      gitAuthor: raw?.gitAuthor || null,
+      icon: meta.icon || null,
+      team: meta.team || null,
+      tags: meta.tags || null,
       flows: [],
     }
   }
@@ -112,6 +114,7 @@ export function buildPrototypeIndex(knownRoutes = []) {
           dirName: protoName,
           description: null,
           author: null,
+          gitAuthor: null,
           icon: null,
           team: null,
           tags: null,

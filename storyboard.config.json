@@ -18,7 +18,7 @@
     "show-banner": true
   },
   "workshop": {
-    "enabled": true,
+    "enabled": false,
     "features": {
       "createPage": true
     }

@@ -53,7 +53,35 @@ if [ -n "$PRE_TAG" ]; then
 fi
 
 echo "📝 Creating changeset..."
-npx changeset
+echo ""
+echo "  What type of version bump?"
+echo "    1) patch  (bug fixes)"
+echo "    2) minor  (new features)"
+echo "    3) major  (breaking changes)"
+echo ""
+read -r -p "  Choose [1/2/3]: " bump_choice
+case "$bump_choice" in
+  1) BUMP_TYPE="patch" ;;
+  3) BUMP_TYPE="major" ;;
+  *) BUMP_TYPE="minor" ;;
+esac
+
+echo ""
+read -r -p "  Summary: " SUMMARY
+if [ -z "$SUMMARY" ]; then
+  SUMMARY="Release"
+fi
+
+# Generate changeset file (all fixed packages bump together — only need to name one)
+CHANGESET_ID=$(node -p "'changeset-' + Date.now().toString(36)")
+cat > ".changeset/${CHANGESET_ID}.md" <<EOF
+---
+"@dfosco/storyboard-core": ${BUMP_TYPE}
+---
+
+${SUMMARY}
+EOF
+echo "  ✅ Created .changeset/${CHANGESET_ID}.md (${BUMP_TYPE})"
 
 echo "📦 Bumping versions..."
 npm run version

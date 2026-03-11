@@ -15,3 +15,6 @@ export { modeState, switchMode } from './stores/modeStore.js'
 // Type re-exports
 export type { ModeState } from './stores/modeStore.js'
 export type { ModeConfig, ModeToolConfig } from './stores/types.js'
+
+// Viewfinder
+export { mountViewfinder, unmountViewfinder, type ViewfinderProps } from './plugins/viewfinder.js'

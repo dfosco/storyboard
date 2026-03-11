@@ -1,4 +1,4 @@
-import { loadFlow } from './loader.js'
+import { loadFlow, listFlows, listPrototypes, getPrototypeMetadata } from './loader.js'
 
 /**
  * Deterministic hash from a string — used for seeding generative placeholders.
@@ -69,3 +69,74 @@ export function getFlowMeta(flowName) {
 
 /** @deprecated Use getFlowMeta() */
 export const getSceneMeta = getFlowMeta
+
+/**
+ * Build a structured prototype index grouping flows by prototype.
+ *
+ * Returns an object with:
+ * - prototypes: array of prototype entries with metadata and their flows
+ * - globalFlows: flows not belonging to any prototype
+ *
+ * @param {string[]} [knownRoutes] - Array of known route names
+ * @returns {{ prototypes: Array, globalFlows: Array }}
+ */
+export function buildPrototypeIndex(knownRoutes = []) {
+  const flows = listFlows()
+  const protoMap = {}
+  const globalFlows = []
+
+  // Seed from .prototype.json metadata (even prototypes with no flows appear)
+  for (const name of listPrototypes()) {
+    const meta = getPrototypeMetadata(name)
+    protoMap[name] = {
+      name: meta?.name || name,
+      dirName: name,
+      description: meta?.description || null,
+      author: meta?.author || null,
+      icon: meta?.icon || null,
+      team: meta?.team || null,
+      tags: meta?.tags || null,
+      flows: [],
+    }
+  }
+
+  for (const flowName of flows) {
+    const slashIdx = flowName.indexOf('/')
+    if (slashIdx > 0) {
+      const protoName = flowName.substring(0, slashIdx)
+      const shortName = flowName.substring(slashIdx + 1)
+
+      if (!protoMap[protoName]) {
+        protoMap[protoName] = {
+          name: protoName,
+          dirName: protoName,
+          description: null,
+          author: null,
+          icon: null,
+          team: null,
+          tags: null,
+          flows: [],
+        }
+      }
+
+      protoMap[protoName].flows.push({
+        key: flowName,
+        name: shortName,
+        route: resolveFlowRoute(flowName, knownRoutes),
+        meta: getFlowMeta(flowName),
+      })
+    } else {
+      globalFlows.push({
+        key: flowName,
+        name: flowName,
+        route: resolveFlowRoute(flowName, knownRoutes),
+        meta: getFlowMeta(flowName),
+      })
+    }
+  }
+
+  return {
+    prototypes: Object.values(protoMap),
+    globalFlows,
+  }
+}

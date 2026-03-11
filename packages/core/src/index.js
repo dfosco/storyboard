@@ -12,6 +12,8 @@ export { init } from './loader.js'
 export { loadFlow, listFlows, flowExists, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
 // Scoped name resolution
 export { resolveFlowName, resolveRecordName } from './loader.js'
+// Prototype metadata
+export { listPrototypes, getPrototypeMetadata } from './loader.js'
 // Deprecated scene aliases
 export { loadScene, listScenes, sceneExists } from './loader.js'
 
@@ -46,7 +48,7 @@ export { mountFlowDebug } from './sceneDebug.js'
 export { mountSceneDebug } from './sceneDebug.js'
 
 // Viewfinder utilities
-export { hash, resolveFlowRoute, getFlowMeta } from './viewfinder.js'
+export { hash, resolveFlowRoute, getFlowMeta, buildPrototypeIndex } from './viewfinder.js'
 // Deprecated aliases
 export { resolveSceneRoute, getSceneMeta } from './viewfinder.js'
 

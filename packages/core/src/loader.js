@@ -30,13 +30,13 @@ function deepMerge(target, source) {
  * Module-level data index, seeded by init().
  * Shape: { flows: {}, objects: {}, records: {} }
  */
-let dataIndex = { flows: {}, objects: {}, records: {} }
+let dataIndex = { flows: {}, objects: {}, records: {}, prototypes: {} }
 
 /**
  * Seed the data index. Call once at app startup before any load functions.
  * The Vite data plugin calls this automatically via the generated virtual module.
  *
- * @param {{ flows?: object, scenes?: object, objects: object, records: object }} index
+ * @param {{ flows?: object, scenes?: object, objects: object, records: object, prototypes?: object }} index
  */
 export function init(index) {
   if (!index || typeof index !== 'object') {
@@ -46,6 +46,7 @@ export function init(index) {
     flows: index.flows || index.scenes || {},
     objects: index.objects || {},
     records: index.records || {},
+    prototypes: index.prototypes || {},
   }
 }
 
@@ -283,6 +284,23 @@ export function resolveRecordName(scope, name) {
   }
   if (dataIndex.records[name] != null) return name
   return scope ? `${scope}/${name}` : name
+}
+
+/**
+ * Returns the names of all registered prototypes.
+ * @returns {string[]}
+ */
+export function listPrototypes() {
+  return Object.keys(dataIndex.prototypes)
+}
+
+/**
+ * Returns prototype metadata by name.
+ * @param {string} name - Prototype name (e.g. "Example")
+ * @returns {object|null} Metadata from the .prototype.json file, or null
+ */
+export function getPrototypeMetadata(name) {
+  return dataIndex.prototypes[name] ?? null
 }
 
 export { deepMerge }

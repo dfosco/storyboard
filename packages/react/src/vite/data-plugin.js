@@ -1,12 +1,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { execSync } from 'node:child_process'
 import { globSync } from 'glob'
 import { parse as parseJsonc } from 'jsonc-parser'
 
 const VIRTUAL_MODULE_ID = 'virtual:storyboard-data-index'
 const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
 
-const GLOB_PATTERN = '**/*.{flow,scene,object,record}.{json,jsonc}'
+const GLOB_PATTERN = '**/*.{flow,scene,object,record,prototype}.{json,jsonc}'
 
 /**
  * Extract the data name and type suffix from a file path.
@@ -19,11 +20,21 @@ const GLOB_PATTERN = '**/*.{flow,scene,object,record}.{json,jsonc}'
  */
 function parseDataFile(filePath) {
   const base = path.basename(filePath)
-  const match = base.match(/^(.+)\.(flow|scene|object|record)\.(jsonc?)$/)
+  const match = base.match(/^(.+)\.(flow|scene|object|record|prototype)\.(jsonc?)$/)
   if (!match) return null
   // Normalize .scene → .flow for backward compatibility
   const suffix = match[2] === 'scene' ? 'flow' : match[2]
   let name = match[1]
+
+  // Prototype metadata files are keyed by their prototype directory name
+  if (suffix === 'prototype') {
+    const normalized = filePath.replace(/\\/g, '/')
+    const protoMatch = normalized.match(/(?:^|\/)src\/prototypes\/([^/]+)\//)
+    if (protoMatch) {
+      name = protoMatch[1]
+    }
+    return { name, suffix, ext: match[3] }
+  }
 
   // Scope flows and records inside src/prototypes/{Name}/ with a prefix
   if (suffix !== 'object') {
@@ -38,13 +49,30 @@ function parseDataFile(filePath) {
 }
 
 /**
+ * Look up the git author who first created a file.
+ * Used to auto-fill the author field in .prototype.json when missing.
+ */
+function getGitAuthor(root, filePath) {
+  try {
+    const result = execSync(
+      `git log --follow --diff-filter=A --format="%aN" -- "${filePath}"`,
+      { cwd: root, encoding: 'utf-8', timeout: 5000 },
+    ).trim()
+    const lines = result.split('\n').filter(Boolean)
+    return lines.length > 0 ? lines[lines.length - 1] : null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Scan the repo for all data files, validate uniqueness, return the index.
  */
 function buildIndex(root) {
   const ignore = ['node_modules/**', 'dist/**', '.git/**']
   const files = globSync(GLOB_PATTERN, { cwd: root, ignore, absolute: false })
 
-  const index = { flow: {}, object: {}, record: {} }
+  const index = { flow: {}, object: {}, record: {}, prototype: {} }
   const seen = {} // "name.suffix" → absolute path (for duplicate detection)
 
   for (const relPath of files) {
@@ -101,22 +129,31 @@ function readConfig(root) {
 
 function generateModule(index, root) {
   const declarations = []
-  const INDEX_KEYS = ['flow', 'object', 'record']
-  const entries = { flow: [], object: [], record: [] }
+  const INDEX_KEYS = ['flow', 'object', 'record', 'prototype']
+  const entries = { flow: [], object: [], record: [], prototype: [] }
   let i = 0
 
   for (const suffix of INDEX_KEYS) {
     for (const [name, absPath] of Object.entries(index[suffix])) {
       const varName = `_d${i++}`
       const raw = fs.readFileSync(absPath, 'utf-8')
-      const parsed = parseJsonc(raw)
+      let parsed = parseJsonc(raw)
+
+      // Auto-fill author for prototype metadata from git history
+      if (suffix === 'prototype' && parsed && !parsed.author) {
+        const gitAuthor = getGitAuthor(root, absPath)
+        if (gitAuthor) {
+          parsed = { ...parsed, author: [gitAuthor] }
+        }
+      }
+
       declarations.push(`const ${varName} = ${JSON.stringify(parsed)}`)
       entries[suffix].push(`  ${JSON.stringify(name)}: ${varName}`)
     }
   }
 
   const imports = [`import { init } from '@dfosco/storyboard-core'`]
-  const initCalls = [`init({ flows, objects, records })`]
+  const initCalls = [`init({ flows, objects, records, prototypes })`]
 
   // Feature flags from storyboard.config.json
   const { config } = readConfig(root)
@@ -145,14 +182,15 @@ function generateModule(index, root) {
     `const flows = {\n${entries.flow.join(',\n')}\n}`,
     `const objects = {\n${entries.object.join(',\n')}\n}`,
     `const records = {\n${entries.record.join(',\n')}\n}`,
+    `const prototypes = {\n${entries.prototype.join(',\n')}\n}`,
     '',
     '// Backward-compatible alias',
     'const scenes = flows',
     '',
     initCalls.join('\n'),
     '',
-    `export { flows, scenes, objects, records }`,
-    `export const index = { flows, scenes, objects, records }`,
+    `export { flows, scenes, objects, records, prototypes }`,
+    `export const index = { flows, scenes, objects, records, prototypes }`,
     `export default index`,
   ].join('\n')
 }

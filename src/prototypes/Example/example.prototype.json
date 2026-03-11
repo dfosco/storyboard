@@ -1,3 +1,6 @@
-{  
-  "name": "Examples"
+{
+  "name": "Examples",
+  "description": "Reference prototypes showcasing storyboard features",
+  "icon": "📚",
+  "tags": ["reference", "demo"]
 }

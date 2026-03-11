@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 1.24.0
+
+### Minor Changes
+
+-   Add alpha/beta enabled release process
+
 ## 1.23.0
 
 ### Minor Changes

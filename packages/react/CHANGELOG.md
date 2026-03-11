@@ -1,5 +1,16 @@
 # @dfosco/storyboard-react
 
+## 1.24.0
+
+### Minor Changes
+
+-   Add alpha/beta enabled release process
+
+### Patch Changes
+
+-   Updated dependencies
+    -   @dfosco/storyboard-core@1.24.0
+
 ## 1.23.0
 
 ### Minor Changes

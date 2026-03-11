@@ -6,7 +6,7 @@
  * context (React _app.jsx, vanilla JS, etc.).
  *
  * Usage:
- *   import { mountDesignModesUI } from '@dfosco/storyboard-svelte-ui/design-modes'
+ *   import { mountDesignModesUI } from '@dfosco/storyboard-core/svelte-plugin-ui/design-modes'
  *   mountDesignModesUI()  // mounts to document.body
  *   mountDesignModesUI(document.getElementById('my-container'))
  */

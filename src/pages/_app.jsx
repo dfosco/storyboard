@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import { StoryboardProvider, useFeatureFlag } from '@dfosco/storyboard-react'
 import { registerMode, syncModeClasses } from '@dfosco/storyboard-core'
-import { mountDesignModesUI } from '@dfosco/storyboard-svelte-ui/design-modes'
+import { mountDesignModesUI } from '@dfosco/storyboard-core/svelte-plugin-ui/design-modes'
 import '@dfosco/storyboard-core/modes.css'
 import appStyles from './_app.module.css'
 

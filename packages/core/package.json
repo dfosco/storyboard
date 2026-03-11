@@ -17,11 +17,22 @@
     "./comments": "./src/comments/index.js",
     "./comments/ui/comments.css": "./src/comments/ui/comments.css",
     "./workshop/ui/mount.js": "./src/workshop/ui/mount.js",
-    "./modes.css": "./src/modes.css"
+    "./modes.css": "./src/modes.css",
+    "./svelte-plugin-ui": "./src/svelte-plugin-ui/index.ts",
+    "./svelte-plugin-ui/design-modes": "./src/svelte-plugin-ui/plugins/design-modes.ts",
+    "./svelte-plugin-ui/styles/base.css": "./src/svelte-plugin-ui/styles/base.css"
   },
   "dependencies": {
     "alpinejs": "^3.15.8",
     "jsonc-parser": "^3.3.1",
     "tachyons": "^4.12.0"
+  },
+  "peerDependencies": {
+    "svelte": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "svelte": {
+      "optional": true
+    }
   }
 }

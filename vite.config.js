@@ -28,6 +28,10 @@ export default defineConfig(() => {
             '@': path.resolve(__dirname, './src'),
             // In git worktrees, npm resolves workspace packages to the main
             // worktree. Force local resolution so edits here take effect.
+            // NOTE: Sub-path aliases must come BEFORE base package aliases.
+            '@dfosco/storyboard-core/svelte-plugin-ui/design-modes': path.resolve(__dirname, 'packages/core/src/svelte-plugin-ui/plugins/design-modes.ts'),
+            '@dfosco/storyboard-core/svelte-plugin-ui/styles/base.css': path.resolve(__dirname, 'packages/core/src/svelte-plugin-ui/styles/base.css'),
+            '@dfosco/storyboard-core/svelte-plugin-ui': path.resolve(__dirname, 'packages/core/src/svelte-plugin-ui/index.ts'),
             '@dfosco/storyboard-core/vite/server': path.resolve(__dirname, 'packages/core/src/vite/server-plugin.js'),
             '@dfosco/storyboard-core/workshop/ui/mount.js': path.resolve(__dirname, 'packages/core/src/workshop/ui/mount.js'),
             '@dfosco/storyboard-core/comments/ui/comments.css': path.resolve(__dirname, 'packages/core/src/comments/ui/comments.css'),
@@ -39,9 +43,6 @@ export default defineConfig(() => {
             '@dfosco/storyboard-react': path.resolve(__dirname, 'packages/react/src/index.js'),
             '@dfosco/storyboard-react-primer': path.resolve(__dirname, 'packages/react-primer/src/index.js'),
             '@dfosco/storyboard-react-reshaped': path.resolve(__dirname, 'packages/react-reshaped/src/index.js'),
-            '@dfosco/storyboard-svelte-ui/design-modes': path.resolve(__dirname, 'packages/svelte-ui/src/plugins/design-modes.ts'),
-            '@dfosco/storyboard-svelte-ui/styles/base.css': path.resolve(__dirname, 'packages/svelte-ui/src/styles/base.css'),
-            '@dfosco/storyboard-svelte-ui': path.resolve(__dirname, 'packages/svelte-ui/src/index.ts'),
         },
     },
     plugins: [

@@ -68,7 +68,7 @@ function createModeStore(): Readable<ModeState> {
  *
  * ```svelte
  * <script>
- *   import { modeState, switchMode } from '@dfosco/storyboard-svelte-ui'
+ *   import { modeState, switchMode } from '@dfosco/storyboard-core/svelte-plugin-ui'
  * </script>
  *
  * {#each $modeState.modes as m}

@@ -5,7 +5,6 @@ export default defineConfig({
   plugins: [
     svelte({
       hot: false,
-      // Process .svelte.js/ts files from @testing-library/svelte
       extensions: ['.svelte'],
     }),
   ],
@@ -28,7 +27,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./packages/svelte-ui/vitest.setup.ts'],
-    include: ['packages/svelte-ui/src/**/*.test.ts'],
+    include: ['packages/core/src/svelte-plugin-ui/**/*.test.ts'],
     // Ensure @testing-library/svelte .svelte.js files are processed
     server: {
       deps: {

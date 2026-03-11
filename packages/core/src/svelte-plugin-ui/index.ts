@@ -1,9 +1,9 @@
 /**
- * @dfosco/storyboard-svelte-ui — Svelte component framework for core plugin UIs.
+ * Svelte plugin UI — Svelte component framework for core plugin UIs.
  *
- * Provides mount utilities, shared styles, and reusable components that
- * any storyboard core plugin can use, independent of the prototype app's
- * frontend framework.
+ * Part of @dfosco/storyboard-core. Provides mount utilities, shared styles,
+ * and reusable components that any storyboard core plugin can use,
+ * independent of the prototype app's frontend framework.
  */
 
 // Mount utility

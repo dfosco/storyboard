@@ -6,7 +6,7 @@
  * a destroy handle for cleanup.
  *
  * Usage:
- *   import { mountSveltePlugin } from '@dfosco/storyboard-svelte-ui'
+ *   import { mountSveltePlugin } from '@dfosco/storyboard-core/svelte-plugin-ui'
  *   import MyComponent from './MyComponent.svelte'
  *
  *   const handle = mountSveltePlugin(document.body, MyComponent, { someProp: 'value' })

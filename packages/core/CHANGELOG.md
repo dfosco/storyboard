@@ -1,11 +1,5 @@
 # @dfosco/storyboard-core
 
-## 2.0.0
-
-### Major Changes
-
--   Add design-modes in beta
-
 ## 1.24.0
 
 ### Minor Changes

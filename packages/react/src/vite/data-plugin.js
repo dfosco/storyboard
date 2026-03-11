@@ -108,6 +108,12 @@ function generateModule(index, root) {
     initCalls.push(`initPlugins(${JSON.stringify(config.plugins)})`)
   }
 
+  // Modes configuration from storyboard.config.json
+  if (config?.modes) {
+    imports.push(`import { initModesConfig } from '@dfosco/storyboard-core'`)
+    initCalls.push(`initModesConfig(${JSON.stringify(config.modes)})`)
+  }
+
   return [
     imports.join('\n'),
     '',

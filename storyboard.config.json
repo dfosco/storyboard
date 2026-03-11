@@ -3,6 +3,9 @@
     "owner": "dfosco",
     "name": "storyboard-source"
   },
+  "modes": {
+    "enabled": false
+  },
   "comments": {
     "discussions": {
       "category": "General"

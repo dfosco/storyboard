@@ -1,7 +1,22 @@
 import { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import { StoryboardProvider, useFeatureFlag } from '@dfosco/storyboard-react'
+import { registerMode, syncModeClasses, isModesEnabled } from '@dfosco/storyboard-core'
+import '@dfosco/storyboard-core/modes.css'
 import appStyles from './_app.module.css'
+
+// Register modes and mount UI only when enabled in storyboard.config.json
+if (isModesEnabled()) {
+  const { mountDesignModesUI } = await import('@dfosco/storyboard-core/svelte-plugin-ui/design-modes')
+
+  registerMode('prototype', { label: 'Navigate' })
+  registerMode('inspect', { label: 'Develop' })
+  registerMode('present', { label: 'Collaborate' })
+  registerMode('plan', { label: 'Canvas' })
+
+  syncModeClasses()
+  mountDesignModesUI()
+}
 
 function PageLoading() {
   return (

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import path from 'path'
 import react from '@vitejs/plugin-react'
+import { svelte } from '@sveltejs/vite-plugin-svelte'
 import generouted from '@generouted/react-router/plugin'
 import storyboardData from '@dfosco/storyboard-react/vite'
 import storyboardServer from '@dfosco/storyboard-core/vite/server'
@@ -27,9 +28,14 @@ export default defineConfig(() => {
             '@': path.resolve(__dirname, './src'),
             // In git worktrees, npm resolves workspace packages to the main
             // worktree. Force local resolution so edits here take effect.
+            // NOTE: Sub-path aliases must come BEFORE base package aliases.
+            '@dfosco/storyboard-core/svelte-plugin-ui/design-modes': path.resolve(__dirname, 'packages/core/src/svelte-plugin-ui/plugins/design-modes.ts'),
+            '@dfosco/storyboard-core/svelte-plugin-ui/styles/base.css': path.resolve(__dirname, 'packages/core/src/svelte-plugin-ui/styles/base.css'),
+            '@dfosco/storyboard-core/svelte-plugin-ui': path.resolve(__dirname, 'packages/core/src/svelte-plugin-ui/index.ts'),
             '@dfosco/storyboard-core/vite/server': path.resolve(__dirname, 'packages/core/src/vite/server-plugin.js'),
             '@dfosco/storyboard-core/workshop/ui/mount.js': path.resolve(__dirname, 'packages/core/src/workshop/ui/mount.js'),
             '@dfosco/storyboard-core/comments/ui/comments.css': path.resolve(__dirname, 'packages/core/src/comments/ui/comments.css'),
+            '@dfosco/storyboard-core/modes.css': path.resolve(__dirname, 'packages/core/src/modes.css'),
             '@dfosco/storyboard-core/comments': path.resolve(__dirname, 'packages/core/src/comments/index.js'),
             '@dfosco/storyboard-core': path.resolve(__dirname, 'packages/core/src/index.js'),
             '@dfosco/storyboard-react/vite': path.resolve(__dirname, 'packages/react/src/vite/data-plugin.js'),
@@ -42,6 +48,7 @@ export default defineConfig(() => {
     plugins: [
         storyboardData(),
         storyboardServer(),
+        svelte(),
         react(),
         generouted(),
         {

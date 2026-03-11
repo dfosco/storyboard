@@ -15,6 +15,8 @@ const _eventListeners = new Map()
 
 const DEFAULT_MODE = 'prototype'
 
+let _modesEnabled = false
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
@@ -258,6 +260,28 @@ function _notify() {
 }
 
 // ---------------------------------------------------------------------------
+// Configuration
+// ---------------------------------------------------------------------------
+
+/**
+ * Initialize modes configuration.
+ * Called by the Vite data plugin's generated virtual module.
+ * @param {{ enabled?: boolean }} [config]
+ */
+export function initModesConfig(config = {}) {
+  _modesEnabled = config.enabled !== false
+}
+
+/**
+ * Check whether modes UI is enabled.
+ * When false, the app stays in prototype mode with no mode switcher.
+ * @returns {boolean}
+ */
+export function isModesEnabled() {
+  return _modesEnabled
+}
+
+// ---------------------------------------------------------------------------
 // Test helpers
 // ---------------------------------------------------------------------------
 
@@ -268,4 +292,5 @@ export function _resetModes() {
   _modes.clear()
   _listeners.clear()
   _eventListeners.clear()
+  _modesEnabled = false
 }

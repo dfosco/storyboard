@@ -31,7 +31,7 @@ export { subscribeToHash, getHashSnapshot } from './hashSubscribe.js'
 export { installBodyClassSync, setSceneClass, syncOverrideClasses } from './bodyClasses.js'
 
 // Design modes (mode registry, switching, event bus)
-export { registerMode, unregisterMode, getRegisteredModes, getCurrentMode, activateMode, deactivateMode, subscribeToMode, getModeSnapshot, syncModeClasses, on, off, emit } from './modes.js'
+export { registerMode, unregisterMode, getRegisteredModes, getCurrentMode, activateMode, deactivateMode, subscribeToMode, getModeSnapshot, syncModeClasses, on, off, emit, initModesConfig, isModesEnabled } from './modes.js'
 
 // Dev tools (vanilla JS, framework-agnostic)
 export { mountDevTools } from './devtools.js'

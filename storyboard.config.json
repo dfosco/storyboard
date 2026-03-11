@@ -3,6 +3,9 @@
     "owner": "dfosco",
     "name": "storyboard-source"
   },
+  "modes": {
+    "enabled": false
+  },
   "comments": {
     "discussions": {
       "category": "General"
@@ -15,7 +18,7 @@
     "show-banner": true
   },
   "workshop": {
-    "enabled": false,
+    "enabled": true,
     "features": {
       "createPage": true
     }

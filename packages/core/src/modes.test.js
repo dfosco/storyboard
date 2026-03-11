@@ -248,3 +248,44 @@ describe('event bus', () => {
     spy.mockRestore()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Modes config
+// ---------------------------------------------------------------------------
+
+describe('modes config', () => {
+  // Need to import these separately since they were added after the top imports
+  let initModesConfig, isModesEnabled
+
+  beforeEach(async () => {
+    const mod = await import('./modes.js')
+    initModesConfig = mod.initModesConfig
+    isModesEnabled = mod.isModesEnabled
+  })
+
+  it('isModesEnabled returns false by default', () => {
+    expect(isModesEnabled()).toBe(false)
+  })
+
+  it('initModesConfig({ enabled: true }) enables modes', () => {
+    initModesConfig({ enabled: true })
+    expect(isModesEnabled()).toBe(true)
+  })
+
+  it('initModesConfig({ enabled: false }) disables modes', () => {
+    initModesConfig({ enabled: true })
+    initModesConfig({ enabled: false })
+    expect(isModesEnabled()).toBe(false)
+  })
+
+  it('initModesConfig() with no args enables modes (enabled !== false)', () => {
+    initModesConfig()
+    expect(isModesEnabled()).toBe(true)
+  })
+
+  it('_resetModes resets modesEnabled to false', () => {
+    initModesConfig({ enabled: true })
+    _resetModes()
+    expect(isModesEnabled()).toBe(false)
+  })
+})

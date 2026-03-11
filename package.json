@@ -1,7 +1,6 @@
 {
     "name": "storyboard-source",
     "private": true,
-    "version": "1.23.0",
     "type": "module",
     "workspaces": [
         "packages/*"
@@ -21,7 +20,8 @@
         "test:react": "vitest run packages/react",
         "release": "./scripts/release.sh",
         "release:beta": "./scripts/release.sh --beta",
-        "release:alpha": "./scripts/release.sh --alpha"
+        "release:alpha": "./scripts/release.sh --alpha",
+        "test:svelte": "vitest run --config packages/svelte-ui/vitest.config.ts"
     },
     "dependencies": {
         "@generouted/react-router": "^1.19.11",

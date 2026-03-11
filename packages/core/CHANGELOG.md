@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 2.0.0-beta.0
+
+### Major Changes
+
+-   Add modes API in preparation for large breaking change refactor
+
 ## 1.24.0
 
 ### Minor Changes

@@ -1,0 +1,13 @@
+{
+  "mode": "pre",
+  "tag": "beta",
+  "initialVersions": {
+    "@dfosco/storyboard-core": "1.24.0",
+    "@dfosco/storyboard-react": "1.24.0",
+    "@dfosco/storyboard-react-primer": "1.24.0",
+    "@dfosco/storyboard-react-reshaped": "1.24.0"
+  },
+  "changesets": [
+    "changeset-mmme990q"
+  ]
+}

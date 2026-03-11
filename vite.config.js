@@ -24,6 +24,7 @@ export default defineConfig(() => {
     base,
     resolve: {
         alias: {
+            '@': path.resolve(__dirname, './src'),
             // In git worktrees, npm resolves workspace packages to the main
             // worktree. Force local resolution so edits here take effect.
             '@dfosco/storyboard-core/vite/server': path.resolve(__dirname, 'packages/core/src/vite/server-plugin.js'),

@@ -7,6 +7,14 @@
 
 ---
 
+## Planning
+
+Every single plan generated should be saved to a markdown file on the repository, no exceptions. 
+
+The default location is in `.github/plans`, but the user may ask for a specific location or you might override that based on context.
+
+---
+
 ## Skills
 
 - **Primer Primitives** (`.github/skills/primer-primitives/primer-primitives.md`) — Complete reference of all `@primer/primitives` CSS design tokens. **Only consult when you need tokens not covered by the Primer Builder's inline token tables** (e.g., motion, controls, overlays, breakpoints, component-specific colors).

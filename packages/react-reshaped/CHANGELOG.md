@@ -1,5 +1,16 @@
 # @dfosco/storyboard-react-reshaped
 
+## 2.0.0
+
+### Major Changes
+
+-   Add design-modes in beta
+
+### Patch Changes
+
+-   Updated dependencies
+    -   @dfosco/storyboard-react@2.0.0
+
 ## 1.24.0
 
 ### Minor Changes

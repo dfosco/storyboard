@@ -5,6 +5,7 @@
   {"folder":"branch--comments-system","branch":"comments-system"},
   {"folder":"branch--design-modes","branch":"design-modes"},
   {"folder":"branch--feature-flags","branch":"feature-flags"},
+  {"folder":"branch--proto-restructure","branch":"proto-restructure"},
   {"folder":"branch--security-ux","branch":"security-ux"},
   {"folder":"branch--viewfinder-branches","branch":"viewfinder-branches"},
   {"folder":"branch--workshop","branch":"workshop"}

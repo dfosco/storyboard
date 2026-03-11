@@ -194,92 +194,74 @@
           {#if proto.flows.length > 0}
             <!-- Expandable prototype with flows -->
             <button
-              class="protoHeader"
+              class="listItem protoHeader"
               onclick={() => togglePrototype(proto.dirName)}
               aria-expanded={expanded[proto.dirName]}
             >
-              <span class="protoChevron" class:protoChevronOpen={expanded[proto.dirName]}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                  <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
-                </svg>
-              </span>
-              <span class="protoInfo">
-                <span class="protoName">
+              <div class="cardBody">
+                <p class="sceneName">
+                  <span class="protoChevron" class:protoChevronOpen={expanded[proto.dirName]}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                    </svg>
+                  </span>
                   {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
                   {proto.name}
-                </span>
+                </p>
                 {#if proto.description}
-                  <span class="protoDesc">{proto.description}</span>
+                  <p class="protoDesc">{proto.description}</p>
                 {/if}
-              </span>
-              <span class="protoMeta">
                 {#if proto.author}
                   {@const authors = Array.isArray(proto.author) ? proto.author : [proto.author]}
-                  <span class="authorAvatars">
-                    {#each authors as a (a)}
-                      <img
-                        src="https://github.com/{a}.png?size=32"
-                        alt={a}
-                        class="authorAvatar"
-                      />
-                    {/each}
-                  </span>
+                  <div class="author">
+                    <span class="authorAvatars">
+                      {#each authors as a (a)}
+                        <img
+                          src="https://github.com/{a}.png?size=48"
+                          alt={a}
+                          class="authorAvatar"
+                        />
+                      {/each}
+                    </span>
+                    <span class="authorName">{authors.join(', ')}</span>
+                  </div>
                 {/if}
-                {#if proto.tags}
-                  <span class="tags">
-                    {#each proto.tags as tag (tag)}
-                      <span class="tag">{tag}</span>
-                    {/each}
-                  </span>
-                {/if}
-                <span class="flowCount">
-                  {proto.flows.length} flow{proto.flows.length !== 1 ? 's' : ''}
-                </span>
-              </span>
+              </div>
             </button>
           {:else}
             <!-- Prototype with no flows — navigates directly -->
-            <a
-              class="protoHeader protoHeaderLink"
-              href={protoRoute(proto.dirName)}
-            >
-              <span class="protoInfo">
-                <span class="protoName">
+            <a class="listItem" href={protoRoute(proto.dirName)}>
+              <div class="cardBody">
+                <p class="sceneName">
                   {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
                   {proto.name}
-                </span>
+                </p>
                 {#if proto.description}
-                  <span class="protoDesc">{proto.description}</span>
+                  <p class="protoDesc">{proto.description}</p>
                 {/if}
-              </span>
-              <span class="protoMeta">
                 {#if proto.author}
                   {@const authors = Array.isArray(proto.author) ? proto.author : [proto.author]}
-                  <span class="authorAvatars">
-                    {#each authors as a (a)}
-                      <img
-                        src="https://github.com/{a}.png?size=32"
-                        alt={a}
-                        class="authorAvatar"
-                      />
-                    {/each}
-                  </span>
+                  <div class="author">
+                    <span class="authorAvatars">
+                      {#each authors as a (a)}
+                        <img
+                          src="https://github.com/{a}.png?size=48"
+                          alt={a}
+                          class="authorAvatar"
+                        />
+                      {/each}
+                    </span>
+                    <span class="authorName">{authors.join(', ')}</span>
+                  </div>
                 {/if}
-                {#if proto.tags}
-                  <span class="tags">
-                    {#each proto.tags as tag (tag)}
-                      <span class="tag">{tag}</span>
-                    {/each}
-                  </span>
-                {/if}
-              </span>
+              </div>
             </a>
           {/if}
 
-          {#if expanded[proto.dirName]}
+          {#if expanded[proto.dirName] && proto.flows.length > 0}
             <div class="flowList">
               {#each proto.flows as flow (flow.key)}
-                <a href={flow.route} class="listItem">
+                <a href={flow.route} class="listItem flowItem">
                   {#if showThumbnails}
                     <div class="thumbnail">
                       {@html placeholderSvg(flow.key)}
@@ -299,26 +281,25 @@
 </div>
 
 <style>
-  /* ── Layout ─────────────────────────────────────────── */
   .container {
     min-height: 100vh;
     background-color: var(--bgColor-default, #0d1117);
     color: var(--fgColor-default, #e6edf3);
     padding: 80px 32px 48px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   }
 
-  /* ── Header ─────────────────────────────────────────── */
   .header {
     max-width: 720px;
     margin: 0 auto 64px;
   }
+
   .headerTop {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     gap: 16px;
   }
+
   .title {
     font-size: 72px;
     font-weight: 400;
@@ -327,12 +308,14 @@
     letter-spacing: -0.03em;
     line-height: 1;
   }
+
   .subtitle {
     font-size: 15px;
     color: var(--fgColor-muted, #848d97);
     margin: 4px 0 0;
     letter-spacing: 0.01em;
   }
+
   .sceneCount {
     font-size: 13px;
     color: var(--fgColor-muted, #848d97);
@@ -340,7 +323,6 @@
     letter-spacing: 0.01em;
   }
 
-  /* ── Branch switcher ────────────────────────────────── */
   .branchDropdown {
     display: flex;
     align-items: center;
@@ -348,6 +330,7 @@
     flex-shrink: 0;
     position: relative;
   }
+
   .branchIcon {
     position: absolute;
     left: 10px;
@@ -355,6 +338,7 @@
     pointer-events: none;
     z-index: 1;
   }
+
   .branchSelect {
     appearance: none;
     background-color: transparent;
@@ -374,162 +358,59 @@
     overflow: hidden;
     transition: border-color 0.15s ease;
   }
+
   .branchSelect:hover {
     border-color: var(--fgColor-muted, #848d97);
   }
+
   .branchSelect:focus-visible {
     outline: 2px solid var(--borderColor-accent-emphasis, #1f6feb);
     outline-offset: -1px;
   }
 
-  /* ── List ────────────────────────────────────────────── */
   .list {
     display: flex;
     flex-direction: column;
     max-width: 720px;
     margin: 0 auto;
-    gap: 8px;
   }
 
-  /* ── Prototype group ────────────────────────────────── */
   .protoGroup {
     display: flex;
     flex-direction: column;
   }
-  .protoHeader {
-    appearance: none;
-    border: 1px solid var(--borderColor-default, #30363d);
-    border-radius: 8px;
-    background: var(--bgColor-muted, #161b22);
-    color: inherit;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px 20px;
-    cursor: pointer;
-    text-align: left;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  }
-  .protoHeader:hover {
-    border-color: var(--borderColor-accent-emphasis, #1f6feb);
-    box-shadow: 0 0 0 1px var(--borderColor-accent-emphasis, #1f6feb);
-  }
-  .protoHeaderLink {
-    text-decoration: none;
-    color: inherit;
-  }
-  .protoHeaderLink:hover {
-    text-decoration: none !important;
-  }
-  .protoChevron {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    color: var(--fgColor-muted, #848d97);
-    transition: transform 0.15s ease;
-    transform: rotate(0deg);
-  }
-  .protoChevronOpen {
-    transform: rotate(90deg);
-  }
-  .protoInfo {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-  .protoName {
-    font-size: 28px;
-    font-weight: 400;
-    color: var(--fgColor-default, #e6edf3);
-    letter-spacing: -0.02em;
-    line-height: 1.2;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .protoIcon {
-    font-size: 24px;
-  }
-  .protoDesc {
-    font-size: 13px;
-    color: var(--fgColor-muted, #848d97);
-    line-height: 1.4;
-  }
-  .protoMeta {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-shrink: 0;
-  }
-  .flowCount {
-    font-size: 12px;
-    color: var(--fgColor-muted, #848d97);
-    white-space: nowrap;
-  }
 
-  /* ── Author avatars ─────────────────────────────────── */
-  .authorAvatars {
-    display: flex;
-    flex-direction: row;
-  }
-  .authorAvatars:hover .authorAvatar {
-    margin-left: 2px;
-  }
-  .authorAvatars:hover .authorAvatar:first-child {
-    margin-left: 0;
-  }
-  .authorAvatar {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    margin-left: -6px;
-    transition: margin-left 0.15s ease;
-    outline: 2px solid var(--bgColor-default, #0d1117);
-    position: relative;
-  }
-  .authorAvatar:first-child {
-    margin-left: 0;
-  }
-
-  /* ── Tags ───────────────────────────────────────────── */
-  .tags {
-    display: flex;
-    gap: 4px;
-  }
-  .tag {
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: var(--bgColor-accent-muted, rgba(56, 139, 253, 0.1));
-    color: var(--fgColor-accent, #58a6ff);
-    white-space: nowrap;
-  }
-
-  /* ── Flow items (inside prototype) ──────────────────── */
-  .flowList {
-    padding: 0 0 0 28px;
-    display: flex;
-    flex-direction: column;
-  }
   .listItem {
     display: block;
     padding: 8px 0;
     text-decoration: none;
     color: inherit;
   }
+
   .listItem:hover {
     text-decoration: none !important;
   }
+
+  .protoHeader {
+    appearance: none;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+    padding: 8px 0;
+  }
+
   .cardBody {
     padding: 12px 16px;
   }
+
   .cardBody:hover {
     background-color: var(--bgColor-muted, #161b22);
     border-radius: 8px;
   }
+
   .sceneName {
     font-size: 28px;
     font-weight: 400;
@@ -540,7 +421,81 @@
     transition: font-style 0.15s ease;
   }
 
-  /* ── Thumbnail ──────────────────────────────────────── */
+  .protoChevron {
+    display: inline-flex;
+    align-items: center;
+    color: var(--fgColor-muted, #848d97);
+    transition: transform 0.15s ease;
+    transform: rotate(0deg);
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  .protoChevronOpen {
+    transform: rotate(90deg);
+  }
+
+  .protoIcon {
+    margin-right: 4px;
+  }
+
+  .protoDesc {
+    font-size: 13px;
+    color: var(--fgColor-muted, #848d97);
+    margin: 4px 0 0;
+    letter-spacing: 0.01em;
+  }
+
+  .author {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .authorAvatars {
+    display: flex;
+    flex-direction: row;
+  }
+
+  .authorAvatars:hover .authorAvatar {
+    margin-left: 2px;
+  }
+
+  .authorAvatars:hover .authorAvatar:first-child {
+    margin-left: 0;
+  }
+
+  .authorAvatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-left: -8px;
+    transition: margin-left 0.15s ease;
+    outline: 2px solid var(--bgColor-default, #0d1117);
+    position: relative;
+  }
+
+  .authorAvatar:first-child {
+    margin-left: 0;
+  }
+
+  .authorName {
+    font-size: 13px;
+    color: var(--fgColor-muted, #848d97);
+    letter-spacing: 0.01em;
+  }
+
+  .flowList {
+    padding: 0 0 0 28px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .flowItem .sceneName {
+    font-size: 22px;
+  }
+
   .thumbnail {
     aspect-ratio: 16 / 10;
     display: flex;
@@ -548,18 +503,19 @@
     justify-content: center;
     overflow: hidden;
     background: var(--bgColor-inset, #010409);
+
     --placeholder-bg: var(--bgColor-inset, #010409);
     --placeholder-grid: var(--borderColor-default, #30363d);
     --placeholder-accent: var(--fgColor-accent, #58a6ff);
     --placeholder-fg: var(--fgColor-default, #c9d1d9);
     --placeholder-muted: var(--fgColor-muted, #484f58);
   }
+
   .thumbnail :global(svg) {
     width: 100%;
     height: 100%;
   }
 
-  /* ── Empty state ────────────────────────────────────── */
   .empty {
     text-align: center;
     padding: 80px 24px;

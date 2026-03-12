@@ -29,7 +29,10 @@ export default defineConfig(() => {
             // In git worktrees, npm resolves workspace packages to the main
             // worktree. Force local resolution so edits here take effect.
             // NOTE: Sub-path aliases must come BEFORE base package aliases.
-            '@dfosco/storyboard-core/svelte-plugin-ui/design-modes': path.resolve(__dirname, 'packages/core/src/svelte-plugin-ui/plugins/design-modes.ts'),
+            '@dfosco/storyboard-core/svelte-plugin-ui/design-modes': path.resolve(__dirname, 'packages/core/src/ui/design-modes.ts'),
+            '@dfosco/storyboard-core/svelte-plugin-ui/viewfinder': path.resolve(__dirname, 'packages/core/src/ui/viewfinder.ts'),
+            '@dfosco/storyboard-core/ui/design-modes': path.resolve(__dirname, 'packages/core/src/ui/design-modes.ts'),
+            '@dfosco/storyboard-core/ui/viewfinder': path.resolve(__dirname, 'packages/core/src/ui/viewfinder.ts'),
             '@dfosco/storyboard-core/svelte-plugin-ui/styles/base.css': path.resolve(__dirname, 'packages/core/src/svelte-plugin-ui/styles/base.css'),
             '@dfosco/storyboard-core/svelte-plugin-ui': path.resolve(__dirname, 'packages/core/src/svelte-plugin-ui/index.ts'),
             '@dfosco/storyboard-core/vite/server': path.resolve(__dirname, 'packages/core/src/vite/server-plugin.js'),
@@ -50,7 +53,26 @@ export default defineConfig(() => {
         storyboardServer(),
         svelte(),
         react(),
-        generouted(),
+        generouted({
+            source: {
+                routes: './src/prototypes/**/[\\w[-]*.{jsx,tsx,mdx}',
+                modals: './src/prototypes/**/[+]*.{jsx,tsx,mdx}',
+            },
+        }),
+        // generouted's built-in watcher only listens for /src/pages/ changes.
+        // This plugin triggers a full reload when prototypes are added/removed.
+        {
+            name: 'prototypes-watcher',
+            configureServer(server) {
+                const listener = (file = '') => {
+                    if (file.includes(path.normalize('/src/prototypes/'))) {
+                        server.ws.send({ type: 'full-reload' })
+                    }
+                }
+                server.watcher.on('add', listener)
+                server.watcher.on('unlink', listener)
+            },
+        },
         {
             name: 'base-redirect',
             configureServer(server) {
@@ -81,7 +103,7 @@ export default defineConfig(() => {
         warmup: {
             clientFiles: [
                 'src/index.jsx',
-                'src/pages/**/*.jsx',
+                'src/prototypes/**/*.jsx',
                 'src/components/**/*.jsx',
                 'src/templates/**/*.jsx',
                 'packages/react/src/**/*.{js,jsx}',

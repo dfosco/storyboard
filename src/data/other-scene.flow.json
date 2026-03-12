@@ -1,6 +1,7 @@
 {
-  "sceneMeta": {
-    "route": "/example",
+  "route": "/example",
+  "meta": {
+    "title": "Other Scene",
     "author": "dfosco"
   },
   "user": {

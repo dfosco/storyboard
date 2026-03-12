@@ -1,5 +1,6 @@
 import {
   syncOverrideClasses,
+  setFlowClass,
   setSceneClass,
   installBodyClassSync,
 } from './bodyClasses.js'
@@ -90,33 +91,46 @@ describe('Override body classes', () => {
   })
 })
 
-// ── Scene Classes ──
+// ── Flow Classes ──
 
-describe('Scene body classes', () => {
+describe('Flow body classes', () => {
   it('sets sb-scene-- class', () => {
-    setSceneClass('Dashboard')
+    setFlowClass('Dashboard')
     expect(getSbClasses()).toContain('sb-scene--dashboard')
   })
 
-  it('replaces previous scene class', () => {
-    setSceneClass('Dashboard')
-    setSceneClass('Settings')
+  it('replaces previous flow class', () => {
+    setFlowClass('Dashboard')
+    setFlowClass('Settings')
     expect(getSbClasses()).not.toContain('sb-scene--dashboard')
     expect(getSbClasses()).toContain('sb-scene--settings')
   })
 
-  it('removes scene class when called with empty string', () => {
-    setSceneClass('Dashboard')
-    setSceneClass('')
-    const sceneClasses = getSbClasses().filter((c) => c.startsWith('sb-scene--'))
-    expect(sceneClasses).toEqual([])
+  it('removes flow class when called with empty string', () => {
+    setFlowClass('Dashboard')
+    setFlowClass('')
+    const flowClasses = getSbClasses().filter((c) => c.startsWith('sb-scene--'))
+    expect(flowClasses).toEqual([])
   })
 
   it('does not interfere with override classes', () => {
     window.location.hash = '#theme=dark'
     syncOverrideClasses()
-    setSceneClass('Dashboard')
+    setFlowClass('Dashboard')
     expect(getSbClasses()).toContain('sb-theme--dark')
+    expect(getSbClasses()).toContain('sb-scene--dashboard')
+  })
+})
+
+// ── setSceneClass (deprecated alias) ──
+
+describe('setSceneClass (deprecated alias)', () => {
+  it('is the same function as setFlowClass', () => {
+    expect(setSceneClass).toBe(setFlowClass)
+  })
+
+  it('sets sb-scene-- class', () => {
+    setSceneClass('Dashboard')
     expect(getSbClasses()).toContain('sb-scene--dashboard')
   })
 })

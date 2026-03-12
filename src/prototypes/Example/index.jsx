@@ -1,9 +1,9 @@
 import { Text, Button, ButtonGroup, FormControl } from '@primer/react'
-import { useOverride, useScene } from '@dfosco/storyboard-react'
-import ColorModeSwitcher from '../components/ColorModeSwitcher.jsx'
-import StoryboardForm from '../components/StoryboardForm.jsx'
-import TextInput from '../components/TextInput.jsx'
-import Textarea from '../components/Textarea.jsx'
+import { useOverride, useFlow } from '@dfosco/storyboard-react'
+import ColorModeSwitcher from '@/components/ColorModeSwitcher.jsx'
+import StoryboardForm from '@/components/StoryboardForm.jsx'
+import TextInput from '@/components/TextInput.jsx'
+import Textarea from '@/components/Textarea.jsx'
 import styles from './Example.module.css'
 
 function Example() {
@@ -11,9 +11,9 @@ function Example() {
   const [username, setUsername, clearUsername] = useOverride('user.username')
   const [bio, , clearBio] = useOverride('user.profile.bio')
   const [location, , clearLocation] = useOverride('user.profile.location')
-  const { sceneName, switchScene } = useScene()
+  const { flowName, switchFlow } = useFlow()
 
-  const nextScene = (sceneName === 'default') ? 'other-scene' : 'default'
+  const nextFlow = (flowName === 'default') ? 'other-scene' : 'default'
 
   const resetUser = () => {
     clearName()
@@ -30,11 +30,11 @@ function Example() {
         <p>Add <code>#user.name=Alice</code> to the URL hash to override any value.</p>
 
         <section>
-          <Text as="h3" fontWeight="bold">Scene</Text>
-          <pre className={styles.codeBlock}>current: {sceneName}</pre>
+          <Text as="h3" fontWeight="bold">Flow</Text>
+          <pre className={styles.codeBlock}>current: {flowName}</pre>
           
-          <Button size="small" onClick={() => switchScene(nextScene)}>
-            Switch to &quot;{nextScene}&quot;
+          <Button size="small" onClick={() => switchFlow(nextFlow)}>
+            Switch to &quot;{nextFlow}&quot;
           </Button>
         </section>
 

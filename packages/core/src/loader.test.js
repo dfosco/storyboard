@@ -1,7 +1,7 @@
-import { init, loadScene, listScenes, sceneExists, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
+import { init, loadFlow, listFlows, flowExists, loadScene, listScenes, sceneExists, loadRecord, findRecord, loadObject, deepMerge, resolveFlowName, resolveRecordName } from './loader.js'
 
 const makeIndex = () => ({
-  scenes: {
+  flows: {
     default: {
       title: 'Default Scene',
       user: { $ref: 'jane-doe' },
@@ -72,111 +72,149 @@ describe('init', () => {
     expect(() => init('string')).toThrow()
   })
 
-  it('stores data so loadScene works', () => {
+  it('stores data so loadFlow works', () => {
     init(makeIndex())
-    const scene = loadScene('default')
-    expect(scene.title).toBe('Default Scene')
+    const flow = loadFlow('default')
+    expect(flow.title).toBe('Default Scene')
   })
 
   it('handles missing properties gracefully', () => {
     init({})
-    expect(sceneExists('anything')).toBe(false)
+    expect(flowExists('anything')).toBe(false)
+  })
+
+  it('accepts { scenes } for backward compat', () => {
+    init({ scenes: { legacy: { title: 'Legacy' } }, objects: {}, records: {} })
+    expect(flowExists('legacy')).toBe(true)
   })
 })
 
-describe('loadScene', () => {
-  it('loads scene by name', () => {
-    const scene = loadScene('empty')
-    expect(scene).toEqual({})
+describe('loadFlow', () => {
+  it('loads flow by name', () => {
+    const flow = loadFlow('empty')
+    expect(flow).toEqual({})
   })
 
   it('resolves $ref to objects', () => {
-    const scene = loadScene('default')
-    expect(scene.user).toEqual({ name: 'Jane Doe', role: 'admin' })
+    const flow = loadFlow('default')
+    expect(flow.user).toEqual({ name: 'Jane Doe', role: 'admin' })
   })
 
   it('resolves nested $ref', () => {
-    const scene = loadScene('with-nested-ref')
-    expect(scene.team.lead).toEqual({ name: 'Jane Doe', role: 'admin' })
+    const flow = loadFlow('with-nested-ref')
+    expect(flow.team.lead).toEqual({ name: 'Jane Doe', role: 'admin' })
   })
 
-  it('resolves $global and merges into root, scene wins conflicts', () => {
-    const scene = loadScene('Dashboard')
-    expect(scene.links).toEqual(['home', 'about'])
-    expect(scene.heading).toBe('Dashboard')
-    // scene value should win over global value
-    expect(scene.nav).toBe('scene-wins')
+  it('resolves $global and merges into root, flow wins conflicts', () => {
+    const flow = loadFlow('Dashboard')
+    expect(flow.links).toEqual(['home', 'about'])
+    expect(flow.heading).toBe('Dashboard')
+    // flow value should win over global value
+    expect(flow.nav).toBe('scene-wins')
   })
 
-  it('throws for missing scene', () => {
-    expect(() => loadScene('nonexistent')).toThrow()
+  it('throws for missing flow', () => {
+    expect(() => loadFlow('nonexistent')).toThrow()
   })
 
   it('case-insensitive lookup', () => {
-    const scene = loadScene('dashboard')
-    expect(scene.heading).toBe('Dashboard')
+    const flow = loadFlow('dashboard')
+    expect(flow.heading).toBe('Dashboard')
   })
 
   it('returns deep clone (mutations do not affect index)', () => {
-    const scene1 = loadScene('empty')
-    scene1.injected = true
-    const scene2 = loadScene('empty')
-    expect(scene2.injected).toBeUndefined()
+    const flow1 = loadFlow('empty')
+    flow1.injected = true
+    const flow2 = loadFlow('empty')
+    expect(flow2.injected).toBeUndefined()
   })
 
   it('resolves $global on repeated calls (no index mutation)', () => {
-    const first = loadScene('Dashboard')
+    const first = loadFlow('Dashboard')
     expect(first.links).toEqual(['home', 'about'])
     expect(first.heading).toBe('Dashboard')
 
     // Second call must return the same resolved data — $global must not
     // be deleted from the index by the first call
-    const second = loadScene('Dashboard')
+    const second = loadFlow('Dashboard')
     expect(second.links).toEqual(['home', 'about'])
     expect(second.heading).toBe('Dashboard')
     expect(second.nav).toBe('scene-wins')
   })
 
-  it('default param loads "default" scene', () => {
-    const scene = loadScene()
-    expect(scene.title).toBe('Default Scene')
+  it('default param loads "default" flow', () => {
+    const flow = loadFlow()
+    expect(flow.title).toBe('Default Scene')
   })
 
   it('detects circular $ref and throws', () => {
-    expect(() => loadScene('circular-a')).toThrow(/circular/i)
+    expect(() => loadFlow('circular-a')).toThrow(/circular/i)
   })
 })
 
-describe('sceneExists', () => {
-  it('returns true for existing scene', () => {
-    expect(sceneExists('default')).toBe(true)
+describe('flowExists', () => {
+  it('returns true for existing flow', () => {
+    expect(flowExists('default')).toBe(true)
   })
 
-  it('returns false for missing scene', () => {
-    expect(sceneExists('nope')).toBe(false)
+  it('returns false for missing flow', () => {
+    expect(flowExists('nope')).toBe(false)
   })
 
   it('is case-insensitive', () => {
-    expect(sceneExists('dashboard')).toBe(true)
-    expect(sceneExists('DASHBOARD')).toBe(true)
+    expect(flowExists('dashboard')).toBe(true)
+    expect(flowExists('DASHBOARD')).toBe(true)
   })
 })
 
-describe('listScenes', () => {
-  it('returns all scene names', () => {
-    const names = listScenes()
+describe('listFlows', () => {
+  it('returns all flow names', () => {
+    const names = listFlows()
     expect(names).toContain('default')
     expect(names).toContain('Dashboard')
     expect(names).toContain('empty')
   })
 
   it('returns an array', () => {
-    expect(Array.isArray(listScenes())).toBe(true)
+    expect(Array.isArray(listFlows())).toBe(true)
   })
 
-  it('returns empty array when no scenes registered', () => {
-    init({ scenes: {}, objects: {}, records: {} })
-    expect(listScenes()).toEqual([])
+  it('returns empty array when no flows registered', () => {
+    init({ flows: {}, objects: {}, records: {} })
+    expect(listFlows()).toEqual([])
+  })
+})
+
+// ── Deprecated aliases ──
+
+describe('loadScene (deprecated alias)', () => {
+  it('is the same function as loadFlow', () => {
+    expect(loadScene).toBe(loadFlow)
+  })
+
+  it('loads flow data', () => {
+    const scene = loadScene('default')
+    expect(scene.title).toBe('Default Scene')
+  })
+})
+
+describe('sceneExists (deprecated alias)', () => {
+  it('is the same function as flowExists', () => {
+    expect(sceneExists).toBe(flowExists)
+  })
+
+  it('returns true for existing flow', () => {
+    expect(sceneExists('default')).toBe(true)
+  })
+})
+
+describe('listScenes (deprecated alias)', () => {
+  it('is the same function as listFlows', () => {
+    expect(listScenes).toBe(listFlows)
+  })
+
+  it('returns all flow names', () => {
+    expect(listScenes()).toContain('default')
   })
 })
 
@@ -273,5 +311,108 @@ describe('loadObject', () => {
 
   it('detects circular $ref and throws', () => {
     expect(() => loadObject('circular-obj-a')).toThrow(/circular/i)
+  })
+})
+
+describe('resolveFlowName', () => {
+  beforeEach(() => {
+    init({
+      flows: {
+        default: { title: 'Global Default' },
+        signup: { title: 'Global Signup' },
+        'Dashboard/default': { title: 'Dashboard Default' },
+        'Dashboard/signup': { title: 'Dashboard Signup' },
+        'Blog/default': { title: 'Blog Default' },
+      },
+      objects: {},
+      records: {},
+    })
+  })
+
+  it('returns scoped name when it exists', () => {
+    expect(resolveFlowName('Dashboard', 'default')).toBe('Dashboard/default')
+    expect(resolveFlowName('Dashboard', 'signup')).toBe('Dashboard/signup')
+  })
+
+  it('falls back to global name when scoped does not exist', () => {
+    expect(resolveFlowName('Blog', 'signup')).toBe('signup')
+  })
+
+  it('returns global name when scope is null', () => {
+    expect(resolveFlowName(null, 'default')).toBe('default')
+    expect(resolveFlowName(null, 'signup')).toBe('signup')
+  })
+
+  it('returns scoped name for error messages when neither exists', () => {
+    expect(resolveFlowName('Dashboard', 'nonexistent')).toBe('Dashboard/nonexistent')
+  })
+
+  it('returns plain name for error messages when scope is null and name does not exist', () => {
+    expect(resolveFlowName(null, 'nonexistent')).toBe('nonexistent')
+  })
+
+  it('handles already-scoped names (explicit cross-prototype)', () => {
+    expect(resolveFlowName('Blog', 'Dashboard/signup')).toBe('Dashboard/signup')
+  })
+})
+
+describe('resolveRecordName', () => {
+  beforeEach(() => {
+    init({
+      flows: {},
+      objects: {},
+      records: {
+        posts: [{ id: '1' }],
+        'Dashboard/metrics': [{ id: 'm1' }],
+        'Dashboard/posts': [{ id: 'd1' }],
+      },
+    })
+  })
+
+  it('returns scoped name when it exists', () => {
+    expect(resolveRecordName('Dashboard', 'metrics')).toBe('Dashboard/metrics')
+    expect(resolveRecordName('Dashboard', 'posts')).toBe('Dashboard/posts')
+  })
+
+  it('falls back to global when scoped does not exist', () => {
+    expect(resolveRecordName('Blog', 'posts')).toBe('posts')
+  })
+
+  it('returns global when scope is null', () => {
+    expect(resolveRecordName(null, 'posts')).toBe('posts')
+  })
+})
+
+describe('error hints for scoped data', () => {
+  beforeEach(() => {
+    init({
+      flows: {
+        'Dashboard/signup': { title: 'Dashboard Signup' },
+        default: { title: 'Global Default' },
+      },
+      objects: {},
+      records: {
+        'Blog/posts': [{ id: '1' }],
+        tags: [{ id: 'js' }],
+      },
+    })
+  })
+
+  it('loadFlow error suggests scoped alternatives', () => {
+    expect(() => loadFlow('signup')).toThrow(/Did you mean: Dashboard\/signup/)
+  })
+
+  it('loadRecord error suggests scoped alternatives', () => {
+    expect(() => loadRecord('posts')).toThrow(/Did you mean: Blog\/posts/)
+  })
+
+  it('loadFlow error for truly missing name has no hint', () => {
+    expect(() => loadFlow('xyz')).toThrow(/Failed to load flow: xyz/)
+    expect(() => loadFlow('xyz')).not.toThrow(/Did you mean/)
+  })
+
+  it('loadRecord error for truly missing name has no hint', () => {
+    expect(() => loadRecord('xyz')).toThrow(/Record not found: xyz/)
+    expect(() => loadRecord('xyz')).not.toThrow(/Did you mean/)
   })
 })

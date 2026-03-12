@@ -8,8 +8,14 @@
 // Data index initialization
 export { init } from './loader.js'
 
-// Scene, object & record loading
-export { loadScene, listScenes, sceneExists, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
+// Flow, object & record loading
+export { loadFlow, listFlows, flowExists, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
+// Scoped name resolution
+export { resolveFlowName, resolveRecordName } from './loader.js'
+// Prototype metadata
+export { listPrototypes, getPrototypeMetadata } from './loader.js'
+// Deprecated scene aliases
+export { loadScene, listScenes, sceneExists } from './loader.js'
 
 // Dot-notation path utilities
 export { getByPath, setByPath, deepClone } from './dotPath.js'
@@ -27,18 +33,27 @@ export { interceptHideParams, installHideParamListener } from './interceptHidePa
 // Hash change subscription (for reactive frameworks)
 export { subscribeToHash, getHashSnapshot } from './hashSubscribe.js'
 
-// Body class sync (overrides + scene → <body> classes)
-export { installBodyClassSync, setSceneClass, syncOverrideClasses } from './bodyClasses.js'
+// Body class sync (overrides + flow → <body> classes)
+export { installBodyClassSync, setFlowClass, syncOverrideClasses } from './bodyClasses.js'
+// Deprecated alias
+export { setSceneClass } from './bodyClasses.js'
 
 // Design modes (mode registry, switching, event bus)
 export { registerMode, unregisterMode, getRegisteredModes, getCurrentMode, activateMode, deactivateMode, subscribeToMode, getModeSnapshot, syncModeClasses, on, off, emit, initModesConfig, isModesEnabled } from './modes.js'
 
+// Tool registry (declared in modes.config.json, state managed at runtime)
+export { initTools, setToolAction, setToolState, getToolState, getToolsForMode, subscribeToTools, getToolsSnapshot } from './modes.js'
+
 // Dev tools (vanilla JS, framework-agnostic)
 export { mountDevTools } from './devtools.js'
+export { mountFlowDebug } from './sceneDebug.js'
+// Deprecated alias
 export { mountSceneDebug } from './sceneDebug.js'
 
 // Viewfinder utilities
-export { hash, resolveSceneRoute, getSceneMeta } from './viewfinder.js'
+export { hash, resolveFlowRoute, getFlowMeta, buildPrototypeIndex } from './viewfinder.js'
+// Deprecated aliases
+export { resolveSceneRoute, getSceneMeta } from './viewfinder.js'
 
 // Feature flags
 export { initFeatureFlags, getFlag, setFlag, toggleFlag, getAllFlags, resetFlags, getFlagKeys, syncFlagBodyClasses } from './featureFlags.js'

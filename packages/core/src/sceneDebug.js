@@ -1,15 +1,15 @@
 /**
- * Storyboard SceneDebug — a vanilla JS debug panel that displays scene data.
+ * Storyboard FlowDebug — a vanilla JS debug panel that displays flow data.
  *
  * Framework-agnostic: creates a DOM element, no React/Vue/etc. needed.
  *
  * Usage:
- *   import { mountSceneDebug } from '@dfosco/storyboard-core'
- *   mountSceneDebug(document.getElementById('debug'))
+ *   import { mountFlowDebug } from '@dfosco/storyboard-core'
+ *   mountFlowDebug(document.getElementById('debug'))
  *   // or
- *   mountSceneDebug() // appends to document.body
+ *   mountFlowDebug() // appends to document.body
  */
-import { loadScene } from './loader.js'
+import { loadFlow } from './loader.js'
 
 const STYLES = `
 .sb-scene-debug {
@@ -53,15 +53,15 @@ const STYLES = `
 let stylesInjected = false
 
 /**
- * Mount a scene debug panel into the DOM.
+ * Mount a flow debug panel into the DOM.
  *
  * @param {HTMLElement} [container=document.body] - Where to mount
- * @param {string} [sceneName] - Scene name override (defaults to ?scene= param or "default")
+ * @param {string} [flowName] - Flow name override (defaults to ?scene= param or "default")
  * @returns {HTMLElement} The created debug element
  */
-export function mountSceneDebug(container, sceneName) {
+export function mountFlowDebug(container, flowName) {
   const target = container || document.body
-  const activeSceneName = sceneName
+  const activeFlowName = flowName
     || new URLSearchParams(window.location.search).get('scene')
     || 'default'
 
@@ -79,7 +79,7 @@ export function mountSceneDebug(container, sceneName) {
   let data = null
   let error = null
   try {
-    data = loadScene(activeSceneName)
+    data = loadFlow(activeFlowName)
   } catch (err) {
     error = err.message
   }
@@ -87,13 +87,13 @@ export function mountSceneDebug(container, sceneName) {
   if (error) {
     el.innerHTML = `
       <div class="sb-scene-debug-error">
-        <div class="sb-scene-debug-error-title">Error loading scene</div>
+        <div class="sb-scene-debug-error-title">Error loading flow</div>
         <p class="sb-scene-debug-error-message">${error}</p>
       </div>`
   } else {
     const title = document.createElement('h2')
     title.className = 'sb-scene-debug-title'
-    title.textContent = `Scene: ${activeSceneName}`
+    title.textContent = `Flow: ${activeFlowName}`
 
     const pre = document.createElement('pre')
     pre.className = 'sb-scene-debug-code'
@@ -106,3 +106,6 @@ export function mountSceneDebug(container, sceneName) {
   target.appendChild(el)
   return el
 }
+
+/** @deprecated Use mountFlowDebug() */
+export const mountSceneDebug = mountFlowDebug

@@ -28,24 +28,25 @@ function deepMerge(target, source) {
 
 /**
  * Module-level data index, seeded by init().
- * Shape: { scenes: {}, objects: {}, records: {} }
+ * Shape: { flows: {}, objects: {}, records: {} }
  */
-let dataIndex = { scenes: {}, objects: {}, records: {} }
+let dataIndex = { flows: {}, objects: {}, records: {}, prototypes: {} }
 
 /**
  * Seed the data index. Call once at app startup before any load functions.
  * The Vite data plugin calls this automatically via the generated virtual module.
  *
- * @param {{ scenes: object, objects: object, records: object }} index
+ * @param {{ flows?: object, scenes?: object, objects: object, records: object, prototypes?: object }} index
  */
 export function init(index) {
   if (!index || typeof index !== 'object') {
-    throw new Error('[storyboard-core] init() requires { scenes, objects, records }')
+    throw new Error('[storyboard-core] init() requires { flows, objects, records }')
   }
   dataIndex = {
-    scenes: index.scenes || {},
+    flows: index.flows || index.scenes || {},
     objects: index.objects || {},
     records: index.records || {},
+    prototypes: index.prototypes || {},
   }
 }
 
@@ -63,24 +64,29 @@ function loadDataFile(name, type) {
 
   // Search all types if no specific type given
   if (!type) {
-    for (const t of ['scenes', 'objects', 'records']) {
+    for (const t of ['flows', 'objects', 'records']) {
       if (dataIndex[t]?.[name] != null) {
         return dataIndex[t][name]
       }
     }
   }
 
-  // Case-insensitive fallback for scenes
-  if (type === 'scenes' || !type) {
+  // Case-insensitive fallback for flows
+  if (type === 'flows' || !type) {
     const lower = name.toLowerCase()
-    for (const key of Object.keys(dataIndex.scenes)) {
+    for (const key of Object.keys(dataIndex.flows)) {
       if (key.toLowerCase() === lower) {
-        return dataIndex.scenes[key]
+        return dataIndex.flows[key]
       }
     }
   }
 
-  throw new Error(`Data file not found: ${name}${type ? ` (type: ${type})` : ''}`)
+  const available = Object.keys(dataIndex[type] || {})
+  const scopedHints = available.filter(k => k.includes('/')).slice(0, 5)
+  const hint = scopedHints.length > 0
+    ? `\n  Scoped names in index: ${scopedHints.join(', ')}`
+    : ''
+  throw new Error(`Data file not found: ${name}${type ? ` (type: ${type})` : ''}${hint}`)
 }
 
 /**
@@ -117,49 +123,62 @@ function resolveRefs(node, seen = new Set()) {
 }
 
 /**
- * Returns the names of all registered scenes.
+ * Returns the names of all registered flows.
  * @returns {string[]}
  */
-export function listScenes() {
-  return Object.keys(dataIndex.scenes)
+export function listFlows() {
+  return Object.keys(dataIndex.flows)
 }
 
+/** @deprecated Use listFlows() */
+export const listScenes = listFlows
+
 /**
- * Checks whether a scene file exists for the given name.
- * @param {string} sceneName - e.g., "Overview"
+ * Checks whether a flow file exists for the given name.
+ * @param {string} flowName - e.g., "Overview"
  * @returns {boolean}
  */
-export function sceneExists(sceneName) {
-  if (dataIndex.scenes[sceneName] != null) return true
-  const lower = sceneName.toLowerCase()
-  for (const key of Object.keys(dataIndex.scenes)) {
+export function flowExists(flowName) {
+  if (dataIndex.flows[flowName] != null) return true
+  const lower = flowName.toLowerCase()
+  for (const key of Object.keys(dataIndex.flows)) {
     if (key.toLowerCase() === lower) return true
   }
   return false
 }
 
+/** @deprecated Use flowExists() */
+export const sceneExists = flowExists
+
 /**
- * Loads a scene file and resolves $global and $ref references.
+ * Loads a flow file and resolves $global and $ref references.
  *
- * - $global: array of data names merged into root (scene wins on conflicts)
+ * - $global: array of data names merged into root (flow wins on conflicts)
  * - $ref: inline object replacement at any nesting level
  *
- * @param {string} sceneName - Name of the scene (e.g., "default")
- * @returns {object} Resolved scene data
+ * @param {string} flowName - Name of the flow (e.g., "default")
+ * @returns {object} Resolved flow data
  */
-export function loadScene(sceneName = 'default') {
-  let sceneData
+export function loadFlow(flowName = 'default') {
+  let flowData
 
   try {
-    sceneData = structuredClone(loadDataFile(sceneName, 'scenes'))
+    flowData = structuredClone(loadDataFile(flowName, 'flows'))
   } catch {
-    throw new Error(`Failed to load scene: ${sceneName}`)
+    const available = listFlows()
+    const related = available.filter(k =>
+      k.endsWith('/' + flowName) || k.startsWith(flowName + '/')
+    )
+    const hint = related.length > 0
+      ? ` Did you mean: ${related.join(', ')}?`
+      : ''
+    throw new Error(`Failed to load flow: ${flowName}.${hint}`)
   }
 
   // Handle $global: root-level merge from referenced data files
-  if (Array.isArray(sceneData.$global)) {
-    const globalNames = sceneData.$global
-    delete sceneData.$global
+  if (Array.isArray(flowData.$global)) {
+    const globalNames = flowData.$global
+    delete flowData.$global
 
     let mergedGlobals = {}
     for (const name of globalNames) {
@@ -172,15 +191,18 @@ export function loadScene(sceneName = 'default') {
       }
     }
 
-    sceneData = deepMerge(mergedGlobals, sceneData)
+    flowData = deepMerge(mergedGlobals, flowData)
   }
 
-  sceneData = resolveRefs(sceneData)
+  flowData = resolveRefs(flowData)
 
   // Single clone at the boundary — resolveRefs builds new objects internally,
   // so the index data is safe. Clone here to prevent consumer mutation.
-  return structuredClone(sceneData)
+  return structuredClone(flowData)
 }
+
+/** @deprecated Use loadFlow() */
+export const loadScene = loadFlow
 
 /**
  * Loads a record collection by name.
@@ -190,7 +212,14 @@ export function loadScene(sceneName = 'default') {
 export function loadRecord(recordName) {
   const data = dataIndex.records[recordName]
   if (data == null) {
-    throw new Error(`Record not found: ${recordName}`)
+    const available = Object.keys(dataIndex.records)
+    const related = available.filter(k =>
+      k.endsWith('/' + recordName) || k.startsWith(recordName + '/')
+    )
+    const hint = related.length > 0
+      ? ` Did you mean: ${related.join(', ')}?`
+      : ''
+    throw new Error(`Record not found: ${recordName}.${hint}`)
   }
   if (!Array.isArray(data)) {
     throw new Error(`Record "${recordName}" must be an array, got ${typeof data}`)
@@ -220,6 +249,58 @@ export function loadObject(objectName) {
   const data = loadDataFile(objectName, 'objects')
   const resolved = resolveRefs(structuredClone(data))
   return resolved
+}
+
+/**
+ * Resolve a flow name within a prototype scope.
+ * Tries the scoped name first ({scope}/{name}), then falls back to the plain name.
+ *
+ * @param {string|null} scope - Prototype name (e.g. "Dashboard"), or null for global-only
+ * @param {string} name - Flow name (e.g. "default" or "Dashboard/signup")
+ * @returns {string} The resolved flow name that exists in the index
+ */
+export function resolveFlowName(scope, name) {
+  if (scope) {
+    const scoped = `${scope}/${name}`
+    if (flowExists(scoped)) return scoped
+  }
+  if (flowExists(name)) return name
+  // Return the scoped name for better error messages even if it doesn't exist
+  return scope ? `${scope}/${name}` : name
+}
+
+/**
+ * Resolve a record name within a prototype scope.
+ * Tries the scoped name first ({scope}/{name}), then falls back to the plain name.
+ *
+ * @param {string|null} scope - Prototype name (e.g. "Dashboard"), or null for global-only
+ * @param {string} name - Record name (e.g. "posts")
+ * @returns {string} The resolved record name that exists in the index
+ */
+export function resolveRecordName(scope, name) {
+  if (scope) {
+    const scoped = `${scope}/${name}`
+    if (dataIndex.records[scoped] != null) return scoped
+  }
+  if (dataIndex.records[name] != null) return name
+  return scope ? `${scope}/${name}` : name
+}
+
+/**
+ * Returns the names of all registered prototypes.
+ * @returns {string[]}
+ */
+export function listPrototypes() {
+  return Object.keys(dataIndex.prototypes)
+}
+
+/**
+ * Returns prototype metadata by name.
+ * @param {string} name - Prototype name (e.g. "Example")
+ * @returns {object|null} Metadata from the .prototype.json file, or null
+ */
+export function getPrototypeMetadata(name) {
+  return dataIndex.prototypes[name] ?? null
 }
 
 export { deepMerge }

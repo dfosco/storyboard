@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Text } from '@primer/react'
-import Application from '../../templates/Application/Application.jsx'
+import Application from '@/templates/Application/Application.jsx'
 import { useRecords } from '@dfosco/storyboard-react'
 
 /**

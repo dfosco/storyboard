@@ -1,19 +1,20 @@
 /**
- * Design-modes plugin mount entry point.
+ * Design-modes UI mount entry point.
  *
  * Call mountDesignModesUI() once at app startup to render the ModeSwitch
  * and ToolbarShell components.  Framework-agnostic — works from any JS
- * context (React _app.jsx, vanilla JS, etc.).
+ * context (React StoryboardProvider, vanilla JS, etc.).
  *
  * Usage:
- *   import { mountDesignModesUI } from '@dfosco/storyboard-core/svelte-plugin-ui/design-modes'
+ *   import { mountDesignModesUI } from '@dfosco/storyboard-core/ui/design-modes'
  *   mountDesignModesUI()  // mounts to document.body
  *   mountDesignModesUI(document.getElementById('my-container'))
  */
 
-import { mountSveltePlugin, type PluginHandle } from '../mount.js'
-import ModeSwitch from '../components/ModeSwitch.svelte'
-import ToolbarShell from '../components/ToolbarShell.svelte'
+import { mountSveltePlugin, type PluginHandle } from '../svelte-plugin-ui/mount.js'
+import ModeSwitch from '../svelte-plugin-ui/components/ModeSwitch.svelte'
+// TODO: Re-enable after migrating devtools features into tool registry
+// import ToolbarShell from '../svelte-plugin-ui/components/ToolbarShell.svelte'
 
 let handles: PluginHandle[] = []
 
@@ -35,7 +36,8 @@ export function mountDesignModesUI(
 
   handles.push(
     mountSveltePlugin(target, ModeSwitch),
-    mountSveltePlugin(target, ToolbarShell),
+    // TODO: Re-enable after migrating devtools features into tool registry
+    // mountSveltePlugin(target, ToolbarShell),
   )
 
   return unmountDesignModesUI

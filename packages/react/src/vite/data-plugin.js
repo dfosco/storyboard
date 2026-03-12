@@ -1,24 +1,68 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { execSync } from 'node:child_process'
 import { globSync } from 'glob'
 import { parse as parseJsonc } from 'jsonc-parser'
 
 const VIRTUAL_MODULE_ID = 'virtual:storyboard-data-index'
 const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
 
-const SUFFIXES = ['scene', 'object', 'record']
-const GLOB_PATTERN = '**/*.{scene,object,record}.{json,jsonc}'
+const GLOB_PATTERN = '**/*.{flow,scene,object,record,prototype}.{json,jsonc}'
 
 /**
  * Extract the data name and type suffix from a file path.
- * e.g. "src/data/default.scene.json" → { name: "default", suffix: "scene" }
- *      "anywhere/posts.record.jsonc" → { name: "posts", suffix: "record" }
+ * Flows and records inside src/prototypes/{Name}/ get prefixed with the
+ * prototype name (e.g. "Dashboard/default"). Objects are never prefixed.
+ *
+ * e.g. "src/data/default.flow.json"                → { name: "default",           suffix: "flow" }
+ *      "src/prototypes/Dashboard/default.flow.json" → { name: "Dashboard/default", suffix: "flow" }
+ *      "src/prototypes/Dashboard/helpers.object.json"→ { name: "helpers",           suffix: "object" }
  */
 function parseDataFile(filePath) {
   const base = path.basename(filePath)
-  const match = base.match(/^(.+)\.(scene|object|record)\.(jsonc?)$/)
+  const match = base.match(/^(.+)\.(flow|scene|object|record|prototype)\.(jsonc?)$/)
   if (!match) return null
-  return { name: match[1], suffix: match[2], ext: match[3] }
+  // Normalize .scene → .flow for backward compatibility
+  const suffix = match[2] === 'scene' ? 'flow' : match[2]
+  let name = match[1]
+
+  // Prototype metadata files are keyed by their prototype directory name
+  if (suffix === 'prototype') {
+    const normalized = filePath.replace(/\\/g, '/')
+    const protoMatch = normalized.match(/(?:^|\/)src\/prototypes\/([^/]+)\//)
+    if (protoMatch) {
+      name = protoMatch[1]
+    }
+    return { name, suffix, ext: match[3] }
+  }
+
+  // Scope flows and records inside src/prototypes/{Name}/ with a prefix
+  if (suffix !== 'object') {
+    const normalized = filePath.replace(/\\/g, '/')
+    const protoMatch = normalized.match(/(?:^|\/)src\/prototypes\/([^/]+)\//)
+    if (protoMatch) {
+      name = `${protoMatch[1]}/${name}`
+    }
+  }
+
+  return { name, suffix, ext: match[3] }
+}
+
+/**
+ * Look up the git author who first created a file.
+ * Used to auto-fill the author field in .prototype.json when missing.
+ */
+function getGitAuthor(root, filePath) {
+  try {
+    const result = execSync(
+      `git log --follow --diff-filter=A --format="%aN" -- "${filePath}"`,
+      { cwd: root, encoding: 'utf-8', timeout: 5000 },
+    ).trim()
+    const lines = result.split('\n').filter(Boolean)
+    return lines.length > 0 ? lines[lines.length - 1] : null
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -28,7 +72,7 @@ function buildIndex(root) {
   const ignore = ['node_modules/**', 'dist/**', '.git/**']
   const files = globSync(GLOB_PATTERN, { cwd: root, ignore, absolute: false })
 
-  const index = { scene: {}, object: {}, record: {} }
+  const index = { flow: {}, object: {}, record: {}, prototype: {} }
   const seen = {} // "name.suffix" → absolute path (for duplicate detection)
 
   for (const relPath of files) {
@@ -39,11 +83,17 @@ function buildIndex(root) {
     const absPath = path.resolve(root, relPath)
 
     if (seen[key]) {
+      const hint = parsed.suffix === 'object'
+        ? '  Objects are globally scoped — even inside src/prototypes/ they share a single namespace.\n' +
+          '  Rename one of the files to avoid the collision.'
+        : '  Flows and records are scoped to their prototype directory.\n' +
+          '  If both files are global (outside src/prototypes/), rename one to avoid the collision.'
+
       throw new Error(
-        `[storyboard-data] Duplicate data file: "${key}.json"\n` +
+        `[storyboard-data] Duplicate ${parsed.suffix} "${parsed.name}"\n` +
         `  Found at: ${seen[key]}\n` +
         `  And at:   ${absPath}\n` +
-        `  Every data file name+suffix must be unique across the repo.`
+        hint
       )
     }
 
@@ -77,23 +127,70 @@ function readConfig(root) {
   }
 }
 
+/**
+ * Read modes.config.json from @dfosco/storyboard-core.
+ * Returns the full config object { modes, tools }.
+ * Falls back to hardcoded defaults if not found.
+ */
+function readModesConfig(root) {
+  const fallback = {
+    modes: [
+      { name: 'prototype', label: 'Navigate' },
+      { name: 'inspect', label: 'Develop' },
+      { name: 'present', label: 'Collaborate' },
+      { name: 'plan', label: 'Canvas' },
+    ],
+    tools: {},
+  }
+
+  // Try local workspace path first (monorepo), then node_modules
+  const candidates = [
+    path.resolve(root, 'packages/core/modes.config.json'),
+    path.resolve(root, 'node_modules/@dfosco/storyboard-core/modes.config.json'),
+  ]
+
+  for (const filePath of candidates) {
+    try {
+      const raw = fs.readFileSync(filePath, 'utf-8')
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed.modes) && parsed.modes.length > 0) {
+        return { modes: parsed.modes, tools: parsed.tools ?? {} }
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+
+  return fallback
+}
+
 function generateModule(index, root) {
   const declarations = []
-  const entries = { scene: [], object: [], record: [] }
+  const INDEX_KEYS = ['flow', 'object', 'record', 'prototype']
+  const entries = { flow: [], object: [], record: [], prototype: [] }
   let i = 0
 
-  for (const suffix of SUFFIXES) {
+  for (const suffix of INDEX_KEYS) {
     for (const [name, absPath] of Object.entries(index[suffix])) {
       const varName = `_d${i++}`
       const raw = fs.readFileSync(absPath, 'utf-8')
-      const parsed = parseJsonc(raw)
+      let parsed = parseJsonc(raw)
+
+      // Auto-fill gitAuthor for prototype metadata from git history
+      if (suffix === 'prototype' && parsed && !parsed.gitAuthor) {
+        const gitAuthor = getGitAuthor(root, absPath)
+        if (gitAuthor) {
+          parsed = { ...parsed, gitAuthor }
+        }
+      }
+
       declarations.push(`const ${varName} = ${JSON.stringify(parsed)}`)
       entries[suffix].push(`  ${JSON.stringify(name)}: ${varName}`)
     }
   }
 
   const imports = [`import { init } from '@dfosco/storyboard-core'`]
-  const initCalls = [`init({ scenes, objects, records })`]
+  const initCalls = [`init({ flows, objects, records, prototypes })`]
 
   // Feature flags from storyboard.config.json
   const { config } = readConfig(root)
@@ -110,8 +207,25 @@ function generateModule(index, root) {
 
   // Modes configuration from storyboard.config.json
   if (config?.modes) {
-    imports.push(`import { initModesConfig } from '@dfosco/storyboard-core'`)
+    imports.push(`import { initModesConfig, registerMode, syncModeClasses, initTools } from '@dfosco/storyboard-core'`)
     initCalls.push(`initModesConfig(${JSON.stringify(config.modes)})`)
+
+    if (config.modes.enabled) {
+      imports.push(`import '@dfosco/storyboard-core/modes.css'`)
+
+      const modesConfig = readModesConfig(root)
+      const modes = config.modes.defaults || modesConfig.modes
+      for (const m of modes) {
+        initCalls.push(`registerMode(${JSON.stringify(m.name)}, { label: ${JSON.stringify(m.label)} })`)
+      }
+
+      // Seed tool registry from modes.config.json
+      if (Object.keys(modesConfig.tools).length > 0) {
+        initCalls.push(`initTools(${JSON.stringify(modesConfig.tools)})`)
+      }
+
+      initCalls.push(`syncModeClasses()`)
+    }
   }
 
   return [
@@ -119,14 +233,18 @@ function generateModule(index, root) {
     '',
     declarations.join('\n'),
     '',
-    `const scenes = {\n${entries.scene.join(',\n')}\n}`,
+    `const flows = {\n${entries.flow.join(',\n')}\n}`,
     `const objects = {\n${entries.object.join(',\n')}\n}`,
     `const records = {\n${entries.record.join(',\n')}\n}`,
+    `const prototypes = {\n${entries.prototype.join(',\n')}\n}`,
+    '',
+    '// Backward-compatible alias',
+    'const scenes = flows',
     '',
     initCalls.join('\n'),
     '',
-    `export { scenes, objects, records }`,
-    `export const index = { scenes, objects, records }`,
+    `export { flows, scenes, objects, records, prototypes }`,
+    `export const index = { flows, scenes, objects, records, prototypes }`,
     `export default index`,
   ].join('\n')
 }
@@ -134,7 +252,7 @@ function generateModule(index, root) {
 /**
  * Vite plugin for storyboard data discovery.
  *
- * - Scans the repo for *.scene.json, *.object.json, *.record.json
+ * - Scans the repo for *.flow.json, *.scene.json (compat), *.object.json, *.record.json
  * - Validates no two files share the same name+suffix (hard build error)
  * - Generates a virtual module `virtual:storyboard-data-index`
  * - Watches for file additions/removals in dev mode

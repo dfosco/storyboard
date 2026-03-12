@@ -19,13 +19,10 @@ export {
   on,
   off,
   emit,
+  getToolsForMode,
+  subscribeToTools,
+  getToolsSnapshot,
 } from '../../modes.js'
-
-export interface ModeToolConfig {
-  id: string
-  label: string
-  action: () => void
-}
 
 export interface ModeConfig {
   name: string
@@ -34,6 +31,23 @@ export interface ModeConfig {
   className?: string | string[]
   onActivate?: (options?: Record<string, unknown>) => void
   onDeactivate?: () => void
-  tools?: ModeToolConfig[]
-  devTools?: ModeToolConfig[]
+}
+
+export interface ToolState {
+  enabled: boolean
+  active: boolean
+  busy: boolean
+  hidden: boolean
+  badge: string | number | null
+}
+
+export interface ResolvedTool {
+  id: string
+  label: string
+  group: 'tools' | 'dev'
+  icon: string | null
+  order: number
+  modes: string[]
+  state: ToolState
+  action: (() => void) | null
 }

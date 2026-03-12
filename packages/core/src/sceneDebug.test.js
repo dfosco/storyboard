@@ -1,28 +1,28 @@
 import { vi } from 'vitest'
 
-const { mockLoadScene } = vi.hoisted(() => ({
-  mockLoadScene: vi.fn(() => ({ hello: 'world', count: 42 })),
+const { mockLoadFlow } = vi.hoisted(() => ({
+  mockLoadFlow: vi.fn(() => ({ hello: 'world', count: 42 })),
 }))
 
 vi.mock('./loader.js', () => ({
-  loadScene: mockLoadScene,
+  loadFlow: mockLoadFlow,
 }))
 
 // We need a fresh module for each test since sceneDebug has a module-level
 // `stylesInjected` boolean. We test style injection on the very first call,
 // then subsequent tests just verify other behavior.
-import { mountSceneDebug } from './sceneDebug.js'
+import { mountFlowDebug, mountSceneDebug } from './sceneDebug.js'
 
 afterEach(() => {
   document.body.innerHTML = ''
-  mockLoadScene.mockReset()
-  mockLoadScene.mockReturnValue({ hello: 'world', count: 42 })
+  mockLoadFlow.mockReset()
+  mockLoadFlow.mockReturnValue({ hello: 'world', count: 42 })
 })
 
-describe('mountSceneDebug', () => {
+describe('mountFlowDebug', () => {
   it('injects styles into document.head on first call', () => {
     // This MUST run first to capture the stylesInjected=false → true transition
-    mountSceneDebug()
+    mountFlowDebug()
 
     const styles = document.head.querySelectorAll('style')
     const hasDebugStyle = Array.from(styles).some((el) =>
@@ -32,13 +32,13 @@ describe('mountSceneDebug', () => {
   })
 
   it('creates an element with class sb-scene-debug', () => {
-    const el = mountSceneDebug()
+    const el = mountFlowDebug()
 
     expect(el.classList.contains('sb-scene-debug')).toBe(true)
   })
 
   it('appends to document.body by default', () => {
-    mountSceneDebug()
+    mountFlowDebug()
 
     expect(document.body.querySelector('.sb-scene-debug')).toBeInTheDocument()
   })
@@ -47,36 +47,36 @@ describe('mountSceneDebug', () => {
     const container = document.createElement('div')
     document.body.appendChild(container)
 
-    mountSceneDebug(container)
+    mountFlowDebug(container)
 
     expect(container.querySelector('.sb-scene-debug')).not.toBeNull()
   })
 
   it('returns the created element', () => {
-    const el = mountSceneDebug()
+    const el = mountFlowDebug()
 
     expect(el).toBeInstanceOf(HTMLElement)
     expect(el.className).toBe('sb-scene-debug')
   })
 
-  it('renders the scene name in the title', () => {
-    mountSceneDebug(undefined, 'my-scene')
+  it('renders the flow name in the title', () => {
+    mountFlowDebug(undefined, 'my-flow')
 
     const title = document.body.querySelector('.sb-scene-debug-title')
     expect(title).not.toBeNull()
-    expect(title.textContent).toContain('my-scene')
+    expect(title.textContent).toContain('my-flow')
   })
 
-  it('defaults scene name to "default" when none is provided', () => {
-    mountSceneDebug()
+  it('defaults flow name to "default" when none is provided', () => {
+    mountFlowDebug()
 
     const title = document.body.querySelector('.sb-scene-debug-title')
     expect(title.textContent).toContain('default')
-    expect(mockLoadScene).toHaveBeenCalledWith('default')
+    expect(mockLoadFlow).toHaveBeenCalledWith('default')
   })
 
   it('renders JSON data in a pre element', () => {
-    mountSceneDebug()
+    mountFlowDebug()
 
     const pre = document.body.querySelector('.sb-scene-debug-code')
     expect(pre).not.toBeNull()
@@ -86,31 +86,31 @@ describe('mountSceneDebug', () => {
     expect(parsed).toEqual({ hello: 'world', count: 42 })
   })
 
-  it('shows error when loadScene throws', () => {
-    mockLoadScene.mockImplementation(() => {
-      throw new Error('Scene not found')
+  it('shows error when loadFlow throws', () => {
+    mockLoadFlow.mockImplementation(() => {
+      throw new Error('Flow not found')
     })
 
-    const el = mountSceneDebug()
+    const el = mountFlowDebug()
 
     const errorTitle = el.querySelector('.sb-scene-debug-error-title')
     expect(errorTitle).not.toBeNull()
     expect(errorTitle.textContent).toContain('Error')
 
     const errorMsg = el.querySelector('.sb-scene-debug-error-message')
-    expect(errorMsg.textContent).toContain('Scene not found')
+    expect(errorMsg.textContent).toContain('Flow not found')
 
     // Should NOT render the normal title/pre
     expect(el.querySelector('.sb-scene-debug-title')).toBeNull()
     expect(el.querySelector('.sb-scene-debug-code')).toBeNull()
   })
 
-  it('uses ?scene query param when no sceneName argument is given', () => {
+  it('uses ?scene query param when no flowName argument is given', () => {
     window.history.pushState(null, '', '?scene=overview')
 
-    mountSceneDebug()
+    mountFlowDebug()
 
-    expect(mockLoadScene).toHaveBeenCalledWith('overview')
+    expect(mockLoadFlow).toHaveBeenCalledWith('overview')
     const title = document.body.querySelector('.sb-scene-debug-title')
     expect(title.textContent).toContain('overview')
 
@@ -119,10 +119,23 @@ describe('mountSceneDebug', () => {
   })
 
   it('allows multiple debug panels to be mounted', () => {
-    mountSceneDebug()
-    mountSceneDebug()
+    mountFlowDebug()
+    mountFlowDebug()
 
     const panels = document.body.querySelectorAll('.sb-scene-debug')
     expect(panels).toHaveLength(2)
+  })
+})
+
+// ── mountSceneDebug (deprecated alias) ──
+
+describe('mountSceneDebug (deprecated alias)', () => {
+  it('is the same function as mountFlowDebug', () => {
+    expect(mountSceneDebug).toBe(mountFlowDebug)
+  })
+
+  it('mounts a debug panel', () => {
+    const el = mountSceneDebug()
+    expect(el.classList.contains('sb-scene-debug')).toBe(true)
   })
 })

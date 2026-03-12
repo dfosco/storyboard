@@ -10,6 +10,13 @@ import {
   on,
   off,
   emit,
+  initTools,
+  setToolAction,
+  setToolState,
+  getToolState,
+  getToolsForMode,
+  subscribeToTools,
+  getToolsSnapshot,
   _resetModes,
 } from './modes.js'
 
@@ -287,5 +294,214 @@ describe('modes config', () => {
     initModesConfig({ enabled: true })
     _resetModes()
     expect(isModesEnabled()).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Tool registry
+// ---------------------------------------------------------------------------
+
+describe('tool registry', () => {
+  const SAMPLE_TOOLS = {
+    '*': [
+      { id: 'viewfinder', label: 'Viewfinder', group: 'dev' },
+      { id: 'reset-params', label: 'Reset all params', group: 'dev' },
+    ],
+    'present': [
+      { id: 'comments-toggle', label: 'Comments', group: 'tools' },
+    ],
+  }
+
+  describe('initTools', () => {
+    it('seeds the registry from config', () => {
+      initTools(SAMPLE_TOOLS)
+      const tools = getToolsForMode('present')
+      const ids = tools.map(t => t.id)
+      expect(ids).toContain('viewfinder')
+      expect(ids).toContain('comments-toggle')
+    })
+
+    it('wildcard tools appear in all modes', () => {
+      initTools(SAMPLE_TOOLS)
+      const protoTools = getToolsForMode('prototype')
+      expect(protoTools.map(t => t.id)).toContain('viewfinder')
+    })
+
+    it('mode-specific tools only appear in their mode', () => {
+      initTools(SAMPLE_TOOLS)
+      const protoTools = getToolsForMode('prototype')
+      expect(protoTools.map(t => t.id)).not.toContain('comments-toggle')
+    })
+
+    it('tools start with default state', () => {
+      initTools(SAMPLE_TOOLS)
+      const state = getToolState('viewfinder')
+      expect(state).toEqual({
+        enabled: true,
+        active: false,
+        busy: false,
+        hidden: false,
+        badge: null,
+      })
+    })
+
+    it('merges mode assignments when tool appears in multiple keys', () => {
+      initTools({
+        '*': [{ id: 'shared', label: 'Shared', group: 'dev' }],
+        'inspect': [{ id: 'shared', label: 'Shared', group: 'dev' }],
+      })
+      const tool = getToolsForMode('inspect').find(t => t.id === 'shared')
+      expect(tool.modes).toContain('*')
+      expect(tool.modes).toContain('inspect')
+    })
+  })
+
+  describe('setToolAction', () => {
+    it('wires up an action callback', () => {
+      initTools({ '*': [{ id: 'test-tool', label: 'Test', group: 'tools' }] })
+      const action = vi.fn()
+      setToolAction('test-tool', action)
+
+      const tool = getToolsForMode('prototype').find(t => t.id === 'test-tool')
+      expect(tool.action).toBe(action)
+    })
+
+    it('warns when tool is not declared', () => {
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      setToolAction('nonexistent', () => {})
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining('not declared'))
+      spy.mockRestore()
+    })
+
+    it('notifies subscribers', () => {
+      initTools({ '*': [{ id: 'tool-a', label: 'A', group: 'tools' }] })
+      const cb = vi.fn()
+      const unsub = subscribeToTools(cb)
+      setToolAction('tool-a', () => {})
+      expect(cb).toHaveBeenCalled()
+      unsub()
+    })
+  })
+
+  describe('setToolState', () => {
+    it('merges partial state updates', () => {
+      initTools({ '*': [{ id: 'tool-b', label: 'B', group: 'tools' }] })
+      setToolState('tool-b', { active: true })
+      expect(getToolState('tool-b').active).toBe(true)
+      expect(getToolState('tool-b').enabled).toBe(true) // unchanged
+    })
+
+    it('sets busy state', () => {
+      initTools({ '*': [{ id: 'tool-c', label: 'C', group: 'tools' }] })
+      setToolState('tool-c', { busy: true })
+      expect(getToolState('tool-c').busy).toBe(true)
+    })
+
+    it('sets badge', () => {
+      initTools({ '*': [{ id: 'tool-d', label: 'D', group: 'tools' }] })
+      setToolState('tool-d', { badge: 3 })
+      expect(getToolState('tool-d').badge).toBe(3)
+    })
+
+    it('warns when tool is not declared', () => {
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      setToolState('nonexistent', { enabled: false })
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining('not declared'))
+      spy.mockRestore()
+    })
+
+    it('notifies subscribers', () => {
+      initTools({ '*': [{ id: 'tool-e', label: 'E', group: 'tools' }] })
+      const cb = vi.fn()
+      const unsub = subscribeToTools(cb)
+      setToolState('tool-e', { active: true })
+      expect(cb).toHaveBeenCalled()
+      unsub()
+    })
+  })
+
+  describe('getToolsForMode', () => {
+    it('sorts tools group first, dev second', () => {
+      initTools({
+        '*': [
+          { id: 'dev-tool', label: 'Dev', group: 'dev' },
+          { id: 'main-tool', label: 'Main', group: 'tools' },
+        ],
+      })
+      const tools = getToolsForMode('prototype')
+      expect(tools[0].id).toBe('main-tool')
+      expect(tools[1].id).toBe('dev-tool')
+    })
+
+    it('sorts by order within a group', () => {
+      initTools({
+        '*': [
+          { id: 'b', label: 'B', group: 'tools', order: 20 },
+          { id: 'a', label: 'A', group: 'tools', order: 10 },
+        ],
+      })
+      const tools = getToolsForMode('prototype')
+      expect(tools[0].id).toBe('a')
+      expect(tools[1].id).toBe('b')
+    })
+
+    it('excludes hidden tools', () => {
+      initTools({ '*': [{ id: 'hidden-tool', label: 'Hidden', group: 'tools' }] })
+      setToolState('hidden-tool', { hidden: true })
+      const tools = getToolsForMode('prototype')
+      expect(tools.map(t => t.id)).not.toContain('hidden-tool')
+    })
+
+    it('includes state and action in returned tools', () => {
+      initTools({ '*': [{ id: 'full-tool', label: 'Full', group: 'tools' }] })
+      const action = vi.fn()
+      setToolAction('full-tool', action)
+      setToolState('full-tool', { active: true, badge: 5 })
+
+      const tool = getToolsForMode('prototype').find(t => t.id === 'full-tool')
+      expect(tool.state.active).toBe(true)
+      expect(tool.state.badge).toBe(5)
+      expect(tool.action).toBe(action)
+    })
+
+    it('returns null action when not wired up', () => {
+      initTools({ '*': [{ id: 'no-action', label: 'No Action', group: 'tools' }] })
+      const tool = getToolsForMode('prototype').find(t => t.id === 'no-action')
+      expect(tool.action).toBeNull()
+    })
+  })
+
+  describe('subscribeToTools', () => {
+    it('unsubscribe stops further calls', () => {
+      const cb = vi.fn()
+      const unsub = subscribeToTools(cb)
+      unsub()
+      initTools({ '*': [{ id: 'x', label: 'X', group: 'tools' }] })
+      expect(cb).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('getToolsSnapshot', () => {
+    it('changes when state changes', () => {
+      initTools({ '*': [{ id: 'snap-tool', label: 'Snap', group: 'tools' }] })
+      const snap1 = getToolsSnapshot()
+      setToolState('snap-tool', { active: true })
+      const snap2 = getToolsSnapshot()
+      expect(snap1).not.toBe(snap2)
+    })
+
+    it('changes when action is set', () => {
+      initTools({ '*': [{ id: 'snap-tool2', label: 'Snap2', group: 'tools' }] })
+      const snap1 = getToolsSnapshot()
+      setToolAction('snap-tool2', () => {})
+      const snap2 = getToolsSnapshot()
+      expect(snap1).not.toBe(snap2)
+    })
+  })
+
+  describe('getToolState', () => {
+    it('returns null for undeclared tools', () => {
+      expect(getToolState('nonexistent')).toBeNull()
+    })
   })
 })

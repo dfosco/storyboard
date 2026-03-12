@@ -9,17 +9,22 @@
     "directory": "packages/core"
   },
   "files": [
-    "src"
+    "src",
+    "modes.config.json"
   ],
   "exports": {
     ".": "./src/index.js",
+    "./modes.config.json": "./modes.config.json",
     "./vite/server": "./src/vite/server-plugin.js",
     "./comments": "./src/comments/index.js",
     "./comments/ui/comments.css": "./src/comments/ui/comments.css",
     "./workshop/ui/mount.js": "./src/workshop/ui/mount.js",
     "./modes.css": "./src/modes.css",
     "./svelte-plugin-ui": "./src/svelte-plugin-ui/index.ts",
-    "./svelte-plugin-ui/design-modes": "./src/svelte-plugin-ui/plugins/design-modes.ts",
+    "./svelte-plugin-ui/design-modes": "./src/ui/design-modes.ts",
+    "./svelte-plugin-ui/viewfinder": "./src/ui/viewfinder.ts",
+    "./ui/design-modes": "./src/ui/design-modes.ts",
+    "./ui/viewfinder": "./src/ui/viewfinder.ts",
     "./svelte-plugin-ui/styles/base.css": "./src/svelte-plugin-ui/styles/base.css"
   },
   "dependencies": {

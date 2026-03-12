@@ -17,6 +17,12 @@ const DEFAULT_MODE = 'prototype'
 
 let _modesEnabled = false
 
+// Tool registry — seeded from modes.config.json, state managed at runtime
+const _tools = new Map()          // id → { id, label, group, modes[] }
+const _toolState = new Map()      // id → { enabled, active, busy, hidden, badge }
+const _toolActions = new Map()    // id → action function
+const _toolListeners = new Set()  // subscribers to tool state/action changes
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
@@ -282,6 +288,166 @@ export function isModesEnabled() {
 }
 
 // ---------------------------------------------------------------------------
+// Tool registry
+// ---------------------------------------------------------------------------
+
+const DEFAULT_TOOL_STATE = Object.freeze({
+  enabled: true,
+  active: false,
+  busy: false,
+  hidden: false,
+  badge: null,
+})
+
+/**
+ * Seed the tool registry from modes.config.json.
+ * Called by the Vite data plugin's generated virtual module.
+ *
+ * @param {Record<string, Array<{ id: string, label: string, group: string }>>} config
+ *        Keys are mode names or '*' (all modes). Values are tool declarations.
+ */
+export function initTools(config = {}) {
+  for (const [modeKey, tools] of Object.entries(config)) {
+    if (!Array.isArray(tools)) continue
+    for (const tool of tools) {
+      if (!tool.id) continue
+      const existing = _tools.get(tool.id)
+      if (existing) {
+        // Merge mode assignments (tool declared in multiple mode keys)
+        if (!existing.modes.includes(modeKey)) {
+          existing.modes.push(modeKey)
+        }
+      } else {
+        _tools.set(tool.id, {
+          id: tool.id,
+          label: tool.label ?? tool.id,
+          group: tool.group ?? 'tools',
+          icon: tool.icon ?? null,
+          order: tool.order ?? 100,
+          modes: [modeKey],
+        })
+        _toolState.set(tool.id, { ...DEFAULT_TOOL_STATE })
+      }
+    }
+  }
+  _notifyTools()
+}
+
+/**
+ * Wire up a click handler for a declared tool.
+ * Plugins call this to provide the action callback.
+ *
+ * @param {string} id       Tool id (must exist in registry)
+ * @param {Function} action Click handler
+ */
+export function setToolAction(id, action) {
+  if (!_tools.has(id)) {
+    console.warn(`[storyboard] Tool "${id}" is not declared in modes.config.json.`)
+    return
+  }
+  _toolActions.set(id, action)
+  _notifyTools()
+}
+
+/**
+ * Update the runtime state of a tool.
+ * Merges the update into existing state — only the provided keys change.
+ *
+ * @param {string} id    Tool id (must exist in registry)
+ * @param {object} state Partial state update
+ * @param {boolean} [state.enabled]  Whether the tool can be interacted with
+ * @param {boolean} [state.active]   Whether the tool is currently "on" (highlighted)
+ * @param {boolean} [state.busy]     Whether the tool is in use / unavailable
+ * @param {boolean} [state.hidden]   Whether the tool should be hidden entirely
+ * @param {string|number|null} [state.badge] Notification badge
+ */
+export function setToolState(id, state = {}) {
+  if (!_tools.has(id)) {
+    console.warn(`[storyboard] Tool "${id}" is not declared in modes.config.json.`)
+    return
+  }
+  const current = _toolState.get(id) ?? { ...DEFAULT_TOOL_STATE }
+  _toolState.set(id, { ...current, ...state })
+  _notifyTools()
+}
+
+/**
+ * Get the current runtime state of a tool.
+ *
+ * @param {string} id Tool id
+ * @returns {{ enabled: boolean, active: boolean, busy: boolean, hidden: boolean, badge: string|number|null } | null}
+ */
+export function getToolState(id) {
+  return _toolState.get(id) ?? null
+}
+
+/**
+ * Get all tools for a given mode, merged with '*' wildcard tools.
+ * Returns tool declarations with their current state and action.
+ * Sorted by group (tools first, dev second), then by order.
+ *
+ * @param {string} modeName
+ * @returns {Array<{ id, label, group, icon, order, modes, state, action }>}
+ */
+export function getToolsForMode(modeName) {
+  const result = []
+  for (const [id, tool] of _tools) {
+    if (!tool.modes.includes(modeName) && !tool.modes.includes('*')) continue
+    const state = _toolState.get(id) ?? { ...DEFAULT_TOOL_STATE }
+    if (state.hidden) continue
+    result.push({
+      ...tool,
+      state,
+      action: _toolActions.get(id) ?? null,
+    })
+  }
+  // Sort: 'tools' group before 'dev', then by order
+  const groupOrder = { tools: 0, dev: 1 }
+  result.sort((a, b) => {
+    const ga = groupOrder[a.group] ?? 0
+    const gb = groupOrder[b.group] ?? 0
+    if (ga !== gb) return ga - gb
+    return (a.order ?? 100) - (b.order ?? 100)
+  })
+  return result
+}
+
+/**
+ * Subscribe to tool state/action changes.
+ * Compatible with React's useSyncExternalStore.
+ *
+ * @param {Function} callback Called on any tool change
+ * @returns {Function} Unsubscribe function
+ */
+export function subscribeToTools(callback) {
+  _toolListeners.add(callback)
+  return () => _toolListeners.delete(callback)
+}
+
+/**
+ * Snapshot for useSyncExternalStore.
+ * Returns a serialised string that changes when tool state/actions change.
+ */
+export function getToolsSnapshot() {
+  const entries = []
+  for (const [id, state] of _toolState) {
+    const hasAction = _toolActions.has(id) ? '1' : '0'
+    entries.push(`${id}:${state.enabled}:${state.active}:${state.busy}:${state.hidden}:${state.badge}:${hasAction}`)
+  }
+  return entries.join('|')
+}
+
+function _notifyTools() {
+  for (const cb of _toolListeners) {
+    try {
+      cb()
+    } catch (err) {
+      console.error('[storyboard] Error in tool subscriber:', err)
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Test helpers
 // ---------------------------------------------------------------------------
 
@@ -292,5 +458,9 @@ export function _resetModes() {
   _modes.clear()
   _listeners.clear()
   _eventListeners.clear()
+  _tools.clear()
+  _toolState.clear()
+  _toolActions.clear()
+  _toolListeners.clear()
   _modesEnabled = false
 }

@@ -1,5 +1,5 @@
 import { Text, FormControl, Button, Stack } from '@primer/react'
-import Application from '../templates/Application/Application.jsx'
+import Application from '@/templates/Application/Application.jsx'
 import {
   StoryboardForm,
   TextInput,

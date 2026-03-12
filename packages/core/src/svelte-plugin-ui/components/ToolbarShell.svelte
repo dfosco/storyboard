@@ -1,51 +1,64 @@
 <!--
   ToolbarShell — right-side toolbar container with two stacked groups:
-    1. Mode-specific tools (from the active mode's `tools` array)
-    2. Developer tools (from the active mode's `devTools` array)
+    1. Mode-specific tools (group: 'tools')
+    2. Developer tools (group: 'dev')
+
+  Reads from the tool store, which sources from the declarative tool
+  registry (modes.config.json) + runtime state (setToolState/setToolAction).
 
   Fixed to the right side of the viewport, above the ModeSwitch.
-  Only renders when the current mode provides tools or devTools.
+  Only renders when the current mode has visible tools.
 -->
 
 <script lang="ts">
-  import { modeState } from '../stores/modeStore.js'
-  import type { ModeToolConfig } from '../stores/types.js'
+  import { toolState } from '../stores/toolStore.js'
 
-  let tools: ModeToolConfig[] = $derived(
-    ($modeState.currentModeConfig as any)?.tools ?? []
-  )
-  let devTools: ModeToolConfig[] = $derived(
-    ($modeState.currentModeConfig as any)?.devTools ?? []
-  )
+  function handleClick(tool: any) {
+    if (tool.action && tool.state.enabled && !tool.state.busy) {
+      tool.action()
+    }
+  }
 </script>
 
-{#if tools.length > 0 || devTools.length > 0}
+{#if $toolState.tools.length > 0 || $toolState.devTools.length > 0}
   <div class="sb-toolbar-shell">
-    {#if tools.length > 0}
+    {#if $toolState.tools.length > 0}
       <div class="sb-toolbar" role="toolbar" aria-label="Mode tools">
         <span class="sb-toolbar-label">Tools</span>
-        {#each tools as tool (tool.id)}
+        {#each $toolState.tools as tool (tool.id)}
           <button
             class="sb-tool-btn"
-            onclick={tool.action}
+            class:sb-tool-btn-active={tool.state.active}
+            class:sb-tool-btn-busy={tool.state.busy}
+            onclick={() => handleClick(tool)}
+            disabled={!tool.state.enabled || tool.state.busy || !tool.action}
             title={tool.label}
           >
             {tool.label}
+            {#if tool.state.badge != null}
+              <span class="sb-tool-badge">{tool.state.badge}</span>
+            {/if}
           </button>
         {/each}
       </div>
     {/if}
 
-    {#if devTools.length > 0}
+    {#if $toolState.devTools.length > 0}
       <div class="sb-toolbar" role="toolbar" aria-label="Developer tools">
         <span class="sb-toolbar-label">Dev</span>
-        {#each devTools as tool (tool.id)}
+        {#each $toolState.devTools as tool (tool.id)}
           <button
             class="sb-tool-btn"
-            onclick={tool.action}
+            class:sb-tool-btn-active={tool.state.active}
+            class:sb-tool-btn-busy={tool.state.busy}
+            onclick={() => handleClick(tool)}
+            disabled={!tool.state.enabled || tool.state.busy || !tool.action}
             title={tool.label}
           >
             {tool.label}
+            {#if tool.state.badge != null}
+              <span class="sb-tool-badge">{tool.state.badge}</span>
+            {/if}
           </button>
         {/each}
       </div>
@@ -91,11 +104,38 @@
     white-space: nowrap;
     text-align: left;
     line-height: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
-  .sb-tool-btn:hover {
+  .sb-tool-btn:hover:not(:disabled) {
     color: var(--fgColor-default, #e6edf3);
     background: var(--bgColor-neutral-muted, rgba(110, 118, 129, 0.1));
+  }
+
+  .sb-tool-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .sb-tool-btn-active {
+    color: var(--fgColor-default, #e6edf3);
+    background: var(--bgColor-neutral-muted, rgba(110, 118, 129, 0.15));
+  }
+
+  .sb-tool-btn-busy {
+    opacity: 0.6;
+  }
+
+  .sb-tool-badge {
+    font-size: 10px;
+    font-weight: 600;
+    background: var(--bgColor-accent-muted, rgba(56, 139, 253, 0.15));
+    color: var(--fgColor-accent, #58a6ff);
+    padding: 1px 5px;
+    border-radius: 10px;
+    line-height: 1.2;
   }
 
   .sb-toolbar-label {

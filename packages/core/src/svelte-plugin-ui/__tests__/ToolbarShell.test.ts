@@ -2,7 +2,9 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/svelte'
 import {
   registerMode,
-  activateMode,
+  initTools,
+  setToolAction,
+  setToolState,
 } from '@dfosco/storyboard-core'
 import { _resetModes } from '@test/modes'
 import ToolbarShell from '../components/ToolbarShell.svelte'
@@ -15,20 +17,22 @@ afterEach(() => {
 })
 
 describe('ToolbarShell', () => {
-  it('renders nothing when current mode has no tools', () => {
+  it('renders nothing when no tools are declared', () => {
     registerMode('prototype', { label: 'Navigate' })
     const { container } = render(ToolbarShell)
     expect(container.querySelector('[role="toolbar"]')).toBeNull()
   })
 
-  it('renders tool buttons for mode with tools', () => {
-    registerMode('prototype', {
-      label: 'Navigate',
-      tools: [
-        { id: 'zoom', label: 'Zoom', action: () => {} },
-        { id: 'pan', label: 'Pan', action: () => {} },
+  it('renders tool buttons from the tool registry', () => {
+    registerMode('prototype', { label: 'Navigate' })
+    initTools({
+      '*': [
+        { id: 'zoom', label: 'Zoom', group: 'tools' },
+        { id: 'pan', label: 'Pan', group: 'tools' },
       ],
     })
+    setToolAction('zoom', () => {})
+    setToolAction('pan', () => {})
 
     render(ToolbarShell)
 
@@ -36,13 +40,12 @@ describe('ToolbarShell', () => {
     expect(screen.getByTitle('Pan')).toBeInTheDocument()
   })
 
-  it('renders dev tools section when mode has devTools', () => {
-    registerMode('prototype', {
-      label: 'Navigate',
-      devTools: [
-        { id: 'debug', label: 'Debug', action: () => {} },
-      ],
+  it('renders dev tools section', () => {
+    registerMode('prototype', { label: 'Navigate' })
+    initTools({
+      '*': [{ id: 'debug', label: 'Debug', group: 'dev' }],
     })
+    setToolAction('debug', () => {})
 
     render(ToolbarShell)
 
@@ -50,12 +53,16 @@ describe('ToolbarShell', () => {
     expect(screen.getByText('Dev')).toBeInTheDocument()
   })
 
-  it('renders both tool groups when mode has both', () => {
-    registerMode('prototype', {
-      label: 'Navigate',
-      tools: [{ id: 'zoom', label: 'Zoom', action: () => {} }],
-      devTools: [{ id: 'debug', label: 'Debug', action: () => {} }],
+  it('renders both tool groups', () => {
+    registerMode('prototype', { label: 'Navigate' })
+    initTools({
+      '*': [
+        { id: 'zoom', label: 'Zoom', group: 'tools' },
+        { id: 'debug', label: 'Debug', group: 'dev' },
+      ],
     })
+    setToolAction('zoom', () => {})
+    setToolAction('debug', () => {})
 
     render(ToolbarShell)
 
@@ -63,5 +70,56 @@ describe('ToolbarShell', () => {
     expect(toolbars).toHaveLength(2)
     expect(screen.getByText('Tools')).toBeInTheDocument()
     expect(screen.getByText('Dev')).toBeInTheDocument()
+  })
+
+  it('disables tools without an action', () => {
+    registerMode('prototype', { label: 'Navigate' })
+    initTools({
+      '*': [{ id: 'no-action', label: 'No Action', group: 'tools' }],
+    })
+
+    render(ToolbarShell)
+
+    const btn = screen.getByTitle('No Action')
+    expect(btn).toBeDisabled()
+  })
+
+  it('disables tools with enabled: false state', () => {
+    registerMode('prototype', { label: 'Navigate' })
+    initTools({
+      '*': [{ id: 'disabled-tool', label: 'Disabled', group: 'tools' }],
+    })
+    setToolAction('disabled-tool', () => {})
+    setToolState('disabled-tool', { enabled: false })
+
+    render(ToolbarShell)
+
+    const btn = screen.getByTitle('Disabled')
+    expect(btn).toBeDisabled()
+  })
+
+  it('hides tools with hidden: true state', () => {
+    registerMode('prototype', { label: 'Navigate' })
+    initTools({
+      '*': [{ id: 'hidden-tool', label: 'Hidden', group: 'tools' }],
+    })
+    setToolState('hidden-tool', { hidden: true })
+
+    const { container } = render(ToolbarShell)
+
+    expect(container.querySelector('[role="toolbar"]')).toBeNull()
+  })
+
+  it('renders badge when present', () => {
+    registerMode('prototype', { label: 'Navigate' })
+    initTools({
+      '*': [{ id: 'badged', label: 'Badged', group: 'tools' }],
+    })
+    setToolAction('badged', () => {})
+    setToolState('badged', { badge: 5 })
+
+    render(ToolbarShell)
+
+    expect(screen.getByText('5')).toBeInTheDocument()
   })
 })

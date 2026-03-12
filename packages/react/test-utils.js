@@ -2,7 +2,7 @@ import React from 'react'
 import { init } from '@dfosco/storyboard-core'
 import { StoryboardContext } from './src/StoryboardContext.js'
 
-export const TEST_SCENES = {
+export const TEST_FLOWS = {
   default: {
     user: { name: 'Alice', role: 'admin' },
     settings: { theme: 'dark_dimmed', notifications: true },
@@ -13,6 +13,9 @@ export const TEST_SCENES = {
     },
   },
 }
+
+/** @deprecated Use TEST_FLOWS */
+export const TEST_SCENES = TEST_FLOWS
 
 export const TEST_RECORDS = {
   posts: [
@@ -31,20 +34,20 @@ export const TEST_OBJECTS = {
  * Call in beforeEach so each test starts fresh.
  */
 export function seedTestData() {
-  init({ scenes: TEST_SCENES, objects: TEST_OBJECTS, records: TEST_RECORDS })
+  init({ flows: TEST_FLOWS, objects: TEST_OBJECTS, records: TEST_RECORDS })
 }
 
 /**
  * Create a wrapper component that provides StoryboardContext.
- * @param {object} sceneData - The scene data object to provide
- * @param {string} [sceneName='default'] - Scene name
+ * @param {object} flowData - The flow data object to provide
+ * @param {string} [flowName='default'] - Flow name
  * @returns {function} React wrapper component for renderHook
  */
-export function createWrapper(sceneData, sceneName = 'default') {
+export function createWrapper(flowData, flowName = 'default') {
   return function Wrapper({ children }) {
     return React.createElement(
       StoryboardContext.Provider,
-      { value: { data: sceneData, sceneName } },
+      { value: { data: flowData, flowName, sceneName: flowName } },
       children,
     )
   }

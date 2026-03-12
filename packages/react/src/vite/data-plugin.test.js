@@ -69,10 +69,13 @@ describe('storyboardDataPlugin', () => {
     const code = plugin.load(RESOLVED_ID)
 
     expect(code).toContain("import { init } from '@dfosco/storyboard-core'")
-    expect(code).toContain('init({ scenes, objects, records })')
+    expect(code).toContain('init({ flows, objects, records, prototypes })')
     expect(code).toContain('"Test"')
     expect(code).toContain('"Jane"')
     expect(code).toContain('"First"')
+    // Backward-compat alias
+    expect(code).toContain('const scenes = flows')
+    expect(code).toContain('export { flows, scenes, objects, records, prototypes }')
   })
 
   it('load returns null for other IDs', () => {
@@ -93,7 +96,24 @@ describe('storyboardDataPlugin', () => {
     )
 
     const plugin = createPlugin()
-    expect(() => plugin.load(RESOLVED_ID)).toThrow(/Duplicate data file/)
+    expect(() => plugin.load(RESOLVED_ID)).toThrow(/Duplicate flow "dup"/)
+  })
+
+  it('duplicate objects show globally-scoped hint', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'data'), { recursive: true })
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Dashboard'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'data', 'user.object.json'),
+      JSON.stringify({ name: 'Global' }),
+    )
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'user.object.json'),
+      JSON.stringify({ name: 'Local' }),
+    )
+
+    const plugin = createPlugin()
+    expect(() => plugin.load(RESOLVED_ID)).toThrow(/Duplicate object "user"/)
+    expect(() => plugin.load(RESOLVED_ID)).toThrow(/globally scoped/)
   })
 
   it('handles JSONC files (with comments)', () => {
@@ -105,6 +125,19 @@ describe('storyboardDataPlugin', () => {
     const code = plugin.load(RESOLVED_ID)
 
     expect(code).toContain('"JSONC Scene"')
+  })
+
+  it('normalizes .scene files into flow category in the index', () => {
+    writeFileSync(
+      path.join(tmpDir, 'legacy.scene.json'),
+      JSON.stringify({ title: 'Legacy Scene' }),
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    // .scene.json files should be normalized to the flows category
+    expect(code).toContain('"Legacy Scene"')
+    expect(code).toContain('init({ flows, objects, records, prototypes })')
   })
 
   it('buildStart resets the index cache', () => {
@@ -129,5 +162,105 @@ describe('storyboardDataPlugin', () => {
     plugin.buildStart()
     const code3 = plugin.load(RESOLVED_ID)
     expect(code3).toContain('"Extra"')
+  })
+})
+
+describe('prototype scoping', () => {
+  it('prefixes flows inside src/prototypes/{Name}/ with the prototype name', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Dashboard'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'default.flow.json'),
+      JSON.stringify({ title: 'Dashboard Default' }),
+    )
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'signup.flow.json'),
+      JSON.stringify({ title: 'Dashboard Signup' }),
+    )
+    // Global flow in src/data/
+    mkdirSync(path.join(tmpDir, 'src', 'data'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'data', 'default.flow.json'),
+      JSON.stringify({ title: 'Global Default' }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"Dashboard/default"')
+    expect(code).toContain('"Dashboard/signup"')
+    expect(code).toContain('"default"')
+    expect(code).toContain('"Dashboard Default"')
+    expect(code).toContain('"Global Default"')
+  })
+
+  it('prefixes records inside src/prototypes/{Name}/ with the prototype name', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Blog'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Blog', 'posts.record.json'),
+      JSON.stringify([{ id: '1', title: 'Scoped Post' }]),
+    )
+    // Global record
+    mkdirSync(path.join(tmpDir, 'src', 'data'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'data', 'posts.record.json'),
+      JSON.stringify([{ id: '1', title: 'Global Post' }]),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"Blog/posts"')
+    expect(code).toContain('"posts"')
+    expect(code).toContain('"Scoped Post"')
+    expect(code).toContain('"Global Post"')
+  })
+
+  it('does NOT prefix objects inside src/prototypes/{Name}/', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Dashboard'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'helpers.object.json'),
+      JSON.stringify({ util: true }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    // Object should be plain "helpers", NOT "Dashboard/helpers"
+    expect(code).toContain('"helpers"')
+    expect(code).not.toContain('"Dashboard/helpers"')
+  })
+
+  it('allows same flow name in different prototypes without clash', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'A'), { recursive: true })
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'B'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'A', 'default.flow.json'),
+      JSON.stringify({ from: 'A' }),
+    )
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'B', 'default.flow.json'),
+      JSON.stringify({ from: 'B' }),
+    )
+
+    const plugin = createPlugin()
+    // Should not throw (no duplicate)
+    const code = plugin.load(RESOLVED_ID)
+    expect(code).toContain('"A/default"')
+    expect(code).toContain('"B/default"')
+  })
+
+  it('normalizes .scene.json inside prototypes to scoped flow', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Legacy'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Legacy', 'old.scene.json'),
+      JSON.stringify({ compat: true }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    // Should be indexed as a scoped flow, not a scene
+    expect(code).toContain('"Legacy/old"')
+    expect(code).toContain('flows')
   })
 })

@@ -2,16 +2,28 @@ import { useEffect, useMemo } from 'react'
 import { useParams, useLocation } from 'react-router-dom'
 // Side-effect import: seeds the core data index via init()
 import 'virtual:storyboard-data-index'
-import { loadScene, sceneExists, findRecord, deepMerge, setSceneClass, installBodyClassSync } from '@dfosco/storyboard-core'
+import { loadFlow, flowExists, findRecord, deepMerge, setFlowClass, installBodyClassSync, resolveFlowName, resolveRecordName, isModesEnabled } from '@dfosco/storyboard-core'
 import { StoryboardContext } from './StoryboardContext.js'
 
 export { StoryboardContext }
 
 /**
- * Derives a scene name from a pathname.
+ * Derives the top-level prototype name from a pathname.
+ * "/Dashboard" → "Dashboard", "/Dashboard/sub" → "Dashboard"
+ * "/posts/123" → "posts", "/" → null
+ */
+function getPrototypeName(pathname) {
+  const path = pathname.replace(/\/+$/, '') || '/'
+  if (path === '/') return null
+  const segments = path.split('/').filter(Boolean)
+  return segments[0] || null
+}
+
+/**
+ * Derives a flow name from a pathname.
  * "/Overview" → "Overview", "/" → "index", "/nested/Page" → "Page"
  */
-function getPageSceneName(pathname) {
+function getPageFlowName(pathname) {
   const path = pathname.replace(/\/+$/, '') || '/'
   if (path === '/') return 'index'
   const last = path.split('/').pop()
@@ -19,51 +31,91 @@ function getPageSceneName(pathname) {
 }
 
 /**
- * Provides loaded scene data to the component tree.
- * Reads the scene name from the ?scene= URL param, the sceneName prop,
- * a matching scene file for the current page, or defaults to "default".
+ * Provides loaded flow data to the component tree.
+ * Reads the flow name from the ?scene= URL param, the flowName prop,
+ * a matching flow file for the current page, or defaults to "default".
+ *
+ * Derives the prototype scope from the route and uses it to resolve
+ * scoped flow and record names (e.g. "Dashboard/default" for /Dashboard).
  *
  * Optionally merges record data when `recordName` and `recordParam` are provided.
- * The matched record entry is injected under the "record" key in scene data.
+ * The matched record entry is injected under the "record" key in flow data.
  */
-export default function StoryboardProvider({ sceneName, recordName, recordParam, children }) {
+export default function StoryboardProvider({ flowName, sceneName, recordName, recordParam, children }) {
   const location = useLocation()
   const sceneParam = new URLSearchParams(location.search).get('scene')
-  const pageScene = getPageSceneName(location.pathname)
-  const activeSceneName = sceneParam || sceneName || (sceneExists(pageScene) ? pageScene : 'default')
+  const prototypeName = getPrototypeName(location.pathname)
+  const pageFlow = getPageFlowName(location.pathname)
   const params = useParams()
+
+  // Resolve flow name with prototype scoping
+  const activeFlowName = useMemo(() => {
+    const requested = sceneParam || flowName || sceneName
+    if (requested) {
+      return resolveFlowName(prototypeName, requested)
+    }
+    // 1. Page-specific flow (e.g., Example/Forms)
+    const scopedPageFlow = resolveFlowName(prototypeName, pageFlow)
+    if (flowExists(scopedPageFlow)) return scopedPageFlow
+    // 2. Prototype flow — named after the prototype folder (e.g., Example/example)
+    if (prototypeName) {
+      const protoFlow = resolveFlowName(prototypeName, prototypeName)
+      if (flowExists(protoFlow)) return protoFlow
+    }
+    // 3. Global default
+    return 'default'
+  }, [sceneParam, flowName, sceneName, prototypeName, pageFlow])
 
   // Auto-install body class sync (sb-key--value classes on <body>)
   useEffect(() => installBodyClassSync(), [])
 
+  // Mount design modes UI when enabled in storyboard.config.json
+  useEffect(() => {
+    if (!isModesEnabled()) return
+
+    let cleanup
+    import('@dfosco/storyboard-core/ui/design-modes')
+      .then(({ mountDesignModesUI }) => {
+        cleanup = mountDesignModesUI()
+      })
+      .catch(() => {
+        // Svelte UI not available — degrade gracefully
+      })
+
+    return () => cleanup?.()
+  }, [])
+
   const { data, error } = useMemo(() => {
     try {
-      let sceneData = loadScene(activeSceneName)
+      let flowData = loadFlow(activeFlowName)
 
-      // Merge record data if configured
+      // Merge record data if configured (with scoped resolution)
       if (recordName && recordParam && params[recordParam]) {
-        const entry = findRecord(recordName, params[recordParam])
+        const resolvedRecord = resolveRecordName(prototypeName, recordName)
+        const entry = findRecord(resolvedRecord, params[recordParam])
         if (entry) {
-          sceneData = deepMerge(sceneData, { record: entry })
+          flowData = deepMerge(flowData, { record: entry })
         }
       }
 
-      setSceneClass(activeSceneName)
-      return { data: sceneData, error: null }
+      setFlowClass(activeFlowName)
+      return { data: flowData, error: null }
     } catch (err) {
       return { data: null, error: err.message }
     }
-  }, [activeSceneName, recordName, recordParam, params])
+  }, [activeFlowName, recordName, recordParam, params, prototypeName])
 
   const value = {
     data,
     error,
     loading: false,
-    sceneName: activeSceneName,
+    flowName: activeFlowName,
+    sceneName: activeFlowName, // backward compat
+    prototypeName,
   }
 
   if (error) {
-    return <span style={{ color: 'var(--fgColor-danger, #f85149)' }}>Error loading scene: {error}</span>
+    return <span style={{ color: 'var(--fgColor-danger, #f85149)' }}>Error loading flow: {error}</span>
   }
 
   return (

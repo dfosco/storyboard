@@ -2,31 +2,31 @@ import { useMemo } from 'react'
 import PropTypes from 'prop-types'
 import { useSearchParams } from 'react-router-dom'
 import { Text } from '@primer/react'
-import { loadScene } from '@dfosco/storyboard-core'
+import { loadFlow } from '@dfosco/storyboard-core'
 import styles from './SceneDebug.module.css'
 
 /**
- * Debug component that displays loaded scene data as formatted JSON.
+ * Debug component that displays loaded flow data as formatted JSON.
  * Used to verify the loader is working correctly.
- * Reads scene name from URL param (?scene=name) or uses prop/default.
+ * Reads flow name from URL param (?scene=name) or uses prop/default.
  */
-export default function SceneDebug({ sceneName } = {}) {
+export default function SceneDebug({ flowName, sceneName } = {}) {
   const [searchParams] = useSearchParams()
-  const sceneFromUrl = searchParams.get('scene')
-  const activeSceneName = sceneName || sceneFromUrl || 'default'
+  const flowFromUrl = searchParams.get('scene')
+  const activeFlowName = flowName || sceneName || flowFromUrl || 'default'
 
   const { data, error } = useMemo(() => {
     try {
-      return { data: loadScene(activeSceneName), error: null }
+      return { data: loadFlow(activeFlowName), error: null }
     } catch (err) {
       return { data: null, error: err.message }
     }
-  }, [activeSceneName])
+  }, [activeFlowName])
 
   if (error) {
     return (
       <div className={styles.error}>
-        <Text className={styles.errorTitle}>Error loading scene</Text>
+        <Text className={styles.errorTitle}>Error loading flow</Text>
         <p className={styles.errorMessage}>{error}</p>
       </div>
     )
@@ -34,7 +34,7 @@ export default function SceneDebug({ sceneName } = {}) {
 
   return (
     <div className={styles.container}>
-      <h2 className={styles.title}>Scene: {activeSceneName}</h2>
+      <h2 className={styles.title}>Flow: {activeFlowName}</h2>
       <pre className={styles.codeBlock}>
         {JSON.stringify(data, null, 2)}
       </pre>
@@ -43,5 +43,6 @@ export default function SceneDebug({ sceneName } = {}) {
 }
 
 SceneDebug.propTypes = {
+  flowName: PropTypes.string,
   sceneName: PropTypes.string,
 }

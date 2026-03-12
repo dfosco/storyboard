@@ -13,7 +13,8 @@
 
 import { mountSveltePlugin, type PluginHandle } from '../svelte-plugin-ui/mount.js'
 import ModeSwitch from '../svelte-plugin-ui/components/ModeSwitch.svelte'
-import ToolbarShell from '../svelte-plugin-ui/components/ToolbarShell.svelte'
+// TODO: Re-enable after migrating devtools features into tool registry
+// import ToolbarShell from '../svelte-plugin-ui/components/ToolbarShell.svelte'
 
 let handles: PluginHandle[] = []
 
@@ -35,7 +36,8 @@ export function mountDesignModesUI(
 
   handles.push(
     mountSveltePlugin(target, ModeSwitch),
-    mountSveltePlugin(target, ToolbarShell),
+    // TODO: Re-enable after migrating devtools features into tool registry
+    // mountSveltePlugin(target, ToolbarShell),
   )
 
   return unmountDesignModesUI

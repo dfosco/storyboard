@@ -468,12 +468,8 @@
     flex-direction: row;
   }
 
-  .authorAvatars:hover .authorAvatar {
+  .authorAvatars:hover .authorAvatar:not(:first-child) {
     margin-left: 2px;
-  }
-
-  .authorAvatars:hover .authorAvatar:first-child {
-    margin-left: 0;
   }
 
   .authorAvatar {
@@ -481,7 +477,7 @@
     height: 24px;
     border-radius: 50%;
     margin-left: -8px;
-    transition: margin-left 0.15s ease;
+    transition: margin-left 0.2s ease-in-out;
     outline: 2px solid var(--bgColor-default, #0d1117);
     position: relative;
   }
@@ -489,6 +485,7 @@
   .authorAvatar:first-child {
     margin-left: 0;
   }
+
 
   .authorName {
     font-size: 13px;

@@ -129,16 +129,19 @@ function readConfig(root) {
 
 /**
  * Read modes.config.json from @dfosco/storyboard-core.
- * Falls back to the core package's bundled config via require.resolve,
- * or returns hardcoded defaults if not found.
+ * Returns the full config object { modes, tools }.
+ * Falls back to hardcoded defaults if not found.
  */
 function readModesConfig(root) {
-  const fallback = [
-    { name: 'prototype', label: 'Navigate' },
-    { name: 'inspect', label: 'Develop' },
-    { name: 'present', label: 'Collaborate' },
-    { name: 'plan', label: 'Canvas' },
-  ]
+  const fallback = {
+    modes: [
+      { name: 'prototype', label: 'Navigate' },
+      { name: 'inspect', label: 'Develop' },
+      { name: 'present', label: 'Collaborate' },
+      { name: 'plan', label: 'Canvas' },
+    ],
+    tools: {},
+  }
 
   // Try local workspace path first (monorepo), then node_modules
   const candidates = [
@@ -151,7 +154,7 @@ function readModesConfig(root) {
       const raw = fs.readFileSync(filePath, 'utf-8')
       const parsed = JSON.parse(raw)
       if (Array.isArray(parsed.modes) && parsed.modes.length > 0) {
-        return parsed.modes
+        return { modes: parsed.modes, tools: parsed.tools ?? {} }
       }
     } catch {
       // try next candidate
@@ -204,17 +207,23 @@ function generateModule(index, root) {
 
   // Modes configuration from storyboard.config.json
   if (config?.modes) {
-    imports.push(`import { initModesConfig, registerMode, syncModeClasses } from '@dfosco/storyboard-core'`)
+    imports.push(`import { initModesConfig, registerMode, syncModeClasses, initTools } from '@dfosco/storyboard-core'`)
     initCalls.push(`initModesConfig(${JSON.stringify(config.modes)})`)
 
     if (config.modes.enabled) {
       imports.push(`import '@dfosco/storyboard-core/modes.css'`)
 
       const modesConfig = readModesConfig(root)
-      const modes = config.modes.defaults || modesConfig
+      const modes = config.modes.defaults || modesConfig.modes
       for (const m of modes) {
         initCalls.push(`registerMode(${JSON.stringify(m.name)}, { label: ${JSON.stringify(m.label)} })`)
       }
+
+      // Seed tool registry from modes.config.json
+      if (Object.keys(modesConfig.tools).length > 0) {
+        initCalls.push(`initTools(${JSON.stringify(modesConfig.tools)})`)
+      }
+
       initCalls.push(`syncModeClasses()`)
     }
   }

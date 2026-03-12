@@ -41,6 +41,9 @@ export { setSceneClass } from './bodyClasses.js'
 // Design modes (mode registry, switching, event bus)
 export { registerMode, unregisterMode, getRegisteredModes, getCurrentMode, activateMode, deactivateMode, subscribeToMode, getModeSnapshot, syncModeClasses, on, off, emit, initModesConfig, isModesEnabled } from './modes.js'
 
+// Tool registry (declared in modes.config.json, state managed at runtime)
+export { initTools, setToolAction, setToolState, getToolState, getToolsForMode, subscribeToTools, getToolsSnapshot } from './modes.js'
+
 // Dev tools (vanilla JS, framework-agnostic)
 export { mountDevTools } from './devtools.js'
 export { mountFlowDebug } from './sceneDebug.js'

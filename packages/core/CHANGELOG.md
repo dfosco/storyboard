@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 2.2.0
+
+### Minor Changes
+
+-   Fix bug in applying recordOverrides. Add proper `?flow=` url param. Fix small issues with Viewfinder component.
+
 ## 2.1.0
 
 ### Minor Changes

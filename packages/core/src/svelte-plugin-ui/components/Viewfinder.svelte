@@ -203,13 +203,13 @@
             >
               <div class="cardBody">
                 <p class="sceneName">
+                  {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
+                  {proto.name}
                   <span class="protoChevron" class:protoChevronOpen={isExpanded(proto.dirName)}>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                       <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
                     </svg>
                   </span>
-                  {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
-                  {proto.name}
                 </p>
                 {#if proto.description}
                   <p class="protoDesc">{proto.description}</p>
@@ -422,12 +422,12 @@
   }
 
   .sceneName {
-    font-size: 28px;
+    font-size: var(--text-title-size-medium);
     font-weight: 400;
     color: var(--fgColor-default, #e6edf3);
     margin: 0;
     letter-spacing: -0.02em;
-    line-height: 1.2;
+    line-height: 1.6;
     transition: font-style 0.15s ease;
   }
 
@@ -469,7 +469,7 @@
   }
 
   .authorAvatars:hover .authorAvatar:not(:first-child) {
-    margin-left: 2px;
+    margin-left: -2px;
   }
 
   .authorAvatar {
@@ -477,7 +477,7 @@
     height: 24px;
     border-radius: 50%;
     margin-left: -8px;
-    transition: margin-left 0.2s ease-in-out;
+    transition: margin-left 50ms linear;
     outline: 2px solid var(--bgColor-default, #0d1117);
     position: relative;
   }
@@ -495,19 +495,44 @@
 
   .authorPlain {
     font-size: 13px;
-    color: var(--fgColor-muted, #848d97);
+    color: var(--fgColor-muted);
     margin: 4px 0 0;
     letter-spacing: 0.01em;
   }
 
   .flowList {
-    padding: 0 0 0 28px;
+    margin: 0 var(--base-size-12);
+    padding: 0;
     display: flex;
     flex-direction: column;
   }
 
+  .flowItem {
+    border: 1px solid var(--borderColor-muted, #30363d);
+    padding: 0;
+  }
+
+  .flowItem:not(:first-child) {
+    margin-top: -1px;
+  }
+
+  .flowItem:first-child {
+    border-top-left-radius: var(--base-size-6);
+    border-top-right-radius: var(--base-size-6);
+  }
+
+  .flowItem:last-child {
+    border-bottom-left-radius: var(--base-size-6);
+    border-bottom-right-radius: var(--base-size-6);
+  }
+
+  .flowItem:only-child {
+    border-radius: var(--base-size-6);
+  }
+
   .flowItem .sceneName {
-    font-size: 22px;
+    font-size: var(--text-title-size-small);
+    color: var(--fgColor-muted);
   }
 
   .flowDesc {

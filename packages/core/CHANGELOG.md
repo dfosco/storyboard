@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 2.1.0
+
+### Minor Changes
+
+-   Update storyboard internal structure to enable modes, plugins, and tools. Updates prototype folder and metadata structure to live under /prototypes. Renames scenes into flows.
+
 ## 2.0.0
 
 ### Major Changes

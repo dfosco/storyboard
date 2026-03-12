@@ -3,7 +3,7 @@ import {
   registerMode,
 } from '@dfosco/storyboard-core'
 import { _resetModes } from '@test/modes'
-import { mountDesignModesUI, unmountDesignModesUI } from '../plugins/design-modes.js'
+import { mountDesignModesUI, unmountDesignModesUI } from '../../ui/design-modes.js'
 
 afterEach(() => {
   unmountDesignModesUI()

@@ -1,12 +1,12 @@
 /**
- * Viewfinder plugin mount entry point.
+ * Viewfinder UI mount entry point.
  *
  * Call mountViewfinder() to render the prototype index dashboard.
  * Framework-agnostic — works from any JS context (React wrapper,
  * vanilla JS, etc.).
  *
  * Usage:
- *   import { mountViewfinder } from '@dfosco/storyboard-core/svelte-plugin-ui/viewfinder'
+ *   import { mountViewfinder } from '@dfosco/storyboard-core/ui/viewfinder'
  *   const handle = mountViewfinder(document.getElementById('root'), {
  *     title: 'My Storyboard',
  *     knownRoutes: ['Dashboard', 'Settings'],
@@ -14,8 +14,8 @@
  *   // later: handle.destroy()
  */
 
-import { mountSveltePlugin, type PluginHandle } from '../mount.js'
-import Viewfinder from '../components/Viewfinder.svelte'
+import { mountSveltePlugin, type PluginHandle } from '../svelte-plugin-ui/mount.js'
+import Viewfinder from '../svelte-plugin-ui/components/Viewfinder.svelte'
 
 export interface ViewfinderProps {
   title?: string

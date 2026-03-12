@@ -74,7 +74,7 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     if (!isModesEnabled()) return
 
     let cleanup
-    import('@dfosco/storyboard-core/svelte-plugin-ui/design-modes')
+    import('@dfosco/storyboard-core/ui/design-modes')
       .then(({ mountDesignModesUI }) => {
         cleanup = mountDesignModesUI()
       })

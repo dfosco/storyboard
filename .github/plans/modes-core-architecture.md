@@ -26,6 +26,9 @@ These are registered internally by core init. Modes are **not extensible by plug
 ```
 packages/core/src/
   ├── modes.js                          ← mode registry, URL param, event bus, tool registry + state
+  ├── ui/
+  │   ├── design-modes.ts              ← mountDesignModesUI() entry point
+  │   └── viewfinder.ts                ← mountViewfinder() entry point
   └── svelte-plugin-ui/
       ├── mount.ts                      ← generic mountSveltePlugin(target, Component, props)
       ├── stores/modeStore.ts           ← Svelte store wrapping modes.js (mode state)
@@ -33,7 +36,6 @@ packages/core/src/
       ├── stores/types.ts               ← TypeScript interfaces + core re-exports
       ├── components/ModeSwitch.svelte  ← segmented mode toggle (fixed bottom-center)
       ├── components/ToolbarShell.svelte ← right-side toolbar (reads from toolStore)
-      ├── plugins/design-modes.ts       ← mountDesignModesUI() entry point
       └── styles/base.css               ← Tachyons + sb-* CSS custom properties
 
 packages/react/src/
@@ -218,8 +220,8 @@ Created `toolStore.ts` — readable Svelte store providing `{ tools, devTools }`
 ### ✅ 7. Redesign Toolbar
 Rewrote `ToolbarShell.svelte` to read from the tool store (not from mode config arrays). Renders tool buttons with state: disabled when `enabled: false` or `busy: true` or no action, highlighted when `active: true`, badge when present, hidden when `hidden: true`. Updated types.ts — removed old `ModeToolConfig`, added `ResolvedTool` and `ToolState` interfaces. 8 tests (up from 4).
 
-### 🔲 8. Relocate mount entry points
-`plugins/design-modes.ts` and `plugins/viewfinder.ts` should move out of `svelte-plugin-ui/plugins/`. The path leaks implementation details ("svelte", "plugins") into the public API. Candidate: `@dfosco/storyboard-core/ui/design-modes`, `@dfosco/storyboard-core/ui/viewfinder`.
+### ✅ 8. Relocate mount entry points
+Moved `plugins/design-modes.ts` and `plugins/viewfinder.ts` from `svelte-plugin-ui/plugins/` to `src/ui/`. New public paths: `@dfosco/storyboard-core/ui/design-modes` and `@dfosco/storyboard-core/ui/viewfinder`. Old `svelte-plugin-ui/` paths kept as aliases for backward compat.
 
 ### 🔲 9. Active plugins panel (stretch)
 Define data shape for showing active plugins + their tools. Defer UI.

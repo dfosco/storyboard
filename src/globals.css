@@ -10,11 +10,10 @@
 @import '@primer/primitives/dist/css/functional/typography/typography.css';
 
 @import '@primer/primitives/dist/css/functional/themes/light.css';
-/* Accessibility theme variants removed for bundle size.
-   Re-add from @primer/primitives/dist/css/functional/themes/ as needed:
-   light-tritanopia, light-high-contrast, light-colorblind,
-   dark-colorblind, dark-high-contrast, dark-tritanopia */
+@import '@primer/primitives/dist/css/functional/themes/light-colorblind.css';
 @import '@primer/primitives/dist/css/functional/themes/dark.css';
+@import '@primer/primitives/dist/css/functional/themes/dark-colorblind.css';
+@import '@primer/primitives/dist/css/functional/themes/dark-high-contrast.css';
 @import '@primer/primitives/dist/css/functional/themes/dark-dimmed.css';
 
 /* @import "./github-markdown.css"; */
@@ -41,4 +40,6 @@ li {
 #root,
 #root > div {
     min-height: 100vh;
+    background-color: var(--bgColor-default);
+    color: var(--fgColor-default);
 }

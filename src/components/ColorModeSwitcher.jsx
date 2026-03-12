@@ -62,7 +62,7 @@ function ColorModeSwitcher() {
         },
     ]
 
-    const current = schemes.find((scheme) => scheme.value === colorScheme)
+    const current = schemes.find((scheme) => scheme.value === colorScheme) || schemes[0]
 
     return (
         <Stack padding="normal" className={styles.container}>

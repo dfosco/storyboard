@@ -1,5 +1,15 @@
 # @dfosco/storyboard-core
 
+## 2.0.0
+
+### Major Changes
+
+-   fd0a4a9: Add modes API in preparation for large breaking change refactor
+
+### Minor Changes
+
+-   7861e32: Add prototype and flow restructure for 2.0 (breaking change)
+
 ## 2.0.0-beta.1
 
 ### Minor Changes

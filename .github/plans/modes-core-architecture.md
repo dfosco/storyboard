@@ -25,13 +25,14 @@ These are registered internally by core init. Modes are **not extensible by plug
 
 ```
 packages/core/src/
-  ├── modes.js                          ← mode registry, URL param, event bus, tool registry
+  ├── modes.js                          ← mode registry, URL param, event bus, tool registry + state
   └── svelte-plugin-ui/
       ├── mount.ts                      ← generic mountSveltePlugin(target, Component, props)
-      ├── stores/modeStore.ts           ← Svelte store wrapping modes.js
-      ├── stores/toolStore.ts           ← Svelte store for current mode's tools
+      ├── stores/modeStore.ts           ← Svelte store wrapping modes.js (mode state)
+      ├── stores/toolStore.ts           ← Svelte store wrapping tool registry (tools + state)
+      ├── stores/types.ts               ← TypeScript interfaces + core re-exports
       ├── components/ModeSwitch.svelte  ← segmented mode toggle (fixed bottom-center)
-      ├── components/ToolbarShell.svelte ← right-side toolbar (reads from tool registry)
+      ├── components/ToolbarShell.svelte ← right-side toolbar (reads from toolStore)
       ├── plugins/design-modes.ts       ← mountDesignModesUI() entry point
       └── styles/base.css               ← Tachyons + sb-* CSS custom properties
 
@@ -211,24 +212,11 @@ All mode setup removed from consumer's `_app.jsx`. No mode-related imports, no `
 ### ✅ 5. Tool registry + state API in modes.js
 Tools are declared in `modes.config.json` and seeded at build time via `initTools()`. Runtime API manages state (`setToolState`), actions (`setToolAction`), and queries (`getToolsForMode`, `getToolState`, `subscribeToTools`, `getToolsSnapshot`). Tool states (enabled, active, busy, hidden, badge) are set imperatively by plugins. 22 tests. Exported from `@dfosco/storyboard-core`.
 
-### 🔲 6. Svelte tool store
-Create `toolStore.ts` — readable Svelte store providing `{ tools, devTools }` for the current mode. Subscribes to both mode changes and tool registry changes.
+### ✅ 6. Svelte tool store
+Created `toolStore.ts` — readable Svelte store providing `{ tools, devTools }` for the current mode. Subscribes to both mode changes and tool registry changes. Groups tools by `group` field.
 
-### 🔲 7. Redesign Toolbar + migrate devtools panel
-Rewrite `ToolbarShell.svelte` to read from the tool store (not from mode config arrays). Render tool buttons with icon, label, active/disabled state, badge. Group into `tools` and `dev` sections.
-
-Break the existing devtools panel (`devtools.js`) into individual tool registrations. Each becomes a `registerModeTool('*', ...)` call with `group: 'dev'`:
-
-| Current devtools option | Tool id | Reactive state |
-|------------------------|---------|---------------|
-| Viewfinder | `viewfinder` | — |
-| Show scene info | `scene-info` | Opens overlay panel |
-| Reset all params | `reset-params` | — |
-| Hide/Show mode | `hide-mode` | `active()` toggles label (Hide ↔ Show) |
-| Feature flags | `feature-flags` | `enabled()` only if flags exist; opens panel |
-| Comments items | `comments-*` | Dynamic, injected by comments plugin separately |
-
-All except comments register into `'*'` (all modes) as `group: 'dev'`. Comments stays as a plugin-owned registration into `'present'` mode. This replaces the monolithic devtools beaker menu with the toolbar's dev section.
+### ✅ 7. Redesign Toolbar
+Rewrote `ToolbarShell.svelte` to read from the tool store (not from mode config arrays). Renders tool buttons with state: disabled when `enabled: false` or `busy: true` or no action, highlighted when `active: true`, badge when present, hidden when `hidden: true`. Updated types.ts — removed old `ModeToolConfig`, added `ResolvedTool` and `ToolState` interfaces. 8 tests (up from 4).
 
 ### 🔲 8. Relocate mount entry points
 `plugins/design-modes.ts` and `plugins/viewfinder.ts` should move out of `svelte-plugin-ui/plugins/`. The path leaks implementation details ("svelte", "plugins") into the public API. Candidate: `@dfosco/storyboard-core/ui/design-modes`, `@dfosco/storyboard-core/ui/viewfinder`.

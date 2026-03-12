@@ -1,6 +1,8 @@
+import React from 'react'
 import { renderHook, act } from '@testing-library/react'
 import { seedTestData, TEST_RECORDS } from '../../test-utils.js'
-import { activateHideMode, setShadow } from '@dfosco/storyboard-core'
+import { activateHideMode, setShadow, init } from '@dfosco/storyboard-core'
+import { StoryboardContext } from '../StoryboardContext.js'
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
@@ -14,6 +16,20 @@ beforeEach(() => {
   seedTestData()
   useParams.mockReturnValue({})
 })
+
+/**
+ * Create a wrapper that provides StoryboardContext with a prototypeName,
+ * used for testing scoped (prototype-level) records.
+ */
+function createPrototypeWrapper(prototypeName) {
+  return function Wrapper({ children }) {
+    return React.createElement(
+      StoryboardContext.Provider,
+      { value: { data: {}, prototypeName } },
+      children,
+    )
+  }
+}
 
 // ── useRecord ──
 
@@ -126,5 +142,80 @@ describe('useRecords (hide mode)', () => {
     const newPost = result.current.find(e => e.id === 'shadow-post')
     expect(newPost).toBeTruthy()
     expect(newPost.title).toBe('New Shadow')
+  })
+})
+
+// ── Scoped (prototype) records ──
+
+const SCOPED_RECORDS = {
+  'security/rules': [
+    { id: 'constant-condition', title: 'Constant Condition', state: 'open' },
+    { id: 'unused-var', title: 'Unused Variable', state: 'open' },
+  ],
+}
+
+function seedScopedData() {
+  init({
+    flows: {},
+    objects: {},
+    records: SCOPED_RECORDS,
+  })
+}
+
+describe('useRecords (scoped records)', () => {
+  beforeEach(() => {
+    seedScopedData()
+    window.location.hash = ''
+  })
+
+  it('applies overrides written with the plain (unscoped) record name', () => {
+    // Callers write: record.rules.constant-condition.state=dismissed
+    // Reader resolves to "security/rules" — this was the bug
+    window.location.hash = 'record.rules.constant-condition.state=dismissed'
+
+    const wrapper = createPrototypeWrapper('security')
+    const { result } = renderHook(() => useRecords('rules'), { wrapper })
+
+    const rule = result.current.find(e => e.id === 'constant-condition')
+    expect(rule.state).toBe('dismissed')
+  })
+
+  it('applies overrides written with the resolved (scoped) record name', () => {
+    window.location.hash = 'record.security/rules.constant-condition.state=dismissed'
+
+    const wrapper = createPrototypeWrapper('security')
+    const { result } = renderHook(() => useRecords('rules'), { wrapper })
+
+    const rule = result.current.find(e => e.id === 'constant-condition')
+    expect(rule.state).toBe('dismissed')
+  })
+
+  it('merges overrides from both plain and scoped prefixes', () => {
+    window.location.hash =
+      'record.rules.constant-condition.state=dismissed' +
+      '&record.security/rules.unused-var.state=resolved'
+
+    const wrapper = createPrototypeWrapper('security')
+    const { result } = renderHook(() => useRecords('rules'), { wrapper })
+
+    expect(result.current.find(e => e.id === 'constant-condition').state).toBe('dismissed')
+    expect(result.current.find(e => e.id === 'unused-var').state).toBe('resolved')
+  })
+})
+
+describe('useRecord (scoped records)', () => {
+  beforeEach(() => {
+    seedScopedData()
+    window.location.hash = ''
+    useParams.mockReturnValue({ id: 'constant-condition' })
+  })
+
+  it('applies overrides written with the plain (unscoped) record name', () => {
+    window.location.hash = 'record.rules.constant-condition.state=dismissed'
+
+    const wrapper = createPrototypeWrapper('security')
+    const { result } = renderHook(() => useRecord('rules'), { wrapper })
+
+    expect(result.current.state).toBe('dismissed')
   })
 })

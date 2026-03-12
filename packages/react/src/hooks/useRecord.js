@@ -20,15 +20,26 @@ import { StoryboardContext } from '../StoryboardContext.js'
  * - Unknown ids create new entries appended to the array.
  *
  * @param {Array} baseRecords - The original record array (will be deep-cloned)
- * @param {string} recordName - Record collection name (e.g. "posts")
+ * @param {string} resolvedName - Resolved (possibly scoped) record name (e.g. "security/rules")
+ * @param {string} [plainName] - Original unscoped record name (e.g. "rules"). Falls back to resolvedName.
  * @returns {Array} Merged array
  */
-function applyRecordOverrides(baseRecords, recordName) {
+function applyRecordOverrides(baseRecords, resolvedName, plainName) {
   const allParams = isHideMode() ? getAllShadows() : getAllParams()
-  const prefix = `record.${recordName}.`
+
+  // Check both the resolved (scoped) prefix and the plain (unscoped) prefix.
+  // Callers write overrides with the plain name, but the data index resolves
+  // to the scoped name — we need to match both so overrides are not silently
+  // dropped for prototype-scoped records.
+  const resolvedPrefix = `record.${resolvedName}.`
+  const plainPrefix = plainName && plainName !== resolvedName
+    ? `record.${plainName}.`
+    : null
 
   // Collect only the params that target this record
-  const overrideKeys = Object.keys(allParams).filter(k => k.startsWith(prefix))
+  const overrideKeys = Object.keys(allParams).filter(k =>
+    k.startsWith(resolvedPrefix) || (plainPrefix && k.startsWith(plainPrefix))
+  )
   if (overrideKeys.length === 0) return baseRecords
 
   const records = deepClone(baseRecords)
@@ -37,6 +48,8 @@ function applyRecordOverrides(baseRecords, recordName) {
   // key format: record.{name}.{entryId}.{field...}
   const byEntryId = {}
   for (const key of overrideKeys) {
+    // Determine which prefix matched to slice correctly
+    const prefix = key.startsWith(resolvedPrefix) ? resolvedPrefix : plainPrefix
     const rest = key.slice(prefix.length) // "{entryId}.{field...}"
     const dotIdx = rest.indexOf('.')
     if (dotIdx === -1) continue // no field path — skip
@@ -104,7 +117,7 @@ export function useRecord(recordName, paramName = 'id') {
     try {
       const resolvedName = resolveRecordName(prototypeName, recordName)
       const base = loadRecord(resolvedName)
-      const merged = applyRecordOverrides(base, resolvedName)
+      const merged = applyRecordOverrides(base, resolvedName, recordName)
       return merged.find(e => e[paramName] === paramValue) ?? null
     } catch (err) {
       console.error(`[useRecord] ${err.message}`)
@@ -136,7 +149,7 @@ export function useRecords(recordName) {
     try {
       const resolvedName = resolveRecordName(prototypeName, recordName)
       const base = loadRecord(resolvedName)
-      return applyRecordOverrides(base, resolvedName)
+      return applyRecordOverrides(base, resolvedName, recordName)
     } catch (err) {
       console.error(`[useRecords] ${err.message}`)
       return []

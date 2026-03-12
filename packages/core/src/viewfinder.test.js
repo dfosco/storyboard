@@ -1,5 +1,5 @@
 import { init } from './loader.js'
-import { hash, resolveFlowRoute, getFlowMeta, resolveSceneRoute, getSceneMeta } from './viewfinder.js'
+import { hash, resolveFlowRoute, getFlowMeta, resolveSceneRoute, getSceneMeta, buildPrototypeIndex } from './viewfinder.js'
 
 const makeIndex = () => ({
   flows: {
@@ -148,5 +148,38 @@ describe('getSceneMeta (deprecated alias)', () => {
 
   it('returns flow meta', () => {
     expect(getSceneMeta('meta-author')).toEqual({ author: 'dfosco' })
+  })
+})
+
+// ── buildPrototypeIndex ──
+
+describe('buildPrototypeIndex', () => {
+  it('passes hideFlows from prototype metadata', () => {
+    init({
+      flows: { 'MyProto/only-flow': { meta: { title: 'Only Flow' } } },
+      objects: {},
+      records: {},
+      prototypes: {
+        MyProto: { meta: { title: 'My Proto', hideFlows: true } },
+      },
+    })
+    const { prototypes } = buildPrototypeIndex([])
+    const proto = prototypes.find(p => p.dirName === 'MyProto')
+    expect(proto.hideFlows).toBe(true)
+    expect(proto.flows).toHaveLength(1)
+  })
+
+  it('defaults hideFlows to false when not set', () => {
+    init({
+      flows: { 'Other/flow-a': { meta: { title: 'A' } } },
+      objects: {},
+      records: {},
+      prototypes: {
+        Other: { meta: { title: 'Other Proto' } },
+      },
+    })
+    const { prototypes } = buildPrototypeIndex([])
+    const proto = prototypes.find(p => p.dirName === 'Other')
+    expect(proto.hideFlows).toBe(false)
   })
 })

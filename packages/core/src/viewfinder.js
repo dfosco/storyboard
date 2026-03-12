@@ -98,6 +98,7 @@ export function buildPrototypeIndex(knownRoutes = []) {
       icon: meta.icon || null,
       team: meta.team || null,
       tags: meta.tags || null,
+      hideFlows: meta.hideFlows || false,
       flows: [],
     }
   }
@@ -118,6 +119,7 @@ export function buildPrototypeIndex(knownRoutes = []) {
           icon: null,
           team: null,
           tags: null,
+          hideFlows: false,
           flows: [],
         }
       }

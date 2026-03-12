@@ -194,7 +194,37 @@
     <div class="list">
       {#each allGroups as proto (proto.dirName)}
         <section class="protoGroup">
-          {#if proto.flows.length > 0}
+          {#if proto.hideFlows && proto.flows.length === 1}
+            <!-- Single flow, hidden — navigates directly to the flow -->
+            <a class="listItem" href={proto.flows[0].route}>
+              <div class="cardBody">
+                <p class="sceneName">
+                  {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
+                  {proto.name}
+                </p>
+                {#if proto.description}
+                  <p class="protoDesc">{proto.description}</p>
+                {/if}
+                {#if proto.author}
+                  {@const authors = Array.isArray(proto.author) ? proto.author : [proto.author]}
+                  <div class="author">
+                    <span class="authorAvatars">
+                      {#each authors as a (a)}
+                        <img
+                          src="https://github.com/{a}.png?size=48"
+                          alt={a}
+                          class="authorAvatar"
+                        />
+                      {/each}
+                    </span>
+                    <span class="authorName">{authors.join(', ')}</span>
+                  </div>
+                {:else if proto.gitAuthor}
+                  <p class="authorPlain">{proto.gitAuthor}</p>
+                {/if}
+              </div>
+            </a>
+          {:else if proto.flows.length > 0}
             <!-- Expandable prototype with flows -->
             <button
               class="listItem protoHeader"
@@ -265,7 +295,7 @@
             </a>
           {/if}
 
-          {#if isExpanded(proto.dirName) && proto.flows.length > 0}
+          {#if !(proto.hideFlows && proto.flows.length === 1) && isExpanded(proto.dirName) && proto.flows.length > 0}
             <div class="flowList">
               {#each proto.flows as flow (flow.key)}
                 <a href={flow.route} class="listItem flowItem">

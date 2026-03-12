@@ -1,13 +1,14 @@
 {
-  "mode": "exit",
+  "mode": "pre",
   "tag": "beta",
   "initialVersions": {
-    "@dfosco/storyboard-core": "1.24.0",
-    "@dfosco/storyboard-react": "1.24.0",
-    "@dfosco/storyboard-react-primer": "1.24.0",
-    "@dfosco/storyboard-react-reshaped": "1.24.0"
+    "@dfosco/storyboard-core": "2.0.0-beta.0",
+    "@dfosco/storyboard-react": "2.0.0-beta.0",
+    "@dfosco/storyboard-react-primer": "2.0.0-beta.0",
+    "@dfosco/storyboard-react-reshaped": "2.0.0-beta.0"
   },
   "changesets": [
-    "changeset-mmme990q"
+    "changeset-mmme990q",
+    "changeset-mmnh4ss2"
   ]
 }

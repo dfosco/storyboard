@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 2.0.0-beta.1
+
+### Minor Changes
+
+-   Add prototype and flow restructure for 2.0 (breaking change)
+
 ## 2.0.0-beta.0
 
 ### Major Changes

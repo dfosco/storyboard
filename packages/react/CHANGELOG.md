@@ -1,5 +1,14 @@
 # @dfosco/storyboard-react
 
+## 2.0.0
+
+### Patch Changes
+
+-   Updated dependencies [fd0a4a9]
+-   Updated dependencies [7861e32]
+-   Updated dependencies
+    -   @dfosco/storyboard-core@2.0.0
+
 ## 2.0.0-beta.1
 
 ### Patch Changes

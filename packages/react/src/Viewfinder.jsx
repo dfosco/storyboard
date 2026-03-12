@@ -15,11 +15,13 @@ import { useRef, useEffect } from 'react'
  * @param {string} [props.title] - Header title
  * @param {string} [props.subtitle] - Optional subtitle
  * @param {boolean} [props.showThumbnails] - Show thumbnail previews
- * @param {boolean} [props.hideDefaultScene] - Hide the "default" flow
+ * @param {boolean} [props.hideDefaultFlow] - Hide the "default" flow from the "Other flows" section
  */
-export default function Viewfinder({ pageModules = {}, basePath, title = 'Storyboard', subtitle, showThumbnails = false, hideDefaultScene = false }) {
+export default function Viewfinder({ pageModules = {}, basePath, title = 'Storyboard', subtitle, showThumbnails = false, hideDefaultFlow, hideDefaultScene = false }) {
   const containerRef = useRef(null)
   const handleRef = useRef(null)
+
+  const shouldHideDefault = hideDefaultFlow ?? hideDefaultScene
 
   const knownRoutes = Object.keys(pageModules)
     .map(p => p.replace('/src/prototypes/', '').replace('.jsx', ''))
@@ -40,7 +42,7 @@ export default function Viewfinder({ pageModules = {}, basePath, title = 'Storyb
         basePath,
         knownRoutes,
         showThumbnails,
-        hideDefaultFlow: hideDefaultScene,
+        hideDefaultFlow: shouldHideDefault,
       })
     })
 
@@ -51,7 +53,7 @@ export default function Viewfinder({ pageModules = {}, basePath, title = 'Storyb
         handleRef.current = null
       }
     }
-  }, [title, subtitle, basePath, showThumbnails, hideDefaultScene])
+  }, [title, subtitle, basePath, showThumbnails, shouldHideDefault])
 
   return <div ref={containerRef} style={{ minHeight: '100vh' }} />
 }

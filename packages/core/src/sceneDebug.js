@@ -56,13 +56,14 @@ let stylesInjected = false
  * Mount a flow debug panel into the DOM.
  *
  * @param {HTMLElement} [container=document.body] - Where to mount
- * @param {string} [flowName] - Flow name override (defaults to ?scene= param or "default")
+ * @param {string} [flowName] - Flow name override (defaults to ?flow= param or "default")
  * @returns {HTMLElement} The created debug element
  */
 export function mountFlowDebug(container, flowName) {
   const target = container || document.body
+  const sp = new URLSearchParams(window.location.search)
   const activeFlowName = flowName
-    || new URLSearchParams(window.location.search).get('scene')
+    || sp.get('flow') || sp.get('scene')
     || 'default'
 
   // Inject styles once

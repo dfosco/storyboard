@@ -32,7 +32,7 @@ function getPageFlowName(pathname) {
 
 /**
  * Provides loaded flow data to the component tree.
- * Reads the flow name from the ?scene= URL param, the flowName prop,
+ * Reads the flow name from the ?flow= URL param (with ?scene= as alias),
  * a matching flow file for the current page, or defaults to "default".
  *
  * Derives the prototype scope from the route and uses it to resolve
@@ -43,7 +43,8 @@ function getPageFlowName(pathname) {
  */
 export default function StoryboardProvider({ flowName, sceneName, recordName, recordParam, children }) {
   const location = useLocation()
-  const sceneParam = new URLSearchParams(location.search).get('scene')
+  const searchParams = new URLSearchParams(location.search)
+  const sceneParam = searchParams.get('flow') || searchParams.get('scene')
   const prototypeName = getPrototypeName(location.pathname)
   const pageFlow = getPageFlowName(location.pathname)
   const params = useParams()

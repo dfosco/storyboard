@@ -5,7 +5,8 @@ import styles from './DevTools.module.css'
 import FeatureFlagsPanel from './FeatureFlagsPanel.jsx'
 
 function getFlowName() {
-  return new URLSearchParams(window.location.search).get('scene') || 'default'
+  const p = new URLSearchParams(window.location.search)
+  return p.get('flow') || p.get('scene') || 'default'
 }
 
 /**

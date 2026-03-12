@@ -187,8 +187,30 @@ describe('StoryboardProvider', () => {
     expect(screen.getByTestId('nav')).toHaveTextContent('Home,Repos')
   })
 
-  it('reads ?scene= param from location.search', () => {
+  it('reads ?flow= param from location.search', () => {
+    mockUseLocation.mockReturnValue({ pathname: '/whatever', search: '?flow=other', hash: '' })
+
+    render(
+      <StoryboardProvider>
+        <ContextReader path="title" />
+      </StoryboardProvider>,
+    )
+    expect(screen.getByTestId('ctx')).toHaveTextContent('Other Scene')
+  })
+
+  it('reads ?scene= as alias for ?flow=', () => {
     mockUseLocation.mockReturnValue({ pathname: '/whatever', search: '?scene=other', hash: '' })
+
+    render(
+      <StoryboardProvider>
+        <ContextReader path="title" />
+      </StoryboardProvider>,
+    )
+    expect(screen.getByTestId('ctx')).toHaveTextContent('Other Scene')
+  })
+
+  it('prefers ?flow= over ?scene= when both present', () => {
+    mockUseLocation.mockReturnValue({ pathname: '/whatever', search: '?flow=other&scene=default', hash: '' })
 
     render(
       <StoryboardProvider>

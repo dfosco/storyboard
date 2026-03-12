@@ -53,31 +53,31 @@ describe('resolveFlowRoute', () => {
   })
 
   it('uses route key from flow data when no route matches', () => {
-    expect(resolveFlowRoute('custom-route', routes)).toBe('/Overview?scene=custom-route')
+    expect(resolveFlowRoute('custom-route', routes)).toBe('/Overview?flow=custom-route')
   })
 
   it('handles absolute route key (with leading slash)', () => {
-    expect(resolveFlowRoute('absolute-route', routes)).toBe('/Forms?scene=absolute-route')
+    expect(resolveFlowRoute('absolute-route', routes)).toBe('/Forms?flow=absolute-route')
   })
 
   it('falls back to root when no match and no route key', () => {
-    expect(resolveFlowRoute('no-route', routes)).toBe('/?scene=no-route')
+    expect(resolveFlowRoute('no-route', routes)).toBe('/?flow=no-route')
   })
 
   it('falls back to root for default flow', () => {
-    expect(resolveFlowRoute('default', routes)).toBe('/?scene=default')
+    expect(resolveFlowRoute('default', routes)).toBe('/?flow=default')
   })
 
   it('falls back to root when flow does not exist', () => {
-    expect(resolveFlowRoute('nonexistent', routes)).toBe('/?scene=nonexistent')
+    expect(resolveFlowRoute('nonexistent', routes)).toBe('/?flow=nonexistent')
   })
 
   it('works with empty routes array', () => {
-    expect(resolveFlowRoute('Dashboard', [])).toBe('/?scene=Dashboard')
+    expect(resolveFlowRoute('Dashboard', [])).toBe('/?flow=Dashboard')
   })
 
   it('works with no routes argument', () => {
-    expect(resolveFlowRoute('custom-route')).toBe('/Overview?scene=custom-route')
+    expect(resolveFlowRoute('custom-route')).toBe('/Overview?flow=custom-route')
   })
 
   it('encodes special characters in flow name', () => {
@@ -86,15 +86,15 @@ describe('resolveFlowRoute', () => {
       objects: {},
       records: {},
     })
-    expect(resolveFlowRoute('has spaces', [])).toBe('/?scene=has%20spaces')
+    expect(resolveFlowRoute('has spaces', [])).toBe('/?flow=has%20spaces')
   })
 
   it('uses flowMeta.route when no route matches', () => {
-    expect(resolveFlowRoute('meta-route', routes)).toBe('/Repositories?scene=meta-route')
+    expect(resolveFlowRoute('meta-route', routes)).toBe('/Repositories?flow=meta-route')
   })
 
   it('uses flowMeta.route with absolute path', () => {
-    expect(resolveFlowRoute('meta-both', routes)).toBe('/Overview?scene=meta-both')
+    expect(resolveFlowRoute('meta-both', routes)).toBe('/Overview?flow=meta-both')
   })
 
   it('prefers top-level route over flowMeta.route', () => {
@@ -103,7 +103,7 @@ describe('resolveFlowRoute', () => {
       objects: {},
       records: {},
     })
-    expect(resolveFlowRoute('conflict', [])).toBe('/Forms?scene=conflict')
+    expect(resolveFlowRoute('conflict', [])).toBe('/Forms?flow=conflict')
   })
 })
 

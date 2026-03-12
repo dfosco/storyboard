@@ -22,13 +22,13 @@ export function hash(str) {
  *
  * @param {string} flowName
  * @param {string[]} knownRoutes - Array of route names (e.g. ["Dashboard", "Repositories"])
- * @returns {string} Full path with ?scene= param
+ * @returns {string} Full path with ?flow= param
  */
 export function resolveFlowRoute(flowName, knownRoutes = []) {
   // Case-insensitive match against known routes
   for (const route of knownRoutes) {
     if (route.toLowerCase() === flowName.toLowerCase()) {
-      // Flow name matches the route — no ?scene= needed,
+      // Flow name matches the route — no ?flow= needed,
       // StoryboardProvider auto-matches by page name
       return `/${route}`
     }
@@ -40,13 +40,13 @@ export function resolveFlowRoute(flowName, knownRoutes = []) {
     const route = data?.route || data?.meta?.route || data?.flowMeta?.route || data?.sceneMeta?.route
     if (route) {
       const normalized = route.startsWith('/') ? route : `/${route}`
-      return `${normalized}?scene=${encodeURIComponent(flowName)}`
+      return `${normalized}?flow=${encodeURIComponent(flowName)}`
     }
   } catch {
     // ignore load errors
   }
 
-  return `/?scene=${encodeURIComponent(flowName)}`
+  return `/?flow=${encodeURIComponent(flowName)}`
 }
 
 /** @deprecated Use resolveFlowRoute() */

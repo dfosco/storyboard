@@ -8,11 +8,11 @@ import styles from './SceneDebug.module.css'
 /**
  * Debug component that displays loaded flow data as formatted JSON.
  * Used to verify the loader is working correctly.
- * Reads flow name from URL param (?scene=name) or uses prop/default.
+ * Reads flow name from URL param (?flow=name, with ?scene= as alias) or uses prop/default.
  */
 export default function SceneDebug({ flowName, sceneName } = {}) {
   const [searchParams] = useSearchParams()
-  const flowFromUrl = searchParams.get('scene')
+  const flowFromUrl = searchParams.get('flow') || searchParams.get('scene')
   const activeFlowName = flowName || sceneName || flowFromUrl || 'default'
 
   const { data, error } = useMemo(() => {

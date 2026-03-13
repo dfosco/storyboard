@@ -30,13 +30,13 @@ function deepMerge(target, source) {
  * Module-level data index, seeded by init().
  * Shape: { flows: {}, objects: {}, records: {} }
  */
-let dataIndex = { flows: {}, objects: {}, records: {}, prototypes: {} }
+let dataIndex = { flows: {}, objects: {}, records: {}, prototypes: {}, folders: {} }
 
 /**
  * Seed the data index. Call once at app startup before any load functions.
  * The Vite data plugin calls this automatically via the generated virtual module.
  *
- * @param {{ flows?: object, scenes?: object, objects: object, records: object, prototypes?: object }} index
+ * @param {{ flows?: object, scenes?: object, objects: object, records: object, prototypes?: object, folders?: object }} index
  */
 export function init(index) {
   if (!index || typeof index !== 'object') {
@@ -47,6 +47,7 @@ export function init(index) {
     objects: index.objects || {},
     records: index.records || {},
     prototypes: index.prototypes || {},
+    folders: index.folders || {},
   }
 }
 
@@ -301,6 +302,23 @@ export function listPrototypes() {
  */
 export function getPrototypeMetadata(name) {
   return dataIndex.prototypes[name] ?? null
+}
+
+/**
+ * Returns the names of all registered folders.
+ * @returns {string[]}
+ */
+export function listFolders() {
+  return Object.keys(dataIndex.folders)
+}
+
+/**
+ * Returns folder metadata by name.
+ * @param {string} name - Folder name (e.g. "Getting Started")
+ * @returns {object|null} Metadata from the .folder.json file, or null
+ */
+export function getFolderMetadata(name) {
+  return dataIndex.folders[name] ?? null
 }
 
 export { deepMerge }

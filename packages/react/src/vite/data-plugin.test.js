@@ -69,13 +69,13 @@ describe('storyboardDataPlugin', () => {
     const code = plugin.load(RESOLVED_ID)
 
     expect(code).toContain("import { init } from '@dfosco/storyboard-core'")
-    expect(code).toContain('init({ flows, objects, records, prototypes })')
+    expect(code).toContain('init({ flows, objects, records, prototypes, folders })')
     expect(code).toContain('"Test"')
     expect(code).toContain('"Jane"')
     expect(code).toContain('"First"')
     // Backward-compat alias
     expect(code).toContain('const scenes = flows')
-    expect(code).toContain('export { flows, scenes, objects, records, prototypes }')
+    expect(code).toContain('export { flows, scenes, objects, records, prototypes, folders }')
   })
 
   it('load returns null for other IDs', () => {
@@ -137,7 +137,7 @@ describe('storyboardDataPlugin', () => {
 
     // .scene.json files should be normalized to the flows category
     expect(code).toContain('"Legacy Scene"')
-    expect(code).toContain('init({ flows, objects, records, prototypes })')
+    expect(code).toContain('init({ flows, objects, records, prototypes, folders })')
   })
 
   it('buildStart resets the index cache', () => {
@@ -262,5 +262,90 @@ describe('prototype scoping', () => {
     // Should be indexed as a scoped flow, not a scene
     expect(code).toContain('"Legacy/old"')
     expect(code).toContain('flows')
+  })
+})
+
+describe('folder grouping', () => {
+  it('discovers .folder.json files and keys them by folder directory name', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Getting Started.folder'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Getting Started.folder', 'getting-started.folder.json'),
+      JSON.stringify({ meta: { title: 'Getting Started', description: 'Intro' } }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"Getting Started"')
+    expect(code).toContain('"Intro"')
+    expect(code).toContain('folders')
+  })
+
+  it('scopes prototypes inside .folder/ directories correctly', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'MyFolder.folder', 'Dashboard'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'MyFolder.folder', 'Dashboard', 'default.flow.json'),
+      JSON.stringify({ title: 'Dashboard Default' }),
+    )
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'MyFolder.folder', 'Dashboard', 'dashboard.prototype.json'),
+      JSON.stringify({ meta: { title: 'Dashboard' } }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    // Flow should be scoped to prototype, not folder
+    expect(code).toContain('"Dashboard/default"')
+    expect(code).not.toContain('"MyFolder.folder/default"')
+    expect(code).not.toContain('"MyFolder/default"')
+    // Prototype should have folder field injected
+    expect(code).toContain('"folder":"MyFolder"')
+  })
+
+  it('does NOT prefix objects inside .folder/ directories', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'X.folder', 'Proto'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'X.folder', 'Proto', 'helpers.object.json'),
+      JSON.stringify({ util: true }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"helpers"')
+    expect(code).not.toContain('"X/helpers"')
+    expect(code).not.toContain('"Proto/helpers"')
+  })
+
+  it('scopes records inside .folder/ directories to their prototype', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'X.folder', 'Blog'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'X.folder', 'Blog', 'posts.record.json'),
+      JSON.stringify([{ id: '1', title: 'Post' }]),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"Blog/posts"')
+    expect(code).not.toContain('"X/posts"')
+  })
+
+  it('allows prototypes with same name in different folders without clash', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'A.folder', 'Settings'), { recursive: true })
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'B.folder', 'Settings'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'A.folder', 'Settings', 'default.flow.json'),
+      JSON.stringify({ from: 'A' }),
+    )
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'B.folder', 'Settings', 'default.flow.json'),
+      JSON.stringify({ from: 'B' }),
+    )
+
+    const plugin = createPlugin()
+    // Same flow name in same prototype name → duplicate collision
+    expect(() => plugin.load(RESOLVED_ID)).toThrow(/Duplicate flow "Settings\/default"/)
   })
 })

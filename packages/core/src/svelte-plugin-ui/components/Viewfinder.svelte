@@ -37,8 +37,8 @@
       : prototypeIndex.globalFlows
   )
 
-  // Merge global flows into the prototype list as "Other flows"
-  const allGroups = $derived(
+  // Build a flat display list: folders (with nested prototypes), ungrouped prototypes, global flows
+  const ungroupedProtos = $derived(
     globalFlows.length > 0
       ? [
           ...prototypeIndex.prototypes,
@@ -57,19 +57,27 @@
       : prototypeIndex.prototypes
   )
 
-  const totalFlows = $derived(
-    allGroups.reduce((sum: number, p: any) => sum + p.flows.length, 0)
+  const folders = $derived(prototypeIndex.folders || [])
+
+  const totalProtos = $derived(
+    ungroupedProtos.length + folders.reduce((sum: number, f: any) => sum + f.prototypes.length, 0)
   )
 
-  // Expanded state — all prototypes start expanded
+  const totalFlows = $derived(
+    ungroupedProtos.reduce((sum: number, p: any) => sum + p.flows.length, 0) +
+    folders.reduce((sum: number, f: any) =>
+      sum + f.prototypes.reduce((s: number, p: any) => s + p.flows.length, 0), 0)
+  )
+
+  // Expanded state — all prototypes and folders start expanded
   let expanded: Record<string, boolean> = $state({})
 
   function isExpanded(dirName: string): boolean {
     return expanded[dirName] ?? true
   }
 
-  function togglePrototype(dirName: string) {
-    expanded[dirName] = !expanded[dirName]
+  function toggle(dirName: string) {
+    expanded[dirName] = !isExpanded(dirName)
   }
 
   function protoRoute(dirName: string): string {
@@ -184,15 +192,15 @@
       {/if}
     </div>
     <p class="sceneCount">
-      {allGroups.length} prototype{allGroups.length !== 1 ? 's' : ''} · {totalFlows} flow{totalFlows !== 1 ? 's' : ''}
+      {#if folders.length > 0}{folders.length} folder{folders.length !== 1 ? 's' : ''} · {/if}{totalProtos} prototype{totalProtos !== 1 ? 's' : ''} · {totalFlows} flow{totalFlows !== 1 ? 's' : ''}
     </p>
   </header>
 
-  {#if allGroups.length === 0}
+  {#if totalProtos === 0 && folders.length === 0}
     <p class="empty">No flows found. Add a <code>*.flow.json</code> file to get started.</p>
   {:else}
     <div class="list">
-      {#each allGroups as proto (proto.dirName)}
+      {#snippet protoEntry(proto)}
         <section class="protoGroup">
           {#if proto.hideFlows && proto.flows.length === 1}
             <!-- Single flow, hidden — navigates directly to the flow -->
@@ -228,7 +236,7 @@
             <!-- Expandable prototype with flows -->
             <button
               class="listItem protoHeader"
-              onclick={() => togglePrototype(proto.dirName)}
+              onclick={() => toggle(proto.dirName)}
               aria-expanded={isExpanded(proto.dirName)}
             >
               <div class="cardBody">
@@ -315,6 +323,42 @@
             </div>
           {/if}
         </section>
+      {/snippet}
+
+      <!-- Folders with their prototypes -->
+      {#each folders as folder (folder.dirName)}
+        <section class="folderGroup">
+          <button
+            class="folderHeader"
+            onclick={() => toggle(`folder:${folder.dirName}`)}
+            aria-expanded={isExpanded(`folder:${folder.dirName}`)}
+          >
+            <p class="folderName">
+              {#if folder.icon}<span class="folderIcon">{folder.icon}</span>{/if}
+              {folder.name}
+              <span class="folderChevron" class:folderChevronOpen={isExpanded(`folder:${folder.dirName}`)}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+              </span>
+            </p>
+            {#if folder.description}
+              <p class="folderDesc">{folder.description}</p>
+            {/if}
+          </button>
+          {#if isExpanded(`folder:${folder.dirName}`) && folder.prototypes.length > 0}
+            <div class="folderContent">
+              {#each folder.prototypes as proto (proto.dirName)}
+                {@render protoEntry(proto)}
+              {/each}
+            </div>
+          {/if}
+        </section>
+      {/each}
+
+      <!-- Ungrouped prototypes (not in any folder) -->
+      {#each ungroupedProtos as proto (proto.dirName)}
+        {@render protoEntry(proto)}
       {/each}
     </div>
   {/if}
@@ -416,6 +460,71 @@
   }
 
   .protoGroup {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .folderGroup {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 8px;
+  }
+
+  .folderGroup:not(:first-child) {
+    margin-top: 24px;
+  }
+
+  .folderHeader {
+    appearance: none;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+    padding: 0 0 4px;
+    border-bottom: 1px solid var(--borderColor-muted, #30363d);
+    margin-bottom: 4px;
+  }
+
+  .folderName {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--fgColor-muted, #848d97);
+    margin: 0;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.6;
+  }
+
+  .folderIcon {
+    margin-right: 4px;
+  }
+
+  .folderChevron {
+    display: inline-flex;
+    align-items: center;
+    color: var(--fgColor-muted, #848d97);
+    transition: transform 0.15s ease;
+    transform: rotate(0deg);
+    margin-left: 2px;
+    vertical-align: middle;
+  }
+
+  .folderChevronOpen {
+    transform: rotate(90deg);
+  }
+
+  .folderDesc {
+    font-size: 13px;
+    color: var(--fgColor-muted, #848d97);
+    margin: 2px 0 0;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    font-weight: 400;
+  }
+
+  .folderContent {
     display: flex;
     flex-direction: column;
   }

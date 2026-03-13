@@ -1,4 +1,4 @@
-import { init, loadFlow, listFlows, flowExists, loadScene, listScenes, sceneExists, loadRecord, findRecord, loadObject, deepMerge, resolveFlowName, resolveRecordName } from './loader.js'
+import { init, loadFlow, listFlows, flowExists, loadScene, listScenes, sceneExists, loadRecord, findRecord, loadObject, deepMerge, resolveFlowName, resolveRecordName, listFolders, getFolderMetadata } from './loader.js'
 
 const makeIndex = () => ({
   flows: {
@@ -414,5 +414,43 @@ describe('error hints for scoped data', () => {
   it('loadRecord error for truly missing name has no hint', () => {
     expect(() => loadRecord('xyz')).toThrow(/Record not found: xyz/)
     expect(() => loadRecord('xyz')).not.toThrow(/Did you mean/)
+  })
+})
+
+// ── Folder functions ──
+
+describe('listFolders', () => {
+  it('returns empty array when no folders registered', () => {
+    init(makeIndex())
+    expect(listFolders()).toEqual([])
+  })
+
+  it('returns folder names when folders are registered', () => {
+    init({
+      ...makeIndex(),
+      folders: {
+        'Getting Started': { meta: { title: 'Getting Started' } },
+        Advanced: { meta: { title: 'Advanced' } },
+      },
+    })
+    expect(listFolders()).toEqual(['Getting Started', 'Advanced'])
+  })
+})
+
+describe('getFolderMetadata', () => {
+  it('returns null when folder does not exist', () => {
+    init(makeIndex())
+    expect(getFolderMetadata('nonexistent')).toBeNull()
+  })
+
+  it('returns folder metadata when folder exists', () => {
+    init({
+      ...makeIndex(),
+      folders: {
+        'My Folder': { meta: { title: 'My Folder', description: 'A folder' } },
+      },
+    })
+    const meta = getFolderMetadata('My Folder')
+    expect(meta).toEqual({ meta: { title: 'My Folder', description: 'A folder' } })
   })
 })

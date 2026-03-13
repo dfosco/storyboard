@@ -1,4 +1,4 @@
-import { loadFlow, listFlows, listPrototypes, getPrototypeMetadata } from './loader.js'
+import { loadFlow, listFlows, listPrototypes, getPrototypeMetadata, listFolders, getFolderMetadata } from './loader.js'
 
 /**
  * Deterministic hash from a string — used for seeding generative placeholders.
@@ -71,14 +71,16 @@ export function getFlowMeta(flowName) {
 export const getSceneMeta = getFlowMeta
 
 /**
- * Build a structured prototype index grouping flows by prototype.
+ * Build a structured prototype index grouping flows by prototype,
+ * and prototypes by folder.
  *
  * Returns an object with:
- * - prototypes: array of prototype entries with metadata and their flows
+ * - folders: array of folder entries containing their prototypes
+ * - prototypes: array of ungrouped prototype entries (not in any folder)
  * - globalFlows: flows not belonging to any prototype
  *
  * @param {string[]} [knownRoutes] - Array of known route names
- * @returns {{ prototypes: Array, globalFlows: Array }}
+ * @returns {{ folders: Array, prototypes: Array, globalFlows: Array }}
  */
 export function buildPrototypeIndex(knownRoutes = []) {
   const flows = listFlows()
@@ -99,6 +101,7 @@ export function buildPrototypeIndex(knownRoutes = []) {
       team: meta.team || null,
       tags: meta.tags || null,
       hideFlows: meta.hideFlows || false,
+      folder: raw?.folder || null,
       flows: [],
     }
   }
@@ -120,6 +123,7 @@ export function buildPrototypeIndex(knownRoutes = []) {
           team: null,
           tags: null,
           hideFlows: false,
+          folder: null,
           flows: [],
         }
       }
@@ -140,8 +144,42 @@ export function buildPrototypeIndex(knownRoutes = []) {
     }
   }
 
+  // Build folder entries from .folder.json metadata
+  const folderMap = {}
+  for (const folderName of listFolders()) {
+    const raw = getFolderMetadata(folderName)
+    const meta = raw?.meta || raw || {}
+    folderMap[folderName] = {
+      name: meta.title || folderName,
+      dirName: folderName,
+      description: meta.description || null,
+      icon: meta.icon || null,
+      prototypes: [],
+    }
+  }
+
+  // Partition prototypes into folders vs ungrouped
+  const ungrouped = []
+  for (const proto of Object.values(protoMap)) {
+    if (proto.folder && folderMap[proto.folder]) {
+      folderMap[proto.folder].prototypes.push(proto)
+    } else if (proto.folder) {
+      // Folder referenced but no .folder.json — create an implicit folder
+      folderMap[proto.folder] = {
+        name: proto.folder,
+        dirName: proto.folder,
+        description: null,
+        icon: null,
+        prototypes: [proto],
+      }
+    } else {
+      ungrouped.push(proto)
+    }
+  }
+
   return {
-    prototypes: Object.values(protoMap),
+    folders: Object.values(folderMap),
+    prototypes: ungrouped,
     globalFlows,
   }
 }

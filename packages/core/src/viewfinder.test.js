@@ -182,4 +182,99 @@ describe('buildPrototypeIndex', () => {
     const proto = prototypes.find(p => p.dirName === 'Other')
     expect(proto.hideFlows).toBe(false)
   })
+
+  it('groups prototypes into folders when folder field is set', () => {
+    init({
+      flows: {
+        'Example/basic': { meta: { title: 'Basic' } },
+        'Signup/default': { meta: { title: 'Default' } },
+      },
+      objects: {},
+      records: {},
+      prototypes: {
+        Example: { meta: { title: 'Examples' }, folder: 'Getting Started' },
+        Signup: { meta: { title: 'Sign Up' }, folder: 'Getting Started' },
+      },
+      folders: {
+        'Getting Started': { meta: { title: 'Getting Started', description: 'Intro prototypes', icon: '📚' } },
+      },
+    })
+    const result = buildPrototypeIndex([])
+    expect(result.folders).toHaveLength(1)
+    expect(result.prototypes).toHaveLength(0)
+
+    const folder = result.folders[0]
+    expect(folder.name).toBe('Getting Started')
+    expect(folder.description).toBe('Intro prototypes')
+    expect(folder.icon).toBe('📚')
+    expect(folder.prototypes).toHaveLength(2)
+    expect(folder.prototypes.map(p => p.dirName)).toContain('Example')
+    expect(folder.prototypes.map(p => p.dirName)).toContain('Signup')
+  })
+
+  it('keeps prototypes without a folder as ungrouped', () => {
+    init({
+      flows: {
+        'Grouped/flow-a': {},
+        'Standalone/flow-b': {},
+      },
+      objects: {},
+      records: {},
+      prototypes: {
+        Grouped: { meta: { title: 'Grouped' }, folder: 'MyFolder' },
+        Standalone: { meta: { title: 'Standalone' } },
+      },
+      folders: {
+        MyFolder: { meta: { title: 'My Folder' } },
+      },
+    })
+    const result = buildPrototypeIndex([])
+    expect(result.folders).toHaveLength(1)
+    expect(result.prototypes).toHaveLength(1)
+    expect(result.prototypes[0].dirName).toBe('Standalone')
+    expect(result.folders[0].prototypes).toHaveLength(1)
+    expect(result.folders[0].prototypes[0].dirName).toBe('Grouped')
+  })
+
+  it('creates implicit folder when prototype references a folder with no metadata', () => {
+    init({
+      flows: { 'Proto/flow': {} },
+      objects: {},
+      records: {},
+      prototypes: {
+        Proto: { meta: { title: 'Proto' }, folder: 'Implicit' },
+      },
+    })
+    const result = buildPrototypeIndex([])
+    expect(result.folders).toHaveLength(1)
+    expect(result.folders[0].name).toBe('Implicit')
+    expect(result.folders[0].prototypes).toHaveLength(1)
+  })
+
+  it('uses folder directory name as display name when no title in metadata', () => {
+    init({
+      flows: {},
+      objects: {},
+      records: {},
+      prototypes: {},
+      folders: {
+        'My Folder': {},
+      },
+    })
+    const result = buildPrototypeIndex([])
+    expect(result.folders).toHaveLength(1)
+    expect(result.folders[0].name).toBe('My Folder')
+  })
+
+  it('returns empty folders array when no folders exist', () => {
+    init({
+      flows: { 'A/flow': {} },
+      objects: {},
+      records: {},
+      prototypes: { A: { meta: { title: 'A' } } },
+    })
+    const result = buildPrototypeIndex([])
+    expect(result.folders).toHaveLength(0)
+    expect(result.prototypes).toHaveLength(1)
+  })
 })

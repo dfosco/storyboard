@@ -14,8 +14,8 @@ import {
   patterns,
 } from '@generouted/react-router/core'
 
-// Patch the route regex to strip src/prototypes/ instead of src/pages/
-patterns.route = [/^.*\/src\/prototypes\/|^\/prototypes\/|\.(jsx|tsx|mdx)$/g, '']
+// Patch the route regex to strip src/prototypes/ and .folder/ segments instead of src/pages/
+patterns.route = [/^.*\/src\/prototypes\/|^\/prototypes\/|[^/]*\.folder\/|\.(jsx|tsx|mdx)$/g, '']
 
 const PRESERVED = import.meta.glob('/src/prototypes/(_app|404).{jsx,tsx}', { eager: true })
 const MODALS = import.meta.glob('/src/prototypes/**/[+]*.{jsx,tsx}', { eager: true })

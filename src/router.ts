@@ -4,24 +4,20 @@
 import { components, hooks, utils } from '@generouted/react-router/client'
 
 export type Path =
-    | `///src/prototypes`
-    | `///src/prototypes/Example`
-    | `///src/prototypes/Example/Forms`
-    | `///src/prototypes/Example/posts`
-    | `///src/prototypes/Example/posts/:id`
-    | `///src/prototypes/Signup`
-    | `///src/prototypes/Signup/Dashboard`
+  | `///src/prototypes`
+  | `///src/prototypes/Test/folder/Example`
+  | `///src/prototypes/Test/folder/Example/Forms`
+  | `///src/prototypes/Test/folder/Example/posts`
+  | `///src/prototypes/Test/folder/Example/posts/:id`
+  | `///src/prototypes/Test/folder/Signup`
+  | `///src/prototypes/Test/folder/Signup/Dashboard`
 
 export type Params = {
-    '///src/prototypes/Example/posts/:id': { id: string }
+  '///src/prototypes/Test/folder/Example/posts/:id': { id: string }
 }
 
 export type ModalPath = never
 
 export const { Link, Navigate } = components<Path, Params>()
-export const { useModals, useNavigate, useParams } = hooks<
-    Path,
-    Params,
-    ModalPath
->()
+export const { useModals, useNavigate, useParams } = hooks<Path, Params, ModalPath>()
 export const { redirect } = utils<Path, Params>()

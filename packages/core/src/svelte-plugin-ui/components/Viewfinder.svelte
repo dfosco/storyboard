@@ -74,35 +74,38 @@
   type SortMode = 'updated' | 'title'
   let sortBy: SortMode = $state('updated')
 
-  function sortProtos(protos: any[]): any[] {
-    return [...protos].sort((a: any, b: any) => {
+  const sortedProtos = $derived.by(() => {
+    return [...ungroupedProtos].sort((a: any, b: any) => {
       if (sortBy === 'title') {
         return (a.name || '').localeCompare(b.name || '')
       }
-      // "Last updated" — newest first, nulls last
       const aTime = a.lastModified ? new Date(a.lastModified).getTime() : 0
       const bTime = b.lastModified ? new Date(b.lastModified).getTime() : 0
       return bTime - aTime
     })
-  }
+  })
 
-  function sortFolders(flds: any[]): any[] {
-    return [...flds].map((f: any) => ({
+  const sortedFolders = $derived.by(() => {
+    const sortFn = (a: any, b: any) => {
+      if (sortBy === 'title') {
+        return (a.name || '').localeCompare(b.name || '')
+      }
+      const aTime = a.lastModified ? new Date(a.lastModified).getTime() : 0
+      const bTime = b.lastModified ? new Date(b.lastModified).getTime() : 0
+      return bTime - aTime
+    }
+    return [...folders].map((f: any) => ({
       ...f,
-      prototypes: sortProtos(f.prototypes),
+      prototypes: [...f.prototypes].sort(sortFn),
     })).sort((a: any, b: any) => {
       if (sortBy === 'title') {
         return (a.name || '').localeCompare(b.name || '')
       }
-      // Sort folders by their most recently updated prototype
       const aMax = Math.max(0, ...a.prototypes.map((p: any) => p.lastModified ? new Date(p.lastModified).getTime() : 0))
       const bMax = Math.max(0, ...b.prototypes.map((p: any) => p.lastModified ? new Date(p.lastModified).getTime() : 0))
       return bMax - aMax
     })
-  }
-
-  const sortedProtos = $derived(sortProtos(ungroupedProtos))
-  const sortedFolders = $derived(sortFolders(folders))
+  })
 
   // Expanded state — all prototypes and folders start expanded
   let expanded: Record<string, boolean> = $state({})

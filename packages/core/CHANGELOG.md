@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 2.3.0
+
+### Minor Changes
+
+-   Add folder-based separation of prototypes in viewfinder
+
 ## 2.2.0
 
 ### Minor Changes

@@ -39,26 +39,25 @@
   )
 
   // Build a flat display list: folders (with nested prototypes), ungrouped prototypes, global flows
-  const ungroupedProtos = $derived(
-    globalFlows.length > 0
-      ? [
-          ...prototypeIndex.prototypes,
-          {
-            name: 'Other flows',
-            dirName: '__global__',
-            description: null,
-            author: null,
-            gitAuthor: null,
-            icon: null,
-            team: null,
-            tags: null,
-            flows: globalFlows,
-          },
-        ]
-      : prototypeIndex.prototypes
-  )
+  const ungroupedProtos = $derived(prototypeIndex.prototypes)
 
   const folders = $derived(prototypeIndex.folders || [])
+
+  const otherFlows = $derived.by(() => {
+    if (globalFlows.length === 0) return null
+    return {
+      name: 'Other flows',
+      dirName: '__global__',
+      description: null,
+      author: null,
+      gitAuthor: null,
+      lastModified: null,
+      icon: null,
+      team: null,
+      tags: null,
+      flows: globalFlows,
+    }
+  })
 
   const totalProtos = $derived(
     ungroupedProtos.length + folders.reduce((sum: number, f: any) => sum + f.prototypes.length, 0)
@@ -66,6 +65,7 @@
 
   const totalFlows = $derived(
     ungroupedProtos.reduce((sum: number, p: any) => sum + p.flows.length, 0) +
+    globalFlows.length +
     folders.reduce((sum: number, f: any) =>
       sum + f.prototypes.reduce((s: number, p: any) => s + p.flows.length, 0), 0)
   )
@@ -183,9 +183,9 @@
       </div>
     </div>
     <div class="controlsRow">
-      <span class="sceneCount">
+      <!-- <span class="sceneCount">
         {(folders.length > 0 ? `${folders.length} folder${folders.length !== 1 ? 's' : ''} · ` : '') + `${totalProtos} prototype${totalProtos !== 1 ? 's' : ''} · ${totalFlows} flow${totalFlows !== 1 ? 's' : ''}`}
-      </span>
+      </span> -->
       <div class="sortToggle">
         <button
           class="sortButton"
@@ -385,6 +385,11 @@
       {#each sortedProtos as proto (proto.dirName)}
         {@render protoEntry(proto)}
       {/each}
+
+      <!-- Other flows (always at the bottom) -->
+      {#if otherFlows}
+        {@render protoEntry(otherFlows)}
+      {/if}
     </div>
   {/if}
 </div>
@@ -596,6 +601,10 @@
     padding: 8px 0;
     text-decoration: none;
     color: inherit;
+
+    .folderGroup & {
+      border: 1px solid var(--borderColor-muted, #30363d);
+    }
   }
 
   .listItem:hover {

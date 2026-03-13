@@ -36,6 +36,21 @@ else
   echo "📦 Stable release"
 fi
 
+# Check npm auth before doing any work
+echo ""
+echo "🔑 Checking npm authentication..."
+if ! npm whoami &>/dev/null; then
+  echo "  ⚠️  Not logged in to npm."
+  echo ""
+  npm login
+  echo ""
+  if ! npm whoami &>/dev/null; then
+    echo "  ❌ npm login failed. Aborting."
+    exit 1
+  fi
+fi
+echo "  ✅ Logged in as $(npm whoami)"
+
 echo ""
 echo "🔍 Running lint..."
 npm run lint

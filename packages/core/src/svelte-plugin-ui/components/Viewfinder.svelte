@@ -70,42 +70,12 @@
       sum + f.prototypes.reduce((s: number, p: any) => s + p.flows.length, 0), 0)
   )
 
-  // Sorting
+  // Sorting — use pre-sorted arrays from buildPrototypeIndex
   type SortMode = 'updated' | 'title'
   let sortBy: SortMode = $state('updated')
 
-  const sortedProtos = $derived.by(() => {
-    return [...ungroupedProtos].sort((a: any, b: any) => {
-      if (sortBy === 'title') {
-        return (a.name || '').localeCompare(b.name || '')
-      }
-      const aTime = a.lastModified ? new Date(a.lastModified).getTime() : 0
-      const bTime = b.lastModified ? new Date(b.lastModified).getTime() : 0
-      return bTime - aTime
-    })
-  })
-
-  const sortedFolders = $derived.by(() => {
-    const sortFn = (a: any, b: any) => {
-      if (sortBy === 'title') {
-        return (a.name || '').localeCompare(b.name || '')
-      }
-      const aTime = a.lastModified ? new Date(a.lastModified).getTime() : 0
-      const bTime = b.lastModified ? new Date(b.lastModified).getTime() : 0
-      return bTime - aTime
-    }
-    return [...folders].map((f: any) => ({
-      ...f,
-      prototypes: [...f.prototypes].sort(sortFn),
-    })).sort((a: any, b: any) => {
-      if (sortBy === 'title') {
-        return (a.name || '').localeCompare(b.name || '')
-      }
-      const aMax = Math.max(0, ...a.prototypes.map((p: any) => p.lastModified ? new Date(p.lastModified).getTime() : 0))
-      const bMax = Math.max(0, ...b.prototypes.map((p: any) => p.lastModified ? new Date(p.lastModified).getTime() : 0))
-      return bMax - aMax
-    })
-  })
+  const sortedProtos = $derived(prototypeIndex.sorted?.[sortBy]?.prototypes ?? ungroupedProtos)
+  const sortedFolders = $derived(prototypeIndex.sorted?.[sortBy]?.folders ?? folders)
 
   // Expanded state — all prototypes and folders start expanded
   let expanded: Record<string, boolean> = $state({})
@@ -300,7 +270,7 @@
                   {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
                   {proto.name}
                   <span class="protoChevron" class:protoChevronOpen={isExpanded(proto.dirName)}>
-                    <Octicon name="chevron-right" />
+                    <Octicon size={12} color="var(--fgColor-disabled)" name="chevron-right" />
                   </span>
                 </p>
                 {#if proto.description}
@@ -439,8 +409,7 @@
   }
 
   .title {
-    font-size: 72px;
-    font-weight: 400;
+    font: var(--text-display-shorthand); 
     margin: 0 0 12px;
     color: var(--fgColor-default, #e6edf3);
     letter-spacing: -0.03em;
@@ -672,10 +641,8 @@
   .protoChevron {
     display: inline-flex;
     align-items: center;
-    color: var(--fgColor-muted, #848d97);
     transition: transform 0.15s ease;
     transform: rotate(0deg);
-    margin-right: 4px;
     vertical-align: middle;
   }
 

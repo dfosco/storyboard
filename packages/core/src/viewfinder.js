@@ -179,9 +179,39 @@ export function buildPrototypeIndex(knownRoutes = []) {
     }
   }
 
+  const folders = Object.values(folderMap)
+  const prototypes = ungrouped
+
+  // Pre-sort by title (A-Z)
+  const sortByTitle = (a, b) => (a.name || '').localeCompare(b.name || '')
+
+  // Pre-sort by last updated (newest first, nulls last)
+  const sortByUpdated = (a, b) => {
+    const aTime = a.lastModified ? new Date(a.lastModified).getTime() : 0
+    const bTime = b.lastModified ? new Date(b.lastModified).getTime() : 0
+    return bTime - aTime
+  }
+
+  // Sort folder contents by their most recently updated prototype
+  const folderByUpdated = (a, b) => {
+    const aMax = Math.max(0, ...a.prototypes.map(p => p.lastModified ? new Date(p.lastModified).getTime() : 0))
+    const bMax = Math.max(0, ...b.prototypes.map(p => p.lastModified ? new Date(p.lastModified).getTime() : 0))
+    return bMax - aMax
+  }
+
   return {
-    folders: Object.values(folderMap),
-    prototypes: ungrouped,
+    folders,
+    prototypes,
     globalFlows,
+    sorted: {
+      title: {
+        prototypes: [...prototypes].sort(sortByTitle),
+        folders: [...folders].map(f => ({ ...f, prototypes: [...f.prototypes].sort(sortByTitle) })).sort(sortByTitle),
+      },
+      updated: {
+        prototypes: [...prototypes].sort(sortByUpdated),
+        folders: [...folders].map(f => ({ ...f, prototypes: [...f.prototypes].sort(sortByUpdated) })).sort(folderByUpdated),
+      },
+    },
   }
 }

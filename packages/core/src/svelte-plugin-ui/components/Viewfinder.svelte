@@ -10,6 +10,7 @@
 
 <script lang="ts">
   import { buildPrototypeIndex } from '../../viewfinder.js'
+  import Octicon from './Octicon.svelte'
 
   interface Props {
     title?: string
@@ -37,39 +38,54 @@
       : prototypeIndex.globalFlows
   )
 
-  // Merge global flows into the prototype list as "Other flows"
-  const allGroups = $derived(
-    globalFlows.length > 0
-      ? [
-          ...prototypeIndex.prototypes,
-          {
-            name: 'Other flows',
-            dirName: '__global__',
-            description: null,
-            author: null,
-            gitAuthor: null,
-            icon: null,
-            team: null,
-            tags: null,
-            flows: globalFlows,
-          },
-        ]
-      : prototypeIndex.prototypes
+  // Build a flat display list: folders (with nested prototypes), ungrouped prototypes, global flows
+  const ungroupedProtos = $derived(prototypeIndex.prototypes)
+
+  const folders = $derived(prototypeIndex.folders || [])
+
+  const otherFlows = $derived.by(() => {
+    if (globalFlows.length === 0) return null
+    return {
+      name: 'Other flows',
+      dirName: '__global__',
+      description: null,
+      author: null,
+      gitAuthor: null,
+      lastModified: null,
+      icon: null,
+      team: null,
+      tags: null,
+      flows: globalFlows,
+    }
+  })
+
+  const totalProtos = $derived(
+    ungroupedProtos.length + folders.reduce((sum: number, f: any) => sum + f.prototypes.length, 0)
   )
 
   const totalFlows = $derived(
-    allGroups.reduce((sum: number, p: any) => sum + p.flows.length, 0)
+    ungroupedProtos.reduce((sum: number, p: any) => sum + p.flows.length, 0) +
+    globalFlows.length +
+    folders.reduce((sum: number, f: any) =>
+      sum + f.prototypes.reduce((s: number, p: any) => s + p.flows.length, 0), 0)
   )
 
-  // Expanded state — all prototypes start expanded
+  // Sorting — use pre-sorted arrays from buildPrototypeIndex
+  type SortMode = 'updated' | 'title'
+  let sortBy: SortMode = $state('updated')
+
+  const sortedProtos = $derived(prototypeIndex.sorted?.[sortBy]?.prototypes ?? ungroupedProtos)
+  const sortedFolders = $derived(prototypeIndex.sorted?.[sortBy]?.folders ?? folders)
+
+  // Expanded state — all prototypes and folders start expanded
   let expanded: Record<string, boolean> = $state({})
 
   function isExpanded(dirName: string): boolean {
     return expanded[dirName] ?? true
   }
 
-  function togglePrototype(dirName: string) {
-    expanded[dirName] = !expanded[dirName]
+  function toggle(dirName: string) {
+    expanded[dirName] = !isExpanded(dirName)
   }
 
   function protoRoute(dirName: string): string {
@@ -165,11 +181,32 @@
           <p class="subtitle">{subtitle}</p>
         {/if}
       </div>
+    </div>
+    <div class="controlsRow">
+      <!-- <span class="sceneCount">
+        {(folders.length > 0 ? `${folders.length} folder${folders.length !== 1 ? 's' : ''} · ` : '') + `${totalProtos} prototype${totalProtos !== 1 ? 's' : ''} · ${totalFlows} flow${totalFlows !== 1 ? 's' : ''}`}
+      </span> -->
+      <div class="sortToggle">
+        <button
+          class="sortButton"
+          class:sortButtonActive={sortBy === 'updated'}
+          onclick={() => sortBy = 'updated'}
+        >
+          <Octicon name="clock" size={14} offsetY={-1} />
+          Last updated
+        </button>
+        <button
+          class="sortButton"
+          class:sortButtonActive={sortBy === 'title'}
+          onclick={() => sortBy = 'title'}
+        >
+          <Octicon name="sort-asc" size={14} offsetY={-1} />
+          Title A–Z
+        </button>
+      </div>
       {#if branches && branches.length > 0}
         <div class="branchDropdown">
-          <svg class="branchIcon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-            <path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.492 2.492 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z" />
-          </svg>
+          <span class="branchIcon"><Octicon size={16} color="var(--fgColor-muted)" offsetY={-1} offsetX={2} name="git-branch" /></span>
           <select
             class="branchSelect"
             onchange={handleBranchChange}
@@ -183,22 +220,19 @@
         </div>
       {/if}
     </div>
-    <p class="sceneCount">
-      {allGroups.length} prototype{allGroups.length !== 1 ? 's' : ''} · {totalFlows} flow{totalFlows !== 1 ? 's' : ''}
-    </p>
   </header>
 
-  {#if allGroups.length === 0}
+  {#if totalProtos === 0 && folders.length === 0}
     <p class="empty">No flows found. Add a <code>*.flow.json</code> file to get started.</p>
   {:else}
     <div class="list">
-      {#each allGroups as proto (proto.dirName)}
+      {#snippet protoEntry(proto)}
         <section class="protoGroup">
           {#if proto.hideFlows && proto.flows.length === 1}
             <!-- Single flow, hidden — navigates directly to the flow -->
             <a class="listItem" href={proto.flows[0].route}>
               <div class="cardBody">
-                <p class="sceneName">
+                <p class="protoName" class:otherflows={proto.dirName === '__global__'}>
                   {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
                   {proto.name}
                 </p>
@@ -228,17 +262,19 @@
             <!-- Expandable prototype with flows -->
             <button
               class="listItem protoHeader"
-              onclick={() => togglePrototype(proto.dirName)}
+              onclick={() => toggle(proto.dirName)}
               aria-expanded={isExpanded(proto.dirName)}
             >
               <div class="cardBody">
-                <p class="sceneName">
+                <p class="protoName" class:otherflows={proto.dirName === '__global__'}>
                   {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
                   {proto.name}
-                  <span class="protoChevron" class:protoChevronOpen={isExpanded(proto.dirName)}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                      <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
-                    </svg>
+                  <span class="protoChevron">
+                    {#if isExpanded(proto.dirName)}
+                      <Octicon size={12} color="var(--fgColor-disabled)" name="chevron-down" offsetY={-3} offsetX={2} />
+                    {:else}
+                      <Octicon size={12} color="var(--fgColor-disabled)" name="chevron-right" offsetY={-3} offsetX={2} />
+                    {/if}
                   </span>
                 </p>
                 {#if proto.description}
@@ -267,7 +303,7 @@
             <!-- Prototype with no flows — navigates directly -->
             <a class="listItem" href={protoRoute(proto.dirName)}>
               <div class="cardBody">
-                <p class="sceneName">
+                <p class="protoName" class:otherflows={proto.dirName === '__global__'}>
                   {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
                   {proto.name}
                 </p>
@@ -305,7 +341,7 @@
                     </div>
                   {/if}
                   <div class="cardBody">
-                    <p class="sceneName">{flow.meta?.title || formatName(flow.name)}</p>
+                    <p class="protoName">{flow.meta?.title || formatName(flow.name)}</p>
                     {#if flow.meta?.description}
                       <p class="flowDesc">{flow.meta.description}</p>
                     {/if}
@@ -315,7 +351,49 @@
             </div>
           {/if}
         </section>
+      {/snippet}
+
+      <!-- Folders with their prototypes -->
+      {#each sortedFolders as folder (folder.dirName)}
+        <section class="folderGroup" class:folderGroupOpen={isExpanded(`folder:${folder.dirName}`)}>
+          <button
+            class="folderHeader"
+            onclick={() => toggle(`folder:${folder.dirName}`)}
+            aria-expanded={isExpanded(`folder:${folder.dirName}`)}
+          >
+            <p class="folderName">
+              <span>
+                {#if isExpanded(`folder:${folder.dirName}`)}
+                  <Octicon size={20} offsetY={-1.5} name="folder-open" color="#54aeff" />
+                {:else}
+                  <Octicon size={20} offsetY={-1.5} name="folder" color="#54aeff" />
+                {/if}
+              </span>
+              {folder.name}
+            </p>
+            {#if folder.description}
+              <p class="folderDesc">{folder.description}</p>
+            {/if}
+          </button>
+          {#if isExpanded(`folder:${folder.dirName}`) && folder.prototypes.length > 0}
+            <div class="folderContent">
+              {#each folder.prototypes as proto (proto.dirName)}
+                {@render protoEntry(proto)}
+              {/each}
+            </div>
+          {/if}
+        </section>
       {/each}
+
+      <!-- Ungrouped prototypes (not in any folder) -->
+      {#each sortedProtos as proto (proto.dirName)}
+        {@render protoEntry(proto)}
+      {/each}
+
+      <!-- Other flows (always at the bottom) -->
+      {#if otherFlows}
+        {@render protoEntry(otherFlows)}
+      {/if}
     </div>
   {/if}
 </div>
@@ -330,19 +408,17 @@
 
   .header {
     max-width: 720px;
-    margin: 0 auto 64px;
+    margin: 0 auto 40px;
   }
 
   .headerTop {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
     gap: 16px;
   }
 
   .title {
-    font-size: 72px;
-    font-weight: 400;
+    font: var(--text-display-shorthand); 
     margin: 0 0 12px;
     color: var(--fgColor-default, #e6edf3);
     letter-spacing: -0.03em;
@@ -356,11 +432,49 @@
     letter-spacing: 0.01em;
   }
 
-  .sceneCount {
+  .controlsRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 16px 0 0;
+  }
+
+  /* .sceneCount {
     font-size: 13px;
     color: var(--fgColor-muted, #848d97);
-    margin: 16px 0 0;
     letter-spacing: 0.01em;
+    white-space: nowrap;
+  } */
+
+  .sortToggle {
+    display: flex;
+    gap: 4px;
+  }
+
+  .sortButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--fgColor-muted, #848d97);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+  }
+
+  .sortButton:hover {
+    color: var(--fgColor-default, #e6edf3);
+    background: var(--bgColor-neutral-muted, rgba(110, 118, 129, 0.1));
+  }
+
+  .sortButtonActive {
+    color: var(--fgColor-default, #e6edf3);
+    background: var(--bgColor-neutral-muted, rgba(110, 118, 129, 0.15));
+    border-color: var(--borderColor-muted, #30363d);
   }
 
   .branchDropdown {
@@ -369,6 +483,7 @@
     gap: 0;
     flex-shrink: 0;
     position: relative;
+    margin-left: auto;
   }
 
   .branchIcon {
@@ -411,6 +526,7 @@
   .list {
     display: flex;
     flex-direction: column;
+    gap: var(--base-size-8);
     max-width: 720px;
     margin: 0 auto;
   }
@@ -418,11 +534,79 @@
   .protoGroup {
     display: flex;
     flex-direction: column;
+    gap: var(--base-size-8);
+
+    & .listItem:only-child {
+      border: 1px solid var(--borderColor-muted, #30363d);
+      border-radius: var(--base-size-6);
+    }
+  }
+
+  .folderGroup {
+    display: flex;
+    flex-direction: column;
+    gap: var(--base-size-8);
+  }
+
+  .folderHeader {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: var(--base-size-8);
+    appearance: none;
+    border: none;
+    border-radius: var(--base-size-6);
+    border: 1px solid var(--borderColor-muted, #30363d);
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+    padding: var(--base-size-16);
+
+    &:hover,
+    .folderGroupOpen & {
+      background-color: var(--bgColor-muted, #161b22);
+    }
+  }
+
+
+  .folderGroupOpen .folderHeader {
+    background-color: var(--bgColor-muted, #161b22);
+  }
+
+
+  .folderName {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--base-size-8);
+    font-size: var(--text-body-size-small);
+    font-weight: 600;
+    color: var(--fgColor-default);
+    margin: 0;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.6;
+  }
+
+  .folderDesc {
+    font-size: var(--text-body-size-small);
+    color: var(--fgColor-muted, #848d97);
+    margin: 0;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    font-weight: 400;
+  }
+
+  .folderContent {
+    display: flex;
+    flex-direction: column;
+    gap: var(--base-size-8);
   }
 
   .listItem {
     display: block;
-    padding: 8px 0;
     text-decoration: none;
     color: inherit;
   }
@@ -435,11 +619,17 @@
     appearance: none;
     border: none;
     background: none;
+    border-radius: var(--base-size-6);
     width: 100%;
     text-align: left;
     cursor: pointer;
     color: inherit;
-    padding: 8px 0;
+    padding: 0;
+  }
+
+  .protoHeader[aria-expanded="true"] .cardBody {
+    background-color: var(--bgColor-muted);
+    border-radius: var(--base-size-8);
   }
 
   .cardBody {
@@ -447,11 +637,11 @@
   }
 
   .cardBody:hover {
-    background-color: var(--bgColor-muted, #161b22);
-    border-radius: 8px;
+    background-color: var(--bgColor-muted);
+    border-radius: var(--base-size-8);
   }
 
-  .sceneName {
+  .protoName {
     font-size: var(--text-title-size-medium);
     font-weight: 400;
     color: var(--fgColor-default, #e6edf3);
@@ -460,23 +650,17 @@
     line-height: 1.6;
     transition: font-style 0.15s ease;
   }
+  
+  .protoName.otherflows {
+    font-size: var(--text-body-size-small);
+    font-weight: 600;
+    text-transform: uppercase;
+    direction: rtl;
 
-  .protoChevron {
-    display: inline-flex;
-    align-items: center;
-    color: var(--fgColor-muted, #848d97);
-    transition: transform 0.15s ease;
-    transform: rotate(0deg);
-    margin-right: 4px;
-    vertical-align: middle;
-  }
+    & .protoChevron {
+      margin-right: var(--base-size-8);
+    }
 
-  .protoChevronOpen {
-    transform: rotate(90deg);
-  }
-
-  .protoIcon {
-    margin-right: 4px;
   }
 
   .protoDesc {
@@ -531,14 +715,15 @@
   }
 
   .flowList {
-    margin: 0 var(--base-size-12);
+    margin: 0;
     padding: 0;
     display: flex;
     flex-direction: column;
   }
 
+  .folderGroup .listItem,
   .flowItem {
-    border: 1px solid var(--borderColor-muted, #30363d);
+    border: 1px solid var(--borderColor-muted);
     padding: 0;
   }
 
@@ -550,17 +735,19 @@
     border-top-left-radius: var(--base-size-6);
     border-top-right-radius: var(--base-size-6);
   }
-
+  
+  .folderGroup .listItem:last-child,
   .flowItem:last-child {
     border-bottom-left-radius: var(--base-size-6);
     border-bottom-right-radius: var(--base-size-6);
   }
 
+  .folderGroup .listItem:only-child,
   .flowItem:only-child {
     border-radius: var(--base-size-6);
   }
 
-  .flowItem .sceneName {
+  .flowItem .protoName {
     font-size: var(--text-title-size-small);
     color: var(--fgColor-muted);
   }

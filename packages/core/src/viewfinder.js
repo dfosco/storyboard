@@ -1,4 +1,4 @@
-import { loadFlow, listFlows, listPrototypes, getPrototypeMetadata } from './loader.js'
+import { loadFlow, listFlows, listPrototypes, getPrototypeMetadata, listFolders, getFolderMetadata } from './loader.js'
 
 /**
  * Deterministic hash from a string — used for seeding generative placeholders.
@@ -71,14 +71,16 @@ export function getFlowMeta(flowName) {
 export const getSceneMeta = getFlowMeta
 
 /**
- * Build a structured prototype index grouping flows by prototype.
+ * Build a structured prototype index grouping flows by prototype,
+ * and prototypes by folder.
  *
  * Returns an object with:
- * - prototypes: array of prototype entries with metadata and their flows
+ * - folders: array of folder entries containing their prototypes
+ * - prototypes: array of ungrouped prototype entries (not in any folder)
  * - globalFlows: flows not belonging to any prototype
  *
  * @param {string[]} [knownRoutes] - Array of known route names
- * @returns {{ prototypes: Array, globalFlows: Array }}
+ * @returns {{ folders: Array, prototypes: Array, globalFlows: Array }}
  */
 export function buildPrototypeIndex(knownRoutes = []) {
   const flows = listFlows()
@@ -95,10 +97,12 @@ export function buildPrototypeIndex(knownRoutes = []) {
       description: meta.description || null,
       author: meta.author || null,
       gitAuthor: raw?.gitAuthor || null,
+      lastModified: raw?.lastModified || null,
       icon: meta.icon || null,
       team: meta.team || null,
       tags: meta.tags || null,
       hideFlows: meta.hideFlows || false,
+      folder: raw?.folder || null,
       flows: [],
     }
   }
@@ -116,10 +120,12 @@ export function buildPrototypeIndex(knownRoutes = []) {
           description: null,
           author: null,
           gitAuthor: null,
+          lastModified: null,
           icon: null,
           team: null,
           tags: null,
           hideFlows: false,
+          folder: null,
           flows: [],
         }
       }
@@ -140,8 +146,72 @@ export function buildPrototypeIndex(knownRoutes = []) {
     }
   }
 
+  // Build folder entries from .folder.json metadata
+  const folderMap = {}
+  for (const folderName of listFolders()) {
+    const raw = getFolderMetadata(folderName)
+    const meta = raw?.meta || raw || {}
+    folderMap[folderName] = {
+      name: meta.title || folderName,
+      dirName: folderName,
+      description: meta.description || null,
+      icon: meta.icon || null,
+      prototypes: [],
+    }
+  }
+
+  // Partition prototypes into folders vs ungrouped
+  const ungrouped = []
+  for (const proto of Object.values(protoMap)) {
+    if (proto.folder && folderMap[proto.folder]) {
+      folderMap[proto.folder].prototypes.push(proto)
+    } else if (proto.folder) {
+      // Folder referenced but no .folder.json — create an implicit folder
+      folderMap[proto.folder] = {
+        name: proto.folder,
+        dirName: proto.folder,
+        description: null,
+        icon: null,
+        prototypes: [proto],
+      }
+    } else {
+      ungrouped.push(proto)
+    }
+  }
+
+  const folders = Object.values(folderMap)
+  const prototypes = ungrouped
+
+  // Pre-sort by title (A-Z)
+  const sortByTitle = (a, b) => (a.name || '').localeCompare(b.name || '')
+
+  // Pre-sort by last updated (newest first, nulls last)
+  const sortByUpdated = (a, b) => {
+    const aTime = a.lastModified ? new Date(a.lastModified).getTime() : 0
+    const bTime = b.lastModified ? new Date(b.lastModified).getTime() : 0
+    return bTime - aTime
+  }
+
+  // Sort folder contents by their most recently updated prototype
+  const folderByUpdated = (a, b) => {
+    const aMax = Math.max(0, ...a.prototypes.map(p => p.lastModified ? new Date(p.lastModified).getTime() : 0))
+    const bMax = Math.max(0, ...b.prototypes.map(p => p.lastModified ? new Date(p.lastModified).getTime() : 0))
+    return bMax - aMax
+  }
+
   return {
-    prototypes: Object.values(protoMap),
+    folders,
+    prototypes,
     globalFlows,
+    sorted: {
+      title: {
+        prototypes: [...prototypes].sort(sortByTitle),
+        folders: [...folders].map(f => ({ ...f, prototypes: [...f.prototypes].sort(sortByTitle) })).sort(sortByTitle),
+      },
+      updated: {
+        prototypes: [...prototypes].sort(sortByUpdated),
+        folders: [...folders].map(f => ({ ...f, prototypes: [...f.prototypes].sort(sortByUpdated) })).sort(folderByUpdated),
+      },
+    },
   }
 }

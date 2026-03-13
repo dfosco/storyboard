@@ -7,39 +7,55 @@ import { parse as parseJsonc } from 'jsonc-parser'
 const VIRTUAL_MODULE_ID = 'virtual:storyboard-data-index'
 const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
 
-const GLOB_PATTERN = '**/*.{flow,scene,object,record,prototype}.{json,jsonc}'
+const GLOB_PATTERN = '**/*.{flow,scene,object,record,prototype,folder}.{json,jsonc}'
 
 /**
  * Extract the data name and type suffix from a file path.
  * Flows and records inside src/prototypes/{Name}/ get prefixed with the
  * prototype name (e.g. "Dashboard/default"). Objects are never prefixed.
+ * Directories ending in .folder/ are skipped when extracting prototype scope.
  *
  * e.g. "src/data/default.flow.json"                → { name: "default",           suffix: "flow" }
  *      "src/prototypes/Dashboard/default.flow.json" → { name: "Dashboard/default", suffix: "flow" }
  *      "src/prototypes/Dashboard/helpers.object.json"→ { name: "helpers",           suffix: "object" }
+ *      "src/prototypes/X.folder/Dashboard/default.flow.json" → { name: "Dashboard/default", suffix: "flow", folder: "X" }
  */
 function parseDataFile(filePath) {
   const base = path.basename(filePath)
-  const match = base.match(/^(.+)\.(flow|scene|object|record|prototype)\.(jsonc?)$/)
+  const match = base.match(/^(.+)\.(flow|scene|object|record|prototype|folder)\.(jsonc?)$/)
   if (!match) return null
   // Normalize .scene → .flow for backward compatibility
   const suffix = match[2] === 'scene' ? 'flow' : match[2]
   let name = match[1]
 
-  // Prototype metadata files are keyed by their prototype directory name
-  if (suffix === 'prototype') {
-    const normalized = filePath.replace(/\\/g, '/')
-    const protoMatch = normalized.match(/(?:^|\/)src\/prototypes\/([^/]+)\//)
-    if (protoMatch) {
-      name = protoMatch[1]
+  const normalized = filePath.replace(/\\/g, '/')
+
+  // Detect if this file is inside a .folder/ directory
+  const folderDirMatch = normalized.match(/(?:^|\/)src\/prototypes\/([^/]+)\.folder\//)
+  const folderName = folderDirMatch ? folderDirMatch[1] : null
+
+  // Folder metadata files are keyed by their folder directory name (sans .folder suffix)
+  if (suffix === 'folder') {
+    if (folderName) {
+      name = folderName
     }
     return { name, suffix, ext: match[3] }
   }
 
+  // Prototype metadata files are keyed by their prototype directory name
+  // (skip .folder/ segments when determining prototype name)
+  if (suffix === 'prototype') {
+    const protoMatch = normalized.match(/(?:^|\/)src\/prototypes\/(?:[^/]+\.folder\/)?([^/]+)\//)
+    if (protoMatch) {
+      name = protoMatch[1]
+    }
+    return { name, suffix, ext: match[3], folder: folderName }
+  }
+
   // Scope flows and records inside src/prototypes/{Name}/ with a prefix
+  // (skip .folder/ segments when determining prototype name)
   if (suffix !== 'object') {
-    const normalized = filePath.replace(/\\/g, '/')
-    const protoMatch = normalized.match(/(?:^|\/)src\/prototypes\/([^/]+)\//)
+    const protoMatch = normalized.match(/(?:^|\/)src\/prototypes\/(?:[^/]+\.folder\/)?([^/]+)\//)
     if (protoMatch) {
       name = `${protoMatch[1]}/${name}`
     }
@@ -66,14 +82,46 @@ function getGitAuthor(root, filePath) {
 }
 
 /**
+ * Look up the most recent commit date for any file in a directory.
+ * Returns an ISO 8601 timestamp, or null if unavailable.
+ */
+function getLastModified(root, dirPath) {
+  try {
+    const result = execSync(
+      `git log -1 --format="%aI" -- "${dirPath}"`,
+      { cwd: root, encoding: 'utf-8', timeout: 5000 },
+    ).trim()
+    return result || null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Scan the repo for all data files, validate uniqueness, return the index.
  */
 function buildIndex(root) {
   const ignore = ['node_modules/**', 'dist/**', '.git/**']
   const files = globSync(GLOB_PATTERN, { cwd: root, ignore, absolute: false })
 
-  const index = { flow: {}, object: {}, record: {}, prototype: {} }
+  // Detect nested .folder/ directories (not supported)
+  // Scan directories directly since empty nested folders have no data files
+  const folderDirs = globSync('src/prototypes/**/*.folder', { cwd: root, ignore, absolute: false })
+  for (const dir of folderDirs) {
+    const normalized = dir.replace(/\\/g, '/')
+    const segments = normalized.split('/').filter(s => s.endsWith('.folder'))
+    if (segments.length > 1) {
+      throw new Error(
+        `[storyboard-data] Nested .folder directories are not supported.\n` +
+        `  Found at: ${dir}\n` +
+        `  Folders can only be one level deep inside src/prototypes/.`
+      )
+    }
+  }
+
+  const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {} }
   const seen = {} // "name.suffix" → absolute path (for duplicate detection)
+  const protoFolders = {} // prototype name → folder name (for injection)
 
   for (const relPath of files) {
     const parsed = parseDataFile(relPath)
@@ -86,8 +134,10 @@ function buildIndex(root) {
       const hint = parsed.suffix === 'object'
         ? '  Objects are globally scoped — even inside src/prototypes/ they share a single namespace.\n' +
           '  Rename one of the files to avoid the collision.'
-        : '  Flows and records are scoped to their prototype directory.\n' +
-          '  If both files are global (outside src/prototypes/), rename one to avoid the collision.'
+        : parsed.suffix === 'folder'
+          ? '  Folder names must be unique across the project.'
+          : '  Flows and records are scoped to their prototype directory.\n' +
+            '  If both files are global (outside src/prototypes/), rename one to avoid the collision.'
 
       throw new Error(
         `[storyboard-data] Duplicate ${parsed.suffix} "${parsed.name}"\n` +
@@ -99,9 +149,14 @@ function buildIndex(root) {
 
     seen[key] = absPath
     index[parsed.suffix][parsed.name] = absPath
+
+    // Track which folder a prototype belongs to
+    if (parsed.suffix === 'prototype' && parsed.folder) {
+      protoFolders[parsed.name] = parsed.folder
+    }
   }
 
-  return index
+  return { index, protoFolders }
 }
 
 /**
@@ -164,10 +219,10 @@ function readModesConfig(root) {
   return fallback
 }
 
-function generateModule(index, root) {
+function generateModule({ index, protoFolders }, root) {
   const declarations = []
-  const INDEX_KEYS = ['flow', 'object', 'record', 'prototype']
-  const entries = { flow: [], object: [], record: [], prototype: [] }
+  const INDEX_KEYS = ['flow', 'object', 'record', 'prototype', 'folder']
+  const entries = { flow: [], object: [], record: [], prototype: [], folder: [] }
   let i = 0
 
   for (const suffix of INDEX_KEYS) {
@@ -184,13 +239,27 @@ function generateModule(index, root) {
         }
       }
 
+      // Auto-fill lastModified from git history for prototypes
+      if (suffix === 'prototype' && parsed) {
+        const protoDir = path.dirname(absPath)
+        const lastModified = getLastModified(root, protoDir)
+        if (lastModified) {
+          parsed = { ...parsed, lastModified }
+        }
+      }
+
+      // Inject folder association into prototype metadata
+      if (suffix === 'prototype' && protoFolders[name]) {
+        parsed = { ...parsed, folder: protoFolders[name] }
+      }
+
       declarations.push(`const ${varName} = ${JSON.stringify(parsed)}`)
       entries[suffix].push(`  ${JSON.stringify(name)}: ${varName}`)
     }
   }
 
   const imports = [`import { init } from '@dfosco/storyboard-core'`]
-  const initCalls = [`init({ flows, objects, records, prototypes })`]
+  const initCalls = [`init({ flows, objects, records, prototypes, folders })`]
 
   // Feature flags from storyboard.config.json
   const { config } = readConfig(root)
@@ -237,14 +306,15 @@ function generateModule(index, root) {
     `const objects = {\n${entries.object.join(',\n')}\n}`,
     `const records = {\n${entries.record.join(',\n')}\n}`,
     `const prototypes = {\n${entries.prototype.join(',\n')}\n}`,
+    `const folders = {\n${entries.folder.join(',\n')}\n}`,
     '',
     '// Backward-compatible alias',
     'const scenes = flows',
     '',
     initCalls.join('\n'),
     '',
-    `export { flows, scenes, objects, records, prototypes }`,
-    `export const index = { flows, scenes, objects, records, prototypes }`,
+    `export { flows, scenes, objects, records, prototypes, folders }`,
+    `export const index = { flows, scenes, objects, records, prototypes, folders }`,
     `export default index`,
   ].join('\n')
 }
@@ -259,7 +329,7 @@ function generateModule(index, root) {
  */
 export default function storyboardDataPlugin() {
   let root = ''
-  let index = null
+  let buildResult = null
 
   return {
     name: 'storyboard-data',
@@ -283,8 +353,8 @@ export default function storyboardDataPlugin() {
 
     load(id) {
       if (id !== RESOLVED_ID) return null
-      if (!index) index = buildIndex(root)
-      return generateModule(index, root)
+      if (!buildResult) buildResult = buildIndex(root)
+      return generateModule(buildResult, root)
     },
 
     configureServer(server) {
@@ -293,9 +363,11 @@ export default function storyboardDataPlugin() {
 
       const invalidate = (filePath) => {
         const parsed = parseDataFile(filePath)
-        if (!parsed) return
+        // Also invalidate when files are added/removed inside .folder/ directories
+        const inFolder = filePath.replace(/\\/g, '/').includes('.folder/')
+        if (!parsed && !inFolder) return
         // Rebuild index and invalidate virtual module
-        index = null
+        buildResult = null
         const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
         if (mod) {
           server.moduleGraph.invalidateModule(mod)
@@ -308,7 +380,7 @@ export default function storyboardDataPlugin() {
       watcher.add(configPath)
       const invalidateConfig = (filePath) => {
         if (path.resolve(filePath) === configPath) {
-          index = null
+          buildResult = null
           const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
           if (mod) {
             server.moduleGraph.invalidateModule(mod)
@@ -327,7 +399,7 @@ export default function storyboardDataPlugin() {
 
     // Rebuild index on each build start
     buildStart() {
-      index = null
+      buildResult = null
     },
   }
 }

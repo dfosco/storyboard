@@ -5,15 +5,15 @@ import { components, hooks, utils } from '@generouted/react-router/client'
 
 export type Path =
     | `///src/prototypes`
-    | `///src/prototypes/Example`
-    | `///src/prototypes/Example/Forms`
-    | `///src/prototypes/Example/posts`
-    | `///src/prototypes/Example/posts/:id`
+    | `///src/prototypes/main/folder/Example`
+    | `///src/prototypes/main/folder/Example/Forms`
+    | `///src/prototypes/main/folder/Example/posts`
+    | `///src/prototypes/main/folder/Example/posts/:id`
     | `///src/prototypes/main/folder/Signup`
     | `///src/prototypes/main/folder/Signup/Dashboard`
 
 export type Params = {
-    '///src/prototypes/Example/posts/:id': { id: string }
+    '///src/prototypes/main/folder/Example/posts/:id': { id: string }
 }
 
 export type ModalPath = never

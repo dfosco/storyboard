@@ -232,7 +232,7 @@
             <!-- Single flow, hidden — navigates directly to the flow -->
             <a class="listItem" href={proto.flows[0].route}>
               <div class="cardBody">
-                <p class="sceneName">
+                <p class="protoName" class:otherflows={proto.dirName === '__global__'}>
                   {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
                   {proto.name}
                 </p>
@@ -266,14 +266,14 @@
               aria-expanded={isExpanded(proto.dirName)}
             >
               <div class="cardBody">
-                <p class="sceneName">
+                <p class="protoName" class:otherflows={proto.dirName === '__global__'}>
                   {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
                   {proto.name}
                   <span class="protoChevron">
                     {#if isExpanded(proto.dirName)}
-                      <Octicon size={12} color="var(--fgColor-disabled)" name="chevron-down" offsetY={-2} />
+                      <Octicon size={12} color="var(--fgColor-disabled)" name="chevron-down" offsetY={-3} offsetX={2} />
                     {:else}
-                      <Octicon size={12} color="var(--fgColor-disabled)" name="chevron-right" offsetY={-2} />
+                      <Octicon size={12} color="var(--fgColor-disabled)" name="chevron-right" offsetY={-3} offsetX={2} />
                     {/if}
                   </span>
                 </p>
@@ -303,7 +303,7 @@
             <!-- Prototype with no flows — navigates directly -->
             <a class="listItem" href={protoRoute(proto.dirName)}>
               <div class="cardBody">
-                <p class="sceneName">
+                <p class="protoName" class:otherflows={proto.dirName === '__global__'}>
                   {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
                   {proto.name}
                 </p>
@@ -341,7 +341,7 @@
                     </div>
                   {/if}
                   <div class="cardBody">
-                    <p class="sceneName">{flow.meta?.title || formatName(flow.name)}</p>
+                    <p class="protoName">{flow.meta?.title || formatName(flow.name)}</p>
                     {#if flow.meta?.description}
                       <p class="flowDesc">{flow.meta.description}</p>
                     {/if}
@@ -439,12 +439,12 @@
     margin: 16px 0 0;
   }
 
-  .sceneCount {
+  /* .sceneCount {
     font-size: 13px;
     color: var(--fgColor-muted, #848d97);
     letter-spacing: 0.01em;
     white-space: nowrap;
-  }
+  } */
 
   .sortToggle {
     display: flex;
@@ -538,7 +538,6 @@
   .folderGroup {
     display: flex;
     flex-direction: column;
-    margin-bottom: 8px;
   }
 
   .folderGroup:not(:first-child) {
@@ -577,7 +576,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--base-size-8);
-    font-size: 13px;
+    font-size: var(--text-body-size-small);
     font-weight: 600;
     color: var(--fgColor-default);
     margin: 0;
@@ -587,7 +586,7 @@
   }
 
   .folderDesc {
-    font-size: 13px;
+    font-size: var(--text-body-size-small);
     color: var(--fgColor-muted, #848d97);
     margin: 0;
     letter-spacing: 0.01em;
@@ -641,7 +640,7 @@
     border-radius: var(--base-size-8);
   }
 
-  .sceneName {
+  .protoName {
     font-size: var(--text-title-size-medium);
     font-weight: 400;
     color: var(--fgColor-default, #e6edf3);
@@ -741,7 +740,7 @@
     border-radius: var(--base-size-6);
   }
 
-  .flowItem .sceneName {
+  .flowItem .protoName {
     font-size: var(--text-title-size-small);
     color: var(--fgColor-muted);
   }

@@ -208,10 +208,31 @@
           <p class="subtitle">{subtitle}</p>
         {/if}
       </div>
+    </div>
+    <div class="controlsRow">
+      <span class="sceneCount">
+        {(folders.length > 0 ? `${folders.length} folder${folders.length !== 1 ? 's' : ''} · ` : '') + `${totalProtos} prototype${totalProtos !== 1 ? 's' : ''} · ${totalFlows} flow${totalFlows !== 1 ? 's' : ''}`}
+      </span>
+      <div class="sortToggle">
+        <button
+          class="sortButton"
+          class:sortButtonActive={sortBy === 'updated'}
+          onclick={() => sortBy = 'updated'}
+        >
+          <Octicon name="clock" size={14} offsetY={-1} />
+          Last updated
+        </button>
+        <button
+          class="sortButton"
+          class:sortButtonActive={sortBy === 'title'}
+          onclick={() => sortBy = 'title'}
+        >
+          <Octicon name="sort-asc" size={14} offsetY={-1} />
+          Title A–Z
+        </button>
+      </div>
       {#if branches && branches.length > 0}
-      <div>Branch</div>
         <div class="branchDropdown">
-
           <span class="branchIcon"><Octicon size={16} color="var(--fgColor-muted)" offsetY={-1} offsetX={2} name="git-branch" /></span>
           <select
             class="branchSelect"
@@ -225,27 +246,6 @@
           </select>
         </div>
       {/if}
-    </div>
-    <p class="sceneCount">
-      {(folders.length > 0 ? `${folders.length} folder${folders.length !== 1 ? 's' : ''} · ` : '') + `${totalProtos} prototype${totalProtos !== 1 ? 's' : ''} · ${totalFlows} flow${totalFlows !== 1 ? 's' : ''}`}
-    </p>
-    <div class="sortToggle">
-      <button
-        class="sortButton"
-        class:sortButtonActive={sortBy === 'updated'}
-        onclick={() => sortBy = 'updated'}
-      >
-        <Octicon name="clock" size={14} offsetY={-1} />
-        Last updated
-      </button>
-      <button
-        class="sortButton"
-        class:sortButtonActive={sortBy === 'title'}
-        onclick={() => sortBy = 'title'}
-      >
-        <Octicon name="sort-asc" size={14} offsetY={-1} />
-        Title A–Z
-      </button>
     </div>
   </header>
 
@@ -432,7 +432,6 @@
   .headerTop {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
     gap: 16px;
   }
 
@@ -452,17 +451,23 @@
     letter-spacing: 0.01em;
   }
 
+  .controlsRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 16px 0 0;
+  }
+
   .sceneCount {
     font-size: 13px;
     color: var(--fgColor-muted, #848d97);
-    margin: 16px 0 0;
     letter-spacing: 0.01em;
+    white-space: nowrap;
   }
 
   .sortToggle {
     display: flex;
     gap: 4px;
-    margin: 12px 0 0;
   }
 
   .sortButton {
@@ -497,6 +502,7 @@
     gap: 0;
     flex-shrink: 0;
     position: relative;
+    margin-left: auto;
   }
 
   .branchIcon {

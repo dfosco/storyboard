@@ -183,6 +183,20 @@ describe('buildPrototypeIndex', () => {
     expect(proto.hideFlows).toBe(false)
   })
 
+  it('reads hideFlows from top-level prototype metadata (outside meta key)', () => {
+    init({
+      flows: { 'TopLevel/only-flow': { meta: { title: 'Only Flow' } } },
+      objects: {},
+      records: {},
+      prototypes: {
+        TopLevel: { meta: { title: 'Top Level' }, hideFlows: true },
+      },
+    })
+    const { prototypes } = buildPrototypeIndex([])
+    const proto = prototypes.find(p => p.dirName === 'TopLevel')
+    expect(proto.hideFlows).toBe(true)
+  })
+
   it('groups prototypes into folders when folder field is set', () => {
     init({
       flows: {

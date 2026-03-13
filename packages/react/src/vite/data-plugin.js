@@ -24,11 +24,16 @@ function parseDataFile(filePath) {
   const base = path.basename(filePath)
   const match = base.match(/^(.+)\.(flow|scene|object|record|prototype|folder)\.(jsonc?)$/)
   if (!match) return null
+
+  // Skip _-prefixed files (drafts/internal)
+  if (match[1].startsWith('_')) return null
+
+  // Skip files inside _-prefixed directories
+  const normalized = filePath.replace(/\\/g, '/')
+  if (normalized.split('/').some(seg => seg.startsWith('_'))) return null
   // Normalize .scene → .flow for backward compatibility
   const suffix = match[2] === 'scene' ? 'flow' : match[2]
   let name = match[1]
-
-  const normalized = filePath.replace(/\\/g, '/')
 
   // Detect if this file is inside a .folder/ directory
   const folderDirMatch = normalized.match(/(?:^|\/)src\/prototypes\/([^/]+)\.folder\//)

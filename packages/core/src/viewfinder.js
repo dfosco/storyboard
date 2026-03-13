@@ -101,7 +101,7 @@ export function buildPrototypeIndex(knownRoutes = []) {
       icon: meta.icon || null,
       team: meta.team || null,
       tags: meta.tags || null,
-      hideFlows: meta.hideFlows || false,
+      hideFlows: meta.hideFlows ?? raw?.hideFlows ?? false,
       folder: raw?.folder || null,
       flows: [],
     }

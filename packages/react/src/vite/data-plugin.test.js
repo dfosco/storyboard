@@ -367,3 +367,71 @@ describe('folder grouping', () => {
     expect(() => plugin.load(RESOLVED_ID)).toThrow(/Nested .folder directories are not supported/)
   })
 })
+
+describe('underscore prefix ignoring', () => {
+  it('ignores _-prefixed data files', () => {
+    writeFileSync(
+      path.join(tmpDir, '_draft.flow.json'),
+      JSON.stringify({ title: 'Draft' }),
+    )
+    writeFileSync(
+      path.join(tmpDir, 'visible.flow.json'),
+      JSON.stringify({ title: 'Visible' }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"Visible"')
+    expect(code).not.toContain('"Draft"')
+  })
+
+  it('ignores data files inside _-prefixed directories', () => {
+    mkdirSync(path.join(tmpDir, '_archive'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, '_archive', 'old.flow.json'),
+      JSON.stringify({ title: 'Archived' }),
+    )
+    writeFileSync(
+      path.join(tmpDir, 'current.flow.json'),
+      JSON.stringify({ title: 'Current' }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"Current"')
+    expect(code).not.toContain('"Archived"')
+  })
+
+  it('ignores prototype.json inside _-prefixed directories', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', '_WIP'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', '_WIP', 'wip.prototype.json'),
+      JSON.stringify({ meta: { title: 'Work in Progress' } }),
+    )
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Live'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Live', 'live.prototype.json'),
+      JSON.stringify({ meta: { title: 'Live' } }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"Live"')
+    expect(code).not.toContain('"Work in Progress"')
+  })
+
+  it('does not ignore files with _ in the middle of the name', () => {
+    writeFileSync(
+      path.join(tmpDir, 'my_flow.flow.json'),
+      JSON.stringify({ title: 'Has Underscore' }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"Has Underscore"')
+  })
+})

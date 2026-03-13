@@ -448,22 +448,33 @@
 
   .sortToggle {
     display: flex;
-    gap: 4px;
+    gap: 2px;
+    background: var(--bgColor-inset);
+    padding: var(--base-size-4) var(--base-size-6);
+    border-radius: 9999px;
   }
 
   .sortButton {
     display: inline-flex;
     align-items: center;
+    border-radius: 9999px;
     gap: 4px;
-    padding: 4px 10px;
+    padding: 6px 10px;
     font-size: 12px;
     font-family: inherit;
     color: var(--fgColor-muted, #848d97);
     background: transparent;
-    border: 1px solid transparent;
-    border-radius: 6px;
+    border: none;
     cursor: pointer;
     transition: color 0.15s, background 0.15s, border-color 0.15s;
+
+    &:first-child {
+      transform: translateX(-1px);
+    }
+
+    &:last-child {
+      transform: translateX(1px);
+    }
   }
 
   .sortButton:hover {
@@ -474,7 +485,11 @@
   .sortButtonActive {
     color: var(--fgColor-default, #e6edf3);
     background: var(--bgColor-neutral-muted, rgba(110, 118, 129, 0.15));
-    border-color: var(--borderColor-muted, #30363d);
+    border: none;
+  }
+
+  .sortButton:first-child {
+    transform: translateX(-1px);
   }
 
   .branchDropdown {
@@ -515,7 +530,7 @@
   }
 
   .branchSelect:hover {
-    border-color: var(--fgColor-muted, #848d97);
+    border-color: #bbbbbb;
   }
 
   .branchSelect:focus-visible {

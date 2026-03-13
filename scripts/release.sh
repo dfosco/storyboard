@@ -41,13 +41,8 @@ echo ""
 echo "🔑 Checking npm authentication..."
 if ! npm whoami &>/dev/null; then
   echo "  ⚠️  Not logged in to npm."
-  echo ""
-  npm login
-  echo ""
-  if ! npm whoami &>/dev/null; then
-    echo "  ❌ npm login failed. Aborting."
-    exit 1
-  fi
+  echo "  Please run 'npm login' in a separate terminal, then re-run this script."
+  exit 1
 fi
 echo "  ✅ Logged in as $(npm whoami)"
 

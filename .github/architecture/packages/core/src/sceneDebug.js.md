@@ -10,29 +10,31 @@ importance: high
 
 ## Goal
 
-Provides a vanilla JS debug panel that displays resolved scene data as formatted JSON. Framework-agnostic — creates DOM elements directly, no React/Vue needed. Unlike the DevTools overlay, this mounts inline (appended to a container) and is useful for embedding a scene inspector directly in a page.
+Provides a vanilla JS debug panel that displays resolved flow data as formatted JSON. Framework-agnostic — creates DOM elements directly, no React/Vue needed. Unlike the DevTools overlay, this mounts inline (appended to a container) and is useful for embedding a flow inspector directly in a page.
 
 ## Composition
 
-**`mountSceneDebug(container?, sceneName?)`** — Creates and appends a debug panel. Returns the created `HTMLElement`.
+**`mountFlowDebug(container?, flowName?)`** — Creates and appends a debug panel. Returns the created `HTMLElement`.
 
 ```js
-export function mountSceneDebug(container, sceneName) {
-  // Defaults: container = document.body, sceneName = ?scene= param or "default"
+export function mountFlowDebug(container, flowName) {
+  // Defaults: container = document.body, flowName = ?flow= or ?scene= param or "default"
   // Injects styles once, creates title + JSON pre element
-  // Shows error UI if loadScene throws
+  // Shows error UI if loadFlow throws
   return el
 }
 ```
 
+**`mountSceneDebug`** — Deprecated alias for `mountFlowDebug`.
+
 - Styles are injected once via a module-level `stylesInjected` flag
-- Scene name falls back to `?scene=` query param, then `"default"`
+- Flow name falls back to `?flow=` query param, then `?scene=` (compat), then `"default"`
 - Error state renders a styled error panel instead of JSON
 
 ## Dependencies
 
-- [`packages/core/src/loader.js`](./loader.js.md) — `loadScene` for loading and resolving scene data
+- [`packages/core/src/loader.js`](./loader.js.md) — `loadFlow` for loading and resolving flow data
 
 ## Dependents
 
-- [`packages/core/src/index.js`](./index.js.md) — Re-exports `mountSceneDebug`
+- [`packages/core/src/index.js`](./index.js.md) — Re-exports `mountFlowDebug` and deprecated `mountSceneDebug`

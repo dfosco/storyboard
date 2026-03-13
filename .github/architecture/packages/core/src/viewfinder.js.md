@@ -10,7 +10,7 @@ importance: high
 
 ## Goal
 
-Provides utility functions for the viewfinder feature: a deterministic hash function for seeding generative placeholders, and a route resolver that maps scene names to their target routes. The route resolver supports three strategies: matching against known route names (case-insensitive), reading an explicit `route` key from scene data, and falling back to the root path.
+Provides utility functions for the viewfinder feature: a deterministic hash function for seeding generative placeholders, a route resolver that maps flow names to their target routes, flow metadata extraction, and a prototype index builder. The route resolver supports three strategies: matching against known route names (case-insensitive), reading an explicit `route` key from flow data (checking top-level, `meta`, `flowMeta`, and legacy `sceneMeta`), and falling back to the root path.
 
 ## Composition
 
@@ -26,17 +26,29 @@ export function hash(str) {
 }
 ```
 
-**`resolveSceneRoute(sceneName, knownRoutes?)`** — Resolves the target route path for a scene. Returns a full path with `?scene=` param.
+**`resolveFlowRoute(flowName, knownRoutes?)`** — Resolves the target route path for a flow. Returns a full path with `?flow=` param when needed. If the flow name matches a known route, no query param is needed (StoryboardProvider auto-matches by page name).
 
-Resolution order:
-1. Case-insensitive match against `knownRoutes` array
-2. Explicit `route` key in scene data (loaded via `loadScene`)
-3. Fallback to `/?scene={sceneName}`
+**`resolveSceneRoute`** — Deprecated alias for `resolveFlowRoute`.
+
+**`getFlowMeta(flowName)`** — Extracts metadata (title, description, author) from flow data, checking `meta`, `flowMeta`, and legacy `sceneMeta` keys.
+
+**`getSceneMeta`** — Deprecated alias for `getFlowMeta`.
+
+**`buildPrototypeIndex(knownRoutes?)`** — Builds a structured index grouping flows by prototype. Returns `{ prototypes, globalFlows }`. Seeds from `.prototype.json` metadata, supports `hideFlows`, `icon`, `team`, `tags`, and auto-fills `gitAuthor` from the data plugin.
+
+```js
+export function buildPrototypeIndex(knownRoutes = []) {
+  // Seeds from listPrototypes() metadata
+  // Groups flows by prototype prefix (e.g. "Dashboard/default")
+  // Standalone flows go to globalFlows
+  return { prototypes, globalFlows }
+}
+```
 
 ## Dependencies
 
-- [`packages/core/src/loader.js`](./loader.js.md) — `loadScene` for reading the `route` key from scene data
+- [`packages/core/src/loader.js`](./loader.js.md) — `loadFlow`, `listFlows`, `listPrototypes`, `getPrototypeMetadata` for data loading and prototype indexing
 
 ## Dependents
 
-- [`packages/core/src/index.js`](./index.js.md) — Re-exports `hash` and `resolveSceneRoute`
+- [`packages/core/src/index.js`](./index.js.md) — Re-exports `hash`, `resolveFlowRoute`, `getFlowMeta`, `buildPrototypeIndex`, and deprecated aliases

@@ -18,23 +18,29 @@ Provides hooks for loading record collections with hash override support. `useRe
 
 **`useRecords(recordName)`** — Loads all entries from a record collection with overrides applied.
 
-Internal helper `applyRecordOverrides(baseRecords, recordName)`:
+Internal helper `applyRecordOverrides(baseRecords, resolvedName, plainName)`:
 ```js
 // Hash convention: record.{recordName}.{entryId}.{field}=value
+// Supports both scoped (e.g. "security/rules") and plain (e.g. "rules") prefixes
+// to handle prototype-scoped records correctly.
 // Existing entries get fields merged; unknown ids create new entries
-function applyRecordOverrides(baseRecords, recordName) {
-  const allParams = getAllParams()
-  const prefix = `record.${recordName}.`
+function applyRecordOverrides(baseRecords, resolvedName, plainName) {
+  const allParams = isHideMode() ? getAllShadows() : getAllParams()
+  const resolvedPrefix = `record.${resolvedName}.`
+  const plainPrefix = plainName !== resolvedName ? `record.${plainName}.` : null
   // ... groups by entryId, merges or creates entries
 }
 ```
 
 ## Dependencies
 
-- [`packages/core/src/loader.js`](../../../core/src/loader.js.md) — `loadRecord`
+- [`packages/core/src/loader.js`](../../../core/src/loader.js.md) — `loadRecord`, `resolveRecordName`
 - [`packages/core/src/dotPath.js`](../../../core/src/dotPath.js.md) — `deepClone`, `setByPath`
 - [`packages/core/src/session.js`](../../../core/src/session.js.md) — `getAllParams`
+- [`packages/core/src/hideMode.js`](../../../core/src/hideMode.js.md) — `isHideMode`, `getAllShadows` for hide mode support
 - [`packages/core/src/hashSubscribe.js`](../../../core/src/hashSubscribe.js.md) — `subscribeToHash`, `getHashSnapshot`
+- [`packages/core/src/localStorage.js`](../../../core/src/localStorage.js.md) — `subscribeToStorage`, `getStorageSnapshot` for hide mode reactivity
+- [`packages/react/src/StoryboardContext.js`](../StoryboardContext.js.md) — Reads `prototypeName` from context for scoped record resolution
 - `react-router-dom` — `useParams` for URL param reading
 
 ## Dependents

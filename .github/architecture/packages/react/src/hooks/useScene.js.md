@@ -10,29 +10,34 @@ importance: high
 
 ## Goal
 
-Provides the current scene name and a function to programmatically switch scenes by updating the `?scene=` query parameter. Used for scene switching UI and navigation.
+Provides the current flow name and a function to programmatically switch flows by updating the `?flow=` query parameter (with `?scene=` cleanup for backward compatibility). Used for flow switching UI and navigation.
 
 ## Composition
 
+**`useFlow()`** — Primary hook. Returns `{ flowName, switchFlow }`.
+
 ```js
-export function useScene() {
+export function useFlow() {
   const context = useContext(StoryboardContext)
   // throws if outside StoryboardProvider
 
-  const switchScene = useCallback((name) => {
+  const switchFlow = useCallback((name) => {
     const url = new URL(window.location.href)
-    url.searchParams.set('scene', name)
+    url.searchParams.delete('scene')
+    url.searchParams.set('flow', name)
     window.location.href = url.toString() // preserves hash
   }, [])
 
-  return { sceneName: context.sceneName, switchScene }
+  return { flowName: context.flowName, switchFlow }
 }
 ```
 
+**`useScene()`** — Deprecated alias wrapping `useFlow()`. Returns `{ sceneName, switchScene }` for backward compatibility.
+
 ## Dependencies
 
-- [`packages/react/src/StoryboardContext.js`](../StoryboardContext.js.md) — Reads `sceneName` from context
+- [`packages/react/src/StoryboardContext.js`](../StoryboardContext.js.md) — Reads `flowName` from context
 
 ## Dependents
 
-- [`packages/react/src/index.js`](../index.js.md) — Re-exports `useScene`
+- [`packages/react/src/index.js`](../index.js.md) — Re-exports `useFlow` and deprecated `useScene`

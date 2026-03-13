@@ -408,7 +408,7 @@
 
   .header {
     max-width: 720px;
-    margin: 0 auto 64px;
+    margin: 0 auto 40px;
   }
 
   .headerTop {
@@ -526,6 +526,7 @@
   .list {
     display: flex;
     flex-direction: column;
+    gap: var(--base-size-8);
     max-width: 720px;
     margin: 0 auto;
   }
@@ -533,15 +534,18 @@
   .protoGroup {
     display: flex;
     flex-direction: column;
+    gap: var(--base-size-8);
+
+    & .listItem:only-child {
+      border: 1px solid var(--borderColor-muted, #30363d);
+      border-radius: var(--base-size-6);
+    }
   }
 
   .folderGroup {
     display: flex;
     flex-direction: column;
-  }
-
-  .folderGroup:not(:first-child) {
-    margin-top: 24px;
+    gap: var(--base-size-8);
   }
 
   .folderHeader {
@@ -553,6 +557,7 @@
     appearance: none;
     border: none;
     border-radius: var(--base-size-6);
+    border: 1px solid var(--borderColor-muted, #30363d);
     background: none;
     width: 100%;
     text-align: left;
@@ -597,17 +602,13 @@
   .folderContent {
     display: flex;
     flex-direction: column;
+    gap: var(--base-size-8);
   }
 
   .listItem {
     display: block;
-    padding: 8px 0;
     text-decoration: none;
     color: inherit;
-
-    .folderGroup & {
-      border: 1px solid var(--borderColor-muted, #30363d);
-    }
   }
 
   .listItem:hover {
@@ -623,7 +624,7 @@
     text-align: left;
     cursor: pointer;
     color: inherit;
-    padding: 8px 0;
+    padding: 0;
   }
 
   .protoHeader[aria-expanded="true"] .cardBody {
@@ -648,6 +649,18 @@
     letter-spacing: -0.02em;
     line-height: 1.6;
     transition: font-style 0.15s ease;
+  }
+  
+  .protoName.otherflows {
+    font-size: var(--text-body-size-small);
+    font-weight: 600;
+    text-transform: uppercase;
+    direction: rtl;
+
+    & .protoChevron {
+      margin-right: var(--base-size-8);
+    }
+
   }
 
   .protoDesc {
@@ -714,21 +727,15 @@
     padding: 0;
   }
 
-  .folderGroup .listItem:not(:first-child),
   .flowItem:not(:first-child) {
     margin-top: -1px;
   }
 
-  .folderGroup .listItem:first-child,
   .flowItem:first-child {
     border-top-left-radius: var(--base-size-6);
     border-top-right-radius: var(--base-size-6);
   }
-
-  .folderGroup .listItem:first-child {
-    margin-top: var(--base-size-8)
-  }
-
+  
   .folderGroup .listItem:last-child,
   .flowItem:last-child {
     border-bottom-left-radius: var(--base-size-6);

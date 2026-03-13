@@ -269,8 +269,12 @@
                 <p class="sceneName">
                   {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
                   {proto.name}
-                  <span class="protoChevron" class:protoChevronOpen={isExpanded(proto.dirName)}>
-                    <Octicon size={12} color="var(--fgColor-disabled)" name="chevron-right" />
+                  <span class="protoChevron">
+                    {#if isExpanded(proto.dirName)}
+                      <Octicon size={12} color="var(--fgColor-disabled)" name="chevron-down" offsetY={-2} />
+                    {:else}
+                      <Octicon size={12} color="var(--fgColor-disabled)" name="chevron-right" offsetY={-2} />
+                    {/if}
                   </span>
                 </p>
                 {#if proto.description}
@@ -647,22 +651,6 @@
     transition: font-style 0.15s ease;
   }
 
-  .protoChevron {
-    display: inline-flex;
-    align-items: center;
-    transition: transform 0.15s ease;
-    transform: rotate(0deg);
-    vertical-align: middle;
-  }
-
-  .protoChevronOpen {
-    transform: rotate(90deg);
-  }
-
-  .protoIcon {
-    margin-right: 4px;
-  }
-
   .protoDesc {
     font-size: 13px;
     color: var(--fgColor-muted, #848d97);
@@ -721,25 +709,34 @@
     flex-direction: column;
   }
 
+  .folderGroup .listItem,
   .flowItem {
-    border: 1px solid var(--borderColor-muted, #30363d);
+    border: 1px solid var(--borderColor-muted);
     padding: 0;
   }
 
+  .folderGroup .listItem:not(:first-child),
   .flowItem:not(:first-child) {
     margin-top: -1px;
   }
 
+  .folderGroup .listItem:first-child,
   .flowItem:first-child {
     border-top-left-radius: var(--base-size-6);
     border-top-right-radius: var(--base-size-6);
   }
 
+  .folderGroup .listItem:first-child {
+    margin-top: var(--base-size-8)
+  }
+
+  .folderGroup .listItem:last-child,
   .flowItem:last-child {
     border-bottom-left-radius: var(--base-size-6);
     border-bottom-right-radius: var(--base-size-6);
   }
 
+  .folderGroup .listItem:only-child,
   .flowItem:only-child {
     border-radius: var(--base-size-6);
   }

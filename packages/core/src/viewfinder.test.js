@@ -277,4 +277,27 @@ describe('buildPrototypeIndex', () => {
     expect(result.folders).toHaveLength(0)
     expect(result.prototypes).toHaveLength(1)
   })
+
+  it('passes through lastModified from prototype metadata', () => {
+    const ts = '2025-01-15T10:30:00-05:00'
+    init({
+      flows: { 'App/home': {} },
+      objects: {},
+      records: {},
+      prototypes: { App: { meta: { title: 'My App' }, lastModified: ts } },
+    })
+    const result = buildPrototypeIndex([])
+    expect(result.prototypes[0].lastModified).toBe(ts)
+  })
+
+  it('defaults lastModified to null when not provided', () => {
+    init({
+      flows: { 'App/home': {} },
+      objects: {},
+      records: {},
+      prototypes: { App: { meta: { title: 'My App' } } },
+    })
+    const result = buildPrototypeIndex([])
+    expect(result.prototypes[0].lastModified).toBeNull()
+  })
 })

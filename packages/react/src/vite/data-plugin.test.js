@@ -348,4 +348,22 @@ describe('folder grouping', () => {
     // Same flow name in same prototype name → duplicate collision
     expect(() => plugin.load(RESOLVED_ID)).toThrow(/Duplicate flow "Settings\/default"/)
   })
+
+  it('throws on nested .folder/ directories', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Outer.folder', 'Inner.folder', 'Proto'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Outer.folder', 'Inner.folder', 'Proto', 'default.flow.json'),
+      JSON.stringify({ title: 'Nested' }),
+    )
+
+    const plugin = createPlugin()
+    expect(() => plugin.load(RESOLVED_ID)).toThrow(/Nested .folder directories are not supported/)
+  })
+
+  it('throws on empty nested .folder/ directories', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Outer.folder', 'Inner.folder'), { recursive: true })
+
+    const plugin = createPlugin()
+    expect(() => plugin.load(RESOLVED_ID)).toThrow(/Nested .folder directories are not supported/)
+  })
 })

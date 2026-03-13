@@ -10,6 +10,7 @@
 
 <script lang="ts">
   import { buildPrototypeIndex } from '../../viewfinder.js'
+  import Octicon from './Octicon.svelte'
 
   interface Props {
     title?: string
@@ -68,6 +69,40 @@
     folders.reduce((sum: number, f: any) =>
       sum + f.prototypes.reduce((s: number, p: any) => s + p.flows.length, 0), 0)
   )
+
+  // Sorting
+  type SortMode = 'updated' | 'title'
+  let sortBy: SortMode = $state('updated')
+
+  function sortProtos(protos: any[]): any[] {
+    return [...protos].sort((a: any, b: any) => {
+      if (sortBy === 'title') {
+        return (a.name || '').localeCompare(b.name || '')
+      }
+      // "Last updated" — newest first, nulls last
+      const aTime = a.lastModified ? new Date(a.lastModified).getTime() : 0
+      const bTime = b.lastModified ? new Date(b.lastModified).getTime() : 0
+      return bTime - aTime
+    })
+  }
+
+  function sortFolders(flds: any[]): any[] {
+    return [...flds].map((f: any) => ({
+      ...f,
+      prototypes: sortProtos(f.prototypes),
+    })).sort((a: any, b: any) => {
+      if (sortBy === 'title') {
+        return (a.name || '').localeCompare(b.name || '')
+      }
+      // Sort folders by their most recently updated prototype
+      const aMax = Math.max(0, ...a.prototypes.map((p: any) => p.lastModified ? new Date(p.lastModified).getTime() : 0))
+      const bMax = Math.max(0, ...b.prototypes.map((p: any) => p.lastModified ? new Date(p.lastModified).getTime() : 0))
+      return bMax - aMax
+    })
+  }
+
+  const sortedProtos = $derived(sortProtos(ungroupedProtos))
+  const sortedFolders = $derived(sortFolders(folders))
 
   // Expanded state — all prototypes and folders start expanded
   let expanded: Record<string, boolean> = $state({})
@@ -174,10 +209,10 @@
         {/if}
       </div>
       {#if branches && branches.length > 0}
+      <div>Branch</div>
         <div class="branchDropdown">
-          <svg class="branchIcon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-            <path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.492 2.492 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z" />
-          </svg>
+
+          <span class="branchIcon"><Octicon size={16} color="var(--fgColor-muted)" offsetY={-1} offsetX={2} name="git-branch" /></span>
           <select
             class="branchSelect"
             onchange={handleBranchChange}
@@ -192,8 +227,26 @@
       {/if}
     </div>
     <p class="sceneCount">
-      {#if folders.length > 0}{folders.length} folder{folders.length !== 1 ? 's' : ''} · {/if}{totalProtos} prototype{totalProtos !== 1 ? 's' : ''} · {totalFlows} flow{totalFlows !== 1 ? 's' : ''}
+      {(folders.length > 0 ? `${folders.length} folder${folders.length !== 1 ? 's' : ''} · ` : '') + `${totalProtos} prototype${totalProtos !== 1 ? 's' : ''} · ${totalFlows} flow${totalFlows !== 1 ? 's' : ''}`}
     </p>
+    <div class="sortToggle">
+      <button
+        class="sortButton"
+        class:sortButtonActive={sortBy === 'updated'}
+        onclick={() => sortBy = 'updated'}
+      >
+        <Octicon name="clock" size={14} offsetY={-1} />
+        Last updated
+      </button>
+      <button
+        class="sortButton"
+        class:sortButtonActive={sortBy === 'title'}
+        onclick={() => sortBy = 'title'}
+      >
+        <Octicon name="sort-asc" size={14} offsetY={-1} />
+        Title A–Z
+      </button>
+    </div>
   </header>
 
   {#if totalProtos === 0 && folders.length === 0}
@@ -244,9 +297,7 @@
                   {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
                   {proto.name}
                   <span class="protoChevron" class:protoChevronOpen={isExpanded(proto.dirName)}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                      <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
-                    </svg>
+                    <Octicon name="chevron-right" />
                   </span>
                 </p>
                 {#if proto.description}
@@ -326,21 +377,22 @@
       {/snippet}
 
       <!-- Folders with their prototypes -->
-      {#each folders as folder (folder.dirName)}
-        <section class="folderGroup">
+      {#each sortedFolders as folder (folder.dirName)}
+        <section class="folderGroup" class:folderGroupOpen={isExpanded(`folder:${folder.dirName}`)}>
           <button
             class="folderHeader"
             onclick={() => toggle(`folder:${folder.dirName}`)}
             aria-expanded={isExpanded(`folder:${folder.dirName}`)}
           >
             <p class="folderName">
-              {#if folder.icon}<span class="folderIcon">{folder.icon}</span>{/if}
-              {folder.name}
-              <span class="folderChevron" class:folderChevronOpen={isExpanded(`folder:${folder.dirName}`)}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                  <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
-                </svg>
+              <span>
+                {#if isExpanded(`folder:${folder.dirName}`)}
+                  <Octicon size={20} offsetY={-1.5} name="folder-open" color="#54aeff" />
+                {:else}
+                  <Octicon size={20} offsetY={-1.5} name="folder" color="#54aeff" />
+                {/if}
               </span>
+              {folder.name}
             </p>
             {#if folder.description}
               <p class="folderDesc">{folder.description}</p>
@@ -357,7 +409,7 @@
       {/each}
 
       <!-- Ungrouped prototypes (not in any folder) -->
-      {#each ungroupedProtos as proto (proto.dirName)}
+      {#each sortedProtos as proto (proto.dirName)}
         {@render protoEntry(proto)}
       {/each}
     </div>
@@ -405,6 +457,38 @@
     color: var(--fgColor-muted, #848d97);
     margin: 16px 0 0;
     letter-spacing: 0.01em;
+  }
+
+  .sortToggle {
+    display: flex;
+    gap: 4px;
+    margin: 12px 0 0;
+  }
+
+  .sortButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    color: var(--fgColor-muted, #848d97);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+  }
+
+  .sortButton:hover {
+    color: var(--fgColor-default, #e6edf3);
+    background: var(--bgColor-neutral-muted, rgba(110, 118, 129, 0.1));
+  }
+
+  .sortButtonActive {
+    color: var(--fgColor-default, #e6edf3);
+    background: var(--bgColor-neutral-muted, rgba(110, 118, 129, 0.15));
+    border-color: var(--borderColor-muted, #30363d);
   }
 
   .branchDropdown {
@@ -475,50 +559,50 @@
   }
 
   .folderHeader {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: var(--base-size-8);
     appearance: none;
     border: none;
+    border-radius: var(--base-size-6);
     background: none;
     width: 100%;
     text-align: left;
     cursor: pointer;
     color: inherit;
-    padding: 0 0 4px;
-    border-bottom: 1px solid var(--borderColor-muted, #30363d);
-    margin-bottom: 4px;
+    padding: var(--base-size-16);
+
+    &:hover,
+    .folderGroupOpen & {
+      background-color: var(--bgColor-muted, #161b22);
+    }
   }
 
+
+  .folderGroupOpen .folderHeader {
+    background-color: var(--bgColor-muted, #161b22);
+  }
+
+
   .folderName {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--base-size-8);
     font-size: 13px;
     font-weight: 600;
-    color: var(--fgColor-muted, #848d97);
+    color: var(--fgColor-default);
     margin: 0;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     line-height: 1.6;
   }
 
-  .folderIcon {
-    margin-right: 4px;
-  }
-
-  .folderChevron {
-    display: inline-flex;
-    align-items: center;
-    color: var(--fgColor-muted, #848d97);
-    transition: transform 0.15s ease;
-    transform: rotate(0deg);
-    margin-left: 2px;
-    vertical-align: middle;
-  }
-
-  .folderChevronOpen {
-    transform: rotate(90deg);
-  }
-
   .folderDesc {
     font-size: 13px;
     color: var(--fgColor-muted, #848d97);
-    margin: 2px 0 0;
+    margin: 0;
     letter-spacing: 0.01em;
     text-transform: none;
     font-weight: 400;
@@ -544,6 +628,7 @@
     appearance: none;
     border: none;
     background: none;
+    border-radius: var(--base-size-6);
     width: 100%;
     text-align: left;
     cursor: pointer;
@@ -551,13 +636,18 @@
     padding: 8px 0;
   }
 
+  .protoHeader[aria-expanded="true"] .cardBody {
+    background-color: var(--bgColor-muted);
+    border-radius: var(--base-size-8);
+  }
+
   .cardBody {
     padding: 12px 16px;
   }
 
   .cardBody:hover {
-    background-color: var(--bgColor-muted, #161b22);
-    border-radius: 8px;
+    background-color: var(--bgColor-muted);
+    border-radius: var(--base-size-8);
   }
 
   .sceneName {
@@ -640,7 +730,7 @@
   }
 
   .flowList {
-    margin: 0 var(--base-size-12);
+    margin: 0;
     padding: 0;
     display: flex;
     flex-direction: column;

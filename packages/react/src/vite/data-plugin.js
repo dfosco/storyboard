@@ -82,11 +82,42 @@ function getGitAuthor(root, filePath) {
 }
 
 /**
+ * Look up the most recent commit date for any file in a directory.
+ * Returns an ISO 8601 timestamp, or null if unavailable.
+ */
+function getLastModified(root, dirPath) {
+  try {
+    const result = execSync(
+      `git log -1 --format="%aI" -- "${dirPath}"`,
+      { cwd: root, encoding: 'utf-8', timeout: 5000 },
+    ).trim()
+    return result || null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Scan the repo for all data files, validate uniqueness, return the index.
  */
 function buildIndex(root) {
   const ignore = ['node_modules/**', 'dist/**', '.git/**']
   const files = globSync(GLOB_PATTERN, { cwd: root, ignore, absolute: false })
+
+  // Detect nested .folder/ directories (not supported)
+  // Scan directories directly since empty nested folders have no data files
+  const folderDirs = globSync('src/prototypes/**/*.folder', { cwd: root, ignore, absolute: false })
+  for (const dir of folderDirs) {
+    const normalized = dir.replace(/\\/g, '/')
+    const segments = normalized.split('/').filter(s => s.endsWith('.folder'))
+    if (segments.length > 1) {
+      throw new Error(
+        `[storyboard-data] Nested .folder directories are not supported.\n` +
+        `  Found at: ${dir}\n` +
+        `  Folders can only be one level deep inside src/prototypes/.`
+      )
+    }
+  }
 
   const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {} }
   const seen = {} // "name.suffix" → absolute path (for duplicate detection)
@@ -208,6 +239,15 @@ function generateModule({ index, protoFolders }, root) {
         }
       }
 
+      // Auto-fill lastModified from git history for prototypes
+      if (suffix === 'prototype' && parsed) {
+        const protoDir = path.dirname(absPath)
+        const lastModified = getLastModified(root, protoDir)
+        if (lastModified) {
+          parsed = { ...parsed, lastModified }
+        }
+      }
+
       // Inject folder association into prototype metadata
       if (suffix === 'prototype' && protoFolders[name]) {
         parsed = { ...parsed, folder: protoFolders[name] }
@@ -323,7 +363,9 @@ export default function storyboardDataPlugin() {
 
       const invalidate = (filePath) => {
         const parsed = parseDataFile(filePath)
-        if (!parsed) return
+        // Also invalidate when files are added/removed inside .folder/ directories
+        const inFolder = filePath.replace(/\\/g, '/').includes('.folder/')
+        if (!parsed && !inFolder) return
         // Rebuild index and invalidate virtual module
         buildResult = null
         const mod = server.moduleGraph.getModuleById(RESOLVED_ID)

@@ -1,5 +1,4 @@
 {
-  "route": "/example",
   "meta": {
     "title": "Example Data Flow",
     "description": "Data structure for the Example prototype showcasing user, navigation, projects, settings, and signup information.",

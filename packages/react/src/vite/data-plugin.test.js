@@ -265,6 +265,123 @@ describe('prototype scoping', () => {
   })
 })
 
+describe('flow route inference', () => {
+  it('injects _route for flows inside src/prototypes/', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Dashboard'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'default.flow.json'),
+      JSON.stringify({ title: 'Dashboard Flow' }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"_route":"/Dashboard"')
+  })
+
+  it('injects _route for flows inside .folder/ directories', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'MyFolder.folder', 'Example'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'MyFolder.folder', 'Example', 'basic.flow.json'),
+      JSON.stringify({ title: 'Example Flow' }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    // .folder/ should be stripped from the inferred route
+    expect(code).toContain('"_route":"/Example"')
+    expect(code).not.toContain('MyFolder')
+  })
+
+  it('injects _route with nested path for deeply placed flows', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'App', 'settings'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'App', 'settings', 'prefs.flow.json'),
+      JSON.stringify({ title: 'Settings Prefs' }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"_route":"/App/settings"')
+  })
+
+  it('does NOT inject _route for global flows outside src/prototypes/', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'data'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'data', 'global.flow.json'),
+      JSON.stringify({ title: 'Global Flow' }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).not.toContain('"_route"')
+  })
+
+  it('does NOT inject _route when flow has explicit route field', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Dashboard'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'custom.flow.json'),
+      JSON.stringify({ route: '/custom-page', title: 'Custom Route' }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    // Should have the explicit route but NOT _route
+    expect(code).toContain('"route":"/custom-page"')
+    expect(code).not.toContain('"_route"')
+  })
+
+  it('logs info when multiple flows share the same route', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Dashboard'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'happy.flow.json'),
+      JSON.stringify({ title: 'Happy Path' }),
+    )
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'error.flow.json'),
+      JSON.stringify({ title: 'Error State' }),
+    )
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const plugin = createPlugin()
+    plugin.load(RESOLVED_ID)
+
+    const routeLog = logSpy.mock.calls.find(call =>
+      typeof call[0] === 'string' && call[0].includes('Route "/Dashboard" has 2 flows')
+    )
+    expect(routeLog).toBeTruthy()
+    logSpy.mockRestore()
+  })
+
+  it('warns when multiple flows on same route have meta.default: true', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Dashboard'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'a.flow.json'),
+      JSON.stringify({ meta: { default: true }, title: 'A' }),
+    )
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'b.flow.json'),
+      JSON.stringify({ meta: { default: true }, title: 'B' }),
+    )
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const plugin = createPlugin()
+    plugin.load(RESOLVED_ID)
+
+    const warnCall = warnSpy.mock.calls.find(call =>
+      typeof call[0] === 'string' && call[0].includes('meta.default: true')
+    )
+    expect(warnCall).toBeTruthy()
+    logSpy.mockRestore()
+    warnSpy.mockRestore()
+  })
+})
+
 describe('folder grouping', () => {
   it('discovers .folder.json files and keys them by folder directory name', () => {
     mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Getting Started.folder'), { recursive: true })

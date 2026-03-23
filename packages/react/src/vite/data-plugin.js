@@ -66,7 +66,22 @@ function parseDataFile(filePath) {
     }
   }
 
-  return { name, suffix, ext: match[3] }
+  // Infer route for prototype-scoped flows from their file path.
+  // Mirrors the generouted route regex: strip src/prototypes/ and *.folder/ segments.
+  let inferredRoute = null
+  if (suffix === 'flow') {
+    const protoCheck = normalized.match(/(?:^|\/)src\/prototypes\//)
+    if (protoCheck) {
+      const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
+      inferredRoute = '/' + dirPath
+        .replace(/^.*?src\/prototypes\//, '')
+        .replace(/[^/]*\.folder\//g, '')
+      // Normalize trailing slash and double slashes
+      inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/'
+    }
+  }
+
+  return { name, suffix, ext: match[3], inferredRoute }
 }
 
 /**
@@ -127,6 +142,7 @@ function buildIndex(root) {
   const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {} }
   const seen = {} // "name.suffix" → absolute path (for duplicate detection)
   const protoFolders = {} // prototype name → folder name (for injection)
+  const flowRoutes = {} // flow name → inferred route (for _route injection)
 
   for (const relPath of files) {
     const parsed = parseDataFile(relPath)
@@ -159,9 +175,14 @@ function buildIndex(root) {
     if (parsed.suffix === 'prototype' && parsed.folder) {
       protoFolders[parsed.name] = parsed.folder
     }
+
+    // Track inferred routes for flows
+    if (parsed.suffix === 'flow' && parsed.inferredRoute) {
+      flowRoutes[parsed.name] = parsed.inferredRoute
+    }
   }
 
-  return { index, protoFolders }
+  return { index, protoFolders, flowRoutes }
 }
 
 /**
@@ -224,10 +245,11 @@ function readModesConfig(root) {
   return fallback
 }
 
-function generateModule({ index, protoFolders }, root) {
+function generateModule({ index, protoFolders, flowRoutes }, root) {
   const declarations = []
   const INDEX_KEYS = ['flow', 'object', 'record', 'prototype', 'folder']
   const entries = { flow: [], object: [], record: [], prototype: [], folder: [] }
+  const resolvedFlowRoutes = {} // flow name → resolved route (for multi-flow logging)
   let i = 0
 
   for (const suffix of INDEX_KEYS) {
@@ -256,6 +278,19 @@ function generateModule({ index, protoFolders }, root) {
       // Inject folder association into prototype metadata
       if (suffix === 'prototype' && protoFolders[name]) {
         parsed = { ...parsed, folder: protoFolders[name] }
+      }
+
+      // Inject inferred _route into flow data (explicit route takes precedence)
+      if (suffix === 'flow' && flowRoutes[name] && !parsed?.route) {
+        parsed = { ...parsed, _route: flowRoutes[name] }
+      }
+
+      // Track resolved route for multi-flow logging
+      if (suffix === 'flow') {
+        const route = parsed?.route || parsed?._route || null
+        if (route) {
+          resolvedFlowRoutes[name] = { route, isDefault: parsed?.meta?.default === true }
+        }
       }
 
       declarations.push(`const ${varName} = ${JSON.stringify(parsed)}`)
@@ -299,6 +334,26 @@ function generateModule({ index, protoFolders }, root) {
       }
 
       initCalls.push(`syncModeClasses()`)
+    }
+  }
+
+  // Log info when multiple flows target the same route
+  const routeGroups = {}
+  for (const [name, { route, isDefault }] of Object.entries(resolvedFlowRoutes)) {
+    if (!routeGroups[route]) routeGroups[route] = []
+    routeGroups[route].push({ name, isDefault })
+  }
+  for (const [route, flows] of Object.entries(routeGroups)) {
+    if (flows.length > 1) {
+      const labels = flows.map(f => `  - ${f.name}${f.isDefault ? ' (default)' : ''}`).join('\n')
+      console.log(`[storyboard-data] Route "${route}" has ${flows.length} flows:\n${labels}`)
+      const defaults = flows.filter(f => f.isDefault)
+      if (defaults.length > 1) {
+        console.warn(
+          `[storyboard-data] Warning: Route "${route}" has ${defaults.length} flows with meta.default: true.\n` +
+          `  Only one flow per route should be marked as default.`
+        )
+      }
     }
   }
 

@@ -12,6 +12,9 @@ const makeIndex = () => ({
     'meta-author': { flowMeta: { author: 'dfosco' }, title: 'With Author' },
     'meta-authors': { flowMeta: { author: ['dfosco', 'heyamie', 'branonconor'] }, title: 'Multi Author' },
     'meta-both': { flowMeta: { route: '/Overview', author: 'octocat' }, title: 'Both' },
+    'inferred-route': { _route: '/Dashboard', title: 'Inferred' },
+    'inferred-default': { _route: '/Settings', meta: { default: true }, title: 'Default Flow' },
+    'explicit-wins': { route: '/Forms', _route: '/Dashboard', title: 'Explicit Wins' },
   },
   objects: {},
   records: {},
@@ -104,6 +107,31 @@ describe('resolveFlowRoute', () => {
       records: {},
     })
     expect(resolveFlowRoute('conflict', [])).toBe('/Forms?flow=conflict')
+  })
+
+  it('uses _route when no explicit route exists', () => {
+    expect(resolveFlowRoute('inferred-route', routes)).toBe('/Dashboard?flow=inferred-route')
+  })
+
+  it('prefers explicit route over _route', () => {
+    expect(resolveFlowRoute('explicit-wins', routes)).toBe('/Forms?flow=explicit-wins')
+  })
+
+  it('omits ?flow= when meta.default is true (inferred route)', () => {
+    expect(resolveFlowRoute('inferred-default', routes)).toBe('/Settings')
+  })
+
+  it('omits ?flow= when meta.default is true (explicit route)', () => {
+    init({
+      flows: { 'default-explicit': { route: '/Overview', meta: { default: true } } },
+      objects: {},
+      records: {},
+    })
+    expect(resolveFlowRoute('default-explicit', [])).toBe('/Overview')
+  })
+
+  it('still appends ?flow= when meta.default is absent even with _route', () => {
+    expect(resolveFlowRoute('inferred-route', [])).toBe('/Dashboard?flow=inferred-route')
   })
 })
 

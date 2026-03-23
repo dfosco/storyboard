@@ -550,11 +550,11 @@
     display: flex;
     flex-direction: column;
     gap: var(--base-size-8);
+  }
 
-    & .listItem:only-child {
-      border: 1px solid var(--borderColor-muted, #30363d);
-      border-radius: var(--base-size-6);
-    }
+  .protoGroup > .listItem {
+    border: 1px solid var(--borderColor-muted, #30363d);
+    border-radius: var(--base-size-6);
   }
 
   .folderGroup {
@@ -644,7 +644,7 @@
 
   .protoHeader[aria-expanded="true"] .cardBody {
     background-color: var(--bgColor-muted);
-    border-radius: var(--base-size-8);
+    border-radius: var(--base-size-6);
   }
 
   .cardBody {
@@ -653,7 +653,7 @@
 
   .cardBody:hover {
     background-color: var(--bgColor-muted);
-    border-radius: var(--base-size-8);
+    border-radius: var(--base-size-6);
   }
 
   .protoName {
@@ -736,7 +736,6 @@
     flex-direction: column;
   }
 
-  .folderGroup .listItem,
   .flowItem {
     border: 1px solid var(--borderColor-muted);
     padding: 0;
@@ -750,14 +749,12 @@
     border-top-left-radius: var(--base-size-6);
     border-top-right-radius: var(--base-size-6);
   }
-  
-  .folderGroup .listItem:last-child,
+
   .flowItem:last-child {
     border-bottom-left-radius: var(--base-size-6);
     border-bottom-right-radius: var(--base-size-6);
   }
 
-  .folderGroup .listItem:only-child,
   .flowItem:only-child {
     border-radius: var(--base-size-6);
   }

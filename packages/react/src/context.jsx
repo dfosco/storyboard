@@ -4,6 +4,7 @@ import { useParams, useLocation } from 'react-router-dom'
 import 'virtual:storyboard-data-index'
 import { loadFlow, flowExists, findRecord, deepMerge, setFlowClass, installBodyClassSync, resolveFlowName, resolveRecordName, isModesEnabled } from '@dfosco/storyboard-core'
 import { StoryboardContext } from './StoryboardContext.js'
+import styles from './FlowError.module.css'
 
 export { StoryboardContext }
 
@@ -116,7 +117,24 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
   }
 
   if (error) {
-    return <span style={{ color: 'var(--fgColor-danger, #f85149)' }}>Error loading flow: {error}</span>
+    const currentUrl = `${location.pathname}${location.search}`
+    const truncatedUrl = currentUrl.length > 60
+      ? currentUrl.slice(0, 60) + '…'
+      : currentUrl
+
+    return (
+      <div className={styles.container}>
+        <div className={styles.banner}>
+          <strong>Error loading flow</strong>
+          {error}
+        </div>
+        <p className={styles.meta}>
+          Tried to load{' '}
+          <a href={currentUrl} title={currentUrl}>{truncatedUrl}</a>
+        </p>
+        <a className={styles.homeLink} href="/">← Go to homepage</a>
+      </div>
+    )
   }
 
   return (

@@ -1,7 +1,7 @@
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import storyboardDataPlugin from './data-plugin.js'
+import storyboardDataPlugin, { resolveTemplateVars, computeTemplateVars } from './data-plugin.js'
 
 const RESOLVED_ID = '\0virtual:storyboard-data-index'
 
@@ -550,5 +550,251 @@ describe('underscore prefix ignoring', () => {
     const code = plugin.load(RESOLVED_ID)
 
     expect(code).toContain('"Has Underscore"')
+  })
+})
+
+describe('resolveTemplateVars', () => {
+  it('replaces variables in a simple string', () => {
+    const result = resolveTemplateVars('/${currentDir}/page', { currentDir: 'src/data' })
+    expect(result).toBe('/src/data/page')
+  })
+
+  it('replaces multiple variables in one string', () => {
+    const result = resolveTemplateVars('${currentProto} in ${currentProtoDir}', {
+      currentProto: 'src/prototypes/main.folder/Example',
+      currentProtoDir: 'src/prototypes/main.folder',
+    })
+    expect(result).toBe('src/prototypes/main.folder/Example in src/prototypes/main.folder')
+  })
+
+  it('replaces variables in nested objects', () => {
+    const input = {
+      nav: { url: '/${currentDir}/page', label: 'Go' },
+      meta: { proto: '${currentProto}' },
+    }
+    const vars = { currentDir: 'src/data', currentProto: 'src/prototypes/App' }
+    const result = resolveTemplateVars(input, vars)
+
+    expect(result.nav.url).toBe('/src/data/page')
+    expect(result.nav.label).toBe('Go')
+    expect(result.meta.proto).toBe('src/prototypes/App')
+  })
+
+  it('replaces variables in arrays', () => {
+    const input = ['/${currentDir}/a', '/${currentDir}/b']
+    const result = resolveTemplateVars(input, { currentDir: 'here' })
+    expect(result).toEqual(['/here/a', '/here/b'])
+  })
+
+  it('replaces variables in deeply nested structures', () => {
+    const input = {
+      items: [
+        { links: [{ url: '/${currentDir}/x' }] },
+      ],
+    }
+    const result = resolveTemplateVars(input, { currentDir: 'deep' })
+    expect(result.items[0].links[0].url).toBe('/deep/x')
+  })
+
+  it('does not modify non-string values', () => {
+    const input = { count: 42, active: true, empty: null }
+    const result = resolveTemplateVars(input, { currentDir: 'test' })
+    expect(result).toEqual({ count: 42, active: true, empty: null })
+  })
+
+  it('returns input unchanged when no variables match', () => {
+    const input = { url: '/static/path', name: 'no vars here' }
+    const result = resolveTemplateVars(input, { currentDir: 'test' })
+    expect(result).toEqual(input)
+  })
+
+  it('leaves unknown variable patterns as-is', () => {
+    const result = resolveTemplateVars('${unknownVar}/path', { currentDir: 'test' })
+    expect(result).toBe('${unknownVar}/path')
+  })
+
+  it('does not mutate the original object', () => {
+    const input = { url: '/${currentDir}/page' }
+    const original = JSON.parse(JSON.stringify(input))
+    resolveTemplateVars(input, { currentDir: 'test' })
+    expect(input).toEqual(original)
+  })
+
+  it('handles empty vars object', () => {
+    const input = { url: '/${currentDir}/page' }
+    const result = resolveTemplateVars(input, {})
+    expect(result.url).toBe('/${currentDir}/page')
+  })
+
+  it('handles multiple occurrences of the same variable', () => {
+    const result = resolveTemplateVars('${currentDir}/${currentDir}', { currentDir: 'x' })
+    expect(result).toBe('x/x')
+  })
+})
+
+describe('computeTemplateVars', () => {
+  it('computes currentDir for a file in src/data/', () => {
+    const root = '/project'
+    const absPath = '/project/src/data/nav.object.json'
+    const vars = computeTemplateVars(absPath, root)
+
+    expect(vars.currentDir).toBe('src/data')
+    expect(vars.currentProto).toBe('')
+    expect(vars.currentProtoDir).toBe('')
+  })
+
+  it('computes all three vars for a file in a prototype inside a folder', () => {
+    const root = '/project'
+    const absPath = '/project/src/prototypes/main.folder/Example/sidenav.object.json'
+    const vars = computeTemplateVars(absPath, root)
+
+    expect(vars.currentDir).toBe('src/prototypes/main.folder/Example')
+    expect(vars.currentProto).toBe('src/prototypes/main.folder/Example')
+    expect(vars.currentProtoDir).toBe('src/prototypes/main.folder')
+  })
+
+  it('computes vars for a file in a subdirectory of a prototype', () => {
+    const root = '/project'
+    const absPath = '/project/src/prototypes/main.folder/Example/data/deep.object.json'
+    const vars = computeTemplateVars(absPath, root)
+
+    expect(vars.currentDir).toBe('src/prototypes/main.folder/Example/data')
+    expect(vars.currentProto).toBe('src/prototypes/main.folder/Example')
+    expect(vars.currentProtoDir).toBe('src/prototypes/main.folder')
+  })
+
+  it('computes vars for a file in a prototype without a folder', () => {
+    const root = '/project'
+    const absPath = '/project/src/prototypes/Dashboard/nav.object.json'
+    const vars = computeTemplateVars(absPath, root)
+
+    expect(vars.currentDir).toBe('src/prototypes/Dashboard')
+    expect(vars.currentProto).toBe('src/prototypes/Dashboard')
+    expect(vars.currentProtoDir).toBe('')
+  })
+
+  it('computes vars for a root-level file', () => {
+    const root = '/project'
+    const absPath = '/project/config.object.json'
+    const vars = computeTemplateVars(absPath, root)
+
+    expect(vars.currentDir).toBe('.')
+    expect(vars.currentProto).toBe('')
+    expect(vars.currentProtoDir).toBe('')
+  })
+
+  it('returns empty currentProto for a file directly inside a .folder (not in a prototype)', () => {
+    const root = '/project'
+    const absPath = '/project/src/prototypes/main.folder/nav.object.json'
+    const vars = computeTemplateVars(absPath, root)
+
+    expect(vars.currentDir).toBe('src/prototypes/main.folder')
+    expect(vars.currentProto).toBe('')
+    expect(vars.currentProtoDir).toBe('src/prototypes/main.folder')
+  })
+})
+
+describe('template variable integration', () => {
+  it('resolves ${currentDir} in object files', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'data'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'data', 'nav.object.json'),
+      JSON.stringify({ url: '/${currentDir}/page' }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('/src/data/page')
+    expect(code).not.toContain('${currentDir}')
+  })
+
+  it('resolves ${currentProto} and ${currentProtoDir} in prototype files', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'App.folder', 'Dashboard'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'App.folder', 'Dashboard', 'nav.object.json'),
+      JSON.stringify({
+        proto: '${currentProto}',
+        folder: '${currentProtoDir}',
+        dir: '${currentDir}',
+      }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('src/prototypes/App.folder/Dashboard')
+    expect(code).toContain('src/prototypes/App.folder')
+    expect(code).not.toContain('${currentProto}')
+    expect(code).not.toContain('${currentProtoDir}')
+    expect(code).not.toContain('${currentDir}')
+  })
+
+  it('resolves variables in flow files', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Example.folder', 'Demo'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Example.folder', 'Demo', 'default.flow.json'),
+      JSON.stringify({
+        nav: [{ label: 'Home', url: '/${currentDir}' }],
+      }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('/src/prototypes/Example.folder/Demo')
+    expect(code).not.toContain('${currentDir}')
+  })
+
+  it('resolves variables in record files', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Blog'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Blog', 'posts.record.json'),
+      JSON.stringify([
+        { id: '1', link: '/${currentProto}/post/1' },
+      ]),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('/src/prototypes/Blog/post/1')
+    expect(code).not.toContain('${currentProto}')
+  })
+
+  it('warns when ${currentProto} is used outside a prototype', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'data'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'data', 'nav.object.json'),
+      JSON.stringify({ url: '/${currentProto}/page' }),
+    )
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const plugin = createPlugin()
+    plugin.load(RESOLVED_ID)
+
+    const warnCall = warnSpy.mock.calls.find(call =>
+      typeof call[0] === 'string' && call[0].includes('${currentProto}')
+    )
+    expect(warnCall).toBeTruthy()
+    warnSpy.mockRestore()
+  })
+
+  it('warns when ${currentProtoDir} is used outside a .folder', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Dashboard'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'nav.object.json'),
+      JSON.stringify({ folder: '${currentProtoDir}' }),
+    )
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const plugin = createPlugin()
+    plugin.load(RESOLVED_ID)
+
+    const warnCall = warnSpy.mock.calls.find(call =>
+      typeof call[0] === 'string' && call[0].includes('${currentProtoDir}')
+    )
+    expect(warnCall).toBeTruthy()
+    warnSpy.mockRestore()
   })
 })

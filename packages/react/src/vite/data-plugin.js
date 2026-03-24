@@ -186,6 +186,50 @@ function buildIndex(root) {
 }
 
 /**
+ * Recursively walk a parsed JSON value and replace `${varName}` patterns
+ * in every string value. Only string values are processed — keys, numbers,
+ * booleans, and null are left untouched.
+ */
+function resolveTemplateVars(obj, vars) {
+  if (typeof obj === 'string') {
+    let result = obj
+    for (const [key, value] of Object.entries(vars)) {
+      result = result.replaceAll(`\${${key}}`, value)
+    }
+    return result
+  }
+  if (Array.isArray(obj)) return obj.map(item => resolveTemplateVars(item, vars))
+  if (obj !== null && typeof obj === 'object') {
+    const out = {}
+    for (const [key, value] of Object.entries(obj)) {
+      out[key] = resolveTemplateVars(value, vars)
+    }
+    return out
+  }
+  return obj
+}
+
+/**
+ * Compute path-based template variables for a data file.
+ *
+ * - currentDir:      directory of the file, relative to project root
+ * - currentProto:    path to the prototype directory (e.g. src/prototypes/main.folder/Example)
+ * - currentProtoDir: path to the first parent *.folder directory (e.g. src/prototypes/main.folder)
+ */
+function computeTemplateVars(absPath, root) {
+  const relPath = path.relative(root, absPath).replace(/\\/g, '/')
+  const currentDir = path.dirname(relPath).replace(/\\/g, '/')
+
+  const protoMatch = relPath.match(/^(src\/prototypes\/(?:[^/]+\.folder\/)?[^/]+)\//)
+  const currentProto = protoMatch && !protoMatch[1].endsWith('.folder') ? protoMatch[1] : ''
+
+  const folderMatch = relPath.match(/^(src\/prototypes\/[^/]+\.folder)\//)
+  const currentProtoDir = folderMatch ? folderMatch[1] : ''
+
+  return { currentDir, currentProto, currentProtoDir }
+}
+
+/**
  * Generate the virtual module source code.
  * Reads each data file, parses JSONC at build time, and emits pre-parsed
  * JavaScript objects — no runtime parsing needed.
@@ -292,6 +336,22 @@ function generateModule({ index, protoFolders, flowRoutes }, root) {
           resolvedFlowRoutes[name] = { route, isDefault: parsed?.meta?.default === true }
         }
       }
+
+      // Resolve template variables (${currentDir}, ${currentProto}, ${currentProtoDir})
+      const templateVars = computeTemplateVars(absPath, root)
+      if (!templateVars.currentProto && raw.includes('${currentProto}')) {
+        console.warn(
+          `[storyboard-data] \${currentProto} used in "${path.relative(root, absPath)}" ` +
+          `but file is not inside a prototype directory. Variable resolves to empty string.`
+        )
+      }
+      if (!templateVars.currentProtoDir && raw.includes('${currentProtoDir}')) {
+        console.warn(
+          `[storyboard-data] \${currentProtoDir} used in "${path.relative(root, absPath)}" ` +
+          `but file is not inside a .folder directory. Variable resolves to empty string.`
+        )
+      }
+      parsed = resolveTemplateVars(parsed, templateVars)
 
       declarations.push(`const ${varName} = ${JSON.stringify(parsed)}`)
       entries[suffix].push(`  ${JSON.stringify(name)}: ${varName}`)
@@ -463,3 +523,6 @@ export default function storyboardDataPlugin() {
     },
   }
 }
+
+// Exported for testing
+export { resolveTemplateVars, computeTemplateVars }

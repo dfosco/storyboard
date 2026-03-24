@@ -152,6 +152,33 @@ Access with `useRecord('posts')` in a `pages/posts/[id].jsx` dynamic route page.
 
 ---
 
+### Template Variables
+
+Data files support **build-time template variables** using `${variableName}` syntax within JSON string values. Variables are resolved by the Vite data plugin based on the file's location — no runtime overhead.
+
+```json
+// sidenav.object.json inside src/prototypes/main.folder/Example/
+{
+  "items": [
+    { "label": "Overview", "url": "/${currentDir}/security/overview" },
+    { "label": "Home", "proto": "${currentProto}" }
+  ]
+}
+```
+
+| Variable | Description | Example (for file at `src/prototypes/main.folder/Example/nav.object.json`) |
+|----------|-------------|-------------|
+| `${currentDir}` | Directory of the file, relative to project root | `src/prototypes/main.folder/Example` |
+| `${currentProto}` | Path to the prototype directory containing the file | `src/prototypes/main.folder/Example` |
+| `${currentProtoDir}` | Path to the first parent `*.folder` directory | `src/prototypes/main.folder` |
+
+**Notes:**
+- Only **string values** are processed — keys, numbers, booleans are left untouched
+- `${currentProto}` and `${currentProtoDir}` resolve to empty string (with a console warning) when the file is outside a prototype or `.folder` directory
+- Unknown variable patterns like `${foo}` are left as-is
+
+---
+
 ### Scene Loader (`storyboard/core/loader.js`)
 
 The loader is seeded at app startup via `init({ scenes, objects, records })`, called automatically by the Vite data plugin's generated virtual module:

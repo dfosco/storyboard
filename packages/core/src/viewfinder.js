@@ -16,13 +16,17 @@ export function hash(str) {
 /**
  * Resolve the target route path for a flow.
  *
+ * Priority:
  * 1. If flow name matches a known route (case-insensitive), use that route
- * 2. If flow data has a top-level `route`, or `meta.route` / `sceneMeta.route`, use that
- * 3. Fall back to root "/"
+ * 2. If flow data has an explicit top-level `route`, or `meta.route` / `flowMeta.route`, use that
+ * 3. If flow data has `_route` (inferred from file path by Vite plugin), use that
+ * 4. Fall back to root "/"
+ *
+ * Flows with `meta.default: true` targeting a route omit the `?flow=` param.
  *
  * @param {string} flowName
  * @param {string[]} knownRoutes - Array of route names (e.g. ["Dashboard", "Repositories"])
- * @returns {string} Full path with ?flow= param
+ * @returns {string} Full path with optional ?flow= param
  */
 export function resolveFlowRoute(flowName, knownRoutes = []) {
   // Case-insensitive match against known routes
@@ -34,13 +38,21 @@ export function resolveFlowRoute(flowName, knownRoutes = []) {
     }
   }
 
-  // Check for explicit route: top-level `route`, then meta.route, then legacy sceneMeta.route
   try {
     const data = loadFlow(flowName)
-    const route = data?.route || data?.meta?.route || data?.flowMeta?.route || data?.sceneMeta?.route
-    if (route) {
-      const normalized = route.startsWith('/') ? route : `/${route}`
+
+    // Check for explicit route: top-level `route`, then meta.route, then legacy sceneMeta.route
+    const explicitRoute = data?.route || data?.meta?.route || data?.flowMeta?.route || data?.sceneMeta?.route
+    if (explicitRoute) {
+      const normalized = explicitRoute.startsWith('/') ? explicitRoute : `/${explicitRoute}`
+      if (data?.meta?.default === true) return normalized
       return `${normalized}?flow=${encodeURIComponent(flowName)}`
+    }
+
+    // Use inferred route from file path (injected by Vite data plugin)
+    if (data?._route) {
+      if (data?.meta?.default === true) return data._route
+      return `${data._route}?flow=${encodeURIComponent(flowName)}`
     }
   } catch {
     // ignore load errors

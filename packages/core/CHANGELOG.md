@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 2.7.0
+
+### Minor Changes
+
+-   Persists open/closed state of accordions on /viewfinder in localStorage
+
 ## 2.6.0
 
 ### Minor Changes

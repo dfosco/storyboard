@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 2.6.0
+
+### Minor Changes
+
+-   Adds prototype-scoping by default for objects and improves 404 handling for missing flows.
+
 ## 2.5.0
 
 ### Minor Changes

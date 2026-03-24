@@ -9,8 +9,12 @@ import styles from './Example.module.css'
 function Example() {
   const [name, setName, clearName] = useOverride('user.name')
   const [username, setUsername, clearUsername] = useOverride('user.username')
-  const [bio, , clearBio] = useOverride('user.profile.bio')
-  const [location, , clearLocation] = useOverride('user.profile.location')
+  const [bio, clearBio] = useOverride('user.profile.bio')
+  const [location, clearLocation] = useOverride('user.profile.location')
+  const [currentDirectory] = useOverride('user.systemInfo.currentDirectory')
+  const [currentProto] = useOverride('user.systemInfo.currentProto')
+  const [currentProtoDir] = useOverride('user.systemInfo.currentProtoDir')
+
   const { flowName, switchFlow } = useFlow()
 
   const nextFlow = (flowName === 'default') ? 'other-scene' : 'default'
@@ -45,6 +49,9 @@ function Example() {
           </pre>
           <pre className={styles.codeBlock}>
             {bio} · {location}
+          </pre>
+          <pre className={styles.codeBlock}>
+            {currentDirectory} · {currentProtoDir} · {currentProto}
           </pre>
 
           <Text as="h4" fontWeight="semibold" fontSize={1}>Switch User</Text>

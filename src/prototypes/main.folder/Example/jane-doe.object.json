@@ -6,5 +6,10 @@
   "profile": {
     "bio": "Designer & developer",
     "location": "San Francisco, CA"
+  },
+  "systemInfo": {
+    "currentDirectory": "${currentDir}",
+    "currentProto": "${currentProto}",
+    "currentProtoDir": "${currentProtoDir}"
   }
 }

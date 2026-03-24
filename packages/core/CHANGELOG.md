@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 2.4.0
+
+### Minor Changes
+
+-   Add automatic flow routing per directory
+
 ## 2.3.0
 
 ### Minor Changes

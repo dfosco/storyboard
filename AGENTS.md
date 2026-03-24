@@ -82,7 +82,7 @@ Data files use **suffix-based naming** and can live anywhere in the repo:
 | `.object.json` | Reusable data fragment | `jane-doe.object.json` |
 | `.record.json` | Parameterized collection (array with `id` per entry) | `posts.record.json` |
 
-Every name+suffix must be unique across the repo — the build fails on duplicates.
+Every name+suffix must be unique within its scope — the build fails on duplicates. Objects, flows, and records inside `src/prototypes/` are scoped to their prototype; global files (outside prototypes) share a single namespace.
 
 ---
 
@@ -105,6 +105,8 @@ Reusable JSON data files that represent entities (users, navigation, etc):
 ```
 
 Objects are standalone data fragments — they have no special keys and can be structured however you need.
+
+**Prototype scoping:** Objects inside `src/prototypes/{Proto}/` are automatically scoped to that prototype. When resolved (via `useObject`, `$ref`, or `$global`), the system tries the scoped name first (`Proto/objectName`), then falls back to global. This means duplicating a prototype folder and renaming it just works — object files inside don't conflict with the originals.
 
 ---
 
@@ -238,7 +240,7 @@ const loading = useSceneLoading()
 - `useRecord(name, param?)` — Load single record entry by URL param (defaults to `'id'`)
 - `useRecords(name)` — Load all entries from a record collection
 - `loadScene(name)` — Low-level scene loader
-- `loadObject(name)` — Low-level object loader (resolves `$ref`s)
+- `loadObject(name, scope?)` — Low-level object loader (resolves `$ref`s, optional prototype scope)
 - `loadRecord(name)` — Low-level record loader
 - `findRecord(name, id)` — Find record entry by id
 - `sceneExists(name)` — Check if a scene file exists

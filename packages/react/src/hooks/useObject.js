@@ -1,14 +1,16 @@
-import { useMemo, useSyncExternalStore } from 'react'
-import { loadObject } from '@dfosco/storyboard-core'
+import { useContext, useMemo, useSyncExternalStore } from 'react'
+import { loadObject, resolveObjectName } from '@dfosco/storyboard-core'
 import { getByPath, deepClone, setByPath } from '@dfosco/storyboard-core'
 import { getParam, getAllParams } from '@dfosco/storyboard-core'
 import { isHideMode, getShadow, getAllShadows } from '@dfosco/storyboard-core'
 import { subscribeToHash, getHashSnapshot } from '@dfosco/storyboard-core'
 import { subscribeToStorage, getStorageSnapshot } from '@dfosco/storyboard-core'
+import { StoryboardContext } from '../StoryboardContext.js'
 
 /**
  * Load an object data file directly by name, without going through a scene.
  * Supports dot-notation path access and URL hash overrides.
+ * Objects inside prototypes are automatically resolved with prototype scope.
  *
  * Hash override convention: object.{objectName}.{field}=value
  *
@@ -23,13 +25,16 @@ import { subscribeToStorage, getStorageSnapshot } from '@dfosco/storyboard-core'
  * // Override via URL hash: #object.jane-doe.name=Alice
  */
 export function useObject(objectName, path) {
+  const context = useContext(StoryboardContext)
+  const prototypeName = context?.prototypeName ?? null
   const hashString = useSyncExternalStore(subscribeToHash, getHashSnapshot)
   const storageString = useSyncExternalStore(subscribeToStorage, getStorageSnapshot)
 
   return useMemo(() => {
+    const resolvedName = resolveObjectName(prototypeName, objectName)
     let data
     try {
-      data = loadObject(objectName)
+      data = loadObject(resolvedName)
     } catch (err) {
       console.error(`[useObject] ${err.message}`)
       return undefined
@@ -39,35 +44,48 @@ export function useObject(objectName, path) {
     const readParam = hidden ? getShadow : getParam
     const readAllParams = hidden ? getAllShadows : getAllParams
 
-    // Apply overrides scoped to this object
-    const prefix = `object.${objectName}.`
+    // Apply overrides scoped to this object.
+    // Check both the resolved (scoped) prefix and the plain (unscoped) prefix
+    // so overrides work whether written with the bare or scoped name.
+    const resolvedPrefix = `object.${resolvedName}.`
+    const plainPrefix = objectName !== resolvedName ? `object.${objectName}.` : null
     const allParams = readAllParams()
-    const overrideKeys = Object.keys(allParams).filter(k => k.startsWith(prefix))
+    const overrideKeys = Object.keys(allParams).filter(k =>
+      k.startsWith(resolvedPrefix) || (plainPrefix && k.startsWith(plainPrefix))
+    )
 
     if (overrideKeys.length > 0) {
       data = deepClone(data)
       for (const key of overrideKeys) {
-        const fieldPath = key.slice(prefix.length)
+        const fieldPath = key.startsWith(resolvedPrefix)
+          ? key.slice(resolvedPrefix.length)
+          : key.slice(plainPrefix.length)
         setByPath(data, fieldPath, allParams[key])
       }
     }
 
     if (!path) return data
 
-    // Exact match for this sub-path override
-    const exactKey = `${prefix}${path}`
-    const exact = readParam(exactKey)
+    // Exact match for this sub-path override (check both prefixes)
+    const exactResolved = `${resolvedPrefix}${path}`
+    const exactPlain = plainPrefix ? `${plainPrefix}${path}` : null
+    const exact = readParam(exactResolved) ?? (exactPlain ? readParam(exactPlain) : null)
     if (exact !== null) return exact
 
     // Child overrides under the sub-path
-    const subPrefix = exactKey + '.'
-    const childKeys = overrideKeys.filter(k => k.startsWith(subPrefix))
+    const subResolved = exactResolved + '.'
+    const subPlain = exactPlain ? exactPlain + '.' : null
+    const childKeys = overrideKeys.filter(k =>
+      k.startsWith(subResolved) || (subPlain && k.startsWith(subPlain))
+    )
     const baseValue = getByPath(data, path)
 
     if (childKeys.length > 0 && baseValue !== undefined) {
       const merged = deepClone(baseValue)
       for (const key of childKeys) {
-        const relativePath = key.slice(subPrefix.length)
+        const relativePath = key.startsWith(subResolved)
+          ? key.slice(subResolved.length)
+          : key.slice(subPlain.length)
         setByPath(merged, relativePath, allParams[key])
       }
       return merged
@@ -79,5 +97,5 @@ export function useObject(objectName, path) {
     }
 
     return baseValue
-  }, [objectName, path, hashString, storageString]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [objectName, prototypeName, path, hashString, storageString]) // eslint-disable-line react-hooks/exhaustive-deps
 }

@@ -99,7 +99,7 @@ describe('storyboardDataPlugin', () => {
     expect(() => plugin.load(RESOLVED_ID)).toThrow(/Duplicate flow "dup"/)
   })
 
-  it('duplicate objects show globally-scoped hint', () => {
+  it('allows same object name in global and prototype without clash', () => {
     mkdirSync(path.join(tmpDir, 'src', 'data'), { recursive: true })
     mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Dashboard'), { recursive: true })
     writeFileSync(
@@ -112,8 +112,32 @@ describe('storyboardDataPlugin', () => {
     )
 
     const plugin = createPlugin()
-    expect(() => plugin.load(RESOLVED_ID)).toThrow(/Duplicate object "user"/)
-    expect(() => plugin.load(RESOLVED_ID)).toThrow(/globally scoped/)
+    const code = plugin.load(RESOLVED_ID)
+
+    // Both should exist without error
+    expect(code).toContain('"user"')
+    expect(code).toContain('"Dashboard/user"')
+    expect(code).toContain('"Global"')
+    expect(code).toContain('"Local"')
+  })
+
+  it('allows same object name in different prototypes without clash', () => {
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'A'), { recursive: true })
+    mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'B'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'A', 'nav.object.json'),
+      JSON.stringify({ from: 'A' }),
+    )
+    writeFileSync(
+      path.join(tmpDir, 'src', 'prototypes', 'B', 'nav.object.json'),
+      JSON.stringify({ from: 'B' }),
+    )
+
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"A/nav"')
+    expect(code).toContain('"B/nav"')
   })
 
   it('handles JSONC files (with comments)', () => {
@@ -215,7 +239,7 @@ describe('prototype scoping', () => {
     expect(code).toContain('"Global Post"')
   })
 
-  it('does NOT prefix objects inside src/prototypes/{Name}/', () => {
+  it('prefixes objects inside src/prototypes/{Name}/', () => {
     mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Dashboard'), { recursive: true })
     writeFileSync(
       path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'helpers.object.json'),
@@ -225,9 +249,8 @@ describe('prototype scoping', () => {
     const plugin = createPlugin()
     const code = plugin.load(RESOLVED_ID)
 
-    // Object should be plain "helpers", NOT "Dashboard/helpers"
-    expect(code).toContain('"helpers"')
-    expect(code).not.toContain('"Dashboard/helpers"')
+    // Object should be scoped as "Dashboard/helpers"
+    expect(code).toContain('"Dashboard/helpers"')
   })
 
   it('allows same flow name in different prototypes without clash', () => {
@@ -420,7 +443,7 @@ describe('folder grouping', () => {
     expect(code).toContain('"folder":"MyFolder"')
   })
 
-  it('does NOT prefix objects inside .folder/ directories', () => {
+  it('scopes objects inside .folder/ directories to their prototype', () => {
     mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'X.folder', 'Proto'), { recursive: true })
     writeFileSync(
       path.join(tmpDir, 'src', 'prototypes', 'X.folder', 'Proto', 'helpers.object.json'),
@@ -430,9 +453,9 @@ describe('folder grouping', () => {
     const plugin = createPlugin()
     const code = plugin.load(RESOLVED_ID)
 
-    expect(code).toContain('"helpers"')
+    // Object should be scoped to prototype, not folder
+    expect(code).toContain('"Proto/helpers"')
     expect(code).not.toContain('"X/helpers"')
-    expect(code).not.toContain('"Proto/helpers"')
   })
 
   it('scopes records inside .folder/ directories to their prototype', () => {

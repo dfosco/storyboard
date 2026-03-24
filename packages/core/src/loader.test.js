@@ -1,4 +1,4 @@
-import { init, loadFlow, listFlows, flowExists, loadScene, listScenes, sceneExists, loadRecord, findRecord, loadObject, deepMerge, resolveFlowName, resolveRecordName, listFolders, getFolderMetadata } from './loader.js'
+import { init, loadFlow, listFlows, flowExists, loadScene, listScenes, sceneExists, loadRecord, findRecord, loadObject, deepMerge, resolveFlowName, resolveRecordName, resolveObjectName, listFolders, getFolderMetadata } from './loader.js'
 
 const makeIndex = () => ({
   flows: {
@@ -380,6 +380,87 @@ describe('resolveRecordName', () => {
 
   it('returns global when scope is null', () => {
     expect(resolveRecordName(null, 'posts')).toBe('posts')
+  })
+})
+
+describe('resolveObjectName', () => {
+  beforeEach(() => {
+    init({
+      flows: {},
+      objects: {
+        'jane-doe': { name: 'Jane Global' },
+        'Dashboard/jane-doe': { name: 'Jane Dashboard' },
+        'Dashboard/helpers': { util: true },
+      },
+      records: {},
+    })
+  })
+
+  it('returns scoped name when it exists', () => {
+    expect(resolveObjectName('Dashboard', 'jane-doe')).toBe('Dashboard/jane-doe')
+    expect(resolveObjectName('Dashboard', 'helpers')).toBe('Dashboard/helpers')
+  })
+
+  it('falls back to global when scoped does not exist', () => {
+    expect(resolveObjectName('Blog', 'jane-doe')).toBe('jane-doe')
+  })
+
+  it('returns global when scope is null', () => {
+    expect(resolveObjectName(null, 'jane-doe')).toBe('jane-doe')
+  })
+
+  it('returns scoped name for error messages when neither exists', () => {
+    expect(resolveObjectName('Dashboard', 'nonexistent')).toBe('Dashboard/nonexistent')
+  })
+
+  it('returns plain name when scope is null and name does not exist', () => {
+    expect(resolveObjectName(null, 'nonexistent')).toBe('nonexistent')
+  })
+})
+
+describe('scoped object loading', () => {
+  beforeEach(() => {
+    init({
+      flows: {
+        'Dashboard/default': {
+          $global: ['nav'],
+          user: { $ref: 'jane-doe' },
+          heading: 'Dashboard',
+        },
+      },
+      objects: {
+        'jane-doe': { name: 'Jane Global' },
+        nav: { links: ['home'] },
+        'Dashboard/jane-doe': { name: 'Jane Dashboard' },
+        'Dashboard/nav': { links: ['dashboard-home', 'settings'] },
+      },
+      records: {},
+    })
+  })
+
+  it('loadObject with scope resolves scoped object', () => {
+    const obj = loadObject('jane-doe', 'Dashboard')
+    expect(obj.name).toBe('Jane Dashboard')
+  })
+
+  it('loadObject with scope falls back to global', () => {
+    const obj = loadObject('jane-doe', 'Blog')
+    expect(obj.name).toBe('Jane Global')
+  })
+
+  it('loadObject without scope uses global', () => {
+    const obj = loadObject('jane-doe')
+    expect(obj.name).toBe('Jane Global')
+  })
+
+  it('loadFlow resolves $ref with prototype scope', () => {
+    const flow = loadFlow('Dashboard/default')
+    expect(flow.user.name).toBe('Jane Dashboard')
+  })
+
+  it('loadFlow resolves $global with prototype scope', () => {
+    const flow = loadFlow('Dashboard/default')
+    expect(flow.links).toEqual(['dashboard-home', 'settings'])
   })
 })
 

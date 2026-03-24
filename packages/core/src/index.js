@@ -11,7 +11,7 @@ export { init } from './loader.js'
 // Flow, object & record loading
 export { loadFlow, listFlows, flowExists, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
 // Scoped name resolution
-export { resolveFlowName, resolveRecordName } from './loader.js'
+export { resolveFlowName, resolveRecordName, resolveObjectName } from './loader.js'
 // Prototype metadata
 export { listPrototypes, getPrototypeMetadata } from './loader.js'
 // Folder metadata

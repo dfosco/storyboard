@@ -98,27 +98,28 @@ function loadDataFile(name, type) {
  * @param {Set} seen - Tracks visited names to prevent circular refs
  * @returns {*} Resolved data
  */
-function resolveRefs(node, seen = new Set()) {
+function resolveRefs(node, seen = new Set(), scope = null) {
   if (node === null || typeof node !== 'object') return node
   if (Array.isArray(node)) {
-    return node.map((item) => resolveRefs(item, seen))
+    return node.map((item) => resolveRefs(item, seen, scope))
   }
 
   // Handle $ref replacement
   if (node.$ref && typeof node.$ref === 'string') {
     const refName = node.$ref
-    if (seen.has(refName)) {
+    const resolvedRef = scope ? resolveObjectName(scope, refName) : refName
+    if (seen.has(resolvedRef)) {
       throw new Error(`Circular $ref detected: ${refName}`)
     }
-    seen.add(refName)
-    const refData = loadDataFile(refName, 'objects')
-    return resolveRefs(refData, seen)
+    seen.add(resolvedRef)
+    const refData = loadDataFile(resolvedRef, 'objects')
+    return resolveRefs(refData, seen, scope)
   }
 
   // Recurse into object values
   const result = {}
   for (const [key, value] of Object.entries(node)) {
-    result[key] = resolveRefs(value, seen)
+    result[key] = resolveRefs(value, seen, scope)
   }
   return result
 }
@@ -163,6 +164,9 @@ export const sceneExists = flowExists
 export function loadFlow(flowName = 'default') {
   let flowData
 
+  // Extract prototype scope from the flow name (e.g. "Dashboard/default" → "Dashboard")
+  const scope = flowName.includes('/') ? flowName.split('/')[0] : null
+
   try {
     flowData = structuredClone(loadDataFile(flowName, 'flows'))
   } catch {
@@ -184,8 +188,9 @@ export function loadFlow(flowName = 'default') {
     let mergedGlobals = {}
     for (const name of globalNames) {
       try {
-        let globalData = loadDataFile(name)
-        globalData = resolveRefs(globalData)
+        const resolvedName = scope ? resolveObjectName(scope, name) : name
+        let globalData = loadDataFile(resolvedName)
+        globalData = resolveRefs(globalData, new Set(), scope)
         mergedGlobals = deepMerge(mergedGlobals, globalData)
       } catch (err) {
         console.warn(`Failed to load $global: ${name}`, err)
@@ -195,7 +200,7 @@ export function loadFlow(flowName = 'default') {
     flowData = deepMerge(mergedGlobals, flowData)
   }
 
-  flowData = resolveRefs(flowData)
+  flowData = resolveRefs(flowData, new Set(), scope)
 
   // Single clone at the boundary — resolveRefs builds new objects internally,
   // so the index data is safe. Clone here to prevent consumer mutation.
@@ -244,12 +249,13 @@ export function findRecord(recordName, id) {
  * and returns a deep clone.
  *
  * @param {string} objectName - Name of the object file (e.g., "jane-doe")
+ * @param {string|null} [scope] - Optional prototype scope for name resolution
  * @returns {object|Array} Resolved object data
  */
-export function loadObject(objectName) {
-  const data = loadDataFile(objectName, 'objects')
-  const resolved = resolveRefs(structuredClone(data))
-  return resolved
+export function loadObject(objectName, scope) {
+  const resolved = scope ? resolveObjectName(scope, objectName) : objectName
+  const data = loadDataFile(resolved, 'objects')
+  return resolveRefs(structuredClone(data), new Set(), scope)
 }
 
 /**
@@ -284,6 +290,23 @@ export function resolveRecordName(scope, name) {
     if (dataIndex.records[scoped] != null) return scoped
   }
   if (dataIndex.records[name] != null) return name
+  return scope ? `${scope}/${name}` : name
+}
+
+/**
+ * Resolve an object name within a prototype scope.
+ * Tries the scoped name first ({scope}/{name}), then falls back to the plain name.
+ *
+ * @param {string|null} scope - Prototype name (e.g. "Dashboard"), or null for global-only
+ * @param {string} name - Object name (e.g. "jane-doe")
+ * @returns {string} The resolved object name that exists in the index
+ */
+export function resolveObjectName(scope, name) {
+  if (scope) {
+    const scoped = `${scope}/${name}`
+    if (dataIndex.objects[scoped] != null) return scoped
+  }
+  if (dataIndex.objects[name] != null) return name
   return scope ? `${scope}/${name}` : name
 }
 

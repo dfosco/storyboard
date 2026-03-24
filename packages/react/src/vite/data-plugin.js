@@ -11,13 +11,13 @@ const GLOB_PATTERN = '**/*.{flow,scene,object,record,prototype,folder}.{json,jso
 
 /**
  * Extract the data name and type suffix from a file path.
- * Flows and records inside src/prototypes/{Name}/ get prefixed with the
- * prototype name (e.g. "Dashboard/default"). Objects are never prefixed.
+ * Flows, records, and objects inside src/prototypes/{Name}/ get prefixed with
+ * the prototype name (e.g. "Dashboard/default", "Dashboard/helpers").
  * Directories ending in .folder/ are skipped when extracting prototype scope.
  *
  * e.g. "src/data/default.flow.json"                → { name: "default",           suffix: "flow" }
  *      "src/prototypes/Dashboard/default.flow.json" → { name: "Dashboard/default", suffix: "flow" }
- *      "src/prototypes/Dashboard/helpers.object.json"→ { name: "helpers",           suffix: "object" }
+ *      "src/prototypes/Dashboard/helpers.object.json"→ { name: "Dashboard/helpers", suffix: "object" }
  *      "src/prototypes/X.folder/Dashboard/default.flow.json" → { name: "Dashboard/default", suffix: "flow", folder: "X" }
  */
 function parseDataFile(filePath) {
@@ -57,13 +57,11 @@ function parseDataFile(filePath) {
     return { name, suffix, ext: match[3], folder: folderName }
   }
 
-  // Scope flows and records inside src/prototypes/{Name}/ with a prefix
+  // Scope flows, records, and objects inside src/prototypes/{Name}/ with a prefix
   // (skip .folder/ segments when determining prototype name)
-  if (suffix !== 'object') {
-    const protoMatch = normalized.match(/(?:^|\/)src\/prototypes\/(?:[^/]+\.folder\/)?([^/]+)\//)
-    if (protoMatch) {
-      name = `${protoMatch[1]}/${name}`
-    }
+  const protoMatch = normalized.match(/(?:^|\/)src\/prototypes\/(?:[^/]+\.folder\/)?([^/]+)\//)
+  if (protoMatch) {
+    name = `${protoMatch[1]}/${name}`
   }
 
   // Infer route for prototype-scoped flows from their file path.
@@ -152,12 +150,9 @@ function buildIndex(root) {
     const absPath = path.resolve(root, relPath)
 
     if (seen[key]) {
-      const hint = parsed.suffix === 'object'
-        ? '  Objects are globally scoped — even inside src/prototypes/ they share a single namespace.\n' +
-          '  Rename one of the files to avoid the collision.'
-        : parsed.suffix === 'folder'
+      const hint = parsed.suffix === 'folder'
           ? '  Folder names must be unique across the project.'
-          : '  Flows and records are scoped to their prototype directory.\n' +
+          : '  Flows, records, and objects are scoped to their prototype directory.\n' +
             '  If both files are global (outside src/prototypes/), rename one to avoid the collision.'
 
       throw new Error(

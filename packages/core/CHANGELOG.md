@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 2.5.0
+
+### Minor Changes
+
+-   Merged flow-route-inference to fix v 2.4.0
+
 ## 2.4.0
 
 ### Minor Changes

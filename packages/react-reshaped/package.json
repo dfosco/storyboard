@@ -1,6 +1,6 @@
 {
   "name": "@dfosco/storyboard-react-reshaped",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -12,7 +12,7 @@
     "src"
   ],
   "dependencies": {
-    "@dfosco/storyboard-react": "2.4.0"
+    "@dfosco/storyboard-react": "2.5.0"
   },
   "peerDependencies": {
     "reshaped": ">=3",

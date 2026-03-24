@@ -10,6 +10,7 @@
 
 <script lang="ts">
   import { buildPrototypeIndex } from '../../viewfinder.js'
+  import { getLocal, setLocal } from '../../localStorage.js'
   import Octicon from './Octicon.svelte'
 
   interface Props {
@@ -77,8 +78,16 @@
   const sortedProtos = $derived(prototypeIndex.sorted?.[sortBy]?.prototypes ?? ungroupedProtos)
   const sortedFolders = $derived(prototypeIndex.sorted?.[sortBy]?.folders ?? folders)
 
-  // Expanded state — all prototypes and folders start expanded
-  let expanded: Record<string, boolean> = $state({})
+  // Expanded state — persisted in localStorage
+  const EXPANDED_KEY = 'viewfinder.expanded'
+
+  function loadExpanded(): Record<string, boolean> {
+    const raw = getLocal(EXPANDED_KEY)
+    if (!raw) return {}
+    try { return JSON.parse(raw) } catch { return {} }
+  }
+
+  let expanded: Record<string, boolean> = $state(loadExpanded())
 
   function isExpanded(dirName: string): boolean {
     return expanded[dirName] ?? true
@@ -86,6 +95,7 @@
 
   function toggle(dirName: string) {
     expanded[dirName] = !isExpanded(dirName)
+    setLocal(EXPANDED_KEY, JSON.stringify(expanded))
   }
 
   function protoRoute(dirName: string): string {
@@ -192,7 +202,7 @@
           class:sortButtonActive={sortBy === 'updated'}
           onclick={() => sortBy = 'updated'}
         >
-          <Octicon name="clock" size={14} offsetY={-1} />
+          <Octicon name="clock" size={14} color="var(--fgColor-muted)" />
           Last updated
         </button>
         <button
@@ -200,7 +210,7 @@
           class:sortButtonActive={sortBy === 'title'}
           onclick={() => sortBy = 'title'}
         >
-          <Octicon name="sort-asc" size={14} offsetY={-1} />
+          <Octicon name="sort-asc" size={14} color="var(--fgColor-muted)" />
           Title A–Z
         </button>
       </div>
@@ -458,7 +468,7 @@
     display: inline-flex;
     align-items: center;
     border-radius: 9999px;
-    gap: 4px;
+    gap: 6px;
     padding: 6px 10px;
     font-size: 12px;
     font-family: inherit;

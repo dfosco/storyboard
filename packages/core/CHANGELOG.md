@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 2.7.1
+
+### Patch Changes
+
+-   Change accordion defaults to closed
+
 ## 2.7.0
 
 ### Minor Changes

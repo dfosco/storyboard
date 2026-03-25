@@ -90,7 +90,7 @@
   let expanded: Record<string, boolean> = $state(loadExpanded())
 
   function isExpanded(dirName: string): boolean {
-    return expanded[dirName] ?? true
+    return expanded[dirName] ?? false
   }
 
   function toggle(dirName: string) {

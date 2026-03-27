@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 2.8.0
+
+### Minor Changes
+
+-   Fix routing for viewport prototypes in deploy branches
+
 ## 2.7.1
 
 ### Patch Changes

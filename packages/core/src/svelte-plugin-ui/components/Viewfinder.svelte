@@ -98,8 +98,14 @@
     setLocal(EXPANDED_KEY, JSON.stringify(expanded))
   }
 
+  // Prefix a root-relative path with the deploy base path (handles branch deploys)
+  function withBase(path: string): string {
+    const base = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath
+    return `${base}${path.startsWith('/') ? path : `/${path}`}`
+  }
+
   function protoRoute(dirName: string): string {
-    return `/${dirName}`
+    return withBase(`/${dirName}`)
   }
 
   function formatName(name: string): string {
@@ -240,7 +246,7 @@
         <section class="protoGroup">
           {#if proto.hideFlows && proto.flows.length === 1}
             <!-- Single flow, hidden — navigates directly to the flow -->
-            <a class="listItem" href={proto.flows[0].route}>
+            <a class="listItem" href={withBase(proto.flows[0].route)}>
               <div class="cardBody">
                 <p class="protoName" class:otherflows={proto.dirName === '__global__'}>
                   {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
@@ -344,7 +350,7 @@
           {#if !(proto.hideFlows && proto.flows.length === 1) && isExpanded(proto.dirName) && proto.flows.length > 0}
             <div class="flowList">
               {#each proto.flows as flow (flow.key)}
-                <a href={flow.route} class="listItem flowItem">
+                <a href={withBase(flow.route)} class="listItem flowItem">
                   {#if showThumbnails}
                     <div class="thumbnail">
                       {@html placeholderSvg(flow.key)}

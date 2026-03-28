@@ -2,7 +2,7 @@
   "default_branch": "main",
   "username": "dfosco",
   "collaboration": true,
-  "auto_commit": true,
+  "auto_commit": false,
   "tasks_as_issues": false,
   "view": {
     "hide_goal_statuses": [],

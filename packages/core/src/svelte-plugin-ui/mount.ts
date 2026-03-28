@@ -34,7 +34,7 @@ export function injectStyles(): void {
   const link = document.createElement('link')
   link.id = STYLE_ID
   link.rel = 'stylesheet'
-  link.href = new URL('./styles/base.css', import.meta.url).href
+  link.href = new URL('../styles/tailwind.css', import.meta.url).href
   document.head.appendChild(link)
   stylesInjected = true
 }

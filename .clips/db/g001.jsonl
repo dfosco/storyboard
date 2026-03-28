@@ -39,9 +39,12 @@
 {"event":"task_status_changed","goal_id":"g001","task_id":"t19","timestamp":"2026-03-28T02:41:29.648Z","status":"closed"}
 {"event":"task_status_changed","goal_id":"g001","task_id":"t20","timestamp":"2026-03-28T02:41:32.100Z","status":"closed"}
 {"event":"status_changed","goal_id":"g001","timestamp":"2026-03-28T02:41:39.884Z","status":"closed"}
+<<<<<<< HEAD
 {"event":"task_status_changed","goal_id":"g001","task_id":"t01","timestamp":"2026-03-28T02:45:13.308Z","status":"closed"}
 {"event":"task_status_changed","goal_id":"g001","task_id":"t02","timestamp":"2026-03-28T02:45:18.716Z","status":"closed"}
 {"event":"task_status_changed","goal_id":"g001","task_id":"t03","timestamp":"2026-03-28T02:45:24.836Z","status":"closed"}
 {"event":"task_status_changed","goal_id":"g001","task_id":"t04","timestamp":"2026-03-28T02:45:30.597Z","status":"closed"}
 {"event":"task_status_changed","goal_id":"g001","task_id":"t05","timestamp":"2026-03-28T02:45:36.301Z","status":"closed"}
 {"event":"task_status_changed","goal_id":"g001","task_id":"t06","timestamp":"2026-03-28T02:45:42.287Z","status":"closed"}
+=======
+>>>>>>> 193c963 (feat: migrate Svelte UI to shadcn-svelte + Tailwind CSS v4)

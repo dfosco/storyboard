@@ -33,27 +33,22 @@
   onMount(async () => {
     window.addEventListener('keydown', handleKeydown)
 
-    // Detect workshop features from server plugin injection
+    // Load workshop features directly from the registry
     try {
-      const script = document.querySelector('script[data-workshop-features]') as HTMLElement | null
-      if (script) {
-        const enabledConfig = JSON.parse(script.dataset.workshopFeatures!)
-        const { features } = await import('./workshop/features/registry.js')
+      const { features } = await import('./workshop/features/registry.js')
 
-        workshopFeatures = Object.entries(features)
-          .filter(([name]) => enabledConfig[name] !== false)
-          .filter(([, f]: any) => f.label && f.overlayId && f.overlay)
-          .map(([, f]: any) => ({
-            name: f.name,
-            label: f.label,
-            overlayId: f.overlayId,
-            overlay: f.overlay,
-          }))
+      workshopFeatures = Object.entries(features)
+        .filter(([, f]: any) => f.label && f.overlayId && f.overlay)
+        .map(([, f]: any) => ({
+          name: f.name,
+          label: f.label,
+          overlayId: f.overlayId,
+          overlay: f.overlay,
+        }))
 
-        if (workshopFeatures.length > 0) {
-          const mod = await import('./WorkshopButton.svelte')
-          WorkshopButton = mod.default
-        }
+      if (workshopFeatures.length > 0) {
+        const mod = await import('./WorkshopButton.svelte')
+        WorkshopButton = mod.default
       }
     } catch {}
   })

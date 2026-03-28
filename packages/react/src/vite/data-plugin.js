@@ -309,9 +309,9 @@ function readModesConfig(root) {
 
   // Try local workspace path first (monorepo), then node_modules
   const candidates = [
-    path.resolve(root, 'packages/core/configs/core-ui.config.json'),
+    path.resolve(root, 'packages/core/core-ui.config.json'),
     path.resolve(root, 'packages/core/configs/modes.config.json'),
-    path.resolve(root, 'node_modules/@dfosco/storyboard-core/configs/core-ui.config.json'),
+    path.resolve(root, 'node_modules/@dfosco/storyboard-core/core-ui.config.json'),
     path.resolve(root, 'node_modules/@dfosco/storyboard-core/configs/modes.config.json'),
   ]
 

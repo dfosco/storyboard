@@ -11,15 +11,14 @@
   "files": [
     "src",
     "dist",
-    "configs",
-    "configs/core-ui.config.json"
+    "core-ui.config.json"
   ],
   "scripts": {
     "build:css": "tailwindcss -i src/styles/tailwind.css -o dist/tailwind.css --minify"
   },
   "exports": {
     ".": "./src/index.js",
-    "./core-ui.config.json": "./configs/core-ui.config.json",
+    "./core-ui.config.json": "./core-ui.config.json",
     "./vite/server": "./src/vite/server-plugin.js",
     "./comments": "./src/comments/index.js",
     "./comments/ui/comments.css": "./src/comments/ui/comment-layout.css",

@@ -14,7 +14,7 @@
   import CommandMenu from './CommandMenu.svelte'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
   import { initCommandActions, registerCommandAction, setDynamicActions } from './commandActions.js'
-  import coreUIConfig from '../configs/core-ui.config.json'
+  import coreUIConfig from '../core-ui.config.json'
 
   interface Props { basePath?: string }
   let { basePath = '/' }: Props = $props()

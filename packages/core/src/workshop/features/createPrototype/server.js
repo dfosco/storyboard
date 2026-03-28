@@ -95,6 +95,21 @@ function findComponentFile(dir) {
 }
 
 /**
+ * Generate a blank React component (no template/recipe).
+ */
+function generateBlankIndexJsx(componentName, title) {
+  return `export default function ${componentName}() {
+  return (
+    <div>
+      <h1>${title}</h1>
+      <p>Start building your prototype here.</p>
+    </div>
+  )
+}
+`
+}
+
+/**
  * Generate the index.jsx content for a new prototype.
  *
  * @param {object} partialEntry - Config entry { type, name }
@@ -193,29 +208,38 @@ export function createPrototypesHandler(ctx) {
       const componentName = toPascalCase(kebab)
       const title = customTitle || humanize(kebab)
 
-      // Look up recipe in config
+      // Look up recipe in config (optional — blank prototype if none)
       const partialEntry = partialName
         ? partials.find((r) => r.name === partialName)
-        : partials[0]
+        : null
 
-      if (!partialEntry) {
+      if (partialName && !partialEntry) {
         const validNames = partials.map((r) => r.name).join(', ')
         sendJson(res, 400, { error: `Unknown recipe "${partialName}". Available: ${validNames}` })
         return
       }
 
-      // Discover the component file from the recipe/template directory
-      const typeDir = DIR_MAP[partialEntry.directory]
-      if (!typeDir) {
-        sendJson(res, 400, { error: `Invalid directory "${partialEntry.directory}". Must be "recipe" or "template".` })
-        return
-      }
+      let content
 
-      const partialDir = path.join(root, 'src', typeDir, partialEntry.name)
-      const componentFile = findComponentFile(partialDir)
-      if (!componentFile) {
-        sendJson(res, 400, { error: `No .jsx or .tsx file found in src/${typeDir}/${partialEntry.name}/` })
-        return
+      if (!partialEntry) {
+        // Blank prototype — no template
+        content = generateBlankIndexJsx(componentName, title)
+      } else {
+        // Discover the component file from the recipe/template directory
+        const typeDir = DIR_MAP[partialEntry.directory]
+        if (!typeDir) {
+          sendJson(res, 400, { error: `Invalid directory "${partialEntry.directory}". Must be "recipe" or "template".` })
+          return
+        }
+
+        const partialDir = path.join(root, 'src', typeDir, partialEntry.name)
+        const componentFile = findComponentFile(partialDir)
+        if (!componentFile) {
+          sendJson(res, 400, { error: `No .jsx or .tsx file found in src/${typeDir}/${partialEntry.name}/` })
+          return
+        }
+
+        content = generateIndexJsx({ partialEntry, componentFile, componentName, title })
       }
 
       // Determine target directory
@@ -248,8 +272,7 @@ export function createPrototypesHandler(ctx) {
         generatePrototypeJson({ title, author, description, partialEntry }),
       )
 
-      // Write index.jsx (generated from discovered component)
-      const content = generateIndexJsx({ partialEntry, componentFile, componentName, title })
+      // Write index.jsx
       fs.writeFileSync(path.join(targetDir, 'index.jsx'), content, 'utf-8')
 
       const relDir = targetDir.replace(root + '/', '')

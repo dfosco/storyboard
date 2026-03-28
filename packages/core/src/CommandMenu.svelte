@@ -55,19 +55,15 @@
     menuOpen = false
   }
 
-  function handleToggle(action: any) {
-    executeAction(action.id)
-    // Menu stays open — onSelect prevented in template
-  }
-
-  function handleSubmenuChildExecute(child: any) {
-    if (child.execute) child.execute()
-    // Menu stays open for multi-toggle
-    actionsVersion++
-  }
-
-  function preventClose(e: Event) {
+  function handleToggleSelect(e: Event, action: any) {
     e.preventDefault()
+    executeAction(action.id)
+  }
+
+  function handleSubmenuChildSelect(e: Event, child: any) {
+    e.preventDefault()
+    if (child.execute) child.execute()
+    actionsVersion++
   }
 
   function refreshOnOpen(open: boolean) {
@@ -96,8 +92,7 @@
           {#if action.type === 'toggle'}
             <DropdownMenu.CheckboxItem
               checked={action.active}
-              onCheckedChange={() => handleToggle(action)}
-              onSelect={preventClose}
+              onSelect={(e) => handleToggleSelect(e, action)}
             >
               {action.resolvedLabel}
             </DropdownMenu.CheckboxItem>
@@ -112,8 +107,7 @@
                   {#if child.type === 'toggle'}
                     <DropdownMenu.CheckboxItem
                       checked={child.active}
-                      onCheckedChange={() => handleSubmenuChildExecute(child)}
-                      onSelect={preventClose}
+                      onSelect={(e) => handleSubmenuChildSelect(e, child)}
                     >
                       {child.label}
                     </DropdownMenu.CheckboxItem>

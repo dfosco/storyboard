@@ -1,10 +1,10 @@
 /**
- * Storyboard DevTools — a vanilla JS floating toolbar for development.
+ * Storyboard Command Menu — a core floating toolbar for development.
  *
  * Framework-agnostic: mounts itself to the DOM, no React/Vue/etc. needed.
  *
  * Features:
- *  - Floating beaker button (bottom-right) that opens a menu
+ *  - Floating ⌘ button (bottom-right) that opens a command menu
  *  - "Show flow info" — overlay panel with resolved scene JSON
  *  - "Reset all params" — clears all URL hash session params
  *  - Cmd+. (Mac) / Ctrl+. (other) toggles visibility
@@ -17,10 +17,9 @@ import { loadFlow } from './loader.js'
 import { isCommentsEnabled } from './comments/config.js'
 import { isHideMode, activateHideMode, deactivateHideMode } from './hideMode.js'
 import { getAllFlags, toggleFlag, getFlagKeys } from './featureFlags.js'
-import { isPluginEnabled, initPlugins } from './plugins.js'
 
 const STYLES = `
-.sb-devtools-wrapper {
+.sb-command-wrapper {
   position: fixed;
   bottom: 24px;
   right: 24px;
@@ -28,38 +27,43 @@ const STYLES = `
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
-.sb-devtools-trigger {
+.sb-command-trigger {
   display: flex;
   align-items: center;
-  padding: 12px;
-  background-color: #161b22;
-  color: #8b949e;
-  border: 1px solid #30363d;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  font-weight: 500;
+  background-color: var(--color-popover, #161b22);
+  color: var(--color-muted-foreground, #8b949e);
+  border: 1px solid var(--color-border, #30363d);
   border-radius: 50%;
   cursor: pointer;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   transition: opacity 150ms ease, transform 150ms ease;
   user-select: none;
+  line-height: 1;
 }
-.sb-devtools-trigger:hover { transform: scale(1.05); }
-.sb-devtools-trigger:active { transform: scale(0.97); }
-.sb-devtools-trigger svg { width: 16px; height: 16px; fill: currentColor; }
+.sb-command-trigger:hover { transform: scale(1.05); }
+.sb-command-trigger:active { transform: scale(0.97); }
 
-.sb-devtools-menu {
+.sb-command-menu {
   position: absolute;
   bottom: 56px;
   right: 0;
   min-width: 200px;
-  background-color: #161b22;
-  border: 1px solid #30363d;
+  background-color: var(--color-popover, #161b22);
+  color: var(--color-popover-foreground, #c9d1d9);
+  border: 1px solid var(--color-border, #30363d);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   overflow: hidden;
   display: none;
 }
-.sb-devtools-menu.open { display: block; }
+.sb-command-menu.open { display: block; }
 
-.sb-devtools-menu-item {
+.sb-command-menu-item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -67,23 +71,23 @@ const STYLES = `
   padding: 8px 16px;
   background: none;
   border: none;
-  color: #c9d1d9;
+  color: var(--color-popover-foreground, #c9d1d9);
   font-size: 14px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: inherit;
   cursor: pointer;
   text-align: left;
 }
-.sb-devtools-menu-item:hover { background-color: #21262d; }
-.sb-devtools-menu-item svg { width: 16px; height: 16px; fill: currentColor; flex-shrink: 0; }
+.sb-command-menu-item:hover { background-color: var(--color-accent, #21262d); }
+.sb-command-menu-item svg { width: 16px; height: 16px; fill: currentColor; flex-shrink: 0; }
 
-.sb-devtools-hint {
+.sb-command-hint {
   padding: 6px 16px 8px;
   font-size: 12px;
-  color: #484f58;
+  color: var(--color-muted-foreground, #484f58);
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 }
 
-.sb-devtools-overlay {
+.sb-command-overlay {
   position: fixed;
   inset: 0;
   z-index: 9998;
@@ -93,38 +97,38 @@ const STYLES = `
   padding: 16px;
   padding-bottom: 80px;
 }
-.sb-devtools-backdrop {
+.sb-command-backdrop {
   position: fixed;
   inset: 0;
   background: transparent;
 }
-.sb-devtools-panel {
+.sb-command-panel {
   position: relative;
   width: 100%;
   max-width: 640px;
   max-height: 60vh;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  background-color: #0d1117;
-  border: 1px solid #30363d;
+  font-family: inherit;
+  background-color: var(--color-background, #0d1117);
+  border: 1px solid var(--color-border, #30363d);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
-.sb-devtools-panel-header {
+.sb-command-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid #21262d;
+  border-bottom: 1px solid var(--color-border, #21262d);
 }
-.sb-devtools-panel-title {
+.sb-command-panel-title {
   font-size: 14px;
   font-weight: 600;
-  color: #c9d1d9;
+  color: var(--color-foreground, #c9d1d9);
 }
-.sb-devtools-panel-close {
+.sb-command-panel-close {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -133,44 +137,43 @@ const STYLES = `
   background: none;
   border: none;
   border-radius: 6px;
-  color: #8b949e;
+  color: var(--color-muted-foreground, #8b949e);
   cursor: pointer;
 }
-.sb-devtools-panel-close:hover { background-color: #21262d; color: #c9d1d9; }
-.sb-devtools-panel-close svg { width: 16px; height: 16px; fill: currentColor; }
-.sb-devtools-panel-body {
+.sb-command-panel-close:hover { background-color: var(--color-accent, #21262d); color: var(--color-foreground, #c9d1d9); }
+.sb-command-panel-close svg { width: 16px; height: 16px; fill: currentColor; }
+.sb-command-panel-body {
   overflow: auto;
   padding: 16px;
 }
-.sb-devtools-code {
+.sb-command-code {
   padding: 0;
   margin: 0;
   background: none;
   font-size: 13px;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
   line-height: 1.5;
-  color: #c9d1d9;
+  color: var(--color-foreground, #c9d1d9);
   white-space: pre-wrap;
   word-break: break-word;
 }
-.sb-devtools-error { color: #f85149; }
-.sb-devtools-separator {
+.sb-command-error { color: var(--color-destructive, #f85149); }
+.sb-command-separator {
   height: 1px;
-  background-color: #21262d;
+  background-color: var(--color-border, #21262d);
   margin: 4px 0;
 }
-.sb-devtools-group-header {
+.sb-command-group-header {
   padding: 6px 16px 2px;
   font-size: 12px;
   font-weight: 600;
-  color: #8b949e;
+  color: var(--color-muted-foreground, #8b949e);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 `
 
 // SVG icons (inline to avoid external deps)
-const BEAKER_ICON = '<svg viewBox="0 0 16 16"><path d="M5 5.782V2.5h-.25a.75.75 0 010-1.5h6.5a.75.75 0 010 1.5H11v3.282l3.666 5.86C15.619 13.04 14.552 15 12.46 15H3.54c-2.092 0-3.159-1.96-2.206-3.358zM6.5 2.5v3.782a.75.75 0 01-.107.384L3.2 12.5h9.6l-3.193-5.834A.75.75 0 019.5 6.282V2.5z"/></svg>'
 const INFO_ICON = '<svg viewBox="0 0 16 16"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></svg>'
 const SYNC_ICON = '<svg viewBox="0 0 16 16"><path d="M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z"/></svg>'
 const VIEWFINDER_ICON = '<svg viewBox="0 0 16 16"><path d="M8.5 1.75a.75.75 0 0 0-1.5 0V3H1.75a.75.75 0 0 0 0 1.5H3v6H1.75a.75.75 0 0 0 0 1.5H7v1.25a.75.75 0 0 0 1.5 0V12h5.25a.75.75 0 0 0 0-1.5H12v-6h1.75a.75.75 0 0 0 0-1.5H8.5Zm2 8.75h-5a.25.25 0 0 1-.25-.25v-4.5A.25.25 0 0 1 5.5 5.5h5a.25.25 0 0 1 .25.25v4.5a.25.25 0 0 1-.25.25Z"/></svg>'
@@ -186,26 +189,19 @@ function getFlowName() {
 }
 
 /**
- * Mount the Storyboard DevTools to the DOM.
+ * Mount the Storyboard Command Menu to the DOM.
  * Call once at app startup. Safe to call multiple times (no-ops after first).
  *
  * @param {object} [options]
  * @param {HTMLElement} [options.container=document.body] - Where to mount
- * @param {Record<string, boolean>} [options.plugins] - Plugin config from storyboard.config.json
+ * @param {string} [options.basePath='/'] - Base URL path
  */
 export function mountDevTools(options = {}) {
-  // Allow callers to pass plugins config directly (avoids timing issues
-  // where mountDevTools runs before the Vite virtual module calls initPlugins)
-  if (options.plugins) initPlugins(options.plugins)
-
-  // Skip when devtools plugin is disabled via storyboard.config.json
-  if (!isPluginEnabled('devtools')) return
-
   const container = options.container || document.body
   const basePath = options.basePath || '/'
 
   // Prevent double-mount
-  if (container.querySelector('.sb-devtools-wrapper')) return
+  if (container.querySelector('.sb-command-wrapper')) return
 
   // Inject styles
   const styleEl = document.createElement('style')
@@ -218,32 +214,32 @@ export function mountDevTools(options = {}) {
 
   // Build DOM
   const wrapper = document.createElement('div')
-  wrapper.className = 'sb-devtools-wrapper'
+  wrapper.className = 'sb-command-wrapper'
 
-  // Trigger button
+  // Trigger button — ⌘ character
   const trigger = document.createElement('button')
-  trigger.className = 'sb-devtools-trigger'
-  trigger.setAttribute('aria-label', 'Storyboard DevTools')
-  trigger.innerHTML = BEAKER_ICON
+  trigger.className = 'sb-command-trigger'
+  trigger.setAttribute('aria-label', 'Command Menu')
+  trigger.textContent = '\u2318'
 
   // Dropdown menu
   const menu = document.createElement('div')
-  menu.className = 'sb-devtools-menu'
+  menu.className = 'sb-command-menu'
 
   const viewfinderBtn = document.createElement('button')
-  viewfinderBtn.className = 'sb-devtools-menu-item'
+  viewfinderBtn.className = 'sb-command-menu-item'
   viewfinderBtn.innerHTML = `${VIEWFINDER_ICON} Viewfinder`
 
   const showInfoBtn = document.createElement('button')
-  showInfoBtn.className = 'sb-devtools-menu-item'
+  showInfoBtn.className = 'sb-command-menu-item'
   showInfoBtn.innerHTML = `${INFO_ICON} Show flow info`
 
   const resetBtn = document.createElement('button')
-  resetBtn.className = 'sb-devtools-menu-item'
+  resetBtn.className = 'sb-command-menu-item'
   resetBtn.innerHTML = `${SYNC_ICON} Reset all params`
 
   const hideModeBtn = document.createElement('button')
-  hideModeBtn.className = 'sb-devtools-menu-item'
+  hideModeBtn.className = 'sb-command-menu-item'
   function updateHideModeBtn() {
     const active = isHideMode()
     hideModeBtn.innerHTML = `${active ? EYE_ICON : EYE_CLOSED_ICON} ${active ? 'Show mode' : 'Hide mode'}`
@@ -251,29 +247,27 @@ export function mountDevTools(options = {}) {
   updateHideModeBtn()
 
   const hint = document.createElement('div')
-  hint.className = 'sb-devtools-hint'
-  hint.innerHTML = 'Press <code>⌘ + .</code> to hide'
+  hint.className = 'sb-command-hint'
+  hint.innerHTML = 'Press <code>\u2318 + .</code> to hide'
 
-  // Feature flags entry (opens a dedicated panel)
+  // Feature flags entry
   const featureFlagsBtn = document.createElement('button')
-  featureFlagsBtn.className = 'sb-devtools-menu-item'
+  featureFlagsBtn.className = 'sb-command-menu-item'
   featureFlagsBtn.innerHTML = `${ZAP_ICON} Feature Flags`
   featureFlagsBtn.addEventListener('click', openFlagsPanel)
 
-  // Comments menu items (injected dynamically if comments are enabled)
+  // Comments menu items (injected dynamically)
   function refreshCommentMenuItems() {
-    // Remove old comment items
     menu.querySelectorAll('[data-sb-comment-menu-item]').forEach((el) => el.remove())
 
     if (!isCommentsEnabled()) return
 
-    // Lazy-import to avoid loading comments code when not needed
     import('./comments/ui/CommentOverlay.js').then(({ getCommentsMenuItems }) => {
       const items = getCommentsMenuItems()
       const insertBefore = hint
       for (const item of items) {
         const btn = document.createElement('button')
-        btn.className = 'sb-devtools-menu-item'
+        btn.className = 'sb-command-menu-item'
         btn.setAttribute('data-sb-comment-menu-item', '')
         btn.innerHTML = `<span style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;">${item.icon}</span> ${item.label}`
         btn.addEventListener('click', () => {
@@ -294,7 +288,7 @@ export function mountDevTools(options = {}) {
     menu.appendChild(hideModeBtn)
     if (getFlagKeys().length > 0) {
       const sep = document.createElement('div')
-      sep.className = 'sb-devtools-separator'
+      sep.className = 'sb-command-separator'
       menu.appendChild(sep)
       menu.appendChild(featureFlagsBtn)
     }
@@ -308,13 +302,12 @@ export function mountDevTools(options = {}) {
     updateHideModeBtn()
   })
 
-  // Build initial (closed) menu content so tests and static DOM inspection work.
   renderMainMenu()
   wrapper.appendChild(menu)
   wrapper.appendChild(trigger)
   container.appendChild(wrapper)
 
-  // Overlays (created lazily)
+  // Overlays
   let overlay = null
   let flagsOverlay = null
 
@@ -331,40 +324,40 @@ export function mountDevTools(options = {}) {
     closeFlagsPanel()
 
     flagsOverlay = document.createElement('div')
-    flagsOverlay.className = 'sb-devtools-overlay'
+    flagsOverlay.className = 'sb-command-overlay'
 
     const backdrop = document.createElement('div')
-    backdrop.className = 'sb-devtools-backdrop'
+    backdrop.className = 'sb-command-backdrop'
     backdrop.addEventListener('click', closeFlagsPanel)
 
     const panel = document.createElement('div')
-    panel.className = 'sb-devtools-panel'
+    panel.className = 'sb-command-panel'
 
     const header = document.createElement('div')
-    header.className = 'sb-devtools-panel-header'
-    header.innerHTML = '<span class="sb-devtools-panel-title">Feature Flags</span>'
+    header.className = 'sb-command-panel-header'
+    header.innerHTML = '<span class="sb-command-panel-title">Feature Flags</span>'
 
     const closeBtn = document.createElement('button')
-    closeBtn.className = 'sb-devtools-panel-close'
+    closeBtn.className = 'sb-command-panel-close'
     closeBtn.setAttribute('aria-label', 'Close feature flags panel')
     closeBtn.innerHTML = X_ICON
     closeBtn.addEventListener('click', closeFlagsPanel)
     header.appendChild(closeBtn)
 
     const body = document.createElement('div')
-    body.className = 'sb-devtools-panel-body'
+    body.className = 'sb-command-panel-body'
 
     function renderFlagItems() {
       body.innerHTML = ''
       const keys = getFlagKeys()
       if (keys.length === 0) {
-        body.innerHTML = '<span class="sb-devtools-hint">No feature flags are configured.</span>'
+        body.innerHTML = '<span class="sb-command-hint">No feature flags are configured.</span>'
         return
       }
       const flags = getAllFlags()
       for (const key of keys) {
         const btn = document.createElement('button')
-        btn.className = 'sb-devtools-menu-item'
+        btn.className = 'sb-command-menu-item'
         const icon = flags[key].current
           ? `<span style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;">${CHECK_ICON}</span>`
           : '<span style="width:16px;height:16px;"></span>'
@@ -402,34 +395,34 @@ export function mountDevTools(options = {}) {
     }
 
     overlay = document.createElement('div')
-    overlay.className = 'sb-devtools-overlay'
+    overlay.className = 'sb-command-overlay'
 
     const backdrop = document.createElement('div')
-    backdrop.className = 'sb-devtools-backdrop'
+    backdrop.className = 'sb-command-backdrop'
     backdrop.addEventListener('click', closePanel)
 
     const panel = document.createElement('div')
-    panel.className = 'sb-devtools-panel'
+    panel.className = 'sb-command-panel'
 
     const header = document.createElement('div')
-    header.className = 'sb-devtools-panel-header'
-    header.innerHTML = `<span class="sb-devtools-panel-title">Flow: ${sceneName}</span>`
+    header.className = 'sb-command-panel-header'
+    header.innerHTML = `<span class="sb-command-panel-title">Flow: ${sceneName}</span>`
 
     const closeBtn = document.createElement('button')
-    closeBtn.className = 'sb-devtools-panel-close'
+    closeBtn.className = 'sb-command-panel-close'
     closeBtn.setAttribute('aria-label', 'Close panel')
     closeBtn.innerHTML = X_ICON
     closeBtn.addEventListener('click', closePanel)
     header.appendChild(closeBtn)
 
     const body = document.createElement('div')
-    body.className = 'sb-devtools-panel-body'
+    body.className = 'sb-command-panel-body'
 
     if (error) {
-      body.innerHTML = `<span class="sb-devtools-error">${error}</span>`
+      body.innerHTML = `<span class="sb-command-error">${error}</span>`
     } else {
       const pre = document.createElement('pre')
-      pre.className = 'sb-devtools-code'
+      pre.className = 'sb-command-code'
       pre.textContent = sceneJson
       body.appendChild(pre)
     }
@@ -480,7 +473,7 @@ export function mountDevTools(options = {}) {
     menu.classList.remove('open')
   })
 
-  // Close menu when clicking outside — reset to main view
+  // Close menu when clicking outside
   document.addEventListener('click', (e) => {
     if (menuOpen && !wrapper.contains(e.target)) {
       menuOpen = false

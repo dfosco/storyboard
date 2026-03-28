@@ -5,28 +5,24 @@ vi.mock('./loader.js', () => ({
 }))
 
 import { mountDevTools } from './devtools.js'
-import { initPlugins } from './plugins.js'
 
 afterEach(() => {
-  // Clean up any devtools DOM nodes between tests
   document.body.innerHTML = ''
   document.head.querySelectorAll('style').forEach((el) => el.remove())
-  // Reset plugin config to default (enabled)
-  initPlugins({})
 })
 
 describe('mountDevTools', () => {
-  it('creates a wrapper element with class sb-devtools-wrapper', () => {
+  it('creates a wrapper element with class sb-command-wrapper', () => {
     mountDevTools()
 
-    const wrapper = document.body.querySelector('.sb-devtools-wrapper')
+    const wrapper = document.body.querySelector('.sb-command-wrapper')
     expect(wrapper).not.toBeNull()
   })
 
   it('appends to document.body by default', () => {
     mountDevTools()
 
-    expect(document.body.querySelector('.sb-devtools-wrapper')).toBeInTheDocument()
+    expect(document.body.querySelector('.sb-command-wrapper')).toBeInTheDocument()
   })
 
   it('appends to a custom container when options.container is provided', () => {
@@ -35,10 +31,10 @@ describe('mountDevTools', () => {
 
     mountDevTools({ container })
 
-    expect(container.querySelector('.sb-devtools-wrapper')).not.toBeNull()
+    expect(container.querySelector('.sb-command-wrapper')).not.toBeNull()
     // Should not be a direct child of body
     expect(
-      document.body.querySelectorAll(':scope > .sb-devtools-wrapper')
+      document.body.querySelectorAll(':scope > .sb-command-wrapper')
     ).toHaveLength(0)
   })
 
@@ -46,7 +42,7 @@ describe('mountDevTools', () => {
     mountDevTools()
     mountDevTools()
 
-    const wrappers = document.body.querySelectorAll('.sb-devtools-wrapper')
+    const wrappers = document.body.querySelectorAll('.sb-command-wrapper')
     expect(wrappers).toHaveLength(1)
   })
 
@@ -55,7 +51,7 @@ describe('mountDevTools', () => {
 
     const styles = document.head.querySelectorAll('style')
     const hasDevtoolsStyle = Array.from(styles).some((el) =>
-      el.textContent.includes('.sb-devtools-wrapper')
+      el.textContent.includes('.sb-command-wrapper')
     )
     expect(hasDevtoolsStyle).toBe(true)
   })
@@ -63,45 +59,22 @@ describe('mountDevTools', () => {
   it('trigger button has aria-label "Storyboard DevTools"', () => {
     mountDevTools()
 
-    const trigger = document.body.querySelector('.sb-devtools-trigger')
+    const trigger = document.body.querySelector('.sb-command-trigger')
     expect(trigger).not.toBeNull()
-    expect(trigger.getAttribute('aria-label')).toBe('Storyboard DevTools')
+    expect(trigger.getAttribute('aria-label')).toBe('Command Menu')
   })
 
   it('contains a menu with flow info and reset buttons', () => {
     mountDevTools()
 
-    const menuItems = document.body.querySelectorAll('.sb-devtools-menu-item')
+    const menuItems = document.body.querySelectorAll('.sb-command-menu-item')
     expect(menuItems.length).toBeGreaterThanOrEqual(2)
   })
 
   it('menu is hidden by default', () => {
     mountDevTools()
 
-    const menu = document.body.querySelector('.sb-devtools-menu')
+    const menu = document.body.querySelector('.sb-command-menu')
     expect(menu.classList.contains('open')).toBe(false)
-  })
-
-  it('does not mount when devtools plugin is disabled', () => {
-    initPlugins({ devtools: false })
-    mountDevTools()
-
-    const wrapper = document.body.querySelector('.sb-devtools-wrapper')
-    expect(wrapper).toBeNull()
-  })
-
-  it('mounts normally when devtools plugin is explicitly enabled', () => {
-    initPlugins({ devtools: true })
-    mountDevTools()
-
-    const wrapper = document.body.querySelector('.sb-devtools-wrapper')
-    expect(wrapper).not.toBeNull()
-  })
-
-  it('does not mount when plugins option disables devtools', () => {
-    mountDevTools({ plugins: { devtools: false } })
-
-    const wrapper = document.body.querySelector('.sb-devtools-wrapper')
-    expect(wrapper).toBeNull()
   })
 })

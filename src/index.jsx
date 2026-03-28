@@ -22,7 +22,7 @@ installHideParamListener()
 installHistorySync()
 installBodyClassSync()
 initCommentsConfig(storyboardConfig, { basePath: import.meta.env.BASE_URL })
-mountDevTools({ basePath: import.meta.env.BASE_URL, plugins: storyboardConfig.plugins })
+mountDevTools({ basePath: import.meta.env.BASE_URL })
 mountComments()
 
 const rootElement = document.getElementById('root')

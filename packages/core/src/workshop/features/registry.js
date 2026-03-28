@@ -10,11 +10,11 @@
  * 2. Add its import here
  */
 
-import * as createPage from './createPage/index.js'
+import * as createPrototype from './createPrototype/index.js'
 
 /**
  * All available workshop features, keyed by config name.
  */
 export const features = {
-  createPage,
+  createPrototype,
 }

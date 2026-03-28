@@ -13,7 +13,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { parse as parseJsonc } from 'jsonc-parser'
-import { features as workshopFeatures } from '../workshop/features/registry.js'
+import { serverFeatures as workshopFeatures } from '../workshop/features/registry-server.js'
 
 const API_PREFIX = '/_storyboard/'
 
@@ -96,11 +96,7 @@ export default function storyboardServer() {
       for (const [featureName, featureModule] of Object.entries(workshopFeatures)) {
         if (enabledFeatures[featureName] === false) continue
         if (featureModule.serverSetup) {
-          const templatesDir = path.resolve(
-            path.dirname(new URL(import.meta.url).pathname),
-            `../workshop/features/${featureName}/templates`
-          )
-          routeHandlers.set('workshop', featureModule.serverSetup({ root, sendJson }, templatesDir))
+          routeHandlers.set('workshop', featureModule.serverSetup({ root, sendJson, workshopConfig }))
         }
       }
 
@@ -110,7 +106,7 @@ export default function storyboardServer() {
         // Use /@fs/ prefix so Vite serves it through its module pipeline.
         const mountPath = path.resolve(
           path.dirname(new URL(import.meta.url).pathname),
-          '../workshop/ui/mount.js'
+          '../workshop/ui/mount.ts'
         )
         clientScripts.push('/@fs' + mountPath)
       }

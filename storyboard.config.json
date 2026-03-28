@@ -4,7 +4,7 @@
     "name": "storyboard-source"
   },
   "modes": {
-    "enabled": false
+    "enabled": true
   },
   "comments": {
     "discussions": {
@@ -18,9 +18,12 @@
     "show-banner": true
   },
   "workshop": {
-    "enabled": false,
+    "enabled": true,
     "features": {
-      "createPage": true
-    }
+      "createPrototype": true
+    },
+    "partials": [
+      { "directory": "template", "name": "Application" }
+    ]
   }
 }

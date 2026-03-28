@@ -1,0 +1,12 @@
+{
+  "actions": {
+    "*": [
+      { "id": "core/viewfinder", "label": "Viewfinder", "type": "default" },
+      { "id": "core/show-flow-info", "label": "Show flow info", "type": "default" },
+      { "id": "core/reset-params", "label": "Reset all params", "type": "default" },
+      { "id": "core/hide-mode", "label": "Hide mode", "type": "toggle" },
+      { "id": "core/feature-flags", "label": "Feature Flags", "type": "submenu", "separatorBefore": true }
+    ]
+  },
+  "footer": "⌘ + . to hide"
+}

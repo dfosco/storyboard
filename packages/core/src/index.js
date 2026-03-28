@@ -62,6 +62,9 @@ export { resolveSceneRoute, getSceneMeta } from './viewfinder.js'
 // Feature flags
 export { initFeatureFlags, getFlag, setFlag, toggleFlag, getAllFlags, resetFlags, getFlagKeys, syncFlagBodyClasses } from './featureFlags.js'
 
+// Command actions (config-driven command menu entries)
+export { initCommandActions, registerCommandAction, unregisterCommandAction, setDynamicActions, clearDynamicActions, getActionsForMode, executeAction, getActionChildren, getFooter, subscribeToCommandActions, getCommandActionsSnapshot } from './commandActions.js'
+
 // Plugin configuration
 export { initPlugins, isPluginEnabled, getPluginsConfig } from './plugins.js'
 

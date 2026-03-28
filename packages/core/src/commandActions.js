@@ -1,0 +1,230 @@
+/**
+ * Command Actions — config-driven registry for command menu entries.
+ *
+ * The config file (command.config.json) declares action metadata:
+ *   id, label, type, hideFrom, separatorBefore
+ *
+ * Handler shapes by type:
+ *   default:  () => void
+ *   toggle:   { execute(), getState() → boolean, getLabel?(active) → string }
+ *   submenu:  { getChildren() → Array<{ id?, label, type, active?, execute }> }
+ */
+
+// ---------------------------------------------------------------------------
+// Internal state
+// ---------------------------------------------------------------------------
+
+let _config = { actions: {}, footer: '' }
+
+/** @type {Map<string, any>} id → handler (function or object) */
+const _handlers = new Map()
+
+/** @type {Set<Function>} */
+const _listeners = new Set()
+
+let _snapshotVersion = 0
+
+// ---------------------------------------------------------------------------
+// Initialization
+// ---------------------------------------------------------------------------
+
+/**
+ * Seed the registry from command.config.json.
+ * Called once at app startup.
+ *
+ * @param {{ actions: Record<string, Array>, footer?: string }} config
+ */
+export function initCommandActions(config) {
+  _config = { ...config }
+  _notify()
+}
+
+// ---------------------------------------------------------------------------
+// Handler registration
+// ---------------------------------------------------------------------------
+
+/**
+ * Register a handler for a declared action.
+ *
+ * @param {string} id     Action id (e.g. "core/viewfinder")
+ * @param {Function|object} handler
+ *   - default type: () => void
+ *   - toggle type:  { execute(), getState(), getLabel?(active) }
+ *   - submenu type: { getChildren() }
+ */
+export function registerCommandAction(id, handler) {
+  _handlers.set(id, handler)
+  _notify()
+}
+
+/**
+ * Remove a previously registered handler.
+ * @param {string} id
+ */
+export function unregisterCommandAction(id) {
+  _handlers.delete(id)
+  _notify()
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic actions (not in config — registered at runtime)
+// ---------------------------------------------------------------------------
+
+/** @type {Array} */
+let _dynamicActions = []
+
+/**
+ * Add dynamic actions (e.g. comments menu items).
+ * These are appended after config-declared actions.
+ *
+ * @param {string} group  Group key for bulk replacement (e.g. "comments")
+ * @param {Array<{ id: string, label: string, type?: string, separatorBefore?: boolean }>} actions
+ * @param {Record<string, Function|object>} [handlers]  id → handler map
+ */
+export function setDynamicActions(group, actions, handlers = {}) {
+  // Remove previous entries for this group
+  _dynamicActions = _dynamicActions.filter(a => a._group !== group)
+
+  for (const action of actions) {
+    _dynamicActions.push({ ...action, type: action.type || 'default', _group: group })
+  }
+
+  // Register handlers
+  for (const [id, handler] of Object.entries(handlers)) {
+    _handlers.set(id, handler)
+  }
+
+  _notify()
+}
+
+/**
+ * Remove all dynamic actions for a group.
+ * @param {string} group
+ */
+export function clearDynamicActions(group) {
+  const removed = _dynamicActions.filter(a => a._group === group)
+  _dynamicActions = _dynamicActions.filter(a => a._group !== group)
+  for (const a of removed) {
+    _handlers.delete(a.id)
+  }
+  _notify()
+}
+
+// ---------------------------------------------------------------------------
+// Resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Get resolved actions for a given mode.
+ * Merges wildcard + mode-specific, applies hideFrom, appends dynamic actions.
+ *
+ * @param {string} mode  Current mode name
+ * @returns {Array<{ id, label, type, separatorBefore?, handler?, active?, resolvedLabel? }>}
+ */
+export function getActionsForMode(mode) {
+  const wildcard = _config.actions?.['*'] || []
+  const modeSpecific = _config.actions?.[mode] || []
+  const configActions = [...wildcard, ...modeSpecific]
+
+  const all = [
+    ...configActions.filter(a => !a.hideFrom?.includes(mode)),
+    ..._dynamicActions.filter(a => !a.hideFrom?.includes(mode)),
+  ]
+
+  return all.map(a => {
+    const handler = _handlers.get(a.id)
+    const isToggle = a.type === 'toggle'
+    const active = isToggle && handler?.getState ? handler.getState() : false
+    const resolvedLabel = isToggle && handler?.getLabel
+      ? handler.getLabel(active)
+      : a.label
+
+    return {
+      id: a.id,
+      label: a.label,
+      resolvedLabel,
+      type: a.type || 'default',
+      separatorBefore: a.separatorBefore || false,
+      handler,
+      active,
+    }
+  })
+}
+
+/**
+ * Execute an action by id.
+ * @param {string} id
+ */
+export function executeAction(id) {
+  const handler = _handlers.get(id)
+  if (!handler) return
+  if (typeof handler === 'function') {
+    handler()
+  } else if (handler.execute) {
+    handler.execute()
+  }
+  _notify()
+}
+
+/**
+ * Get submenu children for a submenu-type action.
+ * @param {string} id
+ * @returns {Array<{ id?, label, type, active?, execute? }>}
+ */
+export function getActionChildren(id) {
+  const handler = _handlers.get(id)
+  if (!handler?.getChildren) return []
+  return handler.getChildren()
+}
+
+/**
+ * Get the footer text from config.
+ * @returns {string}
+ */
+export function getFooter() {
+  return _config.footer || ''
+}
+
+// ---------------------------------------------------------------------------
+// Reactivity
+// ---------------------------------------------------------------------------
+
+/**
+ * Subscribe to action changes. Compatible with useSyncExternalStore.
+ * @param {Function} callback
+ * @returns {Function} Unsubscribe
+ */
+export function subscribeToCommandActions(callback) {
+  _listeners.add(callback)
+  return () => _listeners.delete(callback)
+}
+
+/**
+ * Snapshot for useSyncExternalStore.
+ * @returns {string}
+ */
+export function getCommandActionsSnapshot() {
+  return String(_snapshotVersion)
+}
+
+function _notify() {
+  _snapshotVersion++
+  for (const cb of _listeners) {
+    try { cb() } catch (err) {
+      console.error('[storyboard] Error in command action subscriber:', err)
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Test helpers
+// ---------------------------------------------------------------------------
+
+/** Reset all state. Only for tests. */
+export function _resetCommandActions() {
+  _config = { actions: {}, footer: '' }
+  _handlers.clear()
+  _dynamicActions = []
+  _listeners.clear()
+  _snapshotVersion = 0
+}

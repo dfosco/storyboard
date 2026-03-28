@@ -10,7 +10,7 @@
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
   import * as Panel from '$lib/components/ui/panel/index.js'
   import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
-  import { getActionsForMode, executeAction, getActionChildren, getFooter, subscribeToCommandActions, getCommandActionsSnapshot } from './commandActions.js'
+  import { getActionsForMode, executeAction, getActionChildren, subscribeToCommandActions } from './commandActions.js'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
 
   interface Props {
@@ -40,14 +40,8 @@
 
   // Resolve actions for current mode (re-derives on mode or registry change)
   const resolvedActions = $derived.by(() => {
-    // Touch actionsVersion to re-derive when registry changes
     void actionsVersion
     return getActionsForMode($modeState.mode)
-  })
-
-  const footer = $derived.by(() => {
-    void actionsVersion
-    return getFooter()
   })
 
   function handleAction(action: any) {
@@ -84,12 +78,18 @@
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Content side="top" align="end" sideOffset={16} alignOffset={4} class="min-w-[200px]">
-        {#each resolvedActions as action, i (action.id)}
-          {#if action.separatorBefore}
+        {#each resolvedActions as action, i (action.id || `_${action.type}_${i}`)}
+          {#if action.type === 'separator'}
             <DropdownMenu.Separator />
-          {/if}
 
-          {#if action.type === 'toggle'}
+          {:else if action.type === 'header'}
+            <DropdownMenu.Label>{action.label}</DropdownMenu.Label>
+
+          {:else if action.type === 'footer'}
+            <DropdownMenu.Separator />
+            <div class="px-2 py-1.5 text-[11px] text-muted-foreground font-mono">{action.label}</div>
+
+          {:else if action.type === 'toggle'}
             <DropdownMenu.CheckboxItem
               checked={action.active}
               onSelect={(e) => handleToggleSelect(e, action)}
@@ -131,11 +131,6 @@
             </DropdownMenu.Item>
           {/if}
         {/each}
-
-        {#if footer}
-          <DropdownMenu.Separator />
-          <div class="px-2 py-1.5 text-[11px] text-muted-foreground font-mono">{footer}</div>
-        {/if}
       </DropdownMenu.Content>
     </DropdownMenu.Root>
 

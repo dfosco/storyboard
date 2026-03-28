@@ -151,7 +151,6 @@ export function getActionsForMode(mode) {
       label: a.label,
       type: a.type || 'default',
       url: a.url || null,
-      separatorBefore: a.separatorBefore || false,
       handler,
       active,
     }
@@ -182,14 +181,6 @@ export function getActionChildren(id) {
   const handler = _handlers.get(id)
   if (!handler?.getChildren) return []
   return handler.getChildren()
-}
-
-/**
- * Get the footer text from config.
- * @returns {string}
- */
-export function getFooter() {
-  return _config.footer || ''
 }
 
 // ---------------------------------------------------------------------------

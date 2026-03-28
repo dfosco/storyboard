@@ -94,13 +94,13 @@
               checked={action.active}
               onSelect={(e) => handleToggleSelect(e, action)}
             >
-              {action.resolvedLabel}
+              {action.label}
             </DropdownMenu.CheckboxItem>
 
           {:else if action.type === 'submenu'}
             <DropdownMenu.Sub>
               <DropdownMenu.SubTrigger>
-                {action.resolvedLabel}
+                {action.label}
               </DropdownMenu.SubTrigger>
               <DropdownMenu.SubContent class="min-w-[160px]">
                 {#each getActionChildren(action.id) as child (child.id || child.label)}
@@ -122,12 +122,12 @@
 
           {:else if action.type === 'link' && action.url}
             <DropdownMenu.Item onclick={() => { menuOpen = false; window.location.href = action.url }}>
-              {action.resolvedLabel}
+              {action.label}
             </DropdownMenu.Item>
 
           {:else}
             <DropdownMenu.Item onclick={() => handleAction(action)}>
-              {action.resolvedLabel}
+              {action.label}
             </DropdownMenu.Item>
           {/if}
         {/each}

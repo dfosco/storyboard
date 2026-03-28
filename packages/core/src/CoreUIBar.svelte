@@ -75,7 +75,6 @@
           else hm.activateHideMode()
         },
         getState: () => hm.isHideMode(),
-        getLabel: (active: boolean) => active ? 'Show mode' : 'Hide mode',
       })
     } catch {}
 

@@ -6,7 +6,7 @@
  *
  * Handler shapes by type:
  *   default:  () => void
- *   toggle:   { execute(), getState() → boolean, getLabel?(active) → string }
+ *   toggle:   { execute(), getState() → boolean }
  *   submenu:  { getChildren() → Array<{ id?, label, type, active?, execute }> }
  */
 
@@ -49,7 +49,7 @@ export function initCommandActions(config) {
  * @param {string} id     Action id (e.g. "core/viewfinder")
  * @param {Function|object} handler
  *   - default type: () => void
- *   - toggle type:  { execute(), getState(), getLabel?(active) }
+ *   - toggle type:  { execute(), getState() }
  *   - submenu type: { getChildren() }
  */
 export function registerCommandAction(id, handler) {
@@ -119,7 +119,7 @@ export function clearDynamicActions(group) {
  * Merges wildcard + mode-specific, applies hideFrom, appends dynamic actions.
  *
  * @param {string} mode  Current mode name
- * @returns {Array<{ id, label, type, separatorBefore?, handler?, active?, resolvedLabel? }>}
+ * @returns {Array<{ id, label, type, separatorBefore?, handler?, active? }>}
  */
 export function getActionsForMode(mode) {
   const wildcard = _config.actions?.['*'] || []
@@ -135,14 +135,10 @@ export function getActionsForMode(mode) {
     const handler = _handlers.get(a.id)
     const isToggle = a.type === 'toggle'
     const active = isToggle && handler?.getState ? handler.getState() : false
-    const resolvedLabel = isToggle && handler?.getLabel
-      ? handler.getLabel(active)
-      : a.label
 
     return {
       id: a.id,
       label: a.label,
-      resolvedLabel,
       type: a.type || 'default',
       url: a.url || null,
       separatorBefore: a.separatorBefore || false,

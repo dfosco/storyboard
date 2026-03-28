@@ -1,7 +1,7 @@
 {
   "actions": {
     "*": [
-      { "id": "core/viewfinder", "label": "Viewfinder", "type": "default" },
+      { "id": "core/viewfinder", "label": "Viewfinder", "type": "link", "url": "/" },
       { "id": "core/show-flow-info", "label": "Show flow info", "type": "default" },
       { "id": "core/reset-params", "label": "Reset all params", "type": "default" },
       { "id": "core/hide-mode", "label": "Hide mode", "type": "toggle" },

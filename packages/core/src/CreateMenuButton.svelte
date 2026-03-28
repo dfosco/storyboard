@@ -7,7 +7,7 @@
 <script lang="ts">
   import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
-  import * as Dialog from '$lib/components/ui/dialog/index.js'
+  import * as Panel from '$lib/components/ui/panel/index.js'
   import type { Component } from 'svelte'
 
   interface CreateMenuFeature {
@@ -72,9 +72,9 @@
 </DropdownMenu.Root>
 
 {#if activeFeature}
-  <Dialog.Root open={true} onOpenChange={(open) => { if (!open) closeOverlay() }}>
-    <Dialog.Content class="sm:max-w-[480px] max-h-[80vh] flex flex-col">
+  <Panel.Root open={true} onOpenChange={(open) => { if (!open) closeOverlay() }}>
+    <Panel.Content>
       <activeFeature.overlay onClose={closeOverlay} />
-    </Dialog.Content>
-  </Dialog.Root>
+    </Panel.Content>
+  </Panel.Root>
 {/if}

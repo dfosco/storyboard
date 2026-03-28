@@ -9,7 +9,7 @@
   import { Input } from '$lib/components/ui/input/index.js'
   import { Label } from '$lib/components/ui/label/index.js'
   import { Checkbox } from '$lib/components/ui/checkbox/index.js'
-  import * as Dialog from '$lib/components/ui/dialog/index.js'
+  import * as Panel from '$lib/components/ui/panel/index.js'
   import * as Alert from '$lib/components/ui/alert/index.js'
 
   interface Props { onClose?: () => void }
@@ -85,9 +85,10 @@
   function handleKeydown(e: KeyboardEvent) { if (e.key === 'Enter' && canSubmit) submit() }
 </script>
 
-<Dialog.Header>
-  <Dialog.Title>Create prototype</Dialog.Title>
-</Dialog.Header>
+<Panel.Header>
+  <Panel.Title>Create prototype</Panel.Title>
+  <Panel.Close />
+</Panel.Header>
 
 <div class="p-4 space-y-3" onkeydown={handleKeydown}>
   <div class="space-y-1">
@@ -137,7 +138,7 @@
   {#if success}<Alert.Root><Alert.Description class="text-success">{success}</Alert.Description></Alert.Root>{/if}
 </div>
 
-<Dialog.Footer>
+<Panel.Footer>
   <Button variant="outline" onclick={onClose}>Cancel</Button>
   <Button onclick={submit} disabled={!canSubmit}>{submitting ? 'Creating\u2026' : 'Create'}</Button>
-</Dialog.Footer>
+</Panel.Footer>

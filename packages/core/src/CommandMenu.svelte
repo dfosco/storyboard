@@ -8,7 +8,7 @@
 
 <script lang="ts">
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
-  import * as Dialog from '$lib/components/ui/dialog/index.js'
+  import * as Panel from '$lib/components/ui/panel/index.js'
   import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
   import { getActionsForMode, executeAction, getActionChildren, getFooter, subscribeToCommandActions, getCommandActionsSnapshot } from './commandActions.js'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
@@ -134,18 +134,19 @@
       </DropdownMenu.Content>
     </DropdownMenu.Root>
 
-  <!-- Flow info dialog -->
-  <Dialog.Root bind:open={flowDialogOpen}>
-    <Dialog.Content class="sm:max-w-[640px] max-h-[60vh] flex flex-col">
-      <Dialog.Header>
-        <Dialog.Title>Flow: {flowName}</Dialog.Title>
-      </Dialog.Header>
-      <div class="overflow-auto">
+  <!-- Flow info panel -->
+  <Panel.Root bind:open={flowDialogOpen}>
+    <Panel.Content>
+      <Panel.Header>
+        <Panel.Title>Flow: {flowName}</Panel.Title>
+        <Panel.Close />
+      </Panel.Header>
+      <Panel.Body>
         {#if flowError}
           <span class="text-destructive text-sm">{flowError}</span>
         {:else}
           <pre class="m-0 bg-transparent text-sm font-mono leading-relaxed whitespace-pre-wrap break-words">{flowJson}</pre>
         {/if}
-      </div>
-    </Dialog.Content>
-  </Dialog.Root>
+      </Panel.Body>
+    </Panel.Content>
+  </Panel.Root>

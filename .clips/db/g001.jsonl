@@ -1,0 +1,22 @@
+{"event":"goal_created","goal_id":"g001","timestamp":"2026-03-28T02:10:28Z","title":"Migrate Svelte UI to shadcn-svelte","description":"## Goal\n\nMigrate all 10 Svelte UI components from the hand-rolled Tachyons + `sb-*` token system to [shadcn-svelte](https://www.shadcn-svelte.com/) with Tailwind CSS. This gives us a consistent, acces…","acceptance_criteria":[],"status":"open"}
+{"event":"github_synced","goal_id":"g001","timestamp":"2026-03-28T02:12:18.836Z","issue_number":5,"issue_url":""}
+{"event":"task_created","goal_id":"g001","task_id":"t01","timestamp":"2026-03-28T02:10:28Z","title":"Add Tailwind CSS v4 to the project","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t02","timestamp":"2026-03-28T02:10:28Z","title":"Install and initialize shadcn-svelte CLI","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t03","timestamp":"2026-03-28T02:10:28Z","title":"Configure dark mode to use `[data-sb-theme]` attribute","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t04","timestamp":"2026-03-28T02:10:28Z","title":"Add ~17 shadcn components via CLI","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t05","timestamp":"2026-03-28T02:10:28Z","title":"`WorkshopPanel.svelte` → `DropdownMenu` + `Dialog`","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t06","timestamp":"2026-03-28T02:10:28Z","title":"`CreatePrototypeForm.svelte` → `Input`, `Label`, `Select`, `Checkbox`, `Button`","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t07","timestamp":"2026-03-28T02:10:28Z","title":"Remove `workshop.css`","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t08","timestamp":"2026-03-28T02:10:28Z","title":"`AuthModal.svelte` → `Dialog` + `Input` + `Button` + `Alert`","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t09","timestamp":"2026-03-28T02:10:28Z","title":"`Composer.svelte` → `Textarea` + `Button`","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t10","timestamp":"2026-03-28T02:10:28Z","title":"`CommentWindow.svelte` → `Card`, `Button`, `Textarea`, `Popover`, `Badge`","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t11","timestamp":"2026-03-28T02:10:28Z","title":"`CommentsDrawer.svelte` → `Sheet` + list items","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t12","timestamp":"2026-03-28T02:10:28Z","title":"Move pin/overlay CSS to standalone `comment-layout.css`","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t13","timestamp":"2026-03-28T02:10:28Z","title":"`ModeSwitch.svelte` → `ToggleGroup`","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t14","timestamp":"2026-03-28T02:10:28Z","title":"`ToolbarShell.svelte` → `Button` + `Badge`","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t15","timestamp":"2026-03-28T02:10:28Z","title":"`Viewfinder.svelte` → `Collapsible`, `Button`, `Badge`, `Select`","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t16","timestamp":"2026-03-28T02:10:28Z","title":"Keep `Octicon.svelte` as-is","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t17","timestamp":"2026-03-28T02:10:28Z","title":"Remove Tachyons dependency","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t18","timestamp":"2026-03-28T02:10:28Z","title":"Remove all `sb-*` custom property definitions","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t19","timestamp":"2026-03-28T02:10:28Z","title":"Remove `comments.css`, `workshop.css`, `base.css`","description":"","status":"open"}
+{"event":"task_created","goal_id":"g001","task_id":"t20","timestamp":"2026-03-28T02:10:28Z","title":"Update `package.json` exports","description":"","status":"open"}

@@ -20,3 +20,4 @@
 {"event":"task_created","goal_id":"g001","task_id":"t18","timestamp":"2026-03-28T02:10:28Z","title":"Remove all `sb-*` custom property definitions","description":"","status":"open"}
 {"event":"task_created","goal_id":"g001","task_id":"t19","timestamp":"2026-03-28T02:10:28Z","title":"Remove `comments.css`, `workshop.css`, `base.css`","description":"","status":"open"}
 {"event":"task_created","goal_id":"g001","task_id":"t20","timestamp":"2026-03-28T02:10:28Z","title":"Update `package.json` exports","description":"","status":"open"}
+{"event":"status_changed","goal_id":"g001","timestamp":"2026-03-28T02:13:37.571Z","status":"in_progress"}

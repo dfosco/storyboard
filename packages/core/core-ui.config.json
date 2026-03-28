@@ -8,7 +8,6 @@
 
   "menus": {
     "command": {
-      "label": "Command Menu",
       "ariaLabel": "Command Menu",
       "trigger": "command",
       "modes": ["*"],

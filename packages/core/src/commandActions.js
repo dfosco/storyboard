@@ -135,11 +135,21 @@ function actionVisibleInMode(action, mode) {
  */
 export function getActionsForMode(mode) {
   const configActions = Array.isArray(_config.actions) ? _config.actions : []
+  const filtered = configActions.filter(a => actionVisibleInMode(a, mode))
+  const dynamic = _dynamicActions.filter(a => actionVisibleInMode(a, mode))
 
-  const all = [
-    ...configActions.filter(a => actionVisibleInMode(a, mode)),
-    ..._dynamicActions.filter(a => actionVisibleInMode(a, mode)),
-  ]
+  // Insert dynamic actions before the footer (if present)
+  const footerIndex = filtered.findIndex(a => a.type === 'footer')
+  let all
+  if (footerIndex >= 0 && dynamic.length > 0) {
+    all = [
+      ...filtered.slice(0, footerIndex),
+      ...dynamic,
+      ...filtered.slice(footerIndex),
+    ]
+  } else {
+    all = [...filtered, ...dynamic]
+  }
 
   return all.map(a => {
     const handler = _handlers.get(a.id)

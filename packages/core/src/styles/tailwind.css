@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../**/*.{svelte,js,ts}";
 
 @custom-variant dark (&:where([data-sb-theme^="dark"], [data-sb-theme^="dark"] *));
 
@@ -25,8 +26,8 @@
   --color-success: hsl(142 71% 36%);
   --color-success-foreground: hsl(0 0% 100%);
   --radius: 0.5rem;
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --font-sans: "Ioskeley Mono", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: "Ioskeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 }
 
 @layer base {
@@ -104,5 +105,16 @@
 	scrollbar-width: none;
 	&::-webkit-scrollbar {
 		display: none;
+  }
+}
+
+@utility smooth-corners {
+  mask-image: paint(smooth-corners);
+  -webkit-mask-image: paint(smooth-corners);
+}
+
+@layer base {
+  :root {
+    --smooth-corners: 4;
   }
 }

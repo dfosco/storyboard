@@ -10,7 +10,7 @@
 import { mountSveltePlugin, type PluginHandle } from '../../svelte-plugin-ui/mount.js'
 import WorkshopPanel from './WorkshopPanel.svelte'
 import { features as allFeatures } from '../features/registry.js'
-import '../../styles/tailwind.css'
+import '../../../dist/tailwind.css'
 
 let handle: PluginHandle | null = null
 

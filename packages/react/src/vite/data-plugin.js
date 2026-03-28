@@ -300,17 +300,19 @@ function readConfig(root) {
 function readModesConfig(root) {
   const fallback = {
     modes: [
-      { name: 'prototype', label: 'Navigate' },
-      { name: 'inspect', label: 'Develop' },
-      { name: 'present', label: 'Collaborate' },
-      { name: 'plan', label: 'Canvas' },
+      { name: 'prototype', label: 'Navigate', hue: '#2a2a2a' },
+      { name: 'inspect', label: 'Develop', hue: '#7655a4' },
+      { name: 'present', label: 'Collaborate', hue: '#2a9d8f' },
+      { name: 'plan', label: 'Canvas', hue: '#4a7fad' },
     ],
     tools: {},
   }
 
   // Try local workspace path first (monorepo), then node_modules
   const candidates = [
+    path.resolve(root, 'packages/core/configs/modes.config.json'),
     path.resolve(root, 'packages/core/modes.config.json'),
+    path.resolve(root, 'node_modules/@dfosco/storyboard-core/configs/modes.config.json'),
     path.resolve(root, 'node_modules/@dfosco/storyboard-core/modes.config.json'),
   ]
 

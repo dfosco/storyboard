@@ -11,6 +11,7 @@
   "files": [
     "src",
     "dist",
+    "configs",
     "modes.config.json"
   ],
   "scripts": {

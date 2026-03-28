@@ -1,6 +1,7 @@
 {
   "label": "Create",
   "ariaLabel": "Create Menu",
+  "icon": "plus",
   "items": [
     { "feature": "createPrototype", "label": "Create prototype" }
   ]

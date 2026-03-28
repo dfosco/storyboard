@@ -1,7 +1,7 @@
 <!--
   CreateMenuButton — config-driven trigger for create/workshop features.
   Appears to the left of the command button in develop (inspect) mode.
-  Menu label and items are defined by configs/create-menu.config.json.
+  Menu label and items are defined by core-ui.config.json buttons.create section.
 
   Icon options (set in config):
     - "icon": octicon name (e.g. "plus", "beaker") — rendered via Octicon.svelte

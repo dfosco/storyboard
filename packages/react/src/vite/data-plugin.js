@@ -293,8 +293,8 @@ function readConfig(root) {
 }
 
 /**
- * Read modes.config.json from @dfosco/storyboard-core.
- * Returns the full config object { modes, tools }.
+ * Read core-ui.config.json from @dfosco/storyboard-core.
+ * Returns the full config object with modes array.
  * Falls back to hardcoded defaults if not found.
  */
 function readModesConfig(root) {
@@ -305,15 +305,14 @@ function readModesConfig(root) {
       { name: 'present', label: 'Collaborate', hue: '#2a9d8f' },
       { name: 'plan', label: 'Canvas', hue: '#4a7fad' },
     ],
-    tools: {},
   }
 
   // Try local workspace path first (monorepo), then node_modules
   const candidates = [
+    path.resolve(root, 'packages/core/configs/core-ui.config.json'),
     path.resolve(root, 'packages/core/configs/modes.config.json'),
-    path.resolve(root, 'packages/core/modes.config.json'),
+    path.resolve(root, 'node_modules/@dfosco/storyboard-core/configs/core-ui.config.json'),
     path.resolve(root, 'node_modules/@dfosco/storyboard-core/configs/modes.config.json'),
-    path.resolve(root, 'node_modules/@dfosco/storyboard-core/modes.config.json'),
   ]
 
   for (const filePath of candidates) {
@@ -321,7 +320,7 @@ function readModesConfig(root) {
       const raw = fs.readFileSync(filePath, 'utf-8')
       const parsed = JSON.parse(raw)
       if (Array.isArray(parsed.modes) && parsed.modes.length > 0) {
-        return { modes: parsed.modes, tools: parsed.tools ?? {} }
+        return { modes: parsed.modes }
       }
     } catch {
       // try next candidate
@@ -461,11 +460,6 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
       const modes = config.modes.defaults || modesConfig.modes
       for (const m of modes) {
         initCalls.push(`registerMode(${JSON.stringify(m.name)}, { label: ${JSON.stringify(m.label)} })`)
-      }
-
-      // Seed tool registry from modes.config.json
-      if (Object.keys(modesConfig.tools).length > 0) {
-        initCalls.push(`initTools(${JSON.stringify(modesConfig.tools)})`)
       }
 
       initCalls.push(`syncModeClasses()`)

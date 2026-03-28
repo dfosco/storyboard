@@ -14,8 +14,7 @@
   import CommandMenu from './CommandMenu.svelte'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
   import { initCommandActions, registerCommandAction, setDynamicActions } from './commandActions.js'
-  import commandConfig from '../configs/command.config.json'
-  import createMenuConfig from '../configs/create-menu.config.json'
+  import coreUIConfig from '../configs/core-ui.config.json'
 
   interface Props { basePath?: string }
   let { basePath = '/' }: Props = $props()
@@ -24,8 +23,11 @@
   let CreateMenuButton: any = $state(null)
   let createMenuFeatures: any[] = $state([])
 
+  const createButtonConfig = coreUIConfig.buttons?.create
   const showCreateMenu = $derived(
-    $modeState.mode === 'inspect' && CreateMenuButton && createMenuFeatures.length > 0
+    createButtonConfig &&
+    (createButtonConfig.modes ?? []).includes($modeState.mode) &&
+    CreateMenuButton && createMenuFeatures.length > 0
   )
 
   function handleKeydown(e: KeyboardEvent) {
@@ -39,7 +41,7 @@
     window.addEventListener('keydown', handleKeydown)
 
     // Seed the command action registry from config
-    initCommandActions(commandConfig)
+    initCommandActions(coreUIConfig.command)
 
     // Register core action handlers
     registerCommandAction('core/viewfinder', () => {
@@ -116,26 +118,27 @@
 
     // Load create menu features (config-driven)
     try {
-      const { features } = await import('./workshop/features/registry.js')
+      if (createButtonConfig) {
+        const { features } = await import('./workshop/features/registry.js')
 
-      // Resolve features declared in create-menu.config.json
-      const configItems = createMenuConfig.items || []
-      createMenuFeatures = configItems
-        .map((item: any) => {
-          const feat = (features as Record<string, any>)[item.feature]
-          if (!feat || !feat.overlayId || !feat.overlay) return null
-          return {
-            name: feat.name,
-            label: item.label || feat.label,
-            overlayId: feat.overlayId,
-            overlay: feat.overlay,
-          }
-        })
-        .filter(Boolean)
+        const configItems = createButtonConfig.items || []
+        createMenuFeatures = configItems
+          .map((item: any) => {
+            const feat = (features as Record<string, any>)[item.feature]
+            if (!feat || !feat.overlayId || !feat.overlay) return null
+            return {
+              name: feat.name,
+              label: item.label || feat.label,
+              overlayId: feat.overlayId,
+              overlay: feat.overlay,
+            }
+          })
+          .filter(Boolean)
 
-      if (createMenuFeatures.length > 0) {
-        const mod = await import('./CreateMenuButton.svelte')
-        CreateMenuButton = mod.default
+        if (createMenuFeatures.length > 0) {
+          const mod = await import('./CreateMenuButton.svelte')
+          CreateMenuButton = mod.default
+        }
       }
     } catch {}
   })
@@ -161,7 +164,7 @@
 {#if visible}
   <div class="fixed bottom-6 right-6 z-[9999] font-sans flex items-end gap-3" data-core-ui-bar>
     {#if showCreateMenu}
-      <CreateMenuButton features={createMenuFeatures} config={createMenuConfig} />
+      <CreateMenuButton features={createMenuFeatures} config={createButtonConfig} />
     {/if}
     <CommandMenu {basePath} bind:flowDialogOpen {flowName} {flowJson} {flowError} />
   </div>

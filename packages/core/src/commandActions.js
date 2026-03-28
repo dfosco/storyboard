@@ -1,7 +1,7 @@
 /**
  * Command Actions — config-driven registry for command menu entries.
  *
- * The config file (command.config.json) declares action metadata:
+ * The command section of core-ui.config.json declares action metadata:
  *   id, label, type, hideFrom, separatorBefore
  *
  * Handler shapes by type:
@@ -29,7 +29,7 @@ let _snapshotVersion = 0
 // ---------------------------------------------------------------------------
 
 /**
- * Seed the registry from command.config.json.
+ * Seed the registry from core-ui.config.json command section.
  * Called once at app startup.
  *
  * @param {{ actions: Record<string, Array>, footer?: string }} config

@@ -27,7 +27,10 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./packages/svelte-ui/vitest.setup.ts'],
-    include: ['packages/core/src/svelte-plugin-ui/**/*.test.ts'],
+    include: [
+      'packages/core/src/svelte-plugin-ui/**/*.test.ts',
+      'packages/core/src/comments/ui/authModal.test.js',
+    ],
     // Ensure @testing-library/svelte .svelte.js files are processed
     server: {
       deps: {

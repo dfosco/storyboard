@@ -1,10 +1,12 @@
 /**
- * Comment composer — Alpine.js inline text input that appears at click position.
+ * Comment composer — Svelte inline text input that appears at click position.
  *
  * Positioned absolutely within the comment overlay. Submits to the comments API.
  * Styled with Tachyons + sb-* custom classes for light/dark mode support.
  */
 
+import { mount, unmount } from 'svelte'
+import ComposerComponent from './Composer.svelte'
 import { getCachedUser } from '../auth.js'
 
 /**
@@ -26,39 +28,16 @@ export function showComposer(container, xPct, yPct, route, callbacks = {}) {
   composer.style.top = `${yPct}%`
   composer.style.transform = 'translate(12px, -50%)'
 
-  composer.innerHTML = `
-    <div x-data="sbComposer" @keydown.escape.prevent.stop="cancel()">
-      ${user ? `
-        <div class="flex items-center ph3 pt2">
-          <img class="br-100 ba sb-b-default flex-shrink-0 mr2 sb-avatar" src="${user.avatarUrl}" alt="${user.login}" />
-          <span class="f7 sb-fg-muted fw5">${user.login}</span>
-        </div>
-      ` : ''}
-      <div class="ph3 pt3">
-        <textarea class="sb-input sb-textarea w-100 ph2 pv2 br2 f6 sans-serif lh-copy db sb-f-sm"
-                  placeholder="Leave a comment…"
-                  x-model="text"
-                  @keydown.meta.enter="submit()"
-                  @keydown.ctrl.enter="submit()"></textarea>
-      </div>
-      <template x-if="error">
-        <div class="ph3 pb2 f7 sb-fg-danger" x-text="error"></div>
-      </template>
-      <div class="flex items-center justify-end pa3">
-        <button class="sb-btn-cancel ph3 pv2 br2 f7 fw5 pointer mr1" @click="cancel()">Cancel</button>
-        <button class="sb-btn-success ph3 pv2 br2 f7 fw5 pointer bn"
-                @click="submit()">Comment</button>
-      </div>
-    </div>
-  `
-
   container.appendChild(composer)
 
   // Stop click from propagating (prevents placing another composer)
   composer.addEventListener('click', (e) => e.stopPropagation())
 
+  let instance = null
+
   function destroy() {
     window.removeEventListener('keydown', onEscape, true)
+    if (instance) { unmount(instance); instance = null }
     composer.remove()
   }
 
@@ -73,38 +52,23 @@ export function showComposer(container, xPct, yPct, route, callbacks = {}) {
   }
   window.addEventListener('keydown', onEscape, true)
 
-  // Register Alpine component
-  if (!window.Alpine._sbComposerRegistered) {
-    window.Alpine.data('sbComposer', () => ({
-      text: '',
-      submitting: false,
-      error: null,
-
-      submit() {
-        const val = this.text.trim()
-        if (!val) return
-
-        // Close composer immediately and hand off to optimistic handler
-        destroy()
-        callbacks.onSubmitOptimistic?.(val)
-      },
-
-      cancel() {
+  instance = mount(ComposerComponent, {
+    target: composer,
+    props: {
+      user,
+      onCancel: () => {
         destroy()
         callbacks.onCancel?.()
       },
-    }))
-    window.Alpine._sbComposerRegistered = true
-  }
+      onSubmit: (text) => {
+        destroy()
+        callbacks.onSubmitOptimistic?.(text)
+      },
+    },
+  })
 
-  // Initialize Alpine on the new DOM
-  window.Alpine.initTree(composer)
-
-  // Focus textarea and adjust position to stay within viewport
+  // Adjust position to stay within viewport
   requestAnimationFrame(() => {
-    const textarea = composer.querySelector('textarea')
-    if (textarea) textarea.focus()
-
     const rect = composer.getBoundingClientRect()
     const vw = window.innerWidth
     const vh = window.innerHeight

@@ -1,21 +1,13 @@
 /**
  * Tests for mount.js — comment overlay, banner, and body comment-mode logic.
  *
- * Alpine.js and heavy UI deps are mocked; we test DOM-level behavior of the
+ * Heavy UI deps are mocked; we test DOM-level behavior of the
  * exported mountComments() plus the internal helpers it exercises.
  */
 
 import { vi } from 'vitest'
 
 // ---- Mocks (must be before importing mount.js) ----
-
-vi.mock('alpinejs', () => ({
-  default: {
-    start: vi.fn(),
-    data: vi.fn(),
-    initTree: vi.fn(),
-  },
-}))
 
 vi.mock('../api.js', () => ({
   fetchRouteCommentsSummary: vi.fn(),
@@ -67,13 +59,6 @@ describe('mount.js', () => {
     vi.resetModules()
 
     // Re-mock after resetModules
-    vi.doMock('alpinejs', () => ({
-      default: {
-        start: vi.fn(),
-        data: vi.fn(),
-        initTree: vi.fn(),
-      },
-    }))
     vi.doMock('../api.js', () => ({
       fetchRouteCommentsSummary: vi.fn(),
       fetchCommentDetail: vi.fn(),

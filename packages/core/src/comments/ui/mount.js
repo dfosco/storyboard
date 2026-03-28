@@ -1,11 +1,9 @@
 /**
  * Mount the comments system — keyboard shortcut, cursor overlay, click-to-comment.
  *
- * Uses Alpine.js for reactive UI. Call mountComments() once at app startup
- * (after initCommentsConfig).
+ * Call mountComments() once at app startup (after initCommentsConfig).
  */
 
-import Alpine from 'alpinejs'
 import { isCommentsEnabled } from '../config.js'
 import { isAuthenticated, getCachedUser } from '../auth.js'
 import { toggleCommentMode, setCommentMode, isCommentModeActive, subscribeToCommentMode } from '../commentMode.js'
@@ -430,10 +428,6 @@ let _mounted = false
 export function mountComments() {
   if (_mounted) return
   _mounted = true
-
-  // Initialize Alpine.js for comments UI
-  window.Alpine = Alpine
-  Alpine.start()
 
   subscribeToCommentMode(setBodyCommentMode)
 

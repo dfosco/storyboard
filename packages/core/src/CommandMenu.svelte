@@ -121,7 +121,7 @@
             </DropdownMenu.Sub>
 
           {:else if action.type === 'link' && action.url}
-            <DropdownMenu.Item href={action.url}>
+            <DropdownMenu.Item onclick={() => { menuOpen = false; window.location.href = action.url }}>
               {action.resolvedLabel}
             </DropdownMenu.Item>
 

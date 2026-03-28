@@ -12,15 +12,13 @@
       "ariaLabel": "Command Menu",
       "trigger": "command",
       "modes": ["*"],
-      "actions": {
-        "*": [
-          { "id": "core/viewfinder", "label": "Viewfinder", "type": "link", "url": "/" },
-          { "id": "core/show-flow-info", "label": "Show flow info", "type": "default" },
-          { "id": "core/reset-params", "label": "Reset all params", "type": "default" },
-          { "id": "core/hide-mode", "label": "Hide mode", "type": "toggle" },
-          { "id": "core/feature-flags", "label": "Feature Flags", "type": "submenu", "separatorBefore": true }
-        ]
-      },
+      "actions": [
+        { "id": "core/viewfinder", "label": "Viewfinder", "type": "link", "url": "/", "modes": ["*"] },
+        { "id": "core/show-flow-info", "label": "Show flow info", "type": "default", "modes": ["*"] },
+        { "id": "core/reset-params", "label": "Reset all params", "type": "default", "modes": ["*"] },
+        { "id": "core/hide-mode", "label": "Hide mode", "type": "toggle", "modes": ["*"] },
+        { "id": "core/feature-flags", "label": "Feature Flags", "type": "submenu", "modes": ["*"], "separatorBefore": true }
+      ],
       "footer": "⌘ + . to hide"
     },
 
@@ -30,11 +28,9 @@
       "trigger": "button",
       "icon": "plus",
       "modes": ["inspect"],
-      "actions": {
-        "*": [
-          { "id": "workshop/create-prototype", "label": "Create prototype", "type": "default", "feature": "createPrototype" }
-        ]
-      }
+      "actions": [
+        { "id": "workshop/create-prototype", "label": "Create prototype", "type": "default", "modes": ["*"], "feature": "createPrototype" }
+      ]
     }
   }
 }

@@ -29,10 +29,10 @@ let _snapshotVersion = 0
 // ---------------------------------------------------------------------------
 
 /**
- * Seed the registry from core-ui.config.json command section.
+ * Seed the registry from a menu config object.
  * Called once at app startup.
  *
- * @param {{ actions: Record<string, Array>, footer?: string }} config
+ * @param {{ actions: Array, footer?: string }} config
  */
 export function initCommandActions(config) {
   _config = { ...config }
@@ -115,20 +115,30 @@ export function clearDynamicActions(group) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Check if an action is visible in a given mode.
+ * @param {object} action
+ * @param {string} mode
+ * @returns {boolean}
+ */
+function actionVisibleInMode(action, mode) {
+  const modes = action.modes
+  if (!modes) return true
+  return modes.includes('*') || modes.includes(mode)
+}
+
+/**
  * Get resolved actions for a given mode.
- * Merges wildcard + mode-specific, applies hideFrom, appends dynamic actions.
+ * Filters by each action's modes array, appends dynamic actions.
  *
  * @param {string} mode  Current mode name
  * @returns {Array<{ id, label, type, separatorBefore?, handler?, active? }>}
  */
 export function getActionsForMode(mode) {
-  const wildcard = _config.actions?.['*'] || []
-  const modeSpecific = _config.actions?.[mode] || []
-  const configActions = [...wildcard, ...modeSpecific]
+  const configActions = Array.isArray(_config.actions) ? _config.actions : []
 
   const all = [
-    ...configActions.filter(a => !a.hideFrom?.includes(mode)),
-    ..._dynamicActions.filter(a => !a.hideFrom?.includes(mode)),
+    ...configActions.filter(a => actionVisibleInMode(a, mode)),
+    ..._dynamicActions.filter(a => actionVisibleInMode(a, mode)),
   ]
 
   return all.map(a => {

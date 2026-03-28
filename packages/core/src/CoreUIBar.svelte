@@ -130,7 +130,7 @@
       if (createMenuConfig) {
         const { features } = await import('./workshop/features/registry.js')
 
-        const createActions = createMenuConfig.actions?.['*'] || []
+        const createActions = Array.isArray(createMenuConfig.actions) ? createMenuConfig.actions : []
         createMenuFeatures = createActions
           .filter((a: any) => a.feature)
           .map((a: any) => {

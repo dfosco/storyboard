@@ -23,3 +23,4 @@
 {"event":"status_changed","goal_id":"g001","timestamp":"2026-03-28T02:13:37.571Z","status":"in_progress"}
 {"event":"task_status_changed","goal_id":"g001","task_id":"t01","timestamp":"2026-03-28T02:13:41.383Z","status":"in_progress"}
 {"event":"task_status_changed","goal_id":"g001","task_id":"t01","timestamp":"2026-03-28T02:20:34.622Z","status":"closed"}
+{"event":"task_status_changed","goal_id":"g001","task_id":"t02","timestamp":"2026-03-28T02:20:39.065Z","status":"closed"}

@@ -31,11 +31,13 @@
     "./svelte-plugin-ui/viewfinder": "./src/ui/viewfinder.ts",
     "./ui/design-modes": "./src/ui/design-modes.ts",
     "./ui/viewfinder": "./src/ui/viewfinder.ts",
-    "./svelte-plugin-ui/styles/base.css": "./src/styles/tailwind.css"
+    "./svelte-plugin-ui/styles/base.css": "./dist/tailwind.css",
+    "./styles/tailwind.css": "./dist/tailwind.css"
   },
   "dependencies": {
     "@primer/octicons": "^19.22.0",
-    "jsonc-parser": "^3.3.1"
+    "jsonc-parser": "^3.3.1",
+    "smooth-corners": "^1.1.0"
   },
   "peerDependencies": {
     "svelte": "^5.0.0"
@@ -46,6 +48,7 @@
     }
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",
     "bits-ui": "^2.16.4",
     "clsx": "^2.1.1",

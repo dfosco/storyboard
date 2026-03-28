@@ -44,3 +44,4 @@
 {"event":"task_status_changed","goal_id":"g001","task_id":"t03","timestamp":"2026-03-28T02:45:24.836Z","status":"closed"}
 {"event":"task_status_changed","goal_id":"g001","task_id":"t04","timestamp":"2026-03-28T02:45:30.597Z","status":"closed"}
 {"event":"task_status_changed","goal_id":"g001","task_id":"t05","timestamp":"2026-03-28T02:45:36.301Z","status":"closed"}
+{"event":"task_status_changed","goal_id":"g001","task_id":"t06","timestamp":"2026-03-28T02:45:42.287Z","status":"closed"}

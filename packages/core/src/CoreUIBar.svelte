@@ -23,10 +23,17 @@
   let CreateMenuButton: any = $state(null)
   let createMenuFeatures: any[] = $state([])
 
-  const createButtonConfig = coreUIConfig.buttons?.create
+  const commandMenuConfig = coreUIConfig.menus?.command
+  const createMenuConfig = coreUIConfig.menus?.create
+
+  function menuVisibleInMode(menu: any, mode: string): boolean {
+    if (!menu?.modes) return false
+    return menu.modes.includes('*') || menu.modes.includes(mode)
+  }
+
   const showCreateMenu = $derived(
-    createButtonConfig &&
-    (createButtonConfig.modes ?? []).includes($modeState.mode) &&
+    createMenuConfig &&
+    menuVisibleInMode(createMenuConfig, $modeState.mode) &&
     CreateMenuButton && createMenuFeatures.length > 0
   )
 
@@ -41,7 +48,9 @@
     window.addEventListener('keydown', handleKeydown)
 
     // Seed the command action registry from config
-    initCommandActions(coreUIConfig.command)
+    if (commandMenuConfig) {
+      initCommandActions(commandMenuConfig)
+    }
 
     // Register core action handlers
     registerCommandAction('core/viewfinder', () => {
@@ -116,19 +125,20 @@
       }
     } catch {}
 
-    // Load create menu features (config-driven)
+    // Load create menu features
     try {
-      if (createButtonConfig) {
+      if (createMenuConfig) {
         const { features } = await import('./workshop/features/registry.js')
 
-        const configItems = createButtonConfig.items || []
-        createMenuFeatures = configItems
-          .map((item: any) => {
-            const feat = (features as Record<string, any>)[item.feature]
+        const createActions = createMenuConfig.actions?.['*'] || []
+        createMenuFeatures = createActions
+          .filter((a: any) => a.feature)
+          .map((a: any) => {
+            const feat = (features as Record<string, any>)[a.feature]
             if (!feat || !feat.overlayId || !feat.overlay) return null
             return {
               name: feat.name,
-              label: item.label || feat.label,
+              label: a.label || feat.label,
               overlayId: feat.overlayId,
               overlay: feat.overlay,
             }
@@ -164,7 +174,7 @@
 {#if visible}
   <div class="fixed bottom-6 right-6 z-[9999] font-sans flex items-end gap-3" data-core-ui-bar>
     {#if showCreateMenu}
-      <CreateMenuButton features={createMenuFeatures} config={createButtonConfig} />
+      <CreateMenuButton features={createMenuFeatures} config={createMenuConfig} />
     {/if}
     <CommandMenu {basePath} bind:flowDialogOpen {flowName} {flowJson} {flowError} />
   </div>

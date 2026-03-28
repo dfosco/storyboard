@@ -6,28 +6,35 @@
     { "name": "plan", "label": "Canvas", "hue": "#4a7fad" }
   ],
 
-  "command": {
-    "actions": {
-      "*": [
-        { "id": "core/viewfinder", "label": "Viewfinder", "type": "link", "url": "/" },
-        { "id": "core/show-flow-info", "label": "Show flow info", "type": "default" },
-        { "id": "core/reset-params", "label": "Reset all params", "type": "default" },
-        { "id": "core/hide-mode", "label": "Hide mode", "type": "toggle" },
-        { "id": "core/feature-flags", "label": "Feature Flags", "type": "submenu", "separatorBefore": true }
-      ]
+  "menus": {
+    "command": {
+      "label": "Command Menu",
+      "ariaLabel": "Command Menu",
+      "trigger": "command",
+      "modes": ["*"],
+      "actions": {
+        "*": [
+          { "id": "core/viewfinder", "label": "Viewfinder", "type": "link", "url": "/" },
+          { "id": "core/show-flow-info", "label": "Show flow info", "type": "default" },
+          { "id": "core/reset-params", "label": "Reset all params", "type": "default" },
+          { "id": "core/hide-mode", "label": "Hide mode", "type": "toggle" },
+          { "id": "core/feature-flags", "label": "Feature Flags", "type": "submenu", "separatorBefore": true }
+        ]
+      },
+      "footer": "⌘ + . to hide"
     },
-    "footer": "⌘ + . to hide"
-  },
 
-  "buttons": {
     "create": {
       "label": "Create",
       "ariaLabel": "Create Menu",
+      "trigger": "button",
       "icon": "plus",
       "modes": ["inspect"],
-      "items": [
-        { "feature": "createPrototype", "label": "Create prototype" }
-      ]
+      "actions": {
+        "*": [
+          { "id": "workshop/create-prototype", "label": "Create prototype", "type": "default", "feature": "createPrototype" }
+        ]
+      }
     }
   }
 }

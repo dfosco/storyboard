@@ -20,6 +20,7 @@
         { "id": "core/hide-mode", "label": "Hide mode", "type": "toggle", "modes": ["*"] },
         { "type": "separator" },
         { "id": "core/feature-flags", "label": "Feature Flags", "type": "submenu", "modes": ["*"] },
+        { "type": "separator" },
         { "type": "footer", "label": "⌘ + . to hide" }
       ]
     },

@@ -2,8 +2,8 @@
 	import { Dialog as DialogPrimitive } from "bits-ui";
 	import DialogPortal from "./dialog-portal.svelte";
 	import * as Dialog from "./index.js";
-	import { cn } from "src/lib/utils.js";
-	import { Button } from "src/lib/components/ui/button/index.js";
+	import { cn } from "$lib/utils/index.js";
+	import { Button } from "$lib/components/ui/button/index.js";
 	import XIcon from '@lucide/svelte/icons/x';
 
 	let {

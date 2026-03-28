@@ -133,12 +133,14 @@
           {/snippet}
         </DropdownMenu.Trigger>
         <DropdownMenu.Content side="left" align="start" sideOffset={8} class="min-w-[180px]">
-          <DropdownMenu.Item onclick={() => { partial = ''; templateMenuOpen = false }}>
-            No template
-          </DropdownMenu.Item>
+          {#if partial}
+            <DropdownMenu.Item onclick={() => { partial = ''; templateMenuOpen = false }}>
+              <span class="text-muted-foreground">Clear selection</span>
+            </DropdownMenu.Item>
+            <DropdownMenu.Separator />
+          {/if}
 
           {#if templates.length > 0}
-            <DropdownMenu.Separator />
             <DropdownMenu.Group>
               <DropdownMenu.GroupHeading>Templates</DropdownMenu.GroupHeading>
               {#each templates as t (t.name)}

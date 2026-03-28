@@ -120,6 +120,11 @@
               </DropdownMenu.SubContent>
             </DropdownMenu.Sub>
 
+          {:else if action.type === 'link' && action.url}
+            <DropdownMenu.Item href={action.url}>
+              {action.resolvedLabel}
+            </DropdownMenu.Item>
+
           {:else}
             <DropdownMenu.Item onclick={() => handleAction(action)}>
               {action.resolvedLabel}

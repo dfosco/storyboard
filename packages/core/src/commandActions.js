@@ -144,6 +144,7 @@ export function getActionsForMode(mode) {
       label: a.label,
       resolvedLabel,
       type: a.type || 'default',
+      url: a.url || null,
       separatorBefore: a.separatorBefore || false,
       handler,
       active,

@@ -20,7 +20,9 @@
   <DialogPrimitive.Content
     bind:ref
     data-slot="panel-content"
+    trapFocus={false}
     onInteractOutside={(e) => e.preventDefault()}
+    onFocusOutside={(e) => e.preventDefault()}
     class={cn(
       "font-sans fixed z-[9999] bottom-20 right-6 w-[400px] max-h-[70vh] flex flex-col",
       "bg-popover text-popover-foreground border border-border",

@@ -1,7 +1,7 @@
 <!--
-  WorkshopButton — mode-specific trigger for workshop features.
+  CreateMenuButton — config-driven trigger for create/workshop features.
   Appears to the left of the command button in develop (inspect) mode.
-  Uses a smaller TriggerButton variant.
+  Menu label and items are defined by configs/create-menu.config.json.
 -->
 
 <script lang="ts">
@@ -10,18 +10,25 @@
   import * as Dialog from '$lib/components/ui/dialog/index.js'
   import type { Component } from 'svelte'
 
-  interface WorkshopFeature {
+  interface CreateMenuFeature {
     name: string
     label: string
     overlayId: string
     overlay: Component<{ onClose?: () => void }>
   }
 
-  interface Props {
-    features?: WorkshopFeature[]
+  interface CreateMenuConfig {
+    label: string
+    ariaLabel?: string
+    items?: Array<{ feature: string; label?: string }>
   }
 
-  let { features = [] }: Props = $props()
+  interface Props {
+    features?: CreateMenuFeature[]
+    config?: CreateMenuConfig
+  }
+
+  let { features = [], config = { label: 'Create' } }: Props = $props()
 
   let menuOpen = $state(false)
   let activeOverlay: string | null = $state(null)
@@ -44,7 +51,7 @@
       <TriggerButton
         active={menuOpen}
         size="icon-xl"
-        aria-label="Workshop"
+        aria-label={config.ariaLabel || config.label}
         {...props}
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
@@ -55,6 +62,7 @@
   </DropdownMenu.Trigger>
 
   <DropdownMenu.Content side="top" align="end" sideOffset={16} class="min-w-[180px]">
+    <DropdownMenu.Label>{config.label}</DropdownMenu.Label>
     {#each features as f (f.overlayId)}
       <DropdownMenu.Item onclick={() => showOverlay(f.overlayId)}>
         {f.label}

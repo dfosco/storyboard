@@ -1,80 +1,66 @@
+/**
+ * Tests for devtools.js — command menu mount lifecycle.
+ * Mocks the Svelte component to avoid jsdom lifecycle issues.
+ */
+
 import { vi } from 'vitest'
 
-vi.mock('./loader.js', () => ({
-  loadFlow: vi.fn(() => ({ test: true })),
+vi.mock('svelte', () => ({
+  mount: vi.fn(() => ({})),
+  unmount: vi.fn(),
 }))
 
-import { mountDevTools } from './devtools.js'
-
-afterEach(() => {
-  document.body.innerHTML = ''
-  document.head.querySelectorAll('style').forEach((el) => el.remove())
-})
+vi.mock('./CommandMenu.svelte', () => ({ default: {} }))
 
 describe('mountDevTools', () => {
-  it('creates a wrapper element with class sb-command-wrapper', () => {
-    mountDevTools()
+  let mountDevTools, unmountDevTools
 
-    const wrapper = document.body.querySelector('.sb-command-wrapper')
-    expect(wrapper).not.toBeNull()
+  beforeEach(async () => {
+    document.body.innerHTML = ''
+    vi.resetModules()
+
+    vi.doMock('svelte', () => ({
+      mount: vi.fn(() => ({})),
+      unmount: vi.fn(),
+    }))
+    vi.doMock('./CommandMenu.svelte', () => ({ default: {} }))
+
+    const mod = await import('./devtools.js')
+    mountDevTools = mod.mountDevTools
+    unmountDevTools = mod.unmountDevTools
   })
 
-  it('appends to document.body by default', () => {
-    mountDevTools()
-
-    expect(document.body.querySelector('.sb-command-wrapper')).toBeInTheDocument()
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
-  it('appends to a custom container when options.container is provided', () => {
+  it('creates a wrapper element in the DOM', async () => {
+    await mountDevTools()
+    expect(document.getElementById('sb-command-menu')).not.toBeNull()
+  })
+
+  it('appends to document.body by default', async () => {
+    await mountDevTools()
+    expect(document.getElementById('sb-command-menu')).toBeInTheDocument()
+  })
+
+  it('accepts a custom container', async () => {
     const container = document.createElement('div')
     document.body.appendChild(container)
-
-    mountDevTools({ container })
-
-    expect(container.querySelector('.sb-command-wrapper')).not.toBeNull()
-    // Should not be a direct child of body
-    expect(
-      document.body.querySelectorAll(':scope > .sb-command-wrapper')
-    ).toHaveLength(0)
+    await mountDevTools({ container })
+    expect(container.querySelector('#sb-command-menu')).not.toBeNull()
   })
 
-  it('is idempotent — second call to same container is a no-op', () => {
-    mountDevTools()
-    mountDevTools()
-
-    const wrappers = document.body.querySelectorAll('.sb-command-wrapper')
-    expect(wrappers).toHaveLength(1)
+  it('is idempotent — calling twice does not double-mount', async () => {
+    await mountDevTools()
+    await mountDevTools()
+    expect(document.querySelectorAll('#sb-command-menu').length).toBe(1)
   })
 
-  it('injects a style element into document.head', () => {
-    mountDevTools()
-
-    const styles = document.head.querySelectorAll('style')
-    const hasDevtoolsStyle = Array.from(styles).some((el) =>
-      el.textContent.includes('.sb-command-wrapper')
-    )
-    expect(hasDevtoolsStyle).toBe(true)
-  })
-
-  it('trigger button has aria-label "Storyboard DevTools"', () => {
-    mountDevTools()
-
-    const trigger = document.body.querySelector('.sb-command-trigger')
-    expect(trigger).not.toBeNull()
-    expect(trigger.getAttribute('aria-label')).toBe('Command Menu')
-  })
-
-  it('contains a menu with flow info and reset buttons', () => {
-    mountDevTools()
-
-    const menuItems = document.body.querySelectorAll('.sb-command-menu-item')
-    expect(menuItems.length).toBeGreaterThanOrEqual(2)
-  })
-
-  it('menu is hidden by default', () => {
-    mountDevTools()
-
-    const menu = document.body.querySelector('.sb-command-menu')
-    expect(menu.classList.contains('open')).toBe(false)
+  it('unmountDevTools removes the wrapper', async () => {
+    await mountDevTools()
+    expect(document.getElementById('sb-command-menu')).not.toBeNull()
+    await unmountDevTools()
+    expect(document.getElementById('sb-command-menu')).toBeNull()
   })
 })

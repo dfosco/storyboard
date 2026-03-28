@@ -14,6 +14,10 @@ export default defineConfig({
         '../core/src/index.js',
         import.meta.url,
       ).pathname,
+      '$lib': new URL(
+        '../core/src/lib',
+        import.meta.url,
+      ).pathname,
       // Direct import for test-only helper (not in barrel export)
       '@test/modes': new URL(
         '../core/src/modes.js',
@@ -30,11 +34,12 @@ export default defineConfig({
     include: [
       'packages/core/src/svelte-plugin-ui/**/*.test.ts',
       'packages/core/src/comments/ui/authModal.test.js',
+      'packages/core/src/devtools.test.js',
     ],
     // Ensure @testing-library/svelte .svelte.js files are processed
     server: {
       deps: {
-        inline: [/@testing-library\/svelte/],
+        inline: [/@testing-library\/svelte/, /bits-ui/],
       },
     },
   },

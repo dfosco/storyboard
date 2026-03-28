@@ -16,6 +16,9 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./vitest.setup.js'],
     include: ['packages/*/src/**/*.test.{js,jsx}'],
-    exclude: ['packages/core/src/comments/ui/authModal.test.js'],
+    exclude: [
+      'packages/core/src/comments/ui/authModal.test.js',
+      'packages/core/src/devtools.test.js',
+    ],
   },
 })

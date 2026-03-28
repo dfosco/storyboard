@@ -1,7 +1,8 @@
 /**
- * Storyboard Command Menu — Svelte-based floating toolbar.
+ * Storyboard Core UI Bar — Svelte-based floating toolbar.
  *
- * Mounts the CommandMenu Svelte component into the DOM.
+ * Mounts the CoreUIBar Svelte component into the DOM.
+ * Contains the command menu and mode-specific buttons (workshop, etc.).
  * Uses dynamic import() for the Svelte component to avoid
  * breaking non-Svelte test environments.
  *
@@ -14,7 +15,7 @@ let instance = null
 let wrapper = null
 
 /**
- * Mount the Storyboard Command Menu to the DOM.
+ * Mount the Storyboard Core UI Bar to the DOM.
  * Call once at app startup. Safe to call multiple times (no-ops after first).
  *
  * @param {object} [options]
@@ -29,20 +30,20 @@ export async function mountDevTools(options = {}) {
   if (wrapper) return
 
   const { mount } = await import('svelte')
-  const { default: CommandMenu } = await import('./CommandMenu.svelte')
+  const { default: CoreUIBar } = await import('./CoreUIBar.svelte')
 
   wrapper = document.createElement('div')
-  wrapper.id = 'sb-command-menu'
+  wrapper.id = 'sb-core-ui'
   container.appendChild(wrapper)
 
-  instance = mount(CommandMenu, {
+  instance = mount(CoreUIBar, {
     target: wrapper,
     props: { basePath },
   })
 }
 
 /**
- * Remove the Command Menu from the DOM.
+ * Remove the Core UI Bar from the DOM.
  */
 export async function unmountDevTools() {
   if (instance) {

@@ -31,9 +31,13 @@
     children,
     ...restProps
   } = $props();
+
+  const borderWidth = $derived(
+    ['icon-2xl', 'icon-xl', '2xl', 'xl'].includes(size) ? '3px' : '2px'
+  );
 </script>
 
-<span data-trigger-button data-active={active || undefined}>
+<span data-trigger-button data-active={active || undefined} style:--sb-trigger-border-width={borderWidth}>
   <Button
     variant="outline"
     {size}
@@ -58,7 +62,7 @@
   }
   [data-trigger-button] :global([data-slot="button-wrapper"]) {
     --sc-border-color: var(--trigger-border, var(--color-slate-400));
-    --sc-border-width: 3px;
+    --sc-border-width: var(--sb-trigger-border-width, 3px);
   }
   [data-trigger-button] :global([data-slot="button"]) {
     background-color: var(--trigger-bg, var(--color-slate-100));

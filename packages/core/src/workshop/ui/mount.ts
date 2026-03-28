@@ -62,5 +62,7 @@ export function unmountWorkshop(): void {
   }
 }
 
-// Auto-mount
-mountWorkshop()
+// Auto-mount removed — CoreUIBar now owns the workshop UI.
+// This module is still loaded by the server plugin for the
+// data-workshop-features attribute, but does not self-mount.
+// mountWorkshop()

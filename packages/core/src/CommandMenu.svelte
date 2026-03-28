@@ -4,7 +4,7 @@
 -->
 
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount } from 'svelte'
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
   import * as Dialog from '$lib/components/ui/dialog/index.js'
   import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
@@ -13,7 +13,6 @@
   let { basePath = '/' }: Props = $props()
 
   let menuOpen = $state(false)
-  let visible = $state(true)
   let flowDialogOpen = $state(false)
   let flagsDialogOpen = $state(false)
   let flowJson = $state('')
@@ -86,29 +85,15 @@
   function handleCommentAction(item: any) { menuOpen = false; item.onClick() }
   function handleToggleFlag(key: string) { _toggleFlag?.(key); refreshState() }
 
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === '.' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault()
-      visible = !visible
-      if (!visible) { menuOpen = false; flowDialogOpen = false; flagsDialogOpen = false }
-    }
-  }
-
   onMount(async () => {
-    window.addEventListener('keydown', handleKeydown)
     try { _loadFlow = (await import('./loader.js')).loadFlow } catch {}
     try { const m = await import('./comments/config.js'); _isCommentsEnabled = m.isCommentsEnabled } catch {}
     try { const m = await import('./hideMode.js'); _isHideMode = m.isHideMode; _activateHideMode = m.activateHideMode; _deactivateHideMode = m.deactivateHideMode } catch {}
     try { const m = await import('./featureFlags.js'); _getAllFlags = m.getAllFlags; _toggleFlag = m.toggleFlag; _getFlagKeys = m.getFlagKeys } catch {}
     refreshState()
   })
-  onDestroy(() => {
-    window.removeEventListener('keydown', handleKeydown)
-  })
 </script>
 
-{#if visible}
-  <div class="fixed bottom-6 right-6 z-[9999] font-sans" data-command-menu>
     <DropdownMenu.Root bind:open={menuOpen} onOpenChange={handleMenuOpenChange}>
       <DropdownMenu.Trigger>
         {#snippet child({ props })}
@@ -155,7 +140,6 @@
         <div class="px-2 py-1.5 text-[11px] text-muted-foreground font-mono">&#8984; + . to hide</div>
       </DropdownMenu.Content>
     </DropdownMenu.Root>
-  </div>
 
   <!-- Flow info dialog -->
   <Dialog.Root bind:open={flowDialogOpen}>
@@ -198,4 +182,3 @@
       </div>
     </Dialog.Content>
   </Dialog.Root>
-{/if}

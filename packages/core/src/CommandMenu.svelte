@@ -57,14 +57,17 @@
 
   function handleToggle(action: any) {
     executeAction(action.id)
-    // Don't close menu — let user see the state change
-    // Re-derive will pick up new state via actionsVersion
+    // Menu stays open — onSelect prevented in template
   }
 
   function handleSubmenuChildExecute(child: any) {
     if (child.execute) child.execute()
-    // Stay open for multi-toggle
+    // Menu stays open for multi-toggle
     actionsVersion++
+  }
+
+  function preventClose(e: Event) {
+    e.preventDefault()
   }
 
   function refreshOnOpen(open: boolean) {
@@ -94,6 +97,7 @@
             <DropdownMenu.CheckboxItem
               checked={action.active}
               onCheckedChange={() => handleToggle(action)}
+              onSelect={preventClose}
             >
               {action.resolvedLabel}
             </DropdownMenu.CheckboxItem>
@@ -109,6 +113,7 @@
                     <DropdownMenu.CheckboxItem
                       checked={child.active}
                       onCheckedChange={() => handleSubmenuChildExecute(child)}
+                      onSelect={preventClose}
                     >
                       {child.label}
                     </DropdownMenu.CheckboxItem>

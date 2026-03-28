@@ -13,7 +13,7 @@
   import { onMount, onDestroy } from 'svelte'
   import CommandMenu from './CommandMenu.svelte'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
-  import { initCommandActions, registerCommandAction, setDynamicActions } from './commandActions.js'
+  import { initCommandActions, registerCommandAction } from './commandActions.js'
   import coreUIConfig from '../core-ui.config.json'
 
   interface Props { basePath?: string }
@@ -103,24 +103,15 @@
       })
     } catch {}
 
-    // Register comment actions
+    // Register comments handler
     try {
       const { isCommentsEnabled } = await import('./comments/config.js')
       if (isCommentsEnabled()) {
         const { getCommentsMenuItems } = await import('./comments/ui/CommentOverlay.js')
         const items = getCommentsMenuItems()
-        if (items.length > 0) {
-          const actions = items.map((item: any, i: number) => ({
-            id: `comments/${i}`,
-            label: item.label,
-            type: 'default' as const,
-            separatorBefore: i === 0,
-          }))
-          const handlers: Record<string, () => void> = {}
-          items.forEach((item: any, i: number) => {
-            handlers[`comments/${i}`] = () => item.onClick()
-          })
-          setDynamicActions('comments', actions, handlers)
+        const signIn = items.find((item: any) => item.label === 'Sign in for comments')
+        if (signIn) {
+          registerCommandAction('comments/sign-in', () => signIn.onClick())
         }
       }
     } catch {}

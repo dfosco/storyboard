@@ -20,6 +20,7 @@
         { "type": "separator" },
         { "id": "core/feature-flags", "label": "Feature Flags", "type": "submenu", "modes": ["*"] },
         { "type": "separator" },
+        { "id": "comments/sign-in", "label": "Sign in for comments", "type": "default", "modes": ["*"] },
         { "type": "footer", "label": "⌘ + . to hide" }
       ]
     },

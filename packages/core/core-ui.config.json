@@ -52,6 +52,7 @@
     "comments": {
       "ariaLabel": "Comments",
       "icon": "primer/comment",
+      "excludeRoutes": ["^/$", "/viewfinder"],
       "modes": ["*"]
     },    
     "docs": {

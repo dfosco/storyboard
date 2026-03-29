@@ -83,6 +83,21 @@ export function createCanvasHandler(ctx) {
   const { root, sendJson } = ctx
 
   return async (req, res, { body, path: routePath, method }) => {
+    // GET /folders — list available canvas folders
+    if (routePath === '/folders' && method === 'GET') {
+      const canvasesDir = path.join(root, 'src', 'canvases')
+      let folders = []
+      try {
+        if (fs.existsSync(canvasesDir)) {
+          folders = fs.readdirSync(canvasesDir, { withFileTypes: true })
+            .filter((d) => d.isDirectory() && d.name.endsWith('.folder'))
+            .map((d) => d.name.replace('.folder', ''))
+        }
+      } catch { /* empty */ }
+      sendJson(res, 200, { folders })
+      return
+    }
+
     // GET /list — list all canvases
     if (routePath === '/list' && method === 'GET') {
       const files = findCanvasFiles(root)
@@ -251,11 +266,11 @@ export function createCanvasHandler(ctx) {
       }
 
       // Determine target directory
-      const prototypesDir = path.join(root, 'src', 'prototypes')
-      let targetDir = prototypesDir
+      const canvasesDir = path.join(root, 'src', 'canvases')
+      let targetDir = canvasesDir
 
       if (folder) {
-        const folderDir = path.join(prototypesDir, `${folder}.folder`)
+        const folderDir = path.join(canvasesDir, `${folder}.folder`)
         if (!fs.existsSync(folderDir)) {
           sendJson(res, 400, { error: `Folder "${folder}" does not exist` })
           return
@@ -289,7 +304,7 @@ export function createCanvasHandler(ctx) {
           success: true,
           name: kebab,
           path: path.relative(root, canvasPath),
-          route: `/${kebab}`,
+          route: `/canvas/${kebab}`,
         }
 
         // Optionally create starter JSX file

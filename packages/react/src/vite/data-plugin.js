@@ -58,20 +58,34 @@ function parseDataFile(filePath) {
   }
 
   // Canvas files are keyed by their base name, scoped to folder if inside one.
-  // They also get an inferred route (like flows inside prototypes).
+  // They live in src/canvases/ and get routes under /canvas/.
   if (suffix === 'canvas') {
     let inferredRoute = null
+    // Detect folder from src/canvases/{Name}.folder/
+    const canvasFolderMatch = normalized.match(/(?:^|\/)src\/canvases\/([^/]+)\.folder\//)
+    const canvasFolderName = canvasFolderMatch ? canvasFolderMatch[1] : null
+
+    const canvasCheck = normalized.match(/(?:^|\/)src\/canvases\//)
+    if (canvasCheck) {
+      // Route = /canvas/ + path with src/canvases/ and .folder/ stripped + canvas name
+      const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
+      const routeBase = dirPath
+        .replace(/^.*?src\/canvases\//, '')
+        .replace(/[^/]*\.folder\//g, '')
+      inferredRoute = '/canvas/' + (routeBase ? routeBase + '/' : '') + name
+      inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
+    }
+    // Also check legacy location in src/prototypes/
     const protoCheck = normalized.match(/(?:^|\/)src\/prototypes\//)
-    if (protoCheck) {
-      // Route = directory path with src/prototypes/ and .folder/ stripped, plus the canvas name
+    if (!canvasCheck && protoCheck) {
       const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
       const routeBase = dirPath
         .replace(/^.*?src\/prototypes\//, '')
         .replace(/[^/]*\.folder\//g, '')
-      inferredRoute = '/' + (routeBase ? routeBase + '/' : '') + name
-      inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/'
+      inferredRoute = '/canvas/' + (routeBase ? routeBase + '/' : '') + name
+      inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
     }
-    return { name, suffix, ext: match[3], folder: folderName, inferredRoute }
+    return { name, suffix, ext: match[3], folder: canvasFolderName || folderName, inferredRoute }
   }
 
   // Scope flows, records, and objects inside src/prototypes/{Name}/ with a prefix
@@ -361,7 +375,7 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
           parsed = { ...parsed, _route: canvasRoutes[name] }
         }
         // Inject folder association
-        const folderDirMatch = path.relative(root, absPath).replace(/\\/g, '/').match(/(?:^|\/)src\/prototypes\/([^/]+)\.folder\//)
+        const folderDirMatch = path.relative(root, absPath).replace(/\\/g, '/').match(/(?:^|\/)src\/(?:prototypes|canvases)\/([^/]+)\.folder\//)
         if (folderDirMatch) {
           parsed = { ...parsed, _folder: folderDirMatch[1] }
         }

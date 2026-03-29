@@ -35,7 +35,7 @@
     kebabName ? kebabName.split('-').map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(' ') : ''
   )
   const displayTitle = $derived(titleTouched ? title : autoTitle)
-  const routePreview = $derived(kebabName ? `/${kebabName}` : '')
+  const routePreview = $derived(kebabName ? `/canvas/${kebabName}` : '')
   const nameError = $derived(
     name.trim() && !kebabName ? 'Name must contain at least one alphanumeric character'
     : name.trim() && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(kebabName) ? 'Name must be kebab-case'
@@ -50,10 +50,7 @@
 
   onMount(async () => {
     try {
-      // Reuse the workshop endpoint to list folders
-      const basePath = document.querySelector('base')?.getAttribute('href') || '/'
-      const workshopUrl = basePath.replace(/\/$/, '') + '/_storyboard/workshop/prototypes'
-      const res = await fetch(workshopUrl)
+      const res = await fetch(getApiUrl() + '/folders')
       if (res.ok) {
         const data = await res.json()
         folders = data.folders || []

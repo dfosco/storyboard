@@ -113,4 +113,9 @@
     background: rgba(255, 255, 255, 0.85);
     color: color-mix(in srgb, var(--mode-color) 70%, black);
   }
+
+  /* Hide when chrome is toggled off via ⌘ + . */
+  :global(html.storyboard-chrome-hidden) .sb-mode-switch {
+    display: none;
+  }
 </style>

@@ -14,6 +14,7 @@
   import './core-ui-colors.css'
   import CommandMenu from './CommandMenu.svelte'
   import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
+  import * as Tooltip from '$lib/components/ui/tooltip/index.js'
   import Octicon from './svelte-plugin-ui/components/Octicon.svelte'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
   import { sidePanelState, togglePanel } from './stores/sidePanelStore.js'
@@ -65,6 +66,7 @@
     if (e.key === '.' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       visible = !visible
+      document.documentElement.classList.toggle('storyboard-chrome-hidden', !visible)
     }
     // Cmd+D — toggle documentation panel
     if (e.key === 'd' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {

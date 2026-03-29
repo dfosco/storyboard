@@ -411,39 +411,20 @@
         </section>
       {/snippet}
 
-      <!-- Folders with their prototypes -->
-      {#each sortedFolders as folder (folder.dirName)}
-        <section class="folderGroup" class:folderGroupOpen={isExpanded(`folder:${folder.dirName}`)}>
-          <button
-            class="folderHeader"
-            onclick={() => toggle(`folder:${folder.dirName}`)}
-            aria-expanded={isExpanded(`folder:${folder.dirName}`)}
-          >
-            <p class="folderName">
-              <span>
-                {#if isExpanded(`folder:${folder.dirName}`)}
-                  <Icon size={20} offsetY={-1.5} name="folder-open" color="#54aeff" />
-                {:else}
-                  <Icon size={20} offsetY={-1.5} name="folder" color="#54aeff" />
-                {/if}
-              </span>
-              {folder.name}
-            </p>
-            {#if folder.description}
-              <p class="folderDesc">{folder.description}</p>
+      {#snippet canvasEntry(canvas)}
+        <a class="listItem" href={canvas.route}>
+          <div class="cardBody">
+            <p class="protoName">{canvas.name}</p>
+            {#if canvas.description}
+              <p class="protoDesc">{canvas.description}</p>
             {/if}
-          </button>
-          {#if isExpanded(`folder:${folder.dirName}`) && folder.prototypes.length > 0}
-            <div class="folderContent">
-              {#each folder.prototypes as proto (proto.dirName)}
-                {@render protoEntry(proto)}
-              {/each}
-            </div>
-          </a>
-        </section>
+            {#if canvas.widgetCount > 0}
+              <p class="flowDesc">{canvas.widgetCount} widget{canvas.widgetCount === 1 ? '' : 's'}</p>
+            {/if}
+          </div>
+        </a>
       {/snippet}
 
-      <!-- Folders with their prototypes -->
       {#if viewMode === 'prototypes'}
         {#each protoOnlyFolders as folder (folder.dirName)}
           <section class="folderGroup" class:folderGroupOpen={isExpanded(`folder:${folder.dirName}`)}>
@@ -455,9 +436,9 @@
               <p class="folderName">
                 <span>
                   {#if isExpanded(`folder:${folder.dirName}`)}
-                    <Octicon size={20} offsetY={-1.5} name="folder-open" color="#54aeff" />
+                    <Icon size={20} offsetY={-1.5} name="folder-open" color="#54aeff" />
                   {:else}
-                    <Octicon size={20} offsetY={-1.5} name="folder" color="#54aeff" />
+                    <Icon size={20} offsetY={-1.5} name="folder" color="#54aeff" />
                   {/if}
                 </span>
                 {folder.name}
@@ -497,9 +478,9 @@
               <p class="folderName">
                 <span>
                   {#if isExpanded(`folder:${folder.dirName}`)}
-                    <Octicon size={20} offsetY={-1.5} name="folder-open" color="#54aeff" />
+                    <Icon size={20} offsetY={-1.5} name="folder-open" color="#54aeff" />
                   {:else}
-                    <Octicon size={20} offsetY={-1.5} name="folder" color="#54aeff" />
+                    <Icon size={20} offsetY={-1.5} name="folder" color="#54aeff" />
                   {/if}
                 </span>
                 {folder.name}

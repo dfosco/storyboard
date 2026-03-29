@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import WidgetWrapper from './WidgetWrapper.jsx'
+import { readProp, markdownSchema } from './widgetProps.js'
 import styles from './MarkdownBlock.module.css'
 
 /**
  * Renders markdown as plain HTML using a minimal built-in converter.
- * No external markdown library needed for basic formatting.
  */
 function renderMarkdown(text) {
   if (!text) return ''
@@ -26,8 +26,8 @@ function renderMarkdown(text) {
 }
 
 export default function MarkdownBlock({ id, props, onUpdate, onRemove }) {
-  const content = props?.content ?? ''
-  const width = props?.width ?? 360
+  const content = readProp(props, 'content', markdownSchema)
+  const width = readProp(props, 'width', markdownSchema)
   const [editing, setEditing] = useState(false)
   const textareaRef = useRef(null)
   const blockRef = useRef(null)

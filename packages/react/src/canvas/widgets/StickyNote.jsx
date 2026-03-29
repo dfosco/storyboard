@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { readProp, stickyNoteSchema } from './widgetProps.js'
 import styles from './StickyNote.module.css'
 
 const COLORS = {
@@ -11,8 +12,8 @@ const COLORS = {
 }
 
 export default function StickyNote({ id, props, onUpdate, onRemove }) {
-  const text = props?.text ?? ''
-  const color = props?.color ?? 'yellow'
+  const text = readProp(props, 'text', stickyNoteSchema)
+  const color = readProp(props, 'color', stickyNoteSchema)
   const palette = COLORS[color] ?? COLORS.yellow
   const textareaRef = useRef(null)
   const [editing, setEditing] = useState(false)
@@ -23,6 +24,14 @@ export default function StickyNote({ id, props, onUpdate, onRemove }) {
       textareaRef.current.selectionStart = textareaRef.current.value.length
     }
   }, [editing])
+
+  const handleTextChange = useCallback((e) => {
+    onUpdate?.({ text: e.target.value })
+  }, [onUpdate])
+
+  const handleColorChange = useCallback((newColor) => {
+    onUpdate?.({ color: newColor })
+  }, [onUpdate])
 
   return (
     <div className={styles.container}>
@@ -43,7 +52,7 @@ export default function StickyNote({ id, props, onUpdate, onRemove }) {
             ref={textareaRef}
             className={styles.textarea}
             value={text}
-            onChange={(e) => onUpdate?.({ text: e.target.value })}
+            onChange={handleTextChange}
             onBlur={() => setEditing(false)}
             onKeyDown={(e) => {
               if (e.key === 'Escape') setEditing(false)
@@ -70,17 +79,17 @@ export default function StickyNote({ id, props, onUpdate, onRemove }) {
           style={{ background: palette.dot }}
         />
         <div className={styles.pickerPopup}>
-          {Object.entries(COLORS).map(([name, c]) => (
+          {Object.entries(COLORS).map(([colorName, c]) => (
             <button
-              key={name}
-              className={`${styles.colorDot} ${name === color ? styles.active : ''}`}
+              key={colorName}
+              className={`${styles.colorDot} ${colorName === color ? styles.active : ''}`}
               style={{ background: c.bg, borderColor: c.border }}
               onClick={(e) => {
                 e.stopPropagation()
-                onUpdate?.({ color: name })
+                handleColorChange(colorName)
               }}
-              title={name}
-              aria-label={`Set color to ${name}`}
+              title={colorName}
+              aria-label={`Set color to ${colorName}`}
             />
           ))}
         </div>
@@ -88,3 +97,5 @@ export default function StickyNote({ id, props, onUpdate, onRemove }) {
     </div>
   )
 }
+
+export { stickyNoteSchema as schema }

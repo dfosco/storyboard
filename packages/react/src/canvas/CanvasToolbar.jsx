@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { addWidget as addWidgetApi } from './canvasApi.js'
+import { schemas, getDefaults } from './widgets/widgetProps.js'
 import styles from './CanvasToolbar.module.css'
 
 const WIDGET_TYPES = [
@@ -19,14 +20,10 @@ export default function CanvasToolbar({ canvasName, onWidgetAdded }) {
     if (adding) return
     setAdding(true)
     try {
-      const defaults = {
-        'sticky-note': { text: '', color: 'yellow' },
-        'markdown': { content: '', width: 360 },
-        'prototype': { src: '', width: 800, height: 600, label: '' },
-      }
+      const defaultProps = schemas[type] ? getDefaults(schemas[type]) : {}
       const result = await addWidgetApi(canvasName, {
         type,
-        props: defaults[type] || {},
+        props: defaultProps,
         position: { x: 0, y: 0 },
       })
       if (result.success) {

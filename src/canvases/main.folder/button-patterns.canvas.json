@@ -41,7 +41,7 @@
         "y": 350
       },
       "props": {
-        "content": "## Usage Guidelines\n\n- Use **primary** for the main action\n- Use **danger** only for destructive actions\n- Always pair danger with a confirmation dialog",
+        "content": "## Usage Guidelines\n\n- Use **primary** for the main action!!!\n- Use **danger** only for destructive actions\n- Always pair danger with a confirmation dialog",
         "width": 400
       }
     },
@@ -77,7 +77,7 @@
         "y": 0
       },
       "props": {
-        "text": "BANANAPHONE",
+        "text": "sjwoierjgfewiojgrijow",
         "color": "green"
       }
     }

@@ -1,11 +1,12 @@
 import WidgetWrapper from './WidgetWrapper.jsx'
+import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import styles from './PrototypeEmbed.module.css'
 
 export default function PrototypeEmbed({ id, props, onUpdate, onRemove }) {
-  const src = props?.src ?? ''
-  const width = props?.width ?? 800
-  const height = props?.height ?? 600
-  const label = props?.label ?? src
+  const src = readProp(props, 'src', prototypeEmbedSchema)
+  const width = readProp(props, 'width', prototypeEmbedSchema)
+  const height = readProp(props, 'height', prototypeEmbedSchema)
+  const label = readProp(props, 'label', prototypeEmbedSchema) || src
 
   // Build the full iframe URL using the app's base path
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')

@@ -11,7 +11,7 @@
     <StoryboardIcon name="repo" />
     <StoryboardIcon name="folder" color="#54aeff" />
     <StoryboardIcon name="fast-forward" size={16} />
-    <StoryboardIcon name="square-dashed" size={16} label="Inspector" />
+    <StoryboardIcon name="square-dashed" size={16} strokeWeight={2} scale={1.05} label="Inspector" />
     <StoryboardIcon name="gear" size={16} label="Settings" />
     <StoryboardIcon name="tablet" rotate={90} />
     <StoryboardIcon name="lock" offsetX={1} offsetY={-1} />
@@ -55,6 +55,8 @@
     rotate?: number
     flipX?: boolean
     flipY?: boolean
+    strokeWeight?: number
+    scale?: number
   }
 
   let {
@@ -67,6 +69,8 @@
     rotate = 0,
     flipX = false,
     flipY = false,
+    strokeWeight,
+    scale = 1,
   }: Props = $props()
 
   const ariaAttrs = $derived(
@@ -90,19 +94,24 @@
       ?? featherIcon?.toSvg({
           width: size,
           height: size,
+          'stroke-width': strokeWeight ?? 2,
           ...(label ? { 'aria-label': label } : { 'aria-hidden': 'true' }),
         })
       ?? (iconoir
-          ? `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${iconoir.viewBox}" fill="none" stroke-width="${iconoir.strokeWidth}" ${ariaAttrs}>${iconoir.content}</svg>`
+          ? `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${iconoir.viewBox}" fill="none" stroke-width="${strokeWeight ?? iconoir.strokeWidth}" ${ariaAttrs}>${iconoir.content}</svg>`
           : '')
   )
+
+  const scaleX = $derived((flipX ? -1 : 1) * scale)
+  const scaleY = $derived((flipY ? -1 : 1) * scale)
+  const hasScale = $derived(flipX || flipY || scale !== 1)
 
   const style = $derived(
     [
       color ? `color: ${color}` : '',
       (offsetX || offsetY) ? `translate: ${offsetX}px ${offsetY}px` : '',
       rotate ? `rotate: ${rotate}deg` : '',
-      (flipX || flipY) ? `scale: ${flipX ? -1 : 1} ${flipY ? -1 : 1}` : '',
+      hasScale ? `scale: ${scaleX} ${scaleY}` : '',
     ].filter(Boolean).join('; ') || undefined
   )
 </script>

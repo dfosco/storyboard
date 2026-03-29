@@ -11,7 +11,7 @@
   import { modeState, switchMode } from '../stores/modeStore.js'
 </script>
 
-{#if $modeState.modes.length >= 2}
+{#if $modeState.switcherVisible && $modeState.modes.length >= 2}
   <div class="sb-mode-switch" role="tablist" aria-label="Design mode">
     {#each $modeState.modes as m (m.name)}
       <button

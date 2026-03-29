@@ -16,6 +16,7 @@ const _eventListeners = new Map()
 const DEFAULT_MODE = 'prototype'
 
 let _modesEnabled = false
+let _lockedMode = null
 
 // Tool registry — seeded from modes.config.json, state managed at runtime
 const _tools = new Map()          // id → { id, label, group, modes[] }
@@ -84,6 +85,7 @@ export function getRegisteredModes() {
  * Falls back to DEFAULT_MODE when the param is absent or unrecognised.
  */
 export function getCurrentMode() {
+  if (_lockedMode && _modes.has(_lockedMode)) return _lockedMode
   if (typeof window === 'undefined') return DEFAULT_MODE
   const url = new URL(window.location.href)
   const param = url.searchParams.get('mode')
@@ -99,6 +101,10 @@ export function getCurrentMode() {
  * @param {object} [options] Passed through to onActivate
  */
 export function activateMode(name, options) {
+  if (_lockedMode) {
+    console.warn(`[storyboard] Modes are locked to "${_lockedMode}" — ignoring switch to "${name}".`)
+    return
+  }
   if (!_modes.has(name)) {
     console.warn(`[storyboard] Mode "${name}" is not registered.`)
     return
@@ -272,10 +278,11 @@ function _notify() {
 /**
  * Initialize modes configuration.
  * Called by the Vite data plugin's generated virtual module.
- * @param {{ enabled?: boolean }} [config]
+ * @param {{ enabled?: boolean, locked?: string }} [config]
  */
 export function initModesConfig(config = {}) {
   _modesEnabled = config.enabled !== false
+  _lockedMode = typeof config.locked === 'string' ? config.locked : null
 }
 
 /**
@@ -285,6 +292,24 @@ export function initModesConfig(config = {}) {
  */
 export function isModesEnabled() {
   return _modesEnabled
+}
+
+/**
+ * Get the locked mode name, or null if modes are not locked.
+ * When locked, the mode switcher is hidden and activateMode() is a no-op.
+ * @returns {string|null}
+ */
+export function getLockedMode() {
+  return _lockedMode
+}
+
+/**
+ * Check whether the mode switcher UI should be visible.
+ * Returns false when modes are disabled or locked to a specific mode.
+ * @returns {boolean}
+ */
+export function isModeSwitcherVisible() {
+  return _modesEnabled && !_lockedMode
 }
 
 // ---------------------------------------------------------------------------
@@ -463,4 +488,5 @@ export function _resetModes() {
   _toolActions.clear()
   _toolListeners.clear()
   _modesEnabled = false
+  _lockedMode = null
 }

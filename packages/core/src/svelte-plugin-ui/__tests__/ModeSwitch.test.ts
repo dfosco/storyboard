@@ -4,6 +4,7 @@ import { userEvent } from '@testing-library/user-event'
 import {
   registerMode,
   activateMode,
+  initModesConfig,
 } from '@dfosco/storyboard-core'
 import { _resetModes } from '@test/modes'
 import ModeSwitch from '../components/ModeSwitch.svelte'
@@ -23,6 +24,7 @@ describe('ModeSwitch', () => {
   })
 
   it('renders a tab for each registered mode', () => {
+    initModesConfig({ enabled: true })
     registerMode('prototype', { label: 'Navigate' })
     registerMode('inspect', { label: 'Develop' })
     registerMode('present', { label: 'Collaborate' })
@@ -35,6 +37,7 @@ describe('ModeSwitch', () => {
   })
 
   it('marks the active mode tab as selected', () => {
+    initModesConfig({ enabled: true })
     registerMode('prototype', { label: 'Navigate' })
     registerMode('inspect', { label: 'Develop' })
 
@@ -48,6 +51,7 @@ describe('ModeSwitch', () => {
   })
 
   it('switches mode on button click', async () => {
+    initModesConfig({ enabled: true })
     registerMode('prototype', { label: 'Navigate' })
     registerMode('inspect', { label: 'Develop' })
 
@@ -58,5 +62,14 @@ describe('ModeSwitch', () => {
 
     expect(screen.getByRole('tab', { name: 'Develop' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Navigate' })).toHaveAttribute('aria-selected', 'false')
+  })
+
+  it('renders nothing when modes are locked', () => {
+    registerMode('prototype', { label: 'Navigate' })
+    registerMode('inspect', { label: 'Develop' })
+    initModesConfig({ enabled: true, locked: 'prototype' })
+
+    const { container } = render(ModeSwitch)
+    expect(container.querySelector('[role="tablist"]')).toBeNull()
   })
 })

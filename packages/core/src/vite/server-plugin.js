@@ -14,7 +14,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { parse as parseJsonc } from 'jsonc-parser'
 import { serverFeatures as workshopFeatures } from '../workshop/features/registry-server.js'
-import { createCanvasHandler } from '../canvas/server.js'
+import { docsHandler } from './docs-handler.js'
 
 const API_PREFIX = '/_storyboard/'
 
@@ -87,10 +87,6 @@ export default function storyboardServer() {
 
     configureServer(server) {
       const workshopConfig = config.workshop || {}
-
-      // If workshop is explicitly disabled, skip everything
-      if (workshopConfig.enabled === false) return
-
       const enabledFeatures = workshopConfig.features || {}
 
       // Wire workshop API routes for each enabled feature
@@ -101,9 +97,14 @@ export default function storyboardServer() {
         }
       }
 
+<<<<<<< HEAD
       // Wire canvas CRUD API routes (always available)
       // Pass the Vite watcher so the canvas handler can unwatch files during writes
       routeHandlers.set('canvas', createCanvasHandler({ root, sendJson, watcher: server.watcher }))
+=======
+      // Wire docs API routes (always enabled — serves README + source files)
+      routeHandlers.set('docs', docsHandler({ root, sendJson }))
+>>>>>>> 11de212 (Config consolidation: mode locking, ui.hide, workshop cleanup)
 
       // Inject workshop client UI when any feature is enabled
       if (hasAnyWorkshopFeature(workshopConfig)) {

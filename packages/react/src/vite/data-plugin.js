@@ -466,6 +466,12 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
     }
   }
 
+  // UI config from storyboard.config.json (menu visibility overrides)
+  if (config?.ui) {
+    imports.push(`import { initUIConfig } from '@dfosco/storyboard-core'`)
+    initCalls.push(`initUIConfig(${JSON.stringify(config.ui)})`)
+  }
+
   // Log info when multiple flows target the same route
   const routeGroups = {}
   for (const [name, { route, isDefault }] of Object.entries(resolvedFlowRoutes)) {

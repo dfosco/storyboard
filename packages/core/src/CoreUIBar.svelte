@@ -11,9 +11,14 @@
 
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
+  import './core-ui-colors.css'
   import CommandMenu from './CommandMenu.svelte'
+  import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
+  import Octicon from './svelte-plugin-ui/components/Octicon.svelte'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
-  import { initCommandActions, registerCommandAction } from './commandActions.js'
+  import { sidePanelState, togglePanel } from './stores/sidePanelStore.js'
+  import { initCommandActions, registerCommandAction, isExcludedByRoute } from './commandActions.js'
+  import { isMenuHidden } from './uiConfig.js'
   import coreUIConfig from '../core-ui.config.json'
 
   interface Props { basePath?: string }
@@ -22,25 +27,60 @@
   let visible = $state(true)
   let CreateMenuButton: any = $state(null)
   let createMenuFeatures: any[] = $state([])
+  let CommentsMenuButton: any = $state(null)
+  let commentsEnabled = $state(false)
+  let SidePanel: any = $state(null)
 
-  const commandMenuConfig = coreUIConfig.menus?.command
-  const createMenuConfig = coreUIConfig.menus?.create
+  const commandMenuConfig = isMenuHidden('command') ? null : coreUIConfig.menus?.command
+
+  // Build ordered menu list from JSON key order (excluding command, which is always rightmost)
+  const allMenus = (coreUIConfig.menus || {}) as Record<string, any>
+  const orderedMenus = Object.entries(allMenus)
+    .filter(([key]) => key !== 'command')
+    .filter(([key]) => !isMenuHidden(key))
+    .map(([key, menu]) => ({ key, ...menu }))
+
+  // Discover menus with sidepanel property
+  const sidepanelMenus = orderedMenus.filter(menu => menu.sidepanel)
 
   function menuVisibleInMode(menu: any, mode: string): boolean {
     if (!menu?.modes) return false
+    if (isExcludedByRoute(menu)) return false
     return menu.modes.includes('*') || menu.modes.includes(mode)
   }
 
-  const showCreateMenu = $derived(
-    createMenuConfig &&
-    menuVisibleInMode(createMenuConfig, $modeState.mode) &&
-    CreateMenuButton && createMenuFeatures.length > 0
+  // Menus that are visible in the current mode, reversed so JSON top→bottom = right→left
+  const visibleMenus = $derived(
+    orderedMenus
+      .filter(menu => {
+        if (!menuVisibleInMode(menu, $modeState.mode)) return false
+        if (menu.key === 'create') return CreateMenuButton && createMenuFeatures.length > 0
+        if (menu.key === 'comments') return CommentsMenuButton && commentsEnabled
+        return true
+      })
+      .reverse()
   )
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === '.' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       visible = !visible
+    }
+    // Cmd+D — toggle documentation panel
+    if (e.key === 'd' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      const docsMenu = visibleMenus.find(m => m.sidepanel === 'docs')
+      if (docsMenu) {
+        e.preventDefault()
+        togglePanel('docs')
+      }
+    }
+    // Cmd+I — toggle inspector panel
+    if (e.key === 'i' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+      const inspectorMenu = visibleMenus.find(m => m.sidepanel === 'inspector')
+      if (inspectorMenu) {
+        e.preventDefault()
+        togglePanel('inspector')
+      }
     }
   }
 
@@ -57,37 +97,62 @@
       window.location.href = basePath + 'viewfinder'
     })
 
-    registerCommandAction('core/reset-params', () => {
-      window.location.hash = ''
-    })
+    // Register sidepanel toggle actions
+    for (const menu of sidepanelMenus) {
+      registerCommandAction(`core/${menu.key}`, () => {
+        togglePanel(menu.sidepanel)
+      })
+    }
 
-    // Lazy-load optional handler modules
-    try {
-      const loader = await import('./loader.js')
-      registerCommandAction('core/show-flow-info', {
-        execute: () => {
-          const p = new URLSearchParams(window.location.search)
-          const flowName = p.get('flow') || p.get('scene') || 'default'
-          try {
-            const data = loader.loadFlow(flowName)
-            showFlowInfoDialog(flowName, JSON.stringify(data, null, 2), null)
-          } catch (e: any) {
-            showFlowInfoDialog(flowName, '', e.message)
+    // Register devtools submenu (show flow info, reset params, hide mode)
+    {
+      let loader: any = null
+      let hm: any = null
+      try { loader = await import('./loader.js') } catch {}
+      try { hm = await import('./hideMode.js') } catch {}
+
+      registerCommandAction('core/devtools', {
+        getChildren: () => {
+          const children: any[] = []
+          if (loader) {
+            children.push({
+              id: 'core/show-flow-info',
+              label: 'Show flow info',
+              type: 'default',
+              execute: () => {
+                const p = new URLSearchParams(window.location.search)
+                const name = p.get('flow') || p.get('scene') || 'default'
+                try {
+                  const data = loader.loadFlow(name)
+                  showFlowInfoDialog(name, JSON.stringify(data, null, 2), null)
+                } catch (e: any) {
+                  showFlowInfoDialog(name, '', e.message)
+                }
+              },
+            })
           }
+          children.push({
+            id: 'core/reset-params',
+            label: 'Reset all params',
+            type: 'default',
+            execute: () => { window.location.hash = '' },
+          })
+          if (hm) {
+            children.push({
+              id: 'core/hide-mode',
+              label: 'Hide mode',
+              type: 'toggle',
+              active: hm.isHideMode(),
+              execute: () => {
+                if (hm.isHideMode()) hm.deactivateHideMode()
+                else hm.activateHideMode()
+              },
+            })
+          }
+          return children
         },
       })
-    } catch {}
-
-    try {
-      const hm = await import('./hideMode.js')
-      registerCommandAction('core/hide-mode', {
-        execute: () => {
-          if (hm.isHideMode()) hm.deactivateHideMode()
-          else hm.activateHideMode()
-        },
-        getState: () => hm.isHideMode(),
-      })
-    } catch {}
+    }
 
     try {
       const ff = await import('./featureFlags.js')
@@ -103,20 +168,18 @@
       })
     } catch {}
 
-    // Register comments handler
+    // Load comments menu button
     try {
       const { isCommentsEnabled } = await import('./comments/config.js')
       if (isCommentsEnabled()) {
-        const { getCommentsMenuItems } = await import('./comments/ui/CommentOverlay.js')
-        const items = getCommentsMenuItems()
-        const signIn = items.find((item: any) => item.label === 'Sign in for comments')
-        if (signIn) {
-          registerCommandAction('comments/sign-in', () => signIn.onClick())
-        }
+        commentsEnabled = true
+        const mod = await import('./CommentsMenuButton.svelte')
+        CommentsMenuButton = mod.default
       }
     } catch {}
 
     // Load create menu features
+    const createMenuConfig = allMenus.create
     try {
       if (createMenuConfig) {
         const { features } = await import('./workshop/features/registry.js')
@@ -142,6 +205,14 @@
         }
       }
     } catch {}
+
+    // Load side panel component
+    try {
+      if (sidepanelMenus.length > 0) {
+        const mod = await import('./SidePanel.svelte')
+        SidePanel = mod.default
+      }
+    } catch {}
   })
 
   onDestroy(() => {
@@ -164,9 +235,28 @@
 
 {#if visible}
   <div class="fixed bottom-6 right-6 z-[9999] font-sans flex items-end gap-3" data-core-ui-bar>
-    {#if showCreateMenu}
-      <CreateMenuButton features={createMenuFeatures} config={createMenuConfig} />
+    {#each visibleMenus as menu (menu.key)}
+      {#if menu.sidepanel}
+        <TriggerButton
+          active={$sidePanelState.open && $sidePanelState.activeTab === menu.sidepanel}
+          size="icon-xl"
+          aria-label={menu.ariaLabel || menu.key}
+          onclick={() => togglePanel(menu.sidepanel)}
+        >
+          <Octicon name={menu.icon || menu.key} size={16} />
+        </TriggerButton>
+      {:else if menu.key === 'create'}
+        <CreateMenuButton features={createMenuFeatures} config={menu} />
+      {:else if menu.key === 'comments'}
+        <CommentsMenuButton config={menu} />
+      {/if}
+    {/each}
+    {#if commandMenuConfig}
+      <CommandMenu {basePath} bind:flowDialogOpen {flowName} {flowJson} {flowError} />
     {/if}
-    <CommandMenu {basePath} bind:flowDialogOpen {flowName} {flowJson} {flowError} />
   </div>
+{/if}
+
+{#if SidePanel}
+  <SidePanel />
 {/if}

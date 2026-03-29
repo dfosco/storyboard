@@ -43,7 +43,7 @@ export { installBodyClassSync, setFlowClass, syncOverrideClasses } from './bodyC
 export { setSceneClass } from './bodyClasses.js'
 
 // Design modes (mode registry, switching, event bus)
-export { registerMode, unregisterMode, getRegisteredModes, getCurrentMode, activateMode, deactivateMode, subscribeToMode, getModeSnapshot, syncModeClasses, on, off, emit, initModesConfig, isModesEnabled } from './modes.js'
+export { registerMode, unregisterMode, getRegisteredModes, getCurrentMode, activateMode, deactivateMode, subscribeToMode, getModeSnapshot, syncModeClasses, on, off, emit, initModesConfig, isModesEnabled, getLockedMode, isModeSwitcherVisible } from './modes.js'
 
 // Tool registry (declared in modes.config.json, state managed at runtime)
 export { initTools, setToolAction, setToolState, getToolState, getToolsForMode, subscribeToTools, getToolsSnapshot } from './modes.js'
@@ -67,6 +67,9 @@ export { initCommandActions, registerCommandAction, unregisterCommandAction, set
 
 // Plugin configuration
 export { initPlugins, isPluginEnabled, getPluginsConfig } from './plugins.js'
+
+// UI config (project-level chrome overrides)
+export { initUIConfig, isMenuHidden, getHiddenItems } from './uiConfig.js'
 
 // Comments system
 export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comments/config.js'

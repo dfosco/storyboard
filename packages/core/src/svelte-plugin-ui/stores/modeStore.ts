@@ -13,6 +13,7 @@ import {
   getRegisteredModes,
   activateMode,
   subscribeToMode,
+  isModeSwitcherVisible,
 } from './types.js'
 import type { ModeConfig } from './types.js'
 
@@ -23,6 +24,8 @@ export interface ModeState {
   modes: ModeConfig[]
   /** Config object for the active mode */
   currentModeConfig: ModeConfig | undefined
+  /** Whether the mode switcher should be visible */
+  switcherVisible: boolean
 }
 
 function snapshot(): ModeState {
@@ -32,6 +35,7 @@ function snapshot(): ModeState {
     mode,
     modes,
     currentModeConfig: modes.find((m) => m.name === mode),
+    switcherVisible: isModeSwitcherVisible(),
   }
 }
 

@@ -22,6 +22,8 @@ export {
   getToolsForMode,
   subscribeToTools,
   getToolsSnapshot,
+  getLockedMode,
+  isModeSwitcherVisible,
 } from '../../modes.js'
 
 export interface ModeConfig {

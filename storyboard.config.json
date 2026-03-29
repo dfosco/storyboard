@@ -15,7 +15,6 @@
     "show-banner": true
   },
   "workshop": {
-    "enabled": true,
     "features": {
       "createPrototype": true,
       "createCanvas": true

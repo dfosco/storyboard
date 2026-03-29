@@ -10,7 +10,7 @@
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
   import * as Panel from '$lib/components/ui/panel/index.js'
   import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
-  import StoryboardIcon from './svelte-plugin-ui/components/StoryboardIcon.svelte'
+  import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import { getActionsForMode, executeAction, getActionChildren, subscribeToCommandActions } from './commandActions.js'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
 
@@ -23,6 +23,8 @@
     basePath?: string
     open?: boolean
     tabindex?: number
+    icon?: string
+    iconMeta?: Record<string, unknown>
     flowDialogOpen?: boolean
     flowName?: string
     flowJson?: string
@@ -34,6 +36,8 @@
     basePath = '/',
     open = $bindable(false),
     tabindex,
+    icon = 'iconoir/key-command',
+    iconMeta = {},
     flowDialogOpen = $bindable(false),
     flowName = 'default',
     flowJson = '',
@@ -85,7 +89,7 @@
             aria-label="Command Menu"
             {tabindex}
             {...props}
-          ><StoryboardIcon name="command" size={16} /></TriggerButton>
+          ><Icon name={icon} size={16} {...iconMeta} /></TriggerButton>
         {/snippet}
       </DropdownMenu.Trigger>
 

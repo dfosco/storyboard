@@ -76,6 +76,6 @@
   [data-trigger-button] :global([data-slot="button"]:focus-visible),
   [data-trigger-button] :global([data-slot="button"][aria-expanded="true"]),
   [data-trigger-button][data-active] :global([data-slot="button"]) {
-    background-color: var(--trigger-bg-hover, var(--color-slate-200));
+    background-color: var(--trigger-bg-hover, var(--color-slate-300));
   }
 </style>

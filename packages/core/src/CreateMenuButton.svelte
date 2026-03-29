@@ -13,7 +13,7 @@
   import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
   import * as Panel from '$lib/components/ui/panel/index.js'
-  import StoryboardIcon from './svelte-plugin-ui/components/StoryboardIcon.svelte'
+  import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import type { Component } from 'svelte'
 
   interface CreateMenuFeature {
@@ -92,7 +92,7 @@
         {...props}
       >
         {#if config.icon}
-          <StoryboardIcon name={config.icon} size={16} />
+          <Icon name={config.icon} size={16} {...(config.meta || {})} />
         {:else if config.character}
           {config.character}
         {:else}

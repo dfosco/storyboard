@@ -49,8 +49,8 @@ export async function mountDevTools(options = {}) {
   // Inline styles so it works without any CSS framework loaded
   Object.assign(skipLink.style, {
     position: 'fixed',
-    bottom: '5rem',
-    right: '1.5rem',
+    top: '1rem',
+    left: '1rem',
     zIndex: '10000',
     clip: 'rect(0 0 0 0)',
     clipPath: 'inset(50%)',

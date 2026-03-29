@@ -11,7 +11,7 @@
 <script lang="ts">
   import { buildPrototypeIndex } from '../../viewfinder.js'
   import { getLocal, setLocal } from '../../localStorage.js'
-  import StoryboardIcon from './StoryboardIcon.svelte'
+  import Icon from './Icon.svelte'
 
   interface Props {
     title?: string
@@ -248,7 +248,7 @@
           class:sortButtonActive={sortBy === 'updated'}
           onclick={() => sortBy = 'updated'}
         >
-          <StoryboardIcon name="clock" size={14} color="var(--fgColor-muted)" />
+          <Icon name="primer/clock" size={14} color="var(--fgColor-muted)" />
           Last updated
         </button>
         <button
@@ -256,13 +256,13 @@
           class:sortButtonActive={sortBy === 'title'}
           onclick={() => sortBy = 'title'}
         >
-          <StoryboardIcon name="sort-asc" size={14} color="var(--fgColor-muted)" />
+          <Icon name="primer/sort-asc" size={14} color="var(--fgColor-muted)" />
           Title A–Z
         </button>
       </div>
       {#if branches && branches.length > 0}
         <div class="branchDropdown">
-          <span class="branchIcon"><StoryboardIcon size={16} color="var(--fgColor-muted)" offsetY={-1} offsetX={2} name="git-branch" /></span>
+          <span class="branchIcon"><Icon size={16} color="var(--fgColor-muted)" offsetY={-1} offsetX={2} name="primer/git-branch" /></span>
           <select
             class="branchSelect"
             onchange={handleBranchChange}
@@ -329,9 +329,9 @@
                   {proto.name}
                   <span class="protoChevron">
                     {#if isExpanded(proto.dirName)}
-                      <StoryboardIcon size={12} color="var(--fgColor-disabled)" name="chevron-down" offsetY={-3} offsetX={2} />
+                      <Icon size={12} color="var(--fgColor-disabled)" name="primer/chevron-down" offsetY={-3} offsetX={2} />
                     {:else}
-                      <StoryboardIcon size={12} color="var(--fgColor-disabled)" name="chevron-right" offsetY={-3} offsetX={2} />
+                      <Icon size={12} color="var(--fgColor-disabled)" name="primer/chevron-right" offsetY={-3} offsetX={2} />
                     {/if}
                   </span>
                 </p>
@@ -422,9 +422,9 @@
             <p class="folderName">
               <span>
                 {#if isExpanded(`folder:${folder.dirName}`)}
-                  <StoryboardIcon size={20} offsetY={-1.5} name="folder-open" color="#54aeff" />
+                  <Icon size={20} offsetY={-1.5} name="folder-open" color="#54aeff" />
                 {:else}
-                  <StoryboardIcon size={20} offsetY={-1.5} name="folder" color="#54aeff" />
+                  <Icon size={20} offsetY={-1.5} name="folder" color="#54aeff" />
                 {/if}
               </span>
               {folder.name}

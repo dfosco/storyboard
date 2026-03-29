@@ -9,10 +9,16 @@
 {:else}
 	<TooltipPrimitive.Trigger {...restProps}>
 		{#snippet child({ props })}
-			<!-- Remove tabindex so the span is not a tab stop — the inner
-			     interactive element handles focus; tooltip events still fire
-			     via bubbling through the display:contents wrapper. -->
-			<span {...props} tabindex={-1} style:display="contents">
+			<!-- Non-tabbable wrapper: tabindex=-1 keeps it out of tab order.
+			     onfocusin/onfocusout relay child focus events to the tooltip's
+			     onfocus/onblur handlers so tooltips still appear on keyboard focus. -->
+			<span
+				{...props}
+				tabindex={-1}
+				onfocusin={props.onfocus}
+				onfocusout={props.onblur}
+				style:display="contents"
+			>
 				{@render children?.()}
 			</span>
 		{/snippet}

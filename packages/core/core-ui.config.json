@@ -14,6 +14,7 @@
     "command": {
       "ariaLabel": "Command Menu",
       "trigger": "command",
+      "icon": "iconoir/key-command",
       "modes": ["*"],
       "actions": [
         { "type": "header", "label": "Command Menu" },
@@ -28,7 +29,7 @@
       "label": "Create",
       "ariaLabel": "Create",
       "trigger": "button",
-      "icon": "plus",
+      "icon": "primer/plus",
       "modes": ["*"],
       "menuWidth": "240px",
       "actions": [
@@ -40,18 +41,19 @@
     },    
     "comments": {
       "ariaLabel": "Comments",
-      "icon": "comment",
+      "icon": "primer/comment",
       "modes": ["*"]
     },    
     "docs": {
       "ariaLabel": "Documentation",
-      "icon": "book",
+      "icon": "primer/book",
       "modes": ["*"],
       "sidepanel": "docs"
     },
     "inspector": {
       "ariaLabel": "Inspect components",
-      "icon": "square-dashed",
+      "icon": "iconoir/square-dashed",
+      "meta": { "strokeWeight": 2, "scale": 1.1 },
       "modes": ["*"],
       "sidepanel": "inspector"
     }

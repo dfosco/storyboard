@@ -15,7 +15,7 @@
   import CommandMenu from './CommandMenu.svelte'
   import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
   import * as Tooltip from '$lib/components/ui/tooltip/index.js'
-  import StoryboardIcon from './svelte-plugin-ui/components/StoryboardIcon.svelte'
+  import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
   import { sidePanelState, togglePanel } from './stores/sidePanelStore.js'
   import { initCommandActions, registerCommandAction, isExcludedByRoute } from './commandActions.js'
@@ -337,7 +337,7 @@
               onfocus={() => { activeToolbarIndex = i }}
               onclick={() => togglePanel(menu.sidepanel)}
             >
-              <StoryboardIcon name={menu.icon || menu.key} size={16} />
+              <Icon name={menu.icon || menu.key} size={16} {...(menu.meta || {})} />
             </TriggerButton>
           {:else if menu.key === 'create'}
             <CreateMenuButton features={createMenuFeatures} config={menu} tabindex={getTabindex(i)} />
@@ -351,7 +351,7 @@
     {#if commandMenuConfig}
       <Tooltip.Root>
         <Tooltip.Trigger>
-          <CommandMenu {basePath} bind:open={commandMenuOpen} bind:flowDialogOpen {flowName} {flowJson} {flowError} shortcuts={shortcutsConfig} tabindex={getTabindex(commandMenuIndex)} />
+          <CommandMenu {basePath} bind:open={commandMenuOpen} bind:flowDialogOpen {flowName} {flowJson} {flowError} shortcuts={shortcutsConfig} tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} />
         </Tooltip.Trigger>
         <Tooltip.Content side="top">Command Menu</Tooltip.Content>
       </Tooltip.Root>

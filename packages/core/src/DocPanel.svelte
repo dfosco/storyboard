@@ -10,7 +10,7 @@
 <script>
   import { onMount } from 'svelte'
   import { marked } from 'marked'
-  import StoryboardIcon from './svelte-plugin-ui/components/StoryboardIcon.svelte'
+  import Icon from './svelte-plugin-ui/components/Icon.svelte'
 
   // ── README state ──────────────────────────────────────────────
   let readmeHtml = $state('')
@@ -59,7 +59,7 @@
 <div class="sb-doc-panel">
   <div class="sb-doc-header">
     <span class="sb-doc-header-title">
-      <StoryboardIcon name="book" size={14} />
+      <Icon name="primer/book" size={14} />
       README
     </span>
     {#if githubUrl}
@@ -69,7 +69,7 @@
         rel="noopener noreferrer"
         class="sb-doc-github-link"
       >
-        <StoryboardIcon name="mark-github" size={14} />
+        <Icon name="primer/mark-github" size={14} />
         <span>GitHub</span>
       </a>
     {/if}
@@ -82,7 +82,7 @@
       </div>
     {:else if readmeError}
       <div class="sb-doc-empty">
-        <StoryboardIcon name="book" size={24} color="var(--fgColor-muted)" />
+        <Icon name="primer/book" size={24} color="var(--fgColor-muted)" />
         <p>{readmeError}</p>
       </div>
     {:else}

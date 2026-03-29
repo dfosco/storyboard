@@ -13,7 +13,7 @@
   import { onMount } from 'svelte'
   import { sidePanelState, closePanel, openPanel } from './stores/sidePanelStore.js'
   import type { SidePanelTab } from './stores/sidePanelStore.js'
-  import StoryboardIcon from './svelte-plugin-ui/components/StoryboardIcon.svelte'
+  import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import './sidepanel.css'
 
   interface Props {
@@ -146,7 +146,7 @@
         aria-label="Close side panel"
         bind:this={closeBtnEl}
       >
-        <StoryboardIcon name="x" size={16} />
+        <Icon name="primer/x" size={16} />
       </button>
     </div>
 

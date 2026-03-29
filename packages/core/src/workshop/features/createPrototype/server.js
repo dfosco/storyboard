@@ -299,6 +299,6 @@ export function createPrototypesHandler(ctx) {
       return
     }
 
-    sendJson(res, 404, { error: `Unknown route: ${method} ${routePath}` })
+    // Unmatched routes fall through — the server plugin compositor handles 404
   }
 }

@@ -1,21 +1,26 @@
 <!--
-  Octicon — renders a Primer Octicon by name.
+  StoryboardIcon — renders icons from multiple sources.
 
-  Includes custom icon overrides (e.g. folder, folder-open) that replace
-  or extend the Primer set.
+  Sources (checked in order):
+    1. Custom overrides (folder, folder-open)
+    2. Primer Octicons (primary)
+    3. Feather Icons (secondary, stroke-based)
 
   Usage:
-    <Octicon name="repo" />
-    <Octicon name="folder" color="#54aeff" />
-    <Octicon name="folder-open" size={24} />
-    <Octicon name="gear" size={16} label="Settings" />
-    <Octicon name="lock" offsetX={1} offsetY={-1} />
+    <StoryboardIcon name="repo" />
+    <StoryboardIcon name="folder" color="#54aeff" />
+    <StoryboardIcon name="fast-forward" size={16} />
+    <StoryboardIcon name="gear" size={16} label="Settings" />
+    <StoryboardIcon name="tablet" rotate={90} />
+    <StoryboardIcon name="lock" offsetX={1} offsetY={-1} />
+    <StoryboardIcon name="arrow-right" flipX />
 -->
 
 <script lang="ts">
   import octicons from '@primer/octicons'
+  import feather from 'feather-icons'
 
-  // Custom SVG paths that override or extend the Primer icon set.
+  // Custom SVG paths that override or extend the icon sets.
   // Each entry: viewBox string + path d attribute.
   const customIcons: Record<string, { viewBox: string; path: string }> = {
     'folder': {
@@ -35,44 +40,72 @@
     color?: string
     offsetX?: number
     offsetY?: number
+    rotate?: number
+    flipX?: boolean
+    flipY?: boolean
   }
 
-  let { name, size = 16, label, color, offsetX = 0, offsetY = 0 }: Props = $props()
+  let {
+    name,
+    size = 16,
+    label,
+    color,
+    offsetX = 0,
+    offsetY = 0,
+    rotate = 0,
+    flipX = false,
+    flipY = false,
+  }: Props = $props()
 
   const ariaAttrs = $derived(
     label ? `aria-label="${label}"` : 'aria-hidden="true"'
   )
 
   const custom = $derived(customIcons[name])
+  const octicon = $derived(!custom ? octicons[name] : null)
+  const featherIcon = $derived(!custom && !octicon ? feather.icons[name] : null)
+  const isStrokeIcon = $derived(!!featherIcon)
 
   const svg = $derived(
     custom
       ? `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${custom.viewBox}" fill="currentColor" ${ariaAttrs}><path d="${custom.path}"/></svg>`
-      : octicons[name]?.toSVG({
+      : octicon?.toSVG({
           width: size,
           height: size,
           ...(label ? { 'aria-label': label } : { 'aria-hidden': 'true' }),
-        }) ?? ''
+        })
+      ?? featherIcon?.toSvg({
+          width: size,
+          height: size,
+          ...(label ? { 'aria-label': label } : { 'aria-hidden': 'true' }),
+        })
+      ?? ''
   )
 
   const style = $derived(
     [
       color ? `color: ${color}` : '',
-      color ? `fill: ${color}` : '',
       (offsetX || offsetY) ? `translate: ${offsetX}px ${offsetY}px` : '',
+      rotate ? `rotate: ${rotate}deg` : '',
+      (flipX || flipY) ? `scale: ${flipX ? -1 : 1} ${flipY ? -1 : 1}` : '',
     ].filter(Boolean).join('; ') || undefined
   )
 </script>
 
-<span class="octicon" {style}>{@html svg}</span>
+<span class="storyboard-icon" class:stroke-icon={isStrokeIcon} {style}>
+  {@html svg}
+</span>
 
 <style>
-  .octicon {
+  .storyboard-icon {
     display: inline-flex;
     align-items: center;
     vertical-align: middle;
   }
-  .octicon :global(svg) {
+  .storyboard-icon:not(.stroke-icon) :global(svg) {
     fill: currentColor;
+  }
+  .storyboard-icon.stroke-icon :global(svg) {
+    fill: none;
   }
 </style>

@@ -89,16 +89,46 @@ export default function storyboardServer() {
       const workshopConfig = config.workshop || {}
       const enabledFeatures = workshopConfig.features || {}
 
-      // Wire workshop API routes for each enabled feature
+      // Wire workshop API routes — compose handlers from all enabled features
+      const workshopHandlers = []
       for (const [featureName, featureModule] of Object.entries(workshopFeatures)) {
         if (enabledFeatures[featureName] === false) continue
         if (featureModule.serverSetup) {
-          routeHandlers.set('workshop', featureModule.serverSetup({ root, sendJson, workshopConfig }))
+          workshopHandlers.push(featureModule.serverSetup({ root, sendJson, workshopConfig }))
         }
+      }
+      if (workshopHandlers.length > 0) {
+        routeHandlers.set('workshop', async (req, res, ctx) => {
+          for (const handler of workshopHandlers) {
+            await handler(req, res, ctx)
+            if (res.writableEnded) return
+          }
+          sendJson(res, 404, { error: `Unknown workshop route: ${ctx.method} ${ctx.path}` })
+        })
       }
 
       // Wire docs API routes (always enabled — serves README + source files)
       routeHandlers.set('docs', docsHandler({ root, sendJson }))
+
+      // Watch core-ui.config.json for changes — trigger full reload so
+      // CoreUIBar.svelte picks up menu/mode config changes during dev
+      const coreUIConfigPath = path.resolve(
+        path.dirname(new URL(import.meta.url).pathname),
+        '../../core-ui.config.json'
+      )
+      server.watcher.add(coreUIConfigPath)
+      server.watcher.on('change', (filePath) => {
+        if (path.resolve(filePath) === coreUIConfigPath) {
+          // Invalidate the cached JSON module so Vite re-reads from disk
+          const mods = server.moduleGraph.getModulesByFile(coreUIConfigPath)
+          if (mods) {
+            for (const mod of mods) {
+              server.moduleGraph.invalidateModule(mod)
+            }
+          }
+          server.ws.send({ type: 'full-reload' })
+        }
+      })
 
       // Inject workshop client UI when any feature is enabled
       if (hasAnyWorkshopFeature(workshopConfig)) {

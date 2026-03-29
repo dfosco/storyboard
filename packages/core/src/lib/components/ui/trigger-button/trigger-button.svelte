@@ -64,6 +64,10 @@
     --sc-border-color: var(--trigger-border, var(--color-slate-400));
     --sc-border-width: var(--sb-trigger-border-width, 3px);
   }
+  /* Accent-colored border/gap on focus — follows the superellipse shape */
+  [data-trigger-button] :global([data-slot="button-wrapper"]:has([data-slot="button"]:focus-visible)) {
+    --sc-border-color: hsl(212 92% 45%);
+  }
   [data-trigger-button] :global([data-slot="button"]) {
     background-color: var(--trigger-bg, var(--color-slate-100));
     color: var(--trigger-text, var(--color-slate-600));

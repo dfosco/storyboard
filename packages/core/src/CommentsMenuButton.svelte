@@ -12,7 +12,7 @@
   import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
   import * as Panel from '$lib/components/ui/panel/index.js'
-  import Octicon from './svelte-plugin-ui/components/Octicon.svelte'
+  import StoryboardIcon from './svelte-plugin-ui/components/StoryboardIcon.svelte'
   import AuthModal from './comments/ui/AuthModal.svelte'
   import { isAuthenticated } from './comments/auth.js'
   import { isCommentModeActive, toggleCommentMode } from './comments/commentMode.js'
@@ -20,9 +20,10 @@
 
   interface Props {
     config?: { ariaLabel?: string; icon?: string }
+    tabindex?: number
   }
 
-  let { config = {} }: Props = $props()
+  let { config = {}, tabindex }: Props = $props()
 
   let menuOpen = $state(false)
   let authPanelOpen = $state(false)
@@ -72,9 +73,10 @@
         active={menuOpen || authPanelOpen}
         size="icon-xl"
         aria-label={config.ariaLabel || 'Comments'}
+        {tabindex}
         {...props}
       >
-        <Octicon name={config.icon || 'comment'} size={16} />
+        <StoryboardIcon name={config.icon || 'comment'} size={16} />
       </TriggerButton>
     {/snippet}
   </DropdownMenu.Trigger>

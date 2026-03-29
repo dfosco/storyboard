@@ -34,7 +34,7 @@ const _toolListeners = new Set()  // subscribers to tool state/action changes
  * @param {string} name   Unique mode identifier (e.g. 'prototype', 'present')
  * @param {object} config Mode configuration
  * @param {string} config.label  Human-readable label for UI
- * @param {string} [config.icon] Octicon name or SVG string
+ * @param {string} [config.icon] Icon name (Octicon, Feather, or custom)
  * @param {string|string[]} [config.className] Extra class(es) applied to <html> when active
  * @param {Function} [config.onActivate]   Called when mode becomes active
  * @param {Function} [config.onDeactivate] Called when leaving this mode

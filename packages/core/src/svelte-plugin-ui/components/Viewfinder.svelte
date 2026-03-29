@@ -11,7 +11,7 @@
 <script lang="ts">
   import { buildPrototypeIndex } from '../../viewfinder.js'
   import { getLocal, setLocal } from '../../localStorage.js'
-  import Octicon from './Octicon.svelte'
+  import StoryboardIcon from './StoryboardIcon.svelte'
 
   interface Props {
     title?: string
@@ -248,7 +248,7 @@
           class:sortButtonActive={sortBy === 'updated'}
           onclick={() => sortBy = 'updated'}
         >
-          <Octicon name="clock" size={14} color="var(--fgColor-muted)" />
+          <StoryboardIcon name="clock" size={14} color="var(--fgColor-muted)" />
           Last updated
         </button>
         <button
@@ -256,13 +256,13 @@
           class:sortButtonActive={sortBy === 'title'}
           onclick={() => sortBy = 'title'}
         >
-          <Octicon name="sort-asc" size={14} color="var(--fgColor-muted)" />
+          <StoryboardIcon name="sort-asc" size={14} color="var(--fgColor-muted)" />
           Title A–Z
         </button>
       </div>
       {#if branches && branches.length > 0}
         <div class="branchDropdown">
-          <span class="branchIcon"><Octicon size={16} color="var(--fgColor-muted)" offsetY={-1} offsetX={2} name="git-branch" /></span>
+          <span class="branchIcon"><StoryboardIcon size={16} color="var(--fgColor-muted)" offsetY={-1} offsetX={2} name="git-branch" /></span>
           <select
             class="branchSelect"
             onchange={handleBranchChange}
@@ -329,9 +329,9 @@
                   {proto.name}
                   <span class="protoChevron">
                     {#if isExpanded(proto.dirName)}
-                      <Octicon size={12} color="var(--fgColor-disabled)" name="chevron-down" offsetY={-3} offsetX={2} />
+                      <StoryboardIcon size={12} color="var(--fgColor-disabled)" name="chevron-down" offsetY={-3} offsetX={2} />
                     {:else}
-                      <Octicon size={12} color="var(--fgColor-disabled)" name="chevron-right" offsetY={-3} offsetX={2} />
+                      <StoryboardIcon size={12} color="var(--fgColor-disabled)" name="chevron-right" offsetY={-3} offsetX={2} />
                     {/if}
                   </span>
                 </p>
@@ -411,17 +411,33 @@
         </section>
       {/snippet}
 
-      {#snippet canvasEntry(canvas)}
-        <section class="protoGroup">
-          <a class="listItem" href={canvas.route}>
-            <div class="cardBody">
-              <p class="protoName">
-                {canvas.name}
-              </p>
-              {#if canvas.description}
-                <p class="protoDesc">{canvas.description}</p>
-              {/if}
-              <p class="protoDesc" style="font-size: 11px; opacity: 0.6;">Canvas · {canvas.widgetCount || 0} widget{canvas.widgetCount !== 1 ? 's' : ''}</p>
+      <!-- Folders with their prototypes -->
+      {#each sortedFolders as folder (folder.dirName)}
+        <section class="folderGroup" class:folderGroupOpen={isExpanded(`folder:${folder.dirName}`)}>
+          <button
+            class="folderHeader"
+            onclick={() => toggle(`folder:${folder.dirName}`)}
+            aria-expanded={isExpanded(`folder:${folder.dirName}`)}
+          >
+            <p class="folderName">
+              <span>
+                {#if isExpanded(`folder:${folder.dirName}`)}
+                  <StoryboardIcon size={20} offsetY={-1.5} name="folder-open" color="#54aeff" />
+                {:else}
+                  <StoryboardIcon size={20} offsetY={-1.5} name="folder" color="#54aeff" />
+                {/if}
+              </span>
+              {folder.name}
+            </p>
+            {#if folder.description}
+              <p class="folderDesc">{folder.description}</p>
+            {/if}
+          </button>
+          {#if isExpanded(`folder:${folder.dirName}`) && folder.prototypes.length > 0}
+            <div class="folderContent">
+              {#each folder.prototypes as proto (proto.dirName)}
+                {@render protoEntry(proto)}
+              {/each}
             </div>
           </a>
         </section>

@@ -6,7 +6,7 @@
 
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import Octicon from './svelte-plugin-ui/components/Octicon.svelte'
+  import StoryboardIcon from './svelte-plugin-ui/components/StoryboardIcon.svelte'
   import { inspectElement, inspectElementChain } from './inspector/fiberWalker.js'
   import { createMouseMode } from './inspector/mouseMode.js'
 
@@ -365,7 +365,7 @@
     {#if !hasSelection && !inspecting}
       <div class="flex flex-col items-center justify-center h-full gap-3 px-6 py-12 text-center">
         <span style:color="var(--fgColor-muted)" class="opacity-40">
-          <Octicon name="codescan" size={48} />
+          <StoryboardIcon name="codescan" size={48} />
         </span>
         <p class="text-sm font-medium m-0" style:color="var(--fgColor-default)">
           Select an element to start
@@ -415,7 +415,7 @@
           <!-- Source file -->
           {#if sourcePath}
             <p class="inline-flex items-center gap-1 mt-1 text-xs m-0 inspector-mono" style:color="var(--fgColor-muted)">
-              <Octicon name="file-code" size={12} />
+              <StoryboardIcon name="file-code" size={12} />
               {sourcePath}
             </p>
           {/if}
@@ -430,7 +430,7 @@
               style:color="var(--fgColor-muted)"
             >
               <span class="flex items-center gap-1.5 min-w-0">
-                <Octicon name="file-code" size={12} />
+                <StoryboardIcon name="file-code" size={12} />
                 <span class="truncate">{sourcePath}</span>
               </span>
               {#if githubUrl}
@@ -441,7 +441,7 @@
                   class="flex items-center gap-1 shrink-0 text-xs no-underline hover:underline inspector-mono"
                   style:color="var(--fgColor-muted)"
                 >
-                  <Octicon name="mark-github" size={14} />
+                  <StoryboardIcon name="mark-github" size={14} />
                   <span>GitHub</span>
                 </a>
               {/if}
@@ -476,7 +476,7 @@
           style:color="#fff"
           onclick={startInspecting}
         >
-          <Octicon name="search" size={12} />
+          <StoryboardIcon name="search" size={12} />
           Re-select
         </button>
       </div>

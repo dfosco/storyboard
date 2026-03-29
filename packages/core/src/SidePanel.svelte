@@ -13,19 +13,21 @@
   import { onMount } from 'svelte'
   import { sidePanelState, closePanel, openPanel } from './stores/sidePanelStore.js'
   import type { SidePanelTab } from './stores/sidePanelStore.js'
-  import Octicon from './svelte-plugin-ui/components/Octicon.svelte'
+  import StoryboardIcon from './svelte-plugin-ui/components/StoryboardIcon.svelte'
   import './sidepanel.css'
 
   interface Props {
     resizable?: boolean
+    onClose?: () => void
   }
 
-  let { resizable = true }: Props = $props()
+  let { resizable = true, onClose }: Props = $props()
 
   let DocPanel: any = $state(null)
   let InspectorPanel: any = $state(null)
   let panelWidth = $state(420)
   let dragging = $state(false)
+  let closeBtnEl: HTMLButtonElement | null = $state(null)
 
   const MIN_WIDTH = 300
   const MAX_WIDTH = 900
@@ -47,10 +49,19 @@
     }
   })
 
+  // Auto-focus close button when panel opens
+  $effect(() => {
+    if ($sidePanelState.open && closeBtnEl) {
+      // Defer to allow DOM to settle after lazy-load
+      requestAnimationFrame(() => closeBtnEl?.focus())
+    }
+  })
+
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape' && $sidePanelState.open) {
       e.preventDefault()
       closePanel()
+      onClose?.()
     }
   }
 
@@ -131,10 +142,11 @@
       </span>
       <button
         class="sb-sidepanel-close"
-        onclick={closePanel}
+        onclick={() => { closePanel(); onClose?.() }}
         aria-label="Close side panel"
+        bind:this={closeBtnEl}
       >
-        <Octicon name="x" size={16} />
+        <StoryboardIcon name="x" size={16} />
       </button>
     </div>
 

@@ -10,26 +10,37 @@
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
   import * as Panel from '$lib/components/ui/panel/index.js'
   import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
+  import StoryboardIcon from './svelte-plugin-ui/components/StoryboardIcon.svelte'
   import { getActionsForMode, executeAction, getActionChildren, subscribeToCommandActions } from './commandActions.js'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
 
+  interface ShortcutConfig {
+    key: string
+    label: string
+  }
+
   interface Props {
     basePath?: string
+    open?: boolean
+    tabindex?: number
     flowDialogOpen?: boolean
     flowName?: string
     flowJson?: string
     flowError?: string | null
+    shortcuts?: { openCommandMenu?: ShortcutConfig; hideChrome?: ShortcutConfig }
   }
 
   let {
     basePath = '/',
+    open = $bindable(false),
+    tabindex,
     flowDialogOpen = $bindable(false),
     flowName = 'default',
     flowJson = '',
     flowError = null,
+    shortcuts = {},
   }: Props = $props()
 
-  let menuOpen = $state(false)
   let actionsVersion = $state(0)
 
   // Subscribe to registry changes for reactivity
@@ -46,7 +57,7 @@
 
   function handleAction(action: any) {
     executeAction(action.id)
-    menuOpen = false
+    open = false
   }
 
   function handleToggleSelect(e: Event, action: any) {
@@ -60,20 +71,21 @@
     actionsVersion++
   }
 
-  function refreshOnOpen(open: boolean) {
-    if (open) actionsVersion++
+  function refreshOnOpen(isOpen: boolean) {
+    if (isOpen) actionsVersion++
   }
 </script>
 
-    <DropdownMenu.Root bind:open={menuOpen} onOpenChange={refreshOnOpen}>
+    <DropdownMenu.Root bind:open onOpenChange={refreshOnOpen}>
       <DropdownMenu.Trigger>
         {#snippet child({ props })}
           <TriggerButton
-            active={menuOpen}
+            active={open}
             class="text-2xl"
             aria-label="Command Menu"
+            {tabindex}
             {...props}
-          >&#8984;</TriggerButton>
+          ><StoryboardIcon name="command" size={16} /></TriggerButton>
         {/snippet}
       </DropdownMenu.Trigger>
 
@@ -87,7 +99,7 @@
 
           {:else if action.type === 'footer'}
             <DropdownMenu.Separator />
-            <div class="px-2 py-1.5 text-[11px] text-muted-foreground font-mono">{action.label}</div>
+            <div class="px-2 py-1.5 text-xs text-muted-foreground font-mono">{action.label}</div>
 
           {:else if action.type === 'toggle'}
             <DropdownMenu.CheckboxItem
@@ -112,7 +124,7 @@
                       {child.label}
                     </DropdownMenu.CheckboxItem>
                   {:else}
-                    <DropdownMenu.Item onclick={() => { if (child.execute) child.execute(); menuOpen = false }}>
+                    <DropdownMenu.Item onclick={() => { if (child.execute) child.execute(); open = false }}>
                       {child.label}
                     </DropdownMenu.Item>
                   {/if}
@@ -121,7 +133,7 @@
             </DropdownMenu.Sub>
 
           {:else if action.type === 'link' && action.url}
-            <DropdownMenu.Item onclick={() => { menuOpen = false; window.location.href = action.url }}>
+            <DropdownMenu.Item onclick={() => { open = false; window.location.href = action.url }}>
               {action.label}
             </DropdownMenu.Item>
 
@@ -131,6 +143,17 @@
             </DropdownMenu.Item>
           {/if}
         {/each}
+        {#if shortcuts.hideChrome || shortcuts.openCommandMenu}
+          <DropdownMenu.Separator />
+          <div class="px-2 py-1.5 flex flex-col gap-0.5">
+            {#if shortcuts.hideChrome}
+              <div class="text-xs text-muted-foreground font-mono">{shortcuts.hideChrome.label}</div>
+            {/if}
+            {#if shortcuts.openCommandMenu}
+              <div class="text-xs text-muted-foreground font-mono">{shortcuts.openCommandMenu.label}</div>
+            {/if}
+          </div>
+        {/if}
       </DropdownMenu.Content>
     </DropdownMenu.Root>
 

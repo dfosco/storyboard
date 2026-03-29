@@ -15,7 +15,7 @@
   import CommandMenu from './CommandMenu.svelte'
   import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
   import * as Tooltip from '$lib/components/ui/tooltip/index.js'
-  import Octicon from './svelte-plugin-ui/components/Octicon.svelte'
+  import StoryboardIcon from './svelte-plugin-ui/components/StoryboardIcon.svelte'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
   import { sidePanelState, togglePanel } from './stores/sidePanelStore.js'
   import { initCommandActions, registerCommandAction, isExcludedByRoute } from './commandActions.js'
@@ -26,13 +26,19 @@
   let { basePath = '/' }: Props = $props()
 
   let visible = $state(true)
+  let commandMenuOpen = $state(false)
   let CreateMenuButton: any = $state(null)
   let createMenuFeatures: any[] = $state([])
   let CommentsMenuButton: any = $state(null)
   let commentsEnabled = $state(false)
   let SidePanel: any = $state(null)
+  let toolbarEl: HTMLElement | null = $state(null)
+
+  // Roving tabindex: only one button in the toolbar is tabbable at a time
+  let activeToolbarIndex = $state(-1)
 
   const commandMenuConfig = isMenuHidden('command') ? null : coreUIConfig.menus?.command
+  const shortcutsConfig = (coreUIConfig as any).shortcuts || {}
 
   // Build ordered menu list from JSON key order (excluding command, which is always rightmost)
   const allMenus = (coreUIConfig.menus || {}) as Record<string, any>
@@ -62,11 +68,59 @@
       .reverse()
   )
 
+  // Total toolbar item count (visible menus + command menu if present)
+  const toolbarItemCount = $derived(visibleMenus.length + (commandMenuConfig ? 1 : 0))
+
+  // Command menu is always the last item (rightmost)
+  const commandMenuIndex = $derived(commandMenuConfig ? visibleMenus.length : -1)
+
+  function getTabindex(index: number): number {
+    if (activeToolbarIndex < 0) {
+      // No item focused yet — make the last item (command menu) tabbable as default
+      return index === toolbarItemCount - 1 ? 0 : -1
+    }
+    return index === activeToolbarIndex ? 0 : -1
+  }
+
+  function focusToolbarItem(index: number) {
+    activeToolbarIndex = index
+    if (!toolbarEl) return
+    const buttons = toolbarEl.querySelectorAll<HTMLElement>('[data-slot="button"]')
+    buttons[index]?.focus()
+  }
+
+  function handleToolbarKeydown(e: KeyboardEvent) {
+    if (toolbarItemCount === 0) return
+    const current = activeToolbarIndex < 0 ? toolbarItemCount - 1 : activeToolbarIndex
+
+    if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      focusToolbarItem((current + 1) % toolbarItemCount)
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      focusToolbarItem((current - 1 + toolbarItemCount) % toolbarItemCount)
+    } else if (e.key === 'Home') {
+      e.preventDefault()
+      focusToolbarItem(0)
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      focusToolbarItem(toolbarItemCount - 1)
+    }
+  }
+
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === '.' && (e.metaKey || e.ctrlKey)) {
+    const hideKey = shortcutsConfig.hideChrome?.key || '.'
+    const openKey = shortcutsConfig.openCommandMenu?.key
+
+    if (e.key === hideKey && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       visible = !visible
       document.documentElement.classList.toggle('storyboard-chrome-hidden', !visible)
+    }
+    // Configurable shortcut to open the command menu
+    if (openKey && e.key === openKey && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault()
+      commandMenuOpen = !commandMenuOpen
     }
     // Cmd+D — toggle documentation panel
     if (e.key === 'd' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
@@ -236,8 +290,24 @@
 </script>
 
 {#if visible}
-  <div class="fixed bottom-6 right-6 z-[9999] font-sans flex items-end gap-3" data-core-ui-bar>
-    {#each visibleMenus as menu (menu.key)}
+  <!-- Skip to controls link — visually hidden until focused -->
+  <a
+    href="#storyboard-controls"
+    class="skip-to-controls"
+    onclick={(e) => { e.preventDefault(); focusToolbarItem(toolbarItemCount - 1) }}
+  >
+    Skip to controls
+  </a>
+  <div
+    id="storyboard-controls"
+    class="fixed bottom-6 right-6 z-[9999] font-sans flex items-end gap-3"
+    data-core-ui-bar
+    role="toolbar"
+    aria-label="Storyboard controls"
+    onkeydown={handleToolbarKeydown}
+    bind:this={toolbarEl}
+  >
+    {#each visibleMenus as menu, i (menu.key)}
       <Tooltip.Root>
         <Tooltip.Trigger>
           {#if menu.sidepanel}
@@ -245,14 +315,16 @@
               active={$sidePanelState.open && $sidePanelState.activeTab === menu.sidepanel}
               size="icon-xl"
               aria-label={menu.ariaLabel || menu.key}
+              tabindex={getTabindex(i)}
+              onfocus={() => { activeToolbarIndex = i }}
               onclick={() => togglePanel(menu.sidepanel)}
             >
-              <Octicon name={menu.icon || menu.key} size={16} />
+              <StoryboardIcon name={menu.icon || menu.key} size={16} />
             </TriggerButton>
           {:else if menu.key === 'create'}
-            <CreateMenuButton features={createMenuFeatures} config={menu} />
+            <CreateMenuButton features={createMenuFeatures} config={menu} tabindex={getTabindex(i)} />
           {:else if menu.key === 'comments'}
-            <CommentsMenuButton config={menu} />
+            <CommentsMenuButton config={menu} tabindex={getTabindex(i)} />
           {/if}
         </Tooltip.Trigger>
         <Tooltip.Content side="top">{menu.ariaLabel || menu.key}</Tooltip.Content>
@@ -261,7 +333,7 @@
     {#if commandMenuConfig}
       <Tooltip.Root>
         <Tooltip.Trigger>
-          <CommandMenu {basePath} bind:flowDialogOpen {flowName} {flowJson} {flowError} />
+          <CommandMenu {basePath} bind:open={commandMenuOpen} bind:flowDialogOpen {flowName} {flowJson} {flowError} shortcuts={shortcutsConfig} tabindex={getTabindex(commandMenuIndex)} />
         </Tooltip.Trigger>
         <Tooltip.Content side="top">Command Menu</Tooltip.Content>
       </Tooltip.Root>
@@ -270,5 +342,37 @@
 {/if}
 
 {#if SidePanel}
-  <SidePanel />
+  <SidePanel onClose={() => focusToolbarItem(activeToolbarIndex < 0 ? toolbarItemCount - 1 : activeToolbarIndex)} />
 {/if}
+
+<style>
+  .skip-to-controls {
+    position: fixed;
+    bottom: 5rem;
+    right: 1.5rem;
+    z-index: 10000;
+    /* Hidden until focused */
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .skip-to-controls:focus {
+    clip: auto;
+    clip-path: none;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    padding: 0.375rem 0.75rem;
+    background: var(--color-popover, #fff);
+    color: var(--color-popover-foreground, #111);
+    border: 1px solid var(--color-border, #ddd);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 0.875rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    text-decoration: none;
+  }
+</style>

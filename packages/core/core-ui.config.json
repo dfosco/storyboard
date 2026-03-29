@@ -5,6 +5,11 @@
     { "name": "present", "label": "Collaborate", "hue": "#2a9d8f" }
   ],
 
+  "shortcuts": {
+    "openCommandMenu": { "key": "k", "label": "⌘ + K to open" },
+    "hideChrome": { "key": ".", "label": "⌘ + . to hide" }
+  },
+
   "menus": {
     "command": {
       "ariaLabel": "Command Menu",
@@ -16,8 +21,7 @@
         { "id": "core/repository", "label": "Go to repository", "type": "link", "url": "https://github.com/dfosco/storyboard", "modes": ["*"] },
         { "type": "separator" },
         { "id": "core/devtools", "label": "Devtools", "type": "submenu", "modes": ["*"] },
-        { "id": "core/feature-flags", "label": "Feature Flags", "type": "submenu", "modes": ["*"] },
-        { "type": "footer", "label": "⌘ + . to hide" }
+        { "id": "core/feature-flags", "label": "Feature Flags", "type": "submenu", "modes": ["*"] }
       ]
     },
     "create": {
@@ -26,10 +30,12 @@
       "trigger": "button",
       "icon": "plus",
       "modes": ["*"],
+      "menuWidth": "240px",
       "actions": [
         { "type": "header", "label": "Create" },
         { "id": "workshop/create-prototype", "label": "New prototype", "type": "default", "modes": ["*"], "feature": "createPrototype" },
-        { "type": "footer", "label": "File creation supported in local development" }
+        { "id": "workshop/create-flow", "label": "New flow", "type": "default", "modes": ["*"], "feature": "createFlow" },
+        { "type": "footer", "label": "Supported in local development" }
       ]
     },    
     "comments": {

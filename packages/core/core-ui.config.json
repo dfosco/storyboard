@@ -63,7 +63,7 @@
     "inspector": {
       "ariaLabel": "Inspect components",
       "icon": "iconoir/square-dashed",
-      "excludeRoutes": ["/", "/viewfinder"],
+      "excludeRoutes": ["^/$", "/viewfinder"],
       "meta": { "strokeWeight": 2, "scale": 1.1 },
       "modes": ["*"],
       "sidepanel": "inspector"

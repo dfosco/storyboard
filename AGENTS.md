@@ -26,6 +26,8 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 
 - **Worktree** (`.github/skills/worktree/SKILL.md`) — Creates a git worktree in `.worktrees/<branch-name>` and switches into it. Invoke with: "create worktree", "worktree for X", or just "worktree X".
 
+- **Storyboard Core** (`.github/skills/storyboard-core/SKILL.md`) — Guide for adding menu buttons to the CoreUIBar floating toolbar. Consult when asked to create a "workshop button", "menu button", "toolbar button", or add a new feature to the CoreUIBar chrome.
+
 ---
 
 ## Build & Development

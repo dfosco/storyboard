@@ -7,6 +7,7 @@
 -->
 
 <script lang="ts">
+  import { onMount } from 'svelte'
   import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
@@ -105,8 +106,17 @@
     window.location.href = flow.route
   }
 
-  // Compute on first render
-  refreshFlows()
+  // Defer initial load to onMount — the data index (virtual:storyboard-data-index)
+  // is seeded by the React app which may initialize after the Svelte CoreUIBar mounts.
+  onMount(() => {
+    refreshFlows()
+
+    // If the data index isn't ready yet, retry after a short delay
+    if (flows.length === 0 && getPrototypeName()) {
+      const timer = setTimeout(refreshFlows, 500)
+      return () => clearTimeout(timer)
+    }
+  })
 </script>
 
 {#if flows.length > 1}

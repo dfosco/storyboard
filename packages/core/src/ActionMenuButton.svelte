@@ -68,7 +68,7 @@
       {/snippet}
     </DropdownMenu.Trigger>
 
-    <DropdownMenu.Content side="top" align="end" sideOffset={16} class="min-w-[200px]">
+    <DropdownMenu.Content side="top" align="end" sideOffset={16} style={config.menuWidth ? `min-width: ${config.menuWidth}` : undefined} class={config.menuWidth ? '' : 'min-w-[200px]'}>
       {#if config.label}
         <DropdownMenu.Label>{config.label}</DropdownMenu.Label>
       {/if}

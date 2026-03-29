@@ -4,7 +4,6 @@
 -->
 
 <script lang="ts">
-  import { onMount } from 'svelte'
   import { replyToComment, addReaction, removeReaction, resolveComment, unresolveComment, editComment, editReply, deleteComment } from '../api.js'
   import { saveDraft, getDraft, clearDraft, replyDraftKey } from '../commentDrafts.js'
   import { Button } from '$lib/components/ui/button/index.js'
@@ -30,6 +29,8 @@
 
   let { comment, discussion, user = null, onClose, onMove, winEl }: Props = $props()
 
+  const draftKey = replyDraftKey(comment.id)
+
   let resolved = $state(!!comment.meta?.resolved)
   let resolving = $state(false)
   let copied = $state(false)
@@ -37,7 +38,7 @@
   let editText = $state('')
   let saving = $state(false)
   let commentText = $state(comment.text ?? '')
-  let replyText = $state('')
+  let replyText = $state(getDraft(draftKey)?.text ?? '')
   let submittingReply = $state(false)
   let editingReply = $state(-1)
   let editReplyText = $state('')
@@ -46,23 +47,10 @@
   let reactions: any[] = $state([...(comment.reactionGroups ?? [])])
   let replyReactions: any[][] = $state((comment.replies ?? []).map((r: any) => [...(r.reactionGroups ?? [])]))
   let replyTexts: string[] = $state((comment.replies ?? []).map((r: any) => r.text ?? r.body ?? ''))
-  let replyDraftCleared = false
 
   const replies = comment.replies ?? []
   const canEdit = user && comment.author?.login === user.login
   const canReply = user && discussion
-  const draftKey = replyDraftKey(comment.id)
-
-  onMount(() => {
-    const draft = getDraft(draftKey)
-    if (draft?.text) replyText = draft.text
-
-    return () => {
-      if (!replyDraftCleared && replyText.trim()) {
-        saveDraft(draftKey, { type: 'reply', text: replyText })
-      }
-    }
-  })
 
   function handleReplyBlur() {
     if (replyText.trim()) {
@@ -156,7 +144,6 @@
       await replyToComment(discussion.id, comment.id, t)
       replyText = ''
       clearDraft(draftKey)
-      replyDraftCleared = true
       onMove?.()
     } catch (err) { console.error('[storyboard] Reply failed:', err) } finally { submittingReply = false }
   }

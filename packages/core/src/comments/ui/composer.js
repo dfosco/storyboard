@@ -8,6 +8,7 @@
 import { mount, unmount } from 'svelte'
 import ComposerComponent from './Composer.svelte'
 import { getCachedUser } from '../auth.js'
+import { saveDraft, clearDraft, composerDraftKey } from '../commentDrafts.js'
 
 /**
  * Show the comment composer at a given position within a container.
@@ -24,9 +25,9 @@ export function showComposer(container, xPct, yPct, route, callbacks = {}) {
   const user = getCachedUser()
   const composer = document.createElement('div')
   composer.className = 'sb-composer'
-  composer.style.left = `${xPct}%`
-  composer.style.top = `${yPct}%`
-  composer.style.transform = 'translate(12px, -50%)'
+
+  // Mutable position — updated by moveTo(), read at submit time
+  const pos = { x: xPct, y: yPct }
 
   container.appendChild(composer)
 
@@ -34,8 +35,59 @@ export function showComposer(container, xPct, yPct, route, callbacks = {}) {
   composer.addEventListener('click', (e) => e.stopPropagation())
 
   let instance = null
+  let skipDraftSave = false
+  const draftKey = composerDraftKey(route)
+
+  function applyPosition() {
+    composer.style.left = `${pos.x}%`
+    composer.style.top = `${pos.y}%`
+    composer.style.transform = 'translate(12px, -50%)'
+
+    requestAnimationFrame(() => {
+      const rect = composer.getBoundingClientRect()
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      const pad = 8
+      let tx = 12
+      let ty = -(rect.height / 2)
+
+      if (rect.left + rect.width > vw - pad) {
+        tx = -(rect.width + 12)
+      }
+      const anchorY = rect.top + rect.height / 2
+      const finalBottom = anchorY + ty + rect.height
+      if (finalBottom > vh - pad) {
+        ty -= (finalBottom - vh + pad)
+      }
+      if (anchorY + ty < pad) {
+        ty = pad - anchorY
+      }
+      composer.style.transform = `translate(${tx}px, ${ty}px)`
+    })
+  }
+
+  function focus() {
+    const textarea = composer.querySelector('textarea')
+    textarea?.focus()
+  }
+
+  function moveTo(x, y) {
+    pos.x = x
+    pos.y = y
+    applyPosition()
+    focus()
+  }
 
   function destroy() {
+    // Save draft from DOM before Svelte unmounts (reactive state is unreliable after unmount)
+    if (!skipDraftSave) {
+      const textarea = composer.querySelector('textarea')
+      const val = textarea?.value?.trim()
+      if (val) {
+        saveDraft(draftKey, { type: 'comment', text: textarea.value })
+      }
+    }
+
     window.removeEventListener('keydown', onEscape, true)
     if (instance) { unmount(instance); instance = null }
     composer.remove()
@@ -58,38 +110,23 @@ export function showComposer(container, xPct, yPct, route, callbacks = {}) {
       user,
       route,
       onCancel: () => {
+        clearDraft(draftKey)
+        skipDraftSave = true
         destroy()
         callbacks.onCancel?.()
       },
       onSubmit: (text) => {
+        clearDraft(draftKey)
+        skipDraftSave = true
         destroy()
-        callbacks.onSubmitOptimistic?.(text)
+        callbacks.onSubmitOptimistic?.(text, pos.x, pos.y)
       },
     },
   })
 
-  // Adjust position to stay within viewport
-  requestAnimationFrame(() => {
-    const rect = composer.getBoundingClientRect()
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-    const pad = 8
-    let tx = 12
-    let ty = -(rect.height / 2)
+  applyPosition()
+  // Auto-focus textarea after DOM is ready
+  requestAnimationFrame(() => focus())
 
-    if (rect.left + rect.width > vw - pad) {
-      tx = -(rect.width + 12)
-    }
-    const anchorY = rect.top + rect.height / 2
-    const finalBottom = anchorY + ty + rect.height
-    if (finalBottom > vh - pad) {
-      ty -= (finalBottom - vh + pad)
-    }
-    if (anchorY + ty < pad) {
-      ty = pad - anchorY
-    }
-    composer.style.transform = `translate(${tx}px, ${ty}px)`
-  })
-
-  return { el: composer, destroy }
+  return { el: composer, destroy, moveTo, pos }
 }

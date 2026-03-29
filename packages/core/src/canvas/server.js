@@ -105,6 +105,28 @@ export function createCanvasHandler(ctx) {
       return
     }
 
+    // GET /read?name=... — read fresh canvas data from disk
+    if (routePath.startsWith('/read') && method === 'GET') {
+      const url = new URL(routePath, 'http://localhost')
+      const name = url.searchParams.get('name')
+      if (!name) {
+        sendJson(res, 400, { error: 'Canvas name is required (?name=...)' })
+        return
+      }
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+      try {
+        const data = readCanvas(filePath)
+        sendJson(res, 200, data)
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to read canvas: ${err.message}` })
+      }
+      return
+    }
+
     // GET /list — list all canvases
     if (routePath === '/list' && method === 'GET') {
       const files = findCanvasFiles(root)

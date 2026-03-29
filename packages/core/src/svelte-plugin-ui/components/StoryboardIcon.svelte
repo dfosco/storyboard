@@ -4,12 +4,14 @@
   Sources (checked in order):
     1. Custom overrides (folder, folder-open)
     2. Primer Octicons (primary)
-    3. Feather Icons (secondary, stroke-based)
+    3. Feather Icons (stroke-based)
+    4. Iconoir (stroke-based, manually registered)
 
   Usage:
     <StoryboardIcon name="repo" />
     <StoryboardIcon name="folder" color="#54aeff" />
     <StoryboardIcon name="fast-forward" size={16} />
+    <StoryboardIcon name="square-dashed" size={16} label="Inspector" />
     <StoryboardIcon name="gear" size={16} label="Settings" />
     <StoryboardIcon name="tablet" rotate={90} />
     <StoryboardIcon name="lock" offsetX={1} offsetY={-1} />
@@ -21,7 +23,7 @@
   import feather from 'feather-icons'
 
   // Custom SVG paths that override or extend the icon sets.
-  // Each entry: viewBox string + path d attribute.
+  // Each entry: viewBox string + path d attribute (fill-based).
   const customIcons: Record<string, { viewBox: string; path: string }> = {
     'folder': {
       viewBox: '0 0 24 24',
@@ -30,6 +32,16 @@
     'folder-open': {
       viewBox: '0 0 24 24',
       path: 'M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h5.175q.4 0 .763.15t.637.425L12 6h9q.425 0 .713.288T22 7t-.288.713T21 8H7.85q-1.55 0-2.7.975T4 11.45V18l1.975-6.575q.2-.65.738-1.037T7.9 10h12.9q1.025 0 1.613.813t.312 1.762l-1.8 6q-.2.65-.737 1.038T19 20z',
+    },
+  }
+
+  // Iconoir icons — stroke-based, registered manually from iconoir package.
+  // To add a new icon: copy inner paths from node_modules/iconoir/icons/regular/{name}.svg
+  const iconoirIcons: Record<string, { viewBox: string; strokeWidth: string; content: string }> = {
+    'square-dashed': {
+      viewBox: '0 0 24 24',
+      strokeWidth: '1.5',
+      content: '<path d="M7 4H4V7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 11V13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 4H13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 20H13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 11V13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 4H20V7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 20H4V17" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 20H20V17" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
     },
   }
 
@@ -64,7 +76,8 @@
   const custom = $derived(customIcons[name])
   const octicon = $derived(!custom ? octicons[name] : null)
   const featherIcon = $derived(!custom && !octicon ? feather.icons[name] : null)
-  const isStrokeIcon = $derived(!!featherIcon)
+  const iconoir = $derived(!custom && !octicon && !featherIcon ? iconoirIcons[name] : null)
+  const isStrokeIcon = $derived(!!featherIcon || !!iconoir)
 
   const svg = $derived(
     custom
@@ -79,7 +92,9 @@
           height: size,
           ...(label ? { 'aria-label': label } : { 'aria-hidden': 'true' }),
         })
-      ?? ''
+      ?? (iconoir
+          ? `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${iconoir.viewBox}" fill="none" stroke-width="${iconoir.strokeWidth}" ${ariaAttrs}>${iconoir.content}</svg>`
+          : '')
   )
 
   const style = $derived(

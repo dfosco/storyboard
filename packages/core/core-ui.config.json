@@ -51,7 +51,7 @@
     },
     "inspector": {
       "ariaLabel": "Inspect components",
-      "icon": "codescan",
+      "icon": "square-dashed",
       "modes": ["*"],
       "sidepanel": "inspector"
     }

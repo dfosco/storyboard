@@ -105,6 +105,32 @@
     } else if (e.key === 'End') {
       e.preventDefault()
       focusToolbarItem(toolbarItemCount - 1)
+    } else if (e.key === 'ArrowDown') {
+      // Menus open upward — block Bits UI's default ArrowDown-to-open
+      e.preventDefault()
+      e.stopPropagation()
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      // If a menu is already open, focus its last item
+      const openContent = document.querySelector<HTMLElement>('[data-slot="dropdown-menu-content"]')
+      if (openContent) {
+        const items = openContent.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]')
+        if (items.length > 0) items[items.length - 1].focus()
+        return
+      }
+      // Otherwise, open the focused button's dropdown (if it has one)
+      const focusedBtn = toolbarEl?.querySelector<HTMLElement>('[data-slot="button"]:focus')
+      if (focusedBtn?.getAttribute('aria-haspopup')) {
+        focusedBtn.click()
+        // After menu renders, focus its last item
+        requestAnimationFrame(() => {
+          const content = document.querySelector<HTMLElement>('[data-slot="dropdown-menu-content"]')
+          if (content) {
+            const items = content.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]')
+            if (items.length > 0) items[items.length - 1].focus()
+          }
+        })
+      }
     }
   }
 
@@ -290,14 +316,6 @@
 </script>
 
 {#if visible}
-  <!-- Skip to controls link — visually hidden until focused -->
-  <a
-    href="#storyboard-controls"
-    class="skip-to-controls"
-    onclick={(e) => { e.preventDefault(); focusToolbarItem(toolbarItemCount - 1) }}
-  >
-    Skip to controls
-  </a>
   <div
     id="storyboard-controls"
     class="fixed bottom-6 right-6 z-[9999] font-sans flex items-end gap-3"
@@ -345,34 +363,3 @@
   <SidePanel onClose={() => focusToolbarItem(activeToolbarIndex < 0 ? toolbarItemCount - 1 : activeToolbarIndex)} />
 {/if}
 
-<style>
-  .skip-to-controls {
-    position: fixed;
-    bottom: 5rem;
-    right: 1.5rem;
-    z-index: 10000;
-    /* Hidden until focused */
-    clip: rect(0 0 0 0);
-    clip-path: inset(50%);
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    white-space: nowrap;
-  }
-  .skip-to-controls:focus {
-    clip: auto;
-    clip-path: none;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    padding: 0.375rem 0.75rem;
-    background: var(--color-popover, #fff);
-    color: var(--color-popover-foreground, #111);
-    border: 1px solid var(--color-border, #ddd);
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    font-size: 0.875rem;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-    text-decoration: none;
-  }
-</style>

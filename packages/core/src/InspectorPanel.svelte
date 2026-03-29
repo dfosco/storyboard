@@ -365,7 +365,7 @@
     {#if !hasSelection && !inspecting}
       <div class="flex flex-col items-center justify-center h-full gap-3 px-6 py-12 text-center">
         <span style:color="var(--fgColor-muted)" class="opacity-40">
-          <StoryboardIcon name="codescan" size={48} />
+          <StoryboardIcon name="square-dashed" size={48} />
         </span>
         <p class="text-sm font-medium m-0" style:color="var(--fgColor-default)">
           Select an element to start

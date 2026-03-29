@@ -16,6 +16,8 @@ export { resolveFlowName, resolveRecordName, resolveObjectName } from './loader.
 export { listPrototypes, getPrototypeMetadata } from './loader.js'
 // Folder metadata
 export { listFolders, getFolderMetadata } from './loader.js'
+// Canvas data
+export { listCanvases, getCanvasData } from './loader.js'
 // Deprecated scene aliases
 export { loadScene, listScenes, sceneExists } from './loader.js'
 

@@ -1,0 +1,26 @@
+.embed {
+  position: relative;
+  overflow: hidden;
+  background: var(--bgColor-default, #ffffff);
+}
+
+.iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--fgColor-muted, #656d76);
+  font-size: 14px;
+  font-style: italic;
+}
+
+.empty p {
+  margin: 0;
+}

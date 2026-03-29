@@ -1,0 +1,90 @@
+.sticky {
+  background: var(--sticky-bg, #fff8c5);
+  border: 1px solid var(--sticky-border, #d4a72c);
+  border-radius: 4px;
+  min-width: 200px;
+  max-width: 320px;
+  box-shadow: 2px 3px 8px rgba(0, 0, 0, 0.08);
+  font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px 4px;
+  gap: 4px;
+}
+
+.colors {
+  display: flex;
+  gap: 3px;
+}
+
+.colorDot {
+  all: unset;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 100ms;
+}
+
+.colorDot:hover {
+  transform: scale(1.2);
+}
+
+.colorDot.active {
+  border-color: var(--sticky-border);
+  box-shadow: 0 0 0 1px var(--sticky-border);
+}
+
+.removeBtn {
+  all: unset;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--fgColor-muted, #656d76);
+  padding: 0 2px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.sticky:hover .removeBtn {
+  opacity: 1;
+}
+
+.removeBtn:hover {
+  color: var(--fgColor-danger, #d1242f);
+}
+
+.text {
+  padding: 4px 10px 12px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fgColor-default, #1f2328);
+  white-space: pre-wrap;
+  word-break: break-word;
+  cursor: text;
+  min-height: 40px;
+}
+
+.textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 10px 12px;
+  margin: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fgColor-default, #1f2328);
+  resize: vertical;
+  min-height: 60px;
+}

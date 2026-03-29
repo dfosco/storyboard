@@ -1,0 +1,15 @@
+.empty,
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
+  color: var(--fgColor-muted, #656d76);
+  font-size: 16px;
+}
+
+.empty p,
+.loading p {
+  margin: 0;
+}

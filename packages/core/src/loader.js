@@ -30,13 +30,13 @@ function deepMerge(target, source) {
  * Module-level data index, seeded by init().
  * Shape: { flows: {}, objects: {}, records: {} }
  */
-let dataIndex = { flows: {}, objects: {}, records: {}, prototypes: {}, folders: {} }
+let dataIndex = { flows: {}, objects: {}, records: {}, prototypes: {}, folders: {}, canvases: {} }
 
 /**
  * Seed the data index. Call once at app startup before any load functions.
  * The Vite data plugin calls this automatically via the generated virtual module.
  *
- * @param {{ flows?: object, scenes?: object, objects: object, records: object, prototypes?: object, folders?: object }} index
+ * @param {{ flows?: object, scenes?: object, objects: object, records: object, prototypes?: object, folders?: object, canvases?: object }} index
  */
 export function init(index) {
   if (!index || typeof index !== 'object') {
@@ -48,6 +48,7 @@ export function init(index) {
     records: index.records || {},
     prototypes: index.prototypes || {},
     folders: index.folders || {},
+    canvases: index.canvases || {},
   }
 }
 
@@ -342,6 +343,23 @@ export function listFolders() {
  */
 export function getFolderMetadata(name) {
   return dataIndex.folders[name] ?? null
+}
+
+/**
+ * Returns the names of all registered canvases.
+ * @returns {string[]}
+ */
+export function listCanvases() {
+  return Object.keys(dataIndex.canvases)
+}
+
+/**
+ * Returns canvas data by name.
+ * @param {string} name - Canvas name (e.g. "design-overview")
+ * @returns {object|null} Data from the .canvas.json file, or null
+ */
+export function getCanvasData(name) {
+  return dataIndex.canvases[name] ?? null
 }
 
 export { deepMerge }

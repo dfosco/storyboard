@@ -7,7 +7,7 @@ import { parse as parseJsonc } from 'jsonc-parser'
 const VIRTUAL_MODULE_ID = 'virtual:storyboard-data-index'
 const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
 
-const GLOB_PATTERN = '**/*.{flow,scene,object,record,prototype,folder}.{json,jsonc}'
+const GLOB_PATTERN = '**/*.{flow,scene,object,record,prototype,folder,canvas}.{json,jsonc}'
 
 /**
  * Extract the data name and type suffix from a file path.
@@ -22,7 +22,7 @@ const GLOB_PATTERN = '**/*.{flow,scene,object,record,prototype,folder}.{json,jso
  */
 function parseDataFile(filePath) {
   const base = path.basename(filePath)
-  const match = base.match(/^(.+)\.(flow|scene|object|record|prototype|folder)\.(jsonc?)$/)
+  const match = base.match(/^(.+)\.(flow|scene|object|record|prototype|folder|canvas)\.(jsonc?)$/)
   if (!match) return null
 
   // Skip _-prefixed files (drafts/internal)
@@ -55,6 +55,23 @@ function parseDataFile(filePath) {
       name = protoMatch[1]
     }
     return { name, suffix, ext: match[3], folder: folderName }
+  }
+
+  // Canvas files are keyed by their base name, scoped to folder if inside one.
+  // They also get an inferred route (like flows inside prototypes).
+  if (suffix === 'canvas') {
+    let inferredRoute = null
+    const protoCheck = normalized.match(/(?:^|\/)src\/prototypes\//)
+    if (protoCheck) {
+      // Route = directory path with src/prototypes/ and .folder/ stripped, plus the canvas name
+      const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
+      const routeBase = dirPath
+        .replace(/^.*?src\/prototypes\//, '')
+        .replace(/[^/]*\.folder\//g, '')
+      inferredRoute = '/' + (routeBase ? routeBase + '/' : '') + name
+      inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/'
+    }
+    return { name, suffix, ext: match[3], folder: folderName, inferredRoute }
   }
 
   // Scope flows, records, and objects inside src/prototypes/{Name}/ with a prefix
@@ -137,10 +154,11 @@ function buildIndex(root) {
     }
   }
 
-  const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {} }
+  const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {}, canvas: {} }
   const seen = {} // "name.suffix" → absolute path (for duplicate detection)
   const protoFolders = {} // prototype name → folder name (for injection)
   const flowRoutes = {} // flow name → inferred route (for _route injection)
+  const canvasRoutes = {} // canvas name → inferred route
 
   for (const relPath of files) {
     const parsed = parseDataFile(relPath)
@@ -175,9 +193,14 @@ function buildIndex(root) {
     if (parsed.suffix === 'flow' && parsed.inferredRoute) {
       flowRoutes[parsed.name] = parsed.inferredRoute
     }
+
+    // Track inferred routes for canvases
+    if (parsed.suffix === 'canvas' && parsed.inferredRoute) {
+      canvasRoutes[parsed.name] = parsed.inferredRoute
+    }
   }
 
-  return { index, protoFolders, flowRoutes }
+  return { index, protoFolders, flowRoutes, canvasRoutes }
 }
 
 /**
@@ -284,10 +307,10 @@ function readModesConfig(root) {
   return fallback
 }
 
-function generateModule({ index, protoFolders, flowRoutes }, root) {
+function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root) {
   const declarations = []
-  const INDEX_KEYS = ['flow', 'object', 'record', 'prototype', 'folder']
-  const entries = { flow: [], object: [], record: [], prototype: [], folder: [] }
+  const INDEX_KEYS = ['flow', 'object', 'record', 'prototype', 'folder', 'canvas']
+  const entries = { flow: [], object: [], record: [], prototype: [], folder: [], canvas: [] }
   const resolvedFlowRoutes = {} // flow name → resolved route (for multi-flow logging)
   let i = 0
 
@@ -332,6 +355,37 @@ function generateModule({ index, protoFolders, flowRoutes }, root) {
         }
       }
 
+      // Inject inferred route and resolve JSX companion for canvases
+      if (suffix === 'canvas') {
+        if (canvasRoutes[name]) {
+          parsed = { ...parsed, _route: canvasRoutes[name] }
+        }
+        // Inject folder association
+        const folderDirMatch = path.relative(root, absPath).replace(/\\/g, '/').match(/(?:^|\/)src\/prototypes\/([^/]+)\.folder\//)
+        if (folderDirMatch) {
+          parsed = { ...parsed, _folder: folderDirMatch[1] }
+        }
+        // Resolve JSX companion file path
+        if (parsed?.jsx) {
+          const jsxPath = path.resolve(path.dirname(absPath), parsed.jsx)
+          if (fs.existsSync(jsxPath)) {
+            const relJsx = '/' + path.relative(root, jsxPath).replace(/\\/g, '/')
+            parsed = { ...parsed, _jsxModule: relJsx }
+          } else {
+            console.warn(
+              `[storyboard-data] Canvas "${name}" references JSX file "${parsed.jsx}" but it was not found at ${jsxPath}`
+            )
+          }
+        } else {
+          // Auto-detect a same-name .canvas.jsx companion
+          const autoJsx = absPath.replace(/\.canvas\.(jsonc?)$/, '.canvas.jsx')
+          if (fs.existsSync(autoJsx)) {
+            const relJsx = '/' + path.relative(root, autoJsx).replace(/\\/g, '/')
+            parsed = { ...parsed, _jsxModule: relJsx }
+          }
+        }
+      }
+
       // Resolve template variables (${currentDir}, ${currentProto}, ${currentProtoDir})
       const templateVars = computeTemplateVars(absPath, root)
       if (!templateVars.currentProto && raw.includes('${currentProto}')) {
@@ -354,7 +408,7 @@ function generateModule({ index, protoFolders, flowRoutes }, root) {
   }
 
   const imports = [`import { init } from '@dfosco/storyboard-core'`]
-  const initCalls = [`init({ flows, objects, records, prototypes, folders })`]
+  const initCalls = [`init({ flows, objects, records, prototypes, folders, canvases })`]
 
   // Feature flags from storyboard.config.json
   const { config } = readConfig(root)
@@ -422,14 +476,15 @@ function generateModule({ index, protoFolders, flowRoutes }, root) {
     `const records = {\n${entries.record.join(',\n')}\n}`,
     `const prototypes = {\n${entries.prototype.join(',\n')}\n}`,
     `const folders = {\n${entries.folder.join(',\n')}\n}`,
+    `const canvases = {\n${entries.canvas.join(',\n')}\n}`,
     '',
     '// Backward-compatible alias',
     'const scenes = flows',
     '',
     initCalls.join('\n'),
     '',
-    `export { flows, scenes, objects, records, prototypes, folders }`,
-    `export const index = { flows, scenes, objects, records, prototypes, folders }`,
+    `export { flows, scenes, objects, records, prototypes, folders, canvases }`,
+    `export const index = { flows, scenes, objects, records, prototypes, folders, canvases }`,
     `export default index`,
   ].join('\n')
 }

@@ -186,13 +186,15 @@
           <Avatar.Fallback class="text-[10px]">{(comment.author?.login ?? '?')[0]?.toUpperCase()}</Avatar.Fallback>
         </Avatar.Root>
       {/if}
-      <span class="text-xs font-semibold">{comment.author?.login ?? 'unknown'}</span>
-      {#if comment.createdAt}
-        <span class="text-[11px] text-muted-foreground">{timeAgo(comment.createdAt)}</span>
-      {/if}
+      <div class="flex flex-col">
+        <span class="text-xs font-semibold">{comment.author?.login ?? 'unknown'}</span>
+        {#if comment.createdAt}
+          <span class="text-[11px] text-muted-foreground leading-tight">{timeAgo(comment.createdAt)}</span>
+        {/if}
+      </div>
     </div>
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="flex items-center shrink-0 gap-0.5" data-no-drag onmousedown={(e) => e.stopPropagation()}>
+    <div class="flex items-center shrink-0 gap-1.5" data-no-drag onmousedown={(e) => e.stopPropagation()}>
       <Button variant="ghost" size="sm" class={cn('h-6 px-2 text-[11px]', resolved ? 'text-success' : 'text-muted-foreground')} disabled={resolving} onclick={toggleResolve}>
         {resolving ? (resolved ? 'Unresolving…' : 'Resolving…') : (resolved ? 'Resolved ✓' : 'Resolve')}
       </Button>
@@ -257,11 +259,13 @@
             </Avatar.Root>
           {/if}
           <div class="flex-auto min-w-0">
-            <div class="flex items-center gap-1 mb-0.5">
-              <span class="text-xs font-semibold">{reply.author?.login ?? 'unknown'}</span>
-              {#if reply.createdAt}<span class="text-[11px] text-muted-foreground">{timeAgo(reply.createdAt)}</span>{/if}
+            <div class="flex items-start justify-between mb-0.5">
+              <div class="flex flex-col">
+                <span class="text-xs font-semibold">{reply.author?.login ?? 'unknown'}</span>
+                {#if reply.createdAt}<span class="text-[11px] text-muted-foreground leading-tight">{timeAgo(reply.createdAt)}</span>{/if}
+              </div>
               {#if user && reply.author?.login === user.login}
-                <div class="flex gap-1 ml-auto shrink-0">
+                <div class="flex gap-2 ml-auto shrink-0">
                   {#if editingReply !== ri}
                     <button class="text-[11px] text-muted-foreground bg-transparent border-none cursor-pointer hover:underline" onclick={() => { editingReply = ri; editReplyText = replyTexts[ri] }}>Edit</button>
                     <button class="text-[11px] text-destructive bg-transparent border-none cursor-pointer hover:underline" onclick={() => deleteReplyAt(ri)}>Delete</button>

@@ -3,6 +3,7 @@
   Opens above the CoreUIBar trigger area. Not a centered modal.
   Uses bits-ui Dialog primitive for accessibility (focus trap, escape to close)
   but positions content as a fixed bottom-right panel instead of centered.
+  Styled to match dropdown menus: thick borders, shadow, no overlay.
 -->
 
 <script>

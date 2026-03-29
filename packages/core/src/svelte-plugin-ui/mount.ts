@@ -63,6 +63,7 @@ export function mountSveltePlugin<T extends Record<string, unknown>>(
 
   const wrapper = document.createElement('div')
   wrapper.classList.add('sb-plugin-root')
+  wrapper.style.display = 'contents'
   target.appendChild(wrapper)
 
   const instance = mount(ComponentClass, {

@@ -4,7 +4,9 @@
 -->
 
 <script lang="ts">
+  import { onMount } from 'svelte'
   import { replyToComment, addReaction, removeReaction, resolveComment, unresolveComment, editComment, editReply, deleteComment } from '../api.js'
+  import { saveDraft, getDraft, clearDraft, replyDraftKey } from '../commentDrafts.js'
   import { Button } from '$lib/components/ui/button/index.js'
   import { Textarea } from '$lib/components/ui/textarea/index.js'
   import * as Avatar from '$lib/components/ui/avatar/index.js'
@@ -44,10 +46,31 @@
   let reactions: any[] = $state([...(comment.reactionGroups ?? [])])
   let replyReactions: any[][] = $state((comment.replies ?? []).map((r: any) => [...(r.reactionGroups ?? [])]))
   let replyTexts: string[] = $state((comment.replies ?? []).map((r: any) => r.text ?? r.body ?? ''))
+  let replyDraftCleared = false
 
   const replies = comment.replies ?? []
   const canEdit = user && comment.author?.login === user.login
   const canReply = user && discussion
+  const draftKey = replyDraftKey(comment.id)
+
+  onMount(() => {
+    const draft = getDraft(draftKey)
+    if (draft?.text) replyText = draft.text
+
+    return () => {
+      if (!replyDraftCleared && replyText.trim()) {
+        saveDraft(draftKey, { type: 'reply', text: replyText })
+      }
+    }
+  })
+
+  function handleReplyBlur() {
+    if (replyText.trim()) {
+      saveDraft(draftKey, { type: 'reply', text: replyText })
+    } else {
+      clearDraft(draftKey)
+    }
+  }
 
   function timeAgo(dateStr: string) {
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -129,7 +152,13 @@
 
   async function submitReply() {
     const t = replyText.trim(); if (!t) return; submittingReply = true
-    try { await replyToComment(discussion.id, comment.id, t); replyText = ''; onMove?.() } catch (err) { console.error('[storyboard] Reply failed:', err) } finally { submittingReply = false }
+    try {
+      await replyToComment(discussion.id, comment.id, t)
+      replyText = ''
+      clearDraft(draftKey)
+      replyDraftCleared = true
+      onMove?.()
+    } catch (err) { console.error('[storyboard] Reply failed:', err) } finally { submittingReply = false }
   }
 
   async function saveReply(ri: number) {
@@ -195,7 +224,7 @@
       <div class="mb-2">
         <Textarea class="min-h-[40px] max-h-[100px] text-xs mb-2" bind:value={editText} />
         <div class="flex justify-end gap-1">
-          <Button variant="outline" size="sm" class="h-6 text-xs" onclick={() => editing = false}>Cancel</Button>
+          <Button variant="outline" size="sm" class="h-6 text-xs border border-input text-foreground" onclick={() => editing = false}>Cancel</Button>
           <Button size="sm" class="h-6 text-xs" disabled={saving} onclick={saveEdit}>{saving ? 'Saving…' : 'Save'}</Button>
         </div>
       </div>
@@ -259,7 +288,7 @@
               <div>
                 <Textarea class="min-h-[40px] max-h-[100px] text-xs mb-1" bind:value={editReplyText} />
                 <div class="flex justify-end gap-1">
-                  <Button variant="outline" size="sm" class="h-6 text-xs" onclick={() => editingReply = -1}>Cancel</Button>
+                  <Button variant="outline" size="sm" class="h-6 text-xs border border-input text-foreground" onclick={() => editingReply = -1}>Cancel</Button>
                   <Button size="sm" class="h-6 text-xs" disabled={savingReply} onclick={() => saveReply(ri)}>{savingReply ? 'Saving…' : 'Save'}</Button>
                 </div>
               </div>
@@ -296,7 +325,7 @@
   <!-- Reply form -->
   {#if canReply}
     <div class="border-t border-border px-3 py-3 flex flex-col">
-      <Textarea class="min-h-[40px] max-h-[100px] text-xs mb-1" placeholder="Reply…" bind:value={replyText} onkeydown={handleReplyKeydown} />
+      <Textarea class="min-h-[40px] max-h-[100px] text-xs mb-1" placeholder="Reply…" bind:value={replyText} onkeydown={handleReplyKeydown} onblur={handleReplyBlur} />
       <div class="flex justify-end mt-1">
         <Button size="sm" class="text-xs" disabled={!replyText.trim() || submittingReply} onclick={submitReply}>
           {submittingReply ? 'Posting…' : 'Reply'}

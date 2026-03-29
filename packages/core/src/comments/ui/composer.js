@@ -23,7 +23,7 @@ import { getCachedUser } from '../auth.js'
 export function showComposer(container, xPct, yPct, route, callbacks = {}) {
   const user = getCachedUser()
   const composer = document.createElement('div')
-  composer.className = 'sb-composer absolute flex flex-column sb-bg ba sb-b-default br3 sb-shadow sans-serif overflow-hidden'
+  composer.className = 'sb-composer'
   composer.style.left = `${xPct}%`
   composer.style.top = `${yPct}%`
   composer.style.transform = 'translate(12px, -50%)'
@@ -56,6 +56,7 @@ export function showComposer(container, xPct, yPct, route, callbacks = {}) {
     target: composer,
     props: {
       user,
+      route,
       onCancel: () => {
         destroy()
         callbacks.onCancel?.()

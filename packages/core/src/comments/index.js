@@ -35,6 +35,9 @@ export {
 // Cache
 export { getCachedComments, setCachedComments, clearCachedComments, savePendingComment, getPendingComments, removePendingComment } from './commentCache.js'
 
+// Drafts
+export { saveDraft, getDraft, clearDraft, composerDraftKey, replyDraftKey } from './commentDrafts.js'
+
 // GraphQL client (for advanced use)
 export { graphql } from './graphql.js'
 

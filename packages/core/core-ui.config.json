@@ -1,9 +1,8 @@
 {
   "modes": [
-    { "name": "prototype", "label": "Navigate", "hue": "#2a2a2a" },
-    { "name": "inspect", "label": "Develop", "hue": "#7655a4" },
-    { "name": "present", "label": "Collaborate", "hue": "#2a9d8f" },
-    { "name": "plan", "label": "Canvas", "hue": "#4a7fad" }
+    { "name": "prototype", "label": "Prototype", "hue": "#2a2a2a" },
+    { "name": "inspect", "label": "Inspect", "hue": "#2a2a2a" },
+    { "name": "present", "label": "Collaborate", "hue": "#2a9d8f" }
   ],
 
   "menus": {
@@ -13,28 +12,42 @@
       "modes": ["*"],
       "actions": [
         { "type": "header", "label": "Command Menu" },
-        { "id": "core/viewfinder", "label": "Viewfinder", "type": "link", "url": "/", "modes": ["*"] },
-        { "id": "core/show-flow-info", "label": "Show flow info", "type": "default", "modes": ["*"] },
-        { "id": "core/reset-params", "label": "Reset all params", "type": "default", "modes": ["*"] },
-        { "id": "core/hide-mode", "label": "Hide mode", "type": "toggle", "modes": ["*"] },
+        { "id": "core/viewfinder", "label": "Index page", "type": "link", "url": "/", "modes": ["*"] },
+        { "id": "core/repository", "label": "Go to repository", "type": "link", "url": "https://github.com/dfosco/storyboard", "modes": ["*"] },
         { "type": "separator" },
+        { "id": "core/devtools", "label": "Devtools", "type": "submenu", "modes": ["*"] },
         { "id": "core/feature-flags", "label": "Feature Flags", "type": "submenu", "modes": ["*"] },
-        { "type": "separator" },
-        { "id": "comments/sign-in", "label": "Sign in for comments", "type": "default", "modes": ["*"] },
         { "type": "footer", "label": "⌘ + . to hide" }
       ]
     },
-
     "create": {
       "label": "Create",
-      "ariaLabel": "Create Menu",
+      "ariaLabel": "Create",
       "trigger": "button",
       "icon": "plus",
-      "modes": ["inspect"],
+      "modes": ["*"],
       "actions": [
         { "type": "header", "label": "Create" },
-        { "id": "workshop/create-prototype", "label": "Create prototype", "type": "default", "modes": ["*"], "feature": "createPrototype" }
+        { "id": "workshop/create-prototype", "label": "New prototype", "type": "default", "modes": ["*"], "feature": "createPrototype" },
+        { "type": "footer", "label": "File creation supported in local development" }
       ]
+    },    
+    "comments": {
+      "ariaLabel": "Comments",
+      "icon": "comment",
+      "modes": ["*"]
+    },    
+    "docs": {
+      "ariaLabel": "Documentation",
+      "icon": "book",
+      "modes": ["*"],
+      "sidepanel": "docs"
+    },
+    "inspector": {
+      "ariaLabel": "Inspect components",
+      "icon": "codescan",
+      "modes": ["*"],
+      "sidepanel": "inspector"
     }
   }
 }

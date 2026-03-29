@@ -115,12 +115,26 @@ export function clearDynamicActions(group) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Check if an item is excluded from the current route.
+ * @param {object} item  Action or menu with optional excludeRoutes array
+ * @returns {boolean} true if the item should be hidden
+ */
+export function isExcludedByRoute(item) {
+  const patterns = item.excludeRoutes
+  if (!patterns || !Array.isArray(patterns) || patterns.length === 0) return false
+  if (typeof window === 'undefined') return false
+  const pathname = window.location.pathname
+  return patterns.some(pattern => new RegExp(pattern).test(pathname))
+}
+
+/**
  * Check if an action is visible in a given mode.
  * @param {object} action
  * @param {string} mode
  * @returns {boolean}
  */
 function actionVisibleInMode(action, mode) {
+  if (isExcludedByRoute(action)) return false
   const modes = action.modes
   if (!modes) return true
   return modes.includes('*') || modes.includes(mode)

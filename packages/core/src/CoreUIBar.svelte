@@ -238,23 +238,33 @@
 {#if visible}
   <div class="fixed bottom-6 right-6 z-[9999] font-sans flex items-end gap-3" data-core-ui-bar>
     {#each visibleMenus as menu (menu.key)}
-      {#if menu.sidepanel}
-        <TriggerButton
-          active={$sidePanelState.open && $sidePanelState.activeTab === menu.sidepanel}
-          size="icon-xl"
-          aria-label={menu.ariaLabel || menu.key}
-          onclick={() => togglePanel(menu.sidepanel)}
-        >
-          <Octicon name={menu.icon || menu.key} size={16} />
-        </TriggerButton>
-      {:else if menu.key === 'create'}
-        <CreateMenuButton features={createMenuFeatures} config={menu} />
-      {:else if menu.key === 'comments'}
-        <CommentsMenuButton config={menu} />
-      {/if}
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          {#if menu.sidepanel}
+            <TriggerButton
+              active={$sidePanelState.open && $sidePanelState.activeTab === menu.sidepanel}
+              size="icon-xl"
+              aria-label={menu.ariaLabel || menu.key}
+              onclick={() => togglePanel(menu.sidepanel)}
+            >
+              <Octicon name={menu.icon || menu.key} size={16} />
+            </TriggerButton>
+          {:else if menu.key === 'create'}
+            <CreateMenuButton features={createMenuFeatures} config={menu} />
+          {:else if menu.key === 'comments'}
+            <CommentsMenuButton config={menu} />
+          {/if}
+        </Tooltip.Trigger>
+        <Tooltip.Content side="top">{menu.ariaLabel || menu.key}</Tooltip.Content>
+      </Tooltip.Root>
     {/each}
     {#if commandMenuConfig}
-      <CommandMenu {basePath} bind:flowDialogOpen {flowName} {flowJson} {flowError} />
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          <CommandMenu {basePath} bind:flowDialogOpen {flowName} {flowJson} {flowError} />
+        </Tooltip.Trigger>
+        <Tooltip.Content side="top">Command Menu</Tooltip.Content>
+      </Tooltip.Root>
     {/if}
   </div>
 {/if}

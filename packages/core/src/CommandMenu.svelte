@@ -112,7 +112,7 @@
                       {child.label}
                     </DropdownMenu.CheckboxItem>
                   {:else}
-                    <DropdownMenu.Item onclick={() => handleSubmenuChildExecute(child)}>
+                    <DropdownMenu.Item onclick={() => { if (child.execute) child.execute(); menuOpen = false }}>
                       {child.label}
                     </DropdownMenu.Item>
                   {/if}

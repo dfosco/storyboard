@@ -1,0 +1,54 @@
+/**
+ * Side Panel — push layout styles.
+ *
+ * When the side panel is open, an `sb-sidepanel-open` class is added to <html>.
+ * These rules push the main content and floating UI elements to make space
+ * for the fixed-right panel.
+ */
+
+:root {
+  --sidepanel-width: 420px;
+}
+
+/* Push the app content to make room for the side panel */
+html.sb-sidepanel-open > body > #root {
+  margin-right: var(--sidepanel-width);
+  transition: margin-right 0.25s ease;
+}
+
+/* When a mode collar is active, account for the 12px gap around the panel */
+html.sb-sidepanel-open.storyboard-mode-present > body > #root,
+html.sb-sidepanel-open.storyboard-mode-plan > body > #root,
+html.sb-sidepanel-open.storyboard-mode-inspect > body > #root {
+  margin-right: calc(var(--sidepanel-width) + 12px);
+}
+
+html:not(.sb-sidepanel-open) > body > #root {
+  transition: margin-right 0.25s ease;
+}
+
+/* Push the CoreUIBar (fixed bottom-right) */
+html.sb-sidepanel-open [data-core-ui-bar] {
+  right: calc(var(--sidepanel-width) + 24px);
+  transition: right 0.25s ease;
+}
+
+html:not(.sb-sidepanel-open) [data-core-ui-bar] {
+  transition: right 0.25s ease;
+}
+
+/* Push the ModeSwitch (fixed bottom-center) */
+html.sb-sidepanel-open .sb-mode-switch {
+  transform: translateX(calc(-50% - var(--sidepanel-width) / 2));
+  transition: transform 0.25s ease;
+}
+
+html:not(.sb-sidepanel-open) .sb-mode-switch {
+  transition: transform 0.25s ease;
+}
+
+/* When both modes collar padding AND sidepanel are active,
+   the collar bottom bar should not extend under the panel + its right gap */
+html.sb-sidepanel-open::before {
+  width: calc(100vw - var(--sidepanel-width) - 12px);
+}

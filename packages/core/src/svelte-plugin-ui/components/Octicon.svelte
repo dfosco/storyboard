@@ -72,4 +72,7 @@
     align-items: center;
     vertical-align: middle;
   }
+  .octicon :global(svg) {
+    fill: currentColor;
+  }
 </style>

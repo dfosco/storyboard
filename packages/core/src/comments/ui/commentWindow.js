@@ -31,7 +31,7 @@ export function showCommentWindow(container, comment, discussion, callbacks = {}
 
   const user = getCachedUser()
   const win = document.createElement('div')
-  win.className = 'sb-comment-window absolute flex flex-column sb-bg ba sb-b-default br3 sb-shadow sans-serif overflow-hidden'
+  win.className = 'sb-comment-window absolute'
   win.style.cssText = `z-index:100001;width:360px;max-height:480px;left:${comment.meta?.x ?? 0}%;top:${comment.meta?.y ?? 0}%;transform:translate(12px,-50%)`
 
   // Stop click from propagating to overlay

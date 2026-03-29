@@ -39,7 +39,7 @@
 
 <span data-trigger-button data-active={active || undefined} style:--sb-trigger-border-width={borderWidth}>
   <Button
-    variant="outline"
+    variant="trigger"
     {size}
     wrapperClass={cn(
       "smooth-corners [--smooth-corners:4] hover:rotate-2 focus-visible:rotate-2 transition-transform",

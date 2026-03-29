@@ -8,21 +8,56 @@
   import { Button } from '$lib/components/ui/button/index.js'
   import { Textarea } from '$lib/components/ui/textarea/index.js'
   import * as Avatar from '$lib/components/ui/avatar/index.js'
+  import { saveDraft, getDraft, clearDraft, composerDraftKey } from '../commentDrafts.js'
 
   interface Props {
     user?: { login: string; avatarUrl: string } | null
+    route?: string
     onCancel?: () => void
     onSubmit?: (text: string) => void
   }
 
-  let { user = null, onCancel, onSubmit }: Props = $props()
+  let { user = null, route = '', onCancel, onSubmit }: Props = $props()
   let text = $state('')
   let textareaEl: HTMLTextAreaElement | undefined = $state()
+  let draftCleared = false
 
-  onMount(() => { textareaEl?.focus() })
+  const draftKey = composerDraftKey(route)
 
-  function submit() { const val = text.trim(); if (!val) return; onSubmit?.(val) }
-  function cancel() { onCancel?.() }
+  onMount(() => {
+    const draft = getDraft(draftKey)
+    if (draft?.text) text = draft.text
+    textareaEl?.focus()
+
+    return () => {
+      // Save draft on unmount if not explicitly cleared (e.g. Escape)
+      if (!draftCleared && text.trim()) {
+        saveDraft(draftKey, { type: 'comment', text })
+      }
+    }
+  })
+
+  function submit() {
+    const val = text.trim()
+    if (!val) return
+    clearDraft(draftKey)
+    draftCleared = true
+    onSubmit?.(val)
+  }
+
+  function cancel() {
+    clearDraft(draftKey)
+    draftCleared = true
+    onCancel?.()
+  }
+
+  function handleBlur() {
+    if (text.trim()) {
+      saveDraft(draftKey, { type: 'comment', text })
+    } else {
+      clearDraft(draftKey)
+    }
+  }
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit() }
@@ -40,10 +75,10 @@
     </div>
   {/if}
   <div class="px-3 pt-3">
-    <Textarea class="min-h-[60px] max-h-[160px] resize-y text-sm" placeholder="Leave a comment\u2026" bind:value={text} bind:this={textareaEl} />
+    <Textarea class="min-h-[60px] max-h-[160px] resize-y text-sm" placeholder="Leave a comment…" bind:value={text} bind:this={textareaEl} onblur={handleBlur} />
   </div>
   <div class="flex items-center justify-end p-3 gap-1">
-    <Button variant="outline" size="sm" onclick={cancel}>Cancel</Button>
+    <Button variant="outline" size="sm" class="border border-input text-foreground" onclick={cancel}>Cancel</Button>
     <Button size="sm" onclick={submit}>Comment</Button>
   </div>
 </div>

@@ -546,15 +546,16 @@ export default function storyboardDataPlugin() {
       const watcher = server.watcher
 
       const invalidate = (filePath) => {
+        const normalized = filePath.replace(/\\/g, '/')
+        // Skip .canvas.json content changes entirely — these are mutated
+        // at runtime by the canvas server API. A full-reload would create
+        // a feedback loop (save → file change → reload → lose editing state).
+        if (/\.canvas\.jsonc?$/.test(normalized)) return
+
         const parsed = parseDataFile(filePath)
         // Also invalidate when files are added/removed inside .folder/ directories
-        const inFolder = filePath.replace(/\\/g, '/').includes('.folder/')
+        const inFolder = normalized.includes('.folder/')
         if (!parsed && !inFolder) return
-        // Skip full-reload for .canvas.json content changes — these are
-        // mutated at runtime by the canvas server API and would cause a
-        // feedback loop (save → file change → reload → lose editing state).
-        // Only reload for canvas file additions/removals (handled by add/unlink).
-        if (parsed?.suffix === 'canvas') return
         // Rebuild index and invalidate virtual module
         buildResult = null
         const mod = server.moduleGraph.getModuleById(RESOLVED_ID)

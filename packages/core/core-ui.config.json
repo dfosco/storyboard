@@ -15,6 +15,7 @@
       "ariaLabel": "Command Menu",
       "trigger": "command",
       "icon": "iconoir/key-command",
+      "meta": { "strokeWeight": 2 },
       "modes": ["*"],
       "actions": [
         { "type": "header", "label": "Command Menu" },
@@ -29,9 +30,10 @@
       "label": "Create",
       "ariaLabel": "Create",
       "trigger": "button",
-      "icon": "primer/plus",
+      "icon": "iconoir/plus-circle-solid",
+      "meta": { "scale": 1.1 },
       "modes": ["*"],
-      "menuWidth": "240px",
+      "menuWidth": "260px",
       "actions": [
         { "type": "header", "label": "Create" },
         { "id": "workshop/create-prototype", "label": "New prototype", "type": "default", "modes": ["*"], "feature": "createPrototype" },

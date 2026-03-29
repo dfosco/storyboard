@@ -34,9 +34,10 @@
     },
   }
 
-  // Iconoir icons — stroke-based, registered manually.
-  // To add a new icon: copy inner paths from node_modules/iconoir/icons/regular/{name}.svg
-  const iconoirIcons: Record<string, { viewBox: string; strokeWidth: string; content: string }> = {
+  // Iconoir icons — registered manually from iconoir package.
+  // To add: copy inner paths from node_modules/iconoir/icons/{regular|solid}/{name}.svg
+  // Set fill: true for solid/fill-based icons (default: false = stroke-based)
+  const iconoirIcons: Record<string, { viewBox: string; strokeWidth?: string; content: string; fill?: boolean }> = {
     'square-dashed': {
       viewBox: '0 0 24 24',
       strokeWidth: '1.5',
@@ -46,6 +47,11 @@
       viewBox: '0 0 24 24',
       strokeWidth: '1.5',
       content: '<path d="M9 6V18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 6V18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 6C9 4.34315 7.65685 3 6 3C4.34315 3 3 4.34315 3 6C3 7.65685 4.34315 9 6 9H18C19.6569 9 21 7.65685 21 6C21 4.34315 19.6569 3 18 3C16.3431 3 15 4.34315 15 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 18C9 19.6569 7.65685 21 6 21C4.34315 21 3 19.6569 3 18C3 16.3431 4.34315 15 6 15H18C19.6569 15 21 16.3431 21 18C21 19.6569 19.6569 21 18 21C16.3431 21 15 19.6569 15 18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
+    },
+    'plus-circle-solid': {
+      viewBox: '0 0 24 24',
+      fill: true,
+      content: '<path fill-rule="evenodd" clip-rule="evenodd" d="M12 1.25C6.06294 1.25 1.25 6.06294 1.25 12C1.25 17.9371 6.06294 22.75 12 22.75C17.9371 22.75 22.75 17.9371 22.75 12C22.75 6.06294 17.9371 1.25 12 1.25ZM12.75 8C12.75 7.58579 12.4142 7.25 12 7.25C11.5858 7.25 11.25 7.58579 11.25 8V11.25H8C7.58579 11.25 7.25 11.5858 7.25 12C7.25 12.4142 7.58579 12.75 8 12.75H11.25V16C11.25 16.4142 11.5858 16.75 12 16.75C12.4142 16.75 12.75 16.4142 12.75 16V12.75H16C16.4142 12.75 16.75 12.4142 16.75 12C16.75 11.5858 16.4142 11.25 16 11.25H12.75V8Z" fill="currentColor"/>',
     },
   }
 
@@ -89,7 +95,7 @@
   const octicon = $derived(source === 'primer' ? octicons[iconName] : null)
   const featherIcon = $derived(source === 'feather' ? feather.icons[iconName] : null)
   const iconoir = $derived(source === 'iconoir' ? iconoirIcons[iconName] : null)
-  const isStrokeIcon = $derived(source === 'feather' || source === 'iconoir')
+  const isStrokeIcon = $derived(source === 'feather' || (source === 'iconoir' && !iconoir?.fill))
 
   const svg = $derived(
     custom
@@ -106,7 +112,9 @@
           ...(label ? { 'aria-label': label } : { 'aria-hidden': 'true' }),
         })
       ?? (iconoir
-          ? `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${iconoir.viewBox}" fill="none" stroke-width="${strokeWeight ?? iconoir.strokeWidth}" ${ariaAttrs}>${iconoir.content}</svg>`
+          ? iconoir.fill
+            ? `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${iconoir.viewBox}" fill="currentColor" ${ariaAttrs}>${iconoir.content}</svg>`
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${iconoir.viewBox}" fill="none" stroke-width="${strokeWeight ?? iconoir.strokeWidth}" ${ariaAttrs}>${iconoir.content}</svg>`
           : '')
   )
 

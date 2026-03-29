@@ -9,15 +9,15 @@
 {:else}
 	<TooltipPrimitive.Trigger {...restProps}>
 		{#snippet child({ props })}
-			<!-- Non-tabbable wrapper: tabindex=-1 keeps it out of tab order.
-			     onfocusin/onfocusout relay child focus events to the tooltip's
-			     onfocus/onblur handlers so tooltips still appear on keyboard focus. -->
+			<!-- inline-flex span: has a box for pointer events (tooltips on hover)
+			     but tabindex=-1 keeps it out of the tab order.
+			     onfocusin relays child focus to the tooltip's onfocus handler. -->
 			<span
 				{...props}
 				tabindex={-1}
 				onfocusin={props.onfocus}
 				onfocusout={props.onblur}
-				style:display="contents"
+				style="display: inline-flex"
 			>
 				{@render children?.()}
 			</span>

@@ -64,7 +64,7 @@ function readCanvas(filePath) {
 /**
  * Write canvas data back to disk with pretty formatting.
  */
-function writeCanvas(filePath, data) {
+function writeCanvasRaw(filePath, data) {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n', 'utf-8')
 }
 
@@ -80,7 +80,14 @@ function generateWidgetId(type) {
  * Create the canvas API route handler.
  */
 export function createCanvasHandler(ctx) {
-  const { root, sendJson } = ctx
+  const { root, sendJson, watcher } = ctx
+
+  // Write canvas data, temporarily unwatching the file to prevent Vite reloads
+  function writeCanvas(filePath, data) {
+    if (watcher) watcher.unwatch(filePath)
+    writeCanvasRaw(filePath, data)
+    if (watcher) setTimeout(() => watcher.add(filePath), 1500)
+  }
 
   return async (req, res, { body, path: routePath, method }) => {
     // GET /folders — list available canvas folders

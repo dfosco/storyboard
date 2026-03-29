@@ -13,55 +13,7 @@
         "y": 0
       },
       "props": {
-        "text": "Welcome to the canvas!",
-        "color": "yellow"
-      }
-    },
-    {
-      "id": "md-1",
-      "type": "markdown",
-      "position": {
-        "x": 400,
-        "y": 0
-      },
-      "props": {
-        "content": "## Canvas Demo\n\nThis is a **markdown block** on the canvas.\n\n- Drag widgets around\n- Double-click to edit text\n- Positions are persisted",
-        "width": 360
-      }
-    },
-    {
-      "id": "sticky-2",
-      "type": "sticky-note",
-      "position": {
-        "x": 200,
-        "y": -120
-      },
-      "props": {
-        "text": "Try different colors!",
-        "color": "blue"
-      }
-    },
-    {
-      "id": "markdown-q9lv5h",
-      "type": "markdown",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "props": {
-        "content": "",
-        "width": 360
-      }
-    },
-    {
-      "id": "sticky-note-807m2j",
-      "type": "sticky-note",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "props": {
-        "text": "",
+        "text": "test edit",
         "color": "yellow"
       }
     }

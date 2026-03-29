@@ -39,7 +39,7 @@ export default function CanvasPage({ name }) {
       updateCanvas(canvasName, { widgets }).catch((err) =>
         console.error('[canvas] Failed to save:', err)
       )
-    }, 500)
+    }, 2000)
   ).current
 
   const handleWidgetUpdate = useCallback((widgetId, updates) => {

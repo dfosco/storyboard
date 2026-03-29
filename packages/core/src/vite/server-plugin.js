@@ -102,7 +102,8 @@ export default function storyboardServer() {
       }
 
       // Wire canvas CRUD API routes (always available)
-      routeHandlers.set('canvas', createCanvasHandler({ root, sendJson }))
+      // Pass the Vite watcher so the canvas handler can unwatch files during writes
+      routeHandlers.set('canvas', createCanvasHandler({ root, sendJson, watcher: server.watcher }))
 
       // Inject workshop client UI when any feature is enabled
       if (hasAnyWorkshopFeature(workshopConfig)) {

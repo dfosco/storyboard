@@ -18,7 +18,7 @@
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
   import { sidePanelState, togglePanel } from './stores/sidePanelStore.js'
-  import { initCommandActions, registerCommandAction, getActionChildren, isExcludedByRoute } from './commandActions.js'
+  import { initCommandActions, registerCommandAction, getActionChildren, isExcludedByRoute, setRoutingBasePath } from './commandActions.js'
   import { isMenuHidden } from './uiConfig.js'
   import coreUIConfig from '../core-ui.config.json'
 
@@ -175,6 +175,7 @@
 
   onMount(async () => {
     window.addEventListener('keydown', handleKeydown)
+    setRoutingBasePath(basePath)
 
     // Re-evaluate action menus on SPA navigation
     bumpNav = () => { navVersion++ }
@@ -201,12 +202,14 @@
       })
     }
 
-    // Register devtools submenu (show flow info, reset params, hide mode)
+    // Register devtools submenu (show flow info, reset params, hide mode, logout)
     {
       let loader: any = null
       let hm: any = null
+      let commentsAuth: any = null
       try { loader = await import('./loader.js') } catch {}
       try { hm = await import('./hideMode.js') } catch {}
+      try { commentsAuth = await import('./comments/auth.js') } catch {}
 
       registerCommandAction('core/devtools', {
         getChildren: () => {
@@ -243,6 +246,17 @@
               execute: () => {
                 if (hm.isHideMode()) hm.deactivateHideMode()
                 else hm.activateHideMode()
+              },
+            })
+          }
+          if (commentsAuth?.isAuthenticated()) {
+            children.push({
+              id: 'core/logout',
+              label: 'Logout (remove token)',
+              type: 'default',
+              execute: () => {
+                commentsAuth.clearToken()
+                console.log('[storyboard] Token removed')
               },
             })
           }

@@ -114,8 +114,21 @@ export function clearDynamicActions(group) {
 // Resolution
 // ---------------------------------------------------------------------------
 
+// Base path for route matching — set by CoreUIBar or app layer
+let _basePath = '/'
+
+/**
+ * Set the base path used by isExcludedByRoute for portable pattern matching.
+ * @param {string} basePath
+ */
+export function setRoutingBasePath(basePath) {
+  _basePath = basePath || '/'
+}
+
 /**
  * Check if an item is excluded from the current route.
+ * Strips the base path so patterns match against app-relative paths
+ * (e.g. "/" for the root, "/Signup" for a prototype page).
  * @param {object} item  Action or menu with optional excludeRoutes array
  * @returns {boolean} true if the item should be hidden
  */
@@ -123,7 +136,11 @@ export function isExcludedByRoute(item) {
   const patterns = item.excludeRoutes
   if (!patterns || !Array.isArray(patterns) || patterns.length === 0) return false
   if (typeof window === 'undefined') return false
-  const pathname = window.location.pathname
+  let pathname = window.location.pathname
+  const base = _basePath.replace(/\/+$/, '')
+  if (base && pathname.startsWith(base)) {
+    pathname = pathname.slice(base.length) || '/'
+  }
   return patterns.some(pattern => new RegExp(pattern).test(pathname))
 }
 

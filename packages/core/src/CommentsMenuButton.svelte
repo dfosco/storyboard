@@ -2,105 +2,61 @@
   CommentsMenuButton — auth-aware floating button for comments.
   Appears in the CoreUIBar when comments are enabled.
 
-  When not signed in: shows "Sign in to enable comments" menu item.
-  Clicking it opens the PAT login panel next to the trigger.
-  When signed in: shows Comments header, Toggle comments checkbox,
-  separator, and Log out.
+  Logged out: click opens the auth panel to sign in.
+  Logged in: click toggles comment mode directly.
 -->
 
 <script lang="ts">
+  import { onDestroy } from 'svelte'
   import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
-  import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
   import * as Panel from '$lib/components/ui/panel/index.js'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import AuthModal from './comments/ui/AuthModal.svelte'
   import { isAuthenticated } from './comments/auth.js'
-  import { isCommentModeActive, toggleCommentMode } from './comments/commentMode.js'
-  import { signOut } from './comments/ui/authModal.js'
+  import { isCommentModeActive, toggleCommentMode, subscribeToCommentMode } from './comments/commentMode.js'
 
   interface Props {
-    config?: { ariaLabel?: string; icon?: string }
+    config?: { ariaLabel?: string; icon?: string; meta?: Record<string, any> }
     tabindex?: number
   }
 
   let { config = {}, tabindex }: Props = $props()
 
-  let menuOpen = $state(false)
   let authPanelOpen = $state(false)
-  let authed = $state(false)
-  let commentModeOn = $state(false)
+  let commentModeOn = $state(isCommentModeActive())
 
-  function refreshState() {
-    authed = isAuthenticated()
-    commentModeOn = isCommentModeActive()
-  }
+  const unsubscribe = subscribeToCommentMode((active: boolean) => {
+    commentModeOn = active
+  })
+  onDestroy(unsubscribe)
 
-  function handleOpenChange(open: boolean) {
-    if (open) refreshState()
-  }
-
-  function handleSignIn() {
-    menuOpen = false
-    authPanelOpen = true
+  function handleClick() {
+    if (!isAuthenticated()) {
+      authPanelOpen = true
+      return
+    }
+    toggleCommentMode()
   }
 
   function handleAuthDone() {
     authPanelOpen = false
-    refreshState()
+    toggleCommentMode()
   }
 
   function handleAuthClose() {
     authPanelOpen = false
   }
-
-  function handleToggle(e: Event) {
-    e.preventDefault()
-    toggleCommentMode()
-    commentModeOn = isCommentModeActive()
-  }
-
-  function handleLogOut() {
-    menuOpen = false
-    signOut()
-    refreshState()
-  }
 </script>
 
-<DropdownMenu.Root bind:open={menuOpen} onOpenChange={handleOpenChange}>
-  <DropdownMenu.Trigger>
-    {#snippet child({ props })}
-      <TriggerButton
-        active={menuOpen || authPanelOpen}
-        size="icon-xl"
-        aria-label={config.ariaLabel || 'Comments'}
-        {tabindex}
-        {...props}
-      >
-        <Icon name={config.icon || 'primer/comment'} size={16} {...(config.meta || {})} />
-      </TriggerButton>
-    {/snippet}
-  </DropdownMenu.Trigger>
-
-  <DropdownMenu.Content side="top" align="end" sideOffset={16} class="min-w-[200px]">
-    {#if !authed}
-      <DropdownMenu.Item onclick={handleSignIn}>
-        Sign in to enable comments
-      </DropdownMenu.Item>
-    {:else}
-      <DropdownMenu.Label>Comments</DropdownMenu.Label>
-      <DropdownMenu.CheckboxItem
-        checked={commentModeOn}
-        onSelect={handleToggle}
-      >
-        Toggle comments
-      </DropdownMenu.CheckboxItem>
-      <DropdownMenu.Separator />
-      <DropdownMenu.Item onclick={handleLogOut}>
-        Log out
-      </DropdownMenu.Item>
-    {/if}
-  </DropdownMenu.Content>
-</DropdownMenu.Root>
+<TriggerButton
+  active={authPanelOpen || commentModeOn}
+  size="icon-xl"
+  aria-label={config.ariaLabel || 'Comments'}
+  {tabindex}
+  onclick={handleClick}
+>
+  <Icon name={config.icon || 'primer/comment'} size={16} {...(config.meta || {})} />
+</TriggerButton>
 
 <Panel.Root bind:open={authPanelOpen}>
   <Panel.Content>

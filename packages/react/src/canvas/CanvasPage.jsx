@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState, useEffect } from 'react'
 import { Canvas, Draggable } from '@dfosco/tiny-canvas'
 import { useCanvas } from './useCanvas.js'
 import { getWidgetComponent } from './widgets/index.js'
@@ -27,8 +27,11 @@ function debounce(fn, ms) {
 export default function CanvasPage({ name }) {
   const { canvas, jsxExports, loading } = useCanvas(name)
 
-  // Keep a mutable ref to the current widgets for batched updates
-  const widgetsRef = useRef(null)
+  // Local mutable copy of widgets for instant UI updates
+  const [localWidgets, setLocalWidgets] = useState(null)
+  useEffect(() => {
+    setLocalWidgets(canvas?.widgets ?? null)
+  }, [canvas])
 
   // Debounced save to server
   const debouncedSave = useRef(
@@ -40,16 +43,18 @@ export default function CanvasPage({ name }) {
   ).current
 
   const handleWidgetUpdate = useCallback((widgetId, updates) => {
-    if (!canvas) return
-    // Update the widget props in our mutable ref and save
-    const widgets = (widgetsRef.current || canvas.widgets || []).map((w) =>
-      w.id === widgetId ? { ...w, props: { ...w.props, ...updates } } : w
-    )
-    widgetsRef.current = widgets
-    debouncedSave(name, widgets)
-  }, [canvas, name, debouncedSave])
+    setLocalWidgets((prev) => {
+      if (!prev) return prev
+      const next = prev.map((w) =>
+        w.id === widgetId ? { ...w, props: { ...w.props, ...updates } } : w
+      )
+      debouncedSave(name, next)
+      return next
+    })
+  }, [name, debouncedSave])
 
   const handleWidgetRemove = useCallback((widgetId) => {
+    setLocalWidgets((prev) => prev ? prev.filter((w) => w.id !== widgetId) : prev)
     removeWidgetApi(name, widgetId).catch((err) =>
       console.error('[canvas] Failed to remove widget:', err)
     )
@@ -96,7 +101,7 @@ export default function CanvasPage({ name }) {
   }
 
   // 2. JSON-defined mutable widgets
-  const widgets = canvas.widgets ?? []
+  const widgets = localWidgets ?? []
   for (const widget of widgets) {
     const WidgetComponent = getWidgetComponent(widget.type)
     if (!WidgetComponent) {

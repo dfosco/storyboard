@@ -54,6 +54,8 @@ export default function StickyNote({ id, props, onUpdate, onRemove }) {
             value={text}
             onChange={handleTextChange}
             onBlur={() => setEditing(false)}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === 'Escape') setEditing(false)
             }}
@@ -73,7 +75,11 @@ export default function StickyNote({ id, props, onUpdate, onRemove }) {
       </article>
 
       {/* Color picker — dot trigger below the sticky */}
-      <div className={styles.pickerArea}>
+      <div
+        className={styles.pickerArea}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         <span
           className={styles.pickerDot}
           style={{ background: palette.dot }}

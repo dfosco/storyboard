@@ -62,6 +62,8 @@ export default function MarkdownBlock({ id, props, onUpdate, onRemove }) {
             value={content}
             onChange={(e) => onUpdate?.({ content: e.target.value })}
             onBlur={() => setEditing(false)}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === 'Escape') setEditing(false)
             }}

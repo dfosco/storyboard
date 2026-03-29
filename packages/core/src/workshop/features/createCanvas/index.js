@@ -1,8 +1,10 @@
 /**
  * Create Canvas feature — create new canvases from the Workshop panel.
+ *
+ * Server routes are handled by the dedicated canvas handler at /_storyboard/canvas/.
+ * This feature only provides the workshop UI overlay.
  */
 
-export { createCanvasHandler as serverSetup } from '../../../canvas/server.js'
 import CreateCanvasForm from './CreateCanvasForm.svelte'
 
 export const name = 'createCanvas'

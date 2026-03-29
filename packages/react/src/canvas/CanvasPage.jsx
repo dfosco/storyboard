@@ -77,7 +77,7 @@ export default function CanvasPage({ name }) {
   }
 
   const canvasProps = {
-    centered: canvas.centered ?? true,
+    centered: canvas.centered ?? false,
     dotted: canvas.dotted ?? false,
     grid: canvas.grid ?? false,
     gridSize: canvas.gridSize ?? 18,

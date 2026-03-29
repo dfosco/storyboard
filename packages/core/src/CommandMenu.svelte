@@ -23,6 +23,7 @@
   let hideModeActive = $state(false)
   let commentsItems: Array<{ label: string; icon: string; onClick: () => void }> = $state([])
   let commentsEnabled = $state(false)
+  let createCanvasDialogOpen = $state(false)
 
   // Lazy-loaded modules
   let _loadFlow: any = null
@@ -33,6 +34,7 @@
   let _getAllFlags: any = null
   let _toggleFlag: any = null
   let _getFlagKeys: any = null
+  let CreateCanvasForm: any = null
 
   function getFlowName() {
     const p = new URLSearchParams(window.location.search)
@@ -85,6 +87,17 @@
   function handleCommentAction(item: any) { menuOpen = false; item.onClick() }
   function handleToggleFlag(key: string) { _toggleFlag?.(key); refreshState() }
 
+  async function openCreateCanvas() {
+    menuOpen = false
+    if (!CreateCanvasForm) {
+      try {
+        const mod = await import('./workshop/features/createCanvas/CreateCanvasForm.svelte')
+        CreateCanvasForm = mod.default
+      } catch { return }
+    }
+    createCanvasDialogOpen = true
+  }
+
   onMount(async () => {
     try { _loadFlow = (await import('./loader.js')).loadFlow } catch {}
     try { const m = await import('./comments/config.js'); _isCommentsEnabled = m.isCommentsEnabled } catch {}
@@ -109,6 +122,9 @@
       <DropdownMenu.Content side="top" align="end" sideOffset={16} alignOffset={4} class="min-w-[200px]">
         <DropdownMenu.Item onclick={handleViewfinder}>
           Viewfinder
+        </DropdownMenu.Item>
+        <DropdownMenu.Item onclick={openCreateCanvas}>
+          Create canvas
         </DropdownMenu.Item>
         <DropdownMenu.Item onclick={openFlowDialog}>
           Show flow info
@@ -180,5 +196,14 @@
           {/each}
         {/if}
       </div>
+    </Dialog.Content>
+  </Dialog.Root>
+
+  <!-- Create canvas dialog -->
+  <Dialog.Root bind:open={createCanvasDialogOpen}>
+    <Dialog.Content class="sm:max-w-[480px]">
+      {#if CreateCanvasForm}
+        <CreateCanvasForm onClose={() => createCanvasDialogOpen = false} />
+      {/if}
     </Dialog.Content>
   </Dialog.Root>

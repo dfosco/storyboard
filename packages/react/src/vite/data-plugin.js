@@ -67,11 +67,11 @@ function parseDataFile(filePath) {
 
     const canvasCheck = normalized.match(/(?:^|\/)src\/canvases\//)
     if (canvasCheck) {
-      // Route = /canvas/ + path with src/canvases/ and .folder/ stripped + canvas name
+      // Route = /canvas/ + path with src/canvases/ and .folder segments stripped + canvas name
       const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
       const routeBase = dirPath
         .replace(/^.*?src\/canvases\//, '')
-        .replace(/[^/]*\.folder\//g, '')
+        .replace(/[^/]*\.folder\/?/g, '')
       inferredRoute = '/canvas/' + (routeBase ? routeBase + '/' : '') + name
       inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
     }
@@ -81,7 +81,7 @@ function parseDataFile(filePath) {
       const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
       const routeBase = dirPath
         .replace(/^.*?src\/prototypes\//, '')
-        .replace(/[^/]*\.folder\//g, '')
+        .replace(/[^/]*\.folder\/?/g, '')
       inferredRoute = '/canvas/' + (routeBase ? routeBase + '/' : '') + name
       inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
     }

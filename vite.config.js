@@ -25,6 +25,7 @@ export default defineConfig(() => {
     return {
     base,
     resolve: {
+        dedupe: ['react', 'react-dom'],
         alias: {
             '@': path.resolve(__dirname, './src'),
             '$lib': path.resolve(__dirname, './packages/core/src/lib'),

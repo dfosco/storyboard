@@ -30,7 +30,7 @@
       "label": "Create",
       "ariaLabel": "Create",
       "trigger": "button",
-      "icon": "iconoir/plus-circle-solid",
+      "icon": "iconoir/plus-circle",
       "meta": { "scale": 1.1 },
       "modes": ["*"],
       "menuWidth": "260px",

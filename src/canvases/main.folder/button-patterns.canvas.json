@@ -68,6 +68,18 @@
         "text": "t",
         "color": "yellow"
       }
+    },
+    {
+      "id": "sticky-note-ki7pyf",
+      "type": "sticky-note",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "props": {
+        "text": "",
+        "color": "green"
+      }
     }
   ]
 }

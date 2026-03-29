@@ -550,7 +550,25 @@ export default function storyboardDataPlugin() {
         // Also invalidate when files are added/removed inside .folder/ directories
         const inFolder = filePath.replace(/\\/g, '/').includes('.folder/')
         if (!parsed && !inFolder) return
+        // Skip full-reload for .canvas.json content changes — these are
+        // mutated at runtime by the canvas server API and would cause a
+        // feedback loop (save → file change → reload → lose editing state).
+        // Only reload for canvas file additions/removals (handled by add/unlink).
+        if (parsed?.suffix === 'canvas') return
         // Rebuild index and invalidate virtual module
+        buildResult = null
+        const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
+        if (mod) {
+          server.moduleGraph.invalidateModule(mod)
+          server.ws.send({ type: 'full-reload' })
+        }
+      }
+
+      const invalidateOnAddRemove = (filePath) => {
+        const parsed = parseDataFile(filePath)
+        const inFolder = filePath.replace(/\\/g, '/').includes('.folder/')
+        if (!parsed && !inFolder) return
+        // Canvas additions/removals DO need a reload (new routes)
         buildResult = null
         const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
         if (mod) {
@@ -573,8 +591,8 @@ export default function storyboardDataPlugin() {
         }
       }
 
-      watcher.on('add', invalidate)
-      watcher.on('unlink', invalidate)
+      watcher.on('add', invalidateOnAddRemove)
+      watcher.on('unlink', invalidateOnAddRemove)
       watcher.on('change', (filePath) => {
         invalidate(filePath)
         invalidateConfig(filePath)

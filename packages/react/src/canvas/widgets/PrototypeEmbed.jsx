@@ -12,7 +12,7 @@ export default function PrototypeEmbed({ id, props, onUpdate, onRemove }) {
   const iframeSrc = src ? `${basePath}${src}` : ''
 
   return (
-    <WidgetWrapper label={label || 'Prototype'} onRemove={onRemove}>
+    <WidgetWrapper onRemove={onRemove}>
       <div className={styles.embed} style={{ width, height }}>
         {iframeSrc ? (
           <iframe

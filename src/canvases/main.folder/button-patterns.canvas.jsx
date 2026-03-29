@@ -6,8 +6,7 @@ import { Button, ButtonGroup } from '@primer/react'
 
 export function PrimaryButtons() {
   return (
-    <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 280 }}>
-      <h3 style={{ margin: 0, fontSize: 16 }}>Primary Buttons</h3>
+    <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 280 }}>      
       <ButtonGroup>
         <Button variant="primary" size="large">Save changes</Button>
         <Button variant="primary" size="medium">Submit</Button>
@@ -20,7 +19,6 @@ export function PrimaryButtons() {
 export function DangerButtons() {
   return (
     <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 280 }}>
-      <h3 style={{ margin: 0, fontSize: 16 }}>Danger Buttons</h3>
       <ButtonGroup>
         <Button variant="danger" size="large">Delete</Button>
         <Button variant="danger" size="medium">Remove</Button>

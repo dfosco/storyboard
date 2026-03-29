@@ -10,9 +10,6 @@
   line-height: 1.6;
   color: var(--fgColor-default, #1f2328);
   cursor: text;
-  background-image: radial-gradient(circle, var(--borderColor-muted, rgba(0, 0, 0, 0.08)) 1px, transparent 1px);
-  background-size: 20px 20px;
-  background-position: 10px 10px;
   min-height: 60px;
 }
 

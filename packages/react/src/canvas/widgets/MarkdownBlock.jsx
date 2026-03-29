@@ -38,7 +38,7 @@ export default function MarkdownBlock({ id, props, onUpdate, onRemove }) {
   }, [editing])
 
   return (
-    <WidgetWrapper label="Markdown" onRemove={onRemove}>
+    <WidgetWrapper onRemove={onRemove}>
       <div className={styles.block} style={{ width }}>
         {editing ? (
           <textarea

@@ -8,7 +8,7 @@ export default function ComponentWidget({ exportName, component: Component }) {
   if (!Component) return null
 
   return (
-    <WidgetWrapper label={exportName}>
+    <WidgetWrapper>
       <Component />
     </WidgetWrapper>
   )

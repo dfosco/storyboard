@@ -82,6 +82,30 @@
   const ungroupedCanvases = $derived(prototypeIndex.canvases || [])
   const sortedCanvases = $derived(prototypeIndex.sorted?.[sortBy]?.canvases ?? ungroupedCanvases)
 
+  // View mode — top-level toggle between Prototypes and Canvases (hidden for now)
+  type ViewMode = 'prototypes' | 'canvases'
+  let viewMode: ViewMode = $state('prototypes')
+
+  // Canvas folder data: extract folders that contain canvases for canvas view
+  const canvasFolders = $derived.by(() => {
+    const src = prototypeIndex.sorted?.[sortBy]?.folders ?? folders
+    return src
+      .filter((f: any) => f.canvases && f.canvases.length > 0)
+      .map((f: any) => ({ ...f, prototypes: [], canvases: f.canvases }))
+  })
+
+  const totalCanvases = $derived(
+    ungroupedCanvases.length + folders.reduce((sum: number, f: any) => sum + (f.canvases?.length || 0), 0)
+  )
+
+  // For prototype view: filter canvases out of folder contents
+  const protoOnlyFolders = $derived.by(() => {
+    const src = prototypeIndex.sorted?.[sortBy]?.folders ?? folders
+    return src
+      .filter((f: any) => f.prototypes.length > 0)
+      .map((f: any) => ({ ...f, canvases: [] }))
+  })
+
   // Expanded state — persisted in localStorage
   const EXPANDED_KEY = 'viewfinder.expanded'
 
@@ -197,10 +221,28 @@
       </div>
     </div>
     <div class="controlsRow">
+      <!-- View mode toggle (Prototypes / Canvases) -->
+      <div class="sortToggle">
+        <button
+          class="sortButton"
+          class:sortButtonActive={viewMode === 'prototypes'}
+          onclick={() => viewMode = 'prototypes'}
+        >
+          Prototypes
+        </button>
+        <button
+          class="sortButton"
+          class:sortButtonActive={viewMode === 'canvases'}
+          onclick={() => viewMode = 'canvases'}
+        >
+          Canvas
+        </button>
+      </div>
       <!-- <span class="sceneCount">
         {(folders.length > 0 ? `${folders.length} folder${folders.length !== 1 ? 's' : ''} · ` : '') + `${totalProtos} prototype${totalProtos !== 1 ? 's' : ''} · ${totalFlows} flow${totalFlows !== 1 ? 's' : ''}`}
       </span> -->
-      <div class="sortToggle">
+      <!-- Sort toggle — hidden for now -->
+      <div class="sortToggle" style="display: none;">
         <button
           class="sortButton"
           class:sortButtonActive={sortBy === 'updated'}
@@ -236,8 +278,10 @@
     </div>
   </header>
 
-  {#if totalProtos === 0 && folders.length === 0}
+  {#if viewMode === 'prototypes' && totalProtos === 0 && folders.length === 0}
     <p class="empty">No flows found. Add a <code>*.flow.json</code> file to get started.</p>
+  {:else if viewMode === 'canvases' && totalCanvases === 0}
+    <p class="empty">No canvases found. Add a <code>*.canvas.jsonl</code> file to get started.</p>
   {:else}
     <div class="list">
       {#snippet protoEntry(proto)}
@@ -372,7 +416,6 @@
           <a class="listItem" href={canvas.route}>
             <div class="cardBody">
               <p class="protoName">
-                <span class="protoIcon">🎨</span>
                 {canvas.name}
               </p>
               {#if canvas.description}
@@ -385,55 +428,84 @@
       {/snippet}
 
       <!-- Folders with their prototypes -->
-      {#each sortedFolders as folder (folder.dirName)}
-        <section class="folderGroup" class:folderGroupOpen={isExpanded(`folder:${folder.dirName}`)}>
-          <button
-            class="folderHeader"
-            onclick={() => toggle(`folder:${folder.dirName}`)}
-            aria-expanded={isExpanded(`folder:${folder.dirName}`)}
-          >
-            <p class="folderName">
-              <span>
-                {#if isExpanded(`folder:${folder.dirName}`)}
-                  <Octicon size={20} offsetY={-1.5} name="folder-open" color="#54aeff" />
-                {:else}
-                  <Octicon size={20} offsetY={-1.5} name="folder" color="#54aeff" />
-                {/if}
-              </span>
-              {folder.name}
-            </p>
-            {#if folder.description}
-              <p class="folderDesc">{folder.description}</p>
+      {#if viewMode === 'prototypes'}
+        {#each protoOnlyFolders as folder (folder.dirName)}
+          <section class="folderGroup" class:folderGroupOpen={isExpanded(`folder:${folder.dirName}`)}>
+            <button
+              class="folderHeader"
+              onclick={() => toggle(`folder:${folder.dirName}`)}
+              aria-expanded={isExpanded(`folder:${folder.dirName}`)}
+            >
+              <p class="folderName">
+                <span>
+                  {#if isExpanded(`folder:${folder.dirName}`)}
+                    <Octicon size={20} offsetY={-1.5} name="folder-open" color="#54aeff" />
+                  {:else}
+                    <Octicon size={20} offsetY={-1.5} name="folder" color="#54aeff" />
+                  {/if}
+                </span>
+                {folder.name}
+              </p>
+              {#if folder.description}
+                <p class="folderDesc">{folder.description}</p>
+              {/if}
+            </button>
+            {#if isExpanded(`folder:${folder.dirName}`) && folder.prototypes.length > 0}
+              <div class="folderContent">
+                {#each folder.prototypes as proto (proto.dirName)}
+                  {@render protoEntry(proto)}
+                {/each}
+              </div>
             {/if}
-          </button>
-          {#if isExpanded(`folder:${folder.dirName}`) && (folder.prototypes.length > 0 || folder.canvases?.length > 0)}
-            <div class="folderContent">
-              {#each folder.prototypes as proto (proto.dirName)}
-                {@render protoEntry(proto)}
-              {/each}
-              {#if folder.canvases?.length > 0}
+          </section>
+        {/each}
+
+        <!-- Ungrouped prototypes (not in any folder) -->
+        {#each sortedProtos as proto (proto.dirName)}
+          {@render protoEntry(proto)}
+        {/each}
+
+        <!-- Other flows (always at the bottom) -->
+        {#if otherFlows}
+          {@render protoEntry(otherFlows)}
+        {/if}
+      {:else}
+        <!-- Canvas view -->
+        {#each canvasFolders as folder (folder.dirName)}
+          <section class="folderGroup" class:folderGroupOpen={isExpanded(`folder:${folder.dirName}`)}>
+            <button
+              class="folderHeader"
+              onclick={() => toggle(`folder:${folder.dirName}`)}
+              aria-expanded={isExpanded(`folder:${folder.dirName}`)}
+            >
+              <p class="folderName">
+                <span>
+                  {#if isExpanded(`folder:${folder.dirName}`)}
+                    <Octicon size={20} offsetY={-1.5} name="folder-open" color="#54aeff" />
+                  {:else}
+                    <Octicon size={20} offsetY={-1.5} name="folder" color="#54aeff" />
+                  {/if}
+                </span>
+                {folder.name}
+              </p>
+              {#if folder.description}
+                <p class="folderDesc">{folder.description}</p>
+              {/if}
+            </button>
+            {#if isExpanded(`folder:${folder.dirName}`) && folder.canvases?.length > 0}
+              <div class="folderContent">
                 {#each folder.canvases as canvas (canvas.dirName)}
                   {@render canvasEntry(canvas)}
                 {/each}
-              {/if}
-            </div>
-          {/if}
-        </section>
-      {/each}
+              </div>
+            {/if}
+          </section>
+        {/each}
 
-      <!-- Ungrouped prototypes (not in any folder) -->
-      {#each sortedProtos as proto (proto.dirName)}
-        {@render protoEntry(proto)}
-      {/each}
-
-      <!-- Ungrouped canvases -->
-      {#each sortedCanvases as canvas (canvas.dirName)}
-        {@render canvasEntry(canvas)}
-      {/each}
-
-      <!-- Other flows (always at the bottom) -->
-      {#if otherFlows}
-        {@render protoEntry(otherFlows)}
+        <!-- Ungrouped canvases -->
+        {#each sortedCanvases as canvas (canvas.dirName)}
+          {@render canvasEntry(canvas)}
+        {/each}
       {/if}
     </div>
   {/if}

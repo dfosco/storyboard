@@ -1,19 +1,28 @@
 /**
- * Canvas Server API — CRUD operations for .canvas.json files.
+ * Canvas Server API — CRUD operations for .canvas.jsonl files.
+ *
+ * Canvas data is stored as an append-only JSONL event stream.
+ * Each line is a JSON event object. The first line is always a
+ * `canvas_created` event containing the full initial state.
+ * Subsequent lines are atomic change events. Current state is
+ * derived by replaying the stream via the materializer.
  *
  * Routes (mounted at /_storyboard/canvas/):
- *   PUT    /update   — update widget positions/content in a canvas
- *   POST   /widget   — add a widget to a canvas
- *   DELETE /widget   — remove a widget from a canvas
- *   POST   /create   — create a new canvas
+ *   GET    /read     — read materialized canvas state
  *   GET    /list     — list all canvases
+ *   GET    /folders  — list canvas folders
+ *   PUT    /update   — append update events (widgets, sources, settings)
+ *   POST   /widget   — append a widget_added event
+ *   DELETE /widget   — append a widget_removed event
+ *   POST   /create   — create a new .canvas.jsonl file
  */
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { materializeFromText, serializeEvent } from './materializer.js'
 
 /**
- * Recursively find all .canvas.json files in the project.
+ * Recursively find all .canvas.jsonl files in the project.
  */
 function findCanvasFiles(root) {
   const results = []
@@ -28,7 +37,7 @@ function findCanvasFiles(root) {
       const relPath = rel ? `${rel}/${entry.name}` : entry.name
       if (entry.isDirectory()) {
         walk(fullPath, relPath)
-      } else if (entry.name.match(/\.canvas\.jsonc?$/)) {
+      } else if (entry.name.endsWith('.canvas.jsonl')) {
         results.push(relPath)
       }
     }
@@ -39,13 +48,13 @@ function findCanvasFiles(root) {
 }
 
 /**
- * Find a canvas file by name. Searches src/prototypes/ for matching .canvas.json.
+ * Find a canvas JSONL file by name.
  */
 function findCanvasPath(root, name) {
   const files = findCanvasFiles(root)
   for (const file of files) {
     const base = path.basename(file)
-    const match = base.match(/^(.+)\.canvas\.(jsonc?)$/)
+    const match = base.match(/^(.+)\.canvas\.jsonl$/)
     if (match && match[1] === name) {
       return path.resolve(root, file)
     }
@@ -54,18 +63,18 @@ function findCanvasPath(root, name) {
 }
 
 /**
- * Read and parse a canvas JSON file.
+ * Read a .canvas.jsonl file and materialize its current state.
  */
 function readCanvas(filePath) {
   const raw = fs.readFileSync(filePath, 'utf-8')
-  return JSON.parse(raw)
+  return materializeFromText(raw)
 }
 
 /**
- * Write canvas data back to disk with pretty formatting.
+ * Append a single event line to a .canvas.jsonl file.
  */
-function writeCanvasRaw(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n', 'utf-8')
+function appendEventRaw(filePath, event) {
+  fs.appendFileSync(filePath, serializeEvent(event) + '\n', 'utf-8')
 }
 
 /**
@@ -82,10 +91,17 @@ function generateWidgetId(type) {
 export function createCanvasHandler(ctx) {
   const { root, sendJson, watcher } = ctx
 
-  // Write canvas data, temporarily unwatching the file to prevent Vite reloads
-  function writeCanvas(filePath, data) {
+  // Append an event, temporarily unwatching the file to prevent Vite reloads
+  function appendEvent(filePath, event) {
     if (watcher) watcher.unwatch(filePath)
-    writeCanvasRaw(filePath, data)
+    appendEventRaw(filePath, event)
+    if (watcher) setTimeout(() => watcher.add(filePath), 1500)
+  }
+
+  // Write a new JSONL file with a single creation event
+  function writeNewCanvas(filePath, event) {
+    if (watcher) watcher.unwatch(filePath)
+    fs.writeFileSync(filePath, serializeEvent(event) + '\n', 'utf-8')
     if (watcher) setTimeout(() => watcher.add(filePath), 1500)
   }
 
@@ -105,7 +121,7 @@ export function createCanvasHandler(ctx) {
       return
     }
 
-    // GET /read?name=... — read fresh canvas data from disk
+    // GET /read?name=... — read materialized canvas data from disk
     if (routePath.startsWith('/read') && method === 'GET') {
       const url = new URL(routePath, 'http://localhost')
       const name = url.searchParams.get('name')
@@ -132,7 +148,7 @@ export function createCanvasHandler(ctx) {
       const files = findCanvasFiles(root)
       const canvases = files.map((file) => {
         const base = path.basename(file)
-        const match = base.match(/^(.+)\.canvas\.(jsonc?)$/)
+        const match = base.match(/^(.+)\.canvas\.jsonl$/)
         if (!match) return null
         try {
           const data = readCanvas(path.resolve(root, file))
@@ -150,7 +166,7 @@ export function createCanvasHandler(ctx) {
       return
     }
 
-    // PUT /update — update canvas data (positions, widget props, canvas settings)
+    // PUT /update — append update events to the canvas stream
     if (routePath === '/update' && method === 'PUT') {
       const { name, widgets, sources, settings } = body
 
@@ -166,28 +182,28 @@ export function createCanvasHandler(ctx) {
       }
 
       try {
-        const data = readCanvas(filePath)
+        const ts = new Date().toISOString()
 
-        // Update widget positions/props
         if (widgets) {
-          data.widgets = widgets
+          appendEvent(filePath, { event: 'widgets_replaced', timestamp: ts, widgets })
         }
 
-        // Update JSX source positions
         if (sources) {
-          data.sources = sources
+          appendEvent(filePath, { event: 'source_updated', timestamp: ts, sources })
         }
 
-        // Update canvas-level settings
         if (settings) {
+          const filtered = {}
           for (const [key, value] of Object.entries(settings)) {
             if (['title', 'description', 'grid', 'gridSize', 'colorMode', 'dotted', 'centered'].includes(key)) {
-              data[key] = value
+              filtered[key] = value
             }
+          }
+          if (Object.keys(filtered).length > 0) {
+            appendEvent(filePath, { event: 'settings_updated', timestamp: ts, settings: filtered })
           }
         }
 
-        writeCanvas(filePath, data)
         sendJson(res, 200, { success: true, name })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to update canvas: ${err.message}` })
@@ -195,7 +211,7 @@ export function createCanvasHandler(ctx) {
       return
     }
 
-    // POST /widget — add a widget to a canvas
+    // POST /widget — append a widget_added event
     if (routePath === '/widget' && method === 'POST') {
       const { name, type, props = {}, position = { x: 0, y: 0 } } = body
 
@@ -215,14 +231,15 @@ export function createCanvasHandler(ctx) {
       }
 
       try {
-        const data = readCanvas(filePath)
-        if (!data.widgets) data.widgets = []
-
         const widgetId = generateWidgetId(type)
         const widget = { id: widgetId, type, position, props }
-        data.widgets.push(widget)
 
-        writeCanvas(filePath, data)
+        appendEvent(filePath, {
+          event: 'widget_added',
+          timestamp: new Date().toISOString(),
+          widget,
+        })
+
         sendJson(res, 201, { success: true, widget })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to add widget: ${err.message}` })
@@ -230,7 +247,7 @@ export function createCanvasHandler(ctx) {
       return
     }
 
-    // DELETE /widget — remove a widget from a canvas
+    // DELETE /widget — append a widget_removed event
     if (routePath === '/widget' && method === 'DELETE') {
       const { name, widgetId } = body
 
@@ -246,25 +263,28 @@ export function createCanvasHandler(ctx) {
       }
 
       try {
+        // Verify the widget exists before appending the removal event
         const data = readCanvas(filePath)
-        const before = (data.widgets || []).length
-        data.widgets = (data.widgets || []).filter((w) => w.id !== widgetId)
-        const removed = before - data.widgets.length
-
-        if (removed === 0) {
+        const exists = (data.widgets || []).some((w) => w.id === widgetId)
+        if (!exists) {
           sendJson(res, 404, { error: `Widget "${widgetId}" not found in canvas "${name}"` })
           return
         }
 
-        writeCanvas(filePath, data)
-        sendJson(res, 200, { success: true, removed })
+        appendEvent(filePath, {
+          event: 'widget_removed',
+          timestamp: new Date().toISOString(),
+          widgetId,
+        })
+
+        sendJson(res, 200, { success: true, removed: 1 })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to remove widget: ${err.message}` })
       }
       return
     }
 
-    // POST /create — create a new canvas
+    // POST /create — create a new .canvas.jsonl file
     if (routePath === '/create' && method === 'POST') {
       const {
         name,
@@ -307,13 +327,15 @@ export function createCanvasHandler(ctx) {
         targetDir = folderDir
       }
 
-      const canvasPath = path.join(targetDir, `${kebab}.canvas.json`)
+      const canvasPath = path.join(targetDir, `${kebab}.canvas.jsonl`)
       if (fs.existsSync(canvasPath)) {
         sendJson(res, 409, { error: `Canvas "${kebab}" already exists` })
         return
       }
 
-      const canvasData = {
+      const creationEvent = {
+        event: 'canvas_created',
+        timestamp: new Date().toISOString(),
         title: title || kebab.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' '),
         grid,
         gridSize,
@@ -322,12 +344,12 @@ export function createCanvasHandler(ctx) {
       }
 
       if (includeJsx) {
-        canvasData.jsx = `${kebab}.canvas.jsx`
+        creationEvent.jsx = `${kebab}.canvas.jsx`
       }
 
       try {
         fs.mkdirSync(targetDir, { recursive: true })
-        writeCanvas(canvasPath, canvasData)
+        writeNewCanvas(canvasPath, creationEvent)
 
         const result = {
           success: true,
@@ -341,14 +363,14 @@ export function createCanvasHandler(ctx) {
           const jsxPath = path.join(targetDir, `${kebab}.canvas.jsx`)
           const componentName = kebab.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')
           const jsxContent = `/**
- * Canvas components for ${canvasData.title}.
+ * Canvas components for ${creationEvent.title}.
  * Each named export becomes a draggable widget on the canvas.
  */
 
 export function ${componentName}Example() {
   return (
     <div style={{ padding: '1rem', minWidth: 200 }}>
-      <h3>${canvasData.title}</h3>
+      <h3>${creationEvent.title}</h3>
       <p>Edit this component in the .canvas.jsx file.</p>
     </div>
   )

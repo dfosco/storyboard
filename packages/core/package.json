@@ -18,6 +18,7 @@
   },
   "exports": {
     ".": "./src/index.js",
+    "./canvas/materializer": "./src/canvas/materializer.js",
     "./modes.config.json": "./modes.config.json",
     "./vite/server": "./src/vite/server-plugin.js",
     "./comments": "./src/comments/index.js",

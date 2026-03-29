@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import { StoryboardProvider, useFeatureFlag } from '@dfosco/storyboard-react'
 import appStyles from './_app.module.css'
+import '@dfosco/tiny-canvas/style.css'
 
 function PageLoading() {
   return (

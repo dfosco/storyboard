@@ -4,13 +4,15 @@ import { RouterProvider, createBrowserRouter } from 'react-router-dom'
 import { routes } from './routes'
 import { ThemeProvider, BaseStyles } from '@primer/react'
 import './reset.css'
+import './fonts.css'
 import './globals.css'
+import './tailwind.css'
 
 import ColorModeSwitcher from './components/ColorModeSwitcher'
 import { installHashPreserver } from '@dfosco/storyboard-react/hash-preserver'
 import { installHideParamListener, installHistorySync, installBodyClassSync, mountDevTools } from '@dfosco/storyboard-core'
 import { initCommentsConfig, mountComments } from '@dfosco/storyboard-core/comments'
-import '@dfosco/storyboard-core/comments/ui/comments.css'
+import '@dfosco/storyboard-core/comments/ui/comment-layout.css'
 import storyboardConfig from '../storyboard.config.json'
 
 const router = createBrowserRouter(routes, {
@@ -22,7 +24,7 @@ installHideParamListener()
 installHistorySync()
 installBodyClassSync()
 initCommentsConfig(storyboardConfig, { basePath: import.meta.env.BASE_URL })
-mountDevTools({ basePath: import.meta.env.BASE_URL, plugins: storyboardConfig.plugins })
+mountDevTools({ basePath: import.meta.env.BASE_URL })
 mountComments()
 
 const rootElement = document.getElementById('root')

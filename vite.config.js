@@ -25,6 +25,7 @@ export default defineConfig(() => {
     return {
     base,
     resolve: {
+        dedupe: ['react', 'react-dom'],
         alias: {
             '@': path.resolve(__dirname, './src'),
             '$lib': path.resolve(__dirname, './packages/core/src/lib'),
@@ -39,12 +40,14 @@ export default defineConfig(() => {
             '@dfosco/storyboard-core/svelte-plugin-ui': path.resolve(__dirname, 'packages/core/src/svelte-plugin-ui/index.ts'),
             '@dfosco/storyboard-core/vite/server': path.resolve(__dirname, 'packages/core/src/vite/server-plugin.js'),
             '@dfosco/storyboard-core/workshop/ui/mount.js': path.resolve(__dirname, 'packages/core/src/workshop/ui/mount.js'),
-            '@dfosco/storyboard-core/comments/ui/comments.css': path.resolve(__dirname, 'packages/core/src/comments/ui/comments.css'),
+            '@dfosco/storyboard-core/comments/ui/comments.css': path.resolve(__dirname, 'packages/core/src/comments/ui/comment-layout.css'),
+            '@dfosco/storyboard-core/comments/ui/comment-layout.css': path.resolve(__dirname, 'packages/core/src/comments/ui/comment-layout.css'),
             '@dfosco/storyboard-core/modes.css': path.resolve(__dirname, 'packages/core/src/modes.css'),
             '@dfosco/storyboard-core/comments': path.resolve(__dirname, 'packages/core/src/comments/index.js'),
             '@dfosco/storyboard-core': path.resolve(__dirname, 'packages/core/src/index.js'),
             '@dfosco/storyboard-react/vite': path.resolve(__dirname, 'packages/react/src/vite/data-plugin.js'),
             '@dfosco/storyboard-react/hash-preserver': path.resolve(__dirname, 'packages/react/src/hashPreserver.js'),
+            '@dfosco/storyboard-react/canvas/CanvasPage': path.resolve(__dirname, 'packages/react/src/canvas/CanvasPage.jsx'),
             '@dfosco/storyboard-react': path.resolve(__dirname, 'packages/react/src/index.js'),
             '@dfosco/storyboard-react-primer': path.resolve(__dirname, 'packages/react-primer/src/index.js'),
             '@dfosco/storyboard-react-reshaped': path.resolve(__dirname, 'packages/react-reshaped/src/index.js'),

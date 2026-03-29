@@ -10,7 +10,7 @@
 import { mountSveltePlugin, type PluginHandle } from '../../svelte-plugin-ui/mount.js'
 import WorkshopPanel from './WorkshopPanel.svelte'
 import { features as allFeatures } from '../features/registry.js'
-import './workshop.css'
+import '../../../dist/tailwind.css'
 
 let handle: PluginHandle | null = null
 
@@ -62,5 +62,7 @@ export function unmountWorkshop(): void {
   }
 }
 
-// Auto-mount
-mountWorkshop()
+// Auto-mount removed — CoreUIBar now owns the workshop UI.
+// This module is still loaded by the server plugin for the
+// data-workshop-features attribute, but does not self-mount.
+// mountWorkshop()

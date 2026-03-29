@@ -11,16 +11,14 @@
       "category": "General"
     }
   },
-  "plugins": {
-    "devtools": true
-  },
   "featureFlags": {
     "show-banner": true
   },
   "workshop": {
     "enabled": true,
     "features": {
-      "createPrototype": true
+      "createPrototype": true,
+      "createCanvas": true
     },
     "partials": [
       { "directory": "template", "name": "Application" }

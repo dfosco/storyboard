@@ -3,11 +3,13 @@ import path from 'node:path'
 import { execSync } from 'node:child_process'
 import { globSync } from 'glob'
 import { parse as parseJsonc } from 'jsonc-parser'
+import { materializeFromText } from '../../../core/src/canvas/materializer.js'
 
 const VIRTUAL_MODULE_ID = 'virtual:storyboard-data-index'
 const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
 
 const GLOB_PATTERN = '**/*.{flow,scene,object,record,prototype,folder}.{json,jsonc}'
+const CANVAS_GLOB_PATTERN = '**/*.canvas.jsonl'
 
 /**
  * Extract the data name and type suffix from a file path.
@@ -22,6 +24,42 @@ const GLOB_PATTERN = '**/*.{flow,scene,object,record,prototype,folder}.{json,jso
  */
 function parseDataFile(filePath) {
   const base = path.basename(filePath)
+
+  // Handle .canvas.jsonl files
+  const canvasJsonlMatch = base.match(/^(.+)\.canvas\.jsonl$/)
+  if (canvasJsonlMatch) {
+    if (canvasJsonlMatch[1].startsWith('_')) return null
+    const normalized = filePath.replace(/\\/g, '/')
+    if (normalized.split('/').some(seg => seg.startsWith('_'))) return null
+
+    const name = canvasJsonlMatch[1]
+    let inferredRoute = null
+    const canvasFolderMatch = normalized.match(/(?:^|\/)src\/canvases\/([^/]+)\.folder\//)
+    const canvasFolderName = canvasFolderMatch ? canvasFolderMatch[1] : null
+    const folderDirMatch = normalized.match(/(?:^|\/)src\/prototypes\/([^/]+)\.folder\//)
+    const folderName = folderDirMatch ? folderDirMatch[1] : null
+
+    const canvasCheck = normalized.match(/(?:^|\/)src\/canvases\//)
+    if (canvasCheck) {
+      const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
+      const routeBase = dirPath
+        .replace(/^.*?src\/canvases\//, '')
+        .replace(/[^/]*\.folder\/?/g, '')
+      inferredRoute = '/canvas/' + (routeBase ? routeBase + '/' : '') + name
+      inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
+    }
+    const protoCheck = normalized.match(/(?:^|\/)src\/prototypes\//)
+    if (!canvasCheck && protoCheck) {
+      const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
+      const routeBase = dirPath
+        .replace(/^.*?src\/prototypes\//, '')
+        .replace(/[^/]*\.folder\/?/g, '')
+      inferredRoute = '/canvas/' + (routeBase ? routeBase + '/' : '') + name
+      inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
+    }
+    return { name, suffix: 'canvas', ext: 'jsonl', folder: canvasFolderName || folderName, inferredRoute }
+  }
+
   const match = base.match(/^(.+)\.(flow|scene|object|record|prototype|folder)\.(jsonc?)$/)
   if (!match) return null
 
@@ -121,6 +159,7 @@ function getLastModified(root, dirPath) {
 function buildIndex(root) {
   const ignore = ['node_modules/**', 'dist/**', '.git/**']
   const files = globSync(GLOB_PATTERN, { cwd: root, ignore, absolute: false })
+  const canvasFiles = globSync(CANVAS_GLOB_PATTERN, { cwd: root, ignore, absolute: false })
 
   // Detect nested .folder/ directories (not supported)
   // Scan directories directly since empty nested folders have no data files
@@ -137,12 +176,13 @@ function buildIndex(root) {
     }
   }
 
-  const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {} }
+  const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {}, canvas: {} }
   const seen = {} // "name.suffix" → absolute path (for duplicate detection)
   const protoFolders = {} // prototype name → folder name (for injection)
   const flowRoutes = {} // flow name → inferred route (for _route injection)
+  const canvasRoutes = {} // canvas name → inferred route
 
-  for (const relPath of files) {
+  for (const relPath of [...files, ...canvasFiles]) {
     const parsed = parseDataFile(relPath)
     if (!parsed) continue
 
@@ -175,9 +215,14 @@ function buildIndex(root) {
     if (parsed.suffix === 'flow' && parsed.inferredRoute) {
       flowRoutes[parsed.name] = parsed.inferredRoute
     }
+
+    // Track inferred routes for canvases
+    if (parsed.suffix === 'canvas' && parsed.inferredRoute) {
+      canvasRoutes[parsed.name] = parsed.inferredRoute
+    }
   }
 
-  return { index, protoFolders, flowRoutes }
+  return { index, protoFolders, flowRoutes, canvasRoutes }
 }
 
 /**
@@ -284,10 +329,10 @@ function readModesConfig(root) {
   return fallback
 }
 
-function generateModule({ index, protoFolders, flowRoutes }, root) {
+function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root) {
   const declarations = []
-  const INDEX_KEYS = ['flow', 'object', 'record', 'prototype', 'folder']
-  const entries = { flow: [], object: [], record: [], prototype: [], folder: [] }
+  const INDEX_KEYS = ['flow', 'object', 'record', 'prototype', 'folder', 'canvas']
+  const entries = { flow: [], object: [], record: [], prototype: [], folder: [], canvas: [] }
   const resolvedFlowRoutes = {} // flow name → resolved route (for multi-flow logging)
   let i = 0
 
@@ -295,7 +340,9 @@ function generateModule({ index, protoFolders, flowRoutes }, root) {
     for (const [name, absPath] of Object.entries(index[suffix])) {
       const varName = `_d${i++}`
       const raw = fs.readFileSync(absPath, 'utf-8')
-      let parsed = parseJsonc(raw)
+      let parsed = suffix === 'canvas'
+        ? materializeFromText(raw)
+        : parseJsonc(raw)
 
       // Auto-fill gitAuthor for prototype metadata from git history
       if (suffix === 'prototype' && parsed && !parsed.gitAuthor) {
@@ -332,6 +379,37 @@ function generateModule({ index, protoFolders, flowRoutes }, root) {
         }
       }
 
+      // Inject inferred route and resolve JSX companion for canvases
+      if (suffix === 'canvas') {
+        if (canvasRoutes[name]) {
+          parsed = { ...parsed, _route: canvasRoutes[name] }
+        }
+        // Inject folder association
+        const folderDirMatch = path.relative(root, absPath).replace(/\\/g, '/').match(/(?:^|\/)src\/(?:prototypes|canvases)\/([^/]+)\.folder\//)
+        if (folderDirMatch) {
+          parsed = { ...parsed, _folder: folderDirMatch[1] }
+        }
+        // Resolve JSX companion file path
+        if (parsed?.jsx) {
+          const jsxPath = path.resolve(path.dirname(absPath), parsed.jsx)
+          if (fs.existsSync(jsxPath)) {
+            const relJsx = '/' + path.relative(root, jsxPath).replace(/\\/g, '/')
+            parsed = { ...parsed, _jsxModule: relJsx }
+          } else {
+            console.warn(
+              `[storyboard-data] Canvas "${name}" references JSX file "${parsed.jsx}" but it was not found at ${jsxPath}`
+            )
+          }
+        } else {
+          // Auto-detect a same-name .canvas.jsx companion
+          const autoJsx = absPath.replace(/\.canvas\.(jsonl|jsonc?)$/, '.canvas.jsx')
+          if (fs.existsSync(autoJsx)) {
+            const relJsx = '/' + path.relative(root, autoJsx).replace(/\\/g, '/')
+            parsed = { ...parsed, _jsxModule: relJsx }
+          }
+        }
+      }
+
       // Resolve template variables (${currentDir}, ${currentProto}, ${currentProtoDir})
       const templateVars = computeTemplateVars(absPath, root)
       if (!templateVars.currentProto && raw.includes('${currentProto}')) {
@@ -354,7 +432,7 @@ function generateModule({ index, protoFolders, flowRoutes }, root) {
   }
 
   const imports = [`import { init } from '@dfosco/storyboard-core'`]
-  const initCalls = [`init({ flows, objects, records, prototypes, folders })`]
+  const initCalls = [`init({ flows, objects, records, prototypes, folders, canvases })`]
 
   // Feature flags from storyboard.config.json
   const { config } = readConfig(root)
@@ -422,14 +500,15 @@ function generateModule({ index, protoFolders, flowRoutes }, root) {
     `const records = {\n${entries.record.join(',\n')}\n}`,
     `const prototypes = {\n${entries.prototype.join(',\n')}\n}`,
     `const folders = {\n${entries.folder.join(',\n')}\n}`,
+    `const canvases = {\n${entries.canvas.join(',\n')}\n}`,
     '',
     '// Backward-compatible alias',
     'const scenes = flows',
     '',
     initCalls.join('\n'),
     '',
-    `export { flows, scenes, objects, records, prototypes, folders }`,
-    `export const index = { flows, scenes, objects, records, prototypes, folders }`,
+    `export { flows, scenes, objects, records, prototypes, folders, canvases }`,
+    `export const index = { flows, scenes, objects, records, prototypes, folders, canvases }`,
     `export default index`,
   ].join('\n')
 }
@@ -437,7 +516,7 @@ function generateModule({ index, protoFolders, flowRoutes }, root) {
 /**
  * Vite plugin for storyboard data discovery.
  *
- * - Scans the repo for *.flow.json, *.scene.json (compat), *.object.json, *.record.json
+ * - Scans the repo for *.flow.json, *.scene.json (compat), *.object.json, *.record.json, *.canvas.jsonl
  * - Validates no two files share the same name+suffix (hard build error)
  * - Generates a virtual module `virtual:storyboard-data-index`
  * - Watches for file additions/removals in dev mode
@@ -477,11 +556,30 @@ export default function storyboardDataPlugin() {
       const watcher = server.watcher
 
       const invalidate = (filePath) => {
+        const normalized = filePath.replace(/\\/g, '/')
+        // Skip .canvas.jsonl content changes entirely — these are mutated
+        // at runtime by the canvas server API. A full-reload would create
+        // a feedback loop (save → file change → reload → lose editing state).
+        if (/\.canvas\.jsonl$/.test(normalized)) return
+
         const parsed = parseDataFile(filePath)
         // Also invalidate when files are added/removed inside .folder/ directories
-        const inFolder = filePath.replace(/\\/g, '/').includes('.folder/')
+        const inFolder = normalized.includes('.folder/')
         if (!parsed && !inFolder) return
         // Rebuild index and invalidate virtual module
+        buildResult = null
+        const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
+        if (mod) {
+          server.moduleGraph.invalidateModule(mod)
+          server.ws.send({ type: 'full-reload' })
+        }
+      }
+
+      const invalidateOnAddRemove = (filePath) => {
+        const parsed = parseDataFile(filePath)
+        const inFolder = filePath.replace(/\\/g, '/').includes('.folder/')
+        if (!parsed && !inFolder) return
+        // Canvas additions/removals DO need a reload (new routes)
         buildResult = null
         const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
         if (mod) {
@@ -504,8 +602,8 @@ export default function storyboardDataPlugin() {
         }
       }
 
-      watcher.on('add', invalidate)
-      watcher.on('unlink', invalidate)
+      watcher.on('add', invalidateOnAddRemove)
+      watcher.on('unlink', invalidateOnAddRemove)
       watcher.on('change', (filePath) => {
         invalidate(filePath)
         invalidateConfig(filePath)

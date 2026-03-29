@@ -20,7 +20,7 @@
 </script>
 
 <script>
-	import { cn } from "src/lib/utils.js";
+	import { cn } from "$lib/utils/index.js";
 
 	let {
 		ref = $bindable(null),

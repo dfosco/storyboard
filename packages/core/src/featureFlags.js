@@ -4,14 +4,13 @@
  * Flags are defined in storyboard.config.json under "featureFlags" and
  * initialized at app startup via the Vite data plugin.
  *
- * Read priority:  URL hash → localStorage → config defaults
- * Write target:   URL hash (shareable)
+ * Read priority:  localStorage → config defaults
+ * Write target:   localStorage (persistent per-browser)
  *
- * All flag keys in hash/localStorage are prefixed with "flag." to avoid
+ * All flag keys in localStorage are prefixed with "flag." to avoid
  * collisions with scene overrides.
  */
 
-import { getParam, setParam, removeParam, getAllParams } from './session.js'
 import { getLocal, setLocal, removeLocal, getAllLocal } from './localStorage.js'
 
 const FLAG_PREFIX = 'flag.'
@@ -39,50 +38,44 @@ export function syncFlagBodyClasses() {
 
 /**
  * Initialize the feature flag system with config defaults.
- * Syncs localStorage with config defaults on every call.
+ * Only writes a default to localStorage when no user override exists yet,
+ * so toggled values survive across reloads.
  * @param {Record<string, boolean>} defaults - Flag key → default value
  */
 export function initFeatureFlags(defaults = {}) {
   _defaults = { ...defaults }
-  // Sync localStorage with config defaults — always overwrite so config
-  // changes take effect. User overrides live in the URL hash, which is
-  // checked first by getFlag(), so this is safe.
   for (const [key, value] of Object.entries(_defaults)) {
-    setLocal(FLAG_PREFIX + key, String(value))
+    if (getLocal(FLAG_PREFIX + key) === null) {
+      setLocal(FLAG_PREFIX + key, String(value))
+    }
   }
   syncFlagBodyClasses()
 }
 
 /**
- * Read a flag value. Priority: hash → localStorage → config default.
+ * Read a flag value. Priority: localStorage → config default.
  * @param {string} key - Flag key (without prefix)
  * @returns {boolean}
  */
 export function getFlag(key) {
-  // 1. URL hash (highest priority)
-  const hashVal = getParam(FLAG_PREFIX + key)
-  if (hashVal !== null) return hashVal === 'true'
-
-  // 2. localStorage
   const localVal = getLocal(FLAG_PREFIX + key)
   if (localVal !== null) return localVal === 'true'
 
-  // 3. Config default
   return _defaults[key] ?? false
 }
 
 /**
- * Set a flag value. Writes to URL hash for shareability.
+ * Set a flag value. Writes to localStorage for persistence.
  * @param {string} key - Flag key (without prefix)
  * @param {boolean} value
  */
 export function setFlag(key, value) {
-  setParam(FLAG_PREFIX + key, String(value))
+  setLocal(FLAG_PREFIX + key, String(value))
   syncFlagBodyClasses()
 }
 
 /**
- * Toggle a flag. Reads current value, writes opposite to hash.
+ * Toggle a flag. Reads current value, writes opposite to localStorage.
  * @param {string} key - Flag key (without prefix)
  */
 export function toggleFlag(key) {
@@ -105,16 +98,10 @@ export function getAllFlags() {
 }
 
 /**
- * Reset all flags — removes hash and localStorage overrides.
+ * Reset all flags — removes localStorage overrides.
  * Flags revert to config defaults.
  */
 export function resetFlags() {
-  const allParams = getAllParams()
-  for (const paramKey of Object.keys(allParams)) {
-    if (paramKey.startsWith(FLAG_PREFIX)) {
-      removeParam(paramKey)
-    }
-  }
   const allLocal = getAllLocal()
   for (const localKey of Object.keys(allLocal)) {
     if (localKey.startsWith(FLAG_PREFIX)) {

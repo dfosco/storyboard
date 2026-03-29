@@ -1,0 +1,2 @@
+{"event":"goal_created","goal_id":"notepad","timestamp":"2026-03-28T03:01:54.520Z","title":"Notepad","description":"One-off tasks and quick notes","acceptance_criteria":[],"status":"open"}
+{"event":"github_synced","goal_id":"notepad","timestamp":"2026-03-28T03:02:19.147Z","issue_number":7,"issue_url":"https://github.com/dfosco/storyboard/issues/7"}

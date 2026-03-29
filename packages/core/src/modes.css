@@ -32,6 +32,20 @@ html.storyboard-mode-prototype {
   padding: 0;
 }
 
+html.storyboard-mode-present::before,
+html.storyboard-mode-plan::before,
+html.storyboard-mode-inspect::before {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100vw;
+  height: 12px;
+  background-color: var(--mode-color);
+  z-index: 99999;
+  pointer-events: none;
+}
+
 html.storyboard-mode-present > body > #root,
 html.storyboard-mode-plan > body > #root,
 html.storyboard-mode-inspect > body > #root {
@@ -55,4 +69,14 @@ html.storyboard-mode-plan > body > #root {
 
 html.storyboard-mode-inspect > body > #root {
   box-shadow: 0 0 7px 2px rgb(118 85 164 / 60%);
+}
+
+/* Mode-aware trigger button hue — derived from collar color */
+html.storyboard-mode-present,
+html.storyboard-mode-plan,
+html.storyboard-mode-inspect {
+  --trigger-bg: color-mix(in srgb, var(--mode-color) 12%, white);
+  --trigger-bg-hover: color-mix(in srgb, var(--mode-color) 20%, white);
+  --trigger-text: color-mix(in srgb, var(--mode-color) 85%, black);
+  --trigger-border: color-mix(in srgb, var(--mode-color) 45%, white);
 }

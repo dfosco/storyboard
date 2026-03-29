@@ -14,6 +14,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { parse as parseJsonc } from 'jsonc-parser'
 import { serverFeatures as workshopFeatures } from '../workshop/features/registry-server.js'
+import { createCanvasHandler } from '../canvas/server.js'
 
 const API_PREFIX = '/_storyboard/'
 
@@ -99,6 +100,10 @@ export default function storyboardServer() {
           routeHandlers.set('workshop', featureModule.serverSetup({ root, sendJson, workshopConfig }))
         }
       }
+
+      // Wire canvas CRUD API routes (always available)
+      // Pass the Vite watcher so the canvas handler can unwatch files during writes
+      routeHandlers.set('canvas', createCanvasHandler({ root, sendJson, watcher: server.watcher }))
 
       // Inject workshop client UI when any feature is enabled
       if (hasAnyWorkshopFeature(workshopConfig)) {

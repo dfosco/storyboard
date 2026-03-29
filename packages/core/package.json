@@ -10,14 +10,20 @@
   },
   "files": [
     "src",
+    "dist",
     "modes.config.json"
   ],
+  "scripts": {
+    "build:css": "tailwindcss -i src/styles/tailwind.css -o dist/tailwind.css --minify"
+  },
   "exports": {
     ".": "./src/index.js",
+    "./canvas/materializer": "./src/canvas/materializer.js",
     "./modes.config.json": "./modes.config.json",
     "./vite/server": "./src/vite/server-plugin.js",
     "./comments": "./src/comments/index.js",
-    "./comments/ui/comments.css": "./src/comments/ui/comments.css",
+    "./comments/ui/comments.css": "./src/comments/ui/comment-layout.css",
+    "./comments/ui/comment-layout.css": "./src/comments/ui/comment-layout.css",
     "./workshop/ui/mount.js": "./src/workshop/ui/mount.ts",
     "./modes.css": "./src/modes.css",
     "./svelte-plugin-ui": "./src/svelte-plugin-ui/index.ts",
@@ -25,12 +31,13 @@
     "./svelte-plugin-ui/viewfinder": "./src/ui/viewfinder.ts",
     "./ui/design-modes": "./src/ui/design-modes.ts",
     "./ui/viewfinder": "./src/ui/viewfinder.ts",
-    "./svelte-plugin-ui/styles/base.css": "./src/svelte-plugin-ui/styles/base.css"
+    "./svelte-plugin-ui/styles/base.css": "./dist/tailwind.css",
+    "./styles/tailwind.css": "./dist/tailwind.css"
   },
   "dependencies": {
     "@primer/octicons": "^19.22.0",
     "jsonc-parser": "^3.3.1",
-    "tachyons": "^4.12.0"
+    "smooth-corners": "^1.1.0"
   },
   "peerDependencies": {
     "svelte": "^5.0.0"
@@ -41,8 +48,7 @@
     }
   },
   "devDependencies": {
-    "@internationalized/date": "^3.12.0",
-    "@lucide/svelte": "^1.7.0",
+    "@tailwindcss/cli": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",
     "bits-ui": "^2.16.4",
     "clsx": "^2.1.1",

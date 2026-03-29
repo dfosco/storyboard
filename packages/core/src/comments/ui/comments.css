@@ -1,5 +1,3 @@
-@import "tachyons/css/tachyons.css";
-
 /*
   Comments UI custom styles.
   sb-* custom properties switch based on [data-sb-theme] attribute on <html>,

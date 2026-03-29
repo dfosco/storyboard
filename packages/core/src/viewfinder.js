@@ -1,4 +1,4 @@
-import { loadFlow, listFlows, listPrototypes, getPrototypeMetadata, listFolders, getFolderMetadata } from './loader.js'
+import { loadFlow, listFlows, listPrototypes, getPrototypeMetadata, listFolders, getFolderMetadata, listCanvases, getCanvasData } from './loader.js'
 
 /**
  * Deterministic hash from a string — used for seeding generative placeholders.
@@ -194,6 +194,46 @@ export function buildPrototypeIndex(knownRoutes = []) {
   const folders = Object.values(folderMap)
   const prototypes = ungrouped
 
+  // Build canvas entries
+  const canvasEntries = []
+  for (const canvasName of listCanvases()) {
+    const data = getCanvasData(canvasName)
+    if (!data) continue
+    canvasEntries.push({
+      name: data.title || canvasName,
+      dirName: canvasName,
+      description: data.description || null,
+      route: data._route || `/${canvasName}`,
+      folder: data._folder || null,
+      isCanvas: true,
+      widgetCount: (data.widgets || []).length + (data.sources || []).length,
+    })
+  }
+
+  // Add canvases to their folders or to ungrouped
+  for (const canvas of canvasEntries) {
+    if (canvas.folder && folderMap[canvas.folder]) {
+      if (!folderMap[canvas.folder].canvases) folderMap[canvas.folder].canvases = []
+      folderMap[canvas.folder].canvases.push(canvas)
+    } else if (canvas.folder) {
+      if (!folderMap[canvas.folder]) {
+        folderMap[canvas.folder] = {
+          name: canvas.folder,
+          dirName: canvas.folder,
+          description: null,
+          icon: null,
+          prototypes: [],
+          canvases: [canvas],
+        }
+      } else {
+        if (!folderMap[canvas.folder].canvases) folderMap[canvas.folder].canvases = []
+        folderMap[canvas.folder].canvases.push(canvas)
+      }
+    }
+  }
+
+  const ungroupedCanvases = canvasEntries.filter(c => !c.folder)
+
   // Pre-sort by title (A-Z)
   const sortByTitle = (a, b) => (a.name || '').localeCompare(b.name || '')
 
@@ -214,15 +254,26 @@ export function buildPrototypeIndex(knownRoutes = []) {
   return {
     folders,
     prototypes,
+    canvases: ungroupedCanvases,
     globalFlows,
     sorted: {
       title: {
         prototypes: [...prototypes].sort(sortByTitle),
-        folders: [...folders].map(f => ({ ...f, prototypes: [...f.prototypes].sort(sortByTitle) })).sort(sortByTitle),
+        canvases: [...ungroupedCanvases].sort(sortByTitle),
+        folders: [...folders].map(f => ({
+          ...f,
+          prototypes: [...f.prototypes].sort(sortByTitle),
+          canvases: [...(f.canvases || [])].sort(sortByTitle),
+        })).sort(sortByTitle),
       },
       updated: {
         prototypes: [...prototypes].sort(sortByUpdated),
-        folders: [...folders].map(f => ({ ...f, prototypes: [...f.prototypes].sort(sortByUpdated) })).sort(folderByUpdated),
+        canvases: [...ungroupedCanvases].sort(sortByTitle),
+        folders: [...folders].map(f => ({
+          ...f,
+          prototypes: [...f.prototypes].sort(sortByUpdated),
+          canvases: [...(f.canvases || [])].sort(sortByTitle),
+        })).sort(folderByUpdated),
       },
     },
   }

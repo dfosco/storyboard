@@ -78,6 +78,10 @@
   const sortedProtos = $derived(prototypeIndex.sorted?.[sortBy]?.prototypes ?? ungroupedProtos)
   const sortedFolders = $derived(prototypeIndex.sorted?.[sortBy]?.folders ?? folders)
 
+  // Canvases
+  const ungroupedCanvases = $derived(prototypeIndex.canvases || [])
+  const sortedCanvases = $derived(prototypeIndex.sorted?.[sortBy]?.canvases ?? ungroupedCanvases)
+
   // Expanded state — persisted in localStorage
   const EXPANDED_KEY = 'viewfinder.expanded'
 
@@ -363,6 +367,23 @@
         </section>
       {/snippet}
 
+      {#snippet canvasEntry(canvas)}
+        <section class="protoGroup">
+          <a class="listItem" href={canvas.route}>
+            <div class="cardBody">
+              <p class="protoName">
+                <span class="protoIcon">🎨</span>
+                {canvas.name}
+              </p>
+              {#if canvas.description}
+                <p class="protoDesc">{canvas.description}</p>
+              {/if}
+              <p class="protoDesc" style="font-size: 11px; opacity: 0.6;">Canvas · {canvas.widgetCount || 0} widget{canvas.widgetCount !== 1 ? 's' : ''}</p>
+            </div>
+          </a>
+        </section>
+      {/snippet}
+
       <!-- Folders with their prototypes -->
       {#each sortedFolders as folder (folder.dirName)}
         <section class="folderGroup" class:folderGroupOpen={isExpanded(`folder:${folder.dirName}`)}>
@@ -385,11 +406,16 @@
               <p class="folderDesc">{folder.description}</p>
             {/if}
           </button>
-          {#if isExpanded(`folder:${folder.dirName}`) && folder.prototypes.length > 0}
+          {#if isExpanded(`folder:${folder.dirName}`) && (folder.prototypes.length > 0 || folder.canvases?.length > 0)}
             <div class="folderContent">
               {#each folder.prototypes as proto (proto.dirName)}
                 {@render protoEntry(proto)}
               {/each}
+              {#if folder.canvases?.length > 0}
+                {#each folder.canvases as canvas (canvas.dirName)}
+                  {@render canvasEntry(canvas)}
+                {/each}
+              {/if}
             </div>
           {/if}
         </section>
@@ -398,6 +424,11 @@
       <!-- Ungrouped prototypes (not in any folder) -->
       {#each sortedProtos as proto (proto.dirName)}
         {@render protoEntry(proto)}
+      {/each}
+
+      <!-- Ungrouped canvases -->
+      {#each sortedCanvases as canvas (canvas.dirName)}
+        {@render canvasEntry(canvas)}
       {/each}
 
       <!-- Other flows (always at the bottom) -->

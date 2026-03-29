@@ -11,10 +11,12 @@
  */
 
 import * as createPrototype from './createPrototype/index.js'
+import * as createCanvas from './createCanvas/index.js'
 
 /**
  * All available workshop features, keyed by config name.
  */
 export const features = {
   createPrototype,
+  createCanvas,
 }

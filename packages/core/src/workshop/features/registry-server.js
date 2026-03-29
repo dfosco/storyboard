@@ -10,10 +10,12 @@
  */
 
 import { createPrototypesHandler } from './createPrototype/server.js'
+import { createCanvasHandler } from '../../canvas/server.js'
 
 /**
  * Server-side feature handlers, keyed by config name.
  */
 export const serverFeatures = {
   createPrototype: { serverSetup: createPrototypesHandler },
+  createCanvas: { serverSetup: createCanvasHandler },
 }

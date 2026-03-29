@@ -1,0 +1,79 @@
+import { useState } from 'react'
+import { addWidget as addWidgetApi } from './canvasApi.js'
+import styles from './CanvasToolbar.module.css'
+
+const WIDGET_TYPES = [
+  { type: 'sticky-note', label: 'Sticky Note', icon: '📝' },
+  { type: 'markdown', label: 'Markdown', icon: '📄' },
+  { type: 'prototype', label: 'Prototype', icon: '🖥️' },
+]
+
+/**
+ * Floating toolbar for adding widgets to a canvas.
+ */
+export default function CanvasToolbar({ canvasName, onWidgetAdded }) {
+  const [open, setOpen] = useState(false)
+  const [adding, setAdding] = useState(false)
+
+  async function handleAdd(type) {
+    if (adding) return
+    setAdding(true)
+    try {
+      const defaults = {
+        'sticky-note': { text: '', color: 'yellow' },
+        'markdown': { content: '', width: 360 },
+        'prototype': { src: '', width: 800, height: 600, label: '' },
+      }
+      const result = await addWidgetApi(canvasName, {
+        type,
+        props: defaults[type] || {},
+        position: { x: 0, y: 0 },
+      })
+      if (result.success) {
+        onWidgetAdded?.(result.widget)
+        setOpen(false)
+      }
+    } catch (err) {
+      console.error('[canvas] Failed to add widget:', err)
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  return (
+    <nav className={styles.toolbar}>
+      {open ? (
+        <div className={styles.menu}>
+          <header className={styles.menuHeader}>
+            <span>Add widget</span>
+            <button
+              className={styles.closeBtn}
+              onClick={() => setOpen(false)}
+              aria-label="Close"
+            >×</button>
+          </header>
+          {WIDGET_TYPES.map(({ type, label, icon }) => (
+            <button
+              key={type}
+              className={styles.menuItem}
+              onClick={() => handleAdd(type)}
+              disabled={adding}
+            >
+              <span className={styles.menuIcon}>{icon}</span>
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <button
+          className={styles.addBtn}
+          onClick={() => setOpen(true)}
+          title="Add widget"
+          aria-label="Add widget"
+        >
+          +
+        </button>
+      )}
+    </nav>
+  )
+}

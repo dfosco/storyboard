@@ -30,20 +30,35 @@ export default function MarkdownBlock({ id, props, onUpdate, onRemove }) {
   const width = props?.width ?? 360
   const [editing, setEditing] = useState(false)
   const textareaRef = useRef(null)
+  const blockRef = useRef(null)
+  const [editHeight, setEditHeight] = useState(null)
 
   useEffect(() => {
-    if (editing && textareaRef.current) {
-      textareaRef.current.focus()
+    if (editing) {
+      // Capture the preview height before switching to editor
+      if (blockRef.current && !editHeight) {
+        setEditHeight(blockRef.current.offsetHeight)
+      }
+      if (textareaRef.current) {
+        textareaRef.current.focus()
+      }
+    } else {
+      setEditHeight(null)
     }
   }, [editing])
 
   return (
     <WidgetWrapper onRemove={onRemove}>
-      <div className={styles.block} style={{ width }}>
+      <div
+        ref={blockRef}
+        className={styles.block}
+        style={{ width, minHeight: editHeight || undefined }}
+      >
         {editing ? (
           <textarea
             ref={textareaRef}
             className={styles.editor}
+            style={{ minHeight: editHeight ? editHeight - 2 : undefined }}
             value={content}
             onChange={(e) => onUpdate?.({ content: e.target.value })}
             onBlur={() => setEditing(false)}

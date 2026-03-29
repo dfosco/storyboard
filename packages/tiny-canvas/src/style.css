@@ -1,0 +1,113 @@
+/* tiny-canvas styles */
+
+:root {
+  --tc-border-radius: var(--borderRadius-large, 12px);
+  --tc-shadow-rest: var(--shadow-resting-small, 0 1px 3px rgba(0, 0, 0, 0.12));
+  --tc-shadow-float: var(--shadow-floating-small, 0 4px 12px rgba(0, 0, 0, 0.15));
+  --tc-border-color: var(--borderColor-muted, rgba(0, 0, 0, 0.15));
+  --tc-bg-muted: var(--bgColor-muted, #f6f8fa);
+  --tc-dot-color: var(--overlay-backdrop-bgColor, rgba(0, 0, 0, 0.08));
+  --tc-grid-size: var(--golden-number, 36px);
+  --tc-grid-offset: calc(var(--tc-grid-size) / -2);
+  --tc-font-stack: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Canvas */
+
+.tc-canvas {
+  min-width: 100vw;
+  min-height: 100vh;
+  margin: 0;
+  font-family: var(--tc-font-stack);
+  position: relative;
+  background-color: var(--tc-bg-muted);
+  width: 100vw;
+  max-width: 100vw;
+  color-scheme: light dark;
+}
+
+.tc-canvas[data-color-mode="light"] {
+  color-scheme: light;
+}
+
+.tc-canvas[data-color-mode="dark"] {
+  color-scheme: dark;
+}
+
+.tc-canvas[data-dotted] {
+  background-image: radial-gradient(var(--tc-dot-color) 2px, transparent 2px);
+  background-size: var(--tc-grid-size) var(--tc-grid-size);
+  background-position: var(--tc-grid-offset) var(--tc-grid-offset);
+}
+
+/* Dark mode — system preference (auto) */
+
+@media (prefers-color-scheme: dark) {
+  .tc-canvas:not([data-color-mode="light"]) {
+    --tc-bg-muted: var(--bgColor-muted, #161b22);
+    --tc-dot-color: var(--overlay-backdrop-bgColor, rgba(255, 255, 255, 0.1));
+    --tc-border-color: var(--borderColor-muted, rgba(255, 255, 255, 0.15));
+    --tc-shadow-rest: var(--shadow-resting-small, 0 1px 3px rgba(0, 0, 0, 0.3));
+    --tc-shadow-float: var(--shadow-floating-small, 0 4px 12px rgba(0, 0, 0, 0.4));
+  }
+}
+
+/* Dark mode — explicit override */
+
+.tc-canvas[data-color-mode="dark"] {
+  --tc-bg-muted: var(--bgColor-muted, #161b22);
+  --tc-dot-color: var(--overlay-backdrop-bgColor, rgba(255, 255, 255, 0.1));
+  --tc-border-color: var(--borderColor-muted, rgba(255, 255, 255, 0.15));
+  --tc-shadow-rest: var(--shadow-resting-small, 0 1px 3px rgba(0, 0, 0, 0.3));
+  --tc-shadow-float: var(--shadow-floating-small, 0 4px 12px rgba(0, 0, 0, 0.4));
+}
+
+/* Draggable */
+
+body .tc-draggable-inner:not(:active) {
+  touch-action: none;
+}
+
+.tc-on-translation {
+  transition: transform calc(var(--tc-translation-ms, 250ms) * 2)
+    cubic-bezier(0.78, 0.1, 0.51, 0.78) var(--tc-translation-ms, 250ms);
+}
+
+.tc-drag {
+  position: absolute;
+  width: fit-content;
+}
+
+.tc-draggable-inner {
+  position: relative;
+  width: fit-content;
+  height: min-content;
+}
+
+.tc-draggable-inner::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  border-radius: var(--tc-border-radius);
+  box-shadow: var(--tc-shadow-float);
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.tc-on-translation .tc-draggable-inner::after,
+.tc-draggable-inner:active::after,
+.tc-draggable-inner:hover::after {
+  opacity: 0;
+}
+
+.tc-on-translation .tc-draggable-inner,
+.tc-draggable-inner:active,
+.tc-draggable-inner:hover {
+  outline: none;
+}
+
+/* Allow text selection inside draggable items */

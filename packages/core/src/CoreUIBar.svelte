@@ -27,6 +27,7 @@
 
   let visible = $state(true)
   let commandMenuOpen = $state(false)
+  let FlowSwitcherButton: any = $state(null)
   let CreateMenuButton: any = $state(null)
   let createMenuFeatures: any[] = $state([])
   let CommentsMenuButton: any = $state(null)
@@ -61,6 +62,7 @@
     orderedMenus
       .filter(menu => {
         if (!menuVisibleInMode(menu, $modeState.mode)) return false
+        if (menu.key === 'flows') return !!FlowSwitcherButton
         if (menu.key === 'create') return CreateMenuButton && createMenuFeatures.length > 0
         if (menu.key === 'comments') return CommentsMenuButton && commentsEnabled
         return true
@@ -250,6 +252,12 @@
       })
     } catch {}
 
+    // Load flow switcher button
+    try {
+      const mod = await import('./FlowSwitcherButton.svelte')
+      FlowSwitcherButton = mod.default
+    } catch {}
+
     // Load comments menu button
     try {
       const { isCommentsEnabled } = await import('./comments/config.js')
@@ -339,6 +347,8 @@
             >
               <Icon name={menu.icon || menu.key} size={16} {...(menu.meta || {})} />
             </TriggerButton>
+          {:else if menu.key === 'flows'}
+            <FlowSwitcherButton config={menu} {basePath} tabindex={getTabindex(i)} />
           {:else if menu.key === 'create'}
             <CreateMenuButton features={createMenuFeatures} config={menu} tabindex={getTabindex(i)} />
           {:else if menu.key === 'comments'}

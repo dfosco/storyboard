@@ -31,7 +31,7 @@
       "ariaLabel": "Create",
       "trigger": "button",
       "icon": "iconoir/plus-circle",
-      "meta": { "scale": 1.1 },
+      "meta": { "strokeWeight": 2, "scale": 1.1 },
       "modes": ["*"],
       "menuWidth": "260px",
       "actions": [
@@ -41,6 +41,11 @@
         { "type": "footer", "label": "Supported in local development" }
       ]
     },    
+    "flows": {
+      "ariaLabel": "Switch flow",
+      "icon": "feather/fast-forward",
+      "modes": ["*"]
+    },
     "comments": {
       "ariaLabel": "Comments",
       "icon": "primer/comment",

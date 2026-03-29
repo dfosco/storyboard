@@ -9,7 +9,7 @@
 export { init } from './loader.js'
 
 // Flow, object & record loading
-export { loadFlow, listFlows, flowExists, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
+export { loadFlow, listFlows, flowExists, getFlowsForPrototype, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
 // Scoped name resolution
 export { resolveFlowName, resolveRecordName, resolveObjectName } from './loader.js'
 // Prototype metadata

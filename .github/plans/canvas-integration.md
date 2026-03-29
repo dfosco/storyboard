@@ -353,3 +353,33 @@ Following the `createPrototype` pattern:
 - Canvas files support the same folder scoping as prototypes — a canvas inside `main.folder/` is grouped under that folder in the Viewfinder.
 - All widget content must handle `null`/`undefined` gracefully (storyboard convention).
 - The `.canvas.jsx` file is a standard React module — it can import Primer components, storyboard hooks, CSS modules, anything a prototype page can. It just doesn't render as a routed page — its exports are rendered as widgets on the canvas surface.
+
+---
+
+## Status: Complete ✅
+
+All 5 phases implemented. 2 commits on `canvas-integration` branch.
+
+### Files created/modified
+
+**New files (22):**
+- `packages/core/src/canvas/server.js` — Canvas CRUD server handler
+- `packages/core/src/workshop/features/createCanvas/` — Workshop feature (3 files)
+- `packages/react/src/canvas/` — CanvasPage, useCanvas hook, toolbar, API client (7 files)
+- `packages/react/src/canvas/widgets/` — 4 widget components + registry + wrapper (10 files)
+- `src/prototypes/main.folder/design-overview.canvas.json` — Test canvas
+
+**Modified files (11):**
+- `packages/core/src/loader.js` — Added canvases to data index
+- `packages/core/src/index.js` — Exported canvas functions
+- `packages/core/src/viewfinder.js` — Added canvases to buildPrototypeIndex
+- `packages/core/src/vite/server-plugin.js` — Registered canvas handler
+- `packages/core/src/workshop/features/registry*.js` — Registered createCanvas
+- `packages/core/src/svelte-plugin-ui/components/Viewfinder.svelte` — Canvas entries
+- `packages/react/src/vite/data-plugin.js` — .canvas.json discovery
+- `packages/react/src/index.js` — Exported CanvasPage + useCanvas
+- `src/routes.jsx` — Canvas route generation
+- `src/prototypes/_app.jsx` — Imported tiny-canvas styles
+- `vite.config.js` — Added canvas alias
+- `storyboard.config.json` — Enabled createCanvas feature
+

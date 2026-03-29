@@ -28,6 +28,10 @@
   let visible = $state(true)
   let commandMenuOpen = $state(false)
   let ActionMenuButton: any = $state(null)
+  let navVersion = $state(0)
+  let origPushState: typeof history.pushState
+  let origReplaceState: typeof history.replaceState
+  let bumpNav: () => void
   let CreateMenuButton: any = $state(null)
   let createMenuFeatures: any[] = $state([])
   let CommentsMenuButton: any = $state(null)
@@ -61,6 +65,7 @@
   const visibleMenus = $derived(
     orderedMenus
       .filter(menu => {
+        void navVersion
         if (!menuVisibleInMode(menu, $modeState.mode)) return false
         if (menu.action) return ActionMenuButton && getActionChildren(menu.action).length > 0
         if (menu.key === 'create') return CreateMenuButton && createMenuFeatures.length > 0
@@ -170,6 +175,14 @@
 
   onMount(async () => {
     window.addEventListener('keydown', handleKeydown)
+
+    // Re-evaluate action menus on SPA navigation
+    bumpNav = () => { navVersion++ }
+    window.addEventListener('popstate', bumpNav)
+    origPushState = history.pushState.bind(history)
+    history.pushState = (...args: any[]) => { origPushState(...args); bumpNav() }
+    origReplaceState = history.replaceState.bind(history)
+    history.replaceState = (...args: any[]) => { origReplaceState(...args); bumpNav() }
 
     // Seed the command action registry from config
     if (commandMenuConfig) {
@@ -352,6 +365,9 @@
 
   onDestroy(() => {
     window.removeEventListener('keydown', handleKeydown)
+    if (bumpNav) window.removeEventListener('popstate', bumpNav)
+    if (origPushState) history.pushState = origPushState
+    if (origReplaceState) history.replaceState = origReplaceState
   })
 
   // Flow info dialog state — driven by core/show-flow-info action

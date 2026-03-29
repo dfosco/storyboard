@@ -11,6 +11,7 @@ export type Path =
     | `///src/prototypes/main/folder/Example/posts/:id`
     | `///src/prototypes/main/folder/Signup`
     | `///src/prototypes/main/folder/Signup/Dashboard`
+    | `///src/prototypes/main/folder/button-patterns/canvas`
 
 export type Params = {
     '///src/prototypes/main/folder/Example/posts/:id': { id: string }

@@ -18,7 +18,7 @@
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
   import { sidePanelState, togglePanel } from './stores/sidePanelStore.js'
-  import { initCommandActions, registerCommandAction, isExcludedByRoute } from './commandActions.js'
+  import { initCommandActions, registerCommandAction, getActionChildren, isExcludedByRoute } from './commandActions.js'
   import { isMenuHidden } from './uiConfig.js'
   import coreUIConfig from '../core-ui.config.json'
 
@@ -27,7 +27,7 @@
 
   let visible = $state(true)
   let commandMenuOpen = $state(false)
-  let FlowSwitcherButton: any = $state(null)
+  let ActionMenuButton: any = $state(null)
   let CreateMenuButton: any = $state(null)
   let createMenuFeatures: any[] = $state([])
   let CommentsMenuButton: any = $state(null)
@@ -62,7 +62,7 @@
     orderedMenus
       .filter(menu => {
         if (!menuVisibleInMode(menu, $modeState.mode)) return false
-        if (menu.key === 'flows') return !!FlowSwitcherButton
+        if (menu.action) return ActionMenuButton && getActionChildren(menu.action).length > 0
         if (menu.key === 'create') return CreateMenuButton && createMenuFeatures.length > 0
         if (menu.key === 'comments') return CommentsMenuButton && commentsEnabled
         return true
@@ -252,10 +252,55 @@
       })
     } catch {}
 
-    // Load flow switcher button
+    // Register flow switcher action (dynamic — reads current prototype from URL)
     try {
-      const mod = await import('./FlowSwitcherButton.svelte')
-      FlowSwitcherButton = mod.default
+      const loader = await import('./loader.js')
+      const vf = await import('./viewfinder.js')
+
+      registerCommandAction('core/flows', {
+        getChildren: () => {
+          let path = window.location.pathname
+          const base = basePath.replace(/\/+$/, '')
+          if (base && path.startsWith(base)) path = path.slice(base.length)
+          path = path.replace(/\/+$/, '') || '/'
+          const segments = path.split('/').filter(Boolean)
+          const proto = segments[0] || null
+          if (!proto) return []
+
+          // Detect active flow
+          const params = new URLSearchParams(window.location.search)
+          const explicit = params.get('flow') || params.get('scene')
+          let active: string
+          if (explicit) {
+            active = loader.resolveFlowName(proto, explicit)
+          } else {
+            const pageFlow = path === '/' ? 'index' : (path.split('/').pop() || 'index')
+            const scoped = loader.resolveFlowName(proto, pageFlow)
+            if (loader.flowExists(scoped)) active = scoped
+            else {
+              const protoFlow = loader.resolveFlowName(proto, proto)
+              active = loader.flowExists(protoFlow) ? protoFlow : 'default'
+            }
+          }
+
+          return loader.getFlowsForPrototype(proto).map((f: any) => {
+            const meta = vf.getFlowMeta(f.key)
+            return {
+              id: f.key,
+              label: meta?.title || f.name,
+              type: 'radio' as const,
+              active: f.key === active,
+              execute: () => { window.location.href = vf.resolveFlowRoute(f.key) },
+            }
+          })
+        },
+      })
+    } catch {}
+
+    // Load action menu button (used for any menu with an "action" reference)
+    try {
+      const mod = await import('./ActionMenuButton.svelte')
+      ActionMenuButton = mod.default
     } catch {}
 
     // Load comments menu button
@@ -347,8 +392,8 @@
             >
               <Icon name={menu.icon || menu.key} size={16} {...(menu.meta || {})} />
             </TriggerButton>
-          {:else if menu.key === 'flows'}
-            <FlowSwitcherButton config={menu} {basePath} tabindex={getTabindex(i)} />
+          {:else if menu.action}
+            <ActionMenuButton config={menu} tabindex={getTabindex(i)} />
           {:else if menu.key === 'create'}
             <CreateMenuButton features={createMenuFeatures} config={menu} tabindex={getTabindex(i)} />
           {:else if menu.key === 'comments'}

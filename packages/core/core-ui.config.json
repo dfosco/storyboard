@@ -42,9 +42,11 @@
       ]
     },    
     "flows": {
+      "label": "Flows",
       "ariaLabel": "Switch flow",
       "icon": "feather/fast-forward",
-      "modes": ["*"]
+      "modes": ["*"],
+      "action": "core/flows"
     },
     "comments": {
       "ariaLabel": "Comments",

@@ -2,6 +2,10 @@
 
 Guide for adding new menu buttons to the storyboard CoreUIBar — the floating toolbar at the bottom-right of every prototype page.
 
+## Golden Rule
+
+**Everything added to storyboard must either be a new system or conform to an existing system.** Do not hardcode behavior — use config declarations + registered action handlers. The CoreUIBar is config-driven end-to-end.
+
 ## Overview
 
 The CoreUIBar is a config-driven floating toolbar rendered by `packages/core/src/CoreUIBar.svelte`. All buttons are defined in `packages/core/core-ui.config.json` under the `menus` key. The toolbar reads this config at startup, filters menus by the current mode, and renders buttons in JSON key order (reversed, so top = rightmost after the command menu).
@@ -14,10 +18,74 @@ core-ui.config.json          ← Menu declarations (icon, modes, behavior)
 CoreUIBar.svelte              ← Reads config, renders buttons via {#each}
     ↓
 ├── TriggerButton + Icon      ← Sidepanel buttons (docs, inspector)
-├── FlowSwitcherButton.svelte ← Custom Svelte component
-├── CreateMenuButton.svelte   ← Custom Svelte component
-├── CommentsMenuButton.svelte ← Custom Svelte component
+├── ActionMenuButton.svelte   ← Generic action-driven dropdown (config "action" key)
+├── CreateMenuButton.svelte   ← Workshop feature launcher (config "actions" + registry)
+├── CommentsMenuButton.svelte ← Auth-aware comments toggle
 └── CommandMenu.svelte        ← Always rightmost, special handling
+```
+
+## Menu Button Types
+
+There are three patterns, from simplest to most custom:
+
+### 1. Sidepanel button (config-only, no component)
+
+For buttons that toggle a side panel. Just add a config entry — no Svelte component needed.
+
+```json
+"docs": {
+  "ariaLabel": "Documentation",
+  "icon": "primer/book",
+  "modes": ["*"],
+  "sidepanel": "docs"
+}
+```
+
+### 2. Action menu button (config + registered action handler)
+
+**This is the preferred pattern for new dynamic menus.** The config declares an `"action"` key pointing to a command action ID. CoreUIBar registers the handler in `onMount`. The generic `ActionMenuButton.svelte` renders the items.
+
+```json
+"flows": {
+  "label": "Flows",
+  "ariaLabel": "Switch flow",
+  "icon": "feather/fast-forward",
+  "modes": ["*"],
+  "action": "core/flows"
+}
+```
+
+The handler is registered in CoreUIBar's `onMount`:
+
+```ts
+registerCommandAction('core/flows', {
+  getChildren: () => {
+    // return array of { id, label, type, active?, execute }
+    return items.map(item => ({
+      id: item.key,
+      label: item.title,
+      type: 'radio',       // or 'default', 'toggle'
+      active: item.isActive,
+      execute: () => { /* action */ },
+    }))
+  },
+})
+```
+
+**Supported child types:** `default` (plain item), `toggle` (checkbox), `radio` (radio group with check indicator).
+
+The button auto-hides when `getChildren()` returns an empty array.
+
+### 3. Custom component (for complex UI that doesn't fit action items)
+
+Only use when the menu needs UI beyond what action items support (e.g., auth flows, overlay panels, feature registries). Must still be declared in config and dynamically imported.
+
+```json
+"comments": {
+  "ariaLabel": "Comments",
+  "icon": "primer/comment",
+  "modes": ["*"]
+}
 ```
 
 ## Adding a New Menu Button
@@ -26,39 +94,6 @@ CoreUIBar.svelte              ← Reads config, renders buttons via {#each}
 
 Add an entry to `packages/core/core-ui.config.json` under `menus`. The key order determines position (top = leftmost, bottom = rightmost before command menu).
 
-#### Minimal entry (sidepanel-style button)
-
-```json
-{
-  "menus": {
-    "my-feature": {
-      "ariaLabel": "My Feature",
-      "icon": "primer/gear",
-      "modes": ["*"],
-      "sidepanel": "my-feature"
-    }
-  }
-}
-```
-
-Sidepanel buttons are the simplest — CoreUIBar auto-renders a `TriggerButton` + `Icon` that toggles the side panel. No custom Svelte component needed.
-
-#### Custom component entry
-
-```json
-{
-  "menus": {
-    "my-feature": {
-      "ariaLabel": "My Feature",
-      "icon": "feather/fast-forward",
-      "modes": ["*"]
-    }
-  }
-}
-```
-
-Buttons without `sidepanel` require a dedicated Svelte component wired into CoreUIBar.
-
 ### Config field reference
 
 | Field | Required | Description |
@@ -66,83 +101,43 @@ Buttons without `sidepanel` require a dedicated Svelte component wired into Core
 | `ariaLabel` | yes | Accessible label, also shown in tooltip |
 | `icon` | yes | Namespaced icon name (see Icon section) |
 | `modes` | yes | Array of mode names or `["*"]` for all modes |
+| `action` | no | Command action ID — renders via generic `ActionMenuButton.svelte` (preferred for dynamic menus) |
 | `meta` | no | Passed as props to `<Icon>` (e.g. `{ "strokeWeight": 2, "scale": 1.1 }`) |
 | `sidepanel` | no | If set, button toggles this side panel tab (no custom component needed) |
-| `trigger` | no | `"button"` or `"command"` — used for command menu special handling |
 | `label` | no | Display label (used in dropdown headers) |
-| `menuWidth` | no | CSS width for dropdown content (e.g. `"260px"`) |
-| `actions` | no | Array of action items for dropdown menus |
+| `actions` | no | Array of static action items with `feature` references (used by create menu) |
 | `excludeRoutes` | no | Array of route patterns where this menu is hidden |
 
-### Step 2: Create the Svelte component (if not a sidepanel button)
+### Step 2: Register the action handler (for action menus)
 
-Create `packages/core/src/MyFeatureButton.svelte` following this template:
+In `CoreUIBar.svelte`'s `onMount`, register a handler for your action ID:
 
-```svelte
-<script lang="ts">
-  import { onMount } from 'svelte'
-  import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
-  import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
-  import Icon from './svelte-plugin-ui/components/Icon.svelte'
-
-  interface Props {
-    config?: { ariaLabel?: string; icon?: string; meta?: Record<string, any> }
-    basePath?: string
-    tabindex?: number
-  }
-
-  let { config = {}, basePath = '/', tabindex = -1 }: Props = $props()
-  let menuOpen = $state(false)
-
-  // ... your logic here
-</script>
-
-<DropdownMenu.Root bind:open={menuOpen}>
-  <DropdownMenu.Trigger>
-    {#snippet child({ props })}
-      <TriggerButton
-        active={menuOpen}
-        size="icon-xl"
-        aria-label={config.ariaLabel || 'My Feature'}
-        {tabindex}
-        {...props}
-      >
-        <Icon name={config.icon || 'primer/gear'} size={16} {...(config.meta || {})} />
-      </TriggerButton>
-    {/snippet}
-  </DropdownMenu.Trigger>
-
-  <DropdownMenu.Content side="top" align="end" sideOffset={16} class="min-w-[200px]">
-    <DropdownMenu.Label>My Feature</DropdownMenu.Label>
-    <!-- menu items here -->
-  </DropdownMenu.Content>
-</DropdownMenu.Root>
+```ts
+registerCommandAction('core/my-feature', {
+  getChildren: () => {
+    // Compute items dynamically based on current state
+    return items.map(item => ({
+      id: item.key,
+      label: item.title,
+      type: 'radio',       // 'default', 'toggle', or 'radio'
+      active: item.isActive, // for radio/toggle: marks the selected item
+      execute: () => { /* what happens on click */ },
+    }))
+  },
+})
 ```
 
-#### Key patterns
+**That's it.** The generic `ActionMenuButton.svelte` handles all rendering. It:
+- Reads children from the action registry via `getActionChildren()`
+- Renders `RadioGroup` for `radio` type, `CheckboxItem` for `toggle`, `Item` for `default`
+- Auto-hides when `getChildren()` returns an empty array
+- Refreshes items on each open via `onOpenChange`
 
-- **Props**: always accept `config`, `basePath`, and `tabindex`
-- **TriggerButton**: use `size="icon-xl"`, pass `{tabindex}` and `{...props}` from the snippet
-- **Icon**: use `config.icon` with a fallback, spread `config.meta` for icon customization
-- **DropdownMenu.Content**: always use `side="top"` (menus open upward), `align="end"`, `sideOffset={16}`
-- **Conditional rendering**: if the button should hide when irrelevant, wrap the entire template in `{#if condition}...{/if}`
+### Step 3 (only for custom components): Wire into CoreUIBar.svelte
 
-#### Available DropdownMenu item types
+Only needed when the action system can't express the UI you need (auth flows, overlay panels, etc.).
 
-| Component | Use case |
-|-----------|----------|
-| `DropdownMenu.Item` | Basic clickable item |
-| `DropdownMenu.CheckboxItem` | Toggle item with checkmark |
-| `DropdownMenu.RadioGroup` + `DropdownMenu.RadioItem` | Single-select group with check indicator |
-| `DropdownMenu.Label` | Section header |
-| `DropdownMenu.Separator` | Visual divider |
-| `DropdownMenu.Sub` + `DropdownMenu.SubTrigger` + `DropdownMenu.SubContent` | Nested submenu |
-
-### Step 3: Wire into CoreUIBar.svelte
-
-Three changes needed in `packages/core/src/CoreUIBar.svelte`:
-
-**1. Add state variable for the dynamically imported component:**
+**1. Add state variable:**
 
 ```ts
 let MyFeatureButton: any = $state(null)
@@ -154,7 +149,7 @@ let MyFeatureButton: any = $state(null)
 if (menu.key === 'my-feature') return !!MyFeatureButton
 ```
 
-**3. Add dynamic import in `onMount`:**
+**3. Dynamic import in `onMount`:**
 
 ```ts
 try {
@@ -163,7 +158,7 @@ try {
 } catch {}
 ```
 
-**4. Add rendering branch in the template `{#each}` block:**
+**4. Rendering branch in template:**
 
 ```svelte
 {:else if menu.key === 'my-feature'}
@@ -172,19 +167,7 @@ try {
 
 ### Important: Data index timing
 
-The storyboard data index (`virtual:storyboard-data-index`) is seeded by the React app, which initializes *after* the Svelte CoreUIBar mounts. If your component reads from the data index (flows, objects, records), **do not call data functions at component creation time**. Use `onMount` with a retry:
-
-```ts
-onMount(() => {
-  refreshData()
-  if (needsRetry()) {
-    const timer = setTimeout(refreshData, 500)
-    return () => clearTimeout(timer)
-  }
-})
-```
-
-Also refresh data in `onOpenChange` so the dropdown always shows current state.
+The storyboard data index (`virtual:storyboard-data-index`) is seeded by the React app, which initializes *after* the Svelte CoreUIBar mounts. If your handler reads from the data index (flows, objects, records), the action registry handles this naturally — `getChildren()` is called lazily when the menu opens, not at registration time.
 
 ## Icon namespaces
 
@@ -206,15 +189,16 @@ Menus can be hidden via:
 - **Mode filtering**: `"modes": ["inspect"]` — only visible in inspect mode
 - **Route exclusion**: `"excludeRoutes": ["/viewfinder"]` — hidden on specific routes
 - **UI config**: `storyboard.config.json` → `ui.hide.menus: ["my-feature"]`
+- **Action menus**: auto-hide when `getChildren()` returns empty array
 - **Conditional logic**: custom visibility checks in the `visibleMenus` derived block
 
 ## Existing menu buttons for reference
 
-| Key | Component | Behavior |
-|-----|-----------|----------|
-| `command` | `CommandMenu.svelte` | Always rightmost, special handling, opens command palette |
-| `create` | `CreateMenuButton.svelte` | Workshop feature launcher, opens overlay panels |
-| `flows` | `FlowSwitcherButton.svelte` | Lists prototype flows, switches via RadioGroup |
-| `comments` | `CommentsMenuButton.svelte` | Auth-aware, toggle comments mode |
-| `docs` | *(sidepanel)* | Toggles docs side panel |
-| `inspector` | *(sidepanel)* | Toggles inspector side panel |
+| Key | Type | Config | Behavior |
+|-----|------|--------|----------|
+| `command` | custom | `trigger: "command"` | Always rightmost, command palette |
+| `create` | custom | `actions` + `feature` refs | Workshop feature launcher, overlay panels |
+| `flows` | action | `action: "core/flows"` | Lists prototype flows, radio-select to switch |
+| `comments` | custom | *(none)* | Auth-aware comments toggle |
+| `docs` | sidepanel | `sidepanel: "docs"` | Toggles docs side panel |
+| `inspector` | sidepanel | `sidepanel: "inspector"` | Toggles inspector side panel |

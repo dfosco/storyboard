@@ -14,7 +14,8 @@
     "core-ui.config.json"
   ],
   "scripts": {
-    "build:css": "tailwindcss -i src/styles/tailwind.css -o dist/tailwind.css --minify"
+    "build:css": "tailwindcss -i src/styles/tailwind.css -o dist/tailwind.css --minify",
+    "check:imports": "! grep -r '\\$lib/' src --include='*.svelte' --include='*.js' --include='*.ts' -l"
   },
   "exports": {
     ".": "./src/index.js",

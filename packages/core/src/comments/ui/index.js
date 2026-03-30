@@ -1,7 +1,7 @@
 /**
  * Svelte UI exports for the comments system.
  *
- * These require a SvelteKit environment (Svelte peer dep + $lib/ alias).
+ * These require a Svelte peer dependency (^5.0.0).
  * Import from '@dfosco/storyboard-core/comments/svelte'.
  */
 

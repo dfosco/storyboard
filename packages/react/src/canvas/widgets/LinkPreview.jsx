@@ -13,20 +13,22 @@ export default function LinkPreview({ props }) {
 
   return (
     <WidgetWrapper>
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={styles.card}
-        onMouseDown={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
+      <div className={styles.card}>
         <span className={styles.icon}>🔗</span>
         <div className={styles.text}>
           {title && <p className={styles.title}>{title}</p>}
-          <p className={styles.url}>{hostname || url}</p>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.url}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {hostname || url}
+          </a>
         </div>
-      </a>
+      </div>
     </WidgetWrapper>
   )
 }

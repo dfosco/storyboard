@@ -43,6 +43,8 @@ export function createMouseMode(options = {}) {
   let overlay = null
   let tooltip = null
   let currentTarget = null
+  let highlightedEl = null
+  let scrollTimer = null
 
   // ---------------------------------------------------------------------------
   // Overlay / tooltip creation
@@ -217,19 +219,39 @@ export function createMouseMode(options = {}) {
   }
 
   /**
+   * Reposition the persistent highlight after scrolling stops.
+   */
+  function handleScroll() {
+    // Hide during scroll for smoother feel
+    if (overlay) overlay.style.display = 'none'
+    if (tooltip) tooltip.style.display = 'none'
+
+    clearTimeout(scrollTimer)
+    scrollTimer = setTimeout(() => {
+      if (highlightedEl) positionOverlay(highlightedEl)
+    }, 80)
+  }
+
+  /**
    * Show a persistent highlight on an element (used after selection).
    * Creates the overlay if needed, positions it, and leaves it visible.
+   * Listens for scroll to reposition.
    */
   function showHighlight(el) {
     if (!overlay) createOverlay()
     if (!tooltip) createTooltip()
+    highlightedEl = el
     positionOverlay(el)
+    window.addEventListener('scroll', handleScroll, true)
   }
 
   /**
    * Remove the persistent highlight.
    */
   function hideHighlight() {
+    highlightedEl = null
+    clearTimeout(scrollTimer)
+    window.removeEventListener('scroll', handleScroll, true)
     removeElements()
   }
 

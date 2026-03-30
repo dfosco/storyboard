@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.1.1
+
+### Patch Changes
+
+-   Fixes package resolution errors when consuming `@dfosco/storyboard-core` and `@dfosco/tiny-canvas` from npm.
+
 ## 3.1.0
 
 ### Minor Changes

@@ -46,9 +46,9 @@
       "ariaLabel": "Add widget to canvas",
       "trigger": "button",
       "icon": "iconoir/grid-plus",
-      "meta": { "strokeWeight": 2, "scale": 1.1 },
+      "meta": { "strokeWeight": 2, "scale": 1.2 },
       "modes": ["*"],
-      "menuWidth": "220px"
+      "menuWidth": "260px"
     },    
     "flows": {
       "label": "Flows",
@@ -73,7 +73,7 @@
     "inspector": {
       "ariaLabel": "Inspect components",
       "icon": "iconoir/square-dashed",
-      "excludeRoutes": ["^/$", "/viewfinder"],
+      "excludeRoutes": ["^/$", "/viewfinder", "/canvas/"],
       "meta": { "strokeWeight": 2, "scale": 1.1 },
       "modes": ["*"],
       "sidepanel": "inspector"

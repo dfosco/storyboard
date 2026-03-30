@@ -4,9 +4,10 @@
 
 .sticky {
   background: var(--sticky-bg, #fff8c5);
-  border-radius: 2px;
+  border-radius: 6px;
+  border: 2px solid color-mix(in srgb, var(--sticky-bg) 80%, rgb(0, 0, 0) 10%);
   min-width: 180px;
-  box-shadow: 2px 3px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 2px 3px 8px rgba(0, 0, 0, 0.04);
   font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
   resize: both;
   overflow: auto;
@@ -14,11 +15,11 @@
 }
 
 .text {
-  padding: 12px 14px;
+  padding: 16px 20px;
   margin: 0;
-  font-size: 14px;
+  font-size: 18px;
   line-height: 1.5;
-  color: #1a1a1a;
+  color: color-mix(in srgb, var(--sticky-bg), black 70%);
   white-space: pre-wrap;
   word-break: break-word;
   cursor: text;
@@ -26,21 +27,24 @@
 }
 
 .textarea {
-  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  padding: 12px 14px;
+  padding: 16px 20px;
   margin: 0;
   border: none;
   outline: none;
   background: transparent;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 18px;
   line-height: 1.5;
-  color: #1a1a1a;
+  color: color-mix(in srgb, var(--sticky-bg) 80%, rgb(0, 0, 0) 98%);
+  white-space: pre-wrap;
+  word-break: break-word;
   resize: none;
-  min-height: 80px;
 }
 
 /* Color picker area — sits below the sticky */

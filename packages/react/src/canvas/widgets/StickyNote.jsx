@@ -39,7 +39,17 @@ export default function StickyNote({ props, onUpdate }) {
         className={styles.sticky}
         style={{ '--sticky-bg': palette.bg, '--sticky-border': palette.border }}
       >
-        {editing ? (
+        <p
+          className={styles.text}
+          style={editing ? { visibility: 'hidden' } : undefined}
+          onDoubleClick={() => setEditing(true)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter') setEditing(true) }}
+        >
+          {text || 'Double-click to edit…'}
+        </p>
+        {editing && (
           <textarea
             ref={textareaRef}
             className={styles.textarea}
@@ -53,16 +63,6 @@ export default function StickyNote({ props, onUpdate }) {
             }}
             placeholder="Type here…"
           />
-        ) : (
-          <p
-            className={styles.text}
-            onDoubleClick={() => setEditing(true)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') setEditing(true) }}
-          >
-            {text || 'Double-click to edit…'}
-          </p>
         )}
       </article>
 

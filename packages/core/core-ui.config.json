@@ -41,15 +41,6 @@
         { "type": "footer", "label": "Supported in local development" }
       ]
     },
-    "canvas-create": {
-      "label": "Add widget",
-      "ariaLabel": "Add widget to canvas",
-      "trigger": "button",
-      "icon": "iconoir/grid-plus",
-      "meta": { "strokeWeight": 2, "scale": 1.2 },
-      "modes": ["*"],
-      "menuWidth": "260px"
-    },    
     "flows": {
       "label": "Flows",
       "ariaLabel": "Switch flow",
@@ -77,6 +68,15 @@
       "meta": { "strokeWeight": 2, "scale": 1.1 },
       "modes": ["*"],
       "sidepanel": "inspector"
+    },
+    "canvas-create": {
+      "label": "Add widget",
+      "ariaLabel": "Add widget to canvas",
+      "trigger": "button",
+      "icon": "iconoir/grid-plus",
+      "meta": { "strokeWeight": 2, "scale": 1.2 },
+      "modes": ["*"],
+      "menuWidth": "220px"
     }
   }
 }

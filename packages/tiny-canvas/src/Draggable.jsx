@@ -46,7 +46,6 @@ function Draggable({ children, dragId }) {
   // Free-drag during drag, snap to grid on drop
   const { isDragging } = useDraggable(draggableRef, {
     axis: 'both',
-    bounds: 'body',
     threshold: { delay: 50, distance: 30 },
     defaultClass: 'tc-drag',
     defaultClassDragging: 'tc-on',

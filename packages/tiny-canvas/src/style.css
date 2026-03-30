@@ -18,12 +18,12 @@
 .tc-canvas {
   min-width: 100vw;
   min-height: 100vh;
+  width: 10000px;
+  height: 10000px;
   margin: 0;
   font-family: var(--tc-font-stack);
   position: relative;
   background-color: var(--tc-bg-muted);
-  width: 100vw;
-  max-width: 100vw;
   color-scheme: light dark;
 }
 

@@ -5,6 +5,7 @@ import { getWidgetComponent } from './widgets/index.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi } from './canvasApi.js'
+import CanvasControls from './CanvasControls.jsx'
 import styles from './CanvasPage.module.css'
 
 /**
@@ -70,6 +71,7 @@ export default function CanvasPage({ name }) {
   const [localWidgets, setLocalWidgets] = useState(canvas?.widgets ?? null)
   const [trackedCanvas, setTrackedCanvas] = useState(canvas)
   const [selectedWidgetId, setSelectedWidgetId] = useState(null)
+  const [zoom, setZoom] = useState(100)
 
   if (canvas !== trackedCanvas) {
     setTrackedCanvas(canvas)
@@ -113,29 +115,33 @@ export default function CanvasPage({ name }) {
     }
   }, [name])
 
+  // Add a widget by type — used by CanvasControls and CoreUIBar event
+  const addWidget = useCallback(async (type) => {
+    const defaultProps = schemas[type] ? getDefaults(schemas[type]) : {}
+    const pos = getViewportCenter()
+    try {
+      const result = await addWidgetApi(name, {
+        type,
+        props: defaultProps,
+        position: pos,
+      })
+      if (result.success && result.widget) {
+        saveWidgetPosition(result.widget.id, pos.x, pos.y)
+        setLocalWidgets((prev) => [...(prev || []), result.widget])
+      }
+    } catch (err) {
+      console.error('[canvas] Failed to add widget:', err)
+    }
+  }, [name])
+
   // Listen for CoreUIBar add-widget events
   useEffect(() => {
-    async function handleAddWidget(e) {
-      const { type } = e.detail
-      const defaultProps = schemas[type] ? getDefaults(schemas[type]) : {}
-      const pos = getViewportCenter()
-      try {
-        const result = await addWidgetApi(name, {
-          type,
-          props: defaultProps,
-          position: pos,
-        })
-        if (result.success && result.widget) {
-          saveWidgetPosition(result.widget.id, pos.x, pos.y)
-          setLocalWidgets((prev) => [...(prev || []), result.widget])
-        }
-      } catch (err) {
-        console.error('[canvas] Failed to add widget:', err)
-      }
+    function handleAddWidget(e) {
+      addWidget(e.detail.type)
     }
     document.addEventListener('storyboard:canvas:add-widget', handleAddWidget)
     return () => document.removeEventListener('storyboard:canvas:add-widget', handleAddWidget)
-  }, [name])
+  }, [addWidget])
 
   // Delete selected widget on Delete/Backspace key
   useEffect(() => {
@@ -264,10 +270,17 @@ export default function CanvasPage({ name }) {
   }
 
   return (
-    <div onClick={() => setSelectedWidgetId(null)}>
-      <Canvas {...canvasProps}>
-        {allChildren}
-      </Canvas>
-    </div>
+    <>
+      <div
+        className={styles.canvasZoom}
+        style={{ zoom: zoom / 100 }}
+        onClick={() => setSelectedWidgetId(null)}
+      >
+        <Canvas {...canvasProps}>
+          {allChildren}
+        </Canvas>
+      </div>
+      <CanvasControls zoom={zoom} onZoomChange={setZoom} onAddWidget={addWidget} />
+    </>
   )
 }

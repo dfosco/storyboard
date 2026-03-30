@@ -134,16 +134,8 @@ export default function storyboardServer() {
         }
       })
 
-      // Inject workshop client UI when any feature is enabled
-      if (hasAnyWorkshopFeature(workshopConfig)) {
-        // Resolve the actual filesystem path for the mount script.
-        // Use /@fs/ prefix so Vite serves it through its module pipeline.
-        const mountPath = path.resolve(
-          path.dirname(new URL(import.meta.url).pathname),
-          '../workshop/ui/mount.ts'
-        )
-        clientScripts.push('/@fs' + mountPath)
-      }
+      // Workshop client UI is now mounted by mountStoryboardCore() via the
+      // compiled UI bundle. No script injection needed.
 
       // Plugin registry for external plugins (future use).
       // Plugins call registerRoutes/registerClientScript in their setup().

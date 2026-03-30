@@ -15,10 +15,6 @@ import { useTheme } from '@primer/react'
 
 const THEME_STORAGE_KEY = 'sb-color-scheme'
 
-function getSystemTheme() {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
 function applyToPrimer(setDayScheme, setNightScheme, themeValue) {
   if (themeValue === 'system' || !themeValue) {
     setDayScheme('light')

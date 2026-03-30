@@ -18,6 +18,13 @@
   width: 100vw;
   height: 100vh;
   overflow: auto;
+  background-color: var(--bgColor-muted, #f6f8fa);
+}
+
+@media (prefers-color-scheme: dark) {
+  .canvasZoom {
+    background-color: var(--bgColor-muted, #161b22);
+  }
 }
 
 .selected {

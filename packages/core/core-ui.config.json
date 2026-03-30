@@ -68,15 +68,12 @@
       "meta": { "strokeWeight": 2, "scale": 1.1 },
       "modes": ["*"],
       "sidepanel": "inspector"
-    },
-    "canvas-create": {
-      "label": "Add widget",
-      "ariaLabel": "Add widget to canvas",
-      "trigger": "button",
-      "icon": "iconoir/grid-plus",
-      "meta": { "strokeWeight": 2, "scale": 1.2 },
-      "modes": ["*"],
-      "menuWidth": "220px"
     }
+  },
+
+  "canvasToolbar": {
+    "icon": "iconoir/grid-plus",
+    "meta": { "strokeWeight": 2, "scale": 1.2 },
+    "menuWidth": "220px"
   }
 }

@@ -43,6 +43,7 @@
   let CanvasCreateMenu: any = $state(null)
   let canvasActive = $state(false)
   let activeCanvasName = $state('')
+  const canvasToolbarConfig = (coreUIConfig as any).canvasToolbar || {}
 
   // Roving tabindex: only one button in the toolbar is tabbable at a time
   let activeToolbarIndex = $state(-1)
@@ -74,7 +75,6 @@
         if (!menuVisibleInMode(menu, $modeState.mode)) return false
         if (menu.action) return ActionMenuButton && getActionChildren(menu.action).length > 0
         if (menu.key === 'create') return CreateMenuButton && createMenuFeatures.length > 0
-        if (menu.key === 'canvas-create') return canvasActive && CanvasCreateMenu
         if (menu.key === 'comments') return CommentsMenuButton && commentsEnabled
         return true
       })
@@ -454,8 +454,6 @@
             <ActionMenuButton config={menu} tabindex={getTabindex(i)} />
           {:else if menu.key === 'create'}
             <CreateMenuButton features={createMenuFeatures} config={menu} tabindex={getTabindex(i)} />
-          {:else if menu.key === 'canvas-create'}
-            <CanvasCreateMenu config={menu} canvasName={activeCanvasName} tabindex={getTabindex(i)} />
           {:else if menu.key === 'comments'}
             <CommentsMenuButton config={menu} tabindex={getTabindex(i)} />
           {/if}

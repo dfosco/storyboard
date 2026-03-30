@@ -14,7 +14,7 @@
   margin: 0;
 }
 
-.canvasZoom {
+.canvasScroll {
   width: 100vw;
   height: 100vh;
   overflow: auto;
@@ -22,9 +22,14 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .canvasZoom {
+  .canvasScroll {
     background-color: var(--bgColor-muted, #161b22);
   }
+}
+
+.canvasZoom {
+  min-width: 100%;
+  min-height: 100%;
 }
 
 .selected {

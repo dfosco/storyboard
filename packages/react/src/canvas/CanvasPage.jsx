@@ -269,16 +269,27 @@ export default function CanvasPage({ name }) {
     )
   }
 
+  const scale = zoom / 100
+
   return (
     <>
       <div
-        className={styles.canvasZoom}
-        style={{ zoom: zoom / 100 }}
+        className={styles.canvasScroll}
         onClick={() => setSelectedWidgetId(null)}
       >
-        <Canvas {...canvasProps}>
-          {allChildren}
-        </Canvas>
+        <div
+          className={styles.canvasZoom}
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: '0 0',
+            width: `${Math.max(10000, 100 / scale)}vw`,
+            height: `${Math.max(10000, 100 / scale)}vh`,
+          }}
+        >
+          <Canvas {...canvasProps}>
+            {allChildren}
+          </Canvas>
+        </div>
       </div>
       <CanvasControls zoom={zoom} onZoomChange={setZoom} onAddWidget={addWidget} />
     </>

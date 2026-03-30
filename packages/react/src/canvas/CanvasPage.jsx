@@ -230,6 +230,60 @@ export default function CanvasPage({ name }) {
     return () => document.removeEventListener('wheel', handleWheel)
   }, [])
 
+  // Space + drag to pan the canvas
+  const [spaceHeld, setSpaceHeld] = useState(false)
+  const isPanning = useRef(false)
+  const panStart = useRef({ x: 0, y: 0, scrollX: 0, scrollY: 0 })
+
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === ' ' && !e.repeat) {
+        const tag = e.target.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
+        e.preventDefault()
+        setSpaceHeld(true)
+      }
+    }
+    function handleKeyUp(e) {
+      if (e.key === ' ') {
+        setSpaceHeld(false)
+        isPanning.current = false
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keyup', handleKeyUp)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
+
+  const handlePanStart = useCallback((e) => {
+    if (!spaceHeld) return
+    e.preventDefault()
+    isPanning.current = true
+    const el = scrollRef.current
+    panStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      scrollX: el?.scrollLeft ?? 0,
+      scrollY: el?.scrollTop ?? 0,
+    }
+
+    function handlePanMove(ev) {
+      if (!isPanning.current || !el) return
+      el.scrollLeft = panStart.current.scrollX - (ev.clientX - panStart.current.x)
+      el.scrollTop = panStart.current.scrollY - (ev.clientY - panStart.current.y)
+    }
+    function handlePanEnd() {
+      isPanning.current = false
+      document.removeEventListener('mousemove', handlePanMove)
+      document.removeEventListener('mouseup', handlePanEnd)
+    }
+    document.addEventListener('mousemove', handlePanMove)
+    document.addEventListener('mouseup', handlePanEnd)
+  }, [spaceHeld])
+
   if (!canvas) {
     return (
       <div className={styles.empty}>
@@ -295,7 +349,9 @@ export default function CanvasPage({ name }) {
       <div
         ref={scrollRef}
         className={styles.canvasScroll}
+        style={spaceHeld ? { cursor: isPanning.current ? 'grabbing' : 'grab' } : undefined}
         onClick={() => setSelectedWidgetId(null)}
+        onMouseDown={handlePanStart}
       >
         <div
           className={styles.canvasZoom}

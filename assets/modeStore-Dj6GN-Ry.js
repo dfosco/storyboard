@@ -1,1 +1,0 @@
-import{aB as c,aG as u,aH as b,aI as d,aJ as M,aK as m}from"./index-C07YGnZD.js";function t(){const s=u(),e=b();return{mode:s,modes:e,currentModeConfig:e.find(o=>o.name===s),switcherVisible:d()}}function f(){const{subscribe:s,set:e}=c(t());return{subscribe:(r,n)=>{e(t());const a=M(()=>e(t())),i=s(r,n);return()=>{i(),a()}}}}const S=f();function g(s,e){m(s,e)}export{S as m,g as s};

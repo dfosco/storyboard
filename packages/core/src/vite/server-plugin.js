@@ -254,6 +254,14 @@ export default function storyboardServer() {
           repo,
         }),
       })
+
+      // GitHub Pages uses Jekyll which ignores _-prefixed directories.
+      // Emit .nojekyll to ensure _storyboard/ is served.
+      this.emitFile({
+        type: 'asset',
+        fileName: '.nojekyll',
+        source: '',
+      })
     },
   }
 }

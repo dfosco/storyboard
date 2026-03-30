@@ -1,0 +1,1 @@
+import{aB as c,aH as u,aI as b,aJ as d,aK as M,aL as m}from"./index-BLGVKZeA.js";function t(){const s=u(),e=b();return{mode:s,modes:e,currentModeConfig:e.find(o=>o.name===s),switcherVisible:d()}}function f(){const{subscribe:s,set:e}=c(t());return{subscribe:(r,n)=>{e(t());const a=M(()=>e(t())),i=s(r,n);return()=>{i(),a()}}}}const S=f();function g(s,e){m(s,e)}export{S as m,g as s};

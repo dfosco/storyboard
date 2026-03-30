@@ -14,7 +14,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { parse as parseJsonc } from 'jsonc-parser'
 import { serverFeatures as workshopFeatures } from '../workshop/features/registry-server.js'
-import { docsHandler } from './docs-handler.js'
+import { docsHandler, collectFiles } from './docs-handler.js'
 
 const API_PREFIX = '/_storyboard/'
 
@@ -195,6 +195,65 @@ export default function storyboardServer() {
         attrs: { type: 'module', src: base + src.replace(/^\//, '') },
         injectTo: 'body',
       }))
+    },
+
+    // Build-time: emit a static JSON with source files so the inspector
+    // works in deployed environments without the dev middleware.
+    async generateBundle() {
+      const srcDir = path.join(root, 'src')
+      const prototypesDir = path.join(root, 'src', 'prototypes')
+
+      // Collect file lists (prototypes for the files index, all src/ for sources)
+      const [prototypeFiles, allSrcFiles] = await Promise.all([
+        collectFiles(prototypesDir, root),
+        collectFiles(srcDir, root),
+      ])
+
+      // Read all source file contents
+      const sources = {}
+      await Promise.all(
+        allSrcFiles.map(async (relPath) => {
+          try {
+            sources[relPath] = await fs.promises.readFile(
+              path.join(root, relPath),
+              'utf-8'
+            )
+          } catch { /* skip unreadable files */ }
+        })
+      )
+
+      // Resolve repo info (same logic as docs-handler)
+      let repo = null
+      try {
+        const { execSync } = await import('node:child_process')
+        const remote = execSync('git remote get-url origin', {
+          cwd: root,
+          encoding: 'utf-8',
+        }).trim()
+        const match = remote.match(/github\.com[:/]([^/]+)\/([^/.]+)/)
+        if (match) repo = { owner: match[1], name: match[2] }
+      } catch { /* no git or no remote */ }
+
+      if (!repo) {
+        const configPath = path.join(root, 'storyboard.config.json')
+        try {
+          const raw = await fs.promises.readFile(configPath, 'utf-8')
+          const cfg = JSON.parse(raw)
+          if (cfg.repository?.owner && cfg.repository?.name) {
+            repo = { owner: cfg.repository.owner, name: cfg.repository.name }
+          }
+        } catch { /* config not available */ }
+      }
+
+      this.emitFile({
+        type: 'asset',
+        fileName: '_storyboard/inspector.json',
+        source: JSON.stringify({
+          files: prototypeFiles.sort(),
+          sources,
+          repo,
+        }),
+      })
     },
   }
 }

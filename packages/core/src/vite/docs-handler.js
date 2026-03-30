@@ -25,7 +25,7 @@ const SOURCE_EXTENSIONS = new Set(['.jsx', '.tsx', '.js', '.ts'])
  * @param {string} rootDir - Project root for computing relative paths
  * @returns {Promise<string[]>} Relative file paths from project root
  */
-async function collectFiles(dir, rootDir) {
+export async function collectFiles(dir, rootDir) {
   /** @type {string[]} */
   const results = []
 

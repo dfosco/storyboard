@@ -34,6 +34,37 @@
   /** @type {{ owner: string, name: string } | null} */
   let repoInfo = $state(null)
 
+  /** @type {{ files: string[], sources: Record<string, string>, repo: { owner: string, name: string } | null } | null} */
+  let staticInspectorData = null
+
+  /**
+   * Load the build-time static inspector JSON (production only).
+   * Cached after the first successful fetch.
+   */
+  async function loadStaticData() {
+    if (staticInspectorData) return staticInspectorData
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}_storyboard/inspector.json`)
+      if (res.ok) {
+        staticInspectorData = await res.json()
+        return staticInspectorData
+      }
+    } catch {}
+    return null
+  }
+
+  /**
+   * Fetch source file content — uses dev middleware in dev, static JSON in prod.
+   */
+  async function fetchSourceContent(filePath) {
+    if (import.meta.env.DEV) {
+      const res = await fetch(`/_storyboard/docs/source?path=${encodeURIComponent(filePath)}`)
+      return res.ok ? (await res.json())?.content || '' : ''
+    }
+    const data = await loadStaticData()
+    return data?.sources?.[filePath] || ''
+  }
+
   let mouseMode = null
 
   const hasSelection = $derived(componentInfo !== null)
@@ -234,10 +265,9 @@
       sourceLoading = true
       sourcePath = path
       highlightedHtml = ''
-      fetch(`/_storyboard/docs/source?path=${encodeURIComponent(path)}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(async (data) => {
-          sourceCode = data?.content || ''
+      fetchSourceContent(path)
+        .then(async (content) => {
+          sourceCode = content
           // Try the selected component first, then walk up the chain
           matchedLine = findComponentLine(sourceCode, componentInfo)
           if (matchedLine < 0 && componentChain.length > 0) {
@@ -336,20 +366,30 @@
     // Auto-start inspector mode
     startInspecting()
 
-    // Pre-fetch file list and repo info in parallel
-    try {
-      const [filesRes, repoRes] = await Promise.all([
-        fetch('/_storyboard/docs/files'),
-        fetch('/_storyboard/docs/repo'),
-      ])
-      if (filesRes.ok) {
-        const data = await filesRes.json()
+    // Pre-fetch file list and repo info
+    if (import.meta.env.DEV) {
+      // Dev: use live middleware endpoints
+      try {
+        const [filesRes, repoRes] = await Promise.all([
+          fetch('/_storyboard/docs/files'),
+          fetch('/_storyboard/docs/repo'),
+        ])
+        if (filesRes.ok) {
+          const data = await filesRes.json()
+          knownFiles = data.files || []
+        }
+        if (repoRes.ok) {
+          repoInfo = await repoRes.json()
+        }
+      } catch {}
+    } else {
+      // Production: load from static build-time JSON
+      const data = await loadStaticData()
+      if (data) {
         knownFiles = data.files || []
+        repoInfo = data.repo || null
       }
-      if (repoRes.ok) {
-        repoInfo = await repoRes.json()
-      }
-    } catch {}
+    }
   })
 
   onDestroy(() => {

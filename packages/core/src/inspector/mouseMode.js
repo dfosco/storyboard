@@ -142,6 +142,7 @@ export function createMouseMode(options = {}) {
     if (el.closest('#sb-inspector-tooltip')) return true
     if (el.closest('.sb-plugin-root')) return true
     if (el.closest('[data-slot="panel-content"]')) return true
+    if (el.closest('[data-sidepanel]')) return true
     return false
   }
 

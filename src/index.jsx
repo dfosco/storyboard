@@ -8,7 +8,7 @@ import './fonts.css'
 import './globals.css'
 import './tailwind.css'
 
-import ColorModeSwitcher from './components/ColorModeSwitcher'
+import ThemeSync from './components/ThemeSync'
 import { installHashPreserver } from '@dfosco/storyboard-react/hash-preserver'
 import { installHideParamListener, installHistorySync, installBodyClassSync, mountDevTools } from '@dfosco/storyboard-core'
 import { initCommentsConfig } from '@dfosco/storyboard-core/comments'
@@ -44,7 +44,7 @@ root.render(
     <StrictMode>
         <ThemeProvider colorMode="auto">
             <BaseStyles>
-                <ColorModeSwitcher />
+                <ThemeSync />
                 <RouterProvider router={router} />
             </BaseStyles>
         </ThemeProvider>

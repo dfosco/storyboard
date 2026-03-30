@@ -3,7 +3,7 @@ import path from 'node:path'
 import { execSync } from 'node:child_process'
 import { globSync } from 'glob'
 import { parse as parseJsonc } from 'jsonc-parser'
-import { materializeFromText } from '../../../core/src/canvas/materializer.js'
+import { materializeFromText } from '@dfosco/storyboard-core/canvas/materializer'
 
 const VIRTUAL_MODULE_ID = 'virtual:storyboard-data-index'
 const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID

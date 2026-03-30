@@ -11,8 +11,6 @@
 }
 
 .iframe {
-  width: 100%;
-  height: 100%;
   border: none;
   display: block;
 }
@@ -175,4 +173,70 @@
 .embed:hover ~ .resizeHandle,
 .resizeHandle:hover {
   opacity: 1;
+}
+
+.zoomBar {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+  border: 3px solid var(--trigger-border, var(--borderColor-muted, #d0d7de));
+  background: var(--trigger-bg, var(--bgColor-muted, #f6f8fa));
+  opacity: 0;
+  transition: opacity 150ms;
+  z-index: 3;
+}
+
+.embed:hover .zoomBar {
+  opacity: 1;
+}
+
+.zoomBtn {
+  all: unset;
+  cursor: pointer;
+  width: 36px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--trigger-text, var(--fgColor-default, #1f2328));
+  transition: background 120ms;
+}
+
+.zoomBtn:first-child {
+  border-radius: 7px 0 0 7px;
+}
+
+.zoomBtn:last-child {
+  border-radius: 0 7px 7px 0;
+}
+
+.zoomBtn:hover:not(:disabled) {
+  background: var(--trigger-bg-hover, var(--bgColor-neutral-muted, #eaeef2));
+}
+
+.zoomBtn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.zoomLabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 32px;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--trigger-text, var(--fgColor-default, #1f2328));
+  border-left: 3px solid var(--trigger-border, var(--borderColor-muted, #d0d7de));
+  border-right: 3px solid var(--trigger-border, var(--borderColor-muted, #d0d7de));
+  user-select: none;
 }

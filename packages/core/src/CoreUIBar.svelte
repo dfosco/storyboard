@@ -466,25 +466,17 @@
         <Tooltip.Content side="top">Add widget to canvas</Tooltip.Content>
       </Tooltip.Root>
 
-      <div class="flex items-center rounded-[10px] overflow-hidden" style="border: 3px solid var(--trigger-border); background: var(--trigger-bg);">
+      <div class="canvas-zoom-bar">
         <button
-          class="flex items-center justify-center w-9 h-8 text-base font-semibold border-none bg-transparent cursor-pointer transition-colors hover:brightness-90 disabled:opacity-30 disabled:cursor-default"
-          style="color: var(--trigger-text);"
+          class="canvas-zoom-btn"
           onclick={canvasZoomOut}
           disabled={canvasZoom <= ZOOM_STEPS[0]}
           aria-label="Zoom out"
           title="Zoom out"
         >−</button>
+        <span class="canvas-zoom-label">{canvasZoom}%</span>
         <button
-          class="flex items-center justify-center h-8 px-2 text-[11px] font-semibold tabular-nums border-none bg-transparent cursor-pointer transition-colors hover:brightness-90"
-          style="color: var(--trigger-text); border-left: 3px solid var(--trigger-border); border-right: 3px solid var(--trigger-border); min-width: 48px;"
-          onclick={canvasZoomReset}
-          aria-label="Reset zoom to 100%"
-          title="Reset to 100%"
-        >{canvasZoom}%</button>
-        <button
-          class="flex items-center justify-center w-9 h-8 text-base font-semibold border-none bg-transparent cursor-pointer transition-colors hover:brightness-90 disabled:opacity-30 disabled:cursor-default"
-          style="color: var(--trigger-text);"
+          class="canvas-zoom-btn"
           onclick={canvasZoomIn}
           disabled={canvasZoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1]}
           aria-label="Zoom in"
@@ -541,4 +533,55 @@
 {#if SidePanel}
   <SidePanel onClose={() => focusToolbarItem(activeToolbarIndex < 0 ? toolbarItemCount - 1 : activeToolbarIndex)} />
 {/if}
+
+<style>
+  .canvas-zoom-bar {
+    display: flex;
+    align-items: center;
+    border-radius: 10px;
+    border: 3px solid var(--trigger-border, var(--color-slate-400));
+    background: var(--trigger-bg, var(--color-slate-100));
+    overflow: hidden;
+  }
+
+  .canvas-zoom-btn {
+    all: unset;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 32px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--trigger-text, var(--color-slate-600));
+    transition: background 120ms;
+  }
+
+  .canvas-zoom-btn:hover:not(:disabled) {
+    background: var(--trigger-bg-hover, var(--color-slate-300));
+  }
+
+  .canvas-zoom-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .canvas-zoom-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 48px;
+    height: 32px;
+    padding: 0 4px;
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--trigger-text, var(--color-slate-600));
+    border-left: 3px solid var(--trigger-border, var(--color-slate-400));
+    border-right: 3px solid var(--trigger-border, var(--color-slate-400));
+    cursor: default;
+    user-select: none;
+  }
+</style>
 

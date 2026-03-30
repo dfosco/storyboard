@@ -7,11 +7,14 @@ export default function PrototypeEmbed({ props, onUpdate }) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
   const width = readProp(props, 'width', prototypeEmbedSchema)
   const height = readProp(props, 'height', prototypeEmbedSchema)
+  const zoom = readProp(props, 'zoom', prototypeEmbedSchema)
   const label = readProp(props, 'label', prototypeEmbedSchema) || src
 
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
   const rawSrc = src ? `${basePath}${src}` : ''
   const iframeSrc = rawSrc ? `${rawSrc}${rawSrc.includes('?') ? '&' : '?'}_sb_embed` : ''
+
+  const scale = zoom / 100
 
   const [editing, setEditing] = useState(false)
   const [interactive, setInteractive] = useState(false)
@@ -81,6 +84,12 @@ export default function PrototypeEmbed({ props, onUpdate }) {
               <iframe
                 src={iframeSrc}
                 className={styles.iframe}
+                style={{
+                  width: width / scale,
+                  height: height / scale,
+                  transform: `scale(${scale})`,
+                  transformOrigin: '0 0',
+                }}
                 title={label || 'Prototype embed'}
                 sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
               />
@@ -114,6 +123,33 @@ export default function PrototypeEmbed({ props, onUpdate }) {
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"/></svg>
           </button>
+        )}
+        {iframeSrc && !editing && (
+          <div
+            className={styles.zoomBar}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <button
+              className={styles.zoomBtn}
+              onClick={() => {
+                const step = zoom <= 75 ? 5 : 25
+                onUpdate?.({ zoom: Math.max(25, zoom - step) })
+              }}
+              disabled={zoom <= 25}
+              aria-label="Zoom out"
+            >−</button>
+            <span className={styles.zoomLabel}>{zoom}%</span>
+            <button
+              className={styles.zoomBtn}
+              onClick={() => {
+                const step = zoom < 75 ? 5 : 25
+                onUpdate?.({ zoom: Math.min(200, zoom + step) })
+              }}
+              disabled={zoom >= 200}
+              aria-label="Zoom in"
+            >+</button>
+          </div>
         )}
       </div>
       <div

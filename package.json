@@ -24,7 +24,9 @@
         "release:resume": "./scripts/release-resume.sh",
         "release:resume:beta": "PRERELEASE_TAG=beta ./scripts/release-resume.sh",
         "release:resume:alpha": "PRERELEASE_TAG=alpha ./scripts/release-resume.sh",
-        "test:svelte": "vitest run --config packages/svelte-ui/vitest.config.ts"
+        "test:svelte": "vitest run --config packages/svelte-ui/vitest.config.ts",
+        "link": "./scripts/link.sh",
+        "unlink": "./scripts/unlink.sh"
     },
     "dependencies": {
         "@generouted/react-router": "^1.19.11",

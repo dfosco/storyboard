@@ -18,9 +18,9 @@
   let { config = {}, canvasName = '', tabindex }: Props = $props()
 
   const widgetTypes = [
-    { type: 'sticky-note', label: 'Sticky Note', icon: '📝' },
-    { type: 'markdown', label: 'Markdown', icon: '📄' },
-    { type: 'prototype', label: 'Prototype', icon: '🖥️' },
+    { type: 'sticky-note', label: 'Sticky Note' },
+    { type: 'markdown', label: 'Markdown' },
+    { type: 'prototype', label: 'Prototype' },
   ]
 
   let menuOpen = $state(false)
@@ -56,7 +56,6 @@
     <DropdownMenu.Label>Add to canvas</DropdownMenu.Label>
     {#each widgetTypes as wt (wt.type)}
       <DropdownMenu.Item onclick={() => addWidget(wt.type)}>
-        <span style="margin-right: 8px; font-size: 16px;">{wt.icon}</span>
         {wt.label}
       </DropdownMenu.Item>
     {/each}

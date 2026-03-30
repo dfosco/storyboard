@@ -45,8 +45,8 @@
       "label": "Add widget",
       "ariaLabel": "Add widget to canvas",
       "trigger": "button",
-      "icon": "iconoir/plus",
-      "meta": { "strokeWeight": 2.5, "scale": 1.1 },
+      "icon": "iconoir/grid-plus",
+      "meta": { "strokeWeight": 2, "scale": 1.1 },
       "modes": ["*"],
       "menuWidth": "220px"
     },    

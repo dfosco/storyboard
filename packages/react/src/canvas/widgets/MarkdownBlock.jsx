@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, markdownSchema } from './widgetProps.js'
 import styles from './MarkdownBlock.module.css'
@@ -33,6 +33,10 @@ export default function MarkdownBlock({ props, onUpdate }) {
   const blockRef = useRef(null)
   const [editHeight, setEditHeight] = useState(null)
 
+  const handleContentChange = useCallback((e) => {
+    onUpdate?.({ content: e.target.value })
+  }, [onUpdate])
+
   useEffect(() => {
     if (editing) {
       // Capture the preview height before switching to editor
@@ -60,7 +64,7 @@ export default function MarkdownBlock({ props, onUpdate }) {
             className={styles.editor}
             style={{ minHeight: editHeight ? editHeight - 2 : undefined }}
             value={content}
-            onChange={(e) => onUpdate?.({ content: e.target.value })}
+            onChange={handleContentChange}
             onBlur={() => setEditing(false)}
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}

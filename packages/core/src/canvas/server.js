@@ -89,20 +89,21 @@ function generateWidgetId(type) {
  * Create the canvas API route handler.
  */
 export function createCanvasHandler(ctx) {
-  const { root, sendJson, watcher } = ctx
+  const { root, sendJson } = ctx
 
-  // Append an event, temporarily unwatching the file to prevent Vite reloads
+  // Append an event to an existing canvas file.
+  // The data plugin already skips .canvas.jsonl `change` events to avoid
+  // a save → reload → lost-editing-state feedback loop, so we just write
+  // directly without touching the watcher.
   function appendEvent(filePath, event) {
-    if (watcher) watcher.unwatch(filePath)
     appendEventRaw(filePath, event)
-    if (watcher) setTimeout(() => watcher.add(filePath), 1500)
   }
 
-  // Write a new JSONL file with a single creation event
+  // Write a new JSONL file with a single creation event.
+  // New files are detected naturally by Vite's watcher as an `add` event,
+  // which correctly triggers a full reload to register new routes.
   function writeNewCanvas(filePath, event) {
-    if (watcher) watcher.unwatch(filePath)
     fs.writeFileSync(filePath, serializeEvent(event) + '\n', 'utf-8')
-    if (watcher) setTimeout(() => watcher.add(filePath), 1500)
   }
 
   return async (req, res, { body, path: routePath, method }) => {

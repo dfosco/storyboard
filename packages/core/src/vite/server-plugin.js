@@ -112,7 +112,7 @@ export default function storyboardServer() {
       routeHandlers.set('docs', docsHandler({ root, sendJson }))
 
       // Wire canvas API routes (always enabled — CRUD for .canvas.jsonl files)
-      routeHandlers.set('canvas', createCanvasHandler({ root, sendJson, watcher: server.watcher }))
+      routeHandlers.set('canvas', createCanvasHandler({ root, sendJson }))
 
       // Watch core-ui.config.json for changes — trigger full reload so
       // CoreUIBar.svelte picks up menu/mode config changes during dev

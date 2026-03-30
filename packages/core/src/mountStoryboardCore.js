@@ -15,7 +15,7 @@ import { installHistorySync } from './hideMode.js'
 import { installBodyClassSync } from './bodyClasses.js'
 import { initCommentsConfig, isCommentsEnabled } from './comments/config.js'
 import { initFeatureFlags } from './featureFlags.js'
-import { initPlugins, isPluginEnabled } from './plugins.js'
+import { initPlugins } from './plugins.js'
 import { initUIConfig } from './uiConfig.js'
 
 let _mounted = false

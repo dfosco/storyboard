@@ -21,6 +21,7 @@
     "build:css": "tailwindcss -i src/styles/tailwind.css -o dist/tailwind.css --minify",
     "build:ui": "vite build --config vite.ui.config.js",
     "dev:ui": "vite build --config vite.ui.config.js --watch",
+    "prepublishOnly": "npm run build:css && npm run build:ui",
     "check:imports": "! grep -r '\\$lib/' src --include='*.svelte' --include='*.js' --include='*.ts' -l"
   },
   "exports": {

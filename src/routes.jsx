@@ -49,17 +49,20 @@ const _app = preservedRoutes?.['_app']
 const _404 = preservedRoutes?.['404']
 const Default = _app?.default || Outlet
 
+// eslint-disable-next-line react-refresh/only-export-components
 const Modals_ = () => {
   const Modal = modalRoutes[useLocation().state?.modal] || Fragment
   return <Modal />
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 const Layout = () => (
   <>
     <Default /> <Modals_ />
   </>
 )
 
+// eslint-disable-next-line react-refresh/only-export-components
 const App = () =>
   _app?.Pending ? (
     <Suspense fallback={<_app.Pending />}>

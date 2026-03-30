@@ -140,7 +140,7 @@ export default function CanvasPage({ name }) {
     return () => {
       document.dispatchEvent(new CustomEvent('storyboard:canvas:unmounted'))
     }
-  }, [name])
+  }, [name, zoom])
 
   // Add a widget by type — used by CanvasControls and CoreUIBar event
   const addWidget = useCallback(async (type) => {

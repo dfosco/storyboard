@@ -1,5 +1,14 @@
 # storyboard
 
+## 3.1.1
+
+Fixes package resolution errors when consuming `@dfosco/storyboard-core` and `@dfosco/tiny-canvas` from npm.
+
+### Bug Fixes
+
+- **Core**: Replace all `$lib/` SvelteKit-style import aliases with relative paths across 85 files — the alias only resolved inside the monorepo's Vite config, breaking every Svelte component for npm consumers (`62369de`)
+- **tiny-canvas**: Fix package.json exports pointing to `src/index.js` which was excluded from the published tarball by the `files` field — exports now point to `dist/` (`62369de`)
+
 ## 3.1.0
 
 Canvas, external prototypes, and polish. This release adds the full canvas system — an infinite, zoomable workspace for arranging widgets and embedding prototypes — along with external prototype support for linking to apps hosted elsewhere. Includes a wave of bug fixes across comments, inspector, and accessibility.

@@ -17,7 +17,8 @@
   "workshop": {
     "features": {
       "createPrototype": true,
-      "createFlow": true
+      "createFlow": true,
+      "createCanvas": true
     },
     "partials": [
       { "directory": "template", "name": "Application" }

@@ -8,7 +8,6 @@ function Draggable({ children, dragId }) {
   const draggableRef = useRef(null);
   const queueRef = useRef(getQueue(dragId));
 
-  const [onTranslation, setOnTranslation] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [rotationVariation, setRotationVariation] = useState(
     () => Math.random() < 0.5 ? -0.5 : 0.5
@@ -20,15 +19,12 @@ function Draggable({ children, dragId }) {
     const queue = queueRef.current;
     if (el && dragId && queue && (queue.x !== 0 || queue.y !== 0)) {
       el.classList.add('tc-on-translation');
-      const raf = requestAnimationFrame(() => setOnTranslation(true));
 
       const timer = setTimeout(() => {
         el.classList.remove('tc-on-translation');
-        setOnTranslation(false);
       }, TRANSLATION_MS * 4);
 
       return () => {
-        cancelAnimationFrame(raf);
         clearTimeout(timer);
       };
     }
@@ -62,8 +58,7 @@ function Draggable({ children, dragId }) {
     },
   });
 
-  const rotation =
-    isDragging || onTranslation ? `${rotationVariation}deg` : '0deg';
+  const rotation = isDragging ? `${rotationVariation}deg` : '0deg';
 
   return (
     <article
@@ -73,8 +68,7 @@ function Draggable({ children, dragId }) {
       <div
         className="tc-draggable-inner"
         style={{
-          transform:
-            isDragging || onTranslation ? `rotate(${rotation})` : undefined,
+          transform: isDragging ? `rotate(${rotation})` : undefined,
           transition: 'transform ease-in-out 150ms',
         }}
       >

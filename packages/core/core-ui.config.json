@@ -39,6 +39,7 @@
         { "type": "header", "label": "Create" },
         { "id": "workshop/create-prototype", "label": "New prototype", "type": "default", "modes": ["*"], "feature": "createPrototype" },
         { "id": "workshop/create-flow", "label": "New flow", "type": "default", "modes": ["*"], "feature": "createFlow" },
+        { "id": "workshop/create-canvas", "label": "New canvas", "type": "default", "modes": ["*"], "feature": "createCanvas" },
         { "type": "footer", "label": "Supported in local development" }
       ]
     },

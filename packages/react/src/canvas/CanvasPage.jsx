@@ -75,10 +75,13 @@ export default function CanvasPage({ name }) {
   const [selectedWidgetId, setSelectedWidgetId] = useState(null)
   const [zoom, setZoom] = useState(100)
   const scrollRef = useRef(null)
+  const [canvasTitle, setCanvasTitle] = useState(canvas?.title || name)
+  const titleInputRef = useRef(null)
 
   if (canvas !== trackedCanvas) {
     setTrackedCanvas(canvas)
     setLocalWidgets(canvas?.widgets ?? null)
+    setCanvasTitle(canvas?.title || name)
   }
 
   // Debounced save to server
@@ -89,6 +92,27 @@ export default function CanvasPage({ name }) {
       )
     }, 2000)
   ).current
+
+  const debouncedTitleSave = useRef(
+    debounce((canvasName, title) => {
+      updateCanvas(canvasName, { settings: { title } }).catch((err) =>
+        console.error('[canvas] Failed to save title:', err)
+      )
+    }, 1000)
+  ).current
+
+  const handleTitleChange = useCallback((e) => {
+    const newTitle = e.target.value
+    setCanvasTitle(newTitle)
+    debouncedTitleSave(name, newTitle)
+  }, [name, debouncedTitleSave])
+
+  const handleTitleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter') {
+      e.target.blur()
+    }
+    e.stopPropagation()
+  }, [])
 
   const handleWidgetUpdate = useCallback((widgetId, updates) => {
     setLocalWidgets((prev) => {
@@ -367,6 +391,19 @@ export default function CanvasPage({ name }) {
 
   return (
     <>
+      <div className={styles.canvasTitle}>
+        <input
+          ref={titleInputRef}
+          className={styles.canvasTitleInput}
+          value={canvasTitle}
+          onChange={handleTitleChange}
+          onKeyDown={handleTitleKeyDown}
+          onMouseDown={(e) => e.stopPropagation()}
+          spellCheck={false}
+          aria-label="Canvas title"
+          style={{ width: `${Math.max(80, canvasTitle.length * 8.5 + 20)}px` }}
+        />
+      </div>
       <div
         ref={scrollRef}
         className={styles.canvasScroll}

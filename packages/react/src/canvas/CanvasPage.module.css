@@ -37,3 +37,37 @@
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+.canvasTitle {
+  position: fixed;
+  top: 12px;
+  left: 16px;
+  z-index: 10;
+}
+
+.canvasTitleInput {
+  font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fgColor-muted, #656d76);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 8px;
+  outline: none;
+  min-width: 80px;
+  max-width: 300px;
+  transition: border-color 150ms, background-color 150ms, color 150ms;
+}
+
+.canvasTitleInput:hover {
+  color: var(--fgColor-default, #1f2328);
+  border-color: var(--borderColor-default, #d1d9e0);
+  background: var(--bgColor-default, #ffffff);
+}
+
+.canvasTitleInput:focus {
+  color: var(--fgColor-default, #1f2328);
+  border-color: var(--bgColor-accent-emphasis, #2f81f7);
+  background: var(--bgColor-default, #ffffff);
+}

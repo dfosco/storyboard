@@ -9,7 +9,7 @@
   import { Input } from '$lib/components/ui/input/index.js'
   import { Label } from '$lib/components/ui/label/index.js'
   import { Checkbox } from '$lib/components/ui/checkbox/index.js'
-  import * as Dialog from '$lib/components/ui/dialog/index.js'
+  import * as Panel from '$lib/components/ui/panel/index.js'
   import * as Alert from '$lib/components/ui/alert/index.js'
 
   interface Props { onClose?: () => void }
@@ -71,18 +71,26 @@
       })
       const data = await res.json()
       if (!res.ok) { error = data.error || 'Failed to create canvas'; return }
-      success = `Created ${data.path}`
-      setTimeout(() => { const base = document.querySelector('base')?.href || '/'; window.location.href = base + data.route.slice(1) }, 1500)
+      success = `Created! Opening canvas\u2026`
+      // Wait for Vite's full-reload to process the new file,
+      // then navigate to the canvas route.
+      const base = (document.querySelector('base')?.getAttribute('href') || '/').replace(/\/$/, '')
+      const target = base + data.route
+      // Vite full-reload fires ~200ms after file creation. We delay
+      // navigation so the virtual module is rebuilt with the new canvas.
+      setTimeout(() => { window.location.href = target }, 2500)
     } catch (err: any) { error = err.message || 'Network error' } finally { submitting = false }
   }
 
   function handleKeydown(e: KeyboardEvent) { if (e.key === 'Enter' && canSubmit) submit() }
 </script>
 
-<Dialog.Header>
-  <Dialog.Title>Create canvas</Dialog.Title>
-</Dialog.Header>
+<Panel.Header>
+  <Panel.Title>Create canvas</Panel.Title>
+  <Panel.Close />
+</Panel.Header>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="p-4 space-y-3" onkeydown={handleKeydown}>
   <div class="space-y-1">
     <Label for="sb-canvas-name">Name</Label>
@@ -118,7 +126,7 @@
   {#if success}<Alert.Root><Alert.Description class="text-success">{success}</Alert.Description></Alert.Root>{/if}
 </div>
 
-<Dialog.Footer>
+<Panel.Footer>
   <Button variant="outline" onclick={onClose}>Cancel</Button>
   <Button onclick={submit} disabled={!canSubmit}>{submitting ? 'Creating\u2026' : 'Create'}</Button>
-</Dialog.Footer>
+</Panel.Footer>

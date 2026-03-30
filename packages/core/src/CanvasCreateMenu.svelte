@@ -52,7 +52,7 @@
     {/snippet}
   </DropdownMenu.Trigger>
 
-  <DropdownMenu.Content side="top" align="end" sideOffset={16} class="min-w-[180px]" style={config.menuWidth ? `width: ${config.menuWidth}` : ''}>
+  <DropdownMenu.Content side="top" align="start" sideOffset={16} class="min-w-[180px]" style={config.menuWidth ? `width: ${config.menuWidth}` : ''}>
     <DropdownMenu.Label>Add to canvas</DropdownMenu.Label>
     {#each widgetTypes as wt (wt.type)}
       <DropdownMenu.Item onclick={() => addWidget(wt.type)}>

@@ -11,7 +11,7 @@ const COLORS = {
   orange: { bg: '#fff1e5', border: '#d18616', dot: '#e8a844' },
 }
 
-export default function StickyNote({ props, onUpdate, onRemove }) {
+export default function StickyNote({ props, onUpdate }) {
   const text = readProp(props, 'text', stickyNoteSchema)
   const color = readProp(props, 'color', stickyNoteSchema)
   const palette = COLORS[color] ?? COLORS.yellow
@@ -39,14 +39,6 @@ export default function StickyNote({ props, onUpdate, onRemove }) {
         className={styles.sticky}
         style={{ '--sticky-bg': palette.bg, '--sticky-border': palette.border }}
       >
-        {onRemove && (
-          <button
-            className={styles.removeBtn}
-            onClick={(e) => { e.stopPropagation(); onRemove() }}
-            title="Remove"
-            aria-label="Remove sticky note"
-          >×</button>
-        )}
         {editing ? (
           <textarea
             ref={textareaRef}

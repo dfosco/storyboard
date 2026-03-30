@@ -134,6 +134,11 @@ export const prototypeEmbedSchema = {
   height: { type: 'number', label: 'Height', category: 'size',     defaultValue: 600, min: 200, max: 1500 },
 }
 
+export const linkPreviewSchema = {
+  url:   { type: 'url',  label: 'URL',   category: 'content',  defaultValue: '' },
+  title: { type: 'text', label: 'Title', category: 'content',  defaultValue: '' },
+}
+
 /**
  * Schema registry — maps widget type strings to their schemas.
  */
@@ -141,4 +146,5 @@ export const schemas = {
   'sticky-note': stickyNoteSchema,
   'markdown': markdownSchema,
   'prototype': prototypeEmbedSchema,
+  'link-preview': linkPreviewSchema,
 }

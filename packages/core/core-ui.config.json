@@ -40,6 +40,15 @@
         { "id": "workshop/create-flow", "label": "New flow", "type": "default", "modes": ["*"], "feature": "createFlow" },
         { "type": "footer", "label": "Supported in local development" }
       ]
+    },
+    "canvas-create": {
+      "label": "Add widget",
+      "ariaLabel": "Add widget to canvas",
+      "trigger": "button",
+      "icon": "iconoir/plus",
+      "meta": { "strokeWeight": 2.5, "scale": 1.1 },
+      "modes": ["*"],
+      "menuWidth": "220px"
     },    
     "flows": {
       "label": "Flows",

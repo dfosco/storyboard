@@ -13,3 +13,9 @@
 .loading p {
   margin: 0;
 }
+
+.selected {
+  outline: 2px solid var(--bgColor-accent-emphasis, #2f81f7);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

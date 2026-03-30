@@ -2,7 +2,7 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import styles from './PrototypeEmbed.module.css'
 
-export default function PrototypeEmbed({ props, onRemove }) {
+export default function PrototypeEmbed({ props }) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
   const width = readProp(props, 'width', prototypeEmbedSchema)
   const height = readProp(props, 'height', prototypeEmbedSchema)
@@ -13,7 +13,7 @@ export default function PrototypeEmbed({ props, onRemove }) {
   const iframeSrc = src ? `${basePath}${src}` : ''
 
   return (
-    <WidgetWrapper onRemove={onRemove}>
+    <WidgetWrapper>
       <div className={styles.embed} style={{ width, height }}>
         {iframeSrc ? (
           <iframe

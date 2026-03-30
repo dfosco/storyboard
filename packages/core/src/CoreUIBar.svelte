@@ -38,6 +38,9 @@
   let commentsEnabled = $state(false)
   let SidePanel: any = $state(null)
   let toolbarEl: HTMLElement | null = $state(null)
+  let CanvasCreateMenu: any = $state(null)
+  let canvasActive = $state(false)
+  let activeCanvasName = $state('')
 
   // Roving tabindex: only one button in the toolbar is tabbable at a time
   let activeToolbarIndex = $state(-1)
@@ -69,6 +72,7 @@
         if (!menuVisibleInMode(menu, $modeState.mode)) return false
         if (menu.action) return ActionMenuButton && getActionChildren(menu.action).length > 0
         if (menu.key === 'create') return CreateMenuButton && createMenuFeatures.length > 0
+        if (menu.key === 'canvas-create') return canvasActive && CanvasCreateMenu
         if (menu.key === 'comments') return CommentsMenuButton && commentsEnabled
         return true
       })
@@ -375,6 +379,16 @@
         SidePanel = mod.default
       }
     } catch {}
+
+    // Load canvas create menu
+    try {
+      const mod = await import('./CanvasCreateMenu.svelte')
+      CanvasCreateMenu = mod.default
+    } catch {}
+
+    // Listen for canvas mount/unmount events (React↔Svelte bridge)
+    document.addEventListener('storyboard:canvas:mounted', handleCanvasMounted)
+    document.addEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
   })
 
   onDestroy(() => {
@@ -382,7 +396,19 @@
     if (bumpNav) window.removeEventListener('popstate', bumpNav)
     if (origPushState) history.pushState = origPushState
     if (origReplaceState) history.replaceState = origReplaceState
+    document.removeEventListener('storyboard:canvas:mounted', handleCanvasMounted)
+    document.removeEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
   })
+
+  function handleCanvasMounted(e: Event) {
+    canvasActive = true
+    activeCanvasName = (e as CustomEvent).detail?.name || ''
+  }
+
+  function handleCanvasUnmounted() {
+    canvasActive = false
+    activeCanvasName = ''
+  }
 
   // Flow info dialog state — driven by core/show-flow-info action
   let flowDialogOpen = $state(false)
@@ -426,6 +452,8 @@
             <ActionMenuButton config={menu} tabindex={getTabindex(i)} />
           {:else if menu.key === 'create'}
             <CreateMenuButton features={createMenuFeatures} config={menu} tabindex={getTabindex(i)} />
+          {:else if menu.key === 'canvas-create'}
+            <CanvasCreateMenu config={menu} canvasName={activeCanvasName} tabindex={getTabindex(i)} />
           {:else if menu.key === 'comments'}
             <CommentsMenuButton config={menu} tabindex={getTabindex(i)} />
           {/if}

@@ -1,10 +1,10 @@
-import { createElement, useCallback, useRef, useState } from 'react'
+import { createElement, useCallback, useEffect, useRef, useState } from 'react'
 import { Canvas } from '@dfosco/tiny-canvas'
 import { useCanvas } from './useCanvas.js'
 import { getWidgetComponent } from './widgets/index.js'
+import { schemas, getDefaults } from './widgets/widgetProps.js'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
-import CanvasToolbar from './CanvasToolbar.jsx'
-import { updateCanvas, removeWidget as removeWidgetApi } from './canvasApi.js'
+import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi } from './canvasApi.js'
 import styles from './CanvasPage.module.css'
 
 /**
@@ -19,7 +19,7 @@ function debounce(fn, ms) {
 }
 
 /** Renders a single JSON-defined widget by type lookup. */
-function WidgetRenderer({ widget, onUpdate, onRemove }) {
+function WidgetRenderer({ widget, onUpdate }) {
   const Component = getWidgetComponent(widget.type)
   if (!Component) {
     console.warn(`[canvas] Unknown widget type: ${widget.type}`)
@@ -29,7 +29,6 @@ function WidgetRenderer({ widget, onUpdate, onRemove }) {
     id: widget.id,
     props: widget.props,
     onUpdate,
-    onRemove,
   })
 }
 
@@ -45,6 +44,8 @@ export default function CanvasPage({ name }) {
   // Local mutable copy of widgets for instant UI updates
   const [localWidgets, setLocalWidgets] = useState(canvas?.widgets ?? null)
   const [trackedCanvas, setTrackedCanvas] = useState(canvas)
+  const [selectedWidgetId, setSelectedWidgetId] = useState(null)
+
   if (canvas !== trackedCanvas) {
     setTrackedCanvas(canvas)
     setLocalWidgets(canvas?.widgets ?? null)
@@ -75,6 +76,92 @@ export default function CanvasPage({ name }) {
     removeWidgetApi(name, widgetId).catch((err) =>
       console.error('[canvas] Failed to remove widget:', err)
     )
+  }, [name])
+
+  // Signal canvas mount/unmount to CoreUIBar
+  useEffect(() => {
+    document.dispatchEvent(new CustomEvent('storyboard:canvas:mounted', {
+      detail: { name }
+    }))
+    return () => {
+      document.dispatchEvent(new CustomEvent('storyboard:canvas:unmounted'))
+    }
+  }, [name])
+
+  // Listen for CoreUIBar add-widget events
+  useEffect(() => {
+    async function handleAddWidget(e) {
+      const { type } = e.detail
+      const defaultProps = schemas[type] ? getDefaults(schemas[type]) : {}
+      try {
+        const result = await addWidgetApi(name, {
+          type,
+          props: defaultProps,
+          position: { x: 0, y: 0 },
+        })
+        if (result.success) {
+          window.location.reload()
+        }
+      } catch (err) {
+        console.error('[canvas] Failed to add widget:', err)
+      }
+    }
+    document.addEventListener('storyboard:canvas:add-widget', handleAddWidget)
+    return () => document.removeEventListener('storyboard:canvas:add-widget', handleAddWidget)
+  }, [name])
+
+  // Delete selected widget on Delete/Backspace key
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (!selectedWidgetId) return
+      const tag = e.target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault()
+        handleWidgetRemove(selectedWidgetId)
+        setSelectedWidgetId(null)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [selectedWidgetId, handleWidgetRemove])
+
+  // Paste handler — URLs become link previews, text becomes markdown blocks
+  useEffect(() => {
+    async function handlePaste(e) {
+      const tag = e.target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
+
+      const text = e.clipboardData?.getData('text/plain')?.trim()
+      if (!text) return
+
+      e.preventDefault()
+
+      let type, props
+      try {
+        new URL(text)
+        type = 'link-preview'
+        props = { url: text, title: '' }
+      } catch {
+        type = 'markdown'
+        props = { content: text }
+      }
+
+      try {
+        const result = await addWidgetApi(name, {
+          type,
+          props,
+          position: { x: 0, y: 0 },
+        })
+        if (result.success) {
+          window.location.reload()
+        }
+      } catch (err) {
+        console.error('[canvas] Failed to add widget from paste:', err)
+      }
+    }
+    document.addEventListener('paste', handlePaste)
+    return () => document.removeEventListener('paste', handlePaste)
   }, [name])
 
   if (!canvas) {
@@ -115,31 +202,31 @@ export default function CanvasPage({ name }) {
     }
   }
 
-  // 2. JSON-defined mutable widgets
+  // 2. JSON-defined mutable widgets (selectable)
   for (const widget of (localWidgets ?? [])) {
     allChildren.push(
-      <div key={widget.id} id={widget.id}>
+      <div
+        key={widget.id}
+        id={widget.id}
+        onClick={(e) => {
+          e.stopPropagation()
+          setSelectedWidgetId(widget.id)
+        }}
+        className={selectedWidgetId === widget.id ? styles.selected : undefined}
+      >
         <WidgetRenderer
           widget={widget}
           onUpdate={(updates) => handleWidgetUpdate(widget.id, updates)}
-          onRemove={() => handleWidgetRemove(widget.id)}
         />
       </div>
     )
   }
 
   return (
-    <>
+    <div onClick={() => setSelectedWidgetId(null)}>
       <Canvas {...canvasProps}>
         {allChildren}
       </Canvas>
-      <CanvasToolbar
-        canvasName={name}
-        onWidgetAdded={() => {
-          // Reload the page to pick up the new widget from the updated .canvas.json
-          window.location.reload()
-        }}
-      />
-    </>
+    </div>
   )
 }

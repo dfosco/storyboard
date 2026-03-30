@@ -25,7 +25,7 @@ function renderMarkdown(text) {
     })
 }
 
-export default function MarkdownBlock({ props, onUpdate, onRemove }) {
+export default function MarkdownBlock({ props, onUpdate }) {
   const content = readProp(props, 'content', markdownSchema)
   const width = readProp(props, 'width', markdownSchema)
   const [editing, setEditing] = useState(false)
@@ -48,7 +48,7 @@ export default function MarkdownBlock({ props, onUpdate, onRemove }) {
   }, [editing, editHeight])
 
   return (
-    <WidgetWrapper onRemove={onRemove}>
+    <WidgetWrapper>
       <div
         ref={blockRef}
         className={styles.block}

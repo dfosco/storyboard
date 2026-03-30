@@ -1,0 +1,35 @@
+{
+  "files": [
+    {
+      "source": "scaffold/storyboard.config.json",
+      "target": "storyboard.config.json",
+      "mode": "scaffold"
+    },
+    {
+      "source": "scaffold/svelte.config.js",
+      "target": "svelte.config.js",
+      "mode": "scaffold"
+    },
+    {
+      "source": "scaffold/toolbar.config.json",
+      "target": "toolbar.config.json",
+      "mode": "scaffold"
+    },
+    {
+      "source": "scaffold/scripts/link.sh",
+      "target": "scripts/link.sh",
+      "mode": "updateable"
+    },
+    {
+      "source": "scaffold/scripts/unlink.sh",
+      "target": "scripts/unlink.sh",
+      "mode": "updateable"
+    },
+    {
+      "source": "scaffold/skills/",
+      "target": ".github/skills/",
+      "mode": "updateable",
+      "directory": true
+    }
+  ]
+}

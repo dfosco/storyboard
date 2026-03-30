@@ -20,10 +20,13 @@
   import { sidePanelState, togglePanel } from './stores/sidePanelStore.js'
   import { initCommandActions, registerCommandAction, getActionChildren, isExcludedByRoute, setRoutingBasePath } from './commandActions.js'
   import { isMenuHidden } from './uiConfig.js'
-  import coreUIConfig from '../toolbar.config.json'
+  import defaultToolbarConfig from '../toolbar.config.json'
 
-  interface Props { basePath?: string }
-  let { basePath = '/' }: Props = $props()
+  interface Props { basePath?: string; toolbarConfig?: any }
+  let { basePath = '/', toolbarConfig }: Props = $props()
+
+  // Use provided config (merged by mountStoryboardCore) or fall back to defaults
+  const config = toolbarConfig || defaultToolbarConfig
 
   let visible = $state(true)
   // Hide the entire toolbar when loaded inside a prototype embed iframe
@@ -45,7 +48,7 @@
   let canvasActive = $state(false)
   let activeCanvasName = $state('')
   let canvasZoom = $state(100)
-  const canvasToolbarConfig = (coreUIConfig as any).canvasToolbar || {}
+  const canvasToolbarConfig = (config as any).canvasToolbar || {}
 
   const ZOOM_STEP = 10
   const ZOOM_MIN = 25
@@ -54,11 +57,11 @@
   // Roving tabindex: only one button in the toolbar is tabbable at a time
   let activeToolbarIndex = $state(-1)
 
-  const commandMenuConfig = isMenuHidden('command') ? null : coreUIConfig.menus?.command
-  const shortcutsConfig = (coreUIConfig as any).shortcuts || {}
+  const commandMenuConfig = isMenuHidden('command') ? null : config.menus?.command
+  const shortcutsConfig = (config as any).shortcuts || {}
 
   // Build ordered menu list from JSON key order (excluding command, which is always rightmost)
-  const allMenus = (coreUIConfig.menus || {}) as Record<string, any>
+  const allMenus = (config.menus || {}) as Record<string, any>
   const orderedMenus = Object.entries(allMenus)
     .filter(([key]) => key !== 'command')
     .filter(([key]) => !isMenuHidden(key))

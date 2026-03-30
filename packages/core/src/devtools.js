@@ -105,7 +105,7 @@ export async function mountDevTools(options = {}) {
 
   instance = mount(CoreUIBar, {
     target: wrapper,
-    props: { basePath },
+    props: { basePath, toolbarConfig: options.toolbarConfig },
   })
 }
 

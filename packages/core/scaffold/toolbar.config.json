@@ -1,0 +1,4 @@
+{
+  "_comment": "Client toolbar overrides. Deep-merged with core defaults. See @dfosco/storyboard-core/toolbar.config.json for all options.",
+  "menus": {}
+}

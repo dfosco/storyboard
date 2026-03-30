@@ -82,6 +82,16 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   // Inject compiled UI styles
   injectUIStyles()
 
+  // Load and merge toolbar config.
+  // Core defaults come from toolbar.config.json (bundled).
+  // Client can provide overrides via config.toolbar or a toolbar.config.json at repo root.
+  let toolbarConfig = undefined
+  if (config.toolbar) {
+    const { deepMerge } = await import('./loader.js')
+    const defaultConfig = (await import('../toolbar.config.json')).default
+    toolbarConfig = deepMerge(defaultConfig, config.toolbar)
+  }
+
   // Dynamically import the compiled UI bundle.
   // In the source repo, Vite aliases resolve this to source (for HMR).
   // In consumer repos, this resolves to dist/storyboard-ui.js (pre-compiled).
@@ -91,6 +101,7 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   await ui.mountDevTools({
     container: options.container,
     basePath,
+    toolbarConfig,
   })
 
   // Mount comments system if configured

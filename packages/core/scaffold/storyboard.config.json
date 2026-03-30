@@ -1,0 +1,26 @@
+{
+  "repository": {
+    "owner": "",
+    "name": ""
+  },
+  "modes": {
+    "enabled": false
+  },
+  "comments": {
+    "discussions": {
+      "category": "Comments"
+    }
+  },
+  "plugins": {
+    "devtools": true
+  },
+  "workshop": {
+    "enabled": false,
+    "features": {
+      "createPrototype": true,
+      "createFlow": true,
+      "createCanvas": true
+    }
+  },
+  "featureFlags": {}
+}

@@ -4,6 +4,12 @@
 
 ### Patch Changes
 
+-   Add `@lucide/svelte` and `marked` to package dependencies (were only declared in monorepo root, causing "Could not resolve" errors in consumers). Inline the `smooth-corners` paint worklet to avoid Vite-specific `?url` import that breaks when source is consumed from `node_modules`. Removes `smooth-corners` as a dependency.
+
+## 3.1.2
+
+### Patch Changes
+
 -   Add `@lucide/svelte` and `marked` to package dependencies (were only declared in monorepo root, causing "Could not resolve" errors in consumers).
 -   Inline the `smooth-corners` paint worklet to avoid Vite-specific `?url` import that breaks when source is consumed from `node_modules`. Removes `smooth-corners` as a dependency.
 

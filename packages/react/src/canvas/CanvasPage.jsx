@@ -153,8 +153,10 @@ export default function CanvasPage({ name }) {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [selectedWidgetId, handleWidgetRemove])
 
-  // Paste handler — URLs become link previews, text becomes markdown blocks
+  // Paste handler — same-origin URLs become prototypes, other URLs become link previews, text becomes markdown
   useEffect(() => {
+    const baseUrl = window.location.origin + (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+
     async function handlePaste(e) {
       const tag = e.target.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
@@ -166,9 +168,19 @@ export default function CanvasPage({ name }) {
 
       let type, props
       try {
-        new URL(text)
-        type = 'link-preview'
-        props = { url: text, title: '' }
+        const parsed = new URL(text)
+        const fullBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'
+        if (text.startsWith(baseUrl)) {
+          // Same-origin URL → prototype embed with the path portion
+          const pathPortion = parsed.pathname + parsed.search + parsed.hash
+          const basePath = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+          const src = basePath ? pathPortion.replace(new RegExp(`^${basePath}`), '') : pathPortion
+          type = 'prototype'
+          props = { src: src || '/', label: '', width: 800, height: 600 }
+        } else {
+          type = 'link-preview'
+          props = { url: text, title: '' }
+        }
       } catch {
         type = 'markdown'
         props = { content: text }

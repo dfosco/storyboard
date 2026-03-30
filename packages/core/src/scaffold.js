@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-env node */
 /**
  * storyboard-scaffold — sync scaffold files from @dfosco/storyboard-core.
  *

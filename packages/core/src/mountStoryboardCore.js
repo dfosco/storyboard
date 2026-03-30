@@ -93,9 +93,10 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   }
 
   // Dynamically import the compiled UI bundle.
-  // In the source repo, Vite aliases resolve this to source (for HMR).
-  // In consumer repos, this resolves to dist/storyboard-ui.js (pre-compiled).
-  const ui = await import('./ui-entry.js')
+  // Uses the package self-reference so resolution differs by context:
+  //   Source repo: Vite alias overrides to src/ui-entry.js (source, HMR)
+  //   Consumer repos: package.json exports resolve to dist/storyboard-ui.js (compiled)
+  const ui = await import('@dfosco/storyboard-core/ui-runtime')
 
   // Mount devtools (CoreUIBar)
   await ui.mountDevTools({

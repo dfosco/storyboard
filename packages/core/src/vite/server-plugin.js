@@ -58,14 +58,6 @@ function readConfig(root) {
 }
 
 /**
- * Check if any workshop feature is enabled.
- */
-function hasAnyWorkshopFeature(workshopConfig) {
-  if (!workshopConfig?.features) return false
-  return Object.values(workshopConfig.features).some(Boolean)
-}
-
-/**
  * Core storyboard server Vite plugin.
  */
 export default function storyboardServer() {

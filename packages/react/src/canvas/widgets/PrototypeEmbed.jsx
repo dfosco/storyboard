@@ -12,7 +12,6 @@ export default function PrototypeEmbed({ props, onUpdate }) {
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
   const rawSrc = src ? `${basePath}${src}` : ''
   const iframeSrc = rawSrc ? `${rawSrc}${rawSrc.includes('?') ? '&' : '?'}_sb_embed` : ''
-  const iframeHeight = height / scale
 
   const [editing, setEditing] = useState(false)
   const [interactive, setInteractive] = useState(false)

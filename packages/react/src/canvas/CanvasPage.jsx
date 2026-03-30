@@ -221,7 +221,6 @@ export default function CanvasPage({ name }) {
       let type, props
       try {
         const parsed = new URL(text)
-        const fullBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'
         if (text.startsWith(baseUrl)) {
           // Same-origin URL → prototype embed with the path portion
           const pathPortion = parsed.pathname + parsed.search + parsed.hash
@@ -278,6 +277,7 @@ export default function CanvasPage({ name }) {
   // Space + drag to pan the canvas
   const [spaceHeld, setSpaceHeld] = useState(false)
   const isPanning = useRef(false)
+  const [panningActive, setPanningActive] = useState(false)
   const panStart = useRef({ x: 0, y: 0, scrollX: 0, scrollY: 0 })
 
   useEffect(() => {
@@ -293,6 +293,7 @@ export default function CanvasPage({ name }) {
       if (e.key === ' ') {
         setSpaceHeld(false)
         isPanning.current = false
+        setPanningActive(false)
       }
     }
     document.addEventListener('keydown', handleKeyDown)
@@ -307,6 +308,7 @@ export default function CanvasPage({ name }) {
     if (!spaceHeld) return
     e.preventDefault()
     isPanning.current = true
+    setPanningActive(true)
     const el = scrollRef.current
     panStart.current = {
       x: e.clientX,
@@ -322,6 +324,7 @@ export default function CanvasPage({ name }) {
     }
     function handlePanEnd() {
       isPanning.current = false
+      setPanningActive(false)
       document.removeEventListener('mousemove', handlePanMove)
       document.removeEventListener('mouseup', handlePanEnd)
     }
@@ -407,7 +410,7 @@ export default function CanvasPage({ name }) {
       <div
         ref={scrollRef}
         className={styles.canvasScroll}
-        style={spaceHeld ? { cursor: isPanning.current ? 'grabbing' : 'grab' } : undefined}
+        style={spaceHeld ? { cursor: panningActive ? 'grabbing' : 'grab' } : undefined}
         onClick={() => setSelectedWidgetId(null)}
         onMouseDown={handlePanStart}
       >

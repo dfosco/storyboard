@@ -41,7 +41,6 @@ export default function PrototypeEmbed({ props, onUpdate }) {
   }, [interactive])
 
   const enterInteractive = useCallback(() => setInteractive(true), [])
-  const exitInteractive = useCallback(() => setInteractive(false), [])
 
   function handleSubmit(e) {
     e.preventDefault()

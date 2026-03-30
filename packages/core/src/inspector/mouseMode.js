@@ -54,7 +54,7 @@ export function createMouseMode(options = {}) {
     Object.assign(overlay.style, {
       position: 'fixed',
       pointerEvents: 'none',
-      zIndex: '99998',
+      zIndex: '9997',
       border: '2px solid var(--color-purple, #7655a4)',
       backgroundColor: 'rgba(118, 85, 164, 0.08)',
       borderRadius: '3px',
@@ -70,7 +70,7 @@ export function createMouseMode(options = {}) {
     Object.assign(tooltip.style, {
       position: 'fixed',
       pointerEvents: 'none',
-      zIndex: '99999',
+      zIndex: '9997',
       backgroundColor: 'var(--color-purple, #7655a4)',
       color: '#fff',
       fontSize: '11px',

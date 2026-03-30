@@ -96,6 +96,7 @@
   <Panel.Close />
 </Panel.Header>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="p-4 space-y-3" onkeydown={handleKeydown}>
   <div class="space-y-1">
     <Label for="sb-proto-name">Name</Label>

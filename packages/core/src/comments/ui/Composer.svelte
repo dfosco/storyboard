@@ -17,7 +17,8 @@
   }
 
   let { user = null, route = '', onCancel, onSubmit }: Props = $props()
-  const draftKey = composerDraftKey(route)
+  const draftKey = $derived(composerDraftKey(route))
+  // svelte-ignore state_referenced_locally
   let text = $state(getDraft(draftKey)?.text ?? '')
 
   function submit() {
@@ -43,6 +44,7 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="flex flex-col font-sans" onkeydown={handleKeydown}>
   {#if user}
     <div class="flex items-center px-3 pt-2 gap-2">

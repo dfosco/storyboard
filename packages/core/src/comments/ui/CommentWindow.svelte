@@ -29,28 +29,32 @@
 
   let { comment, discussion, user = null, onClose, onMove, winEl }: Props = $props()
 
-  const draftKey = replyDraftKey(comment.id)
+  const draftKey = $derived(replyDraftKey(comment.id))
 
-  let resolved = $state(!!comment.meta?.resolved)
+  const resolved = $derived(!!comment.meta?.resolved)
   let resolving = $state(false)
   let copied = $state(false)
   let editing = $state(false)
   let editText = $state('')
   let saving = $state(false)
-  let commentText = $state(comment.text ?? '')
+  const commentText = $derived(comment.text ?? '')
+  // svelte-ignore state_referenced_locally
   let replyText = $state(getDraft(draftKey)?.text ?? '')
   let submittingReply = $state(false)
   let editingReply = $state(-1)
   let editReplyText = $state('')
   let savingReply = $state(false)
   let pickerTarget: string | null = $state(null)
+  // svelte-ignore state_referenced_locally
   let reactions: any[] = $state([...(comment.reactionGroups ?? [])])
+  // svelte-ignore state_referenced_locally
   let replyReactions: any[][] = $state((comment.replies ?? []).map((r: any) => [...(r.reactionGroups ?? [])]))
+  // svelte-ignore state_referenced_locally
   let replyTexts: string[] = $state((comment.replies ?? []).map((r: any) => r.text ?? r.body ?? ''))
 
-  const replies = comment.replies ?? []
-  const canEdit = user && comment.author?.login === user.login
-  const canReply = user && discussion
+  const replies = $derived(comment.replies ?? [])
+  const canEdit = $derived(!!(user && comment.author?.login === user.login))
+  const canReply = $derived(!!(user && discussion))
 
   function handleReplyBlur() {
     if (replyText.trim()) {
@@ -88,7 +92,7 @@
       if (resolved) {
         await unresolveComment(comment.id, comment._rawBody ?? comment.body ?? '')
         comment.meta = { ...comment.meta }; delete comment.meta.resolved
-        resolved = false; resolving = false; onMove?.()
+        resolving = false; onMove?.()
       } else {
         await resolveComment(comment.id, comment._rawBody ?? comment.body ?? '')
         comment.meta = { ...comment.meta, resolved: true }; onMove?.(); onClose?.()
@@ -103,7 +107,7 @@
 
   async function saveEdit() {
     const t = editText.trim(); if (!t) return; saving = true
-    try { await editComment(comment.id, comment._rawBody ?? comment.body ?? '', t); comment.text = t; comment._rawBody = null; commentText = t; editing = false } catch (err) { console.error('[storyboard] Failed to edit:', err) } finally { saving = false }
+    try { await editComment(comment.id, comment._rawBody ?? comment.body ?? '', t); comment.text = t; comment._rawBody = null; editing = false } catch (err) { console.error('[storyboard] Failed to edit:', err) } finally { saving = false }
   }
 
   async function toggleReaction(content: string, gi?: number) {
@@ -175,9 +179,11 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
 <div class="font-sans" onclick={(e) => e.stopPropagation()}>
   <!-- Header -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="flex items-center justify-between px-3 py-3 border-b border-border cursor-grab select-none" onmousedown={startDrag}>
     <div class="flex items-center gap-2">
       {#if comment.author?.avatarUrl}

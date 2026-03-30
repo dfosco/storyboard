@@ -86,7 +86,7 @@
 
     <!-- Overlay -->
     {#if activeFeature}
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <!-- svelte-ignore a11y_no_static_element_interactions a11y_click_events_have_key_events -->
       <div class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50" onclick={(e) => { if (e.target === e.currentTarget) closeOverlay() }}>
         <div class="w-full max-w-[480px]">
           <activeFeature.overlay onClose={closeOverlay} />

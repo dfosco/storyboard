@@ -4,25 +4,39 @@
 -->
 
 <script lang="ts">
-  import { onMount } from 'svelte'
   import { Button } from '$lib/components/ui/button/index.js'
   import { Textarea } from '$lib/components/ui/textarea/index.js'
   import * as Avatar from '$lib/components/ui/avatar/index.js'
+  import { saveDraft, getDraft, clearDraft, composerDraftKey } from '../commentDrafts.js'
 
   interface Props {
     user?: { login: string; avatarUrl: string } | null
+    route?: string
     onCancel?: () => void
     onSubmit?: (text: string) => void
   }
 
-  let { user = null, onCancel, onSubmit }: Props = $props()
-  let text = $state('')
-  let textareaEl: HTMLTextAreaElement | undefined = $state()
+  let { user = null, route = '', onCancel, onSubmit }: Props = $props()
+  const draftKey = composerDraftKey(route)
+  let text = $state(getDraft(draftKey)?.text ?? '')
 
-  onMount(() => { textareaEl?.focus() })
+  function submit() {
+    const val = text.trim()
+    if (!val) return
+    onSubmit?.(val)
+  }
 
-  function submit() { const val = text.trim(); if (!val) return; onSubmit?.(val) }
-  function cancel() { onCancel?.() }
+  function cancel() {
+    onCancel?.()
+  }
+
+  function handleBlur() {
+    if (text.trim()) {
+      saveDraft(draftKey, { type: 'comment', text })
+    } else {
+      clearDraft(draftKey)
+    }
+  }
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit() }
@@ -40,10 +54,10 @@
     </div>
   {/if}
   <div class="px-3 pt-3">
-    <Textarea class="min-h-[60px] max-h-[160px] resize-y text-sm" placeholder="Leave a comment\u2026" bind:value={text} bind:this={textareaEl} />
+    <Textarea class="min-h-[60px] max-h-[160px] resize-y text-sm" placeholder="Leave a comment…" bind:value={text} onblur={handleBlur} />
   </div>
   <div class="flex items-center justify-end p-3 gap-1">
-    <Button variant="outline" size="sm" onclick={cancel}>Cancel</Button>
+    <Button variant="outline" size="sm" class="border border-input text-foreground" onclick={cancel}>Cancel</Button>
     <Button size="sm" onclick={submit}>Comment</Button>
   </div>
 </div>

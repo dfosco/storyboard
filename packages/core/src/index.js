@@ -9,7 +9,7 @@
 export { init } from './loader.js'
 
 // Flow, object & record loading
-export { loadFlow, listFlows, flowExists, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
+export { loadFlow, listFlows, flowExists, getFlowsForPrototype, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
 // Scoped name resolution
 export { resolveFlowName, resolveRecordName, resolveObjectName } from './loader.js'
 // Prototype metadata
@@ -43,7 +43,7 @@ export { installBodyClassSync, setFlowClass, syncOverrideClasses } from './bodyC
 export { setSceneClass } from './bodyClasses.js'
 
 // Design modes (mode registry, switching, event bus)
-export { registerMode, unregisterMode, getRegisteredModes, getCurrentMode, activateMode, deactivateMode, subscribeToMode, getModeSnapshot, syncModeClasses, on, off, emit, initModesConfig, isModesEnabled } from './modes.js'
+export { registerMode, unregisterMode, getRegisteredModes, getCurrentMode, activateMode, deactivateMode, subscribeToMode, getModeSnapshot, syncModeClasses, on, off, emit, initModesConfig, isModesEnabled, getLockedMode, isModeSwitcherVisible } from './modes.js'
 
 // Tool registry (declared in modes.config.json, state managed at runtime)
 export { initTools, setToolAction, setToolState, getToolState, getToolsForMode, subscribeToTools, getToolsSnapshot } from './modes.js'
@@ -62,8 +62,14 @@ export { resolveSceneRoute, getSceneMeta } from './viewfinder.js'
 // Feature flags
 export { initFeatureFlags, getFlag, setFlag, toggleFlag, getAllFlags, resetFlags, getFlagKeys, syncFlagBodyClasses } from './featureFlags.js'
 
+// Command actions (config-driven command menu entries)
+export { initCommandActions, registerCommandAction, unregisterCommandAction, setDynamicActions, clearDynamicActions, getActionsForMode, executeAction, getActionChildren, subscribeToCommandActions, getCommandActionsSnapshot, setRoutingBasePath } from './commandActions.js'
+
 // Plugin configuration
 export { initPlugins, isPluginEnabled, getPluginsConfig } from './plugins.js'
+
+// UI config (project-level chrome overrides)
+export { initUIConfig, isMenuHidden, getHiddenItems } from './uiConfig.js'
 
 // Comments system
 export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comments/config.js'

@@ -1,3 +1,0 @@
-{"event":"goal_created","goal_id":"g003","timestamp":"2026-03-28T03:06:08.415Z","title":"Notepad of one-tasks","description":"","acceptance_criteria":[],"status":"open"}
-{"event":"github_synced","goal_id":"g003","timestamp":"2026-03-28T03:06:10.369Z","issue_number":8,"issue_url":"https://github.com/dfosco/storyboard/issues/8"}
-{"event":"updated","goal_id":"g003","timestamp":"2026-03-28T03:10:31.519Z","title":"Notepad"}

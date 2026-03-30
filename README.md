@@ -1,6 +1,6 @@
 # Storyboard
 
-A small framework to create stateful prototypes. Create `scenes` with JSON to prototype flows of your app and save all interaction as URL parameters. This means you can:
+A small framework to create stateful prototypes. Create `flows` with JSON to prototype states of your app and save all interaction as URL parameters. This means you can:
 
 - Set up interactions that create and edit data in your UI with ease
 - Share *any* state of your prototype – every single change has a unique URL!
@@ -20,23 +20,23 @@ npm run dev     # http://localhost:1234
 
 ## How It Works
 
-Storyboard separates **data** from **UI**. Your components read from JSON scene files instead of hardcoding content. 
+Storyboard separates **data** from **UI**. Your components read from JSON flow files instead of hardcoding content. 
 
-You can switch between different scenes (flows) via a URL parameter, and override any value at runtime through the URL. 
+You can switch between different flows via a URL parameter, and override any value at runtime through the URL. 
 
 Every interaction on your UI get saved to the URL and persist during a user session. That also means any session and user state can be recovered just by sharing a URL! 
 
 ```
 ┌──────────────────────────────┐
 │  Data Files (read-only)      │  ← Discovered by Vite plugin
-│  *.scene.json / *.object.json│
+│  *.flow.json / *.object.json │
 │  *.record.json               │
 └──────────────┬───────────────┘
                │
                ▼
 ┌──────────────────────────────┐
 │  Storyboard Context          │  ← Loaded into React context
-│  useSceneData() / useOverride │
+│  useFlowData() / useOverride │
 │  useRecord()                  │
 └──────────────┬───────────────┘
                │
@@ -56,14 +56,14 @@ Data files use a **suffix-based naming convention** and can live anywhere in the
 
 | Suffix | Purpose | Example |
 |--------|---------|---------|
-| `.scene.json` | Page data context | `default.scene.json` |
+| `.flow.json` | Page data context | `default.flow.json` |
 | `.object.json` | Reusable data fragment | `jane-doe.object.json` |
 | `.record.json` | Parameterized collection | `posts.record.json` |
 
 ```
 src/data/
-  ├── default.scene.json         # Main scene
-  ├── other-scene.scene.json     # Alternative scene
+  ├── default.flow.json            # Main flow
+  ├── other-flow.flow.json         # Alternative flow
   ├── jane-doe.object.json       # A user object
   ├── navigation.object.json     # Nav links
   └── posts.record.json          # Blog post collection
@@ -73,9 +73,9 @@ Files can be organized into subdirectories if desired — the plugin finds them 
 
 ### Objects
 
-Objects are **reusable data fragments** — standalone JSON files representing a single entity like a user, a navigation config, or a settings block. Any scene can pull in an object via `$ref`, so you define it once and reuse it everywhere.
+Objects are **reusable data fragments** — standalone JSON files representing a single entity like a user, a navigation config, or a settings block. Any flow can pull in an object via `$ref`, so you define it once and reuse it everywhere.
 
-Use objects when a piece of data is **shared across multiple scenes** or when you want to keep your scene files focused and readable.
+Use objects when a piece of data is **shared across multiple flows** or when you want to keep your flow files focused and readable.
 
 ```json
 // jane-doe.object.json
@@ -104,11 +104,11 @@ Add a `.object.json` file anywhere in the repo (typically in `src/data/`). The n
 }
 ```
 
-Then reference it from any scene with `{ "$ref": "acme-org" }`.
+Then reference it from any flow with `{ "$ref": "acme-org" }`.
 
-#### Using an object directly (without a scene)
+#### Using an object directly (without a flow)
 
-Objects can also be loaded directly by components using `useObject()`, without wiring them through a scene file:
+Objects can also be loaded directly by components using `useObject()`, without wiring them through a flow file:
 
 ```jsx
 import { useObject } from '@dfosco/storyboard-react'
@@ -117,7 +117,7 @@ const user = useObject('jane-doe')                       // full object
 const bio = useObject('jane-doe', 'profile.bio')         // dot-notation path
 ```
 
-This is useful when a component needs shared data (e.g., navigation, user profile) but the page doesn't use a scene, or when you want to avoid duplicating `$ref` entries across multiple scenes.
+This is useful when a component needs shared data (e.g., navigation, user profile) but the page doesn't use a flow, or when you want to avoid duplicating `$ref` entries across multiple flows.
 
 `useObject` supports URL hash overrides with the `object.{name}.{field}` namespace:
 
@@ -129,7 +129,7 @@ This is useful when a component needs shared data (e.g., navigation, user profil
 
 Objects are read-only JSON — you don't modify the file at runtime. Instead, use `useOverride()` to override individual fields via the URL hash.
 
-When the object is accessed through a scene (via `$ref`), override by the scene path:
+When the object is accessed through a flow (via `$ref`), override by the flow path:
 
 ```jsx
 const [name, setName] = useOverride('user.name')
@@ -162,29 +162,29 @@ setBio('')  // effectively "removes" the bio from the UI
 
 Since every component is expected to handle `null`/`undefined`/empty values, the UI simply stops rendering that content.
 
-### Scenes
+### Flows
 
-Scenes are the **data context for a page** — they define what data is available when a user visits a particular URL. Think of each scene as a complete snapshot of your app's state: the logged-in user, the navigation links, the list of projects, the current settings.
+Flows are the **data context for a page** — they define what data is available when a user visits a particular URL. Think of each flow as a complete snapshot of your app's state: the logged-in user, the navigation links, the list of projects, the current settings.
 
-**Why create multiple scenes?** Scenes are how you prototype different states and flows without changing any UI code. A large prototype might have:
+**Why create multiple flows?** Flows are how you prototype different states without changing any UI code. A large prototype might have:
 
-- `default.scene.json` — the happy-path state with a full profile, active projects, and all features enabled
-- `empty-state.scene.json` — a new user with no projects, testing empty states
-- `admin.scene.json` — an admin user with elevated permissions, showing admin-only UI
-- `error-state.scene.json` — settings configured to trigger error or warning states
-- `onboarding.scene.json` — a first-time user going through a setup flow
+- `default.flow.json` — the happy-path state with a full profile, active projects, and all features enabled
+- `empty-state.flow.json` — a new user with no projects, testing empty states
+- `admin.flow.json` — an admin user with elevated permissions, showing admin-only UI
+- `error-state.flow.json` — settings configured to trigger error or warning states
+- `onboarding.flow.json` — a first-time user going through a setup flow
 
-Each scene can reference the same objects (via `$ref`) or define its own inline data. Switching between scenes is instant — just change the `?scene=` URL parameter.
+Each flow can reference the same objects (via `$ref`) or define its own inline data. Switching between flows is instant — just change the `?flow=` URL parameter.
 
-#### Composing a scene
+#### Composing a flow
 
-Scenes support two special keys for composing data:
+Flows support two special keys for composing data:
 
 - **`$ref`** — Replaced inline with the contents of the referenced object (by name)
-- **`$global`** — An array of object names merged into the scene root (scene values win on conflicts)
+- **`$global`** — An array of object names merged into the flow root (flow values win on conflicts)
 
 ```json
-// default.scene.json
+// default.flow.json
 {
   "user": { "$ref": "jane-doe" },
   "navigation": { "$ref": "navigation" },
@@ -204,12 +204,12 @@ References are resolved by **name** — no relative paths needed. `{ "$ref": "ja
 
 After loading, all `$ref` and `$global` references are resolved — the final data is a flat object with everything inlined.
 
-`$global` is useful when an object's keys should be merged directly into the scene root rather than nested under a single key. Compare `$ref` vs `$global`:
+`$global` is useful when an object's keys should be merged directly into the flow root rather than nested under a single key. Compare `$ref` vs `$global`:
 
 **With `$ref`** — the object is nested under a key you choose:
 
 ```json
-// scene file
+// flow file
 { "nav": { "$ref": "navigation" } }
 
 // resolved result
@@ -221,10 +221,10 @@ After loading, all `$ref` and `$global` references are resolved — the final da
 }
 ```
 
-**With `$global`** — the object's keys are merged into the scene root:
+**With `$global`** — the object's keys are merged into the flow root:
 
 ```json
-// scene file
+// flow file
 {
   "$global": ["navigation"],
   "pageTitle": "Repositories"
@@ -238,16 +238,16 @@ After loading, all `$ref` and `$global` references are resolved — the final da
 }
 ```
 
-This is handy when multiple components read top-level keys (e.g., a header reads `primary`, a sidebar reads `secondary`) and you don't want to nest everything under a single parent key. Scene values always win on conflicts.
+This is handy when multiple components read top-level keys (e.g., a header reads `primary`, a sidebar reads `secondary`) and you don't want to nest everything under a single parent key. Flow values always win on conflicts.
 
 JSONC is supported — you can use `//` and `/* */` comments in your data files.
 
-#### Creating a new scene
+#### Creating a new flow
 
-Add a `.scene.json` file anywhere in `src/data/`:
+Add a `.flow.json` file anywhere in `src/data/`:
 
 ```json
-// empty-state.scene.json
+// empty-state.flow.json
 {
   "user": { "$ref": "jane-doe" },
   "projects": [],
@@ -255,15 +255,15 @@ Add a `.scene.json` file anywhere in `src/data/`:
 }
 ```
 
-Then load it by visiting `?scene=empty-state` in your browser. No code changes needed.
+Then load it by visiting `?flow=empty-state` in your browser. No code changes needed.
 
-**Page-scene matching:** If no `?scene=` param is set, Storyboard checks if a scene file matches the current page name. For example, visiting `/Repositories` automatically loads `Repositories.scene.json` if it exists. Otherwise it falls back to `default.scene.json`.
+**Page-flow matching:** If no `?flow=` param is set, Storyboard checks if a flow file matches the current page name. For example, visiting `/Repositories` automatically loads `Repositories.flow.json` if it exists. Otherwise it falls back to `default.flow.json`.
 
 ### Records
 
 Records are **collections** — arrays of entries, each with a unique `id` field. They power **dynamic routes** where the same page template renders different content based on the URL (think blog posts, repositories, issues, users — any list-and-detail pattern).
 
-**Why use records instead of scene data?** Scenes provide the static context for a page. Records provide the *collection* that populates lists and detail views. In a large prototype you might have:
+**Why use records instead of flow data?** Flows provide the static context for a page. Records provide the *collection* that populates lists and detail views. In a large prototype you might have:
 
 - `repositories.record.json` — all repos shown in a list, each clickable to a detail page
 - `issues.record.json` — issues for a repo, each with its own route
@@ -363,18 +363,18 @@ This is a convention, not a hard rule — but it's the recommended way to simula
 
 ---
 
-## Reading Scene Data
+## Reading Flow Data
 
-Use `useSceneData()` to read data from the current scene. Supports dot-notation for nested access.
+Use `useFlowData()` to read data from the current flow. Supports dot-notation for nested access.
 
 ```jsx
-import { useSceneData } from '@dfosco/storyboard-react'
+import { useFlowData } from '@dfosco/storyboard-react'
 
 function UserCard() {
-  const user = useSceneData('user')
-  const name = useSceneData('user.profile.name')
-  const firstProject = useSceneData('projects.0')
-  const allData = useSceneData() // entire scene object
+  const user = useFlowData('user')
+  const name = useFlowData('user.profile.name')
+  const firstProject = useFlowData('projects.0')
+  const allData = useFlowData() // entire flow object
 
   return (
     <div>
@@ -386,7 +386,7 @@ function UserCard() {
 }
 ```
 
-`useSceneData()` is **read-only** — it returns scene data with any hash overrides applied transparently. Use it by default for reading data.
+`useFlowData()` is **read-only** — it returns flow data with any hash overrides applied transparently. Use it by default for reading data.
 
 ---
 
@@ -404,17 +404,17 @@ The hook returns a 3-element array:
 
 | Index | What it does |
 |-------|-------------|
-| `value` | Current value — reads from URL hash first, falls back to scene JSON default |
+| `value` | Current value — reads from URL hash first, falls back to flow JSON default |
 | `setValue` | Writes a new value to the URL hash |
-| `clearValue` | Removes the hash param, reverting to the scene default |
+| `clearValue` | Removes the hash param, reverting to the flow default |
 
 ### Read priority
 
 ```
-URL hash param  →  Scene JSON default  →  undefined
+URL hash param  →  Flow JSON default  →  undefined
 ```
 
-If the user hasn't overridden anything, they see the scene default. Once they interact, the URL hash takes over. Clearing the override reverts to the default.
+If the user hasn't overridden anything, they see the flow default. Once they interact, the URL hash takes over. Clearing the override reverts to the default.
 
 ### Example: Updating user info with buttons
 
@@ -444,10 +444,10 @@ function UserSwitcher() {
 
 Clicking a button updates the URL to something like:
 ```
-/?scene=default#user.name=Alice&user.role=admin
+/?flow=default#user.name=Alice&user.role=admin
 ```
 
-Refresh the page — the override persists. Remove the hash params from the URL — it reverts to the scene JSON defaults.
+Refresh the page — the override persists. Remove the hash params from the URL — it reverts to the flow JSON defaults.
 
 ### Example: Form with StoryboardForm
 
@@ -493,50 +493,54 @@ Available form components: `TextInput`, `Textarea`, `Select`, `Checkbox`. They l
 
 | Namespace | Path format | Example | What it overrides |
 |-----------|------------|---------|-------------------|
-| **Scene data** | `{field}` | `useOverride('user.name')` | A field in the current scene |
+| **Flow data** | `{field}` | `useOverride('user.name')` | A field in the current flow |
 | **Object data** | `object.{name}.{field}` | `useOverride('object.jane-doe.name')` | A field in an object loaded via `useObject()` |
 | **Record data** | `record.{name}.{entryId}.{field}` | `useOverride('record.posts.post-1.title')` | A field in a record entry loaded via `useRecord()`/`useRecords()` |
 
-All three follow the same read priority: **hash override → fallback → undefined**. The fallback is scene data when inside a `<StoryboardProvider>`, or nothing when used standalone.
+All three follow the same read priority: **hash override → fallback → undefined**. The fallback is flow data when inside a `<StoryboardProvider>`, or nothing when used standalone.
 
 `useRecord`, `useRecords`, and `useObject` all pick up overrides automatically — you only need `useOverride` when you want to **write** an override from a component.
 
 ---
 
-## Scene Switching
+## Flow Switching
 
 ### Via URL
 
-Change the `?scene=` search parameter:
+Change the `?flow=` search parameter:
 
 ```
-http://localhost:1234/?scene=other-scene
-http://localhost:1234/?scene=empty-state
+http://localhost:1234/?flow=other-flow
+http://localhost:1234/?flow=empty-state
 ```
 
-No parameter defaults to `?scene=default`.
+No parameter defaults to `?flow=default`.
 
 ### Programmatically
 
 ```jsx
-import { useScene } from '@dfosco/storyboard-react'
+import { useFlow } from '@dfosco/storyboard-react'
 import { Button } from '@primer/react'
 
-function ScenePicker() {
-  const { sceneName, switchScene } = useScene()
+function FlowPicker() {
+  const { flowName, switchFlow } = useFlow()
 
   return (
     <div>
-      <Text>Current scene: {sceneName}</Text>
-      <Button onClick={() => switchScene('other-scene')}>
-        Switch to other-scene
+      <Text>Current flow: {flowName}</Text>
+      <Button onClick={() => switchFlow('other-flow')}>
+        Switch to other-flow
       </Button>
     </div>
   )
 }
 ```
 
-`switchScene()` updates the `?scene=` param. Hash overrides persist across scene switches.
+`switchFlow()` updates the `?flow=` param. Hash overrides persist across flow switches.
+
+### Via toolbar
+
+When a prototype has multiple flows, a **flow switcher button** appears in the toolbar. Click it to switch between flows for the current prototype without touching the URL manually.
 
 ---
 
@@ -624,13 +628,13 @@ No page needs to manually append `window.location.hash` — just use `navigate('
 Hash is **not** preserved when:
 - The target path already defines its own hash fragment
 - The link points to an external origin
-- `switchScene()` is called (intentionally clears hash since it belongs to the previous scene)
+- `switchFlow()` is called (intentionally clears hash since it belongs to the previous flow)
 
 ---
 
 ## Body Class Sync
 
-Storyboard automatically mirrors active **overrides** and the current **scene** as CSS classes on `<body>`. This lets you conditionally style components based on storyboard state using CSS — including CSS Modules.
+Storyboard automatically mirrors active **overrides** and the current **flow** as CSS classes on `<body>`. This lets you conditionally style components based on storyboard state using CSS — including CSS Modules.
 
 ### Class format
 
@@ -638,7 +642,7 @@ Storyboard automatically mirrors active **overrides** and the current **scene** 
 |--------|--------------|---------|
 | Override `key=value` | `sb-{key}--{value}` | `theme=dark` → `sb-theme--dark` |
 | Dot-notation override | Dots become dashes | `settings.theme=dark` → `sb-settings-theme--dark` |
-| Active scene | `sb-scene--{name}` | Scene "Dashboard" → `sb-scene--dashboard` |
+| Active flow | `sb-flow--{name}` | Flow "Dashboard" → `sb-flow--dashboard` |
 
 Classes are added/removed reactively — no page reload needed. Works in both normal mode (URL hash) and hide mode (localStorage shadows).
 
@@ -652,7 +656,7 @@ Use `:global()` to reference body classes from CSS Modules:
   background: var(--bgColor-muted);
 }
 
-:global(.sb-scene--dashboard) .sidebar {
+:global(.sb-flow--dashboard) .sidebar {
   display: block;
 }
 
@@ -663,7 +667,7 @@ Use `:global()` to reference body classes from CSS Modules:
 
 ### Setup
 
-`installBodyClassSync()` is called in the app entry (`src/index.jsx`) alongside other install functions. `setSceneClass()` is called automatically by `StoryboardProvider`. No additional setup needed.
+`installBodyClassSync()` is called in the app entry (`src/index.jsx`) alongside other install functions. `setFlowClass()` is called automatically by `StoryboardProvider`. No additional setup needed.
 
 ---
 
@@ -673,14 +677,15 @@ Use `:global()` to reference body classes from CSS Modules:
 
 | Hook | Returns | Description |
 |------|---------|-------------|
-| `useSceneData(path?)` | `any` | Read scene data (overrides applied transparently). Dot-notation path. Omit path for entire scene. |
-| `useSceneLoading()` | `boolean` | `true` while scene is loading |
-| `useOverride(path)` | `[value, setValue, clearValue]` | Read/write hash overrides on scene or object data. Works with any namespace (`settings.theme`, `object.jane-doe.name`, `record.posts.post-1.title`). Works with or without a `<StoryboardProvider>`. |
-| `useScene()` | `{ sceneName, switchScene }` | Current scene name + switch function |
-| `useObject(name, path?)` | `any` | Load an object data file directly by name, without a scene. Supports dot-notation path and hash overrides (`object.{name}.{field}`). |
+| `useFlowData(path?)` | `any` | Read flow data (overrides applied transparently). Dot-notation path. Omit path for entire flow. |
+| `useFlowLoading()` | `boolean` | `true` while flow is loading |
+| `useOverride(path)` | `[value, setValue, clearValue]` | Read/write hash overrides on flow or object data. Works with any namespace (`settings.theme`, `object.jane-doe.name`, `record.posts.post-1.title`). Works with or without a `<StoryboardProvider>`. |
+| `useFlow()` | `{ flowName, switchFlow }` | Current flow name + switch function |
+| `useFlows()` | `Array` | List all available flows for the current prototype. |
+| `useObject(name, path?)` | `any` | Load an object data file directly by name, without a flow. Supports dot-notation path and hash overrides (`object.{name}.{field}`). |
 | `useRecord(name, param)` | `object \| null` | Load a single record entry. `name` = record file name, `param` = route param matched against `id`. |
 | `useRecords(name)` | `Array` | Load all entries from a record collection. |
-| `useLocalStorage(path)` | `[value, setValue, clearValue]` | Persist overrides in localStorage. Read priority: hash → localStorage → scene data. |
+| `useLocalStorage(path)` | `[value, setValue, clearValue]` | Persist overrides in localStorage. Read priority: hash → localStorage → flow data. |
 | `useHideMode()` | `[isHidden, toggle]` | Toggle clean-URL mode. When active, overrides read/write to localStorage shadow keys instead of the URL hash. |
 | `useUndoRedo()` | `{ canUndo, canRedo, undo, redo }` | Undo/redo for override history snapshots. |
 | `useFeatureFlag(key)` | `boolean` | Read a feature flag by key. Reactively updates when hash/localStorage-backed flag values change. |
@@ -689,10 +694,10 @@ Use `:global()` to reference body classes from CSS Modules:
 
 | Component | Package | Description |
 |-----------|---------|-------------|
-| `<StoryboardProvider>` | `@dfosco/storyboard-react` | Wraps the app. Loads scene from `?scene=` param. Already configured in `src/pages/_app.jsx`. |
-| `<DevTools>` | `@storyboard/primer` | Floating debug panel showing current scene, hash params, and scene data. Includes comments menu when configured. Already configured in `src/index.jsx`. |
-| `<SceneDebug>` | `@storyboard/primer` | Renders resolved scene data as formatted JSON. |
-| `<SceneDataDemo>` | `@storyboard/primer` | Interactive demo of scene data and overrides. |
+| `<StoryboardProvider>` | `@dfosco/storyboard-react` | Wraps the app. Loads flow from `?flow=` param. Already configured in `src/pages/_app.jsx`. |
+| `<DevTools>` | `@storyboard/primer` | Floating debug panel showing current flow, hash params, and flow data. Includes comments menu when configured. Already configured in `src/index.jsx`. |
+| `<FlowDebug>` | `@storyboard/primer` | Renders resolved flow data as formatted JSON. |
+| `<FlowDataDemo>` | `@storyboard/primer` | Interactive demo of flow data and overrides. |
 | `<StoryboardForm>` | `@storyboard/primer` | Form wrapper. `data` prop sets root path for child inputs. Buffers values locally; flushes to URL hash on submit. |
 | `<TextInput>` | `@storyboard/primer` | Wrapped Primer TextInput. `name` prop auto-binds to session state via form context. |
 | `<Textarea>` | `@storyboard/primer` | Wrapped Primer Textarea. `name` prop auto-binds to session state via form context. |
@@ -705,12 +710,15 @@ Use `:global()` to reference body classes from CSS Modules:
 
 | Function | Description |
 |----------|-------------|
-| `init({ scenes, objects, records })` | Seed the data index. Called automatically by the Vite plugin. |
-| `loadScene(name)` | Low-level scene loader. Returns resolved scene data. |
+| `init({ flows, objects, records })` | Seed the data index. Called automatically by the Vite plugin. |
+| `loadFlow(name)` | Low-level flow loader. Returns resolved flow data. |
 | `loadObject(name)` | Low-level object loader. Resolves `$ref`s, returns deep clone. |
 | `loadRecord(name)` | Low-level record loader. Returns full array. |
 | `findRecord(name, id)` | Find a single entry in a record collection by id. |
-| `sceneExists(name)` | Check if a scene file exists. |
+| `flowExists(name)` | Check if a flow file exists. |
+| `listFlows()` | List all registered flow names. |
+| `getFlowsForPrototype(name)` | List flows scoped to a specific prototype. |
+| `listPrototypes()` | List all registered prototypes. |
 | `getByPath(obj, path)` | Dot-notation path accessor. |
 | `setByPath(obj, path, value)` | Dot-notation path setter (mutates in-place). |
 | `deepClone(obj)` | Deep clone an object. |
@@ -725,8 +733,8 @@ Use `:global()` to reference body classes from CSS Modules:
 | `isHideMode()` / `activateHideMode()` / `deactivateHideMode()` | Toggle clean-URL mode (overrides move from hash to localStorage). |
 | `installHideParamListener()` | Listens for `?hide` / `?show` URL params to toggle hide mode. |
 | `installHistorySync()` | Syncs hash changes to the undo/redo history stack. |
-| `installBodyClassSync()` | Mirrors active overrides and scene to `<body>` CSS classes. Returns unsubscribe function. |
-| `setSceneClass(name)` | Sets `sb-scene--{name}` class on `<body>`. Called automatically by `StoryboardProvider`. |
+| `installBodyClassSync()` | Mirrors active overrides and flow to `<body>` CSS classes. Returns unsubscribe function. |
+| `setFlowClass(name)` | Sets `sb-flow--{name}` class on `<body>`. Called automatically by `StoryboardProvider`. |
 | `syncOverrideClasses()` | Manually sync override classes (called automatically by `installBodyClassSync`). |
 | `initFeatureFlags(defaults)` | Initialize feature flags from config defaults. Called automatically by the Vite plugin when `featureFlags` is present in `storyboard.config.json`. |
 | `getFlag(key)` | Read a feature flag value. Resolution order: hash → localStorage → config defaults. |
@@ -746,8 +754,8 @@ Use `:global()` to reference body classes from CSS Modules:
 
 | Key | Where | What it does |
 |-----|-------|-------------|
-| `$ref` | Any value in a scene or object | Replaced with the contents of the referenced object, by **name** (e.g., `"jane-doe"` finds `jane-doe.object.json`). |
-| `$global` | Top-level array in a scene | Each name is loaded and deep-merged into the scene root. Scene values win on conflicts. |
+| `$ref` | Any value in a flow or object | Replaced with the contents of the referenced object, by **name** (e.g., `"jane-doe"` finds `jane-doe.object.json`). |
+| `$global` | Top-level array in a flow | Each name is loaded and deep-merged into the flow root. Flow values win on conflicts. |
 
 ---
 
@@ -757,12 +765,14 @@ Storyboard includes an optional **comments system** backed by GitHub Discussions
 
 ### How it works
 
-- Press **C** to enter comment mode — click anywhere on the page to place a comment
+- Press **C** or click the **comment button** in the toolbar to enter comment mode — click anywhere on the page to place a comment
+- If you're not signed in, clicking the comment button opens the login panel automatically
 - Comments are stored as GitHub Discussions in your repository (one discussion per route)
 - Each comment tracks its page position, so pins appear exactly where they were placed
 - A **comments drawer** lists all comments for the current page
 - Comments support **threaded replies**, **reactions**, **resolving**, and **drag-to-move**
 - Authentication uses a GitHub personal access token (stored in localStorage)
+- To remove your token, open the command menu → **Devtools** → **Logout (remove token)**
 
 ### Setup
 
@@ -793,7 +803,7 @@ initCommentsConfig(storyboardConfig)
 mountComments()
 ```
 
-Comments menu items appear automatically in the DevTools toolbar when configured. Remove the `comments` key from `storyboard.config.json` to disable.
+The comment button appears automatically in the toolbar when configured. Clicking it toggles comment mode directly — no submenu. Remove the `comments` key from `storyboard.config.json` to disable.
 
 ### Comments API (`@dfosco/storyboard-core/comments`)
 
@@ -841,28 +851,28 @@ packages/
 
 | Package | Purpose | Import |
 |---------|---------|--------|
-| `@dfosco/storyboard-core` | Data loading, URL hash state, dot-path utilities, localStorage, hide mode, comments | `import { loadScene, getParam } from '@dfosco/storyboard-core'` |
-| `@dfosco/storyboard-react` | Provider, hooks (`useSceneData`, `useOverride`, `useRecord`, etc.), hash preserver | `import { useSceneData } from '@dfosco/storyboard-react'` |
-| `@storyboard/primer` | Primer-styled form inputs, DevTools, SceneDebug | `import { TextInput, DevTools } from '@storyboard/primer'` |
+| `@dfosco/storyboard-core` | Data loading, URL hash state, dot-path utilities, localStorage, hide mode, comments | `import { loadFlow, getParam } from '@dfosco/storyboard-core'` |
+| `@dfosco/storyboard-react` | Provider, hooks (`useFlowData`, `useOverride`, `useRecord`, etc.), hash preserver | `import { useFlowData } from '@dfosco/storyboard-react'` |
+| `@storyboard/primer` | Primer-styled form inputs, DevTools, FlowDebug | `import { TextInput, DevTools } from '@storyboard/primer'` |
 | `@storyboard/reshaped` | Reshaped-styled form inputs (same API as Primer) | `import { TextInput } from '@storyboard/reshaped'` |
 
 **For non-React frontends** (Alpine.js, Vue, Svelte, vanilla JS), import only from `@dfosco/storyboard-core`:
 
 ```js
 import {
-  init, loadScene, sceneExists, loadRecord, findRecord,
+  init, loadFlow, flowExists, loadRecord, findRecord,
   getByPath, setByPath, deepClone,
   getParam, setParam, getAllParams, removeParam,
   subscribeToHash, getHashSnapshot,
 } from '@dfosco/storyboard-core'
 
 // 1. Seed the data index (the Vite plugin does this automatically)
-init({ scenes: { ... }, objects: { ... }, records: { ... } })
+init({ flows: { ... }, objects: { ... }, records: { ... } })
 
-// 2. Load a scene
-const data = await loadScene('default')
+// 2. Load a flow
+const data = await loadFlow('default')
 
-// 3. Read scene values
+// 3. Read flow values
 const userName = getByPath(data, 'user.name')
 
 // 4. Override values via URL hash

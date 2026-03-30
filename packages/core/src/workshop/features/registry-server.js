@@ -10,10 +10,12 @@
  */
 
 import { createPrototypesHandler } from './createPrototype/server.js'
+import { createFlowsHandler } from './createFlow/server.js'
 
 /**
  * Server-side feature handlers, keyed by config name.
  */
 export const serverFeatures = {
   createPrototype: { serverSetup: createPrototypesHandler },
+  createFlow: { serverSetup: createFlowsHandler },
 }

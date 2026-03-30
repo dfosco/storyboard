@@ -137,6 +137,24 @@ export function listFlows() {
 export const listScenes = listFlows
 
 /**
+ * Returns flows scoped to a specific prototype, with resolved metadata.
+ *
+ * @param {string} prototypeName - e.g., "Signup", "Dashboard"
+ * @returns {Array<{ key: string, name: string, meta: object|null }>}
+ */
+export function getFlowsForPrototype(prototypeName) {
+  if (!prototypeName) return []
+  const prefix = prototypeName + '/'
+  return Object.keys(dataIndex.flows)
+    .filter(key => key.startsWith(prefix))
+    .map(key => ({
+      key,
+      name: key.substring(prefix.length),
+      meta: null,
+    }))
+}
+
+/**
  * Checks whether a flow file exists for the given name.
  * @param {string} flowName - e.g., "Overview"
  * @returns {boolean}

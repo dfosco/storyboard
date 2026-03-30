@@ -16,6 +16,7 @@ export { useSceneData, useSceneLoading } from './hooks/useSceneData.js'
 export { useOverride } from './hooks/useOverride.js'
 export { useOverride as useSession } from './hooks/useOverride.js' // deprecated alias
 export { useFlow, useScene } from './hooks/useScene.js'
+export { useFlows } from './hooks/useFlows.js'
 export { useRecord, useRecords } from './hooks/useRecord.js'
 export { useObject } from './hooks/useObject.js'
 export { useLocalStorage } from './hooks/useLocalStorage.js'

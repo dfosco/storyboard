@@ -4,6 +4,7 @@
 
 - Before running any other instruction, evaluate if the user prompt contains a trigger for one or more skills in `.github/skills`.
 - If the user asks `how to use this repo`, `how to run this project` etc, give them an outline of `AGENTS.md` and point them to this file, the `README.md` and the `.github/architecture` docs
+- **After completing any change**, always create a clips task for the work done and mark it as closed. Use the relevant goal if one exists, or create a new one. Never skip this step.
 
 ---
 
@@ -19,11 +20,13 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 
 - **Primer Primitives** (`.github/skills/primer-primitives/primer-primitives.md`) — Complete reference of all `@primer/primitives` CSS design tokens. **Only consult when you need tokens not covered by the Primer Builder's inline token tables** (e.g., motion, controls, overlays, breakpoints, component-specific colors).
 
-- **Storyboard** (`.github/skills/storyboard/SKILL.md`) — Detailed guide for data structuring. **Only consult for standalone data tasks** (refactoring, creating scenes outside the builder flow). The Primer Builder skill has inline data structuring guidance.
+- **Storyboard** (`.github/skills/storyboard/SKILL.md`) — Detailed guide for data structuring. **Only consult for standalone data tasks** (refactoring, creating flows outside the builder flow). The Primer Builder skill has inline data structuring guidance.
 
 - **Architecture Scanner** (`.github/skills/architecture-scanner/SKILL.md`) Scans the codebase and generates architecture documentation in `.github/architecture/`. Invoke with: "scan the codebase architecture", "update the architecture", "update arch".
 
 - **Worktree** (`.github/skills/worktree/SKILL.md`) — Creates a git worktree in `.worktrees/<branch-name>` and switches into it. Invoke with: "create worktree", "worktree for X", or just "worktree X".
+
+- **Storyboard Core** (`.github/skills/storyboard-core/SKILL.md`) — Guide for adding menu buttons to the CoreUIBar floating toolbar. Consult when asked to create a "workshop button", "menu button", "toolbar button", or add a new feature to the CoreUIBar chrome.
 
 ---
 
@@ -56,7 +59,7 @@ After any meaningful refactor, ask the user if the architecture documents should
 - Use **Primer Octicons** from `@primer/octicons-react` for icons
 - Use **CSS Modules** (`*.module.css`) for component-specific styles
   - If you find any `sx` styled-components styling, migrate them to CSS Modules
-- **Every piece of data consumed in a page must gracefully handle `null` or `undefined` without crashing.** Since scene data, records, and overrides can all be partial, incomplete, or missing, components must never assume a field exists. Use optional chaining, fallback values, or conditional rendering for every data access.
+- **Every piece of data consumed in a page must gracefully handle `null` or `undefined` without crashing.** Since flow data, records, and overrides can all be partial, incomplete, or missing, components must never assume a field exists. Use optional chaining, fallback values, or conditional rendering for every data access.
 
 ---
 
@@ -64,7 +67,7 @@ After any meaningful refactor, ask the user if the architecture documents should
 
 - **DO NOT EVER USE** `<Box>` components
 - **DO NOT EVER USE** `sx` styled-components
-- **DO NOT USE `useState` in pages or components.** All state management must happen through storyboard hooks (`useSceneData`, `useOverride`, `useObject`, `useRecord`, etc.). Storyboard state lives in the URL hash — not in React component state.
+- **DO NOT USE `useState` in pages or components.** All state management must happen through storyboard hooks (`useFlowData`, `useOverride`, `useObject`, `useRecord`, etc.). Storyboard state lives in the URL hash — not in React component state.
 
 ---
 
@@ -78,7 +81,7 @@ Data files use **suffix-based naming** and can live anywhere in the repo:
 
 | Suffix | Purpose | Example |
 |--------|---------|---------|
-| `.scene.json` | Page data context | `default.scene.json` |
+| `.flow.json` | Page data context | `default.flow.json` |
 | `.object.json` | Reusable data fragment | `jane-doe.object.json` |
 | `.record.json` | Parameterized collection (array with `id` per entry) | `posts.record.json` |
 
@@ -110,15 +113,15 @@ Objects are standalone data fragments — they have no special keys and can be s
 
 ---
 
-### Scenes (`*.scene.json`)
+### Flows (`*.flow.json`)
 
-Scene files compose objects into a complete data context. They support two special keys:
+Flow files compose objects into a complete data context. They support two special keys:
 
-- **`$global`** — An array of object **names** merged into the scene root. Scene values win on conflicts.
+- **`$global`** — An array of object **names** merged into the flow root. Flow values win on conflicts.
 - **`$ref`** — An inline reference `{ "$ref": "some-object" }` resolved by **name** from the data index.
 
 ```json
-// default.scene.json
+// default.flow.json
 {
   "$global": ["navigation"],
   "user": { "$ref": "jane-doe" },
@@ -134,7 +137,7 @@ Scene files compose objects into a complete data context. They support two speci
 
 References use **names**, not paths: `"jane-doe"` not `"../objects/jane-doe"`.
 
-After loading, `$global` and `$ref` are resolved — the final scene data is a flat object with all references inlined. Circular `$ref` chains are detected and throw an error.
+After loading, `$global` and `$ref` are resolved — the final flow data is a flat object with all references inlined. Circular `$ref` chains are detected and throw an error.
 
 ---
 
@@ -181,18 +184,18 @@ Data files support **build-time template variables** using `${variableName}` syn
 
 ---
 
-### Scene Loader (`storyboard/core/loader.js`)
+### Flow Loader (`storyboard/core/loader.js`)
 
-The loader is seeded at app startup via `init({ scenes, objects, records })`, called automatically by the Vite data plugin's generated virtual module:
+The loader is seeded at app startup via `init({ flows, objects, records })`, called automatically by the Vite data plugin's generated virtual module:
 
 ```js
-import { loadScene } from '../storyboard/core/loader.js'
+import { loadFlow } from '../storyboard/core/loader.js'
 
-const data = await loadScene('default')    // loads default.scene.json
-const data = await loadScene('other-scene') // loads other-scene.scene.json
+const data = await loadFlow('default')    // loads default.flow.json
+const data = await loadFlow('other-flow') // loads other-flow.flow.json
 ```
 
-Also exports `init()`, `loadRecord(name)`, `findRecord(name, id)`, and `sceneExists(name)`.
+Also exports `init()`, `loadRecord(name)`, `findRecord(name, id)`, and `flowExists(name)`.
 
 ---
 
@@ -206,17 +209,17 @@ The storyboard system is split into two layers:
 
 ### StoryboardProvider & Hooks (`storyboard/internals/`)
 
-The `StoryboardProvider` wraps the app and loads scene data into React context:
+The `StoryboardProvider` wraps the app and loads flow data into React context:
 
 ```jsx
-import { useSceneData, useSceneLoading, useObject, useRecord, useRecords } from '../storyboard'
+import { useFlowData, useFlowLoading, useObject, useRecord, useRecords } from '../storyboard'
 
-// Scene data (dot-notation paths)
-const user = useSceneData('user')
-const userName = useSceneData('user.profile.name')
-const allData = useSceneData() // entire scene object
+// Flow data (dot-notation paths)
+const user = useFlowData('user')
+const userName = useFlowData('user.profile.name')
+const allData = useFlowData() // entire flow object
 
-// Objects (direct access, no scene needed)
+// Objects (direct access, no flow needed)
 const nav = useObject('navigation')              // full object
 const bio = useObject('jane-doe', 'profile.bio') // dot-notation path
 
@@ -225,24 +228,24 @@ const post = useRecord('posts')             // single entry by URL param (defaul
 const post = useRecord('posts', 'permalink') // match by a different field
 const allPosts = useRecords('posts')         // all entries
 
-const loading = useSceneLoading()
+const loading = useFlowLoading()
 ```
 
-**Page-scene matching:** If no `?scene=` param or `sceneName` prop is provided, the provider checks whether a scene file exists whose name matches the current page (e.g. `Repositories.scene.json` for the `/Repositories` route). If it does, that scene is loaded automatically. Otherwise it falls back to `"default"`.
+**Page-flow matching:** If no `?flow=` param or `flowName` prop is provided, the provider checks whether a flow file exists whose name matches the current page (e.g. `Repositories.flow.json` for the `/Repositories` route). If it does, that flow is loaded automatically. Otherwise it falls back to `"default"`.
 
 **Public exports** from `storyboard/index.js` (re-exports from core + react):
-- `init({ scenes, objects, records })` — Seed the data index (called by Vite plugin)
+- `init({ flows, objects, records })` — Seed the data index (called by Vite plugin)
 - `StoryboardProvider` — React context provider
-- `useSceneData(path?)` — Access scene data by dot-notation path
-- `useSceneLoading()` — Returns true while scene is loading
+- `useFlowData(path?)` — Access flow data by dot-notation path
+- `useFlowLoading()` — Returns true while flow is loading
 - `useOverride(path)` — Read/write hash overrides (works with or without StoryboardProvider)
-- `useObject(name, path?)` — Load object data directly by name, without a scene
+- `useObject(name, path?)` — Load object data directly by name, without a flow
 - `useRecord(name, param?)` — Load single record entry by URL param (defaults to `'id'`)
 - `useRecords(name)` — Load all entries from a record collection
-- `loadScene(name)` — Low-level scene loader
+- `loadFlow(name)` — Low-level flow loader
 - `loadObject(name, scope?)` — Low-level object loader (resolves `$ref`s, optional prototype scope)
 - `loadRecord(name)` — Low-level record loader
 - `findRecord(name, id)` — Find record entry by id
-- `sceneExists(name)` — Check if a scene file exists
+- `flowExists(name)` — Check if a flow file exists
 - `getByPath(obj, path)` — Dot-notation path utility
 - `subscribeToHash(callback)` — Subscribe to hash changes (for any reactive framework)

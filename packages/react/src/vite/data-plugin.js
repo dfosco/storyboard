@@ -293,25 +293,26 @@ function readConfig(root) {
 }
 
 /**
- * Read modes.config.json from @dfosco/storyboard-core.
- * Returns the full config object { modes, tools }.
+ * Read core-ui.config.json from @dfosco/storyboard-core.
+ * Returns the full config object with modes array.
  * Falls back to hardcoded defaults if not found.
  */
 function readModesConfig(root) {
   const fallback = {
     modes: [
-      { name: 'prototype', label: 'Navigate' },
-      { name: 'inspect', label: 'Develop' },
-      { name: 'present', label: 'Collaborate' },
-      { name: 'plan', label: 'Canvas' },
+      { name: 'prototype', label: 'Navigate', hue: '#2a2a2a' },
+      { name: 'inspect', label: 'Develop', hue: '#7655a4' },
+      { name: 'present', label: 'Collaborate', hue: '#2a9d8f' },
+      { name: 'plan', label: 'Canvas', hue: '#4a7fad' },
     ],
-    tools: {},
   }
 
   // Try local workspace path first (monorepo), then node_modules
   const candidates = [
-    path.resolve(root, 'packages/core/modes.config.json'),
-    path.resolve(root, 'node_modules/@dfosco/storyboard-core/modes.config.json'),
+    path.resolve(root, 'packages/core/core-ui.config.json'),
+    path.resolve(root, 'packages/core/configs/modes.config.json'),
+    path.resolve(root, 'node_modules/@dfosco/storyboard-core/core-ui.config.json'),
+    path.resolve(root, 'node_modules/@dfosco/storyboard-core/configs/modes.config.json'),
   ]
 
   for (const filePath of candidates) {
@@ -319,7 +320,7 @@ function readModesConfig(root) {
       const raw = fs.readFileSync(filePath, 'utf-8')
       const parsed = JSON.parse(raw)
       if (Array.isArray(parsed.modes) && parsed.modes.length > 0) {
-        return { modes: parsed.modes, tools: parsed.tools ?? {} }
+        return { modes: parsed.modes }
       }
     } catch {
       // try next candidate
@@ -461,13 +462,14 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
         initCalls.push(`registerMode(${JSON.stringify(m.name)}, { label: ${JSON.stringify(m.label)} })`)
       }
 
-      // Seed tool registry from modes.config.json
-      if (Object.keys(modesConfig.tools).length > 0) {
-        initCalls.push(`initTools(${JSON.stringify(modesConfig.tools)})`)
-      }
-
       initCalls.push(`syncModeClasses()`)
     }
+  }
+
+  // UI config from storyboard.config.json (menu visibility overrides)
+  if (config?.ui) {
+    imports.push(`import { initUIConfig } from '@dfosco/storyboard-core'`)
+    initCalls.push(`initUIConfig(${JSON.stringify(config.ui)})`)
   }
 
   // Log info when multiple flows target the same route

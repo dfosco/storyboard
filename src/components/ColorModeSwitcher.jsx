@@ -72,10 +72,9 @@ function ColorModeSwitcher() {
                 <ActionMenu>
                     <ActionMenu.Button size="small">
                         <current.icon />
-                        <Stack className={styles.label}>
-                            {' '}
+                        <span className={styles.label}>
                             {current.name}
-                        </Stack>
+                        </span>
                     </ActionMenu.Button>
                     <ActionMenu.Overlay align="right">
                         <ActionList showDividers>

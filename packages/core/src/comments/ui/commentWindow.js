@@ -9,6 +9,7 @@
 import { mount, unmount } from 'svelte'
 import CommentWindowComponent from './CommentWindow.svelte'
 import { getCachedUser } from '../auth.js'
+import { saveDraft, replyDraftKey } from '../commentDrafts.js'
 
 // Track the currently open window so only one is open at a time
 let activeWindow = null
@@ -31,7 +32,7 @@ export function showCommentWindow(container, comment, discussion, callbacks = {}
 
   const user = getCachedUser()
   const win = document.createElement('div')
-  win.className = 'sb-comment-window absolute flex flex-column sb-bg ba sb-b-default br3 sb-shadow sans-serif overflow-hidden'
+  win.className = 'sb-comment-window absolute'
   win.style.cssText = `z-index:100001;width:360px;max-height:480px;left:${comment.meta?.x ?? 0}%;top:${comment.meta?.y ?? 0}%;transform:translate(12px,-50%)`
 
   // Stop click from propagating to overlay
@@ -47,6 +48,13 @@ export function showCommentWindow(container, comment, discussion, callbacks = {}
   let instance = null
 
   function destroy() {
+    // Save reply draft from DOM before Svelte unmounts
+    const textarea = win.querySelector('textarea[placeholder="Reply…"]')
+    const val = textarea?.value?.trim()
+    if (val) {
+      saveDraft(replyDraftKey(comment.id), { type: 'reply', text: textarea.value })
+    }
+
     if (instance) { unmount(instance); instance = null }
     win.remove()
     if (activeWindow?.el === win) activeWindow = null

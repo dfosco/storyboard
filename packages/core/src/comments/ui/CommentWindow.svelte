@@ -5,6 +5,7 @@
 
 <script lang="ts">
   import { replyToComment, addReaction, removeReaction, resolveComment, unresolveComment, editComment, editReply, deleteComment } from '../api.js'
+  import { saveDraft, getDraft, clearDraft, replyDraftKey } from '../commentDrafts.js'
   import { Button } from '$lib/components/ui/button/index.js'
   import { Textarea } from '$lib/components/ui/textarea/index.js'
   import * as Avatar from '$lib/components/ui/avatar/index.js'
@@ -28,6 +29,8 @@
 
   let { comment, discussion, user = null, onClose, onMove, winEl }: Props = $props()
 
+  const draftKey = replyDraftKey(comment.id)
+
   let resolved = $state(!!comment.meta?.resolved)
   let resolving = $state(false)
   let copied = $state(false)
@@ -35,7 +38,7 @@
   let editText = $state('')
   let saving = $state(false)
   let commentText = $state(comment.text ?? '')
-  let replyText = $state('')
+  let replyText = $state(getDraft(draftKey)?.text ?? '')
   let submittingReply = $state(false)
   let editingReply = $state(-1)
   let editReplyText = $state('')
@@ -48,6 +51,14 @@
   const replies = comment.replies ?? []
   const canEdit = user && comment.author?.login === user.login
   const canReply = user && discussion
+
+  function handleReplyBlur() {
+    if (replyText.trim()) {
+      saveDraft(draftKey, { type: 'reply', text: replyText })
+    } else {
+      clearDraft(draftKey)
+    }
+  }
 
   function timeAgo(dateStr: string) {
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -129,7 +140,12 @@
 
   async function submitReply() {
     const t = replyText.trim(); if (!t) return; submittingReply = true
-    try { await replyToComment(discussion.id, comment.id, t); replyText = ''; onMove?.() } catch (err) { console.error('[storyboard] Reply failed:', err) } finally { submittingReply = false }
+    try {
+      await replyToComment(discussion.id, comment.id, t)
+      replyText = ''
+      clearDraft(draftKey)
+      onMove?.()
+    } catch (err) { console.error('[storyboard] Reply failed:', err) } finally { submittingReply = false }
   }
 
   async function saveReply(ri: number) {
@@ -170,13 +186,15 @@
           <Avatar.Fallback class="text-[10px]">{(comment.author?.login ?? '?')[0]?.toUpperCase()}</Avatar.Fallback>
         </Avatar.Root>
       {/if}
-      <span class="text-xs font-semibold">{comment.author?.login ?? 'unknown'}</span>
-      {#if comment.createdAt}
-        <span class="text-[11px] text-muted-foreground">{timeAgo(comment.createdAt)}</span>
-      {/if}
+      <div class="flex flex-col">
+        <span class="text-xs font-semibold">{comment.author?.login ?? 'unknown'}</span>
+        {#if comment.createdAt}
+          <span class="text-[11px] text-muted-foreground leading-tight">{timeAgo(comment.createdAt)}</span>
+        {/if}
+      </div>
     </div>
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="flex items-center shrink-0 gap-0.5" data-no-drag onmousedown={(e) => e.stopPropagation()}>
+    <div class="flex items-center shrink-0 gap-1.5" data-no-drag onmousedown={(e) => e.stopPropagation()}>
       <Button variant="ghost" size="sm" class={cn('h-6 px-2 text-[11px]', resolved ? 'text-success' : 'text-muted-foreground')} disabled={resolving} onclick={toggleResolve}>
         {resolving ? (resolved ? 'Unresolving…' : 'Resolving…') : (resolved ? 'Resolved ✓' : 'Resolve')}
       </Button>
@@ -195,7 +213,7 @@
       <div class="mb-2">
         <Textarea class="min-h-[40px] max-h-[100px] text-xs mb-2" bind:value={editText} />
         <div class="flex justify-end gap-1">
-          <Button variant="outline" size="sm" class="h-6 text-xs" onclick={() => editing = false}>Cancel</Button>
+          <Button variant="outline" size="sm" class="h-6 text-xs border border-input text-foreground" onclick={() => editing = false}>Cancel</Button>
           <Button size="sm" class="h-6 text-xs" disabled={saving} onclick={saveEdit}>{saving ? 'Saving…' : 'Save'}</Button>
         </div>
       </div>
@@ -241,11 +259,13 @@
             </Avatar.Root>
           {/if}
           <div class="flex-auto min-w-0">
-            <div class="flex items-center gap-1 mb-0.5">
-              <span class="text-xs font-semibold">{reply.author?.login ?? 'unknown'}</span>
-              {#if reply.createdAt}<span class="text-[11px] text-muted-foreground">{timeAgo(reply.createdAt)}</span>{/if}
+            <div class="flex items-start justify-between mb-0.5">
+              <div class="flex flex-col">
+                <span class="text-xs font-semibold">{reply.author?.login ?? 'unknown'}</span>
+                {#if reply.createdAt}<span class="text-[11px] text-muted-foreground leading-tight">{timeAgo(reply.createdAt)}</span>{/if}
+              </div>
               {#if user && reply.author?.login === user.login}
-                <div class="flex gap-1 ml-auto shrink-0">
+                <div class="flex gap-2 ml-auto shrink-0">
                   {#if editingReply !== ri}
                     <button class="text-[11px] text-muted-foreground bg-transparent border-none cursor-pointer hover:underline" onclick={() => { editingReply = ri; editReplyText = replyTexts[ri] }}>Edit</button>
                     <button class="text-[11px] text-destructive bg-transparent border-none cursor-pointer hover:underline" onclick={() => deleteReplyAt(ri)}>Delete</button>
@@ -259,7 +279,7 @@
               <div>
                 <Textarea class="min-h-[40px] max-h-[100px] text-xs mb-1" bind:value={editReplyText} />
                 <div class="flex justify-end gap-1">
-                  <Button variant="outline" size="sm" class="h-6 text-xs" onclick={() => editingReply = -1}>Cancel</Button>
+                  <Button variant="outline" size="sm" class="h-6 text-xs border border-input text-foreground" onclick={() => editingReply = -1}>Cancel</Button>
                   <Button size="sm" class="h-6 text-xs" disabled={savingReply} onclick={() => saveReply(ri)}>{savingReply ? 'Saving…' : 'Save'}</Button>
                 </div>
               </div>
@@ -296,7 +316,7 @@
   <!-- Reply form -->
   {#if canReply}
     <div class="border-t border-border px-3 py-3 flex flex-col">
-      <Textarea class="min-h-[40px] max-h-[100px] text-xs mb-1" placeholder="Reply…" bind:value={replyText} onkeydown={handleReplyKeydown} />
+      <Textarea class="min-h-[40px] max-h-[100px] text-xs mb-1" placeholder="Reply…" bind:value={replyText} onkeydown={handleReplyKeydown} onblur={handleReplyBlur} />
       <div class="flex justify-end mt-1">
         <Button size="sm" class="text-xs" disabled={!replyText.trim() || submittingReply} onclick={submitReply}>
           {submittingReply ? 'Posting…' : 'Reply'}

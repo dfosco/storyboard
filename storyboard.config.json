@@ -4,7 +4,7 @@
     "name": "storyboard"
   },
   "modes": {
-    "enabled": true
+    "enabled": false
   },
   "comments": {
     "discussions": {
@@ -15,10 +15,9 @@
     "show-banner": true
   },
   "workshop": {
-    "enabled": true,
     "features": {
       "createPrototype": true,
-      "createCanvas": true
+      "createFlow": true
     },
     "partials": [
       { "directory": "template", "name": "Application" }

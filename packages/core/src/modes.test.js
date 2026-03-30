@@ -17,6 +17,10 @@ import {
   getToolsForMode,
   subscribeToTools,
   getToolsSnapshot,
+  initModesConfig,
+  isModesEnabled,
+  getLockedMode,
+  isModeSwitcherVisible,
   _resetModes,
 } from './modes.js'
 
@@ -261,15 +265,6 @@ describe('event bus', () => {
 // ---------------------------------------------------------------------------
 
 describe('modes config', () => {
-  // Need to import these separately since they were added after the top imports
-  let initModesConfig, isModesEnabled
-
-  beforeEach(async () => {
-    const mod = await import('./modes.js')
-    initModesConfig = mod.initModesConfig
-    isModesEnabled = mod.isModesEnabled
-  })
-
   it('isModesEnabled returns false by default', () => {
     expect(isModesEnabled()).toBe(false)
   })
@@ -294,6 +289,66 @@ describe('modes config', () => {
     initModesConfig({ enabled: true })
     _resetModes()
     expect(isModesEnabled()).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Locked mode
+// ---------------------------------------------------------------------------
+
+describe('locked mode', () => {
+  it('getLockedMode returns null by default', () => {
+    expect(getLockedMode()).toBeNull()
+  })
+
+  it('initModesConfig({ locked: "present" }) sets locked mode', () => {
+    initModesConfig({ enabled: true, locked: 'present' })
+    expect(getLockedMode()).toBe('present')
+  })
+
+  it('getCurrentMode returns locked mode when set and registered', () => {
+    registerMode('present', { label: 'Present' })
+    initModesConfig({ enabled: true, locked: 'present' })
+    expect(getCurrentMode()).toBe('present')
+  })
+
+  it('getCurrentMode falls back to default when locked mode is not registered', () => {
+    initModesConfig({ enabled: true, locked: 'nonexistent' })
+    expect(getCurrentMode()).toBe('prototype')
+  })
+
+  it('activateMode is a no-op when locked', () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    registerMode('prototype', { label: 'Prototype' })
+    registerMode('present', { label: 'Present' })
+    initModesConfig({ enabled: true, locked: 'prototype' })
+
+    activateMode('present')
+    expect(getCurrentMode()).toBe('prototype')
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('locked'))
+    spy.mockRestore()
+  })
+
+  it('isModeSwitcherVisible returns true when modes enabled and not locked', () => {
+    initModesConfig({ enabled: true })
+    expect(isModeSwitcherVisible()).toBe(true)
+  })
+
+  it('isModeSwitcherVisible returns false when locked', () => {
+    initModesConfig({ enabled: true, locked: 'prototype' })
+    expect(isModeSwitcherVisible()).toBe(false)
+  })
+
+  it('isModeSwitcherVisible returns false when modes disabled', () => {
+    initModesConfig({ enabled: false })
+    expect(isModeSwitcherVisible()).toBe(false)
+  })
+
+  it('_resetModes clears locked mode', () => {
+    initModesConfig({ enabled: true, locked: 'present' })
+    _resetModes()
+    expect(getLockedMode()).toBeNull()
+    expect(isModeSwitcherVisible()).toBe(false) // modesEnabled also reset
   })
 })
 

@@ -9,7 +9,12 @@
   justify-content: flex-end;
 }
 
+/* Tailwind v4 preflight sets svg { display: block } which breaks
+   Primer's inline button layout. Reset it for this button. */
+.buttonWrapper :global(button) svg {
+  display: inline;
+}
+
 .label {
-  display: inline-block;
   margin-inline-start: var(--base-size-8);
 }

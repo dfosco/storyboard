@@ -13,6 +13,7 @@
 
 let instance = null
 let wrapper = null
+let skipLink = null
 
 /**
  * Mount the Storyboard Core UI Bar to the DOM.
@@ -31,6 +32,72 @@ export async function mountDevTools(options = {}) {
 
   const { mount } = await import('svelte')
   const { default: CoreUIBar } = await import('./CoreUIBar.svelte')
+
+  // Inject skip link as the first child of <body> so it is the
+  // first element in the tab order, regardless of where CoreUIBar
+  // is mounted. Works in both this repo and client repos.
+  skipLink = document.createElement('a')
+  skipLink.href = '#storyboard-controls'
+  skipLink.textContent = 'Skip to controls'
+  skipLink.setAttribute('data-sb-skip-link', '')
+  skipLink.addEventListener('click', (e) => {
+    e.preventDefault()
+    const firstBtn = document.querySelector('[data-core-ui-bar] [data-slot="button"]')
+    if (firstBtn) firstBtn.focus()
+  })
+
+  // Inline styles so it works without any CSS framework loaded
+  Object.assign(skipLink.style, {
+    position: 'fixed',
+    top: '1rem',
+    left: '1rem',
+    zIndex: '10000',
+    clip: 'rect(0 0 0 0)',
+    clipPath: 'inset(50%)',
+    width: '1px',
+    height: '1px',
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textDecoration: 'none',
+  })
+
+  skipLink.addEventListener('focus', () => {
+    Object.assign(skipLink.style, {
+      clip: 'auto',
+      clipPath: 'none',
+      width: 'auto',
+      height: 'auto',
+      overflow: 'visible',
+      padding: '0.375rem 0.75rem',
+      background: '#fff',
+      color: '#111',
+      border: '1px solid #ddd',
+      borderRadius: '0.5rem',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      fontSize: '0.875rem',
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
+    })
+  })
+
+  skipLink.addEventListener('blur', () => {
+    Object.assign(skipLink.style, {
+      clip: 'rect(0 0 0 0)',
+      clipPath: 'inset(50%)',
+      width: '1px',
+      height: '1px',
+      overflow: 'hidden',
+      padding: '0',
+      background: '',
+      color: '',
+      border: '',
+      borderRadius: '',
+      boxShadow: '',
+      fontSize: '',
+      fontFamily: '',
+    })
+  })
+
+  document.body.insertBefore(skipLink, document.body.firstChild)
 
   wrapper = document.createElement('div')
   wrapper.id = 'sb-core-ui'
@@ -52,6 +119,7 @@ export async function unmountDevTools() {
     instance = null
   }
   if (wrapper) { wrapper.remove(); wrapper = null }
+  if (skipLink) { skipLink.remove(); skipLink = null }
 }
 
 /**

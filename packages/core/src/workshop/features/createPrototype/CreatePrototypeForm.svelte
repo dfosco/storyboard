@@ -9,7 +9,8 @@
   import { Input } from '$lib/components/ui/input/index.js'
   import { Label } from '$lib/components/ui/label/index.js'
   import { Checkbox } from '$lib/components/ui/checkbox/index.js'
-  import * as Dialog from '$lib/components/ui/dialog/index.js'
+  import * as Panel from '$lib/components/ui/panel/index.js'
+  import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
   import * as Alert from '$lib/components/ui/alert/index.js'
 
   interface Props { onClose?: () => void }
@@ -48,6 +49,11 @@
   )
   const canSubmit = $derived(!!kebabName && !nameError && !submitting)
 
+  const templateLabel = $derived(partial ? partials.find(p => p.name === partial)?.name ?? partial : 'No template')
+  const templates = $derived(partials.filter(p => p.directory === 'template'))
+  const recipes = $derived(partials.filter(p => p.directory === 'recipe'))
+  let templateMenuOpen = $state(false)
+
   function getApiUrl() {
     const basePath = document.querySelector('base')?.getAttribute('href') || '/'
     return basePath.replace(/\/$/, '') + '/_storyboard/workshop/prototypes'
@@ -59,7 +65,7 @@
       if (res.ok) {
         const data = await res.json()
         folders = data.folders || []
-        if (data.partials?.length) { partials = data.partials; partial = partials[0].name }
+        if (data.partials?.length) { partials = data.partials }
       }
     } catch { /* defaults */ } finally { loading = false }
   })
@@ -73,7 +79,7 @@
     try {
       const res = await fetch(getApiUrl(), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: kebabName, title: displayTitle, folder: folder || undefined, recipe: partial, author: author.trim() || undefined, description: description.trim() || undefined, createFlow }),
+        body: JSON.stringify({ name: kebabName, title: displayTitle, folder: folder || undefined, recipe: partial || undefined, author: author.trim() || undefined, description: description.trim() || undefined, createFlow }),
       })
       const data = await res.json()
       if (!res.ok) { error = data.error || 'Failed to create prototype'; return }
@@ -85,9 +91,10 @@
   function handleKeydown(e: KeyboardEvent) { if (e.key === 'Enter' && canSubmit) submit() }
 </script>
 
-<Dialog.Header>
-  <Dialog.Title>Create prototype</Dialog.Title>
-</Dialog.Header>
+<Panel.Header>
+  <Panel.Title>Create prototype</Panel.Title>
+  <Panel.Close />
+</Panel.Header>
 
 <div class="p-4 space-y-3" onkeydown={handleKeydown}>
   <div class="space-y-1">
@@ -111,10 +118,52 @@
       </select>
     </div>
     <div class="space-y-1">
-      <Label for="sb-proto-partial">Template</Label>
-      <select class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" id="sb-proto-partial" bind:value={partial} disabled={loading || partials.length === 0}>
-        {#each partials as r}<option value={r.name}>{r.name}</option>{/each}
-      </select>
+      <Label>Template</Label>
+      <DropdownMenu.Root bind:open={templateMenuOpen}>
+        <DropdownMenu.Trigger>
+          {#snippet child({ props })}
+            <button
+              {...props}
+              class="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={loading}
+            >
+              <span class={partial ? 'text-foreground' : 'text-muted-foreground'}>{templateLabel}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+          {/snippet}
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content side="left" align="start" sideOffset={8} class="min-w-[180px]">
+          {#if partial}
+            <DropdownMenu.Item onclick={() => { partial = ''; templateMenuOpen = false }}>
+              <span class="text-muted-foreground">Clear selection</span>
+            </DropdownMenu.Item>
+            <DropdownMenu.Separator />
+          {/if}
+
+          {#if templates.length > 0}
+            <DropdownMenu.Group>
+              <DropdownMenu.GroupHeading>Templates</DropdownMenu.GroupHeading>
+              {#each templates as t (t.name)}
+                <DropdownMenu.Item onclick={() => { partial = t.name; templateMenuOpen = false }}>
+                  {t.name}
+                </DropdownMenu.Item>
+              {/each}
+            </DropdownMenu.Group>
+          {/if}
+
+          {#if recipes.length > 0}
+            <DropdownMenu.Separator />
+            <DropdownMenu.Group>
+              <DropdownMenu.GroupHeading>Recipes</DropdownMenu.GroupHeading>
+              {#each recipes as r (r.name)}
+                <DropdownMenu.Item onclick={() => { partial = r.name; templateMenuOpen = false }}>
+                  {r.name}
+                </DropdownMenu.Item>
+              {/each}
+            </DropdownMenu.Group>
+          {/if}
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
     </div>
   </div>
 
@@ -137,7 +186,7 @@
   {#if success}<Alert.Root><Alert.Description class="text-success">{success}</Alert.Description></Alert.Root>{/if}
 </div>
 
-<Dialog.Footer>
+<Panel.Footer>
   <Button variant="outline" onclick={onClose}>Cancel</Button>
   <Button onclick={submit} disabled={!canSubmit}>{submitting ? 'Creating\u2026' : 'Create'}</Button>
-</Dialog.Footer>
+</Panel.Footer>

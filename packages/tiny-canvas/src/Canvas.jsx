@@ -4,7 +4,6 @@ import { findDragId, generateDragId } from './utils';
 
 function Canvas({
   children,
-  centered = true,
   dotted = false,
   grid = false,
   gridSize,

@@ -4,39 +4,44 @@ import { refreshStorage, getQueue, saveDrag } from './utils';
 
 const TRANSLATION_MS = 250;
 
-function Draggable({ children, gridSize, dragId }) {
+function Draggable({ children, dragId }) {
   const draggableRef = useRef(null);
-  const queue = useRef(getQueue(dragId)).current;
+  const queueRef = useRef(getQueue(dragId));
 
   const [onTranslation, setOnTranslation] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [rotationVariation, setRotationVariation] = useState(
-    Math.random() < 0.5 ? -0.5 : 0.5
+    () => Math.random() < 0.5 ? -0.5 : 0.5
   );
 
   // Animate elements with saved positions on mount
   useEffect(() => {
     const el = draggableRef.current;
+    const queue = queueRef.current;
     if (el && dragId && queue && (queue.x !== 0 || queue.y !== 0)) {
       el.classList.add('tc-on-translation');
-      setOnTranslation(true);
+      const raf = requestAnimationFrame(() => setOnTranslation(true));
 
       const timer = setTimeout(() => {
         el.classList.remove('tc-on-translation');
         setOnTranslation(false);
       }, TRANSLATION_MS * 4);
 
-      return () => clearTimeout(timer);
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(timer);
+      };
     }
-  }, []);
+  }, [dragId]);
 
   // Restore saved positions from localStorage
   useEffect(() => {
     refreshStorage();
+    const queue = queueRef.current;
     if (draggableRef.current && queue) {
       setPosition({ x: queue.x, y: queue.y });
     }
-  }, [queue]);
+  }, []);
 
   // Free-drag during drag, snap to grid on drop
   const { isDragging } = useDraggable(draggableRef, {
@@ -51,6 +56,7 @@ function Draggable({ children, gridSize, dragId }) {
     onDrag: ({ offsetX, offsetY }) => setPosition({ x: offsetX, y: offsetY }),
     onDragEnd: (data) => {
       setPosition({ x: data.offsetX, y: data.offsetY });
+      setRotationVariation(Math.random() < 0.5 ? -0.5 : 0.5);
       if (dragId !== null) {
         saveDrag(dragId, data.offsetX, data.offsetY);
       }
@@ -59,10 +65,6 @@ function Draggable({ children, gridSize, dragId }) {
 
   const rotation =
     isDragging || onTranslation ? `${rotationVariation}deg` : '0deg';
-
-  useEffect(() => {
-    setRotationVariation(Math.random() < 0.5 ? -0.5 : 0.5);
-  }, [isDragging]);
 
   return (
     <article

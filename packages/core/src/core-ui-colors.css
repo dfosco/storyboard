@@ -1,0 +1,39 @@
+/**
+ * Core UI Colors — always light-mode.
+ *
+ * The CoreUIBar and its children (trigger buttons, dropdowns, menus)
+ * are locked to light-mode colors regardless of the page's theme.
+ *
+ * These override the shadcn/Tailwind design tokens within the
+ * [data-core-ui-bar] scope so that CSS custom-property dark-mode
+ * overrides have no visual effect on semantic tokens.
+ *
+ * Dropdown menus render via a portal (appended to body), so they fall
+ * outside [data-core-ui-bar]. We also scope the tokens to the portaled
+ * dropdown content slots.
+ *
+ * TriggerButton uses the `trigger` button variant (no Tailwind dark:
+ * classes) so its scoped CSS has full control over background/color.
+ */
+
+[data-core-ui-bar],
+[data-slot="dropdown-menu-content"],
+[data-slot="dropdown-menu-sub-content"] {
+  color-scheme: light;
+
+  /* shadcn / Tailwind semantic tokens — pinned to light values */
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(222.2 84% 4.9%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(222.2 84% 4.9%);
+  --color-primary: hsl(222.2 47.4% 11.2%);
+  --color-primary-foreground: hsl(210 40% 98%);
+  --color-secondary: hsl(210 40% 96.1%);
+  --color-secondary-foreground: hsl(222.2 47.4% 11.2%);
+  --color-muted: hsl(210 40% 96.1%);
+  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
+  --color-accent: hsl(210 40% 96.1%);
+  --color-accent-foreground: hsl(222.2 47.4% 11.2%);
+  --color-border: hsl(214.3 31.8% 91.4%);
+  --color-input: hsl(214.3 31.8% 91.4%);
+}

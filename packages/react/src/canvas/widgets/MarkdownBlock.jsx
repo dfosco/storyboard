@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, markdownSchema } from './widgetProps.js'
 import styles from './MarkdownBlock.module.css'
@@ -25,7 +25,7 @@ function renderMarkdown(text) {
     })
 }
 
-export default function MarkdownBlock({ id, props, onUpdate, onRemove }) {
+export default function MarkdownBlock({ props, onUpdate, onRemove }) {
   const content = readProp(props, 'content', markdownSchema)
   const width = readProp(props, 'width', markdownSchema)
   const [editing, setEditing] = useState(false)
@@ -45,7 +45,7 @@ export default function MarkdownBlock({ id, props, onUpdate, onRemove }) {
     } else {
       setEditHeight(null)
     }
-  }, [editing])
+  }, [editing, editHeight])
 
   return (
     <WidgetWrapper onRemove={onRemove}>

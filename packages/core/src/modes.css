@@ -55,6 +55,14 @@ html.storyboard-mode-inspect > body > #root {
   /* box-shadow: 0 0 80px 40px var(--mode-color); */
 }
 
+/* Make body transparent so the html mode-color background
+   shows through the gap between #root and the side panel */
+html.storyboard-mode-present > body,
+html.storyboard-mode-plan > body,
+html.storyboard-mode-inspect > body {
+  background-color: transparent !important;
+}
+
 #root > * {
   overflow-y: auto;
 }

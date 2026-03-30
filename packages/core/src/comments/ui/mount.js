@@ -363,26 +363,27 @@ function handleOverlayClick(e) {
 
   closeCommentWindow()
 
-  if (activeComposer) {
-    activeComposer.destroy()
-    activeComposer = null
-  }
-
   // x as percentage of viewport width, y as percentage of full document height
   const xPct = Math.round((e.clientX / window.innerWidth) * 1000) / 10
   const docHeight = document.documentElement.scrollHeight
   const yPct = Math.round(((e.clientY + window.scrollY) / docHeight) * 1000) / 10
 
+  // Move existing composer instead of destroying and recreating
+  if (activeComposer) {
+    activeComposer.moveTo(xPct, yPct)
+    return
+  }
+
   const ov = ensureOverlay()
   const route = getCurrentRoute()
   activeComposer = showComposer(ov, xPct, yPct, route, {
     onCancel: () => { activeComposer = null },
-    onSubmitOptimistic: (text) => {
+    onSubmitOptimistic: (text, x, y) => {
       activeComposer = null
       const user = getCachedUser()
-      const opt = renderOptimisticPin(ov, xPct, yPct, text, user)
+      const opt = renderOptimisticPin(ov, x, y, text, user)
       // Fire API call in background
-      createComment(route, xPct, yPct, text)
+      createComment(route, x, y, text)
         .then(() => {
           opt.succeed()
           reloadComments()

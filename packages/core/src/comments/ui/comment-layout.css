@@ -72,6 +72,7 @@
   width: 280px;
   z-index: 100001;
   background: var(--color-popover, #fff);
+  color: var(--color-popover-foreground, #1f2328);
   border: 1px solid var(--color-border, #d1d5db);
   border-radius: 0.5rem;
   box-shadow: 0 8px 24px rgba(0,0,0,0.15);

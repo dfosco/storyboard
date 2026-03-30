@@ -1,6 +1,6 @@
 {
   "name": "@dfosco/storyboard-core",
-  "version": "2.7.1",
+  "version": "3.0.0",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -11,15 +11,14 @@
   "files": [
     "src",
     "dist",
-    "modes.config.json"
+    "core-ui.config.json"
   ],
   "scripts": {
     "build:css": "tailwindcss -i src/styles/tailwind.css -o dist/tailwind.css --minify"
   },
   "exports": {
     ".": "./src/index.js",
-    "./canvas/materializer": "./src/canvas/materializer.js",
-    "./modes.config.json": "./modes.config.json",
+    "./core-ui.config.json": "./core-ui.config.json",
     "./vite/server": "./src/vite/server-plugin.js",
     "./comments": "./src/comments/index.js",
     "./comments/ui/comments.css": "./src/comments/ui/comment-layout.css",
@@ -36,6 +35,8 @@
   },
   "dependencies": {
     "@primer/octicons": "^19.22.0",
+    "feather-icons": "^4.29.2",
+    "iconoir": "^7.11.0",
     "jsonc-parser": "^3.3.1",
     "smooth-corners": "^1.1.0"
   },

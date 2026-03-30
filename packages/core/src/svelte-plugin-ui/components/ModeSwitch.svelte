@@ -11,7 +11,7 @@
   import { modeState, switchMode } from '../stores/modeStore.js'
 </script>
 
-{#if $modeState.modes.length >= 2}
+{#if $modeState.switcherVisible && $modeState.modes.length >= 2}
   <div class="sb-mode-switch" role="tablist" aria-label="Design mode">
     {#each $modeState.modes as m (m.name)}
       <button
@@ -42,7 +42,7 @@
     border-radius: 999px;
     padding: 4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-family: "Ioskeley Mono", -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   }
 
   :global(html.storyboard-mode-present) .sb-mode-switch,
@@ -112,5 +112,10 @@
   :global(html.storyboard-mode-inspect) .sb-mode-btn-active:hover {
     background: rgba(255, 255, 255, 0.85);
     color: color-mix(in srgb, var(--mode-color) 70%, black);
+  }
+
+  /* Hide when chrome is toggled off via ⌘ + . */
+  :global(html.storyboard-chrome-hidden) .sb-mode-switch {
+    display: none;
   }
 </style>

@@ -114,17 +114,17 @@ export default function storyboardServer() {
       // Wire canvas API routes (always enabled — CRUD for .canvas.jsonl files)
       routeHandlers.set('canvas', createCanvasHandler({ root, sendJson }))
 
-      // Watch core-ui.config.json for changes — trigger full reload so
+      // Watch toolbar.config.json for changes — trigger full reload so
       // CoreUIBar.svelte picks up menu/mode config changes during dev
-      const coreUIConfigPath = path.resolve(
+      const toolbarConfigPath = path.resolve(
         path.dirname(new URL(import.meta.url).pathname),
-        '../../core-ui.config.json'
+        '../../toolbar.config.json'
       )
-      server.watcher.add(coreUIConfigPath)
+      server.watcher.add(toolbarConfigPath)
       server.watcher.on('change', (filePath) => {
-        if (path.resolve(filePath) === coreUIConfigPath) {
+        if (path.resolve(filePath) === toolbarConfigPath) {
           // Invalidate the cached JSON module so Vite re-reads from disk
-          const mods = server.moduleGraph.getModulesByFile(coreUIConfigPath)
+          const mods = server.moduleGraph.getModulesByFile(toolbarConfigPath)
           if (mods) {
             for (const mod of mods) {
               server.moduleGraph.invalidateModule(mod)

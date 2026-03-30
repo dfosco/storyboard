@@ -11,7 +11,7 @@
   "files": [
     "src",
     "dist",
-    "core-ui.config.json"
+    "toolbar.config.json"
   ],
   "scripts": {
     "build:css": "tailwindcss -i src/styles/tailwind.css -o dist/tailwind.css --minify",
@@ -19,7 +19,7 @@
   },
   "exports": {
     ".": "./src/index.js",
-    "./core-ui.config.json": "./core-ui.config.json",
+    "./toolbar.config.json": "./toolbar.config.json",
     "./canvas/materializer": "./src/canvas/materializer.js",
     "./vite/server": "./src/vite/server-plugin.js",
     "./comments/svelte": "./src/comments/ui/index.js",

@@ -1,7 +1,7 @@
 /**
  * Command Actions — config-driven registry for command menu entries.
  *
- * The command section of core-ui.config.json declares action metadata:
+ * The command section of toolbar.config.json declares action metadata:
  *   id, label, type, hideFrom, separatorBefore
  *
  * Handler shapes by type:

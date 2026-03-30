@@ -8,12 +8,12 @@ Guide for adding new menu buttons to the storyboard CoreUIBar — the floating t
 
 ## Overview
 
-The CoreUIBar is a config-driven floating toolbar rendered by `packages/core/src/CoreUIBar.svelte`. All buttons are defined in `packages/core/core-ui.config.json` under the `menus` key. The toolbar reads this config at startup, filters menus by the current mode, and renders buttons in JSON key order (reversed, so top = rightmost after the command menu).
+The CoreUIBar is a config-driven floating toolbar rendered by `packages/core/src/CoreUIBar.svelte`. All buttons are defined in `packages/core/toolbar.config.json` under the `menus` key. The toolbar reads this config at startup, filters menus by the current mode, and renders buttons in JSON key order (reversed, so top = rightmost after the command menu).
 
 ## Architecture
 
 ```
-core-ui.config.json          ← Menu declarations (icon, modes, behavior)
+toolbar.config.json          ← Menu declarations (icon, modes, behavior)
     ↓
 CoreUIBar.svelte              ← Reads config, renders buttons via {#each}
     ↓
@@ -92,7 +92,7 @@ Only use when the menu needs UI beyond what action items support (e.g., auth flo
 
 ### Step 1: Add config entry
 
-Add an entry to `packages/core/core-ui.config.json` under `menus`. The key order determines position (top = leftmost, bottom = rightmost before command menu).
+Add an entry to `packages/core/toolbar.config.json` under `menus`. The key order determines position (top = leftmost, bottom = rightmost before command menu).
 
 ### Config field reference
 

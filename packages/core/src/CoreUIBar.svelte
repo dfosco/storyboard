@@ -20,7 +20,7 @@
   import { sidePanelState, togglePanel } from './stores/sidePanelStore.js'
   import { initCommandActions, registerCommandAction, getActionChildren, isExcludedByRoute, setRoutingBasePath } from './commandActions.js'
   import { isMenuHidden } from './uiConfig.js'
-  import coreUIConfig from '../core-ui.config.json'
+  import coreUIConfig from '../toolbar.config.json'
 
   interface Props { basePath?: string }
   let { basePath = '/' }: Props = $props()

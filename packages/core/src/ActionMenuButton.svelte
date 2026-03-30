@@ -4,7 +4,7 @@
   Renders a standalone toolbar button whose items come from the
   command action registry (via getActionChildren). This is the
   standalone equivalent of CommandMenu's submenu rendering — any
-  menu declared in core-ui.config.json with an "action" reference
+  menu declared in toolbar.config.json with an "action" reference
   gets rendered by this component.
 
   Supports child types: default, toggle, radio.

@@ -295,7 +295,7 @@ function readConfig(root) {
 }
 
 /**
- * Read core-ui.config.json from @dfosco/storyboard-core.
+ * Read toolbar.config.json from @dfosco/storyboard-core.
  * Returns the full config object with modes array.
  * Falls back to hardcoded defaults if not found.
  */
@@ -311,9 +311,9 @@ function readModesConfig(root) {
 
   // Try local workspace path first (monorepo), then node_modules
   const candidates = [
-    path.resolve(root, 'packages/core/core-ui.config.json'),
+    path.resolve(root, 'packages/core/toolbar.config.json'),
     path.resolve(root, 'packages/core/configs/modes.config.json'),
-    path.resolve(root, 'node_modules/@dfosco/storyboard-core/core-ui.config.json'),
+    path.resolve(root, 'node_modules/@dfosco/storyboard-core/toolbar.config.json'),
     path.resolve(root, 'node_modules/@dfosco/storyboard-core/configs/modes.config.json'),
   ]
 

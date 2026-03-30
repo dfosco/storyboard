@@ -34,14 +34,30 @@ Consumer (React app)
 ### After (proposed)
 ```
 Consumer (React app)
-  ├── import { utils } from '@dfosco/storyboard-core'         (plain JS, no build)
-  ├── import { mountDevTools } from '@dfosco/storyboard-core'  (loads compiled UI)
-  ├── import { mountComments } from '@dfosco/storyboard-core'  (loads compiled UI)
+  ├── import { mountStoryboardCore } from '@dfosco/storyboard-core'  (single entry)
+  ├── mountStoryboardCore(config, { basePath })                       (does everything)
   ├── toolbar.config.json at repo root (optional overrides)
   └── No Svelte toolchain needed.
 
   npm run update → scaffolds skills, scripts, configs from core
 ```
+
+Consumer `src/index.jsx` becomes:
+```jsx
+import { mountStoryboardCore } from '@dfosco/storyboard-core'
+import storyboardConfig from '../storyboard.config.json'
+
+mountStoryboardCore(storyboardConfig, { basePath: import.meta.env.BASE_URL })
+```
+
+`mountStoryboardCore()` internally handles:
+- `installHideParamListener()`
+- `installHistorySync()`
+- `installBodyClassSync()`
+- `initCommentsConfig(config, options)`
+- `mountDevTools(options)` → loads compiled UI bundle
+- `mountComments()` → loaded from compiled UI bundle
+- CSS injection (modes.css, comments CSS)
 
 ---
 
@@ -66,7 +82,19 @@ New entry point for the compiled bundle that exports all UI mount functions:
 ```js
 export { mountDevTools, unmountDevTools } from './devtools-impl.js'
 export { mountComments } from './comments/ui/mount.js'
-// Re-export anything else consumers need from the UI layer
+```
+
+#### 1a-2. Create `packages/core/src/mountStoryboardCore.js`
+Single public entry point for consumers. Lives in the framework-agnostic layer (not compiled into the UI bundle). Uses dynamic import to load compiled UI:
+```js
+export async function mountStoryboardCore(config = {}, options = {}) {
+  installHideParamListener()
+  installHistorySync()
+  installBodyClassSync()
+  if (isCommentsEnabled from config) initCommentsConfig(config, options)
+  await mountDevTools(options)  // dynamically imports compiled UI bundle
+  if (isCommentsEnabled) mountComments()
+}
 ```
 
 #### 1b. Create `packages/core/vite.ui.config.js`
@@ -334,17 +362,16 @@ Remove:
 
 #### 4d. Update `src/index.jsx`
 ```jsx
-// Before:
-import { mountDevTools } from '@dfosco/storyboard-core'
+// Before (6 imports, 6 function calls):
+import { installHideParamListener, installHistorySync, installBodyClassSync, mountDevTools } from '@dfosco/storyboard-core'
 import { initCommentsConfig, mountComments } from '@dfosco/storyboard-core/comments'
 import '@dfosco/storyboard-core/comments/ui/comments.css'
 import '@dfosco/storyboard-core/modes.css'
 
-// After:
-import { mountDevTools } from '@dfosco/storyboard-core'
-import { initCommentsConfig } from '@dfosco/storyboard-core/comments'
-// CSS is auto-injected by mountDevTools, no manual import needed
-// mountComments() is called internally by mountDevTools when comments are configured
+// After (1 import, 1 function call):
+import { mountStoryboardCore } from '@dfosco/storyboard-core'
+import storyboardConfig from '../storyboard.config.json'
+mountStoryboardCore(storyboardConfig, { basePath: import.meta.env.BASE_URL })
 ```
 
 #### 4e. Simplify `scripts/link.sh`

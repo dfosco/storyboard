@@ -186,11 +186,8 @@
 
   async function getHighlighter() {
     if (highlighter) return highlighter
-    const { createHighlighter } = await import('shiki')
-    highlighter = await createHighlighter({
-      themes: ['github-dark'],
-      langs: ['jsx', 'tsx', 'javascript', 'typescript'],
-    })
+    const { createInspectorHighlighter } = await import('./inspector/highlighter.js')
+    highlighter = await createInspectorHighlighter()
     return highlighter
   }
 

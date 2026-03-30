@@ -539,7 +539,7 @@
     display: flex;
     align-items: center;
     border-radius: 10px;
-    border: 3px solid var(--trigger-border, var(--color-slate-400));
+    border: 1px solid var(--trigger-border, var(--color-slate-400));
     background: var(--trigger-bg, var(--color-slate-100));
     overflow: hidden;
   }
@@ -578,8 +578,8 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--trigger-text, var(--color-slate-600));
-    border-left: 3px solid var(--trigger-border, var(--color-slate-400));
-    border-right: 3px solid var(--trigger-border, var(--color-slate-400));
+    border-left: 1px solid var(--trigger-border, var(--color-slate-400));
+    border-right: 1px solid var(--trigger-border, var(--color-slate-400));
     cursor: default;
     user-select: none;
   }

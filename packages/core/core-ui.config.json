@@ -16,6 +16,7 @@
       "trigger": "command",
       "icon": "iconoir/key-command",
       "meta": { "strokeWeight": 2 },
+      "default": true,
       "modes": ["*"],
       "actions": [
         { "type": "header", "label": "Command Menu" },

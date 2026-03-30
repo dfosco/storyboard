@@ -125,6 +125,296 @@ The Core UI release. Introduces the CoreUIBar — a floating toolbar with config
 - Added storyboard-core skill for CoreUIBar menu buttons
 - Documented new features (flow switcher, config-driven menus, panel system)
 
+## 2.8.0
+
+Routing fix for viewport prototypes in deploy branches.
+
+### Minor Changes
+
+-   Fix routing for viewport prototypes in deploy branches
+
+## 2.7.1
+
+### Patch Changes
+
+-   Change accordion defaults to closed
+
+## 2.7.0
+
+Persists open/closed state of accordions on the viewfinder in localStorage.
+
+### Minor Changes
+
+-   Persists open/closed state of accordions on /viewfinder in localStorage
+
+## 2.6.0
+
+Adds prototype-scoping by default for objects and improves 404 handling for missing flows.
+
+### Minor Changes
+
+-   Adds prototype-scoping by default for objects and improves 404 handling for missing flows
+
+## 2.5.0
+
+Hotfix release merging flow-route-inference to fix v2.4.0.
+
+### Minor Changes
+
+-   Merged flow-route-inference to fix v2.4.0
+
+## 2.4.0
+
+Adds automatic flow routing per directory — flows are now matched to pages based on their directory location.
+
+### Minor Changes
+
+-   Add automatic flow routing per directory
+
+## 2.3.0
+
+Adds folder-based separation of prototypes in the viewfinder, enabling `.folder/` directories to group related prototypes.
+
+### Minor Changes
+
+-   Add folder-based separation of prototypes in viewfinder
+
+## 2.2.0
+
+Bug fixes for record overrides, proper `?flow=` URL param support, and small viewfinder improvements.
+
+### Minor Changes
+
+-   Fix bug in applying recordOverrides. Add proper `?flow=` url param. Fix small issues with Viewfinder component.
+
+## 2.1.0
+
+Major internal restructure: introduces the modes system, plugins, and tools architecture. Moves prototype folders and metadata under `/prototypes` and renames scenes to flows.
+
+### Minor Changes
+
+-   Update storyboard internal structure to enable modes, plugins, and tools. Updates prototype folder and metadata structure to live under /prototypes. Renames scenes into flows.
+
+## 2.0.0-beta.1
+
+### Minor Changes
+
+-   Add prototype and flow restructure for 2.0 (breaking change)
+
+## 2.0.0-beta.0
+
+### Major Changes
+
+-   Add modes API in preparation for large breaking change refactor
+
+## 2.0.0
+
+The 2.0 stable release — consolidates the modes API, prototype/flow restructure, and plugin architecture from the beta series.
+
+## 1.24.0
+
+### Minor Changes
+
+-   Add alpha/beta enabled release process
+
+## 1.23.0
+
+### Minor Changes
+
+-   Add workshop dev-server under the hood (inactive for now)
+
+## 1.22.0
+
+### Minor Changes
+
+-   Iterate feature-flag system and add dedicated `sb-ff-name` class on body
+
+## 1.21.0
+
+Adds the `useRecord` hooks for working with record collections in dynamic routes.
+
+### Minor Changes
+
+-   Add useRecord hooks
+
+## 1.20.0
+
+### Minor Changes
+
+-   Fix config for devtool plugin
+
+## 1.18.0
+
+Adds a feature-flag module for toggling prototype behavior at runtime.
+
+### Minor Changes
+
+-   Add feature-flag module
+
+## 1.17.3
+
+### Patch Changes
+
+-   Fix comment overlay and optimistic submission, fix link to PAT generation
+
+## 1.17.2
+
+### Patch Changes
+
+-   Fixup title case on scene names in Viewfinder
+
+## 1.17.1
+
+### Patch Changes
+
+-   Fix and improve viewfinder design
+
+## 1.16.0
+
+### Minor Changes
+
+-   Improve design and customization on viewfinder home
+
+## 1.15.2
+
+### Patch Changes
+
+-   Update release pipeline
+
+## 1.15.1
+
+### Patch Changes
+
+-   Fix bug in hide mode, add dark-mode comment cursor
+
+## 1.15.0
+
+### Minor Changes
+
+-   Fix bug in comment mode
+-   Improve and increase test surface
+-   Improve release script
+-   Adjust linter
+
+## 1.14.0
+
+### Minor Changes
+
+-   Fix state class being added to body
+
+## 1.13.0
+
+### Minor Changes
+
+-   Change viewfinder to display branches as a dropdown
+
+## 1.12.0
+
+### Minor Changes
+
+-   States represented via classes on DOM
+
+## 1.11.1
+
+### Patch Changes
+
+-   Update auth modal PAT guidance: recommend fine-grained tokens with Discussions read/write permission, show minimum classic scope (repo), drop unnecessary read:user, pre-fill classic token creation form
+
+## 1.11.0
+
+Comments UI refactor — migrates to Alpine.js templates, adds draggable comment pins, localStorage caching, and unified reaction styles.
+
+### Minor Changes
+
+-   Comments UI refactor and improvements
+    -   Refactor comments UI to Alpine.js templates, drop inline styles
+    -   Make comment pins draggable to reposition
+    -   Cache comments in localStorage with lazy-load and 2-min TTL
+    -   Unify reaction trigger and indicator pill styles
+    -   Add Tachyons-scale gap utility classes
+    -   Move reply Edit/Delete inline with author heading
+    -   Hide browser scrollbar in comment window
+    -   Make window drag temporary, not persistent
+    -   Add worktree skill
+
+## 1.10.0
+
+Fixes branch previews on the main deployment viewfinder, moves repository config to top-level, and derives Vite base path automatically.
+
+### Minor Changes
+
+-   Fix branch previews not showing on main deployment viewfinder, move repository config to top-level and derive vite base path, and fix router.ts formatting
+
+## 1.9.0
+
+Major comments system overhaul with Alpine.js, Primer design tokens, and full light/dark mode support. Adds edit/delete replies, resolve/unresolve, viewport clamping, theme sync, and SPA navigation fixes.
+
+### Minor Changes
+
+-   Comments system, theme sync, and navigation fixes
+    -   Revamp comments UI with Alpine.js, Primer tokens, and light/dark mode support
+    -   Replace injected CSS with Tachyons and sb-\* custom classes
+    -   Add edit/delete replies, edit/resolve/unresolve comments, viewport clamping
+    -   Fix devtools click blocking, add hide/show mode toggle
+    -   Theme sync: data-sb-theme attribute, localStorage persistence, basePath filter
+    -   Fix SPA navigation: double-back bug, $ref resolution, scene matching
+
+## 1.8.0
+
+Introduces the Viewfinder component — a home page listing all prototypes with scene metadata (route and author) support.
+
+### Minor Changes
+
+-   Add Viewfinder component, sceneMeta support (route + author), getSceneMeta utility, Viewfinder as index page, optimizeDeps auto-exclude fix
+
+## 1.7.1
+
+### Patch Changes
+
+-   Bug fixes
+
+## 1.7.0
+
+### Minor Changes
+
+-   Extract Viewfinder into reusable component, add sceneMeta support (route, author), auto-populate author via pre-commit hook
+
+## 1.6.0
+
+### Minor Changes
+
+-   Update all references for storyboard-source repo rename (base paths, workflow URLs, package metadata)
+
+## 1.5.0
+
+The comments release. Adds a full comments system backed by GitHub Discussions — place contextual, position-aware comments on any prototype page with threaded replies, reactions, and a comments drawer.
+
+### Minor Changes
+
+-   feat: add comments system with GitHub Discussions backend
+
+    Storyboard now includes an optional comments system backed by GitHub Discussions. Collaborators can place contextual comments pinned to specific positions on any page.
+
+    Features:
+
+    -   Press C to enter comment mode — click anywhere to place a comment
+    -   Comments stored as GitHub Discussions (one discussion per route)
+    -   Position-aware pins that appear where comments were placed
+    -   Threaded replies, reactions, resolve/unresolve, drag-to-move
+    -   Comments drawer listing all comments for the current page
+    -   GitHub personal access token authentication
+    -   DevTools integration with comment menu items
+
+    Configure via `storyboard.config.json` with a `comments` key pointing to your GitHub repo and discussions category.
+
+    New exports from `@dfosco/storyboard-core/comments`:
+
+    -   `initCommentsConfig()`, `mountComments()`, `isCommentsEnabled()`
+    -   `toggleCommentMode()`, `fetchRouteDiscussion()`, `createComment()`
+    -   `replyToComment()`, `resolveComment()`, `moveComment()`, `deleteComment()`
+    -   `addReaction()`, `removeReaction()`
+    -   `openCommentsDrawer()`, `closeCommentsDrawer()`
+
 ## 1.1.1
 
 Quick patch to fix a case-sensitivity issue that broke CI on Linux.
@@ -161,3 +451,9 @@ The architecture release. Splits the storyboard system into framework-agnostic c
     The `src/` directory now contains only user-facing prototype code (pages, components, templates, data files). All existing import paths updated; barrel `storyboard/index.js` re-exports from both layers for backwards compatibility.
 
 -   4968cc5: Bundle optimizations: pre-parse data at build time, split vendor chunks (react, primer, octicons, reshaped), remove unused Primer theme CSS variants (714KB to 244KB), add changesets for versioning
+
+## 1.0.1
+
+### Patch Changes
+
+-   chore: release v1.2.1

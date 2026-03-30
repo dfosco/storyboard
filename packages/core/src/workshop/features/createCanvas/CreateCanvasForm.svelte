@@ -26,7 +26,6 @@
   let loading = $state(true)
   let submitting = $state(false)
   let error: string | null = $state(null)
-  let success: string | null = $state(null)
 
   const kebabName = $derived(
     name.replace(/[^a-zA-Z0-9\s_-]/g, '').trim().replace(/[\s_]+/g, '-').toLowerCase().replace(/-+/g, '-').replace(/^-|-$/g, '')
@@ -63,7 +62,7 @@
 
   async function submit() {
     if (!canSubmit) return
-    submitting = true; error = null; success = null
+    submitting = true; error = null
     try {
       const res = await fetch(getApiUrl() + '/create', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -71,14 +70,10 @@
       })
       const data = await res.json()
       if (!res.ok) { error = data.error || 'Failed to create canvas'; return }
-      success = `Created! Opening canvas\u2026`
-      // Wait for Vite's full-reload to process the new file,
-      // then navigate to the canvas route.
-      const base = (document.querySelector('base')?.getAttribute('href') || '/').replace(/\/$/, '')
-      const target = base + data.route
-      // Vite full-reload fires ~200ms after file creation. We delay
-      // navigation so the virtual module is rebuilt with the new canvas.
-      setTimeout(() => { window.location.href = target }, 2500)
+      // Add redirect param to current URL — survives Vite's full-reload
+      const url = new URL(window.location.href)
+      url.searchParams.set('redirect', data.route)
+      window.history.replaceState(null, '', url.toString())
     } catch (err: any) { error = err.message || 'Network error' } finally { submitting = false }
   }
 
@@ -123,7 +118,6 @@
   </div>
 
   {#if error}<Alert.Root variant="destructive"><Alert.Description>{error}</Alert.Description></Alert.Root>{/if}
-  {#if success}<Alert.Root><Alert.Description class="text-success">{success}</Alert.Description></Alert.Root>{/if}
 </div>
 
 <Panel.Footer>

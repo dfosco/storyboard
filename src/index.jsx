@@ -16,6 +16,15 @@ import { mountComments } from '@dfosco/storyboard-core/comments/svelte'
 import '@dfosco/storyboard-core/comments/ui/comment-layout.css'
 import storyboardConfig from '../storyboard.config.json'
 
+// Redirect after canvas creation — Vite full-reloads when a new
+// .canvas.jsonl is created. The form sets ?redirect=/canvas/name
+// which survives the reload. We navigate once the route is registered.
+const redirectParam = new URLSearchParams(window.location.search).get('redirect')
+if (redirectParam) {
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+  window.location.replace(base + redirectParam)
+}
+
 const router = createBrowserRouter(routes, {
     basename: import.meta.env.BASE_URL,
 })

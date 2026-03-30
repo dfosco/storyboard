@@ -26,6 +26,8 @@
   let { basePath = '/' }: Props = $props()
 
   let visible = $state(true)
+  // Hide the entire toolbar when loaded inside a prototype embed iframe
+  const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')
   let commandMenuOpen = $state(false)
   let ActionMenuButton: any = $state(null)
   let navVersion = $state(0)
@@ -424,7 +426,7 @@
   }
 </script>
 
-{#if visible}
+{#if visible && !isEmbed}
   <div
     id="storyboard-controls"
     class="fixed bottom-6 right-6 z-[9999] font-sans flex items-end gap-3"

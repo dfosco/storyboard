@@ -1,6 +1,6 @@
 <script>
   import { Dialog as DialogPrimitive } from "bits-ui";
-  import { Button } from "$lib/components/ui/button/index.js";
+  import { Button } from "../../../components/ui/button/index.js";
   import XIcon from '@lucide/svelte/icons/x';
 
   let { class: className, ...restProps } = $props();

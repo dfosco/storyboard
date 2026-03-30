@@ -1,6 +1,6 @@
 <script>
-	import { Separator } from "$lib/components/ui/separator/index.js";
-	import { cn } from "$lib/utils/index.js";
+	import { Separator } from "../../../components/ui/separator/index.js";
+	import { cn } from "../../../utils/index.js";
 
 	let {
 		ref = $bindable(null),

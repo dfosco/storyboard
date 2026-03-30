@@ -1,7 +1,7 @@
 <script>
 	import { Popover as PopoverPrimitive } from "bits-ui";
 	import PopoverPortal from "./popover-portal.svelte";
-	import { cn } from "$lib/utils/index.js";
+	import { cn } from "../../../utils/index.js";
 	let {
 		ref = $bindable(null),
 		class: className,

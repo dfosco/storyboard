@@ -1,7 +1,7 @@
 <script>
-	import { cn } from "$lib/utils/index.js";
+	import { cn } from "../../../utils/index.js";
 	import { Dialog as DialogPrimitive } from "bits-ui";
-	import { Button } from "$lib/components/ui/button/index.js";
+	import { Button } from "../../../components/ui/button/index.js";
 
 	let {
 		ref = $bindable(null),

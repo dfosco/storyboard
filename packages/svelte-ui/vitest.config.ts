@@ -14,10 +14,6 @@ export default defineConfig({
         '../core/src/index.js',
         import.meta.url,
       ).pathname,
-      '$lib': new URL(
-        '../core/src/lib',
-        import.meta.url,
-      ).pathname,
       // Direct import for test-only helper (not in barrel export)
       '@test/modes': new URL(
         '../core/src/modes.js',

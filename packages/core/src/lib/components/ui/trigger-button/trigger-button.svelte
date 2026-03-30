@@ -10,7 +10,7 @@
 -->
 
 <script module>
-  import { cn } from "$lib/utils/index.js";
+  import { cn } from "../../../utils/index.js";
 
   // Register CSS Houdini paint worklet for superellipse masks
   if (typeof CSS !== 'undefined' && 'paintWorklet' in CSS) {
@@ -21,7 +21,7 @@
 </script>
 
 <script>
-  import { Button } from '$lib/components/ui/button/index.js'
+  import { Button } from '../../../components/ui/button/index.js'
 
   let {
     class: className,

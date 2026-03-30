@@ -8,8 +8,8 @@
 
 <script lang="ts">
   import { onDestroy } from 'svelte'
-  import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
-  import * as Panel from '$lib/components/ui/panel/index.js'
+  import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
+  import * as Panel from './lib/components/ui/panel/index.js'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import AuthModal from './comments/ui/AuthModal.svelte'
   import { isAuthenticated } from './comments/auth.js'

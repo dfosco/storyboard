@@ -6,11 +6,11 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { setToken, validateToken } from '../auth.js'
-  import { Button } from '$lib/components/ui/button/index.js'
-  import { Input } from '$lib/components/ui/input/index.js'
-  import { Label } from '$lib/components/ui/label/index.js'
-  import * as Alert from '$lib/components/ui/alert/index.js'
-  import * as Avatar from '$lib/components/ui/avatar/index.js'
+  import { Button } from '../../lib/components/ui/button/index.js'
+  import { Input } from '../../lib/components/ui/input/index.js'
+  import { Label } from '../../lib/components/ui/label/index.js'
+  import * as Alert from '../../lib/components/ui/alert/index.js'
+  import * as Avatar from '../../lib/components/ui/avatar/index.js'
 
   interface Props {
     onDone?: (user: { login: string; avatarUrl: string }) => void

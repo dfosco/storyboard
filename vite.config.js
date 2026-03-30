@@ -28,7 +28,6 @@ export default defineConfig(() => {
         dedupe: ['react', 'react-dom'],
         alias: {
             '@': path.resolve(__dirname, './src'),
-            '$lib': path.resolve(__dirname, './packages/core/src/lib'),
             // In git worktrees, npm resolves workspace packages to the main
             // worktree. Force local resolution so edits here take effect.
             // NOTE: Sub-path aliases must come BEFORE base package aliases.

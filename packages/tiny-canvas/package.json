@@ -4,26 +4,15 @@
   "type": "module",
   "license": "MIT",
   "description": "A lightweight React canvas with draggable elements and persistent positions",
-  "main": "./src/index.js",
-  "module": "./src/index.js",
+  "main": "./dist/tiny-canvas.js",
+  "module": "./dist/tiny-canvas.js",
   "types": "./src/index.d.ts",
   "exports": {
     ".": {
-      "import": "./src/index.js",
+      "import": "./dist/tiny-canvas.js",
       "types": "./src/index.d.ts"
     },
-    "./style.css": "./src/style.css"
-  },
-  "publishConfig": {
-    "main": "./dist/tiny-canvas.js",
-    "module": "./dist/tiny-canvas.js",
-    "exports": {
-      ".": {
-        "import": "./dist/tiny-canvas.js",
-        "types": "./src/index.d.ts"
-      },
-      "./style.css": "./dist/tiny-canvas.css"
-    }
+    "./style.css": "./dist/tiny-canvas.css"
   },
   "files": [
     "dist",

@@ -7,9 +7,9 @@
 -->
 
 <script lang="ts">
-  import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
-  import * as Panel from '$lib/components/ui/panel/index.js'
-  import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
+  import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
+  import * as Panel from './lib/components/ui/panel/index.js'
+  import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import { getActionsForMode, executeAction, getActionChildren, subscribeToCommandActions } from './commandActions.js'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'

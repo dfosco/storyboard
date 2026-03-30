@@ -1,5 +1,5 @@
 <script>
-  import { cn } from "$lib/utils/index.js";
+  import { cn } from "../../../utils/index.js";
 
   let { class: className, children, ...restProps } = $props();
 </script>

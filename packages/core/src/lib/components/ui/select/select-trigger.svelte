@@ -1,6 +1,6 @@
 <script>
 	import { Select as SelectPrimitive } from "bits-ui";
-	import { cn } from "$lib/utils/index.js";
+	import { cn } from "../../../utils/index.js";
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 
 	let {

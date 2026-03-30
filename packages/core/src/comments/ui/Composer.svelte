@@ -4,9 +4,9 @@
 -->
 
 <script lang="ts">
-  import { Button } from '$lib/components/ui/button/index.js'
-  import { Textarea } from '$lib/components/ui/textarea/index.js'
-  import * as Avatar from '$lib/components/ui/avatar/index.js'
+  import { Button } from '../../lib/components/ui/button/index.js'
+  import { Textarea } from '../../lib/components/ui/textarea/index.js'
+  import * as Avatar from '../../lib/components/ui/avatar/index.js'
   import { saveDraft, getDraft, clearDraft, composerDraftKey } from '../commentDrafts.js'
 
   interface Props {

@@ -5,13 +5,13 @@
 
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { Button } from '$lib/components/ui/button/index.js'
-  import { Input } from '$lib/components/ui/input/index.js'
-  import { Label } from '$lib/components/ui/label/index.js'
-  import { Checkbox } from '$lib/components/ui/checkbox/index.js'
-  import * as Panel from '$lib/components/ui/panel/index.js'
-  import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
-  import * as Alert from '$lib/components/ui/alert/index.js'
+  import { Button } from '../../../lib/components/ui/button/index.js'
+  import { Input } from '../../../lib/components/ui/input/index.js'
+  import { Label } from '../../../lib/components/ui/label/index.js'
+  import { Checkbox } from '../../../lib/components/ui/checkbox/index.js'
+  import * as Panel from '../../../lib/components/ui/panel/index.js'
+  import * as DropdownMenu from '../../../lib/components/ui/dropdown-menu/index.js'
+  import * as Alert from '../../../lib/components/ui/alert/index.js'
 
   interface Props { onClose?: () => void }
   let { onClose }: Props = $props()

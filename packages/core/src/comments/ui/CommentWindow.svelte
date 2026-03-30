@@ -6,11 +6,11 @@
 <script lang="ts">
   import { replyToComment, addReaction, removeReaction, resolveComment, unresolveComment, editComment, editReply, deleteComment } from '../api.js'
   import { saveDraft, getDraft, clearDraft, replyDraftKey } from '../commentDrafts.js'
-  import { Button } from '$lib/components/ui/button/index.js'
-  import { Textarea } from '$lib/components/ui/textarea/index.js'
-  import * as Avatar from '$lib/components/ui/avatar/index.js'
-  import { Separator } from '$lib/components/ui/separator/index.js'
-  import { cn } from '$lib/utils/index.js'
+  import { Button } from '../../lib/components/ui/button/index.js'
+  import { Textarea } from '../../lib/components/ui/textarea/index.js'
+  import * as Avatar from '../../lib/components/ui/avatar/index.js'
+  import { Separator } from '../../lib/components/ui/separator/index.js'
+  import { cn } from '../../lib/utils/index.js'
 
   const REACTION_EMOJI: Record<string, string> = {
     THUMBS_UP: '👍', THUMBS_DOWN: '👎', LAUGH: '😄', HOORAY: '🎉',

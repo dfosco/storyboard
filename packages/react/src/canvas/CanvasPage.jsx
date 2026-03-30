@@ -212,18 +212,22 @@ export default function CanvasPage({ name }) {
     return () => document.removeEventListener('paste', handlePaste)
   }, [name])
 
-  // Cmd+scroll (or pinch) to smooth-zoom the canvas
+  // Cmd+scroll / trackpad pinch to smooth-zoom the canvas
+  // On macOS, pinch-to-zoom fires wheel events with ctrlKey: true and small
+  // fractional deltaY values. We accumulate the delta to handle sub-pixel changes.
+  const zoomAccum = useRef(0)
   useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
     function handleWheel(e) {
       if (!e.metaKey && !e.ctrlKey) return
       e.preventDefault()
-      const delta = -e.deltaY * 0.5
-      setZoom((z) => Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z + delta))))
+      zoomAccum.current += -e.deltaY
+      const step = Math.trunc(zoomAccum.current)
+      if (step === 0) return
+      zoomAccum.current -= step
+      setZoom((z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z + step)))
     }
-    el.addEventListener('wheel', handleWheel, { passive: false })
-    return () => el.removeEventListener('wheel', handleWheel)
+    document.addEventListener('wheel', handleWheel, { passive: false })
+    return () => document.removeEventListener('wheel', handleWheel)
   }, [])
 
   if (!canvas) {

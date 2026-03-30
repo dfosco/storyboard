@@ -170,8 +170,8 @@
   align-items: center;
   gap: 0;
   padding: 0;
-  background: var(--trigger-bg, var(--color-slate-100, #e2e8f0));
-  border: 2px solid var(--trigger-border, var(--color-slate-400, #94a3b8));
+  background: #e2e8f0;
+  border: 2px solid #94a3b8;
   border-radius: 10px;
   opacity: 0;
   transition: opacity 150ms;
@@ -192,7 +192,7 @@
   justify-content: center;
   font-size: 16px;
   font-weight: 600;
-  color: var(--trigger-text, var(--color-slate-600, #475569));
+  color: #475569;
   transition: background 100ms;
 }
 
@@ -205,7 +205,7 @@
 }
 
 .zoomBtn:hover:not(:disabled) {
-  background: var(--trigger-bg-hover, var(--color-slate-300, #cbd5e1));
+  background: #cbd5e1;
 }
 
 .zoomBtn:disabled {
@@ -216,12 +216,12 @@
 .zoomLabel {
   font-size: 11px;
   font-weight: 600;
-  color: var(--trigger-text, var(--color-slate-600, #475569));
+  color: #475569;
   min-width: 40px;
   text-align: center;
   user-select: none;
-  border-left: 2px solid var(--trigger-border, var(--color-slate-400, #94a3b8));
-  border-right: 2px solid var(--trigger-border, var(--color-slate-400, #94a3b8));
+  border-left: 2px solid #94a3b8;
+  border-right: 2px solid #94a3b8;
   height: 30px;
   line-height: 30px;
 }

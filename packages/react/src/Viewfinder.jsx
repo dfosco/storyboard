@@ -33,7 +33,7 @@ export default function Viewfinder({ pageModules = {}, basePath, title = 'Storyb
 
     let cancelled = false
 
-    import('@dfosco/storyboard-core/ui/viewfinder').then(({ mountViewfinder, unmountViewfinder }) => {
+    import('@dfosco/storyboard-core/ui-runtime').then(({ mountViewfinder, unmountViewfinder }) => {
       if (cancelled) return
       // Ensure clean state for re-mounts
       unmountViewfinder()

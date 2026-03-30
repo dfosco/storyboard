@@ -76,9 +76,9 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     if (!isModesEnabled()) return
 
     let cleanup
-    import('@dfosco/storyboard-core/ui/design-modes')
-      .then(({ mountDesignModesUI }) => {
-        cleanup = mountDesignModesUI()
+    import('@dfosco/storyboard-core/ui-runtime')
+      .then(({ mountDesignModes }) => {
+        cleanup = mountDesignModes()
       })
       .catch(() => {
         // Svelte UI not available — degrade gracefully

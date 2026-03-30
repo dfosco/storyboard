@@ -66,7 +66,7 @@
     "theme": {
       "label": "Theme",
       "ariaLabel": "Switch theme",
-      "icon": "iconoir/half-moon",
+      "icon": "primer/sun",
       "meta": { "strokeWeight": 2 },
       "modes": ["*"],
       "menuWidth": "220px"

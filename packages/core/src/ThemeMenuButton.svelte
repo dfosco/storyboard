@@ -42,7 +42,7 @@
         {tabindex}
         {...props}
       >
-        <Icon name={config.icon || 'iconoir/half-moon'} size={16} {...(config.meta || {})} />
+        <Icon name={config.icon || 'primer/sun'} size={16} {...(config.meta || {})} />
       </TriggerButton>
     {/snippet}
   </DropdownMenu.Trigger>

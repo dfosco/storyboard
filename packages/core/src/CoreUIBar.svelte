@@ -529,7 +529,7 @@
       {/each}
     {/if}
     {#if commandMenuConfig}
-      <div class={visible ? '' : 'default-button-dimmed'}>
+      <div class={visible || commandMenuOpen ? '' : 'default-button-dimmed'}>
         <Tooltip.Root>
           <Tooltip.Trigger>
             <CommandMenu {basePath} bind:open={commandMenuOpen} bind:flowDialogOpen {flowName} {flowJson} {flowError} shortcuts={shortcutsConfig} tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} />

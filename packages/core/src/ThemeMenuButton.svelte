@@ -6,8 +6,8 @@
 -->
 
 <script lang="ts">
-  import { TriggerButton } from '$lib/components/ui/trigger-button/index.js'
-  import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
+  import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
+  import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import { themeState, setTheme, THEMES, type ThemeValue } from './stores/themeStore.js'
 

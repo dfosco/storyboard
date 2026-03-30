@@ -497,6 +497,7 @@
     class="fixed bottom-6 right-6 z-[9999] font-sans flex items-end gap-3"
     data-core-ui-bar
     role="toolbar"
+    tabindex="0"
     aria-label="Storyboard controls"
     onkeydown={handleToolbarKeydown}
     bind:this={toolbarEl}

@@ -84,6 +84,7 @@ Data files use **suffix-based naming** and can live anywhere in the repo:
 | `.flow.json` | Page data context | `default.flow.json` |
 | `.object.json` | Reusable data fragment | `jane-doe.object.json` |
 | `.record.json` | Parameterized collection (array with `id` per entry) | `posts.record.json` |
+| `.prototype.json` | Prototype metadata (title, author, description) | `my-proto.prototype.json` |
 
 Every name+suffix must be unique within its scope — the build fails on duplicates. Objects, flows, and records inside `src/prototypes/` are scoped to their prototype; global files (outside prototypes) share a single namespace.
 
@@ -154,6 +155,38 @@ Records are collections — arrays of entries, each with a unique `id`. They pow
 ```
 
 Access with `useRecord('posts')` in a `pages/posts/[id].jsx` dynamic route page. The second argument defaults to `'id'` and determines which record field to match against the URL param — name the file `[field].jsx` to match a different field (e.g. `[permalink].jsx` matches `entry.permalink`).
+
+---
+
+### External Prototypes
+
+An **external prototype** links to a prototype hosted at an external URL. It appears in the viewfinder alongside regular prototypes but opens in a new tab instead of navigating within the app.
+
+To create one, add a folder inside `src/prototypes/` with only a `.prototype.json` file containing a `url` field:
+
+```json
+// my-external-app.prototype.json
+{
+  "meta": {
+    "title": "External App",
+    "description": "Hosted on another domain",
+    "author": ["dfosco"]
+  },
+  "url": "https://example.com/prototype"
+}
+```
+
+No `index.jsx` or flow files are needed — the folder only contains the `.prototype.json`.
+
+**Behavior:**
+- Shows up in the viewfinder with an "external" badge
+- Clicking opens the URL in a new tab (`target="_blank"`)
+- Can live inside `.folder/` directories for grouping
+- Supports all standard metadata (`title`, `description`, `author`, `icon`, `tags`, `team`)
+
+**Creating via Workshop UI:** Use the "New prototype" workshop action and check the "External prototype" checkbox, then provide the URL.
+
+**Creating via Agent:** Create the folder and `.prototype.json` file directly — no special commands needed.
 
 ---
 

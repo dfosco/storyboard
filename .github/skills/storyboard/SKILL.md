@@ -1,6 +1,6 @@
 ---
 name: storyboard
-description: Storyboard data structuring and management system. Use when creating scene data, setting up storyboard data, creating data objects, or structuring data for a prototype page.
+description: Storyboard data structuring and management system. Use when creating flow data, setting up storyboard data, creating data objects, or structuring data for a prototype page.
 metadata:
   author: Daniel Fosco
   version: "2026.3.09"
@@ -8,11 +8,11 @@ metadata:
 
 # Storyboard
 
-> Triggered by: when building a new page or route in storyboard, "create scene data", "set up storyboard data", "create data objects", "create new page", "create new route", when structuring data for a prototype page
+> Triggered by: when building a new page or route in storyboard, "create flow data", "set up storyboard data", "create data objects", "create new page", "create new route", when structuring data for a prototype page
 
 ## What This Does
 
-Guides the creation of data objects, scene files, and record collections for pages being built. Determines what data should be externalized into the Storyboard data system vs. hardcoded in the component.
+Guides the creation of data objects, flow files, and record collections for pages being built. Determines what data should be externalized into the Storyboard data system vs. hardcoded in the component.
 
 ## Data File Types
 
@@ -20,7 +20,7 @@ Storyboard uses **suffix-based naming** for data files. Files can live anywhere 
 
 | Suffix | Purpose | Example |
 |--------|---------|---------|
-| `.scene.json` | Page data context | `default.scene.json` |
+| `.flow.json` | Page data context | `default.flow.json` |
 | `.object.json` | Reusable data fragment | `jane-doe.object.json` |
 | `.record.json` | Parameterized collection (array with `id` per entry) | `posts.record.json` |
 
@@ -34,7 +34,7 @@ Storyboard uses **suffix-based naming** for data files. Files can live anywhere 
 
 - After the primer-builder skill has identified the page structure and components (Steps 1–3)
 - Replaces the primer-builder's Step 4 (Plan Data) with a more structured approach
-- When refactoring an existing page to use scene data
+- When refactoring an existing page to use flow data
 - When creating dynamic route pages with records
 
 ## Navigation Anti-Pattern
@@ -119,19 +119,19 @@ Create one object file per logical entity:
 | Org/team | `{org-name}.object.json` | `primer-org.object.json` |
 
 **Object structure rules:**
-- **The object file's top-level structure IS the value that `$ref` resolves to.** If the scene has `"repositories": { "$ref": "repositories" }`, the object file should be a bare array `[...]`, not `{ "repositories": [...] }` — otherwise the data double-nests as `repositories.repositories`.
-- Same rule for single-entity objects: if the scene has `"user": { "$ref": "jane-doe" }`, the object file should contain the user fields directly at root (`{ "name": "Jane", ... }`), not wrapped in `{ "user": { "name": "Jane", ... } }`.
+- **The object file's top-level structure IS the value that `$ref` resolves to.** If the flow has `"repositories": { "$ref": "repositories" }`, the object file should be a bare array `[...]`, not `{ "repositories": [...] }` — otherwise the data double-nests as `repositories.repositories`.
+- Same rule for single-entity objects: if the flow has `"user": { "$ref": "jane-doe" }`, the object file should contain the user fields directly at root (`{ "name": "Jane", ... }`), not wrapped in `{ "user": { "name": "Jane", ... } }`.
 - Keep objects flat where possible — avoid deep nesting
 - Use arrays for lists of items
 - Include all fields that the UI needs — don't make the component compute derived data
 - Use realistic placeholder data (real GitHub avatar URLs, plausible repo names, etc.)
 
-### Step 3: Compose the scene
+### Step 3: Compose the flow
 
-Create a scene file that composes the objects:
+Create a flow file that composes the objects:
 
 ```json
-// default.scene.json
+// default.flow.json
 {
   "$global": ["org-navigation"],
   "user": { "$ref": "jane-doe" },
@@ -143,27 +143,27 @@ Create a scene file that composes the objects:
 }
 ```
 
-**Scene composition rules:**
+**flow composition rules:**
 - Use `$global` for navigation — it merges at the root level, making nav data available at the top
-- Use `$ref` for entity objects — keeps them reusable across scenes
+- Use `$ref` for entity objects — keeps them reusable across flows
 - `$ref` and `$global` use **names**, not paths: `"jane-doe"` not `"../objects/jane-doe"`
-- Inline small, scene-specific data directly (org name, settings, filter state)
-- Name the scene after the page/flow: `org-repos.scene.json`, `issue-detail.scene.json`
-- Rule of thumb: a scene can be named after its corresponding page
+- Inline small, flow-specific data directly (org name, settings, filter state)
+- Name the flow after the page/flow: `org-repos.flow.json`, `issue-detail.flow.json`
+- Rule of thumb: a flow can be named after its corresponding page
 
 ### Step 4: Wire up the component
 
-In the page component, use `useSceneData()` with dot-notation paths:
+In the page component, use `useflowData()` with dot-notation paths:
 
 ```jsx
-import { useSceneData, useSceneLoading } from '../storyboard'
+import { useflowData, useflowLoading } from '../storyboard'
 
 function ReposPage() {
-  const topnav = useSceneData('topnav')       // from $global navigation
-  const sidenav = useSceneData('sidenav')     // from $global navigation
-  const org = useSceneData('org')
-  const repos = useSceneData('repositories')
-  const loading = useSceneLoading()
+  const topnav = useflowData('topnav')       // from $global navigation
+  const sidenav = useflowData('sidenav')     // from $global navigation
+  const org = useflowData('org')
+  const repos = useflowData('repositories')
+  const loading = useflowLoading()
 
   if (loading) return <Spinner />
 
@@ -253,13 +253,13 @@ function PostsIndex() {
 }
 ```
 
-### Records + Scenes
+### Records + flows
 
-A page can use both a scene (for page-level data like navigation) and a record (for parameterized content). Pass `recordName` and `recordParam` to `StoryboardProvider` to merge record data under the `record` key:
+A page can use both a flow (for page-level data like navigation) and a record (for parameterized content). Pass `recordName` and `recordParam` to `StoryboardProvider` to merge record data under the `record` key:
 
 ```jsx
 <StoryboardProvider recordName="posts" recordParam="slug">
-  {/* useSceneData('record.title') works here */}
+  {/* useflowData('record.title') works here */}
 </StoryboardProvider>
 ```
 
@@ -271,36 +271,36 @@ All state management must happen through storyboard hooks. Storyboard state live
 
 | Hook | Purpose |
 |------|---------|
-| `useSceneData(path?)` | Read scene data by dot-notation path |
-| `useOverride(path)` | Read/write hash-param overrides on scene or object data. Works with or without `<StoryboardProvider>`. |
-| `useObject(name, path?)` | Load an object data file directly by name, without a scene. Supports dot-notation path and hash overrides (`object.{name}.{field}`). |
+| `useflowData(path?)` | Read flow data by dot-notation path |
+| `useOverride(path)` | Read/write hash-param overrides on flow or object data. Works with or without `<StoryboardProvider>`. |
+| `useObject(name, path?)` | Load an object data file directly by name, without a flow. Supports dot-notation path and hash overrides (`object.{name}.{field}`). |
 | `useRecord(name, param?)` | Load a single record entry matched by URL param (defaults to `'id'`) |
 | `useRecords(name)` | Load all entries from a record collection |
-| `useSceneLoading()` | Returns true while scene is loading |
+| `useflowLoading()` | Returns true while flow is loading |
 
 **Why:** Storyboard is a prototyping framework where all data flows through the URL hash. This makes every state change shareable via URL, inspectable in the address bar, and framework-portable. Using `useState` breaks this contract — the state becomes invisible, unshareable, and tied to React.
 
 ## Common Pitfall: Double-Nesting with `$ref`
 
-The most frequent data bug is double-nesting. This happens when an object file wraps its data in a key that matches the scene's `$ref` key:
+The most frequent data bug is double-nesting. This happens when an object file wraps its data in a key that matches the flow's `$ref` key:
 
 ```
 // ❌ WRONG — causes double-nesting (advisory.advisory)
 
-// scene: { "advisory": { "$ref": "advisory" } }
+// flow: { "advisory": { "$ref": "advisory" } }
 // advisory.object.json:
 { "advisory": { "title": "Bug", "severity": "High" } }
-// Result: scene.advisory = { "advisory": { "title": "Bug", ... } }
+// Result: flow.advisory = { "advisory": { "title": "Bug", ... } }
 
 // ✅ CORRECT — object file is the raw value
 
-// scene: { "advisory": { "$ref": "advisory" } }
+// flow: { "advisory": { "$ref": "advisory" } }
 // advisory.object.json:
 { "title": "Bug", "severity": "High" }
-// Result: scene.advisory = { "title": "Bug", "severity": "High" }
+// Result: flow.advisory = { "title": "Bug", "severity": "High" }
 ```
 
-**Rule of thumb:** The `$ref` key in the scene IS the namespace. The object file provides the value.
+**Rule of thumb:** The `$ref` key in the flow IS the namespace. The object file provides the value.
 
 ## Hash Param Preservation (CRITICAL)
 
@@ -314,8 +314,8 @@ URL hash params are the foundation of the override system. They carry user-set a
 
 1. **Never manually strip or omit the hash.** The global preserver handles it. Plain `navigate('/Page')` works — the hash carries forward automatically.
 2. **Never bypass the router.** Using `window.location.href = '/Page'` or `window.location.assign()` will drop the hash. Always use React Router's `navigate()` or `<Link>`.
-3. **If a page reads overrides, it must use the hooks.** `useSceneData(path)` automatically merges hash overrides. `useOverride(path)` gives read/write access.
-4. **If a page writes overrides, downstream pages get them for free.** The Signup→Dashboard flow works because Signup writes via `useOverride`, navigation carries the hash, and Dashboard reads via `useSceneData` — no manual plumbing needed.
+3. **If a page reads overrides, it must use the hooks.** `useflowData(path)` automatically merges hash overrides. `useOverride(path)` gives read/write access.
+4. **If a page writes overrides, downstream pages get them for free.** The Signup→Dashboard flow works because Signup writes via `useOverride`, navigation carries the hash, and Dashboard reads via `useflowData` — no manual plumbing needed.
 5. **To intentionally clear overrides**, use `clearValue` from `useOverride` or `removeParam` from `session.js`. Never clear by navigating without the hash.
 
 ## Checklist
@@ -327,30 +327,30 @@ Before finishing data structuring, verify:
 - [ ] Every list of content items is in a data object
 - [ ] User/org profile data is in a data object
 - [ ] Button labels, placeholder text, and section headings are hardcoded
-- [ ] The scene file uses `$global` for navigation and `$ref` for entities
+- [ ] The flow file uses `$global` for navigation and `$ref` for entities
 - [ ] `$ref` and `$global` use **names** (not relative paths)
-- [ ] Data files use the correct suffix: `.scene.json`, `.object.json`, `.record.json`
-- [ ] The component uses `useSceneData()` for all externalized data
-- [ ] Shared data objects use `useObject()` when not part of a scene
+- [ ] Data files use the correct suffix: `.flow.json`, `.object.json`, `.record.json`
+- [ ] The component uses `useflowData()` for all externalized data
+- [ ] Shared data objects use `useObject()` when not part of a flow
 - [ ] Dynamic route pages use `useRecord()` for parameterized content
 - [ ] Data objects use realistic placeholder values
-- [ ] The scene name matches the page name or flow
+- [ ] The flow name matches the page name or flow
 - [ ] **Hash params are never dropped** — see "Hash Param Preservation" above
 
 ## Final Step: Provide the URL
 
-After creating the scene and wiring up the component, **always provide the full dev URL** so the user can immediately preview the page.
+After creating the flow and wiring up the component, **always provide the full dev URL** so the user can immediately preview the page.
 
-**Page-scene matching:** If the scene file name matches the page file name exactly (e.g. `Repositories.scene.json` for `pages/Repositories.jsx`), the scene loads automatically — no `?scene=` param needed:
+**Page-flow matching:** If the flow file name matches the page file name exactly (e.g. `Repositories.flow.json` for `pages/Repositories.jsx`), the flow loads automatically — no `?flow=` param needed:
 
 ```
 http://localhost:1234/Repositories
 ```
 
-If the scene name differs from the page name, add the `?scene=` parameter:
+If the flow name differs from the page name, add the `?flow=` parameter:
 
 ```
-http://localhost:1234/Repositories?scene=heron-silver
+http://localhost:1234/Repositories?flow=heron-silver
 ```
 
 For dynamic routes, use the record entry's `id` as the URL slug:

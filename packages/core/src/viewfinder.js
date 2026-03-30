@@ -103,6 +103,7 @@ export function buildPrototypeIndex(knownRoutes = []) {
   for (const name of listPrototypes()) {
     const raw = getPrototypeMetadata(name)
     const meta = raw?.meta || raw || {}
+    const isExternal = Boolean(raw?.url)
     protoMap[name] = {
       name: meta.title || name,
       dirName: name,
@@ -115,6 +116,8 @@ export function buildPrototypeIndex(knownRoutes = []) {
       tags: meta.tags || null,
       hideFlows: meta.hideFlows ?? raw?.hideFlows ?? false,
       folder: raw?.folder || null,
+      isExternal,
+      externalUrl: isExternal ? raw.url : null,
       flows: [],
     }
   }
@@ -138,6 +141,8 @@ export function buildPrototypeIndex(knownRoutes = []) {
           tags: null,
           hideFlows: false,
           folder: null,
+          isExternal: false,
+          externalUrl: null,
           flows: [],
         }
       }

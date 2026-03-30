@@ -286,7 +286,41 @@
     <div class="list">
       {#snippet protoEntry(proto)}
         <section class="protoGroup">
-          {#if proto.hideFlows && proto.flows.length === 1}
+          {#if proto.isExternal}
+            <!-- External prototype — opens in new tab -->
+            <a class="listItem" href={proto.externalUrl} target="_blank" rel="noopener noreferrer">
+              <div class="cardBody">
+                <p class="protoName">
+                  {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
+                  {proto.name}
+                  <span class="externalBadge">
+                    <Icon size={12} color="var(--fgColor-muted)" name="primer/link-external" offsetY={-2} />
+                    external
+                  </span>
+                </p>
+                {#if proto.description}
+                  <p class="protoDesc">{proto.description}</p>
+                {/if}
+                {#if proto.author}
+                  {@const authors = Array.isArray(proto.author) ? proto.author : [proto.author]}
+                  <div class="author">
+                    <span class="authorAvatars">
+                      {#each authors as a (a)}
+                        <img
+                          src="https://github.com/{a}.png?size=48"
+                          alt={a}
+                          class="authorAvatar"
+                        />
+                      {/each}
+                    </span>
+                    <span class="authorName">{authors.join(', ')}</span>
+                  </div>
+                {:else if proto.gitAuthor}
+                  <p class="authorPlain">{proto.gitAuthor}</p>
+                {/if}
+              </div>
+            </a>
+          {:else if proto.hideFlows && proto.flows.length === 1}
             <!-- Single flow, hidden — navigates directly to the flow -->
             <a class="listItem" href={proto.flows[0].route}>
               <div class="cardBody">
@@ -793,6 +827,21 @@
     color: var(--fgColor-muted, #848d97);
     margin: 4px 0 0;
     letter-spacing: 0.01em;
+  }
+
+  .externalBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--fgColor-muted, #848d97);
+    background: var(--bgColor-neutral-muted, rgba(110, 118, 129, 0.1));
+    border-radius: 9999px;
+    padding: 2px 8px;
+    margin-left: 8px;
+    vertical-align: middle;
+    letter-spacing: 0.02em;
   }
 
   .author {

@@ -149,7 +149,7 @@ export default function ${componentName}() {
 `
 }
 
-function generatePrototypeJson({ title, author, description, partialEntry }) {
+function generatePrototypeJson({ title, author, description, partialEntry, url }) {
   const meta = { title }
   if (author) {
     meta.author = author.split(',').map((a) => a.trim()).filter(Boolean)
@@ -159,6 +159,10 @@ function generatePrototypeJson({ title, author, description, partialEntry }) {
   }
 
   const json = { meta }
+
+  if (url) {
+    json.url = url
+  }
 
   if (partialEntry?.globals?.length) {
     json.$global = partialEntry.globals
@@ -195,6 +199,7 @@ export function createPrototypesHandler(ctx) {
         author,
         description,
         createFlow = false,
+        url,
       } = body
 
       // Validate name
@@ -208,39 +213,25 @@ export function createPrototypesHandler(ctx) {
       const componentName = toPascalCase(kebab)
       const title = customTitle || humanize(kebab)
 
-      // Look up recipe in config (optional — blank prototype if none)
-      const partialEntry = partialName
-        ? partials.find((r) => r.name === partialName)
-        : null
-
-      if (partialName && !partialEntry) {
-        const validNames = partials.map((r) => r.name).join(', ')
-        sendJson(res, 400, { error: `Unknown recipe "${partialName}". Available: ${validNames}` })
-        return
-      }
-
-      let content
-
-      if (!partialEntry) {
-        // Blank prototype — no template
-        content = generateBlankIndexJsx(componentName, title)
-      } else {
-        // Discover the component file from the recipe/template directory
-        const typeDir = DIR_MAP[partialEntry.directory]
-        if (!typeDir) {
-          sendJson(res, 400, { error: `Invalid directory "${partialEntry.directory}". Must be "recipe" or "template".` })
+      // Validate URL for external prototypes
+      if (url !== undefined && url !== null) {
+        if (typeof url !== 'string' || !url.trim()) {
+          sendJson(res, 400, { error: 'URL must be a non-empty string' })
           return
         }
-
-        const partialDir = path.join(root, 'src', typeDir, partialEntry.name)
-        const componentFile = findComponentFile(partialDir)
-        if (!componentFile) {
-          sendJson(res, 400, { error: `No .jsx or .tsx file found in src/${typeDir}/${partialEntry.name}/` })
+        try {
+          const parsedUrl = new URL(url)
+          if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+            sendJson(res, 400, { error: 'URL must use http: or https: protocol' })
+            return
+          }
+        } catch {
+          sendJson(res, 400, { error: 'URL must be a valid absolute URL (e.g. https://example.com)' })
           return
         }
-
-        content = generateIndexJsx({ partialEntry, componentFile, componentName, title })
       }
+
+      const isExternal = Boolean(url)
 
       // Determine target directory
       const prototypesDir = path.join(root, 'src', 'prototypes')
@@ -269,22 +260,69 @@ export function createPrototypesHandler(ctx) {
       const protoJsonName = `${kebab}.prototype.json`
       fs.writeFileSync(
         path.join(targetDir, protoJsonName),
-        generatePrototypeJson({ title, author, description, partialEntry }),
+        generatePrototypeJson({ title, author, description, partialEntry: null, url: isExternal ? url : undefined }),
       )
-
-      // Write index.jsx
-      fs.writeFileSync(path.join(targetDir, 'index.jsx'), content, 'utf-8')
 
       const relDir = targetDir.replace(root + '/', '')
       const result = {
         success: true,
         path: relDir,
-        route: `/${kebab}`,
-        files: [
-          `${relDir}/${protoJsonName}`,
-          `${relDir}/index.jsx`,
-        ],
+        isExternal,
+        files: [`${relDir}/${protoJsonName}`],
       }
+
+      if (isExternal) {
+        result.externalUrl = url
+        sendJson(res, 201, result)
+        return
+      }
+
+      // Non-external: generate index.jsx and optional flow
+
+      // Look up recipe in config (optional — blank prototype if none)
+      const partialEntry = partialName
+        ? partials.find((r) => r.name === partialName)
+        : null
+
+      if (partialName && !partialEntry) {
+        const validNames = partials.map((r) => r.name).join(', ')
+        sendJson(res, 400, { error: `Unknown recipe "${partialName}". Available: ${validNames}` })
+        return
+      }
+
+      // Re-write prototype.json with partial globals if needed
+      if (partialEntry) {
+        fs.writeFileSync(
+          path.join(targetDir, protoJsonName),
+          generatePrototypeJson({ title, author, description, partialEntry }),
+        )
+      }
+
+      let content
+
+      if (!partialEntry) {
+        content = generateBlankIndexJsx(componentName, title)
+      } else {
+        const typeDir = DIR_MAP[partialEntry.directory]
+        if (!typeDir) {
+          sendJson(res, 400, { error: `Invalid directory "${partialEntry.directory}". Must be "recipe" or "template".` })
+          return
+        }
+
+        const partialDir = path.join(root, 'src', typeDir, partialEntry.name)
+        const componentFile = findComponentFile(partialDir)
+        if (!componentFile) {
+          sendJson(res, 400, { error: `No .jsx or .tsx file found in src/${typeDir}/${partialEntry.name}/` })
+          return
+        }
+
+        content = generateIndexJsx({ partialEntry, componentFile, componentName, title })
+      }
+
+      // Write index.jsx
+      fs.writeFileSync(path.join(targetDir, 'index.jsx'), content, 'utf-8')
+      result.route = `/${kebab}`
+      result.files.push(`${relDir}/index.jsx`)
 
       // Optionally create flow.json
       if (createFlow) {

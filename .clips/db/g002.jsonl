@@ -1,0 +1,6 @@
+{"event":"goal_created","goal_id":"g002","timestamp":"2026-03-30T13:07:13.586Z","title":"Fix comments system bugs","description":"","acceptance_criteria":[],"status":"open"}
+{"event":"github_synced","goal_id":"g002","timestamp":"2026-03-30T13:07:15.203Z","issue_number":23,"issue_url":"https://github.com/dfosco/storyboard/issues/23"}
+{"event":"task_created","goal_id":"g002","task_id":"t01","timestamp":"2026-03-30T13:07:22.314Z","title":"Fix body class sync stripping sb-comment-mode","description":"syncOverrideClasses() was removing sb-comment-mode from body, killing overlay pointer-events. Fixed by only treating sb-{key}--{value} classes as overrides."}
+{"event":"task_status_changed","goal_id":"g002","task_id":"latest","timestamp":"2026-03-30T13:07:24.805Z","status":"closed"}
+{"event":"task_created","goal_id":"g002","task_id":"t02","timestamp":"2026-03-30T13:07:27.366Z","title":"Validate PAT has discussion access at sign-in","description":"validateToken() now probes GraphQL API to verify token can access repo discussions. Shows clear error for missing scopes, missing repo, or no discussion categories."}
+{"event":"task_status_changed","goal_id":"g002","task_id":"latest","timestamp":"2026-03-30T13:07:30.012Z","status":"closed"}

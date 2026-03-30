@@ -24,6 +24,8 @@
   let author = $state('')
   let description = $state('')
   let createFlow = $state(false)
+  let isExternal = $state(false)
+  let externalUrl = $state('')
 
   interface Partial { directory: string; name: string; globals?: string[] }
 
@@ -47,7 +49,17 @@
     : name.trim() && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(kebabName) ? 'Name must be kebab-case'
     : null
   )
-  const canSubmit = $derived(!!kebabName && !nameError && !submitting)
+  const urlError: string | null = $derived.by(() => {
+    if (!isExternal || !externalUrl.trim()) return null
+    try {
+      const parsed = new URL(externalUrl.trim())
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'Must use http: or https: protocol'
+      return null
+    } catch {
+      return 'Must be a valid URL (e.g. https://example.com)'
+    }
+  })
+  const canSubmit = $derived(!!kebabName && !nameError && !submitting && (!isExternal || (!!externalUrl.trim() && !urlError)))
 
   const templateLabel = $derived(partial ? partials.find(p => p.name === partial)?.name ?? partial : 'No template')
   const templates = $derived(partials.filter(p => p.directory === 'template'))
@@ -77,14 +89,26 @@
     if (!canSubmit) return
     submitting = true; error = null; success = null
     try {
+      const payload: Record<string, any> = { name: kebabName, title: displayTitle, folder: folder || undefined, author: author.trim() || undefined, description: description.trim() || undefined }
+      if (isExternal) {
+        payload.url = externalUrl.trim()
+      } else {
+        payload.recipe = partial || undefined
+        payload.createFlow = createFlow
+      }
       const res = await fetch(getApiUrl(), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: kebabName, title: displayTitle, folder: folder || undefined, recipe: partial || undefined, author: author.trim() || undefined, description: description.trim() || undefined, createFlow }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) { error = data.error || 'Failed to create prototype'; return }
       success = `Created ${data.path}`
-      setTimeout(() => { const base = document.querySelector('base')?.href || '/'; window.location.href = base + data.route.slice(1) }, 1500)
+      if (data.isExternal) {
+        // External prototype — no local route to navigate to, just close after a moment
+        setTimeout(() => onClose?.(), 1500)
+      } else {
+        setTimeout(() => { const base = document.querySelector('base')?.href || '/'; window.location.href = base + data.route.slice(1) }, 1500)
+      }
     } catch (err: any) { error = err.message || 'Network error' } finally { submitting = false }
   }
 
@@ -102,8 +126,21 @@
     <Label for="sb-proto-name">Name</Label>
     <Input id="sb-proto-name" placeholder="e.g. my-prototype" autocomplete="off" spellcheck="false" bind:value={name} />
     {#if nameError}<p class="text-sm text-destructive">{nameError}</p>{/if}
-    {#if routePreview}<p class="text-xs text-muted-foreground">Route: <code class="px-1 py-0.5 bg-muted rounded font-mono text-foreground text-xs">{routePreview}</code></p>{/if}
+    {#if routePreview && !isExternal}<p class="text-xs text-muted-foreground">Route: <code class="px-1 py-0.5 bg-muted rounded font-mono text-foreground text-xs">{routePreview}</code></p>{/if}
   </div>
+
+  <div class="flex items-center gap-2">
+    <Checkbox id="sb-proto-external" bind:checked={isExternal} />
+    <Label for="sb-proto-external" class="text-sm font-normal cursor-pointer">External prototype</Label>
+  </div>
+
+  {#if isExternal}
+    <div class="space-y-1">
+      <Label for="sb-proto-url">URL</Label>
+      <Input id="sb-proto-url" placeholder="https://example.com/prototype" autocomplete="off" spellcheck="false" bind:value={externalUrl} />
+      {#if urlError}<p class="text-sm text-destructive">{urlError}</p>{/if}
+    </div>
+  {/if}
 
   <div class="space-y-1">
     <Label for="sb-proto-title">Title</Label>
@@ -118,54 +155,56 @@
         {#each folders as f}<option value={f}>{f}</option>{/each}
       </select>
     </div>
-    <div class="space-y-1">
-      <Label>Template</Label>
-      <DropdownMenu.Root bind:open={templateMenuOpen}>
-        <DropdownMenu.Trigger>
-          {#snippet child({ props })}
-            <button
-              {...props}
-              class="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={loading}
-            >
-              <span class={partial ? 'text-foreground' : 'text-muted-foreground'}>{templateLabel}</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><path d="m6 9 6 6 6-6"/></svg>
-            </button>
-          {/snippet}
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Content side="left" align="start" sideOffset={8} class="min-w-[180px]">
-          {#if partial}
-            <DropdownMenu.Item onclick={() => { partial = ''; templateMenuOpen = false }}>
-              <span class="text-muted-foreground">Clear selection</span>
-            </DropdownMenu.Item>
-            <DropdownMenu.Separator />
-          {/if}
+    {#if !isExternal}
+      <div class="space-y-1">
+        <Label>Template</Label>
+        <DropdownMenu.Root bind:open={templateMenuOpen}>
+          <DropdownMenu.Trigger>
+            {#snippet child({ props })}
+              <button
+                {...props}
+                class="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={loading}
+              >
+                <span class={partial ? 'text-foreground' : 'text-muted-foreground'}>{templateLabel}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+            {/snippet}
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Content side="left" align="start" sideOffset={8} class="min-w-[180px]">
+            {#if partial}
+              <DropdownMenu.Item onclick={() => { partial = ''; templateMenuOpen = false }}>
+                <span class="text-muted-foreground">Clear selection</span>
+              </DropdownMenu.Item>
+              <DropdownMenu.Separator />
+            {/if}
 
-          {#if templates.length > 0}
-            <DropdownMenu.Group>
-              <DropdownMenu.GroupHeading>Templates</DropdownMenu.GroupHeading>
-              {#each templates as t (t.name)}
-                <DropdownMenu.Item onclick={() => { partial = t.name; templateMenuOpen = false }}>
-                  {t.name}
-                </DropdownMenu.Item>
-              {/each}
-            </DropdownMenu.Group>
-          {/if}
+            {#if templates.length > 0}
+              <DropdownMenu.Group>
+                <DropdownMenu.GroupHeading>Templates</DropdownMenu.GroupHeading>
+                {#each templates as t (t.name)}
+                  <DropdownMenu.Item onclick={() => { partial = t.name; templateMenuOpen = false }}>
+                    {t.name}
+                  </DropdownMenu.Item>
+                {/each}
+              </DropdownMenu.Group>
+            {/if}
 
-          {#if recipes.length > 0}
-            <DropdownMenu.Separator />
-            <DropdownMenu.Group>
-              <DropdownMenu.GroupHeading>Recipes</DropdownMenu.GroupHeading>
-              {#each recipes as r (r.name)}
-                <DropdownMenu.Item onclick={() => { partial = r.name; templateMenuOpen = false }}>
-                  {r.name}
-                </DropdownMenu.Item>
-              {/each}
-            </DropdownMenu.Group>
-          {/if}
-        </DropdownMenu.Content>
-      </DropdownMenu.Root>
-    </div>
+            {#if recipes.length > 0}
+              <DropdownMenu.Separator />
+              <DropdownMenu.Group>
+                <DropdownMenu.GroupHeading>Recipes</DropdownMenu.GroupHeading>
+                {#each recipes as r (r.name)}
+                  <DropdownMenu.Item onclick={() => { partial = r.name; templateMenuOpen = false }}>
+                    {r.name}
+                  </DropdownMenu.Item>
+                {/each}
+              </DropdownMenu.Group>
+            {/if}
+          </DropdownMenu.Content>
+        </DropdownMenu.Root>
+      </div>
+    {/if}
   </div>
 
   <div class="space-y-1">
@@ -178,10 +217,12 @@
     <Input id="sb-proto-desc" placeholder="Optional description" bind:value={description} />
   </div>
 
-  <div class="flex items-center gap-2">
-    <Checkbox id="sb-proto-flow" bind:checked={createFlow} />
-    <Label for="sb-proto-flow" class="text-sm font-normal cursor-pointer">Create flow file</Label>
-  </div>
+  {#if !isExternal}
+    <div class="flex items-center gap-2">
+      <Checkbox id="sb-proto-flow" bind:checked={createFlow} />
+      <Label for="sb-proto-flow" class="text-sm font-normal cursor-pointer">Create flow file</Label>
+    </div>
+  {/if}
 
   {#if error}<Alert.Root variant="destructive"><Alert.Description>{error}</Alert.Description></Alert.Root>{/if}
   {#if success}<Alert.Root><Alert.Description class="text-success">{success}</Alert.Description></Alert.Root>{/if}

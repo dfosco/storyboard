@@ -2,8 +2,8 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import styles from './CanvasControls.module.css'
 
 const ZOOM_STEPS = [25, 50, 75, 100, 125, 150, 200]
-const ZOOM_MIN = ZOOM_STEPS[0]
-const ZOOM_MAX = ZOOM_STEPS[ZOOM_STEPS.length - 1]
+export const ZOOM_MIN = ZOOM_STEPS[0]
+export const ZOOM_MAX = ZOOM_STEPS[ZOOM_STEPS.length - 1]
 
 const WIDGET_TYPES = [
   { type: 'sticky-note', label: 'Sticky Note' },

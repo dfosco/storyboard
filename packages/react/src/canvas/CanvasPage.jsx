@@ -5,7 +5,7 @@ import { getWidgetComponent } from './widgets/index.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi } from './canvasApi.js'
-import CanvasControls from './CanvasControls.jsx'
+import CanvasControls, { ZOOM_MIN, ZOOM_MAX } from './CanvasControls.jsx'
 import styles from './CanvasPage.module.css'
 
 /**

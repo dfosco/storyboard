@@ -427,6 +427,20 @@
 </script>
 
 {#if visible && !isEmbed}
+  {#if canvasActive && CanvasCreateMenu}
+    <div
+      class="fixed bottom-6 left-6 z-[9999] font-sans flex items-end gap-3"
+      role="toolbar"
+      aria-label="Canvas toolbar"
+    >
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          <CanvasCreateMenu config={canvasToolbarConfig} canvasName={activeCanvasName} tabindex={0} />
+        </Tooltip.Trigger>
+        <Tooltip.Content side="top">Add widget to canvas</Tooltip.Content>
+      </Tooltip.Root>
+    </div>
+  {/if}
   <div
     id="storyboard-controls"
     class="fixed bottom-6 right-6 z-[9999] font-sans flex items-end gap-3"

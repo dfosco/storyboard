@@ -54,6 +54,9 @@ export { mountFlowDebug } from './sceneDebug.js'
 // Deprecated alias
 export { mountSceneDebug } from './sceneDebug.js'
 
+// Single entry point for consumer apps
+export { mountStoryboardCore } from './mountStoryboardCore.js'
+
 // Viewfinder utilities
 export { hash, resolveFlowRoute, getFlowMeta, buildPrototypeIndex } from './viewfinder.js'
 // Deprecated aliases

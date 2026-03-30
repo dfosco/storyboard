@@ -36,3 +36,6 @@ AGENTS_.md
 .worktrees
 .github/agents/_buddy-rails.md
 .github/agents/_buddy.md
+
+# Compiled UI bundle (built before publish, not tracked in git)
+packages/core/dist/storyboard-ui.*

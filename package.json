@@ -21,6 +21,9 @@
         "release": "./scripts/release.sh",
         "release:beta": "PRERELEASE_TAG=beta ./scripts/release.sh",
         "release:alpha": "PRERELEASE_TAG=alpha ./scripts/release.sh",
+        "release:resume": "./scripts/release-resume.sh",
+        "release:resume:beta": "PRERELEASE_TAG=beta ./scripts/release-resume.sh",
+        "release:resume:alpha": "PRERELEASE_TAG=alpha ./scripts/release-resume.sh",
         "test:svelte": "vitest run --config packages/svelte-ui/vitest.config.ts"
     },
     "dependencies": {

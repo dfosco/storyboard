@@ -199,6 +199,21 @@ npm run release:alpha        # alpha prerelease
 
 > ⚠️ **Do not use `npm run release --beta`** — npm swallows the flag. Always use `npm run release:beta`.
 
+### Resuming a failed release
+
+If a release fails partway through (e.g. npm auth expired, network error, some packages published but not others), use the resume script:
+
+```bash
+npm run release:resume              # resume stable release
+npm run release:resume:beta         # resume beta prerelease
+npm run release:resume:alpha        # resume alpha prerelease
+```
+
+This skips lint/test/build/versioning and picks up from the current committed state. It will:
+1. Re-create git tags if missing
+2. Skip packages already published to npm
+3. Push with tags and create a GitHub Release
+
 The script will:
 1. Run lint, tests, and build
 2. Enter prerelease mode (if beta/alpha)

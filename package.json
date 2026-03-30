@@ -25,6 +25,8 @@
         "release:resume:beta": "PRERELEASE_TAG=beta ./scripts/release-resume.sh",
         "release:resume:alpha": "PRERELEASE_TAG=alpha ./scripts/release-resume.sh",
         "test:svelte": "vitest run --config packages/svelte-ui/vitest.config.ts",
+        "build:ui": "npm run build:ui -w @dfosco/storyboard-core",
+        "dev:ui": "npm run dev:ui -w @dfosco/storyboard-core",
         "link": "./scripts/link.sh",
         "unlink": "./scripts/unlink.sh"
     },

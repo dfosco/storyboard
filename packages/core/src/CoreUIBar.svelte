@@ -37,6 +37,7 @@
   let CreateMenuButton: any = $state(null)
   let createMenuFeatures: any[] = $state([])
   let CommentsMenuButton: any = $state(null)
+  let ThemeMenuButton: any = $state(null)
   let commentsEnabled = $state(false)
   let SidePanel: any = $state(null)
   let toolbarEl: HTMLElement | null = $state(null)
@@ -81,6 +82,7 @@
         if (menu.action) return ActionMenuButton && getActionChildren(menu.action).length > 0
         if (menu.key === 'create') return CreateMenuButton && createMenuFeatures.length > 0
         if (menu.key === 'comments') return CommentsMenuButton && commentsEnabled
+        if (menu.key === 'theme') return !!ThemeMenuButton
         return true
       })
       .reverse()
@@ -341,6 +343,12 @@
       ActionMenuButton = mod.default
     } catch {}
 
+    // Load theme menu button
+    try {
+      const mod = await import('./ThemeMenuButton.svelte')
+      ThemeMenuButton = mod.default
+    } catch {}
+
     // Load comments menu button
     try {
       const { isCommentsEnabled } = await import('./comments/config.js')
@@ -523,6 +531,8 @@
               <CreateMenuButton features={createMenuFeatures} config={menu} tabindex={getTabindex(i)} />
             {:else if menu.key === 'comments'}
               <CommentsMenuButton config={menu} tabindex={getTabindex(i)} />
+            {:else if menu.key === 'theme'}
+              <ThemeMenuButton config={menu} tabindex={getTabindex(i)} />
             {/if}
           </Tooltip.Trigger>
           <Tooltip.Content side="top">{menu.ariaLabel || menu.key}</Tooltip.Content>

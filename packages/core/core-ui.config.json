@@ -63,6 +63,14 @@
       "modes": ["*"],
       "sidepanel": "docs"
     },
+    "theme": {
+      "label": "Theme",
+      "ariaLabel": "Switch theme",
+      "icon": "primer/sun",
+      "meta": { "strokeWeight": 2 },
+      "modes": ["*"],
+      "menuWidth": "220px"
+    },
     "inspector": {
       "ariaLabel": "Inspect components",
       "icon": "iconoir/square-dashed",

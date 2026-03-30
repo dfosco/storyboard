@@ -132,14 +132,20 @@ export default function PrototypeEmbed({ props, onUpdate }) {
           >
             <button
               className={styles.zoomBtn}
-              onClick={() => onUpdate?.({ zoom: Math.max(25, zoom - 25) })}
+              onClick={() => {
+                const step = zoom <= 75 ? 5 : 25
+                onUpdate?.({ zoom: Math.max(25, zoom - step) })
+              }}
               disabled={zoom <= 25}
               aria-label="Zoom out"
             >−</button>
             <span className={styles.zoomLabel}>{zoom}%</span>
             <button
               className={styles.zoomBtn}
-              onClick={() => onUpdate?.({ zoom: Math.min(200, zoom + 25) })}
+              onClick={() => {
+                const step = zoom < 75 ? 5 : 25
+                onUpdate?.({ zoom: Math.min(200, zoom + step) })
+              }}
               disabled={zoom >= 200}
               aria-label="Zoom in"
             >+</button>

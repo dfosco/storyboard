@@ -183,7 +183,7 @@
   display: flex;
   align-items: center;
   border-radius: 10px;
-  border: 1px solid var(--trigger-border, var(--borderColor-muted, #d0d7de));
+  border: 1.5px solid var(--trigger-border, var(--borderColor-muted, #d0d7de));
   background: var(--trigger-bg, var(--bgColor-muted, #f6f8fa));
   opacity: 0;
   transition: opacity 150ms;
@@ -236,7 +236,7 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--trigger-text, var(--fgColor-default, #1f2328));
-  border-left: 1px solid var(--trigger-border, var(--borderColor-muted, #d0d7de));
-  border-right: 1px solid var(--trigger-border, var(--borderColor-muted, #d0d7de));
+  border-left: 1.5px solid var(--trigger-border, var(--borderColor-muted, #d0d7de));
+  border-right: 1.5px solid var(--trigger-border, var(--borderColor-muted, #d0d7de));
   user-select: none;
 }

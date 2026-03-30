@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.1.0
+
+### Minor Changes
+
+-   3.1.0 -- Canvas, external prototypes, and polish. This release adds the full canvas system — an infinite, zoomable workspace for arranging widgets and embedding prototypes — along with external prototype support for linking to apps hosted elsewhere. Includes a wave of bug fixes across comments, inspector, and accessibility.
+
 ## 3.0.0
 
 ### Major Changes

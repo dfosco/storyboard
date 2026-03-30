@@ -19,7 +19,9 @@
   "exports": {
     ".": "./src/index.js",
     "./core-ui.config.json": "./core-ui.config.json",
+    "./canvas/materializer": "./src/canvas/materializer.js",
     "./vite/server": "./src/vite/server-plugin.js",
+    "./comments/svelte": "./src/comments/ui/index.js",
     "./comments": "./src/comments/index.js",
     "./comments/ui/comments.css": "./src/comments/ui/comment-layout.css",
     "./comments/ui/comment-layout.css": "./src/comments/ui/comment-layout.css",

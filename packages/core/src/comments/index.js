@@ -40,12 +40,3 @@ export { saveDraft, getDraft, clearDraft, composerDraftKey, replyDraftKey } from
 
 // GraphQL client (for advanced use)
 export { graphql } from './graphql.js'
-
-// Mount
-export { mountComments } from './ui/mount.js'
-
-// Comment window
-export { showCommentWindow, closeCommentWindow } from './ui/commentWindow.js'
-
-// Comments drawer
-export { openCommentsDrawer, closeCommentsDrawer } from './ui/commentsDrawer.js'

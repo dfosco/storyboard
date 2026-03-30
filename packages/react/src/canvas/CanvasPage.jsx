@@ -72,6 +72,7 @@ export default function CanvasPage({ name }) {
   const [trackedCanvas, setTrackedCanvas] = useState(canvas)
   const [selectedWidgetId, setSelectedWidgetId] = useState(null)
   const [zoom, setZoom] = useState(100)
+  const scrollRef = useRef(null)
 
   if (canvas !== trackedCanvas) {
     setTrackedCanvas(canvas)
@@ -211,6 +212,20 @@ export default function CanvasPage({ name }) {
     return () => document.removeEventListener('paste', handlePaste)
   }, [name])
 
+  // Cmd+scroll (or pinch) to smooth-zoom the canvas
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    function handleWheel(e) {
+      if (!e.metaKey && !e.ctrlKey) return
+      e.preventDefault()
+      const delta = -e.deltaY * 0.5
+      setZoom((z) => Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z + delta))))
+    }
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [])
+
   if (!canvas) {
     return (
       <div className={styles.empty}>
@@ -274,6 +289,7 @@ export default function CanvasPage({ name }) {
   return (
     <>
       <div
+        ref={scrollRef}
         className={styles.canvasScroll}
         onClick={() => setSelectedWidgetId(null)}
       >

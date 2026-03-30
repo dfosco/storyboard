@@ -168,11 +168,11 @@
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 3px 4px;
-  background: var(--bgColor-default, #ffffff);
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  gap: 0;
+  padding: 0;
+  background: var(--trigger-bg, var(--color-slate-100, #e2e8f0));
+  border: 2px solid var(--trigger-border, var(--color-slate-400, #94a3b8));
+  border-radius: 10px;
   opacity: 0;
   transition: opacity 150ms;
   z-index: 3;
@@ -185,20 +185,27 @@
 .zoomBtn {
   all: unset;
   cursor: pointer;
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
-  font-weight: 500;
-  color: var(--fgColor-default, #1f2328);
-  border-radius: 6px;
+  font-weight: 600;
+  color: var(--trigger-text, var(--color-slate-600, #475569));
   transition: background 100ms;
 }
 
+.zoomBtn:first-child {
+  border-radius: 8px 0 0 8px;
+}
+
+.zoomBtn:last-child {
+  border-radius: 0 8px 8px 0;
+}
+
 .zoomBtn:hover:not(:disabled) {
-  background: var(--bgColor-muted, #f6f8fa);
+  background: var(--trigger-bg-hover, var(--color-slate-300, #cbd5e1));
 }
 
 .zoomBtn:disabled {
@@ -209,8 +216,12 @@
 .zoomLabel {
   font-size: 11px;
   font-weight: 600;
-  color: var(--fgColor-muted, #656d76);
-  min-width: 36px;
+  color: var(--trigger-text, var(--color-slate-600, #475569));
+  min-width: 40px;
   text-align: center;
   user-select: none;
+  border-left: 2px solid var(--trigger-border, var(--color-slate-400, #94a3b8));
+  border-right: 2px solid var(--trigger-border, var(--color-slate-400, #94a3b8));
+  height: 30px;
+  line-height: 30px;
 }

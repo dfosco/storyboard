@@ -43,7 +43,10 @@
   let CanvasCreateMenu: any = $state(null)
   let canvasActive = $state(false)
   let activeCanvasName = $state('')
+  let canvasZoom = $state(100)
   const canvasToolbarConfig = (coreUIConfig as any).canvasToolbar || {}
+
+  const ZOOM_STEPS = [25, 50, 75, 100, 125, 150, 200]
 
   // Roving tabindex: only one button in the toolbar is tabbable at a time
   let activeToolbarIndex = $state(-1)
@@ -391,6 +394,7 @@
     // Listen for canvas mount/unmount events (React↔Svelte bridge)
     document.addEventListener('storyboard:canvas:mounted', handleCanvasMounted)
     document.addEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
+    document.addEventListener('storyboard:canvas:zoom-changed', handleZoomChanged)
   })
 
   onDestroy(() => {
@@ -400,16 +404,38 @@
     if (origReplaceState) history.replaceState = origReplaceState
     document.removeEventListener('storyboard:canvas:mounted', handleCanvasMounted)
     document.removeEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
+    document.removeEventListener('storyboard:canvas:zoom-changed', handleZoomChanged)
   })
 
   function handleCanvasMounted(e: Event) {
     canvasActive = true
-    activeCanvasName = (e as CustomEvent).detail?.name || ''
+    const detail = (e as CustomEvent).detail
+    activeCanvasName = detail?.name || ''
+    canvasZoom = detail?.zoom ?? 100
   }
 
   function handleCanvasUnmounted() {
     canvasActive = false
     activeCanvasName = ''
+    canvasZoom = 100
+  }
+
+  function handleZoomChanged(e: Event) {
+    canvasZoom = (e as CustomEvent).detail?.zoom ?? canvasZoom
+  }
+
+  function canvasZoomIn() {
+    const next = ZOOM_STEPS.find((s) => s > canvasZoom) ?? ZOOM_STEPS[ZOOM_STEPS.length - 1]
+    document.dispatchEvent(new CustomEvent('storyboard:canvas:set-zoom', { detail: { zoom: next } }))
+  }
+
+  function canvasZoomOut() {
+    const next = [...ZOOM_STEPS].reverse().find((s) => s < canvasZoom) ?? ZOOM_STEPS[0]
+    document.dispatchEvent(new CustomEvent('storyboard:canvas:set-zoom', { detail: { zoom: next } }))
+  }
+
+  function canvasZoomReset() {
+    document.dispatchEvent(new CustomEvent('storyboard:canvas:set-zoom', { detail: { zoom: 100 } }))
   }
 
   // Flow info dialog state — driven by core/show-flow-info action
@@ -429,7 +455,7 @@
 {#if visible && !isEmbed}
   {#if canvasActive && CanvasCreateMenu}
     <div
-      class="fixed bottom-6 left-6 z-[9999] font-sans flex items-end gap-3"
+      class="fixed bottom-6 left-6 z-[9999] font-sans flex items-center gap-3"
       role="toolbar"
       aria-label="Canvas toolbar"
     >
@@ -439,6 +465,32 @@
         </Tooltip.Trigger>
         <Tooltip.Content side="top">Add widget to canvas</Tooltip.Content>
       </Tooltip.Root>
+
+      <div class="flex items-center rounded-[10px] overflow-hidden" style="border: 3px solid var(--trigger-border); background: var(--trigger-bg);">
+        <button
+          class="flex items-center justify-center w-9 h-8 text-base font-semibold border-none bg-transparent cursor-pointer transition-colors hover:brightness-90 disabled:opacity-30 disabled:cursor-default"
+          style="color: var(--trigger-text);"
+          onclick={canvasZoomOut}
+          disabled={canvasZoom <= ZOOM_STEPS[0]}
+          aria-label="Zoom out"
+          title="Zoom out"
+        >−</button>
+        <button
+          class="flex items-center justify-center h-8 px-2 text-[11px] font-semibold tabular-nums border-none bg-transparent cursor-pointer transition-colors hover:brightness-90"
+          style="color: var(--trigger-text); border-left: 3px solid var(--trigger-border); border-right: 3px solid var(--trigger-border); min-width: 48px;"
+          onclick={canvasZoomReset}
+          aria-label="Reset zoom to 100%"
+          title="Reset to 100%"
+        >{canvasZoom}%</button>
+        <button
+          class="flex items-center justify-center w-9 h-8 text-base font-semibold border-none bg-transparent cursor-pointer transition-colors hover:brightness-90 disabled:opacity-30 disabled:cursor-default"
+          style="color: var(--trigger-text);"
+          onclick={canvasZoomIn}
+          disabled={canvasZoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1]}
+          aria-label="Zoom in"
+          title="Zoom in"
+        >+</button>
+      </div>
     </div>
   {/if}
   <div

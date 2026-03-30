@@ -5,8 +5,10 @@ import { getWidgetComponent } from './widgets/index.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi } from './canvasApi.js'
-import CanvasControls, { ZOOM_MIN, ZOOM_MAX } from './CanvasControls.jsx'
 import styles from './CanvasPage.module.css'
+
+const ZOOM_MIN = 25
+const ZOOM_MAX = 200
 
 /**
  * Debounce helper — returns a function that delays invocation.
@@ -106,10 +108,10 @@ export default function CanvasPage({ name }) {
     )
   }, [name])
 
-  // Signal canvas mount/unmount to CoreUIBar
+  // Signal canvas mount/unmount to CoreUIBar (include zoom state)
   useEffect(() => {
     document.dispatchEvent(new CustomEvent('storyboard:canvas:mounted', {
-      detail: { name }
+      detail: { name, zoom }
     }))
     return () => {
       document.dispatchEvent(new CustomEvent('storyboard:canvas:unmounted'))
@@ -143,6 +145,25 @@ export default function CanvasPage({ name }) {
     document.addEventListener('storyboard:canvas:add-widget', handleAddWidget)
     return () => document.removeEventListener('storyboard:canvas:add-widget', handleAddWidget)
   }, [addWidget])
+
+  // Listen for zoom changes from CoreUIBar
+  useEffect(() => {
+    function handleZoom(e) {
+      const { zoom: newZoom } = e.detail
+      if (typeof newZoom === 'number') {
+        setZoom(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newZoom)))
+      }
+    }
+    document.addEventListener('storyboard:canvas:set-zoom', handleZoom)
+    return () => document.removeEventListener('storyboard:canvas:set-zoom', handleZoom)
+  }, [])
+
+  // Broadcast zoom level to CoreUIBar whenever it changes
+  useEffect(() => {
+    document.dispatchEvent(new CustomEvent('storyboard:canvas:zoom-changed', {
+      detail: { zoom }
+    }))
+  }, [zoom])
 
   // Delete selected widget on Delete/Backspace key
   useEffect(() => {
@@ -367,7 +388,6 @@ export default function CanvasPage({ name }) {
           </Canvas>
         </div>
       </div>
-      <CanvasControls zoom={zoom} onZoomChange={setZoom} onAddWidget={addWidget} />
     </>
   )
 }

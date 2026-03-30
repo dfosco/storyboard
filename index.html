@@ -34,7 +34,13 @@
       // Set theme from localStorage before first paint to avoid flash
       (function() {
         var t = localStorage.getItem('sb-color-scheme');
-        if (t) document.documentElement.setAttribute('data-sb-theme', t);
+        if (t && t !== 'system') {
+          document.documentElement.setAttribute('data-sb-theme', t);
+        } else {
+          // System mode or no stored value — use OS preference
+          var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.setAttribute('data-sb-theme', dark ? 'dark' : 'light');
+        }
       })();
     </script>
   </head>

@@ -130,6 +130,7 @@ export const markdownSchema = {
 export const prototypeEmbedSchema = {
   src:    { type: 'url',    label: 'URL',    category: 'content',  defaultValue: '' },
   label:  { type: 'text',   label: 'Label',  category: 'settings', defaultValue: '' },
+  zoom:   { type: 'number', label: 'Zoom',   category: 'settings', defaultValue: 100, min: 25, max: 200 },
   width:  { type: 'number', label: 'Width',  category: 'size',     defaultValue: 800, min: 200, max: 2000 },
   height: { type: 'number', label: 'Height', category: 'size',     defaultValue: 600, min: 200, max: 1500 },
 }

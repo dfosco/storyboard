@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import styles from './PrototypeEmbed.module.css'
@@ -7,13 +7,21 @@ export default function PrototypeEmbed({ props, onUpdate }) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
   const width = readProp(props, 'width', prototypeEmbedSchema)
   const height = readProp(props, 'height', prototypeEmbedSchema)
+  const zoom = readProp(props, 'zoom', prototypeEmbedSchema)
   const label = readProp(props, 'label', prototypeEmbedSchema) || src
 
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
-  const iframeSrc = src ? `${basePath}${src}` : ''
+  const rawSrc = src ? `${basePath}${src}` : ''
+  const iframeSrc = rawSrc ? `${rawSrc}${rawSrc.includes('?') ? '&' : '?'}_sb_embed` : ''
+
+  const scale = zoom / 100
+  const iframeWidth = width / scale
+  const iframeHeight = height / scale
 
   const [editing, setEditing] = useState(false)
+  const [interactive, setInteractive] = useState(false)
   const inputRef = useRef(null)
+  const embedRef = useRef(null)
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -21,6 +29,21 @@ export default function PrototypeEmbed({ props, onUpdate }) {
       inputRef.current.select()
     }
   }, [editing])
+
+  // Exit interactive mode when clicking outside the embed
+  useEffect(() => {
+    if (!interactive) return
+    function handlePointerDown(e) {
+      if (embedRef.current && !embedRef.current.contains(e.target)) {
+        setInteractive(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [interactive])
+
+  const enterInteractive = useCallback(() => setInteractive(true), [])
+  const exitInteractive = useCallback(() => setInteractive(false), [])
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -32,6 +55,7 @@ export default function PrototypeEmbed({ props, onUpdate }) {
   return (
     <WidgetWrapper>
       <div
+        ref={embedRef}
         className={styles.embed}
         style={{ width, height }}
       >
@@ -58,16 +82,26 @@ export default function PrototypeEmbed({ props, onUpdate }) {
           </form>
         ) : iframeSrc ? (
           <>
-            <iframe
-              src={iframeSrc}
-              className={styles.iframe}
-              title={label || 'Prototype embed'}
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-            />
-            <div
-              className={styles.dragOverlay}
-              onDoubleClick={() => setEditing(true)}
-            />
+            <div className={styles.iframeContainer}>
+              <iframe
+                src={iframeSrc}
+                className={styles.iframe}
+                style={{
+                  width: iframeWidth,
+                  height: iframeHeight,
+                  transform: `scale(${scale})`,
+                  transformOrigin: '0 0',
+                }}
+                title={label || 'Prototype embed'}
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+              />
+            </div>
+            {!interactive && (
+              <div
+                className={styles.dragOverlay}
+                onDoubleClick={enterInteractive}
+              />
+            )}
           </>
         ) : (
           <div
@@ -89,6 +123,27 @@ export default function PrototypeEmbed({ props, onUpdate }) {
             title="Edit URL"
             aria-label="Edit prototype URL"
           >✏️</button>
+        )}
+        {iframeSrc && !editing && (
+          <div
+            className={styles.zoomBar}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <button
+              className={styles.zoomBtn}
+              onClick={() => onUpdate?.({ zoom: Math.max(25, zoom - 25) })}
+              disabled={zoom <= 25}
+              aria-label="Zoom out"
+            >−</button>
+            <span className={styles.zoomLabel}>{zoom}%</span>
+            <button
+              className={styles.zoomBtn}
+              onClick={() => onUpdate?.({ zoom: Math.min(200, zoom + 25) })}
+              disabled={zoom >= 200}
+              aria-label="Zoom in"
+            >+</button>
+          </div>
         )}
       </div>
       <div

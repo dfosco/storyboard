@@ -90,8 +90,10 @@
   left: 0;
   min-width: 160px;
   padding: 4px;
-  background: var(--bgColor-default, #ffffff);
-  border: 1px solid var(--borderColor-default, #d0d7de);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 10px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   z-index: 1;
@@ -99,8 +101,8 @@
 
 @media (prefers-color-scheme: dark) {
   .menu {
-    background: var(--bgColor-default, #161b22);
-    border-color: var(--borderColor-default, #30363d);
+    background: rgba(22, 27, 34, 0.92);
+    border-color: rgba(255, 255, 255, 0.1);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   }
 }

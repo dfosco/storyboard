@@ -1,4 +1,5 @@
-import { getToken, setToken, clearToken, getCachedUser, isAuthenticated } from './auth.js'
+import { getToken, setToken, clearToken, getCachedUser, isAuthenticated, validateToken } from './auth.js'
+import { initCommentsConfig } from './config.js'
 
 describe('auth token management', () => {
   beforeEach(() => {
@@ -56,5 +57,111 @@ describe('isAuthenticated', () => {
   it('returns true when token exists', () => {
     setToken('ghp_abc')
     expect(isAuthenticated()).toBe(true)
+  })
+})
+
+describe('validateToken', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    globalThis.fetch = vi.fn()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('throws on invalid token (REST 401)', async () => {
+    globalThis.fetch.mockResolvedValueOnce({ ok: false, status: 401 })
+    await expect(validateToken('bad_token')).rejects.toThrow('Invalid token')
+  })
+
+  it('validates user and permissions when config is set', async () => {
+    initCommentsConfig({
+      comments: { discussions: { category: 'Comments' } },
+      repository: { owner: 'testorg', name: 'testrepo' },
+    })
+
+    // REST /user succeeds
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ login: 'testuser', avatar_url: 'https://img/avatar' }),
+    })
+    // GraphQL permissions probe succeeds
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({
+        data: {
+          repository: {
+            id: 'R_123',
+            discussionCategories: { nodes: [{ id: 'DC_1' }] },
+          },
+        },
+      }),
+    })
+
+    const user = await validateToken('ghp_valid')
+    expect(user).toEqual({ login: 'testuser', avatarUrl: 'https://img/avatar' })
+    expect(getCachedUser()).toEqual(user)
+  })
+
+  it('throws descriptive error when token lacks discussion access', async () => {
+    initCommentsConfig({
+      comments: { discussions: { category: 'Comments' } },
+      repository: { owner: 'testorg', name: 'testrepo' },
+    })
+
+    // REST /user succeeds
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ login: 'testuser', avatar_url: 'https://img/avatar' }),
+    })
+    // GraphQL probe fails with permissions error
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({
+        errors: [{ message: 'Resource not accessible by personal access token' }],
+      }),
+    })
+
+    await expect(validateToken('ghp_no_scope')).rejects.toThrow(
+      /doesn't have access.*discussions/i
+    )
+    // User should NOT be cached on permission failure
+    expect(getCachedUser()).toBeNull()
+  })
+
+  it('throws when repository not found', async () => {
+    initCommentsConfig({
+      comments: { discussions: { category: 'Comments' } },
+      repository: { owner: 'testorg', name: 'missing' },
+    })
+
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ login: 'testuser', avatar_url: 'https://img/avatar' }),
+    })
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: { repository: null } }),
+    })
+
+    await expect(validateToken('ghp_valid')).rejects.toThrow(/not found/)
+  })
+
+  it('skips permission check when no comments config', async () => {
+    initCommentsConfig({}) // no comments key
+
+    globalThis.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ login: 'testuser', avatar_url: 'https://img/avatar' }),
+    })
+
+    const user = await validateToken('ghp_valid')
+    expect(user.login).toBe('testuser')
+    // Only 1 fetch call (REST), no GraphQL probe
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
   })
 })

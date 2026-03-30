@@ -15,7 +15,6 @@ import { syncFlagBodyClasses } from './featureFlags.js'
 
 const PREFIX = 'sb-'
 const FLOW_PREFIX = 'sb-scene--'
-const FF_PREFIX = 'sb-ff-'
 
 /**
  * Sanitize a string for use in a CSS class name.
@@ -43,13 +42,18 @@ function overrideClass(key, value) {
 }
 
 /**
- * Get all current sb- classes on body (excluding scene and feature-flag classes).
+ * Get all current sb- override classes on body.
+ * Override classes follow the pattern `sb-{key}--{value}` (double-dash separator).
+ * Other sb-* classes (comment mode, feature flags, etc.) are excluded
+ * because they don't contain the `--` separator.
+ * Flow/scene classes (`sb-scene--*`) are also excluded since they use
+ * the same `--` separator but have their own lifecycle.
  * @returns {Set<string>}
  */
 function getCurrentOverrideClasses() {
   const classes = new Set()
   for (const cls of document.body.classList) {
-    if (cls.startsWith(PREFIX) && !cls.startsWith(FLOW_PREFIX) && !cls.startsWith(FF_PREFIX)) {
+    if (cls.startsWith(PREFIX) && cls.includes('--') && !cls.startsWith(FLOW_PREFIX)) {
       classes.add(cls)
     }
   }

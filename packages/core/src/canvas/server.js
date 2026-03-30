@@ -109,11 +109,11 @@ export function createCanvasHandler(ctx) {
   return async (req, res, { body, path: routePath, method }) => {
     // GET /folders — list available canvas folders
     if (routePath === '/folders' && method === 'GET') {
-      const canvasesDir = path.join(root, 'src', 'canvases')
+      const canvasDir = path.join(root, 'src', 'canvas')
       let folders = []
       try {
-        if (fs.existsSync(canvasesDir)) {
-          folders = fs.readdirSync(canvasesDir, { withFileTypes: true })
+        if (fs.existsSync(canvasDir)) {
+          folders = fs.readdirSync(canvasDir, { withFileTypes: true })
             .filter((d) => d.isDirectory() && d.name.endsWith('.folder'))
             .map((d) => d.name.replace('.folder', ''))
         }
@@ -316,11 +316,11 @@ export function createCanvasHandler(ctx) {
       }
 
       // Determine target directory
-      const canvasesDir = path.join(root, 'src', 'canvases')
-      let targetDir = canvasesDir
+      const canvasDir = path.join(root, 'src', 'canvas')
+      let targetDir = canvasDir
 
       if (folder) {
-        const folderDir = path.join(canvasesDir, `${folder}.folder`)
+        const folderDir = path.join(canvasDir, `${folder}.folder`)
         if (!fs.existsSync(folderDir)) {
           sendJson(res, 400, { error: `Folder "${folder}" does not exist` })
           return

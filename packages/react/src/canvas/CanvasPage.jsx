@@ -18,6 +18,31 @@ function debounce(fn, ms) {
   }
 }
 
+/**
+ * Save a drag position to localStorage so tiny-canvas picks it up on render.
+ */
+function saveWidgetPosition(widgetId, x, y) {
+  try {
+    const queue = JSON.parse(localStorage.getItem('tiny-canvas-queue')) || []
+    const now = new Date().toISOString().replace(/[:.]/g, '-')
+    const entry = { id: widgetId, x, y, time: now }
+    const idx = queue.findIndex((item) => item.id === widgetId)
+    if (idx >= 0) queue[idx] = entry
+    else queue.push(entry)
+    localStorage.setItem('tiny-canvas-queue', JSON.stringify(queue))
+  } catch { /* localStorage unavailable */ }
+}
+
+/**
+ * Get viewport-center coordinates for placing a new widget.
+ */
+function getViewportCenter() {
+  return {
+    x: Math.round(window.innerWidth / 2 - 120),
+    y: Math.round(window.innerHeight / 2 - 80),
+  }
+}
+
 /** Renders a single JSON-defined widget by type lookup. */
 function WidgetRenderer({ widget, onUpdate }) {
   const Component = getWidgetComponent(widget.type)
@@ -93,14 +118,16 @@ export default function CanvasPage({ name }) {
     async function handleAddWidget(e) {
       const { type } = e.detail
       const defaultProps = schemas[type] ? getDefaults(schemas[type]) : {}
+      const pos = getViewportCenter()
       try {
         const result = await addWidgetApi(name, {
           type,
           props: defaultProps,
-          position: { x: 0, y: 0 },
+          position: pos,
         })
-        if (result.success) {
-          window.location.reload()
+        if (result.success && result.widget) {
+          saveWidgetPosition(result.widget.id, pos.x, pos.y)
+          setLocalWidgets((prev) => [...(prev || []), result.widget])
         }
       } catch (err) {
         console.error('[canvas] Failed to add widget:', err)
@@ -147,14 +174,16 @@ export default function CanvasPage({ name }) {
         props = { content: text }
       }
 
+      const pos = getViewportCenter()
       try {
         const result = await addWidgetApi(name, {
           type,
           props,
-          position: { x: 0, y: 0 },
+          position: pos,
         })
-        if (result.success) {
-          window.location.reload()
+        if (result.success && result.widget) {
+          saveWidgetPosition(result.widget.id, pos.x, pos.y)
+          setLocalWidgets((prev) => [...(prev || []), result.widget])
         }
       } catch (err) {
         console.error('[canvas] Failed to add widget from paste:', err)

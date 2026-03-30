@@ -1,11 +1,14 @@
-import { createElement, useCallback, useRef, useState } from 'react'
+import { createElement, useCallback, useEffect, useRef, useState } from 'react'
 import { Canvas } from '@dfosco/tiny-canvas'
 import { useCanvas } from './useCanvas.js'
 import { getWidgetComponent } from './widgets/index.js'
+import { schemas, getDefaults } from './widgets/widgetProps.js'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
-import CanvasToolbar from './CanvasToolbar.jsx'
-import { updateCanvas, removeWidget as removeWidgetApi } from './canvasApi.js'
+import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi } from './canvasApi.js'
 import styles from './CanvasPage.module.css'
+
+const ZOOM_MIN = 25
+const ZOOM_MAX = 200
 
 /**
  * Debounce helper — returns a function that delays invocation.
@@ -18,8 +21,33 @@ function debounce(fn, ms) {
   }
 }
 
+/**
+ * Save a drag position to localStorage so tiny-canvas picks it up on render.
+ */
+function saveWidgetPosition(widgetId, x, y) {
+  try {
+    const queue = JSON.parse(localStorage.getItem('tiny-canvas-queue')) || []
+    const now = new Date().toISOString().replace(/[:.]/g, '-')
+    const entry = { id: widgetId, x, y, time: now }
+    const idx = queue.findIndex((item) => item.id === widgetId)
+    if (idx >= 0) queue[idx] = entry
+    else queue.push(entry)
+    localStorage.setItem('tiny-canvas-queue', JSON.stringify(queue))
+  } catch { /* localStorage unavailable */ }
+}
+
+/**
+ * Get viewport-center coordinates for placing a new widget.
+ */
+function getViewportCenter() {
+  return {
+    x: Math.round(window.innerWidth / 2 - 120),
+    y: Math.round(window.innerHeight / 2 - 80),
+  }
+}
+
 /** Renders a single JSON-defined widget by type lookup. */
-function WidgetRenderer({ widget, onUpdate, onRemove }) {
+function WidgetRenderer({ widget, onUpdate }) {
   const Component = getWidgetComponent(widget.type)
   if (!Component) {
     console.warn(`[canvas] Unknown widget type: ${widget.type}`)
@@ -29,7 +57,6 @@ function WidgetRenderer({ widget, onUpdate, onRemove }) {
     id: widget.id,
     props: widget.props,
     onUpdate,
-    onRemove,
   })
 }
 
@@ -45,6 +72,10 @@ export default function CanvasPage({ name }) {
   // Local mutable copy of widgets for instant UI updates
   const [localWidgets, setLocalWidgets] = useState(canvas?.widgets ?? null)
   const [trackedCanvas, setTrackedCanvas] = useState(canvas)
+  const [selectedWidgetId, setSelectedWidgetId] = useState(null)
+  const [zoom, setZoom] = useState(100)
+  const scrollRef = useRef(null)
+
   if (canvas !== trackedCanvas) {
     setTrackedCanvas(canvas)
     setLocalWidgets(canvas?.widgets ?? null)
@@ -76,6 +107,203 @@ export default function CanvasPage({ name }) {
       console.error('[canvas] Failed to remove widget:', err)
     )
   }, [name])
+
+  // Signal canvas mount/unmount to CoreUIBar (include zoom state)
+  useEffect(() => {
+    document.dispatchEvent(new CustomEvent('storyboard:canvas:mounted', {
+      detail: { name, zoom }
+    }))
+    return () => {
+      document.dispatchEvent(new CustomEvent('storyboard:canvas:unmounted'))
+    }
+  }, [name])
+
+  // Add a widget by type — used by CanvasControls and CoreUIBar event
+  const addWidget = useCallback(async (type) => {
+    const defaultProps = schemas[type] ? getDefaults(schemas[type]) : {}
+    const pos = getViewportCenter()
+    try {
+      const result = await addWidgetApi(name, {
+        type,
+        props: defaultProps,
+        position: pos,
+      })
+      if (result.success && result.widget) {
+        saveWidgetPosition(result.widget.id, pos.x, pos.y)
+        setLocalWidgets((prev) => [...(prev || []), result.widget])
+      }
+    } catch (err) {
+      console.error('[canvas] Failed to add widget:', err)
+    }
+  }, [name])
+
+  // Listen for CoreUIBar add-widget events
+  useEffect(() => {
+    function handleAddWidget(e) {
+      addWidget(e.detail.type)
+    }
+    document.addEventListener('storyboard:canvas:add-widget', handleAddWidget)
+    return () => document.removeEventListener('storyboard:canvas:add-widget', handleAddWidget)
+  }, [addWidget])
+
+  // Listen for zoom changes from CoreUIBar
+  useEffect(() => {
+    function handleZoom(e) {
+      const { zoom: newZoom } = e.detail
+      if (typeof newZoom === 'number') {
+        setZoom(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newZoom)))
+      }
+    }
+    document.addEventListener('storyboard:canvas:set-zoom', handleZoom)
+    return () => document.removeEventListener('storyboard:canvas:set-zoom', handleZoom)
+  }, [])
+
+  // Broadcast zoom level to CoreUIBar whenever it changes
+  useEffect(() => {
+    document.dispatchEvent(new CustomEvent('storyboard:canvas:zoom-changed', {
+      detail: { zoom }
+    }))
+  }, [zoom])
+
+  // Delete selected widget on Delete/Backspace key
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (!selectedWidgetId) return
+      const tag = e.target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault()
+        handleWidgetRemove(selectedWidgetId)
+        setSelectedWidgetId(null)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [selectedWidgetId, handleWidgetRemove])
+
+  // Paste handler — same-origin URLs become prototypes, other URLs become link previews, text becomes markdown
+  useEffect(() => {
+    const baseUrl = window.location.origin + (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+
+    async function handlePaste(e) {
+      const tag = e.target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
+
+      const text = e.clipboardData?.getData('text/plain')?.trim()
+      if (!text) return
+
+      e.preventDefault()
+
+      let type, props
+      try {
+        const parsed = new URL(text)
+        const fullBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'
+        if (text.startsWith(baseUrl)) {
+          // Same-origin URL → prototype embed with the path portion
+          const pathPortion = parsed.pathname + parsed.search + parsed.hash
+          const basePath = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+          const src = basePath ? pathPortion.replace(new RegExp(`^${basePath}`), '') : pathPortion
+          type = 'prototype'
+          props = { src: src || '/', label: '', width: 800, height: 600 }
+        } else {
+          type = 'link-preview'
+          props = { url: text, title: '' }
+        }
+      } catch {
+        type = 'markdown'
+        props = { content: text }
+      }
+
+      const pos = getViewportCenter()
+      try {
+        const result = await addWidgetApi(name, {
+          type,
+          props,
+          position: pos,
+        })
+        if (result.success && result.widget) {
+          saveWidgetPosition(result.widget.id, pos.x, pos.y)
+          setLocalWidgets((prev) => [...(prev || []), result.widget])
+        }
+      } catch (err) {
+        console.error('[canvas] Failed to add widget from paste:', err)
+      }
+    }
+    document.addEventListener('paste', handlePaste)
+    return () => document.removeEventListener('paste', handlePaste)
+  }, [name])
+
+  // Cmd+scroll / trackpad pinch to smooth-zoom the canvas
+  // On macOS, pinch-to-zoom fires wheel events with ctrlKey: true and small
+  // fractional deltaY values. We accumulate the delta to handle sub-pixel changes.
+  const zoomAccum = useRef(0)
+  useEffect(() => {
+    function handleWheel(e) {
+      if (!e.metaKey && !e.ctrlKey) return
+      e.preventDefault()
+      zoomAccum.current += -e.deltaY
+      const step = Math.trunc(zoomAccum.current)
+      if (step === 0) return
+      zoomAccum.current -= step
+      setZoom((z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z + step)))
+    }
+    document.addEventListener('wheel', handleWheel, { passive: false })
+    return () => document.removeEventListener('wheel', handleWheel)
+  }, [])
+
+  // Space + drag to pan the canvas
+  const [spaceHeld, setSpaceHeld] = useState(false)
+  const isPanning = useRef(false)
+  const panStart = useRef({ x: 0, y: 0, scrollX: 0, scrollY: 0 })
+
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === ' ' && !e.repeat) {
+        const tag = e.target.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
+        e.preventDefault()
+        setSpaceHeld(true)
+      }
+    }
+    function handleKeyUp(e) {
+      if (e.key === ' ') {
+        setSpaceHeld(false)
+        isPanning.current = false
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keyup', handleKeyUp)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
+
+  const handlePanStart = useCallback((e) => {
+    if (!spaceHeld) return
+    e.preventDefault()
+    isPanning.current = true
+    const el = scrollRef.current
+    panStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      scrollX: el?.scrollLeft ?? 0,
+      scrollY: el?.scrollTop ?? 0,
+    }
+
+    function handlePanMove(ev) {
+      if (!isPanning.current || !el) return
+      el.scrollLeft = panStart.current.scrollX - (ev.clientX - panStart.current.x)
+      el.scrollTop = panStart.current.scrollY - (ev.clientY - panStart.current.y)
+    }
+    function handlePanEnd() {
+      isPanning.current = false
+      document.removeEventListener('mousemove', handlePanMove)
+      document.removeEventListener('mouseup', handlePanEnd)
+    }
+    document.addEventListener('mousemove', handlePanMove)
+    document.addEventListener('mouseup', handlePanEnd)
+  }, [spaceHeld])
 
   if (!canvas) {
     return (
@@ -115,31 +343,51 @@ export default function CanvasPage({ name }) {
     }
   }
 
-  // 2. JSON-defined mutable widgets
+  // 2. JSON-defined mutable widgets (selectable)
   for (const widget of (localWidgets ?? [])) {
     allChildren.push(
-      <div key={widget.id} id={widget.id}>
+      <div
+        key={widget.id}
+        id={widget.id}
+        onClick={(e) => {
+          e.stopPropagation()
+          setSelectedWidgetId(widget.id)
+        }}
+        className={selectedWidgetId === widget.id ? styles.selected : undefined}
+      >
         <WidgetRenderer
           widget={widget}
           onUpdate={(updates) => handleWidgetUpdate(widget.id, updates)}
-          onRemove={() => handleWidgetRemove(widget.id)}
         />
       </div>
     )
   }
 
+  const scale = zoom / 100
+
   return (
     <>
-      <Canvas {...canvasProps}>
-        {allChildren}
-      </Canvas>
-      <CanvasToolbar
-        canvasName={name}
-        onWidgetAdded={() => {
-          // Reload the page to pick up the new widget from the updated .canvas.json
-          window.location.reload()
-        }}
-      />
+      <div
+        ref={scrollRef}
+        className={styles.canvasScroll}
+        style={spaceHeld ? { cursor: isPanning.current ? 'grabbing' : 'grab' } : undefined}
+        onClick={() => setSelectedWidgetId(null)}
+        onMouseDown={handlePanStart}
+      >
+        <div
+          className={styles.canvasZoom}
+          style={{
+            transform: `scale(${scale})`,
+            transformOrigin: '0 0',
+            width: `${Math.max(10000, 100 / scale)}vw`,
+            height: `${Math.max(10000, 100 / scale)}vh`,
+          }}
+        >
+          <Canvas {...canvasProps}>
+            {allChildren}
+          </Canvas>
+        </div>
+      </div>
     </>
   )
 }

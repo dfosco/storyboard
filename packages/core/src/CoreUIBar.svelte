@@ -26,6 +26,8 @@
   let { basePath = '/' }: Props = $props()
 
   let visible = $state(true)
+  // Hide the entire toolbar when loaded inside a prototype embed iframe
+  const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')
   let commandMenuOpen = $state(false)
   let ActionMenuButton: any = $state(null)
   let navVersion = $state(0)
@@ -38,6 +40,15 @@
   let commentsEnabled = $state(false)
   let SidePanel: any = $state(null)
   let toolbarEl: HTMLElement | null = $state(null)
+  let CanvasCreateMenu: any = $state(null)
+  let canvasActive = $state(false)
+  let activeCanvasName = $state('')
+  let canvasZoom = $state(100)
+  const canvasToolbarConfig = (coreUIConfig as any).canvasToolbar || {}
+
+  const ZOOM_STEP = 10
+  const ZOOM_MIN = 25
+  const ZOOM_MAX = 200
 
   // Roving tabindex: only one button in the toolbar is tabbable at a time
   let activeToolbarIndex = $state(-1)
@@ -150,7 +161,7 @@
       visible = !visible
       document.documentElement.classList.toggle('storyboard-chrome-hidden', !visible)
     }
-    // Configurable shortcut to open the command menu
+    // Configurable shortcut to open the command menu (works even when hidden)
     if (openKey && e.key === openKey && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       commandMenuOpen = !commandMenuOpen
@@ -375,6 +386,17 @@
         SidePanel = mod.default
       }
     } catch {}
+
+    // Load canvas create menu
+    try {
+      const mod = await import('./CanvasCreateMenu.svelte')
+      CanvasCreateMenu = mod.default
+    } catch {}
+
+    // Listen for canvas mount/unmount events (React↔Svelte bridge)
+    document.addEventListener('storyboard:canvas:mounted', handleCanvasMounted)
+    document.addEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
+    document.addEventListener('storyboard:canvas:zoom-changed', handleZoomChanged)
   })
 
   onDestroy(() => {
@@ -382,7 +404,41 @@
     if (bumpNav) window.removeEventListener('popstate', bumpNav)
     if (origPushState) history.pushState = origPushState
     if (origReplaceState) history.replaceState = origReplaceState
+    document.removeEventListener('storyboard:canvas:mounted', handleCanvasMounted)
+    document.removeEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
+    document.removeEventListener('storyboard:canvas:zoom-changed', handleZoomChanged)
   })
+
+  function handleCanvasMounted(e: Event) {
+    canvasActive = true
+    const detail = (e as CustomEvent).detail
+    activeCanvasName = detail?.name || ''
+    canvasZoom = detail?.zoom ?? 100
+  }
+
+  function handleCanvasUnmounted() {
+    canvasActive = false
+    activeCanvasName = ''
+    canvasZoom = 100
+  }
+
+  function handleZoomChanged(e: Event) {
+    canvasZoom = (e as CustomEvent).detail?.zoom ?? canvasZoom
+  }
+
+  function canvasZoomIn() {
+    const next = Math.min(ZOOM_MAX, canvasZoom + ZOOM_STEP)
+    document.dispatchEvent(new CustomEvent('storyboard:canvas:set-zoom', { detail: { zoom: next } }))
+  }
+
+  function canvasZoomOut() {
+    const next = Math.max(ZOOM_MIN, canvasZoom - ZOOM_STEP)
+    document.dispatchEvent(new CustomEvent('storyboard:canvas:set-zoom', { detail: { zoom: next } }))
+  }
+
+  function canvasZoomReset() {
+    document.dispatchEvent(new CustomEvent('storyboard:canvas:set-zoom', { detail: { zoom: 100 } }))
+  }
 
   // Flow info dialog state — driven by core/show-flow-info action
   let flowDialogOpen = $state(false)
@@ -398,7 +454,44 @@
   }
 </script>
 
-{#if visible}
+{#if !isEmbed}
+  {#if visible && canvasActive && CanvasCreateMenu}
+    <div
+      class="fixed bottom-6 left-6 z-[9999] font-sans flex items-center gap-3"
+      role="toolbar"
+      aria-label="Canvas toolbar"
+    >
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          <CanvasCreateMenu config={canvasToolbarConfig} canvasName={activeCanvasName} tabindex={0} />
+        </Tooltip.Trigger>
+        <Tooltip.Content side="top">Add widget to canvas</Tooltip.Content>
+      </Tooltip.Root>
+
+      <div class="canvas-zoom-bar">
+        <button
+          class="canvas-zoom-btn"
+          onclick={canvasZoomOut}
+          disabled={canvasZoom <= ZOOM_MIN}
+          aria-label="Zoom out"
+          title="Zoom out"
+        >−</button>
+        <button
+          class="canvas-zoom-label"
+          onclick={canvasZoomReset}
+          aria-label="Reset zoom to 100%"
+          title="Reset to 100%"
+        >{canvasZoom}%</button>
+        <button
+          class="canvas-zoom-btn"
+          onclick={canvasZoomIn}
+          disabled={canvasZoom >= ZOOM_MAX}
+          aria-label="Zoom in"
+          title="Zoom in"
+        >+</button>
+      </div>
+    </div>
+  {/if}
   <div
     id="storyboard-controls"
     class="fixed bottom-6 right-6 z-[9999] font-sans flex items-end gap-3"
@@ -408,38 +501,42 @@
     onkeydown={handleToolbarKeydown}
     bind:this={toolbarEl}
   >
-    {#each visibleMenus as menu, i (menu.key)}
-      <Tooltip.Root>
-        <Tooltip.Trigger>
-          {#if menu.sidepanel}
-            <TriggerButton
-              active={$sidePanelState.open && $sidePanelState.activeTab === menu.sidepanel}
-              size="icon-xl"
-              aria-label={menu.ariaLabel || menu.key}
-              tabindex={getTabindex(i)}
-              onfocus={() => { activeToolbarIndex = i }}
-              onclick={() => togglePanel(menu.sidepanel)}
-            >
-              <Icon name={menu.icon || menu.key} size={16} {...(menu.meta || {})} />
-            </TriggerButton>
-          {:else if menu.action}
-            <ActionMenuButton config={menu} tabindex={getTabindex(i)} />
-          {:else if menu.key === 'create'}
-            <CreateMenuButton features={createMenuFeatures} config={menu} tabindex={getTabindex(i)} />
-          {:else if menu.key === 'comments'}
-            <CommentsMenuButton config={menu} tabindex={getTabindex(i)} />
-          {/if}
-        </Tooltip.Trigger>
-        <Tooltip.Content side="top">{menu.ariaLabel || menu.key}</Tooltip.Content>
-      </Tooltip.Root>
-    {/each}
+    {#if visible}
+      {#each visibleMenus as menu, i (menu.key)}
+        <Tooltip.Root>
+          <Tooltip.Trigger>
+            {#if menu.sidepanel}
+              <TriggerButton
+                active={$sidePanelState.open && $sidePanelState.activeTab === menu.sidepanel}
+                size="icon-xl"
+                aria-label={menu.ariaLabel || menu.key}
+                tabindex={getTabindex(i)}
+                onfocus={() => { activeToolbarIndex = i }}
+                onclick={() => togglePanel(menu.sidepanel)}
+              >
+                <Icon name={menu.icon || menu.key} size={16} {...(menu.meta || {})} />
+              </TriggerButton>
+            {:else if menu.action}
+              <ActionMenuButton config={menu} tabindex={getTabindex(i)} />
+            {:else if menu.key === 'create'}
+              <CreateMenuButton features={createMenuFeatures} config={menu} tabindex={getTabindex(i)} />
+            {:else if menu.key === 'comments'}
+              <CommentsMenuButton config={menu} tabindex={getTabindex(i)} />
+            {/if}
+          </Tooltip.Trigger>
+          <Tooltip.Content side="top">{menu.ariaLabel || menu.key}</Tooltip.Content>
+        </Tooltip.Root>
+      {/each}
+    {/if}
     {#if commandMenuConfig}
-      <Tooltip.Root>
-        <Tooltip.Trigger>
-          <CommandMenu {basePath} bind:open={commandMenuOpen} bind:flowDialogOpen {flowName} {flowJson} {flowError} shortcuts={shortcutsConfig} tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} />
-        </Tooltip.Trigger>
-        <Tooltip.Content side="top">Command Menu</Tooltip.Content>
-      </Tooltip.Root>
+      <div class={visible || commandMenuOpen ? '' : 'default-button-dimmed'}>
+        <Tooltip.Root>
+          <Tooltip.Trigger>
+            <CommandMenu {basePath} bind:open={commandMenuOpen} bind:flowDialogOpen {flowName} {flowJson} {flowError} shortcuts={shortcutsConfig} tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} />
+          </Tooltip.Trigger>
+          <Tooltip.Content side="top">Command Menu</Tooltip.Content>
+        </Tooltip.Root>
+      </div>
     {/if}
   </div>
 {/if}
@@ -447,4 +544,70 @@
 {#if SidePanel}
   <SidePanel onClose={() => focusToolbarItem(activeToolbarIndex < 0 ? toolbarItemCount - 1 : activeToolbarIndex)} />
 {/if}
+
+<style>
+  .canvas-zoom-bar {
+    display: flex;
+    align-items: center;
+    border-radius: 10px;
+    border: 1.5px solid var(--trigger-border, var(--color-slate-400));
+    background: var(--trigger-bg, var(--color-slate-100));
+    overflow: hidden;
+  }
+
+  .canvas-zoom-btn {
+    all: unset;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 32px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--trigger-text, var(--color-slate-600));
+    transition: background 120ms;
+  }
+
+  .canvas-zoom-btn:hover:not(:disabled) {
+    background: var(--trigger-bg-hover, var(--color-slate-300));
+  }
+
+  .canvas-zoom-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .canvas-zoom-label {
+    all: unset;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 48px;
+    height: 32px;
+    padding: 0 4px;
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--trigger-text, var(--color-slate-600));
+    border-left: 1.5px solid var(--trigger-border, var(--color-slate-400));
+    border-right: 1.5px solid var(--trigger-border, var(--color-slate-400));
+    transition: background 120ms;
+  }
+
+  .canvas-zoom-label:hover {
+    background: var(--trigger-bg-hover, var(--color-slate-300));
+  }
+
+  .default-button-dimmed {
+    opacity: 0.3;
+    transition: opacity 200ms;
+  }
+
+  .default-button-dimmed:hover,
+  .default-button-dimmed:focus-within {
+    opacity: 1;
+  }
+</style>
 

@@ -1,15 +1,17 @@
 import StickyNote from './StickyNote.jsx'
 import MarkdownBlock from './MarkdownBlock.jsx'
 import PrototypeEmbed from './PrototypeEmbed.jsx'
+import LinkPreview from './LinkPreview.jsx'
 
 /**
  * Maps widget type strings to their React components.
- * Each component receives: { id, props, onUpdate, onRemove }
+ * Each component receives: { id, props, onUpdate }
  */
 export const widgetRegistry = {
   'sticky-note': StickyNote,
   'markdown': MarkdownBlock,
   'prototype': PrototypeEmbed,
+  'link-preview': LinkPreview,
 }
 
 /**

@@ -13,35 +13,6 @@
   position: relative;
 }
 
-.removeBtn {
-  all: unset;
-  cursor: pointer;
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  font-size: 16px;
-  line-height: 1;
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--sticky-border, #d4a72c);
-  border-radius: 2px;
-  opacity: 0;
-  transition: opacity 150ms;
-  z-index: 1;
-}
-
-.sticky:hover .removeBtn {
-  opacity: 0.6;
-}
-
-.removeBtn:hover {
-  opacity: 1;
-  color: var(--fgColor-danger, #d1242f);
-}
-
 .text {
   padding: 12px 14px;
   margin: 0;

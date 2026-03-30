@@ -13,3 +13,27 @@
 .loading p {
   margin: 0;
 }
+
+.canvasScroll {
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+  background-color: var(--bgColor-muted, #f6f8fa);
+}
+
+@media (prefers-color-scheme: dark) {
+  .canvasScroll {
+    background-color: var(--bgColor-muted, #161b22);
+  }
+}
+
+.canvasZoom {
+  min-width: 100%;
+  min-height: 100%;
+}
+
+.selected {
+  outline: 2px solid var(--bgColor-accent-emphasis, #2f81f7);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

@@ -15,6 +15,7 @@ import path from 'node:path'
 import { parse as parseJsonc } from 'jsonc-parser'
 import { serverFeatures as workshopFeatures } from '../workshop/features/registry-server.js'
 import { docsHandler, collectFiles } from './docs-handler.js'
+import { createCanvasHandler } from '../canvas/server.js'
 
 const API_PREFIX = '/_storyboard/'
 
@@ -110,6 +111,9 @@ export default function storyboardServer() {
       // Wire docs API routes (always enabled — serves README + source files)
       routeHandlers.set('docs', docsHandler({ root, sendJson }))
 
+      // Wire canvas API routes (always enabled — CRUD for .canvas.jsonl files)
+      routeHandlers.set('canvas', createCanvasHandler({ root, sendJson }))
+
       // Watch core-ui.config.json for changes — trigger full reload so
       // CoreUIBar.svelte picks up menu/mode config changes during dev
       const coreUIConfigPath = path.resolve(
@@ -176,7 +180,7 @@ export default function storyboardServer() {
 
         try {
           let body = {}
-          if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+          if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH' || req.method === 'DELETE') {
             body = await parseJsonBody(req)
           }
           await handler(req, res, { body, path: restPath, method: req.method })

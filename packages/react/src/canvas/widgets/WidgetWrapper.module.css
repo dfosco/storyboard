@@ -9,36 +9,6 @@
     0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.removeBtn {
-  all: unset;
-  cursor: pointer;
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  font-size: 16px;
-  line-height: 1;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--fgColor-muted, #656d76);
-  border-radius: 6px;
-  background: var(--bgColor-default, #ffffff);
-  opacity: 0;
-  transition: opacity 150ms;
-  z-index: 1;
-}
-
-.wrapper:hover .removeBtn {
-  opacity: 1;
-}
-
-.removeBtn:hover {
-  color: var(--fgColor-danger, #d1242f);
-  background: var(--bgColor-danger-muted, #ffebe9);
-}
-
 .content {
   position: relative;
 }

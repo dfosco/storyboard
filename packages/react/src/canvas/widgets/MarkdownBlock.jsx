@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, markdownSchema } from './widgetProps.js'
 import styles from './MarkdownBlock.module.css'
@@ -25,13 +25,17 @@ function renderMarkdown(text) {
     })
 }
 
-export default function MarkdownBlock({ props, onUpdate, onRemove }) {
+export default function MarkdownBlock({ props, onUpdate }) {
   const content = readProp(props, 'content', markdownSchema)
   const width = readProp(props, 'width', markdownSchema)
   const [editing, setEditing] = useState(false)
   const textareaRef = useRef(null)
   const blockRef = useRef(null)
   const [editHeight, setEditHeight] = useState(null)
+
+  const handleContentChange = useCallback((e) => {
+    onUpdate?.({ content: e.target.value })
+  }, [onUpdate])
 
   useEffect(() => {
     if (editing) {
@@ -48,7 +52,7 @@ export default function MarkdownBlock({ props, onUpdate, onRemove }) {
   }, [editing, editHeight])
 
   return (
-    <WidgetWrapper onRemove={onRemove}>
+    <WidgetWrapper>
       <div
         ref={blockRef}
         className={styles.block}
@@ -60,7 +64,7 @@ export default function MarkdownBlock({ props, onUpdate, onRemove }) {
             className={styles.editor}
             style={{ minHeight: editHeight ? editHeight - 2 : undefined }}
             value={content}
-            onChange={(e) => onUpdate?.({ content: e.target.value })}
+            onChange={handleContentChange}
             onBlur={() => setEditing(false)}
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}

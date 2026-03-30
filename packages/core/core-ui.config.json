@@ -16,6 +16,7 @@
       "trigger": "command",
       "icon": "iconoir/key-command",
       "meta": { "strokeWeight": 2 },
+      "default": true,
       "modes": ["*"],
       "actions": [
         { "type": "header", "label": "Command Menu" },
@@ -40,7 +41,7 @@
         { "id": "workshop/create-flow", "label": "New flow", "type": "default", "modes": ["*"], "feature": "createFlow" },
         { "type": "footer", "label": "Supported in local development" }
       ]
-    },    
+    },
     "flows": {
       "label": "Flows",
       "ariaLabel": "Switch flow",
@@ -64,10 +65,16 @@
     "inspector": {
       "ariaLabel": "Inspect components",
       "icon": "iconoir/square-dashed",
-      "excludeRoutes": ["^/$", "/viewfinder"],
+      "excludeRoutes": ["^/$", "/viewfinder", "/canvas/"],
       "meta": { "strokeWeight": 2, "scale": 1.1 },
       "modes": ["*"],
       "sidepanel": "inspector"
     }
+  },
+
+  "canvasToolbar": {
+    "icon": "iconoir/grid-plus",
+    "meta": { "strokeWeight": 2, "scale": 1.2 },
+    "menuWidth": "220px"
   }
 }

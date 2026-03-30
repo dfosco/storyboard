@@ -181,9 +181,17 @@ CHANGELOG="packages/core/CHANGELOG.md"
 
 TITLE="v${VERSION}"
 
+# Verify the tag exists on the remote
+if ! git ls-remote --tags origin "refs/tags/${TAG}" | grep -q .; then
+  echo "  ⚠️  Tag ${TAG} not found on remote. Pushing tags..."
+  git push --follow-tags
+fi
+
 GH_RELEASE_ARGS=()
 if [ -n "$PRE_TAG" ]; then
   GH_RELEASE_ARGS+=(--prerelease)
+else
+  GH_RELEASE_ARGS+=(--latest)
 fi
 
 if gh release view "$TAG" &>/dev/null; then
@@ -198,6 +206,8 @@ else
   if [ -n "$NOTES" ]; then
     echo "$NOTES" | gh release create "$TAG" --title "$TITLE" --notes-file - "${GH_RELEASE_ARGS[@]}"
   else
+    echo "  ⚠️  No changelog section found for ${VERSION} in ${CHANGELOG}"
+    echo "     Falling back to auto-generated notes from commits."
     gh release create "$TAG" --title "$TITLE" --generate-notes "${GH_RELEASE_ARGS[@]}"
   fi
   echo "  ✅ Created release ${TITLE}"

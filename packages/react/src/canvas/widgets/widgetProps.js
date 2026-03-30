@@ -92,7 +92,7 @@ export function readProp(props, key, schema) {
  */
 export function readAllProps(props, schema) {
   const result = {}
-  for (const [key, def] of Object.entries(schema)) {
+  for (const key of Object.keys(schema)) {
     result[key] = readProp(props, key, schema)
   }
   return result

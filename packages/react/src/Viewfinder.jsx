@@ -1,5 +1,5 @@
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 
 /**
  * Viewfinder — thin React wrapper around the Svelte Viewfinder component.
@@ -23,9 +23,10 @@ export default function Viewfinder({ pageModules = {}, basePath, title = 'Storyb
 
   const shouldHideDefault = hideDefaultFlow ?? hideDefaultScene
 
-  const knownRoutes = Object.keys(pageModules)
+  const knownRoutes = useMemo(() => Object.keys(pageModules)
     .map(p => p.replace('/src/prototypes/', '').replace('.jsx', ''))
-    .filter(n => !n.startsWith('_') && n !== 'index' && n !== 'viewfinder')
+    .filter(n => !n.startsWith('_') && n !== 'index' && n !== 'viewfinder'),
+  [pageModules])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -53,7 +54,7 @@ export default function Viewfinder({ pageModules = {}, basePath, title = 'Storyb
         handleRef.current = null
       }
     }
-  }, [title, subtitle, basePath, showThumbnails, shouldHideDefault])
+  }, [title, subtitle, basePath, knownRoutes, showThumbnails, shouldHideDefault])
 
   return <div ref={containerRef} style={{ minHeight: '100vh' }} />
 }

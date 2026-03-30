@@ -2,7 +2,7 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import styles from './PrototypeEmbed.module.css'
 
-export default function PrototypeEmbed({ id, props, onUpdate, onRemove }) {
+export default function PrototypeEmbed({ props, onRemove }) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
   const width = readProp(props, 'width', prototypeEmbedSchema)
   const height = readProp(props, 'height', prototypeEmbedSchema)

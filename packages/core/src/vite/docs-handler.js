@@ -144,7 +144,7 @@ export function docsHandler({ root, sendJson }) {
           })
           return
         }
-      } catch {}
+      } catch { /* repository config not available */ }
 
       sendJson(res, 404, { error: 'Could not determine repository' })
       return

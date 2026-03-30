@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState, useEffect } from 'react'
-import { Canvas, Draggable } from '@dfosco/tiny-canvas'
+import { createElement, useCallback, useRef, useState } from 'react'
+import { Canvas } from '@dfosco/tiny-canvas'
 import { useCanvas } from './useCanvas.js'
 import { getWidgetComponent } from './widgets/index.js'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
@@ -18,6 +18,21 @@ function debounce(fn, ms) {
   }
 }
 
+/** Renders a single JSON-defined widget by type lookup. */
+function WidgetRenderer({ widget, onUpdate, onRemove }) {
+  const Component = getWidgetComponent(widget.type)
+  if (!Component) {
+    console.warn(`[canvas] Unknown widget type: ${widget.type}`)
+    return null
+  }
+  return createElement(Component, {
+    id: widget.id,
+    props: widget.props,
+    onUpdate,
+    onRemove,
+  })
+}
+
 /**
  * Generic canvas page component.
  * Reads canvas data from the index and renders all widgets on a draggable surface.
@@ -28,10 +43,12 @@ export default function CanvasPage({ name }) {
   const { canvas, jsxExports, loading } = useCanvas(name)
 
   // Local mutable copy of widgets for instant UI updates
-  const [localWidgets, setLocalWidgets] = useState(null)
-  useEffect(() => {
+  const [localWidgets, setLocalWidgets] = useState(canvas?.widgets ?? null)
+  const [trackedCanvas, setTrackedCanvas] = useState(canvas)
+  if (canvas !== trackedCanvas) {
+    setTrackedCanvas(canvas)
     setLocalWidgets(canvas?.widgets ?? null)
-  }, [canvas])
+  }
 
   // Debounced save to server
   const debouncedSave = useRef(
@@ -89,30 +106,21 @@ export default function CanvasPage({ name }) {
 
   // 1. JSX-sourced component widgets
   if (jsxExports) {
-    const sources = canvas.sources ?? []
     for (const [exportName, Component] of Object.entries(jsxExports)) {
-      const sourceEntry = sources.find((s) => s.export === exportName)
       allChildren.push(
         <div key={`jsx-${exportName}`} id={`jsx-${exportName}`}>
-          <ComponentWidget exportName={exportName} component={Component} />
+          <ComponentWidget component={Component} />
         </div>
       )
     }
   }
 
   // 2. JSON-defined mutable widgets
-  const widgets = localWidgets ?? []
-  for (const widget of widgets) {
-    const WidgetComponent = getWidgetComponent(widget.type)
-    if (!WidgetComponent) {
-      console.warn(`[canvas] Unknown widget type: ${widget.type}`)
-      continue
-    }
+  for (const widget of (localWidgets ?? [])) {
     allChildren.push(
       <div key={widget.id} id={widget.id}>
-        <WidgetComponent
-          id={widget.id}
-          props={widget.props}
+        <WidgetRenderer
+          widget={widget}
           onUpdate={(updates) => handleWidgetUpdate(widget.id, updates)}
           onRemove={() => handleWidgetRemove(widget.id)}
         />

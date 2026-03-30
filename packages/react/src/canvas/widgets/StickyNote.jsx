@@ -11,7 +11,7 @@ const COLORS = {
   orange: { bg: '#fff1e5', border: '#d18616', dot: '#e8a844' },
 }
 
-export default function StickyNote({ id, props, onUpdate, onRemove }) {
+export default function StickyNote({ props, onUpdate, onRemove }) {
   const text = readProp(props, 'text', stickyNoteSchema)
   const color = readProp(props, 'color', stickyNoteSchema)
   const palette = COLORS[color] ?? COLORS.yellow
@@ -104,4 +104,3 @@ export default function StickyNote({ id, props, onUpdate, onRemove }) {
   )
 }
 
-export { stickyNoteSchema as schema }

@@ -22,7 +22,6 @@ export default defineConfig({
     tailwindcss(),
     svelte({
       compilerOptions: {
-        // CSS is extracted to a separate file by Vite, not injected at runtime
         css: 'external',
       },
     }),

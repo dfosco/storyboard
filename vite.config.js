@@ -33,6 +33,7 @@ export default defineConfig(() => {
             // NOTE: Sub-path aliases must come BEFORE base package aliases.
             // In source repo, ui-runtime resolves to source for HMR.
             // In consumer repos, it resolves to dist/storyboard-ui.js (pre-compiled).
+            '@dfosco/storyboard-core/ui-runtime/style.css': path.resolve(__dirname, 'packages/core/src/styles/tailwind.css'),
             '@dfosco/storyboard-core/ui-runtime': path.resolve(__dirname, 'packages/core/src/ui-entry.js'),
             '@dfosco/storyboard-core/svelte-plugin-ui/design-modes': path.resolve(__dirname, 'packages/core/src/ui/design-modes.ts'),
             '@dfosco/storyboard-core/svelte-plugin-ui/viewfinder': path.resolve(__dirname, 'packages/core/src/ui/viewfinder.ts'),

@@ -22,23 +22,17 @@ let _mounted = false
 
 /**
  * Inject the compiled UI stylesheet if not already present.
- * In the source repo (dev mode), CSS is handled by Vite's HMR pipeline
- * so this is a no-op. In consumer repos, it injects the compiled CSS.
  */
-function injectUIStyles() {
+async function injectUIStyles() {
   if (document.querySelector('[data-storyboard-ui-css]')) return
 
-  // Try to resolve the CSS URL relative to the UI bundle.
-  // In consumer builds, the CSS is at dist/storyboard-ui.css.
   try {
-    const cssUrl = new URL('./storyboard-ui.css', import.meta.url).href
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = cssUrl
-    link.setAttribute('data-storyboard-ui-css', '')
-    document.head.appendChild(link)
+    // Dynamic import of CSS — Vite handles this as a side-effect import.
+    // In consumer repos: loads dist/storyboard-ui.css
+    // In source repo: Vite injects component styles via HMR
+    await import('@dfosco/storyboard-core/ui-runtime/style.css')
   } catch {
-    // Source repo / dev mode — CSS is injected by Vite plugins
+    // Graceful fallback — CSS may already be loaded by other means
   }
 }
 

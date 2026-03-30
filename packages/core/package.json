@@ -28,6 +28,7 @@
     ".": "./src/index.js",
     "./toolbar.config.json": "./toolbar.config.json",
     "./ui-runtime": "./dist/storyboard-ui.js",
+    "./ui-runtime/style.css": "./dist/storyboard-ui.css",
     "./canvas/materializer": "./src/canvas/materializer.js",
     "./vite/server": "./src/vite/server-plugin.js",
     "./comments/svelte": "./src/comments/ui/index.js",

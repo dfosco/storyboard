@@ -91,6 +91,34 @@ describe('Override body classes', () => {
   })
 })
 
+// ── Non-override sb-* classes preserved ──
+
+describe('Non-override sb-* classes', () => {
+  it('does not strip sb-comment-mode during sync', () => {
+    document.body.classList.add('sb-comment-mode')
+    window.location.hash = '#theme=dark'
+    syncOverrideClasses()
+    expect(document.body.classList.contains('sb-comment-mode')).toBe(true)
+    expect(getSbClasses()).toContain('sb-theme--dark')
+  })
+
+  it('does not strip sb-ff-* feature flag classes during sync', () => {
+    document.body.classList.add('sb-ff-dark-mode')
+    syncOverrideClasses()
+    expect(document.body.classList.contains('sb-ff-dark-mode')).toBe(true)
+  })
+
+  it('still removes stale override classes', () => {
+    document.body.classList.add('sb-comment-mode')
+    window.location.hash = '#theme=dark'
+    syncOverrideClasses()
+    window.location.hash = ''
+    syncOverrideClasses()
+    expect(document.body.classList.contains('sb-comment-mode')).toBe(true)
+    expect(getSbClasses()).not.toContain('sb-theme--dark')
+  })
+})
+
 // ── Flow Classes ──
 
 describe('Flow body classes', () => {

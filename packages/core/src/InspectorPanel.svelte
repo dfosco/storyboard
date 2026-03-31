@@ -666,6 +666,7 @@
 
   .line-numbers :global(.line) {
     padding-left: 0;
+    display: flex;
   }
 
   .line-numbers :global(.line::before) {

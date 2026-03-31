@@ -26,6 +26,8 @@
   let loading = $state(true)
   let submitting = $state(false)
   let error: string | null = $state(null)
+  let success: string | null = $state(null)
+  let createdRoute: string | null = $state(null)
 
   const kebabName = $derived(
     name.replace(/[^a-zA-Z0-9\s_-]/g, '').trim().replace(/[\s_]+/g, '-').toLowerCase().replace(/-+/g, '-').replace(/^-|-$/g, '')
@@ -62,7 +64,7 @@
 
   async function submit() {
     if (!canSubmit) return
-    submitting = true; error = null
+    submitting = true; error = null; success = null; createdRoute = null
     try {
       const res = await fetch(getApiUrl() + '/create', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -70,6 +72,8 @@
       })
       const data = await res.json()
       if (!res.ok) { error = data.error || 'Failed to create canvas'; return }
+      success = `Created ${data.path}`
+      createdRoute = data.route
       // Add redirect param to current URL — survives Vite's full-reload
       const url = new URL(window.location.href)
       url.searchParams.set('redirect', data.route)
@@ -118,6 +122,7 @@
   </div>
 
   {#if error}<Alert.Root variant="destructive"><Alert.Description>{error}</Alert.Description></Alert.Root>{/if}
+  {#if success}<Alert.Root><Alert.Description class="text-success">{success}{#if createdRoute} — <a href={createdRoute} class="underline font-medium">{createdRoute}</a>{/if}</Alert.Description></Alert.Root>{/if}
 </div>
 
 <Panel.Footer>

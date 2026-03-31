@@ -20,10 +20,12 @@ import path from 'node:path'
 
 const FLOW_SKELETON = JSON.stringify({ $global: [] }, null, 2) + '\n'
 
-/** Map partial directory value → source directory name */
-const DIR_MAP = {
-  recipe: 'recipes',
-  template: 'templates',
+/**
+ * Check whether a partial entry is a template (vs recipe).
+ * Accepts both singular and plural forms: "template" or "templates".
+ */
+function isTemplate(partialEntry) {
+  return partialEntry.directory === 'template' || partialEntry.directory === 'templates'
 }
 
 // ---------------------------------------------------------------------------
@@ -118,10 +120,9 @@ function generateBlankIndexJsx(componentName, title) {
  * @param {string} title - Human-readable title
  */
 function generateIndexJsx({ partialEntry, componentFile, componentName, title }) {
-  const typeDir = DIR_MAP[partialEntry.directory]
-  const importPath = `@/${typeDir}/${partialEntry.name}/${componentFile}`
+  const importPath = `@/${partialEntry.directory}/${partialEntry.name}/${componentFile}`
 
-  if (partialEntry.directory === 'template') {
+  if (isTemplate(partialEntry)) {
     return `import ${componentFile} from '${importPath}'
 
 export default function ${componentName}() {
@@ -303,16 +304,10 @@ export function createPrototypesHandler(ctx) {
       if (!partialEntry) {
         content = generateBlankIndexJsx(componentName, title)
       } else {
-        const typeDir = DIR_MAP[partialEntry.directory]
-        if (!typeDir) {
-          sendJson(res, 400, { error: `Invalid directory "${partialEntry.directory}". Must be "recipe" or "template".` })
-          return
-        }
-
-        const partialDir = path.join(root, 'src', typeDir, partialEntry.name)
+        const partialDir = path.join(root, 'src', partialEntry.directory, partialEntry.name)
         const componentFile = findComponentFile(partialDir)
         if (!componentFile) {
-          sendJson(res, 400, { error: `No .jsx or .tsx file found in src/${typeDir}/${partialEntry.name}/` })
+          sendJson(res, 400, { error: `No .jsx or .tsx file found in src/${partialEntry.directory}/${partialEntry.name}/` })
           return
         }
 

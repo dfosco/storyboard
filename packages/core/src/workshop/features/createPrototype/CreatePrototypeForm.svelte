@@ -62,8 +62,8 @@
   const canSubmit = $derived(!!kebabName && !nameError && !submitting && (!isExternal || (!!externalUrl.trim() && !urlError)))
 
   const templateLabel = $derived(partial ? partials.find(p => p.name === partial)?.name ?? partial : 'No template')
-  const templates = $derived(partials.filter(p => p.directory === 'template'))
-  const recipes = $derived(partials.filter(p => p.directory === 'recipe'))
+  const templates = $derived(partials.filter(p => p.directory === 'template' || p.directory === 'templates'))
+  const recipes = $derived(partials.filter(p => p.directory === 'recipe' || p.directory === 'recipes'))
   let templateMenuOpen = $state(false)
 
   function getApiUrl() {

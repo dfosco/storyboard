@@ -1,7 +1,14 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import styles from './PrototypeEmbed.module.css'
+
+function formatName(name) {
+  return name
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
 
 export default function PrototypeEmbed({ props, onUpdate }) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
@@ -18,15 +25,100 @@ export default function PrototypeEmbed({ props, onUpdate }) {
 
   const [editing, setEditing] = useState(false)
   const [interactive, setInteractive] = useState(false)
+  const [filter, setFilter] = useState('')
   const inputRef = useRef(null)
+  const filterRef = useRef(null)
   const embedRef = useRef(null)
 
+  // Build prototype index for the picker
+  const prototypeIndex = useMemo(() => {
+    try {
+      return buildPrototypeIndex()
+    } catch {
+      return { folders: [], prototypes: [], globalFlows: [], sorted: { title: { prototypes: [], folders: [] } } }
+    }
+  }, [])
+
+  // Build grouped picker entries from the prototype index
+  const pickerGroups = useMemo(() => {
+    const groups = []
+    const idx = prototypeIndex
+
+    // Collect all prototypes (from folders first, then ungrouped)
+    const allProtos = []
+    for (const folder of (idx.sorted?.title?.folders || idx.folders || [])) {
+      for (const proto of folder.prototypes || []) {
+        if (!proto.isExternal) allProtos.push(proto)
+      }
+    }
+    for (const proto of (idx.sorted?.title?.prototypes || idx.prototypes || [])) {
+      if (!proto.isExternal) allProtos.push(proto)
+    }
+
+    for (const proto of allProtos) {
+      if (proto.hideFlows && proto.flows.length === 1) {
+        groups.push({
+          label: proto.name,
+          items: [{ name: proto.name, route: proto.flows[0].route }],
+        })
+      } else if (proto.flows.length > 0) {
+        groups.push({
+          label: proto.name,
+          items: proto.flows.map((f) => ({
+            name: f.meta?.title || formatName(f.name),
+            route: f.route,
+          })),
+        })
+      } else {
+        groups.push({
+          label: proto.name,
+          items: [{ name: proto.name, route: `/${proto.dirName}` }],
+        })
+      }
+    }
+
+    // Global flows
+    const gf = idx.globalFlows || []
+    if (gf.length > 0) {
+      groups.push({
+        label: 'Other flows',
+        items: gf.map((f) => ({
+          name: f.meta?.title || formatName(f.name),
+          route: f.route,
+        })),
+      })
+    }
+
+    return groups
+  }, [prototypeIndex])
+
+  // Filter groups by search text
+  const filteredGroups = useMemo(() => {
+    if (!filter) return pickerGroups
+    const q = filter.toLowerCase()
+    return pickerGroups
+      .map((group) => {
+        const labelMatch = group.label.toLowerCase().includes(q)
+        if (labelMatch) return group
+        const matchedItems = group.items.filter((item) =>
+          item.name.toLowerCase().includes(q) || item.route.toLowerCase().includes(q)
+        )
+        if (matchedItems.length === 0) return null
+        return { ...group, items: matchedItems }
+      })
+      .filter(Boolean)
+  }, [pickerGroups, filter])
+
+  const hasPicker = pickerGroups.length > 0
+
   useEffect(() => {
-    if (editing && inputRef.current) {
+    if (editing && hasPicker && filterRef.current) {
+      filterRef.current.focus()
+    } else if (editing && !hasPicker && inputRef.current) {
       inputRef.current.focus()
       inputRef.current.select()
     }
-  }, [editing])
+  }, [editing, hasPicker])
 
   // Exit interactive mode when clicking outside the embed
   useEffect(() => {
@@ -42,11 +134,23 @@ export default function PrototypeEmbed({ props, onUpdate }) {
 
   const enterInteractive = useCallback(() => setInteractive(true), [])
 
+  function handlePickRoute(route) {
+    onUpdate?.({ src: route })
+    setEditing(false)
+    setFilter('')
+  }
+
   function handleSubmit(e) {
     e.preventDefault()
     const value = inputRef.current?.value?.trim() || ''
     onUpdate?.({ src: value })
     setEditing(false)
+    setFilter('')
+  }
+
+  function handleCancelEdit() {
+    setEditing(false)
+    setFilter('')
   }
 
   return (
@@ -57,26 +161,86 @@ export default function PrototypeEmbed({ props, onUpdate }) {
         style={{ width, height }}
       >
         {editing ? (
-          <form
-            className={styles.urlForm}
-            onSubmit={handleSubmit}
+          <div
+            className={styles.pickerPanel}
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <label className={styles.urlLabel}>Prototype URL path</label>
-            <input
-              ref={inputRef}
-              className={styles.urlInput}
-              type="text"
-              defaultValue={src}
-              placeholder="/MyPrototype/page"
-              onKeyDown={(e) => { if (e.key === 'Escape') setEditing(false) }}
-            />
-            <div className={styles.urlActions}>
-              <button type="submit" className={styles.urlSave}>Save</button>
-              <button type="button" className={styles.urlCancel} onClick={() => setEditing(false)}>Cancel</button>
-            </div>
-          </form>
+            {hasPicker && (
+              <>
+                <div className={styles.pickerHeader}>
+                  <span className={styles.urlLabel}>Pick a prototype</span>
+                  <button
+                    type="button"
+                    className={styles.urlCancel}
+                    onClick={handleCancelEdit}
+                    aria-label="Cancel"
+                  >✕</button>
+                </div>
+                <input
+                  ref={filterRef}
+                  className={styles.filterInput}
+                  type="text"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  placeholder="Filter…"
+                  onKeyDown={(e) => { if (e.key === 'Escape') handleCancelEdit() }}
+                />
+                <div className={styles.pickerList} role="listbox">
+                  {filteredGroups.map((group) => (
+                    <div key={group.label} className={styles.pickerGroup}>
+                      {group.items.length === 1 && group.items[0].name === group.label ? (
+                        <button
+                          className={styles.pickerItem}
+                          role="option"
+                          onClick={() => handlePickRoute(group.items[0].route)}
+                        >
+                          {group.label}
+                        </button>
+                      ) : (
+                        <>
+                          <div className={styles.pickerGroupLabel}>{group.label}</div>
+                          {group.items.map((item) => (
+                            <button
+                              key={item.route}
+                              className={styles.pickerItem}
+                              role="option"
+                              onClick={() => handlePickRoute(item.route)}
+                            >
+                              {item.name}
+                            </button>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  ))}
+                  {filteredGroups.length === 0 && (
+                    <div className={styles.pickerEmpty}>No matches</div>
+                  )}
+                </div>
+                <div className={styles.pickerDivider} />
+              </>
+            )}
+            <form className={styles.customUrlSection} onSubmit={handleSubmit}>
+              <label className={styles.urlLabel}>
+                {hasPicker ? 'Or enter a custom URL' : 'Prototype URL path'}
+              </label>
+              <input
+                ref={inputRef}
+                className={styles.urlInput}
+                type="text"
+                defaultValue={src}
+                placeholder="/MyPrototype/page"
+                onKeyDown={(e) => { if (e.key === 'Escape') handleCancelEdit() }}
+              />
+              <div className={styles.urlActions}>
+                <button type="submit" className={styles.urlSave}>Save</button>
+                {!hasPicker && (
+                  <button type="button" className={styles.urlCancel} onClick={handleCancelEdit}>Cancel</button>
+                )}
+              </div>
+            </form>
+          </div>
         ) : iframeSrc ? (
           <>
             <div className={styles.iframeContainer}>

@@ -2,6 +2,9 @@
   position: relative;
   overflow: hidden;
   background: var(--bgColor-default, #ffffff);
+  border: 3px solid var(--borderColor-default, #d0d7de);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .iframeContainer {
@@ -87,6 +90,101 @@
   height: 100%;
   box-sizing: border-box;
   justify-content: center;
+}
+
+.pickerPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.pickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 0;
+}
+
+.filterInput {
+  all: unset;
+  margin: 8px 16px;
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid var(--borderColor-default, #d0d7de);
+  border-radius: 6px;
+  background: var(--bgColor-default, #ffffff);
+  color: var(--fgColor-default, #1f2328);
+}
+
+.filterInput:focus {
+  border-color: var(--bgColor-accent-emphasis, #2f81f7);
+  box-shadow: 0 0 0 2px rgba(47, 129, 247, 0.3);
+}
+
+.pickerList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px;
+}
+
+.pickerGroup {
+  margin-bottom: 2px;
+}
+
+.pickerGroupLabel {
+  padding: 6px 8px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fgColor-muted, #656d76);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pickerItem {
+  all: unset;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--fgColor-default, #1f2328);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pickerItem:hover {
+  background: var(--bgColor-neutral-muted, #eaeef2);
+}
+
+.pickerItem:focus-visible {
+  outline: 2px solid var(--bgColor-accent-emphasis, #2f81f7);
+  outline-offset: -2px;
+}
+
+.pickerEmpty {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--fgColor-muted, #656d76);
+  font-style: italic;
+  text-align: center;
+}
+
+.pickerDivider {
+  height: 1px;
+  margin: 4px 16px;
+  background: var(--borderColor-muted, #d8dee4);
+}
+
+.customUrlSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 16px 12px;
 }
 
 .urlLabel {

@@ -345,7 +345,7 @@
                 lang: getLang(path),
                 theme: 'github-dark',
                 decorations: matchedLine > 0
-                  ? [{ start: { line: matchedLine - 1, character: 0 }, end: { line: matchedLine, character: 0 }, properties: { class: 'highlighted-line' } }]
+                  ? [{ start: { line: matchedLine - 1, character: 0 }, end: { line: matchedLine - 1, character: Infinity }, properties: { class: 'highlighted-line' } }]
                   : [],
               })
             } catch {

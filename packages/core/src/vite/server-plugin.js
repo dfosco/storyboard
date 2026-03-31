@@ -176,13 +176,24 @@ export default function storyboardServer() {
     },
 
     transformIndexHtml() {
-      if (clientScripts.length === 0) return []
+      const tags = []
 
-      return clientScripts.map((src) => ({
+      // Inject local dev flag so the UI can gate dev-only tools
+      tags.push({
         tag: 'script',
-        attrs: { type: 'module', src: base + src.replace(/^\//, '') },
-        injectTo: 'body',
-      }))
+        children: 'window.__SB_LOCAL_DEV__=true',
+        injectTo: 'head',
+      })
+
+      for (const src of clientScripts) {
+        tags.push({
+          tag: 'script',
+          attrs: { type: 'module', src: base + src.replace(/^\//, '') },
+          injectTo: 'body',
+        })
+      }
+
+      return tags
     },
 
     // Build-time: emit a static JSON with source files so the inspector

@@ -57,6 +57,8 @@
   // Roving tabindex: only one button in the toolbar is tabbable at a time
   let activeToolbarIndex = $state(-1)
 
+  const isLocalDev = typeof window !== 'undefined' && (window as any).__SB_LOCAL_DEV__ === true
+
   const commandMenuConfig = $derived(isMenuHidden('command') ? null : config.menus?.command)
   const shortcutsConfig = $derived((config as any).shortcuts || {})
 
@@ -65,6 +67,7 @@
   const orderedMenus = $derived(Object.entries(allMenus)
     .filter(([key]) => key !== 'command')
     .filter(([key]) => !isMenuHidden(key))
+    .filter(([, menu]) => !menu.localOnly || isLocalDev)
     .map(([key, menu]) => ({ key, ...menu })))
 
   // Discover menus with sidepanel property

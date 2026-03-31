@@ -140,6 +140,10 @@ export async function mountStoryboardCore(config = {}, options = {}) {
     }
   }
 
+  // Skip all UI mounting when loaded inside a prototype embed iframe
+  const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')
+  if (isEmbed) return
+
   // Dynamically import the compiled UI bundle.
   // Uses the package self-reference so resolution differs by context:
   //   Source repo: Vite alias overrides to src/ui-entry.js (source, HMR)

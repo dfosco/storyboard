@@ -30,6 +30,9 @@ export async function mountDevTools(options = {}) {
   // Prevent double-mount
   if (wrapper) return
 
+  // Skip mounting entirely when loaded inside a prototype embed iframe
+  if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')) return
+
   const { mount } = await import('svelte')
   const { default: CoreUIBar } = await import('./CoreUIBar.svelte')
 

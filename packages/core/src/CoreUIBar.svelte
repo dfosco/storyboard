@@ -563,7 +563,7 @@
   </div>
 {/if}
 
-{#if SidePanel}
+{#if !isEmbed && SidePanel}
   <SidePanel onClose={() => focusToolbarItem(activeToolbarIndex < 0 ? toolbarItemCount - 1 : activeToolbarIndex)} />
 {/if}
 

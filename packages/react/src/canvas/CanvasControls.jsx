@@ -8,7 +8,7 @@ export const ZOOM_MAX = ZOOM_STEPS[ZOOM_STEPS.length - 1]
 const WIDGET_TYPES = [
   { type: 'sticky-note', label: 'Sticky Note' },
   { type: 'markdown', label: 'Markdown' },
-  { type: 'prototype', label: 'Prototype' },
+  { type: 'prototype', label: 'Prototype embed' },
 ]
 
 /**

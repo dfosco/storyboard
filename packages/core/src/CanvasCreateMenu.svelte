@@ -20,7 +20,7 @@
   const widgetTypes = [
     { type: 'sticky-note', label: 'Sticky Note' },
     { type: 'markdown', label: 'Markdown' },
-    { type: 'prototype', label: 'Prototype' },
+    { type: 'prototype', label: 'Prototype embed' },
   ]
 
   let menuOpen = $state(false)

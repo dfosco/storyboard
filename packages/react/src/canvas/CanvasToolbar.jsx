@@ -6,7 +6,7 @@ import styles from './CanvasToolbar.module.css'
 const WIDGET_TYPES = [
   { type: 'sticky-note', label: 'Sticky Note', icon: '📝' },
   { type: 'markdown', label: 'Markdown', icon: '📄' },
-  { type: 'prototype', label: 'Prototype', icon: '🖥️' },
+  { type: 'prototype', label: 'Prototype embed', icon: '🖥️' },
 ]
 
 /**

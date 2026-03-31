@@ -49,7 +49,20 @@
     return basePath.replace(/\/$/, '') + '/_storyboard/canvas'
   }
 
+  const CANVAS_SUCCESS_KEY = 'sb-canvas-created'
+
   onMount(async () => {
+    // Restore success state after Vite's full-reload on file creation
+    try {
+      const saved = sessionStorage.getItem(CANVAS_SUCCESS_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        success = parsed.success
+        createdRoute = parsed.route
+        sessionStorage.removeItem(CANVAS_SUCCESS_KEY)
+      }
+    } catch {}
+
     try {
       const res = await fetch(getApiUrl() + '/folders')
       if (res.ok) {
@@ -74,10 +87,10 @@
       if (!res.ok) { error = data.error || 'Failed to create canvas'; return }
       success = `Created ${data.path}`
       createdRoute = data.route
-      // Add redirect param to current URL — survives Vite's full-reload
-      const url = new URL(window.location.href)
-      url.searchParams.set('redirect', data.route)
-      window.history.replaceState(null, '', url.toString())
+      // Persist success state — Vite does a full-reload when new files are created
+      try {
+        sessionStorage.setItem(CANVAS_SUCCESS_KEY, JSON.stringify({ success, route: createdRoute }))
+      } catch {}
     } catch (err: any) { error = err.message || 'Network error' } finally { submitting = false }
   }
 
@@ -122,7 +135,7 @@
   </div>
 
   {#if error}<Alert.Root variant="destructive"><Alert.Description>{error}</Alert.Description></Alert.Root>{/if}
-  {#if success}<Alert.Root><Alert.Description class="text-success">{success}{#if createdRoute} — <a href={createdRoute} class="underline font-medium">{createdRoute}</a>{/if}</Alert.Description></Alert.Root>{/if}
+  {#if success}<Alert.Root><Alert.Description class="text-success">{success}{#if createdRoute} — <a href={createdRoute} class="underline font-medium">Go to canvas</a>{/if}</Alert.Description></Alert.Root>{/if}
 </div>
 
 <Panel.Footer>

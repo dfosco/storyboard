@@ -502,6 +502,10 @@
         {/if}
       {:else}
         <!-- Canvas view -->
+        <div class="canvasWarning">
+          <Icon size={14} name="primer/alert" color="#9a6700" offsetY={-1} />
+          <span>Canvas is an experimental feature. Use with caution.</span>
+        </div>
         {#each canvasFolders as folder (folder.dirName)}
           <section class="folderGroup" class:folderGroupOpen={isExpanded(`folder:${folder.dirName}`)}>
             <button
@@ -957,5 +961,19 @@
     font-size: 15px;
     max-width: 720px;
     margin: 0 auto;
+  }
+
+  .canvasWarning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--borderColor-default, var(--color-border, #d0d7de));
+    background: var(--bgColor-attention-muted, #3d2e00);
+    color: var(--fgColor-attention, #9a6700);
+    font-size: 13px;
+    line-height: 1.4;
   }
 </style>

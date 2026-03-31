@@ -1,0 +1,80 @@
+/**
+ * Devtools tool module — developer utilities submenu.
+ *
+ * Renders as a submenu in the command menu with:
+ * - Show flow info
+ * - Reset all params
+ * - Hide mode toggle
+ * - Logout (when authenticated)
+ */
+export const id = 'devtools'
+
+/**
+ * @param {object} ctx
+ * @param {Function} ctx.showFlowInfoDialog - callback to open flow info dialog
+ */
+export async function handler(ctx) {
+  let loader = null
+  let hm = null
+  let commentsAuth = null
+  try { loader = await import('../loader.js') } catch { /* optional */ }
+  try { hm = await import('../hideMode.js') } catch { /* optional */ }
+  try { commentsAuth = await import('../comments/auth.js') } catch { /* optional */ }
+
+  return {
+    getChildren: () => {
+      const children = []
+      if (loader) {
+        children.push({
+          id: 'core/show-flow-info',
+          label: 'Show flow info',
+          type: 'default',
+          execute: () => {
+            const p = new URLSearchParams(window.location.search)
+            const name = p.get('flow') || p.get('scene') || 'default'
+            try {
+              const data = loader.loadFlow(name)
+              if (ctx.showFlowInfoDialog) {
+                ctx.showFlowInfoDialog(name, JSON.stringify(data, null, 2), null)
+              }
+            } catch (e) {
+              if (ctx.showFlowInfoDialog) {
+                ctx.showFlowInfoDialog(name, '', e.message)
+              }
+            }
+          },
+        })
+      }
+      children.push({
+        id: 'core/reset-params',
+        label: 'Reset all params',
+        type: 'default',
+        execute: () => { window.location.hash = '' },
+      })
+      if (hm) {
+        children.push({
+          id: 'core/hide-mode',
+          label: 'Hide mode',
+          type: 'toggle',
+          active: hm.isHideMode(),
+          execute: () => {
+            if (hm.isHideMode()) hm.deactivateHideMode()
+            else hm.activateHideMode()
+          },
+        })
+      }
+      if (commentsAuth?.isAuthenticated()) {
+        children.push({
+          id: 'core/logout',
+          label: 'Logout (remove token)',
+          type: 'default',
+          execute: () => {
+            commentsAuth.clearToken()
+            console.log('[storyboard] Token removed')
+          },
+        })
+      }
+      return children
+    },
+  }
+}

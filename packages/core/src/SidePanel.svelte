@@ -276,11 +276,11 @@
     z-index: 9998;
     display: flex;
     flex-direction: column;
-    background-color: var(--bgColor-default, #0d1117);
-    border-left: 1px solid var(--borderColor-default, #30363d);
+    background-color: var(--bgColor-default, var(--color-background, #ffffff));
+    border-left: 1px solid var(--borderColor-default, var(--color-border, #d0d7de));
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-    color: var(--fgColor-default, #e6edf3);
+    color: var(--fgColor-default, var(--color-foreground, #1f2328));
     animation: sb-sidepanel-slide-in 0.25s ease;
   }
 
@@ -293,7 +293,7 @@
     width: 100% !important;
     height: var(--sidepanel-height, 300px);
     border-left: none;
-    border-top: 1px solid var(--borderColor-default, #30363d);
+    border-top: 1px solid var(--borderColor-default, var(--color-border, #d0d7de));
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
     animation: sb-sidepanel-slide-up 0.25s ease;
   }
@@ -320,7 +320,7 @@
     left: 0;
     right: 0;
     height: 3px;
-    background: var(--mode-color, var(--borderColor-default, #30363d));
+    background: var(--mode-color, var(--borderColor-default, var(--color-border, #d0d7de)));
   }
 
   /* Drag handle — side mode (left edge, vertical) */
@@ -378,7 +378,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--fgColor-muted, #848d97);
+    color: var(--fgColor-muted, var(--color-muted-foreground, #656d76));
     padding-left: 4px;
   }
 
@@ -392,7 +392,7 @@
     appearance: none;
     border: none;
     background: transparent;
-    color: var(--fgColor-muted, #848d97);
+    color: var(--fgColor-muted, var(--color-muted-foreground, #656d76));
     cursor: pointer;
     padding: 6px;
     border-radius: 6px;
@@ -404,7 +404,7 @@
 
   .sb-sidepanel-action-btn:hover {
     background: var(--bgColor-neutral-muted, rgba(110, 118, 129, 0.1));
-    color: var(--fgColor-default, #e6edf3);
+    color: var(--fgColor-default, var(--color-foreground, #1f2328));
   }
 
   /* Body */
@@ -425,8 +425,8 @@
   .sb-sidepanel-spinner {
     width: 20px;
     height: 20px;
-    border: 2px solid var(--borderColor-default, #30363d);
-    border-top-color: var(--fgColor-muted, #848d97);
+    border: 2px solid var(--borderColor-default, var(--color-border, #d0d7de));
+    border-top-color: var(--fgColor-muted, var(--color-muted-foreground, #656d76));
     border-radius: 50%;
     animation: sb-spin 0.6s linear infinite;
   }

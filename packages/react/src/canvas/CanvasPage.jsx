@@ -292,6 +292,7 @@ export default function CanvasPage({ name }) {
     }
     function handleKeyUp(e) {
       if (e.key === ' ') {
+        e.preventDefault()
         setSpaceHeld(false)
         isPanning.current = false
         setPanningActive(false)

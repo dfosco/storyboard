@@ -1,5 +1,17 @@
 # storyboard
 
+## 3.3.1
+
+Fixes consumer build errors introduced in 3.3.0 where client repos without `svelte` or `shiki` installed would fail during Vite dependency optimization.
+
+### Bug Fixes
+
+- **Core**: Fix `import('svelte')` breaking consumer builds — `mountDevTools` in the public API now delegates to the compiled UI bundle via a lightweight proxy (`devtools-consumer.js`) instead of importing svelte directly (`88bf5d8`)
+- **Core**: Fix `shiki/*` imports failing esbuild dep optimizer — all dynamic `import('shiki/...')` calls in the inspector highlighter now include `.catch(() => null)` so consumers without shiki installed gracefully degrade (no syntax highlighting) instead of crashing (`88bf5d8`)
+- **Core**: Make CoreUIBar toolbar config properties reactive with `$derived()` so runtime config changes propagate correctly (`88bf5d8`)
+- **Core**: Remove unused `.inspector-toggle-active` CSS class from InspectorPanel (`88bf5d8`)
+- **tiny-canvas**: Add `prepublishOnly` build step to ensure `dist/` is always present in published package (`88bf5d8`)
+
 ## 3.3.0
 
 Client integration fixes, theme switching, inspector improvements, and canvas polish. This release makes the pre-compiled UI bundle fully functional in consumer repos and adds several new features.

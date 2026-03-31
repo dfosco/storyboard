@@ -186,27 +186,28 @@ function showToast(message, route, basePath) {
   const toast = document.createElement('div')
   Object.assign(toast.style, {
     position: 'fixed',
-    top: '1rem',
-    right: '1rem',
-    zIndex: '10001',
-    padding: '0.875rem 1.125rem',
-    borderRadius: '0.5rem',
-    background: '#1a1a1a',
-    color: '#fff',
+    bottom: '4.5rem',
+    right: '1.5rem',
+    zIndex: '10000',
+    padding: '0.75rem 1rem',
+    borderRadius: '0.75rem',
+    background: 'var(--color-popover, #fff)',
+    color: 'var(--color-foreground, #1e293b)',
     fontSize: '0.8125rem',
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
-    boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+    border: '1px solid var(--color-border, #cbd5e1)',
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.375rem',
+    gap: '0.25rem',
     opacity: '0',
-    transition: 'opacity 0.2s ease',
-    maxWidth: '320px',
+    transition: 'opacity 0.15s ease',
+    maxWidth: '280px',
   })
 
   const href = route?.startsWith('/') ? (basePath.replace(/\/$/, '') + route) : route
-  toast.innerHTML = `<span>✓ ${message.replace(/</g, '&lt;')}</span>`
-    + (href ? `<a href="${href}" style="color:#58a6ff;text-decoration:underline;font-weight:500">Open canvas</a>` : '')
+  toast.innerHTML = `<span style="font-weight:500">✓ ${message.replace(/</g, '&lt;')}</span>`
+    + (href ? `<a href="${href}" style="color:var(--color-primary, #0969da);text-decoration:underline;font-size:0.8125rem">Open canvas</a>` : '')
 
   document.body.appendChild(toast)
   requestAnimationFrame(() => { toast.style.opacity = '1' })

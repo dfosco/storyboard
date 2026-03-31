@@ -28,6 +28,59 @@
   /** @type {Element | null} — the currently selected DOM element */
   let selectedElement = $state(null)
 
+  // ── URL state helpers ─────────────────────────────────────────────
+
+  /**
+   * Build a CSS selector that can re-find `el` later.
+   * Prefers id, then data-testid, then an nth-child path from <body>.
+   */
+  function generateSelector(el) {
+    if (!(el instanceof Element)) return null
+    if (el.id) return `#${CSS.escape(el.id)}`
+
+    const testId = el.getAttribute('data-testid')
+    if (testId) return `[data-testid="${CSS.escape(testId)}"]`
+
+    const parts = []
+    let cur = el
+    while (cur && cur !== document.body && cur !== document.documentElement) {
+      let seg = cur.tagName.toLowerCase()
+      if (cur.id) {
+        parts.unshift(`#${CSS.escape(cur.id)}`)
+        break
+      }
+      const parent = cur.parentElement
+      if (parent) {
+        const siblings = Array.from(parent.children)
+        const idx = siblings.indexOf(cur) + 1
+        seg += `:nth-child(${idx})`
+      }
+      parts.unshift(seg)
+      cur = parent
+    }
+    return parts.length ? parts.join(' > ') : null
+  }
+
+  /** Read the `inspect` search param from the current URL. */
+  function getInspectParam() {
+    try {
+      return new URL(window.location.href).searchParams.get('inspect')
+    } catch { return null }
+  }
+
+  /** Set or clear the `inspect` search param without triggering navigation. */
+  function setInspectParam(selector) {
+    try {
+      const url = new URL(window.location.href)
+      if (selector) {
+        url.searchParams.set('inspect', selector)
+      } else {
+        url.searchParams.delete('inspect')
+      }
+      history.replaceState(history.state, '', url.toString())
+    } catch {}
+  }
+
   /** @type {string[]} */
   let knownFiles = []
 
@@ -332,6 +385,8 @@
     inspecting = false
     // Show persistent highlight on the selected element
     mouseMode?.showHighlight(el)
+    // Persist selection to URL
+    setInspectParam(generateSelector(el))
   }
 
   function handleDeactivate() {
@@ -343,6 +398,8 @@
     mouseMode?.hideHighlight()
     mouseMode?.activate()
     inspecting = true
+    // Clear URL param while re-selecting
+    setInspectParam(null)
   }
 
   function stopInspecting() {
@@ -370,8 +427,29 @@
       onDeactivate: handleDeactivate,
     })
 
-    // Auto-start inspector mode
-    startInspecting()
+    // Check for a persisted inspector selection in the URL
+    const savedSelector = getInspectParam()
+    let restored = false
+    if (savedSelector) {
+      try {
+        const el = document.querySelector(savedSelector)
+        if (el) {
+          handleSelect(el)
+          restored = true
+        }
+      } catch {
+        // Invalid selector — ignore and fall through to default behavior
+      }
+      if (!restored) {
+        // Element not found — clean up stale param
+        setInspectParam(null)
+      }
+    }
+
+    // Auto-start inspector mode only if we didn't restore a selection
+    if (!restored) {
+      startInspecting()
+    }
 
     // Pre-fetch file list and repo info
     // Try dev middleware first, fall back to static JSON
@@ -404,6 +482,7 @@
   onDestroy(() => {
     mouseMode?.deactivate()
     mouseMode?.hideHighlight()
+    setInspectParam(null)
   })
 </script>
 

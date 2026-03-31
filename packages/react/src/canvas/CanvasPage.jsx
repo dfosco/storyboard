@@ -1,5 +1,6 @@
 import { createElement, useCallback, useEffect, useRef, useState } from 'react'
 import { Canvas } from '@dfosco/tiny-canvas'
+import '@dfosco/tiny-canvas/style.css'
 import { useCanvas } from './useCanvas.js'
 import { getWidgetComponent } from './widgets/index.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'

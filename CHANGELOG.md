@@ -1,5 +1,28 @@
 # storyboard
 
+## 3.4.0
+
+Declarative tool system for the toolbar. Every tool is now defined in `toolbar.config.json` with a standard shape — code is only a nugget of execution. Tools declare where they render, how they render, and their visibility rules.
+
+### Features
+
+- **Declarative tool config** — New `tools` key in `toolbar.config.json` replaces `menus`. Each tool declares `toolbar` target (`main-toolbar`, `secondary-toolbar`, or `command-list`) and `render` type (`button`, `menu`, `sidepanel`, `submenu`, `link`). Moving a tool between targets requires only a config change (`5e40fda`)
+- **Tool registry** — New `toolRegistry.js` module provides `initToolRegistry`, `registerToolModule`, `getToolsForToolbar`, and reactive subscription API. Externalized as shared state module so the UI bundle and consumer share one instance (`1e1d566`)
+- **Tool modules** — Each tool extracted into its own module under `src/tools/` with a standard interface: `{ component?, handler?, setup?, guard? }`. Modules: create, theme, comments, flows, docs, inspector, devtools, featureFlags (`1273f9b`)
+- **First-class command-list tools** — Devtools, Feature Flags, Viewfinder, and Repository promoted from hardcoded command menu actions to declarative tools with `toolbar: "command-list"` (`5e40fda`)
+- **Config-driven keyboard shortcuts** — Tool shortcuts (e.g. `⌘D` for docs, `⌘I` for inspector) are now declared via a `shortcut` field on each tool, replacing hardcoded keybindings (`1d40b06`)
+- **`localOnly` gating** — Tools with `"localOnly": true` are hidden in production. The Vite server plugin injects `window.__SB_LOCAL_DEV__` only during dev (`33f185a`)
+
+### Bug Fixes
+
+- **Inspector**: Eliminate 404 console noise in production — skip dev middleware endpoints entirely when `__SB_LOCAL_DEV__` is absent, go directly to static `inspector.json` (`33f185a`)
+- **Inspector**: Fix `__SB_LOCAL_DEV__` leaking into production builds — flag is now only injected during `vite dev`, not `vite build` (`33f185a`)
+
+### Refactors
+
+- **CoreUIBar**: `onMount` reduced from ~180 to ~65 lines by loading tools from the module registry instead of 8 separate hardcoded import blocks (`1d40b06`)
+- **CoreUIBar**: Backward-compatible `resolveMenus`/`resolveCommandConfig` compat layer derives legacy menu structures from the new `tools` schema (`5e40fda`)
+
 ## 3.3.2
 
 ### Bug Fixes

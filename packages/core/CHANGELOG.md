@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.2.0
+
+### Minor Changes
+
+-   Restores original client architecture overhaul. Ships a pre-compiled Svelte UI bundle so consumer repos need zero Svelte toolchain — just call `mountStoryboardCore()`. On 3.3.0 specifically: Client integration fixes, theme switching, inspector improvements, and canvas polish. This release makes the pre-compiled UI bundle fully functional in consumer repos and adds several new features.
+
 ## 3.1.2
 
 ### Patch Changes

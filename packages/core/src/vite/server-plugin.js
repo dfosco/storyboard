@@ -64,6 +64,7 @@ export default function storyboardServer() {
   let root = ''
   let base = '/'
   let config = {}
+  let isDev = false
 
   // Route handler registry — plugins register here during setup
   const routeHandlers = new Map()
@@ -76,6 +77,7 @@ export default function storyboardServer() {
       root = viteConfig.root
       base = viteConfig.base || '/'
       config = readConfig(root)
+      isDev = viteConfig.command === 'serve'
     },
 
     configureServer(server) {
@@ -178,12 +180,14 @@ export default function storyboardServer() {
     transformIndexHtml() {
       const tags = []
 
-      // Inject local dev flag so the UI can gate dev-only tools
-      tags.push({
-        tag: 'script',
-        children: 'window.__SB_LOCAL_DEV__=true',
-        injectTo: 'head',
-      })
+      // Inject local dev flag only during dev server (not production builds)
+      if (isDev) {
+        tags.push({
+          tag: 'script',
+          children: 'window.__SB_LOCAL_DEV__=true',
+          injectTo: 'head',
+        })
+      }
 
       // Inject base path so the inspector UI can resolve static assets
       // (e.g. inspector.json) when deployed under a subpath

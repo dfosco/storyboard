@@ -1,5 +1,69 @@
 # storyboard
 
+## 3.3.0
+
+Client integration fixes, theme switching, inspector improvements, and canvas polish. This release makes the pre-compiled UI bundle fully functional in consumer repos and adds several new features.
+
+### Features
+
+- **Theme switcher** — Toolbar ThemeMenuButton sets Primer CSS attributes (`data-color-mode`, `data-light-theme`, `data-dark-theme`), dispatches `storyboard:theme:changed` events, persists to localStorage, and applies before React mount to prevent flash (`cf899b4`)
+- **Inspector URL persistence** — Selecting an element writes `?inspect=<css-selector>` to the URL. Sharing the URL auto-opens the inspector panel and highlights the element with retry logic for async React rendering (`be836a4`, `124ca4e`)
+- **Canvas auto-routing** — `StoryboardProvider` detects canvas URLs and lazy-loads `CanvasPage` automatically — consumers get canvas routing without explicit route setup (`e31f7a9`)
+- **Prototype picker for canvas embeds** — Searchable list of prototypes and flows (powered by `buildPrototypeIndex()`) replaces the URL text input when adding prototype embeds. Includes "Custom URL" fallback (`5a245f6`)
+- **Canvas experimental warning** — Warning banner at the top of the canvas tab in the viewfinder (`35ad1f4`)
+- **Workshop creation toast** — Success notification with "Open" link survives Vite's full-reload via sessionStorage persistence (`d1b42cd`)
+
+### Bug Fixes
+
+- **Core**: Remove `node:fs`, `node:path` server imports from UI bundle — feature index files re-exported server handlers that got hoisted by `inlineDynamicImports` (`5cfc079`)
+- **Core**: Convert shiki static imports to dynamic `import()` in highlighter.js to prevent top-level browser crashes (`5cfc079`)
+- **Core**: Externalize stateful core modules (loader, modes, commandActions) from UI bundle so consumer and bundle share singleton state (`3272dbc`)
+- **Core**: Bundle all CSS (Tailwind utilities, comments, modes) into single `storyboard-ui.css` (`b906b3d`)
+- **Core**: Replace `import.meta.env.DEV` checks in InspectorPanel with runtime detection — compile-time evaluation eliminated the dev middleware code path (`33ba6e1`)
+- **Core**: Inject repository URL from `storyboard.config.json` into toolbar command menu (`33ba6e1`)
+- **Core**: Fix inspector code block to always use dark chrome independent of page theme (`be836a4`)
+- **Core**: Remove duplicate source file path display in inspector panel (`909a641`)
+- **Core**: Add CSS variable fallback chains for borders/colors in SidePanel and InspectorPanel (`bfe4807`, `1e28960`)
+- **Core**: Hide toolbar and all core UI from prototype embeds via `?_sb_embed` early-return (`b6f8cc9`)
+- **Core**: Fix workshop Create panel styles — add `tw-animate-css` for animations, `revert-layer` for Primer cascade conflict (`4ce6c75`)
+- **Canvas**: Import `@dfosco/tiny-canvas/style.css` — missing CSS caused widgets to stretch full-width (`4ce6c75`)
+- **Canvas**: Remove `overflow: hidden` from `.tc-draggable-inner` — was clipping sticky notes and color pickers (`ce4c909`)
+- **Canvas**: Show success message with link after canvas creation (`03cf5fb`)
+- **Canvas**: Add 3px border, border-radius, and soft shadow to prototype embed widgets (`5a245f6`)
+
+### Style
+
+- Rename "Add prototype" to "Prototype embed" in canvas menus (`ab4a804`)
+- Toolbar toast positioned bottom-right above toolbar with popover styling (`d1b42cd`, `71ad492`)
+- Reduced top padding on all workshop Create forms (`d1b42cd`)
+
+## 3.2.0
+
+The client architecture overhaul. Ships a pre-compiled Svelte UI bundle so consumer repos need zero Svelte toolchain — just call `mountStoryboardCore()`.
+
+### Major Changes
+
+- **Pre-compiled UI bundle** — Svelte components (CoreUIBar, comments, inspector, workshop) compiled into `dist/storyboard-ui.js` + `dist/storyboard-ui.css` via Vite library mode (`8d1a992`)
+- **`mountStoryboardCore()` API** — Single entry point replaces 6+ individual imports (`8fb2688`)
+- **Scaffold system** — `npx storyboard-scaffold` syncs files to consumer repos from manifest (`8fb2688`)
+
+### Features
+
+- **Toolbar config merge** — Client overrides in `storyboard.config.json` deep-merged with defaults (`8fb2688`)
+- **Viewfinder and DesignModes** routed through compiled UI bundle (`4999a76`)
+- **Package self-reference** for UI bundle import resolution (`2298684`)
+
+### Bug Fixes
+
+- Remove workshop `mount.ts` injection from server plugin (`3c1dd2c`)
+- CSS injection via package export and `modes.css` import (`30fbf10`)
+- Add `build:ui` and `dev:ui` convenience scripts (`35bfd76`)
+- Lint config and `prepublishOnly` script (`13a2a52`)
+
+### Chores
+
+- Rename `core-ui.config.json` to `toolbar.config.json` (`162a800`)
+
 ## 3.1.1
 
 Fixes package resolution errors when consuming `@dfosco/storyboard-core` and `@dfosco/tiny-canvas` from npm.

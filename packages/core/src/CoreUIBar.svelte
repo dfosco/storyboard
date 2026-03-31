@@ -17,7 +17,7 @@
   import * as Tooltip from './lib/components/ui/tooltip/index.js'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
-  import { sidePanelState, togglePanel, openPanel } from './stores/sidePanelStore.js'
+  import { sidePanelState, togglePanel } from './stores/sidePanelStore.js'
   import { initCommandActions, registerCommandAction, getActionChildren, isExcludedByRoute, setRoutingBasePath } from './commandActions.js'
   import { isMenuHidden } from './uiConfig.js'
   import defaultToolbarConfig from '../toolbar.config.json'
@@ -232,20 +232,16 @@
       e.preventDefault()
       commandMenuOpen = !commandMenuOpen
     }
-    // Cmd+D — toggle documentation panel
-    if (e.key === 'd' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
-      const docsMenu = visibleMenus.find(m => m.sidepanel === 'docs')
-      if (docsMenu) {
-        e.preventDefault()
-        togglePanel('docs')
-      }
-    }
-    // Cmd+I — toggle inspector panel
-    if (e.key === 'i' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
-      const inspectorMenu = visibleMenus.find(m => m.sidepanel === 'inspector')
-      if (inspectorMenu) {
-        e.preventDefault()
-        togglePanel('inspector')
+    // Config-driven tool shortcuts (e.g. Cmd+D for docs, Cmd+I for inspector)
+    for (const menu of visibleMenus) {
+      const shortcut = menu.shortcut
+      if (!shortcut?.key) continue
+      if (e.key === shortcut.key && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+        if (menu.sidepanel) {
+          e.preventDefault()
+          togglePanel(menu.sidepanel)
+        }
+        break
       }
     }
   }
@@ -267,11 +263,6 @@
       initCommandActions(commandMenuConfig)
     }
 
-    // Register core action handlers
-    registerCommandAction('core/viewfinder', () => {
-      window.location.href = basePath + 'viewfinder'
-    })
-
     // Register sidepanel toggle actions
     for (const menu of sidepanelMenus) {
       registerCommandAction(`core/${menu.key}`, () => {
@@ -279,185 +270,53 @@
       })
     }
 
-    // Auto-open inspector panel if ?inspect= param is in the URL
-    try {
-      const inspectParam = new URL(window.location.href).searchParams.get('inspect')
-      if (inspectParam) {
-        openPanel('inspector')
-      }
-    } catch {}
+    // Load all tool modules from the registry
+    const { toolModules } = await import('./tools/registry.js')
+    const toolConfigs = config.tools || {}
+    const ctx = { basePath, showFlowInfoDialog }
 
-    // Register devtools submenu (show flow info, reset params, hide mode, logout)
-    {
-      let loader: any = null
-      let hm: any = null
-      let commentsAuth: any = null
-      try { loader = await import('./loader.js') } catch {}
-      try { hm = await import('./hideMode.js') } catch {}
-      try { commentsAuth = await import('./comments/auth.js') } catch {}
+    for (const [toolId, loadModule] of Object.entries(toolModules as Record<string, Function>)) {
+      const toolConfig = toolConfigs[toolId]
+      if (!toolConfig) continue
 
-      registerCommandAction('core/devtools', {
-        getChildren: () => {
-          const children: any[] = []
-          if (loader) {
-            children.push({
-              id: 'core/show-flow-info',
-              label: 'Show flow info',
-              type: 'default',
-              execute: () => {
-                const p = new URLSearchParams(window.location.search)
-                const name = p.get('flow') || p.get('scene') || 'default'
-                try {
-                  const data = loader.loadFlow(name)
-                  showFlowInfoDialog(name, JSON.stringify(data, null, 2), null)
-                } catch (e: any) {
-                  showFlowInfoDialog(name, '', e.message)
-                }
-              },
-            })
-          }
-          children.push({
-            id: 'core/reset-params',
-            label: 'Reset all params',
-            type: 'default',
-            execute: () => { window.location.hash = '' },
-          })
-          if (hm) {
-            children.push({
-              id: 'core/hide-mode',
-              label: 'Hide mode',
-              type: 'toggle',
-              active: hm.isHideMode(),
-              execute: () => {
-                if (hm.isHideMode()) hm.deactivateHideMode()
-                else hm.activateHideMode()
-              },
-            })
-          }
-          if (commentsAuth?.isAuthenticated()) {
-            children.push({
-              id: 'core/logout',
-              label: 'Logout (remove token)',
-              type: 'default',
-              execute: () => {
-                commentsAuth.clearToken()
-                console.log('[storyboard] Token removed')
-              },
-            })
-          }
-          return children
-        },
-      })
-    }
+      try {
+        const mod = await loadModule()
+        const toolCtx = { ...ctx, config: toolConfig }
 
-    try {
-      const ff = await import('./featureFlags.js')
-      registerCommandAction('core/feature-flags', {
-        getChildren: () =>
-          ff.getFlagKeys().map((key: string) => ({
-            id: `flags/${key}`,
-            label: key,
-            type: 'toggle' as const,
-            active: ff.getFlag(key),
-            execute: () => ff.toggleFlag(key),
-          })),
-      })
-    } catch {}
-
-    // Register flow switcher action (dynamic — reads current prototype from URL)
-    try {
-      const loader = await import('./loader.js')
-      const vf = await import('./viewfinder.js')
-
-      registerCommandAction('core/flows', {
-        getChildren: () => {
-          let path = window.location.pathname
-          const base = basePath.replace(/\/+$/, '')
-          if (base && path.startsWith(base)) path = path.slice(base.length)
-          path = path.replace(/\/+$/, '') || '/'
-          const segments = path.split('/').filter(Boolean)
-          const proto = segments[0] || null
-          if (!proto) return []
-
-          // Detect active flow
-          const params = new URLSearchParams(window.location.search)
-          const explicit = params.get('flow') || params.get('scene')
-          let active: string
-          if (explicit) {
-            active = loader.resolveFlowName(proto, explicit)
-          } else {
-            const pageFlow = path === '/' ? 'index' : (path.split('/').pop() || 'index')
-            const scoped = loader.resolveFlowName(proto, pageFlow)
-            if (loader.flowExists(scoped)) active = scoped
-            else {
-              const protoFlow = loader.resolveFlowName(proto, proto)
-              active = loader.flowExists(protoFlow) ? protoFlow : 'default'
-            }
-          }
-
-          return loader.getFlowsForPrototype(proto).map((f: any) => {
-            const meta = vf.getFlowMeta(f.key)
-            return {
-              id: f.key,
-              label: meta?.title || f.name,
-              type: 'radio' as const,
-              active: f.key === active,
-              execute: () => { window.location.href = vf.resolveFlowRoute(f.key) },
-            }
-          })
-        },
-      })
-    } catch {}
-
-    // Load action menu button (used for any menu with an "action" reference)
-    try {
-      const mod = await import('./ActionMenuButton.svelte')
-      ActionMenuButton = mod.default
-    } catch {}
-
-    // Load theme menu button
-    try {
-      const mod = await import('./ThemeMenuButton.svelte')
-      ThemeMenuButton = mod.default
-    } catch {}
-
-    // Load comments menu button
-    try {
-      const { isCommentsEnabled } = await import('./comments/config.js')
-      if (isCommentsEnabled()) {
-        commentsEnabled = true
-        const mod = await import('./CommentsMenuButton.svelte')
-        CommentsMenuButton = mod.default
-      }
-    } catch {}
-
-    // Load create menu features
-    const createMenuConfig = allMenus.create
-    try {
-      if (createMenuConfig) {
-        const { features } = await import('./workshop/features/registry.js')
-
-        const createActions = Array.isArray(createMenuConfig.actions) ? createMenuConfig.actions : []
-        createMenuFeatures = createActions
-          .filter((a: any) => a.feature)
-          .map((a: any) => {
-            const feat = (features as Record<string, any>)[a.feature]
-            if (!feat || !feat.overlayId || !feat.overlay) return null
-            return {
-              name: feat.name,
-              label: a.label || feat.label,
-              overlayId: feat.overlayId,
-              overlay: feat.overlay,
-            }
-          })
-          .filter(Boolean)
-
-        if (createMenuFeatures.length > 0) {
-          const mod = await import('./CreateMenuButton.svelte')
-          CreateMenuButton = mod.default
+        // Run guard — skip if guard returns false
+        if (mod.guard) {
+          const ok = await mod.guard(toolCtx)
+          if (!ok) continue
         }
-      }
-    } catch {}
+
+        // Run setup
+        if (mod.setup) {
+          const setupResult = await mod.setup(toolCtx)
+          // Store setup results (e.g. create features)
+          if (toolId === 'create' && setupResult?.features) {
+            createMenuFeatures = setupResult.features
+          }
+        }
+
+        // Register handler as command action
+        if (mod.handler) {
+          const handlerResult = await mod.handler(toolCtx)
+          const actionId = toolConfig.handler || `core/${toolId}`
+          registerCommandAction(actionId, handlerResult)
+        }
+
+        // Load component
+        if (mod.component) {
+          const component = await mod.component()
+          switch (toolId) {
+            case 'create': CreateMenuButton = component; break
+            case 'theme': ThemeMenuButton = component; break
+            case 'comments': CommentsMenuButton = component; commentsEnabled = true; break
+            case 'flows': ActionMenuButton = component; break
+          }
+        }
+      } catch { /* tool failed to load — skip gracefully */ }
+    }
 
     // Load side panel component
     try {

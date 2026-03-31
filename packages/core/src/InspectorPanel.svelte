@@ -44,7 +44,10 @@
   async function loadStaticData() {
     if (staticInspectorData) return staticInspectorData
     try {
-      const res = await fetch(`${import.meta.env.BASE_URL}_storyboard/inspector.json`)
+      // Use window.location to derive base path at runtime, since
+      // import.meta.env.BASE_URL is baked at compile time in the UI bundle
+      const basePath = window.__STORYBOARD_BASE_PATH__ || '/'
+      const res = await fetch(`${basePath}_storyboard/inspector.json`)
       if (res.ok) {
         staticInspectorData = await res.json()
         return staticInspectorData
@@ -55,12 +58,19 @@
 
   /**
    * Fetch source file content — uses dev middleware in dev, static JSON in prod.
+   * Uses runtime detection (not import.meta.env.DEV) so this works in the
+   * pre-compiled UI bundle where compile-time env vars are baked in.
    */
   async function fetchSourceContent(filePath) {
-    if (import.meta.env.DEV) {
+    // Try the dev middleware first — works when Vite server plugin is active
+    try {
       const res = await fetch(`/_storyboard/docs/source?path=${encodeURIComponent(filePath)}`)
-      return res.ok ? (await res.json())?.content || '' : ''
-    }
+      if (res.ok) {
+        const json = await res.json()
+        return json?.content || ''
+      }
+    } catch {}
+    // Fall back to static inspector JSON for deployed/production builds
     const data = await loadStaticData()
     return data?.sources?.[filePath] || ''
   }
@@ -364,23 +374,25 @@
     startInspecting()
 
     // Pre-fetch file list and repo info
-    if (import.meta.env.DEV) {
-      // Dev: use live middleware endpoints
-      try {
-        const [filesRes, repoRes] = await Promise.all([
-          fetch('/_storyboard/docs/files'),
-          fetch('/_storyboard/docs/repo'),
-        ])
-        if (filesRes.ok) {
-          const data = await filesRes.json()
-          knownFiles = data.files || []
-        }
-        if (repoRes.ok) {
-          repoInfo = await repoRes.json()
-        }
-      } catch {}
-    } else {
-      // Production: load from static build-time JSON
+    // Try dev middleware first, fall back to static JSON
+    let filesLoaded = false
+    try {
+      const [filesRes, repoRes] = await Promise.all([
+        fetch('/_storyboard/docs/files'),
+        fetch('/_storyboard/docs/repo'),
+      ])
+      if (filesRes.ok) {
+        const data = await filesRes.json()
+        knownFiles = data.files || []
+        filesLoaded = true
+      }
+      if (repoRes.ok) {
+        repoInfo = await repoRes.json()
+      }
+    } catch {}
+
+    if (!filesLoaded) {
+      // Fall back to static build-time JSON
       const data = await loadStaticData()
       if (data) {
         knownFiles = data.files || []

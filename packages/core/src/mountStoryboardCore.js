@@ -79,11 +79,20 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   // Load and merge toolbar config.
   // Core defaults come from toolbar.config.json (bundled).
   // Client can provide overrides via config.toolbar or a toolbar.config.json at repo root.
-  let toolbarConfig = undefined
-  if (config.toolbar) {
-    const { deepMerge } = await import('./loader.js')
-    const defaultConfig = (await import('../toolbar.config.json')).default
-    toolbarConfig = deepMerge(defaultConfig, config.toolbar)
+  const { deepMerge } = await import('./loader.js')
+  const defaultConfig = (await import('../toolbar.config.json')).default
+  let toolbarConfig = config.toolbar
+    ? deepMerge(defaultConfig, config.toolbar)
+    : { ...defaultConfig }
+
+  // Inject repository URL from storyboard.config.json into the command menu
+  if (config.repository?.owner && config.repository?.name) {
+    const repoUrl = `https://github.com/${config.repository.owner}/${config.repository.name}`
+    const commandMenu = toolbarConfig.menus?.command
+    if (commandMenu?.actions) {
+      const repoAction = commandMenu.actions.find(a => a.id === 'core/repository')
+      if (repoAction) repoAction.url = repoUrl
+    }
   }
 
   // Dynamically import the compiled UI bundle.

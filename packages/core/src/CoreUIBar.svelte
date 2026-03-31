@@ -17,7 +17,7 @@
   import * as Tooltip from './lib/components/ui/tooltip/index.js'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
-  import { sidePanelState, togglePanel } from './stores/sidePanelStore.js'
+  import { sidePanelState, togglePanel, openPanel } from './stores/sidePanelStore.js'
   import { initCommandActions, registerCommandAction, getActionChildren, isExcludedByRoute, setRoutingBasePath } from './commandActions.js'
   import { isMenuHidden } from './uiConfig.js'
   import defaultToolbarConfig from '../toolbar.config.json'
@@ -217,6 +217,14 @@
         togglePanel(menu.sidepanel)
       })
     }
+
+    // Auto-open inspector panel if ?inspect= param is in the URL
+    try {
+      const inspectParam = new URL(window.location.href).searchParams.get('inspect')
+      if (inspectParam) {
+        openPanel('inspector')
+      }
+    } catch {}
 
     // Register devtools submenu (show flow info, reset params, hide mode, logout)
     {

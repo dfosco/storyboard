@@ -543,11 +543,9 @@
 
         <!-- Source code -->
         {#if sourcePath}
-          <div class="border rounded-md overflow-hidden flex-1 min-h-0 flex flex-col" style:border-color="var(--borderColor-default, var(--color-border, #d1d9e0))">
+          <div class="border rounded-md overflow-hidden flex-1 min-h-0 flex flex-col inspector-code-block" style:border-color="var(--borderColor-default, var(--color-border, #d1d9e0))">
             <div
-              class="flex items-center justify-between w-full px-3 py-1.5 text-xs font-semibold shrink-0"
-              style:background="var(--bgColor-default)"
-              style:color="var(--fgColor-muted)"
+              class="flex items-center justify-between w-full px-3 py-1.5 text-xs font-semibold shrink-0 inspector-code-header"
             >
               <span class="flex items-center gap-1.5 min-w-0">
                 <Icon name="primer/file-code" size={12} />
@@ -558,8 +556,7 @@
                   href={githubUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="flex items-center gap-1 shrink-0 text-xs no-underline hover:underline inspector-mono"
-                  style:color="var(--fgColor-muted)"
+                  class="flex items-center gap-1 shrink-0 text-xs no-underline hover:underline inspector-mono inspector-code-link"
                 >
                   <Icon name="primer/mark-github" size={14} />
                   <span>GitHub</span>
@@ -567,9 +564,9 @@
               {/if}
             </div>
 
-            <div class="border-t flex-1 min-h-0 flex flex-col" style:border-color="var(--borderColor-default, var(--color-border, #d1d9e0))">
+            <div class="border-t flex-1 min-h-0 flex flex-col" style:border-color="#30363d">
                 {#if sourceLoading}
-                  <div class="px-3 py-4 text-xs text-center" style:color="var(--fgColor-muted)">
+                  <div class="px-3 py-4 text-xs text-center" style:color="#8b949e">
                     Loading source…
                   </div>
                 {:else if sourceCode}
@@ -577,11 +574,11 @@
                     {#if highlightedHtml}
                       <div class="shiki-wrapper">{@html highlightedHtml}</div>
                     {:else}
-                      <pre class="m-0 text-xs leading-relaxed inspector-mono source-pre" style:color="var(--fgColor-default)">{sourceCode}</pre>
+                      <pre class="m-0 text-xs leading-relaxed inspector-mono source-pre" style:color="#c9d1d9">{sourceCode}</pre>
                     {/if}
                   </div>
                 {:else}
-                  <div class="px-3 py-4 text-xs text-center" style:color="var(--fgColor-muted)">
+                  <div class="px-3 py-4 text-xs text-center" style:color="#8b949e">
                     Unable to load source
                   </div>
                 {/if}
@@ -666,5 +663,24 @@
   .shiki-wrapper :global(.highlighted-line) {
     background: color-mix(in srgb, var(--color-purple, #7655a4) 20%, transparent);
     border-left: 2px solid var(--color-purple, #7655a4);
+  }
+
+  /* Force dark chrome on the code block — independent of page theme */
+  .inspector-code-block {
+    background: #0d1117;
+    border-color: #30363d !important;
+  }
+
+  .inspector-code-header {
+    background: #161b22;
+    color: #8b949e;
+    border-bottom: 1px solid #30363d;
+  }
+
+  .inspector-code-link {
+    color: #8b949e;
+  }
+  .inspector-code-link:hover {
+    color: #c9d1d9;
   }
 </style>

@@ -1,5 +1,13 @@
 # storyboard
 
+## 3.3.2
+
+### Bug Fixes
+
+- **Core**: Fix `shiki/*` imports breaking consumer Rollup builds — import specifiers are now computed via template literals so bundlers skip them instead of erroring. Inspector syntax highlighting gracefully degrades when shiki is unavailable (`6fb9bb8`)
+- **Canvas**: Fix spacebar scroll on keyup during pan — `preventDefault()` was missing from the `keyup` handler, causing the browser's default scroll behavior to fire on release (`3b64137`)
+- **Workshop**: Accept directory name as-is from `storyboard.config.json` for partials — both singular (`template`/`recipe`) and plural (`templates`/`recipes`) forms now work for filesystem lookup and UI grouping (`22636c5`)
+
 ## 3.3.1
 
 Fixes consumer build errors introduced in 3.3.0 where client repos without `svelte` or `shiki` installed would fail during Vite dependency optimization.

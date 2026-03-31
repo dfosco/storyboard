@@ -1,6 +1,6 @@
 {
   "name": "@dfosco/tiny-canvas",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "license": "MIT",
   "description": "A lightweight React canvas with draggable elements and persistent positions",

@@ -7,7 +7,7 @@ Fixes consumer build errors introduced in 3.3.0 where client repos without `svel
 ### Bug Fixes
 
 - **Core**: Fix `import('svelte')` breaking consumer builds — `mountDevTools` in the public API now delegates to the compiled UI bundle via a lightweight proxy (`devtools-consumer.js`) instead of importing svelte directly (`88bf5d8`)
-- **Core**: Fix `shiki/*` imports failing esbuild dep optimizer — all dynamic `import('shiki/...')` calls in the inspector highlighter now include `.catch(() => null)` so consumers without shiki installed gracefully degrade (no syntax highlighting) instead of crashing (`88bf5d8`)
+- **Core**: Fix `shiki/*` imports breaking consumer Rollup and esbuild — import specifiers are now computed via template literals so bundlers skip them instead of erroring. Inspector syntax highlighting gracefully degrades when shiki is unavailable (`88bf5d8`)
 - **Core**: Make CoreUIBar toolbar config properties reactive with `$derived()` so runtime config changes propagate correctly (`88bf5d8`)
 - **Core**: Remove unused `.inspector-toggle-active` CSS class from InspectorPanel (`88bf5d8`)
 - **tiny-canvas**: Add `prepublishOnly` build step to ensure `dist/` is always present in published package (`88bf5d8`)

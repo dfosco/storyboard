@@ -185,6 +185,14 @@ export default function storyboardServer() {
         injectTo: 'head',
       })
 
+      // Inject base path so the inspector UI can resolve static assets
+      // (e.g. inspector.json) when deployed under a subpath
+      tags.push({
+        tag: 'script',
+        children: `window.__STORYBOARD_BASE_PATH__=${JSON.stringify(base)}`,
+        injectTo: 'head',
+      })
+
       for (const src of clientScripts) {
         tags.push({
           tag: 'script',

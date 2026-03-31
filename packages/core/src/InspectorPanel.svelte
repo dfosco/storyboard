@@ -454,20 +454,12 @@
 
     <!-- Selected state -->
     {:else}
-      <div class="flex flex-col flex-1 min-h-0 p-3 gap-3">
+      <div class="flex flex-col flex-1 min-h-0 p-3 pt-0 gap-3">
         <!-- Component name -->
         <div>
           <h3 class="text-base font-bold m-0 inspector-mono" style:color="var(--color-purple, #7655a4)">
             {componentInfo.name}
           </h3>
-
-          <!-- Source file -->
-          {#if sourcePath}
-            <p class="inline-flex items-center gap-1 mt-1 text-xs m-0 inspector-mono" style:color="var(--fgColor-muted)">
-              <Icon name="primer/file-code" size={12} />
-              {sourcePath}
-            </p>
-          {/if}
         </div>
 
         <!-- Source code -->

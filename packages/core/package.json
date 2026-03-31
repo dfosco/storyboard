@@ -37,6 +37,8 @@
     "./styles/tailwind.css": "./dist/tailwind.css"
   },
   "dependencies": {
+    "@internationalized/date": "^3.8.1",
+    "@lucide/svelte": "^1.7.0",
     "@primer/octicons": "^19.22.0",
     "bits-ui": "^2.16.4",
     "clsx": "^2.1.1",

@@ -10,7 +10,6 @@
  *   - serverSetup:   Called by the server plugin to register API routes
  */
 
-export { createFlowsHandler as serverSetup } from './server.js'
 import CreateFlowForm from './CreateFlowForm.svelte'
 
 export const name = 'createFlow'

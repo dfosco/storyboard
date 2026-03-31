@@ -5,12 +5,11 @@
  * avoiding the full shiki bundle that registers 200+ lazy-loaded
  * language chunks (which break in deployed/static environments).
  */
-import { createHighlighterCore } from 'shiki/core'
-import { createOnigurumaEngine } from 'shiki/engine/oniguruma'
-
 export async function createInspectorHighlighter() {
-  const [tsx, jsx, javascript, typescript, githubDark, wasm] =
+  const [{ createHighlighterCore }, { createOnigurumaEngine }, tsx, jsx, javascript, typescript, githubDark, wasm] =
     await Promise.all([
+      import('shiki/core'),
+      import('shiki/engine/oniguruma'),
       import('shiki/dist/langs/tsx.mjs'),
       import('shiki/dist/langs/jsx.mjs'),
       import('shiki/dist/langs/javascript.mjs'),

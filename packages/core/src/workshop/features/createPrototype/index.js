@@ -10,7 +10,6 @@
  *   - serverSetup:   Called by the server plugin to register API routes
  */
 
-export { createPrototypesHandler as serverSetup } from './server.js'
 import CreatePrototypeForm from './CreatePrototypeForm.svelte'
 
 export const name = 'createPrototype'

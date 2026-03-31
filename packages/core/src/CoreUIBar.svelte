@@ -26,7 +26,7 @@
   let { basePath = '/', toolbarConfig }: Props = $props()
 
   // Use provided config (merged by mountStoryboardCore) or fall back to defaults
-  const config = toolbarConfig || defaultToolbarConfig
+  const config = $derived(toolbarConfig || defaultToolbarConfig)
 
   let visible = $state(true)
   // Hide the entire toolbar when loaded inside a prototype embed iframe
@@ -48,7 +48,7 @@
   let canvasActive = $state(false)
   let activeCanvasName = $state('')
   let canvasZoom = $state(100)
-  const canvasToolbarConfig = (config as any).canvasToolbar || {}
+  const canvasToolbarConfig = $derived((config as any).canvasToolbar || {})
 
   const ZOOM_STEP = 10
   const ZOOM_MIN = 25
@@ -57,18 +57,18 @@
   // Roving tabindex: only one button in the toolbar is tabbable at a time
   let activeToolbarIndex = $state(-1)
 
-  const commandMenuConfig = isMenuHidden('command') ? null : config.menus?.command
-  const shortcutsConfig = (config as any).shortcuts || {}
+  const commandMenuConfig = $derived(isMenuHidden('command') ? null : config.menus?.command)
+  const shortcutsConfig = $derived((config as any).shortcuts || {})
 
   // Build ordered menu list from JSON key order (excluding command, which is always rightmost)
-  const allMenus = (config.menus || {}) as Record<string, any>
-  const orderedMenus = Object.entries(allMenus)
+  const allMenus = $derived((config.menus || {}) as Record<string, any>)
+  const orderedMenus = $derived(Object.entries(allMenus)
     .filter(([key]) => key !== 'command')
     .filter(([key]) => !isMenuHidden(key))
-    .map(([key, menu]) => ({ key, ...menu }))
+    .map(([key, menu]) => ({ key, ...menu })))
 
   // Discover menus with sidepanel property
-  const sidepanelMenus = orderedMenus.filter(menu => menu.sidepanel)
+  const sidepanelMenus = $derived(orderedMenus.filter(menu => menu.sidepanel))
 
   function menuVisibleInMode(menu: any, mode: string): boolean {
     if (!menu?.modes) return false

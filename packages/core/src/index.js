@@ -49,7 +49,9 @@ export { registerMode, unregisterMode, getRegisteredModes, getCurrentMode, activ
 export { initTools, setToolAction, setToolState, getToolState, getToolsForMode, subscribeToTools, getToolsSnapshot } from './modes.js'
 
 // Dev tools (vanilla JS, framework-agnostic)
-export { mountDevTools } from './devtools.js'
+// mountDevTools delegates to the compiled UI bundle so consumers
+// don't need svelte installed — svelte is bundled into ui-runtime.
+export { mountDevTools } from './devtools-consumer.js'
 export { mountFlowDebug } from './sceneDebug.js'
 // Deprecated alias
 export { mountSceneDebug } from './sceneDebug.js'

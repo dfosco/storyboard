@@ -606,10 +606,6 @@
     font-family: "Ioskeley Mono", ui-monospace, monospace;
   }
 
-  .inspector-toggle-active {
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-purple, #7655a4) 30%, transparent);
-  }
-
   .inspector-pulse-dot {
     width: 8px;
     height: 8px;

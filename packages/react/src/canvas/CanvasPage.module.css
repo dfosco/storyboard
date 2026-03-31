@@ -71,3 +71,8 @@
   border-color: var(--bgColor-accent-emphasis, #2f81f7);
   background: var(--bgColor-default, #ffffff);
 }
+
+/* Remove tiny-canvas wrapper clipping — widgets handle their own overflow/radius */
+:global(.tc-draggable-inner) {
+  overflow: visible;
+}

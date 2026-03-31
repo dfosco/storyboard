@@ -665,8 +665,7 @@
   }
 
   .line-numbers :global(.line) {
-    padding-left: 0;
-    display: flex;
+    padding-left: 0 !important;
   }
 
   .line-numbers :global(.line::before) {
@@ -674,11 +673,10 @@
     content: counter(line);
     display: inline-block;
     width: 3.5ch;
-    margin-right: 1ch;
+    margin-right: 1.5ch;
     text-align: right;
     color: #484f58;
     user-select: none;
-    flex-shrink: 0;
   }
 
   .shiki-wrapper :global(pre) {

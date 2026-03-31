@@ -21,6 +21,48 @@ import { initUIConfig } from './uiConfig.js'
 let _mounted = false
 
 /**
+ * Apply the saved theme to Primer CSS attributes immediately, before
+ * React or Svelte mount. This prevents a flash of wrong-theme content.
+ * Reads the same `sb-color-scheme` localStorage key used by themeStore.
+ */
+function applyEarlyTheme() {
+  if (typeof document === 'undefined') return
+
+  const stored =
+    typeof localStorage !== 'undefined'
+      ? localStorage.getItem('sb-color-scheme')
+      : null
+  const theme = stored || 'system'
+  const el = document.documentElement
+
+  // Resolve "system" to an actual theme for data-sb-theme
+  let resolved = theme
+  if (theme === 'system') {
+    resolved =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light'
+  }
+
+  el.setAttribute('data-sb-theme', resolved)
+
+  if (theme === 'system') {
+    el.setAttribute('data-color-mode', 'auto')
+    el.setAttribute('data-light-theme', 'light')
+    el.setAttribute('data-dark-theme', 'dark')
+  } else if (resolved.startsWith('dark')) {
+    el.setAttribute('data-color-mode', 'dark')
+    el.setAttribute('data-dark-theme', resolved)
+    el.setAttribute('data-light-theme', 'light')
+  } else {
+    el.setAttribute('data-color-mode', 'light')
+    el.setAttribute('data-light-theme', resolved)
+    el.setAttribute('data-dark-theme', 'dark')
+  }
+}
+
+/**
  * Inject the compiled UI stylesheet if not already present.
  */
 async function injectUIStyles() {
@@ -49,6 +91,9 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   _mounted = true
 
   const basePath = options.basePath || '/'
+
+  // Apply saved theme to DOM immediately — before Svelte/React mount
+  applyEarlyTheme()
 
   // Initialize framework-agnostic systems
   installHideParamListener()

@@ -1,9 +1,11 @@
 /**
  * Theme Store — manages the active color scheme for the entire app.
  *
- * Reads/writes `sb-color-scheme` in localStorage, sets the `data-sb-theme`
- * attribute on `<html>`, and dispatches a `storyboard:theme:changed` custom
- * event so that non-Svelte consumers (React ThemeProvider, etc.) can react.
+ * Reads/writes `sb-color-scheme` in localStorage, sets Primer CSS attributes
+ * (`data-color-mode`, `data-light-theme`, `data-dark-theme`) and the internal
+ * `data-sb-theme` attribute on `<html>`, and dispatches a
+ * `storyboard:theme:changed` custom event so that non-Svelte consumers
+ * (React ThemeProvider, etc.) can react.
  *
  * Supports a "system" value that follows the OS preference via
  * `prefers-color-scheme`, updating automatically when the user changes
@@ -86,9 +88,28 @@ function snapshot(theme: ThemeValue): ThemeState {
 let _current: ThemeValue = readStoredTheme()
 const _store = writable<ThemeState>(snapshot(_current))
 
-function _applyToDOM(resolved: string): void {
+function _applyToDOM(theme: ThemeValue, resolved: string): void {
   if (typeof document === 'undefined') return
-  document.documentElement.setAttribute('data-sb-theme', resolved)
+  const el = document.documentElement
+
+  // Internal attribute
+  el.setAttribute('data-sb-theme', resolved)
+
+  // Primer CSS attributes — these drive @primer/react ThemeProvider and
+  // Primer CSS custom-property layers without needing React state updates.
+  if (theme === 'system') {
+    el.setAttribute('data-color-mode', 'auto')
+    el.setAttribute('data-light-theme', 'light')
+    el.setAttribute('data-dark-theme', 'dark')
+  } else if (resolved.startsWith('dark')) {
+    el.setAttribute('data-color-mode', 'dark')
+    el.setAttribute('data-dark-theme', resolved)
+    el.setAttribute('data-light-theme', 'light')
+  } else {
+    el.setAttribute('data-color-mode', 'light')
+    el.setAttribute('data-light-theme', resolved)
+    el.setAttribute('data-dark-theme', 'dark')
+  }
 }
 
 function _dispatchEvent(theme: ThemeValue, resolved: string): void {
@@ -117,7 +138,7 @@ export function setTheme(value: ThemeValue): void {
 
   const state = snapshot(value)
   _store.set(state)
-  _applyToDOM(state.resolved)
+  _applyToDOM(value, state.resolved)
   _dispatchEvent(value, state.resolved)
 }
 
@@ -137,7 +158,7 @@ if (typeof window !== 'undefined') {
       if (_current !== 'system') return
       const state = snapshot('system')
       _store.set(state)
-      _applyToDOM(state.resolved)
+      _applyToDOM('system', state.resolved)
       _dispatchEvent('system', state.resolved)
     })
 }
@@ -146,4 +167,4 @@ if (typeof window !== 'undefined') {
 // Boot — apply the stored theme immediately on import
 // ---------------------------------------------------------------------------
 
-_applyToDOM(resolveTheme(_current))
+_applyToDOM(_current, resolveTheme(_current))

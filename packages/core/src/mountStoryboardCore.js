@@ -182,7 +182,7 @@ function showPendingNotification(basePath) {
       if (!message) continue
       showToast(message, route, basePath)
       return
-    } catch {}
+    } catch { /* ignore malformed session entry */ }
   }
 }
 

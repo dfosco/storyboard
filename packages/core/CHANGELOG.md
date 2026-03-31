@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.2.0
+
+### Minor Changes
+
+-   Build fixes and moving past version numbers
+
 ## 3.1.0
 
 ### Minor Changes

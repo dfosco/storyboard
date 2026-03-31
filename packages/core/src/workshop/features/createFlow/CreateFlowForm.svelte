@@ -102,7 +102,7 @@
 </Panel.Header>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="p-4 space-y-3" onkeydown={handleKeydown}>
+<div class="p-4 pt-2 space-y-3" onkeydown={handleKeydown}>
   <div class="space-y-1">
     <Label for="sb-flow-name">Name</Label>
     <Input id="sb-flow-name" placeholder="e.g. empty-state" autocomplete="off" spellcheck="false" bind:value={name} />

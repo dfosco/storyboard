@@ -157,4 +157,62 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   if (isCommentsEnabled()) {
     ui.mountComments()
   }
+
+  // Show pending workshop notifications (e.g. canvas created before Vite reload)
+  showPendingNotification(basePath)
+}
+
+/**
+ * Check sessionStorage for a pending workshop creation notification.
+ * Vite does a full-reload when new files are created, so the create form's
+ * success message is lost. This shows a temporary toast with the link.
+ */
+function showPendingNotification(basePath) {
+  const KEYS = ['sb-canvas-created', 'sb-prototype-created', 'sb-flow-created']
+  for (const key of KEYS) {
+    try {
+      const raw = sessionStorage.getItem(key)
+      if (!raw) continue
+      sessionStorage.removeItem(key)
+      const { success: message, route } = JSON.parse(raw)
+      if (!message) continue
+      showToast(message, route, basePath)
+      return
+    } catch {}
+  }
+}
+
+function showToast(message, route, basePath) {
+  const toast = document.createElement('div')
+  Object.assign(toast.style, {
+    position: 'fixed',
+    bottom: '5rem',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: '10001',
+    padding: '0.75rem 1rem',
+    borderRadius: '0.5rem',
+    background: '#1a1a1a',
+    color: '#fff',
+    fontSize: '0.8125rem',
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
+    boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    opacity: '0',
+    transition: 'opacity 0.2s ease',
+  })
+
+  const href = route?.startsWith('/') ? (basePath.replace(/\/$/, '') + route) : route
+  toast.innerHTML = `<span>✓ ${message.replace(/</g, '&lt;')}</span>`
+    + (href ? `<a href="${href}" style="color:#58a6ff;text-decoration:none;font-weight:500">Open →</a>` : '')
+
+  document.body.appendChild(toast)
+  requestAnimationFrame(() => { toast.style.opacity = '1' })
+
+  setTimeout(() => {
+    toast.style.opacity = '0'
+    setTimeout(() => toast.remove(), 300)
+  }, 8000)
 }

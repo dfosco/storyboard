@@ -103,7 +103,7 @@
 </Panel.Header>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="p-4 space-y-3" onkeydown={handleKeydown}>
+<div class="p-4 pt-2 space-y-3" onkeydown={handleKeydown}>
   <div class="space-y-1">
     <Label for="sb-canvas-name">Name</Label>
     <Input id="sb-canvas-name" placeholder="e.g. design-overview" autocomplete="off" spellcheck="false" bind:value={name} />

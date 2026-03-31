@@ -121,7 +121,7 @@
 </Panel.Header>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="p-4 space-y-3" onkeydown={handleKeydown}>
+<div class="p-4 pt-2 space-y-3" onkeydown={handleKeydown}>
   <div class="space-y-1">
     <Label for="sb-proto-name">Name</Label>
     <Input id="sb-proto-name" placeholder="e.g. my-prototype" autocomplete="off" spellcheck="false" bind:value={name} />

@@ -7,6 +7,16 @@
  * or the package self-reference '@dfosco/storyboard-core/ui-runtime'.
  */
 
+// Tailwind utility + component CSS — bundled into storyboard-ui.css
+import './styles/tailwind.css'
+
+// Comments CSS
+import './comments/ui/comment-layout.css'
+import './comments/ui/comments.css'
+
+// Modes CSS (design mode body classes)
+import './modes.css'
+
 // CoreUIBar (floating toolbar)
 export { mountDevTools, unmountDevTools } from './devtools.js'
 

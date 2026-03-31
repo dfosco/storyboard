@@ -186,11 +186,10 @@ function showToast(message, route, basePath) {
   const toast = document.createElement('div')
   Object.assign(toast.style, {
     position: 'fixed',
-    bottom: '5rem',
-    left: '50%',
-    transform: 'translateX(-50%)',
+    top: '1rem',
+    right: '1rem',
     zIndex: '10001',
-    padding: '0.75rem 1rem',
+    padding: '0.875rem 1.125rem',
     borderRadius: '0.5rem',
     background: '#1a1a1a',
     color: '#fff',
@@ -198,15 +197,16 @@ function showToast(message, route, basePath) {
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
     boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
     display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
+    flexDirection: 'column',
+    gap: '0.375rem',
     opacity: '0',
     transition: 'opacity 0.2s ease',
+    maxWidth: '320px',
   })
 
   const href = route?.startsWith('/') ? (basePath.replace(/\/$/, '') + route) : route
   toast.innerHTML = `<span>✓ ${message.replace(/</g, '&lt;')}</span>`
-    + (href ? `<a href="${href}" style="color:#58a6ff;text-decoration:none;font-weight:500">Open →</a>` : '')
+    + (href ? `<a href="${href}" style="color:#58a6ff;text-decoration:underline;font-weight:500">Open canvas</a>` : '')
 
   document.body.appendChild(toast)
   requestAnimationFrame(() => { toast.style.opacity = '1' })

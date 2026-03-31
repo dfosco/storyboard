@@ -5,34 +5,24 @@
     { "name": "present", "label": "Collaborate", "hue": "#2a9d8f" }
   ],
 
+  "command": {
+    "icon": "iconoir/key-command",
+    "meta": { "strokeWeight": 2 },
+    "shortcut": { "key": "k", "label": "⌘ + K to open" }
+  },
+
   "shortcuts": {
-    "openCommandMenu": { "key": "k", "label": "⌘ + K to open" },
     "hideChrome": { "key": ".", "label": "⌘ + . to hide" }
   },
 
-  "menus": {
-    "command": {
-      "ariaLabel": "Command Menu",
-      "trigger": "command",
-      "icon": "iconoir/key-command",
-      "meta": { "strokeWeight": 2 },
-      "default": true,
-      "modes": ["*"],
-      "actions": [
-        { "type": "header", "label": "Command Menu" },
-        { "id": "core/viewfinder", "label": "Index page", "type": "link", "url": "/", "modes": ["*"] },
-        { "id": "core/repository", "label": "Go to repository", "type": "link", "url": "https://github.com/dfosco/storyboard", "modes": ["*"] },
-        { "type": "separator" },
-        { "id": "core/devtools", "label": "Devtools", "type": "submenu", "modes": ["*"] },
-        { "id": "core/feature-flags", "label": "Feature Flags", "type": "submenu", "modes": ["*"] }
-      ]
-    },
+  "tools": {
     "create": {
       "label": "Create",
       "ariaLabel": "Create",
-      "trigger": "button",
       "icon": "iconoir/plus-circle",
       "meta": { "strokeWeight": 2, "scale": 1.1 },
+      "render": "menu",
+      "toolbar": "main-toolbar",
       "modes": ["*"],
       "localOnly": true,
       "menuWidth": "260px",
@@ -48,37 +38,77 @@
       "label": "Flows",
       "ariaLabel": "Switch flow",
       "icon": "feather/fast-forward",
-      "menuWidth": "260px",
+      "render": "menu",
+      "toolbar": "main-toolbar",
       "modes": ["*"],
-      "action": "core/flows"
+      "menuWidth": "260px",
+      "handler": "core/flows"
     },
     "comments": {
       "ariaLabel": "Comments",
       "icon": "primer/comment",
-      "excludeRoutes": ["^/$", "/viewfinder"],
-      "modes": ["*"]
-    },    
+      "render": "button",
+      "toolbar": "main-toolbar",
+      "modes": ["*"],
+      "excludeRoutes": ["^/$", "/viewfinder"]
+    },
     "docs": {
       "ariaLabel": "Documentation",
       "icon": "primer/book",
+      "render": "sidepanel",
+      "toolbar": "main-toolbar",
+      "sidepanel": "docs",
       "modes": ["*"],
-      "sidepanel": "docs"
+      "shortcut": { "key": "d", "label": "⌘D" }
     },
     "theme": {
       "label": "Theme",
       "ariaLabel": "Switch theme",
       "icon": "primer/sun",
       "meta": { "strokeWeight": 2 },
+      "render": "menu",
+      "toolbar": "main-toolbar",
       "modes": ["*"],
       "menuWidth": "220px"
     },
     "inspector": {
       "ariaLabel": "Inspect components",
       "icon": "iconoir/square-dashed",
+      "render": "sidepanel",
+      "toolbar": "main-toolbar",
+      "sidepanel": "inspector",
+      "modes": ["*"],
       "excludeRoutes": ["^/$", "/viewfinder", "/canvas/"],
       "meta": { "strokeWeight": 2, "scale": 1.1 },
+      "shortcut": { "key": "i", "label": "⌘I" }
+    },
+    "viewfinder": {
+      "label": "Index page",
+      "render": "link",
+      "toolbar": "command-list",
       "modes": ["*"],
-      "sidepanel": "inspector"
+      "url": "/"
+    },
+    "repository": {
+      "label": "Go to repository",
+      "render": "link",
+      "toolbar": "command-list",
+      "modes": ["*"],
+      "url": "https://github.com/dfosco/storyboard"
+    },
+    "devtools": {
+      "label": "Devtools",
+      "render": "submenu",
+      "toolbar": "command-list",
+      "modes": ["*"],
+      "handler": "core/devtools"
+    },
+    "feature-flags": {
+      "label": "Feature Flags",
+      "render": "submenu",
+      "toolbar": "command-list",
+      "modes": ["*"],
+      "handler": "core/feature-flags"
     }
   },
 

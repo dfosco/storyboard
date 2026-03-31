@@ -59,11 +59,69 @@
 
   const isLocalDev = typeof window !== 'undefined' && (window as any).__SB_LOCAL_DEV__ === true
 
-  const commandMenuConfig = $derived(isMenuHidden('command') ? null : config.menus?.command)
-  const shortcutsConfig = $derived((config as any).shortcuts || {})
+  // Resolve tools → menus compatibility layer.
+  // New config uses `tools` (flat map with toolbar target); legacy uses `menus`.
+  // When `tools` exists, derive the menus-compatible structures from it.
+  function resolveMenus(cfg: any): Record<string, any> {
+    if (cfg.tools) {
+      const result: Record<string, any> = {}
+      for (const [key, tool] of Object.entries(cfg.tools as Record<string, any>)) {
+        if (tool.toolbar === 'command-list') continue
+        // Map new render/toolbar fields to legacy menu fields for rendering compat
+        const menu: any = { ...tool }
+        if (tool.render === 'menu' && tool.handler) {
+          menu.action = tool.handler
+        }
+        result[key] = menu
+      }
+      return result
+    }
+    return cfg.menus || {}
+  }
+
+  function resolveCommandConfig(cfg: any): any {
+    if (cfg.command) {
+      // Build command menu config from new schema
+      const actions: any[] = []
+      actions.push({ type: 'header', label: 'Command Menu' })
+
+      // Add command-list tools as actions
+      if (cfg.tools) {
+        for (const [, tool] of Object.entries(cfg.tools as Record<string, any>)) {
+          if (tool.toolbar !== 'command-list') continue
+          actions.push({
+            id: tool.handler || `core/${tool.label?.toLowerCase().replace(/\s+/g, '-')}`,
+            label: tool.label,
+            type: tool.render || 'default',
+            url: tool.url || null,
+            modes: tool.modes || ['*'],
+          })
+        }
+      }
+
+      return {
+        ariaLabel: 'Command Menu',
+        trigger: 'command',
+        icon: cfg.command.icon,
+        meta: cfg.command.meta,
+        default: true,
+        modes: ['*'],
+        actions,
+      }
+    }
+    return cfg.menus?.command || null
+  }
+
+  const commandMenuConfig = $derived(
+    isMenuHidden('command') ? null : resolveCommandConfig(config)
+  )
+  const shortcutsConfig = $derived({
+    ...((config as any).shortcuts || {}),
+    ...(config.command?.shortcut ? { openCommandMenu: config.command.shortcut } : {}),
+  })
 
   // Build ordered menu list from JSON key order (excluding command, which is always rightmost)
-  const allMenus = $derived((config.menus || {}) as Record<string, any>)
+  const allMenus = $derived(resolveMenus(config))
   const orderedMenus = $derived(Object.entries(allMenus)
     .filter(([key]) => key !== 'command')
     .filter(([key]) => !isMenuHidden(key))

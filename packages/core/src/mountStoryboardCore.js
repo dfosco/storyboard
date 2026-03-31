@@ -130,9 +130,16 @@ export async function mountStoryboardCore(config = {}, options = {}) {
     ? deepMerge(defaultConfig, config.toolbar)
     : { ...defaultConfig }
 
-  // Inject repository URL from storyboard.config.json into the command menu
+  // Inject repository URL from storyboard.config.json into the toolbar config
   if (config.repository?.owner && config.repository?.name) {
     const repoUrl = `https://github.com/${config.repository.owner}/${config.repository.name}`
+
+    // New tools schema
+    if (toolbarConfig.tools?.repository) {
+      toolbarConfig.tools.repository.url = repoUrl
+    }
+
+    // Legacy menus schema
     const commandMenu = toolbarConfig.menus?.command
     if (commandMenu?.actions) {
       const repoAction = commandMenu.actions.find(a => a.id === 'core/repository')

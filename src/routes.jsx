@@ -5,7 +5,7 @@
  * its route-path regex. This module mirrors the generouted runtime but uses
  * /src/prototypes/ so file-based routing works with the renamed directory.
  */
-import { Fragment, Suspense, lazy } from 'react'
+import { Fragment, Suspense } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import {
   generatePreservedRoutes,
@@ -13,10 +13,6 @@ import {
   generateModalRoutes,
   patterns,
 } from '@generouted/react-router/core'
-
-// Canvas route support: import canvas index from virtual module
-import { canvases } from 'virtual:storyboard-data-index'
-const CanvasPage = lazy(() => import('@dfosco/storyboard-react/canvas/CanvasPage'))
 
 // Patch the route regex to strip src/prototypes/ and .folder/ segments instead of src/pages/
 patterns.route = [/^.*\/src\/prototypes\/|^\/prototypes\/|[^/]*\.folder\/|\.(jsx|tsx|mdx)$/g, '']
@@ -72,22 +68,7 @@ const App = () =>
     <Layout />
   )
 
-// Generate routes for canvases from the data index
-const canvasRoutes = Object.entries(canvases).map(([name, data]) => {
-  const routePath = data._route || `/${name}`
-  const CanvasRoute = () => (
-    <Suspense fallback={<Fragment />}>
-      <CanvasPage name={name} />
-    </Suspense>
-  )
-  CanvasRoute.displayName = `Canvas(${name})`
-  return {
-    path: routePath.replace(/^\//, ''),
-    Component: CanvasRoute,
-  }
-})
-
 const app = { Component: _app?.default ? App : Layout, ErrorBoundary: _app?.Catch, loader: _app?.Loader }
 const fallback = { path: '*', Component: _404?.default || Fragment }
 
-export const routes = [{ ...app, children: [...regularRoutes, ...canvasRoutes, fallback] }]
+export const routes = [{ ...app, children: [...regularRoutes, fallback] }]

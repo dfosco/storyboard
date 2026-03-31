@@ -1,12 +1,26 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, Suspense, lazy } from 'react'
 import { useParams, useLocation } from 'react-router-dom'
-// Side-effect import: seeds the core data index via init()
-import 'virtual:storyboard-data-index'
+// Named import seeds the core data index via init() AND provides canvas route data
+import { canvases } from 'virtual:storyboard-data-index'
 import { loadFlow, flowExists, findRecord, deepMerge, setFlowClass, installBodyClassSync, resolveFlowName, resolveRecordName, isModesEnabled } from '@dfosco/storyboard-core'
 import { StoryboardContext } from './StoryboardContext.js'
 import styles from './FlowError.module.css'
 
 export { StoryboardContext }
+
+const CanvasPageLazy = lazy(() => import('./canvas/CanvasPage.jsx'))
+
+// Build a map from canvas route paths → canvas names at module load time
+const canvasRouteMap = new Map()
+for (const [name, data] of Object.entries(canvases || {})) {
+  const route = (data?._route || `/${name}`).replace(/\/+$/, '')
+  canvasRouteMap.set(route, name)
+}
+
+function matchCanvasRoute(pathname) {
+  const normalized = pathname.replace(/\/+$/, '') || '/'
+  return canvasRouteMap.get(normalized) || null
+}
 
 /**
  * Derives the top-level prototype name from a pathname.
@@ -44,14 +58,19 @@ function getPageFlowName(pathname) {
  */
 export default function StoryboardProvider({ flowName, sceneName, recordName, recordParam, children }) {
   const location = useLocation()
+  const params = useParams()
+
+  // Canvas route detection — matches current URL against registered canvas routes
+  const canvasName = useMemo(() => matchCanvasRoute(location.pathname), [location.pathname])
+
   const searchParams = new URLSearchParams(location.search)
   const sceneParam = searchParams.get('flow') || searchParams.get('scene')
   const prototypeName = getPrototypeName(location.pathname)
   const pageFlow = getPageFlowName(location.pathname)
-  const params = useParams()
 
-  // Resolve flow name with prototype scoping
+  // Resolve flow name with prototype scoping (skip for canvas pages)
   const activeFlowName = useMemo(() => {
+    if (canvasName) return null
     const requested = sceneParam || flowName || sceneName
     if (requested) {
       return resolveFlowName(prototypeName, requested)
@@ -66,7 +85,7 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     }
     // 3. Global default
     return 'default'
-  }, [sceneParam, flowName, sceneName, prototypeName, pageFlow])
+  }, [canvasName, sceneParam, flowName, sceneName, prototypeName, pageFlow])
 
   // Auto-install body class sync (sb-key--value classes on <body>)
   useEffect(() => installBodyClassSync(), [])
@@ -87,7 +106,9 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     return () => cleanup?.()
   }, [])
 
+  // Skip flow loading for canvas pages
   const { data, error } = useMemo(() => {
+    if (canvasName) return { data: null, error: null }
     try {
       let flowData = loadFlow(activeFlowName)
 
@@ -105,7 +126,26 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     } catch (err) {
       return { data: null, error: err.message }
     }
-  }, [activeFlowName, recordName, recordParam, params, prototypeName])
+  }, [canvasName, activeFlowName, recordName, recordParam, params, prototypeName])
+
+  // Canvas pages get their own rendering path — no flow data needed
+  if (canvasName) {
+    const canvasValue = {
+      data: null,
+      error: null,
+      loading: false,
+      flowName: null,
+      sceneName: null,
+      prototypeName: null,
+    }
+    return (
+      <StoryboardContext.Provider value={canvasValue}>
+        <Suspense fallback={null}>
+          <CanvasPageLazy name={canvasName} />
+        </Suspense>
+      </StoryboardContext.Provider>
+    )
+  }
 
   const value = {
     data,

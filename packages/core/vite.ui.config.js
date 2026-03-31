@@ -37,6 +37,7 @@ const sharedStateModules = {
   'modes.js': '@dfosco/storyboard-core',
   'commandActions.js': '@dfosco/storyboard-core',
   'uiConfig.js': '@dfosco/storyboard-core',
+  'toolRegistry.js': '@dfosco/storyboard-core',
   'featureFlags.js': '@dfosco/storyboard-core',
   'plugins.js': '@dfosco/storyboard-core',
   'localStorage.js': '@dfosco/storyboard-core',

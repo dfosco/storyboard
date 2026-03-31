@@ -76,5 +76,8 @@ export { initPlugins, isPluginEnabled, getPluginsConfig } from './plugins.js'
 // UI config (project-level chrome overrides)
 export { initUIConfig, isMenuHidden, getHiddenItems } from './uiConfig.js'
 
+// Tool registry (declarative tool system)
+export { initToolRegistry, registerToolModule, setToolComponent, setToolGuardResult, getToolComponent, getToolModule, getToolsForToolbar, getToolConfig, getAllToolConfigs, subscribeToToolRegistry, getToolRegistrySnapshot } from './toolRegistry.js'
+
 // Comments system
 export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comments/config.js'

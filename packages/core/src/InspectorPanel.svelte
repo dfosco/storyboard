@@ -427,31 +427,7 @@
       onDeactivate: handleDeactivate,
     })
 
-    // Check for a persisted inspector selection in the URL
-    const savedSelector = getInspectParam()
-    let restored = false
-    if (savedSelector) {
-      try {
-        const el = document.querySelector(savedSelector)
-        if (el) {
-          handleSelect(el)
-          restored = true
-        }
-      } catch {
-        // Invalid selector — ignore and fall through to default behavior
-      }
-      if (!restored) {
-        // Element not found — clean up stale param
-        setInspectParam(null)
-      }
-    }
-
-    // Auto-start inspector mode only if we didn't restore a selection
-    if (!restored) {
-      startInspecting()
-    }
-
-    // Pre-fetch file list and repo info
+    // Pre-fetch file list and repo info FIRST (needed for source resolution)
     // Try dev middleware first, fall back to static JSON
     let filesLoaded = false
     try {
@@ -476,6 +452,30 @@
         knownFiles = data.files || []
         repoInfo = data.repo || null
       }
+    }
+
+    // Restore inspector selection from URL param (after files are loaded)
+    const savedSelector = getInspectParam()
+    let restored = false
+    if (savedSelector) {
+      // Retry with delay — the React page may still be rendering
+      for (let attempt = 0; attempt < 5 && !restored; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 300))
+        try {
+          const el = document.querySelector(savedSelector)
+          if (el) {
+            handleSelect(el)
+            restored = true
+          }
+        } catch {
+          break // invalid selector, don't retry
+        }
+      }
+      if (!restored) setInspectParam(null)
+    }
+
+    if (!restored) {
+      startInspecting()
     }
   })
 

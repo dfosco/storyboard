@@ -186,7 +186,7 @@ function showToast(message, route, basePath) {
   const toast = document.createElement('div')
   Object.assign(toast.style, {
     position: 'fixed',
-    bottom: '4.5rem',
+    bottom: '7rem',
     right: '1.5rem',
     zIndex: '10000',
     padding: '0.75rem 1rem',

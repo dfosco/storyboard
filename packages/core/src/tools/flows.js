@@ -36,7 +36,10 @@ export async function handler(ctx) {
         }
       }
 
-      return loader.getFlowsForPrototype(proto).map(f => {
+      const flows = loader.getFlowsForPrototype(proto)
+      if (flows.length <= 1) return []
+
+      return flows.map(f => {
         const meta = vf.getFlowMeta(f.key)
         return {
           id: f.key,

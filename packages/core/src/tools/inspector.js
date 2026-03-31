@@ -5,7 +5,7 @@
  */
 export const id = 'inspector'
 
-export async function setup(ctx) {
+export async function setup() {
   const { openPanel } = await import('../stores/sidePanelStore.js')
 
   try {

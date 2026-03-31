@@ -320,7 +320,7 @@
     left: 0;
     right: 0;
     height: 3px;
-    background: var(--mode-color, var(--borderColor-default, var(--color-border, #d0d7de)));
+    /* background: var(--mode-color, var(--borderColor-default, var(--color-border, #d0d7de))); */
   }
 
   /* Drag handle — side mode (left edge, vertical) */

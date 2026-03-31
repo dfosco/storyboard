@@ -576,9 +576,10 @@
                 {:else if sourceCode}
                   <div class="flex-1 min-h-0 overflow-y-auto source-scroll-container" bind:this={sourceContainer}>
                     {#if highlightedHtml}
-                      <div class="shiki-wrapper">{@html highlightedHtml}</div>
+                      <div class="shiki-wrapper line-numbers">{@html highlightedHtml}</div>
                     {:else}
-                      <pre class="m-0 text-xs leading-relaxed inspector-mono source-pre" style:color="#c9d1d9">{sourceCode}</pre>
+                      <pre class="m-0 text-xs leading-relaxed inspector-mono source-pre line-numbers"><code>{#each sourceCode.split('\n') as line, i}<span class="line{matchedLine > 0 && i + 1 === matchedLine ? ' highlighted-line' : ''}">{line}</span>{#if i < sourceCode.split('\n').length - 1}
+{/if}{/each}</code></pre>
                     {/if}
                   </div>
                 {:else}
@@ -631,6 +632,52 @@
   .source-pre {
     background: transparent;
     tab-size: 2;
+    padding: 12px 0;
+    color: #c9d1d9;
+    overflow-x: auto;
+  }
+
+  .source-pre code {
+    font-family: inherit;
+    display: block;
+  }
+
+  .source-pre .line {
+    padding: 0 12px 0 0;
+    display: inline-block;
+    width: 100%;
+    min-height: 1.5em;
+  }
+
+  .source-pre .line:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .source-pre :global(.highlighted-line) {
+    background: color-mix(in srgb, var(--color-purple, #7655a4) 20%, transparent);
+    border-left: 2px solid var(--color-purple, #7655a4);
+    padding-left: 10px;
+  }
+
+  /* Line numbers via CSS counters — works for both shiki and plain-text */
+  .line-numbers :global(code) {
+    counter-reset: line;
+  }
+
+  .line-numbers :global(.line) {
+    padding-left: 0;
+  }
+
+  .line-numbers :global(.line::before) {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 3.5ch;
+    margin-right: 1ch;
+    text-align: right;
+    color: #484f58;
+    user-select: none;
+    flex-shrink: 0;
   }
 
   .shiki-wrapper :global(pre) {
@@ -650,7 +697,7 @@
   }
 
   .shiki-wrapper :global(.line) {
-    padding: 0 12px;
+    padding: 0 12px 0 0;
     display: inline-block;
     width: 100%;
     min-height: 1.5em;
@@ -663,6 +710,7 @@
   .shiki-wrapper :global(.highlighted-line) {
     background: color-mix(in srgb, var(--color-purple, #7655a4) 20%, transparent);
     border-left: 2px solid var(--color-purple, #7655a4);
+    padding-left: 10px;
   }
 
   /* Force dark chrome on the code block — independent of page theme */

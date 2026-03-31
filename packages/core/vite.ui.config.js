@@ -85,9 +85,35 @@ function externalizeSharedState() {
   }
 }
 
+/**
+ * Rollup plugin that rewrites externalized shiki import specifiers to
+ * computed expressions in the final output. This prevents consumer
+ * bundlers (Rollup, esbuild) from statically analyzing them and failing
+ * when shiki isn't installed.
+ *
+ * Source files use plain strings so Vite dev can resolve them.
+ * The compiled bundle gets computed specifiers for consumer safety.
+ */
+function computeShikiImports() {
+  return {
+    name: 'compute-shiki-imports',
+    generateBundle(_, bundle) {
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type !== 'chunk') continue
+        // Match multiline import( /* @vite-ignore */ "shiki/..." ) patterns
+        chunk.code = chunk.code.replace(
+          /import\(\s*(?:\/\*[^*]*\*\/\s*)?["']shiki(\/[^"']*)?["']\s*\)/g,
+          (_, subpath) => `import(""+("shiki${subpath || ''}"))`
+        )
+      }
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
     externalizeSharedState(),
+    computeShikiImports(),
     tailwindcss(),
     svelte({
       compilerOptions: {

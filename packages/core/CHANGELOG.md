@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.3.2
+
+### Patch Changes
+
+-   Bug fixes for package <-> client interaction
+
 ## 3.3.1
 
 ### Patch Changes

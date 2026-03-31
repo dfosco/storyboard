@@ -1,9 +1,9 @@
 {
   "name": "@dfosco/storyboard-react",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "type": "module",
   "dependencies": {
-    "@dfosco/storyboard-core": "3.3.0",
+    "@dfosco/storyboard-core": "3.3.1",
     "@dfosco/tiny-canvas": "^1.1.0",
     "@neodrag/react": "^2.3.1",
     "glob": "^11.0.0",

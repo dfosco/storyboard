@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.3.1
+
+### Patch Changes
+
+-   Fixes consumer build errors introduced in 3.3.0 where client repos without `svelte` or `shiki` installed would fail during Vite dependency optimization.
+
 ## 3.3.0
 
 ### Minor Changes

@@ -28,7 +28,7 @@ export { getByPath, setByPath, deepClone } from './dotPath.js'
 export { getParam, setParam, getAllParams, removeParam } from './session.js'
 
 // localStorage persistence
-export { getLocal, setLocal, removeLocal, getAllLocal, subscribeToStorage, getStorageSnapshot } from './localStorage.js'
+export { getLocal, setLocal, removeLocal, getAllLocal, subscribeToStorage, getStorageSnapshot, notifyChange } from './localStorage.js'
 
 // Hide mode (clean URLs)
 export { isHideMode, activateHideMode, deactivateHideMode, getShadow, setShadow, removeShadow, getAllShadows, pushSnapshot, getOverrideHistory, getCurrentSnapshot, getCurrentRoute, getCurrentIndex, getNextIndex, canUndo, canRedo, undo, redo, syncHashToHistory, installHistorySync } from './hideMode.js'
@@ -66,7 +66,7 @@ export { resolveSceneRoute, getSceneMeta } from './viewfinder.js'
 export { initFeatureFlags, getFlag, setFlag, toggleFlag, getAllFlags, resetFlags, getFlagKeys, syncFlagBodyClasses } from './featureFlags.js'
 
 // Command actions (config-driven command menu entries)
-export { initCommandActions, registerCommandAction, unregisterCommandAction, setDynamicActions, clearDynamicActions, getActionsForMode, executeAction, getActionChildren, subscribeToCommandActions, getCommandActionsSnapshot, setRoutingBasePath } from './commandActions.js'
+export { initCommandActions, registerCommandAction, unregisterCommandAction, setDynamicActions, clearDynamicActions, getActionsForMode, executeAction, getActionChildren, subscribeToCommandActions, getCommandActionsSnapshot, setRoutingBasePath, isExcludedByRoute } from './commandActions.js'
 
 // Plugin configuration
 export { initPlugins, isPluginEnabled, getPluginsConfig } from './plugins.js'

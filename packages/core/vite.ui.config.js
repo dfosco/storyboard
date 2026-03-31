@@ -2,8 +2,13 @@
  * Vite config for building the pre-compiled Svelte UI bundle.
  *
  * Produces dist/storyboard-ui.js + dist/storyboard-ui.css.
- * Bundles everything (Svelte runtime, bits-ui, Tailwind CSS, etc.)
+ * Bundles Svelte runtime, bits-ui, Tailwind CSS, and all .svelte components
  * so consumers get a self-contained JS+CSS module with no Svelte toolchain needed.
+ *
+ * IMPORTANT: Stateful core modules (loader, modes, commandActions, etc.) are
+ * externalized as `@dfosco/storyboard-core` imports. This ensures the compiled
+ * UI bundle shares the same singleton state as the consumer app — otherwise
+ * init() seeds one copy of the data index while the bundle reads from another.
  *
  * Usage:
  *   npx vite build --config vite.ui.config.js
@@ -16,9 +21,72 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname)
+const srcDir = path.resolve(__dirname, 'src')
+
+/**
+ * Core JS modules that hold singleton state (module-level variables).
+ * These MUST be externalized so the bundle and the consumer share one instance.
+ *
+ * Maps path relative to src/ → external package import specifier.
+ * The consumer's Vite will resolve these via package.json exports.
+ */
+const sharedStateModules = {
+  // Top-level stateful modules → main package export
+  'loader.js': '@dfosco/storyboard-core',
+  'viewfinder.js': '@dfosco/storyboard-core',
+  'modes.js': '@dfosco/storyboard-core',
+  'commandActions.js': '@dfosco/storyboard-core',
+  'uiConfig.js': '@dfosco/storyboard-core',
+  'featureFlags.js': '@dfosco/storyboard-core',
+  'plugins.js': '@dfosco/storyboard-core',
+  'localStorage.js': '@dfosco/storyboard-core',
+  // Comments subsystem → comments barrel export
+  'comments/config.js': '@dfosco/storyboard-core/comments',
+  'comments/auth.js': '@dfosco/storyboard-core/comments',
+  'comments/commentMode.js': '@dfosco/storyboard-core/comments',
+  'comments/api.js': '@dfosco/storyboard-core/comments',
+  'comments/commentCache.js': '@dfosco/storyboard-core/comments',
+  'comments/commentDrafts.js': '@dfosco/storyboard-core/comments',
+  'comments/metadata.js': '@dfosco/storyboard-core/comments',
+  'comments/graphql.js': '@dfosco/storyboard-core/comments',
+}
+
+/**
+ * Rollup plugin that rewrites imports of stateful core modules to the
+ * external `@dfosco/storyboard-core` package, preventing duplication.
+ */
+function externalizeSharedState() {
+  return {
+    name: 'externalize-shared-state',
+    enforce: 'pre',
+    resolveId(source, importer) {
+      if (!importer || !source.startsWith('.')) return null
+
+      // Normalize the source — it may omit the .js extension
+      let normalizedSource = source
+      if (!path.extname(normalizedSource)) {
+        normalizedSource += '.js'
+      }
+
+      const resolved = path.resolve(path.dirname(importer), normalizedSource)
+
+      // Only process files within our src/ directory
+      if (!resolved.startsWith(srcDir + path.sep) && resolved !== srcDir) return null
+
+      const relToSrc = path.relative(srcDir, resolved)
+
+      if (sharedStateModules[relToSrc]) {
+        return { id: sharedStateModules[relToSrc], external: true }
+      }
+
+      return null
+    },
+  }
+}
 
 export default defineConfig({
   plugins: [
+    externalizeSharedState(),
     tailwindcss(),
     svelte({
       compilerOptions: {
@@ -37,8 +105,9 @@ export default defineConfig({
     emptyOutDir: false,
     cssFileName: 'storyboard-ui',
     rollupOptions: {
-      // Externalize server-only and heavy optional deps
       external: [
+        '@dfosco/storyboard-core',
+        '@dfosco/storyboard-core/comments',
         'node:fs',
         'node:path',
         'shiki',
@@ -59,12 +128,5 @@ export default defineConfig({
     // Enable minification for production builds
     minify: 'esbuild',
     sourcemap: true,
-  },
-
-  resolve: {
-    alias: {
-      // Ensure internal imports resolve correctly during build
-      '@dfosco/storyboard-core': path.resolve(__dirname, 'src/index.js'),
-    },
   },
 })

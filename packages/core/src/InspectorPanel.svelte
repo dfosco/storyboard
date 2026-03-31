@@ -445,7 +445,7 @@
           class="mt-2 px-4 py-1.5 text-xs font-medium rounded-md border cursor-pointer transition-colors"
           style:background="transparent"
           style:color="var(--fgColor-muted)"
-          style:border-color="var(--borderColor-default)"
+          style:border-color="var(--borderColor-default, var(--color-border, #d1d9e0))"
           onclick={stopInspecting}
         >
           Cancel
@@ -464,7 +464,7 @@
 
         <!-- Source code -->
         {#if sourcePath}
-          <div class="border rounded-md overflow-hidden flex-1 min-h-0 flex flex-col" style:border-color="var(--borderColor-default)">
+          <div class="border rounded-md overflow-hidden flex-1 min-h-0 flex flex-col" style:border-color="var(--borderColor-default, var(--color-border, #d1d9e0))">
             <div
               class="flex items-center justify-between w-full px-3 py-1.5 text-xs font-semibold shrink-0"
               style:background="var(--bgColor-default)"
@@ -488,7 +488,7 @@
               {/if}
             </div>
 
-            <div class="border-t flex-1 min-h-0 flex flex-col" style:border-color="var(--borderColor-default)">
+            <div class="border-t flex-1 min-h-0 flex flex-col" style:border-color="var(--borderColor-default, var(--color-border, #d1d9e0))">
                 {#if sourceLoading}
                   <div class="px-3 py-4 text-xs text-center" style:color="var(--fgColor-muted)">
                     Loading source…

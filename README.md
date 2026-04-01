@@ -596,6 +596,111 @@ body.sb-ff-show-banner .promo-banner { display: block; }
 
 ---
 
+## Toolbar
+
+Storyboard renders a floating toolbar (bottom-right) with configurable tools — buttons, menus, side panels, and a command menu (⌘K). The toolbar is driven by `toolbar.config.json` bundled inside `@dfosco/storyboard-core`, with optional per-prototype overrides.
+
+### Toolbar config
+
+Each tool is declared in the `tools` object of `toolbar.config.json`:
+
+```json
+{
+  "tools": {
+    "inspector": {
+      "ariaLabel": "Inspect components",
+      "icon": "iconoir/square-dashed",
+      "render": "sidepanel",
+      "surface": "main-toolbar",
+      "sidepanel": "inspector",
+      "handler": "core:inspector",
+      "state": "active",
+      "modes": ["*"],
+      "localOnly": false,
+      "excludeRoutes": ["^/$", "/viewfinder"]
+    }
+  }
+}
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `render` | `string` | How the tool renders: `button`, `menu`, `sidepanel`, `separator`, `link`, `submenu`, `zoom-control` |
+| `surface` | `string` | Where it appears: `main-toolbar`, `command-list`, `canvas-toolbar` |
+| `handler` | `string` | Module reference: `core:name` for built-in, `custom:name` for client-provided handlers |
+| `state` | `string` | Initial state (default: `"active"`). See [Tool States](#tool-states) below. |
+| `modes` | `string[]` | Which modes show this tool. `["*"]` = all modes. |
+| `localOnly` | `boolean` | When `true`, tool is automatically `disabled` in deployed environments and shows a green dot indicator in local dev. |
+| `excludeRoutes` | `string[]` | Regex patterns — tool is hidden on matching routes. |
+
+### Prototype overrides
+
+Place a `toolbar.config.json` inside a prototype folder to override tool config for that prototype. Overrides are deep-merged with the base config on navigation:
+
+```
+src/prototypes/my-prototype.folder/dashboard/
+├── toolbar.config.json     ← prototype-level overrides
+├── dashboard.prototype.json
+└── index.jsx
+```
+
+```json
+{
+  "tools": {
+    "inspector": { "state": "dimmed" },
+    "comments": { "state": "disabled" }
+  }
+}
+```
+
+Overrides are automatically cleared when navigating away from the prototype.
+
+### Tool states
+
+Every tool has a runtime state that controls its visibility, interactivity, and loading behavior. Tools default to `active` unless config or application code sets otherwise.
+
+| State | Trigger visible | Clickable | Shortcuts | Loaded on FE | Description |
+|-------|:-:|:-:|:-:|:-:|-------------|
+| `active` | ✅ | ✅ | ✅ | ✅ | Normal (default) |
+| `inactive` | ✅ | ❌ | ❌ | ✅ | Disabled-looking, no interaction. Use for errors too. |
+| `hidden` | ❌ | — | ✅ | ✅ | Trigger disappears but shortcuts still work |
+| `dimmed` | ✅ | ✅ | ✅ | ✅ | Reduced opacity, interactive on hover/focus |
+| `disabled` | ❌ | ❌ | ❌ | ❌ | Completely removed — module never loads |
+
+#### Setting state in config
+
+Add a `state` property to any tool in `toolbar.config.json`:
+
+```json
+{ "inspector": { "state": "dimmed" } }
+```
+
+#### Setting state at runtime
+
+```js
+import { setToolbarToolState, TOOL_STATES } from '@dfosco/storyboard-core'
+
+setToolbarToolState('inspector', TOOL_STATES.INACTIVE)  // disable inspector
+setToolbarToolState('inspector', TOOL_STATES.ACTIVE)    // re-enable it
+```
+
+Runtime state changes are reactive — the toolbar and command menu update immediately.
+
+#### localOnly tools
+
+Tools with `"localOnly": true` are automatically set to `disabled` in deployed environments (non-local-dev). In local dev, they render normally with a **green dot indicator** (4px, top-right on toolbar buttons, far-right on command menu items) to signal they're dev-only.
+
+### Keyboard shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `⌘ + .` | Toggle toolbar visibility (hide/show chrome) |
+| `⌘ + K` | Open/close command menu (works even when toolbar is hidden) |
+
+Individual tools can also declare shortcuts in config via the `shortcut` property (e.g. `⌘ + I` for inspector, `⌘ + D` for docs). Shortcuts respect tool state — `inactive` and `disabled` tools don't respond.
+
+---
+
 ## Routing
 
 Routes are auto-generated from the file structure in `src/pages/` via [@generouted/react-router](https://github.com/oedotme/generouted) with lazy loading for automatic route-level code splitting:
@@ -743,6 +848,13 @@ Use `:global()` to reference body classes from CSS Modules:
 | `getAllFlags()` | Get all configured flags as `{ key: { default, current } }`. |
 | `resetFlags()` | Clear all flag overrides from hash and localStorage; values revert to config defaults. |
 | `getFlagKeys()` | Get all configured feature flag keys. |
+| `TOOL_STATES` | Constant object with all valid tool states: `ACTIVE`, `INACTIVE`, `HIDDEN`, `DIMMED`, `DISABLED`. |
+| `initToolbarToolStates(toolsConfig, options)` | Seed tool states from `toolbar.config.json` tools. Called automatically at startup. |
+| `setToolbarToolState(id, state)` | Set runtime state for a toolbar tool. |
+| `getToolbarToolState(id)` | Get current state for a tool (returns `'active'` for unknown IDs). |
+| `isToolbarToolLocalOnly(id)` | Check if a tool is marked `localOnly` in config. |
+| `subscribeToToolbarToolStates(callback)` | Subscribe to tool state changes. Returns unsubscribe function. |
+| `getToolbarToolStatesSnapshot()` | Snapshot string for `useSyncExternalStore`. |
 
 ### Utilities (`@dfosco/storyboard-react`)
 

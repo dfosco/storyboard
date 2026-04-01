@@ -100,7 +100,7 @@ A tool's `toolbar` value simply determines where it appears. Any tool can be mov
         { "id": "workshop/create-prototype", "label": "New prototype", "feature": "createPrototype" },
         { "id": "workshop/create-flow", "label": "New flow", "feature": "createFlow" },
         { "id": "workshop/create-canvas", "label": "New canvas", "feature": "createCanvas" },
-        { "type": "footer", "label": "Supported in local development" }
+        { "type": "footer", "label": "Only available in dev environment" }
       ]
     },
     "devtools": {

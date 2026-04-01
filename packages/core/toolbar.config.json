@@ -28,22 +28,6 @@
       "meta": { "strokeWeight": 2, "scale": 1.1 },
       "shortcut": { "key": "i", "label": "⌘I" }
     },
-    "docs": {
-      "label": "Documentation",
-      "ariaLabel": "Documentation",
-      "icon": "primer/book",
-      "render": "sidepanel",
-      "surface": "command-list",
-      "sidepanel": "docs",
-      "handler": "core:docs",
-      "modes": ["*"],
-      "shortcut": { "key": "d", "label": "⌘D" }
-    },
-    "sep-tools": {
-      "render": "separator",
-      "surface": "command-list",
-      "modes": ["*"]
-    },
     "flows": {
       "label": "Flows",
       "ariaLabel": "Switch flow",
@@ -89,13 +73,13 @@
       "handler": "core:create",
       "modes": ["*"],
       "localOnly": true,
-      "menuWidth": "260px",
+      "menuWidth": "290px",
       "actions": [
         { "type": "header", "label": "Create" },
         { "id": "workshop/create-prototype", "label": "New prototype", "type": "default", "modes": ["*"], "feature": "createPrototype" },
         { "id": "workshop/create-flow", "label": "New flow", "type": "default", "modes": ["*"], "feature": "createFlow" },
         { "id": "workshop/create-canvas", "label": "New canvas", "type": "default", "modes": ["*"], "feature": "createCanvas" },
-        { "type": "footer", "label": "Supported in local development" }
+        { "type": "footer", "label": "Only available in dev environment" }
       ]
     },
     "canvas-add-widget": {
@@ -115,7 +99,7 @@
       "surface": "canvas-toolbar",
       "handler": "core:canvas-zoom",
       "modes": ["*"]
-    },
+    },    
     "viewfinder": {
       "label": "Index page",
       "render": "link",
@@ -130,6 +114,17 @@
       "modes": ["*"],
       "url": "https://github.com/dfosco/storyboard"
     },
+    "docs": {
+      "label": "Documentation",
+      "ariaLabel": "Documentation",
+      "icon": "primer/book",
+      "render": "sidepanel",
+      "surface": "command-list",
+      "sidepanel": "docs",
+      "handler": "core:docs",
+      "modes": ["*"],
+      "shortcut": { "key": "d", "label": "⌘D" }
+    },    
     "devtools": {
       "label": "Devtools",
       "render": "submenu",

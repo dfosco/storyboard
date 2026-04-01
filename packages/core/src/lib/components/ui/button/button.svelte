@@ -36,7 +36,7 @@
 	});
 
 	export const wrapperVariants = tv({
-		base: "rounded-lg inline-flex shrink-0 transition-transform",
+		base: "inline-flex shrink-0 transition-transform",
 		variants: {
 			size: {
 				default: "h-8",

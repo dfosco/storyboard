@@ -126,6 +126,11 @@ export default defineConfig(() => {
     optimizeDeps: {
         include: ['reshaped', '@primer/react', '@primer/octicons-react', 'prop-types'],
     },
+    esbuild: {
+        // Preserve function names so the storyboard inspector shows
+        // real component names instead of minified identifiers
+        keepNames: true,
+    },
     build: {
         // @primer/react barrel export can't be tree-shaken below ~664 KB.
         // Raised from 500 KB default to suppress the warning for that chunk.

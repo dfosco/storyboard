@@ -6,7 +6,7 @@
 export const id = 'inspector'
 
 export async function setup() {
-  const { openPanel } = await import('../stores/sidePanelStore.js')
+  const { openPanel } = await import('../../stores/sidePanelStore.js')
 
   try {
     const inspectParam = new URL(window.location.href).searchParams.get('inspect')

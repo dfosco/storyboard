@@ -28,6 +28,8 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 
 - **Storyboard Core** (`.github/skills/storyboard-core/SKILL.md`) — Guide for adding menu buttons to the CoreUIBar floating toolbar. Consult when asked to create a "workshop button", "menu button", "toolbar button", or add a new feature to the CoreUIBar chrome.
 
+- **Tools** (`.github/skills/tools/SKILL.md`) — Comprehensive guide for creating toolbar tools: handler modules, config schema, surface reference, custom handler registration. Consult when asked to create a "toolbar tool", "menu button", "canvas tool", or add functionality to the toolbar.
+
 - **Changelog** (`.github/skills/changelog/SKILL.md`) — Generates formatted changelog entries from git commits between versions. Invoke with: "generate changelog", "changelog since X", or "what changed since X".
 
 ---

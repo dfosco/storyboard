@@ -1,16 +1,21 @@
 /**
- * Tool module registry — maps tool IDs to lazy-loaded code modules.
+ * Tool module registry — maps tool IDs to lazy-loaded handler modules.
  *
- * Each tool module exports: { id, component?, handler?, setup?, guard? }
+ * Each handler module exports: { id, component?, handler?, setup?, guard? }
  * All imports are dynamic to enable code splitting.
  */
-export const toolModules = {
-  create:           () => import('./create.js'),
-  theme:            () => import('./theme.js'),
-  comments:         () => import('./comments.js'),
-  flows:            () => import('./flows.js'),
-  docs:             () => import('./docs.js'),
-  inspector:        () => import('./inspector.js'),
-  devtools:         () => import('./devtools.js'),
-  'feature-flags':  () => import('./featureFlags.js'),
+export const coreHandlers = {
+  create:               () => import('./handlers/create.js'),
+  theme:                () => import('./handlers/theme.js'),
+  comments:             () => import('./handlers/comments.js'),
+  flows:                () => import('./handlers/flows.js'),
+  docs:                 () => import('./handlers/docs.js'),
+  inspector:            () => import('./handlers/inspector.js'),
+  devtools:             () => import('./handlers/devtools.js'),
+  'feature-flags':      () => import('./handlers/featureFlags.js'),
+  'canvas-add-widget':  () => import('./handlers/canvasAddWidget.js'),
+  'canvas-zoom':        () => import('./handlers/canvasZoom.js'),
 }
+
+// Keep legacy export name for backward compatibility
+export const toolModules = coreHandlers

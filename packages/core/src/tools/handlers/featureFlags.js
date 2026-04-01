@@ -6,7 +6,7 @@
 export const id = 'feature-flags'
 
 export async function handler() {
-  const ff = await import('../featureFlags.js')
+  const ff = await import('../../featureFlags.js')
 
   return {
     getChildren: () =>

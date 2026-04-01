@@ -22,6 +22,8 @@ let skipLink = null
  * @param {object} [options]
  * @param {HTMLElement} [options.container=document.body] - Where to mount
  * @param {string} [options.basePath='/'] - Base URL path
+ * @param {object} [options.toolbarConfig] - Merged toolbar config
+ * @param {Record<string, () => Promise<any>>} [options.customHandlers] - Custom tool handlers
  */
 export async function mountDevTools(options = {}) {
   const container = options.container || document.body
@@ -108,7 +110,11 @@ export async function mountDevTools(options = {}) {
 
   instance = mount(CoreUIBar, {
     target: wrapper,
-    props: { basePath, toolbarConfig: options.toolbarConfig },
+    props: {
+      basePath,
+      toolbarConfig: options.toolbarConfig,
+      customHandlers: options.customHandlers,
+    },
   })
 }
 

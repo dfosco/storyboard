@@ -33,11 +33,15 @@
 
   interface Props {
     features?: CreateMenuFeature[]
+    data?: { features?: CreateMenuFeature[] }
     config?: CreateMenuConfig
     tabindex?: number
   }
 
-  let { features = [], config = { label: 'Create' }, tabindex }: Props = $props()
+  let { features: featuresProp = [], data, config = { label: 'Create' }, tabindex }: Props = $props()
+
+  // Support both direct `features` prop (legacy) and `data.features` (generic toolbar)
+  const features = $derived(featuresProp.length > 0 ? featuresProp : (data?.features || []))
 
   const menuWidth = $derived((config as any).menuWidth || null)
 

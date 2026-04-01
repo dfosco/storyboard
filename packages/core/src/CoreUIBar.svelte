@@ -22,8 +22,8 @@
   import { isMenuHidden } from './uiConfig.js'
   import defaultToolbarConfig from '../toolbar.config.json'
 
-  interface Props { basePath?: string; toolbarConfig?: any }
-  let { basePath = '/', toolbarConfig }: Props = $props()
+  interface Props { basePath?: string; toolbarConfig?: any; customHandlers?: Record<string, () => Promise<any>> }
+  let { basePath = '/', toolbarConfig, customHandlers = {} }: Props = $props()
 
   // Use provided config (merged by mountStoryboardCore) or fall back to defaults
   const config = $derived(toolbarConfig || defaultToolbarConfig)
@@ -32,32 +32,40 @@
   // Hide the entire toolbar when loaded inside a prototype embed iframe
   const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')
   let commandMenuOpen = $state(false)
-  let ActionMenuButton: any = $state(null)
+  let toolComponents: Record<string, any> = $state({})
+  let toolData: Record<string, any> = $state({})
   let navVersion = $state(0)
   let origPushState: typeof history.pushState
   let origReplaceState: typeof history.replaceState
   let bumpNav: () => void
-  let CreateMenuButton: any = $state(null)
-  let createMenuFeatures: any[] = $state([])
-  let CommentsMenuButton: any = $state(null)
-  let ThemeMenuButton: any = $state(null)
-  let commentsEnabled = $state(false)
   let SidePanel: any = $state(null)
   let toolbarEl: HTMLElement | null = $state(null)
-  let CanvasCreateMenu: any = $state(null)
   let canvasActive = $state(false)
   let activeCanvasName = $state('')
   let canvasZoom = $state(100)
-  const canvasToolbarConfig = $derived((config as any).canvasToolbar || {})
-
-  const ZOOM_STEP = 10
-  const ZOOM_MIN = 25
-  const ZOOM_MAX = 200
 
   // Roving tabindex: only one button in the toolbar is tabbable at a time
   let activeToolbarIndex = $state(-1)
 
   const isLocalDev = typeof window !== 'undefined' && (window as any).__SB_LOCAL_DEV__ === true
+
+  /**
+   * Resolve a handler reference to a module loader function.
+   * Format: "core:name" → core registry, "custom:name" → client handlers
+   */
+  function resolveHandlerModule(
+    ref: string,
+    coreModules: Record<string, Function>,
+    custom: Record<string, () => Promise<any>>
+  ): Function | null {
+    const colonIdx = ref.indexOf(':')
+    if (colonIdx === -1) return coreModules[ref] || null
+    const prefix = ref.slice(0, colonIdx)
+    const name = ref.slice(colonIdx + 1)
+    if (prefix === 'core') return coreModules[name] || null
+    if (prefix === 'custom') return custom[name] || null
+    return null
+  }
 
   // Resolve tools → menus compatibility layer.
   // New config uses `tools` (flat map with toolbar target); legacy uses `menus`.
@@ -66,7 +74,7 @@
     if (cfg.tools) {
       const result: Record<string, any> = {}
       for (const [key, tool] of Object.entries(cfg.tools as Record<string, any>)) {
-        if (tool.toolbar === 'command-list') continue
+        if (tool.surface === 'command-list' || tool.surface === 'canvas-toolbar') continue
         // Map new render/toolbar fields to legacy menu fields for rendering compat
         const menu: any = { ...tool }
         if (tool.render === 'menu' && tool.handler) {
@@ -88,7 +96,7 @@
       // Add command-list tools as actions
       if (cfg.tools) {
         for (const [, tool] of Object.entries(cfg.tools as Record<string, any>)) {
-          if (tool.toolbar !== 'command-list') continue
+          if (tool.surface !== 'command-list') continue
           actions.push({
             id: tool.handler || `core/${tool.label?.toLowerCase().replace(/\s+/g, '-')}`,
             label: tool.label,
@@ -131,6 +139,16 @@
   // Discover menus with sidepanel property
   const sidepanelMenus = $derived(orderedMenus.filter(menu => menu.sidepanel))
 
+  // Canvas toolbar tools — only visible when a canvas page is active
+  const canvasMenus = $derived(
+    config.tools
+      ? Object.entries(config.tools as Record<string, any>)
+          .filter(([, tool]) => tool.surface === 'canvas-toolbar')
+          .filter(([, tool]) => !tool.localOnly || isLocalDev)
+          .map(([key, tool]) => ({ key, ...tool }))
+      : []
+  )
+
   function menuVisibleInMode(menu: any, mode: string): boolean {
     if (!menu?.modes) return false
     if (isExcludedByRoute(menu)) return false
@@ -142,21 +160,47 @@
     orderedMenus
       .filter(menu => {
         void navVersion
+        if (menu.render === 'separator') return true
         if (!menuVisibleInMode(menu, $modeState.mode)) return false
-        if (menu.action) return ActionMenuButton && getActionChildren(menu.action).length > 0
-        if (menu.key === 'create') return CreateMenuButton && createMenuFeatures.length > 0
-        if (menu.key === 'comments') return CommentsMenuButton && commentsEnabled
-        if (menu.key === 'theme') return !!ThemeMenuButton
+        if (menu.render === 'sidepanel') return true
+        // For tools with components, check if loaded
+        if (!toolComponents[menu.key]) return false
+        // For action-menu tools, check if there are children
+        const actionId = menu.handler || menu.action
+        if (actionId && menu.render === 'menu') {
+          return getActionChildren(actionId).length > 0
+        }
         return true
       })
       .reverse()
   )
 
+  // Clean separators: remove leading, trailing, and consecutive
+  const cleanedMenus = $derived.by(() => {
+    const result: typeof visibleMenus = []
+    for (const item of visibleMenus) {
+      if (item.render === 'separator') {
+        // Skip if first item or previous was also a separator
+        if (result.length === 0 || result[result.length - 1].render === 'separator') continue
+        result.push(item)
+      } else {
+        result.push(item)
+      }
+    }
+    // Remove trailing separator
+    while (result.length > 0 && result[result.length - 1].render === 'separator') result.pop()
+    return result
+  })
+
   // Total toolbar item count (visible menus + command menu if present)
-  const toolbarItemCount = $derived(visibleMenus.length + (commandMenuConfig ? 1 : 0))
+  const toolbarItemCount = $derived(
+    cleanedMenus.filter(m => m.render !== 'separator').length + (commandMenuConfig ? 1 : 0)
+  )
 
   // Command menu is always the last item (rightmost)
-  const commandMenuIndex = $derived(commandMenuConfig ? visibleMenus.length : -1)
+  const commandMenuIndex = $derived(
+    commandMenuConfig ? cleanedMenus.filter(m => m.render !== 'separator').length : -1
+  )
 
   function getTabindex(index: number): number {
     if (activeToolbarIndex < 0) {
@@ -233,7 +277,7 @@
       commandMenuOpen = !commandMenuOpen
     }
     // Config-driven tool shortcuts (e.g. Cmd+D for docs, Cmd+I for inspector)
-    for (const menu of visibleMenus) {
+    for (const menu of cleanedMenus) {
       const shortcut = menu.shortcut
       if (!shortcut?.key) continue
       if (e.key === shortcut.key && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
@@ -265,19 +309,24 @@
 
     // Register sidepanel toggle actions
     for (const menu of sidepanelMenus) {
-      registerCommandAction(`core/${menu.key}`, () => {
+      registerCommandAction(`core:${menu.key}`, () => {
         togglePanel(menu.sidepanel)
       })
     }
 
     // Load all tool modules from the registry
-    const { toolModules } = await import('./tools/registry.js')
+    const { coreHandlers } = await import('./tools/registry.js')
     const toolConfigs = config.tools || {}
     const ctx = { basePath, showFlowInfoDialog }
 
-    for (const [toolId, loadModule] of Object.entries(toolModules as Record<string, Function>)) {
-      const toolConfig = toolConfigs[toolId]
-      if (!toolConfig) continue
+    for (const [toolId, toolConfig] of Object.entries(toolConfigs as Record<string, any>)) {
+      // Skip non-tool entries (separators have no handler)
+      if (toolConfig.render === 'separator') continue
+
+      // Resolve handler module via core:/custom: prefix
+      const handlerRef = toolConfig.handler || `core:${toolId}`
+      const loadModule = resolveHandlerModule(handlerRef, coreHandlers, customHandlers)
+      if (!loadModule) continue
 
       try {
         const mod = await loadModule()
@@ -292,28 +341,26 @@
         // Run setup
         if (mod.setup) {
           const setupResult = await mod.setup(toolCtx)
-          // Store setup results (e.g. create features)
-          if (toolId === 'create' && setupResult?.features) {
-            createMenuFeatures = setupResult.features
+          if (setupResult) {
+            toolData[toolId] = setupResult
           }
         }
 
         // Register handler as command action
         if (mod.handler) {
           const handlerResult = await mod.handler(toolCtx)
-          const actionId = toolConfig.handler || `core/${toolId}`
+          const actionId = toolConfig.handler || `core:${toolId}`
+          // Store handler result in toolData for component access
+          if (handlerResult && !handlerResult.getChildren) {
+            toolData[toolId] = { ...(toolData[toolId] || {}), ...handlerResult }
+          }
           registerCommandAction(actionId, handlerResult)
         }
 
         // Load component
         if (mod.component) {
           const component = await mod.component()
-          switch (toolId) {
-            case 'create': CreateMenuButton = component; break
-            case 'theme': ThemeMenuButton = component; break
-            case 'comments': CommentsMenuButton = component; commentsEnabled = true; break
-            case 'flows': ActionMenuButton = component; break
-          }
+          toolComponents[toolId] = component
         }
       } catch { /* tool failed to load — skip gracefully */ }
     }
@@ -324,12 +371,6 @@
         const mod = await import('./SidePanel.svelte')
         SidePanel = mod.default
       }
-    } catch {}
-
-    // Load canvas create menu
-    try {
-      const mod = await import('./CanvasCreateMenu.svelte')
-      CanvasCreateMenu = mod.default
     } catch {}
 
     // Listen for canvas mount/unmount events (React↔Svelte bridge)
@@ -365,20 +406,6 @@
     canvasZoom = (e as CustomEvent).detail?.zoom ?? canvasZoom
   }
 
-  function canvasZoomIn() {
-    const next = Math.min(ZOOM_MAX, canvasZoom + ZOOM_STEP)
-    document.dispatchEvent(new CustomEvent('storyboard:canvas:set-zoom', { detail: { zoom: next } }))
-  }
-
-  function canvasZoomOut() {
-    const next = Math.max(ZOOM_MIN, canvasZoom - ZOOM_STEP)
-    document.dispatchEvent(new CustomEvent('storyboard:canvas:set-zoom', { detail: { zoom: next } }))
-  }
-
-  function canvasZoomReset() {
-    document.dispatchEvent(new CustomEvent('storyboard:canvas:set-zoom', { detail: { zoom: 100 } }))
-  }
-
   // Flow info dialog state — driven by core/show-flow-info action
   let flowDialogOpen = $state(false)
   let flowName = $state('default')
@@ -394,41 +421,29 @@
 </script>
 
 {#if !isEmbed}
-  {#if visible && canvasActive && CanvasCreateMenu}
+  {#if visible && canvasActive && canvasMenus.length > 0}
     <div
       class="fixed bottom-6 left-6 z-[9999] font-sans flex items-center gap-3"
       role="toolbar"
       aria-label="Canvas toolbar"
     >
-      <Tooltip.Root>
-        <Tooltip.Trigger>
-          <CanvasCreateMenu config={canvasToolbarConfig} canvasName={activeCanvasName} tabindex={0} />
-        </Tooltip.Trigger>
-        <Tooltip.Content side="top">Add widget to canvas</Tooltip.Content>
-      </Tooltip.Root>
-
-      <div class="canvas-zoom-bar">
-        <button
-          class="canvas-zoom-btn"
-          onclick={canvasZoomOut}
-          disabled={canvasZoom <= ZOOM_MIN}
-          aria-label="Zoom out"
-          title="Zoom out"
-        >−</button>
-        <button
-          class="canvas-zoom-label"
-          onclick={canvasZoomReset}
-          aria-label="Reset zoom to 100%"
-          title="Reset to 100%"
-        >{canvasZoom}%</button>
-        <button
-          class="canvas-zoom-btn"
-          onclick={canvasZoomIn}
-          disabled={canvasZoom >= ZOOM_MAX}
-          aria-label="Zoom in"
-          title="Zoom in"
-        >+</button>
-      </div>
+      {#each canvasMenus as canvasTool (canvasTool.key)}
+        {#if toolComponents[canvasTool.key]}
+          <Tooltip.Root>
+            <Tooltip.Trigger>
+              <svelte:component
+                this={toolComponents[canvasTool.key]}
+                config={canvasTool}
+                data={toolData[canvasTool.key]}
+                canvasName={activeCanvasName}
+                zoom={canvasZoom}
+                tabindex={0}
+              />
+            </Tooltip.Trigger>
+            <Tooltip.Content side="top">{canvasTool.ariaLabel || canvasTool.key}</Tooltip.Content>
+          </Tooltip.Root>
+        {/if}
+      {/each}
     </div>
   {/if}
   <div
@@ -442,32 +457,35 @@
     bind:this={toolbarEl}
   >
     {#if visible}
-      {#each visibleMenus as menu, i (menu.key)}
-        <Tooltip.Root>
-          <Tooltip.Trigger>
-            {#if menu.sidepanel}
-              <TriggerButton
-                active={$sidePanelState.open && $sidePanelState.activeTab === menu.sidepanel}
-                size="icon-xl"
-                aria-label={menu.ariaLabel || menu.key}
-                tabindex={getTabindex(i)}
-                onfocus={() => { activeToolbarIndex = i }}
-                onclick={() => togglePanel(menu.sidepanel)}
-              >
-                <Icon name={menu.icon || menu.key} size={16} {...(menu.meta || {})} />
-              </TriggerButton>
-            {:else if menu.action}
-              <ActionMenuButton config={menu} tabindex={getTabindex(i)} />
-            {:else if menu.key === 'create'}
-              <CreateMenuButton features={createMenuFeatures} config={menu} tabindex={getTabindex(i)} />
-            {:else if menu.key === 'comments'}
-              <CommentsMenuButton config={menu} tabindex={getTabindex(i)} />
-            {:else if menu.key === 'theme'}
-              <ThemeMenuButton config={menu} tabindex={getTabindex(i)} />
-            {/if}
-          </Tooltip.Trigger>
-          <Tooltip.Content side="top">{menu.ariaLabel || menu.key}</Tooltip.Content>
-        </Tooltip.Root>
+      {#each cleanedMenus as menu, i (menu.key)}
+        {#if menu.render === 'separator'}
+          <div class="toolbar-separator" aria-hidden="true"></div>
+        {:else}
+          <Tooltip.Root>
+            <Tooltip.Trigger>
+              {#if menu.render === 'sidepanel'}
+                <TriggerButton
+                  active={$sidePanelState.open && $sidePanelState.activeTab === menu.sidepanel}
+                  size="icon-xl"
+                  aria-label={menu.ariaLabel || menu.key}
+                  tabindex={getTabindex(i)}
+                  onfocus={() => { activeToolbarIndex = i }}
+                  onclick={() => togglePanel(menu.sidepanel)}
+                >
+                  <Icon name={menu.icon || menu.key} size={16} {...(menu.meta || {})} />
+                </TriggerButton>
+              {:else if toolComponents[menu.key]}
+                <svelte:component
+                  this={toolComponents[menu.key]}
+                  config={menu}
+                  data={toolData[menu.key]}
+                  tabindex={getTabindex(i)}
+                />
+              {/if}
+            </Tooltip.Trigger>
+            <Tooltip.Content side="top">{menu.ariaLabel || menu.key}</Tooltip.Content>
+          </Tooltip.Root>
+        {/if}
       {/each}
     {/if}
     {#if commandMenuConfig}
@@ -488,58 +506,12 @@
 {/if}
 
 <style>
-  .canvas-zoom-bar {
-    display: flex;
-    align-items: center;
-    border-radius: 10px;
-    border: 1.5px solid var(--trigger-border, var(--color-slate-400));
-    background: var(--trigger-bg, var(--color-slate-100));
-    overflow: hidden;
-  }
-
-  .canvas-zoom-btn {
-    all: unset;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 32px;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--trigger-text, var(--color-slate-600));
-    transition: background 120ms;
-  }
-
-  .canvas-zoom-btn:hover:not(:disabled) {
-    background: var(--trigger-bg-hover, var(--color-slate-300));
-  }
-
-  .canvas-zoom-btn:disabled {
-    opacity: 0.3;
-    cursor: default;
-  }
-
-  .canvas-zoom-label {
-    all: unset;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 48px;
-    height: 32px;
-    padding: 0 4px;
-    font-size: 11px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    color: var(--trigger-text, var(--color-slate-600));
-    border-left: 1.5px solid var(--trigger-border, var(--color-slate-400));
-    border-right: 1.5px solid var(--trigger-border, var(--color-slate-400));
-    transition: background 120ms;
-  }
-
-  .canvas-zoom-label:hover {
-    background: var(--trigger-bg-hover, var(--color-slate-300));
+  .toolbar-separator {
+    width: 1px;
+    height: 20px;
+    background: var(--trigger-border, var(--color-slate-400));
+    opacity: 0.4;
+    flex-shrink: 0;
   }
 
   .default-button-dimmed {

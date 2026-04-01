@@ -8,7 +8,7 @@ export const id = 'create'
 
 export async function setup(ctx) {
   const { config } = ctx
-  const { features } = await import('../workshop/features/registry.js')
+  const { features } = await import('../../workshop/features/registry.js')
 
   const createActions = Array.isArray(config.actions) ? config.actions : []
   const createFeatures = createActions
@@ -34,6 +34,6 @@ export async function guard(ctx) {
 }
 
 export async function component() {
-  const mod = await import('../CreateMenuButton.svelte')
+  const mod = await import('../../CreateMenuButton.svelte')
   return mod.default
 }

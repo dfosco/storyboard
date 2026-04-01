@@ -6,11 +6,11 @@
 export const id = 'comments'
 
 export async function guard() {
-  const { isCommentsEnabled } = await import('../comments/config.js')
+  const { isCommentsEnabled } = await import('../../comments/config.js')
   return isCommentsEnabled()
 }
 
 export async function component() {
-  const mod = await import('../CommentsMenuButton.svelte')
+  const mod = await import('../../CommentsMenuButton.svelte')
   return mod.default
 }

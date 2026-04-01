@@ -85,12 +85,14 @@ async function injectUIStyles() {
  * @param {object} [options={}]
  * @param {string} [options.basePath='/'] - Base URL path (e.g. import.meta.env.BASE_URL)
  * @param {HTMLElement} [options.container=document.body] - Where to mount devtools
+ * @param {Record<string, () => Promise<any>>} [options.handlers={}] - Custom tool handlers (key → lazy loader)
  */
 export async function mountStoryboardCore(config = {}, options = {}) {
   if (_mounted) return
   _mounted = true
 
   const basePath = options.basePath || '/'
+  const customHandlers = options.handlers || {}
 
   // Apply saved theme to DOM immediately — before Svelte/React mount
   applyEarlyTheme()
@@ -162,6 +164,7 @@ export async function mountStoryboardCore(config = {}, options = {}) {
     container: options.container,
     basePath,
     toolbarConfig,
+    customHandlers,
   })
 
   // Mount comments system if configured

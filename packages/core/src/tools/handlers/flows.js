@@ -7,8 +7,8 @@
 export const id = 'flows'
 
 export async function handler(ctx) {
-  const loader = await import('../loader.js')
-  const vf = await import('../viewfinder.js')
+  const loader = await import('../../loader.js')
+  const vf = await import('../../viewfinder.js')
   const { basePath = '/' } = ctx
 
   return {
@@ -54,6 +54,6 @@ export async function handler(ctx) {
 }
 
 export async function component() {
-  const mod = await import('../ActionMenuButton.svelte')
+  const mod = await import('../../ActionMenuButton.svelte')
   return mod.default
 }

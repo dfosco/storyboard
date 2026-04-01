@@ -17,9 +17,9 @@ export async function handler(ctx) {
   let loader = null
   let hm = null
   let commentsAuth = null
-  try { loader = await import('../loader.js') } catch { /* optional */ }
-  try { hm = await import('../hideMode.js') } catch { /* optional */ }
-  try { commentsAuth = await import('../comments/auth.js') } catch { /* optional */ }
+  try { loader = await import('../../loader.js') } catch { /* optional */ }
+  try { hm = await import('../../hideMode.js') } catch { /* optional */ }
+  try { commentsAuth = await import('../../comments/auth.js') } catch { /* optional */ }
 
   return {
     getChildren: () => {

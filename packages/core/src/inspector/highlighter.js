@@ -130,23 +130,14 @@ const THEMES = {
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve the current theme ID based on config and sync settings.
+ * Resolve the current theme ID based on page theme and config.
+ * Always follows the page theme (data-sb-theme attribute).
  */
 function resolveThemeId() {
   const config = getToolbarConfig()
   const highlighting = config?.highlighting || {}
   const darkTheme = highlighting.dark || 'github-dark-dimmed'
   const lightTheme = highlighting.light || 'github'
-
-  let codeBoxesSynced = false
-  if (typeof localStorage !== 'undefined') {
-    try {
-      const raw = localStorage.getItem('sb-theme-sync')
-      if (raw) codeBoxesSynced = JSON.parse(raw).codeBoxes === true
-    } catch { /* ignore malformed localStorage */ }
-  }
-
-  if (!codeBoxesSynced) return darkTheme
 
   const sbTheme = typeof document !== 'undefined'
     ? document.documentElement.getAttribute('data-sb-theme') || 'dark'

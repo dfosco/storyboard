@@ -266,6 +266,32 @@ export default function storyboardServer() {
         }),
       })
 
+      // Emit README as static JSON so the docs panel works in deployed builds.
+      // Dev server serves this dynamically; production needs the static file.
+      let readmeContent = null
+      for (const candidate of ['README.md', 'readme.md', 'Readme.md']) {
+        try {
+          readmeContent = await fs.promises.readFile(path.join(root, candidate), 'utf-8')
+          break
+        } catch { /* try next */ }
+      }
+      if (readmeContent) {
+        this.emitFile({
+          type: 'asset',
+          fileName: '_storyboard/docs/readme',
+          source: JSON.stringify({ content: readmeContent, path: 'README.md' }),
+        })
+      }
+
+      // Emit repo info so the docs panel GitHub link works in deployed builds.
+      if (repo) {
+        this.emitFile({
+          type: 'asset',
+          fileName: '_storyboard/docs/repo',
+          source: JSON.stringify(repo),
+        })
+      }
+
       // GitHub Pages uses Jekyll which ignores _-prefixed directories.
       // Emit .nojekyll to ensure _storyboard/ is served.
       this.emitFile({

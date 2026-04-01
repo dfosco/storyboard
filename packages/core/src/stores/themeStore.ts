@@ -183,7 +183,7 @@ const SYNC_STORAGE_KEY = 'sb-theme-sync'
 const DEFAULT_SYNC: ThemeSyncTargets = {
   prototype: true,
   toolbar: false,
-  codeBoxes: false,
+  codeBoxes: true,
 }
 
 function readStoredSync(): ThemeSyncTargets {

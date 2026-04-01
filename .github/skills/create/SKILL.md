@@ -307,8 +307,11 @@ Use `ask_user`:
 > Should this canvas go inside an existing folder group?
 
 Provide choices:
-- Each existing folder
+- Each existing folder (e.g., "design-system", "explorations")
 - "Standalone (no folder group)"
+- "Create a new folder group"
+
+If "Create a new folder group" is chosen, ask for the folder name in a follow-up question.
 
 ### Step C4: Ask about options
 

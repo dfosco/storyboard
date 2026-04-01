@@ -446,17 +446,22 @@
       {/snippet}
 
       {#snippet canvasEntry(canvas)}
-        <a class="listItem" href={canvas.route}>
-          <div class="cardBody">
-            <p class="protoName">{canvas.name}</p>
-            {#if canvas.description}
-              <p class="protoDesc">{canvas.description}</p>
-            {/if}
-            {#if canvas.widgetCount > 0}
-              <p class="flowDesc">{canvas.widgetCount} widget{canvas.widgetCount === 1 ? '' : 's'}</p>
-            {/if}
-          </div>
-        </a>
+        <section class="protoGroup">
+          <a class="listItem" href={canvas.route}>
+            <div class="cardBody">
+              <p class="protoName">
+                <span class="protoIcon">{canvas.icon || '🎨'}</span>
+                {canvas.name}
+              </p>
+              {#if canvas.description}
+                <p class="protoDesc">{canvas.description}</p>
+              {/if}
+              {#if canvas.widgetCount > 0}
+                <p class="flowDesc">{canvas.widgetCount} widget{canvas.widgetCount === 1 ? '' : 's'}</p>
+              {/if}
+            </div>
+          </a>
+        </section>
       {/snippet}
 
       {#if viewMode === 'prototypes'}

@@ -92,35 +92,52 @@ function _applyToDOM(theme: ThemeValue, resolved: string): void {
   if (typeof document === 'undefined') return
   const el = document.documentElement
 
-  // Internal attribute
-  el.setAttribute('data-sb-theme', resolved)
+  // Per-target resolved themes
+  const prototypeTheme = _syncTargets.prototype ? resolved : 'light'
+  const toolbarTheme = _syncTargets.toolbar ? resolved : 'light'
+  const codeTheme = _syncTargets.codeBoxes ? resolved : 'light'
+
+  // Internal attributes
+  el.setAttribute('data-sb-theme', prototypeTheme)
+  el.setAttribute('data-sb-code-theme', codeTheme)
 
   // Toolbar theme — follows global theme when synced, stays light otherwise
-  const toolbarTheme = _syncTargets.toolbar ? resolved : 'light'
   el.setAttribute('data-sb-toolbar-theme', toolbarTheme)
 
   // Primer CSS attributes — these drive @primer/react ThemeProvider and
   // Primer CSS custom-property layers without needing React state updates.
-  if (theme === 'system') {
+  if (theme === 'system' && _syncTargets.prototype) {
     el.setAttribute('data-color-mode', 'auto')
     el.setAttribute('data-light-theme', 'light')
     el.setAttribute('data-dark-theme', 'dark')
-  } else if (resolved.startsWith('dark')) {
+  } else if (prototypeTheme.startsWith('dark')) {
     el.setAttribute('data-color-mode', 'dark')
-    el.setAttribute('data-dark-theme', resolved)
+    el.setAttribute('data-dark-theme', prototypeTheme)
     el.setAttribute('data-light-theme', 'light')
   } else {
     el.setAttribute('data-color-mode', 'light')
-    el.setAttribute('data-light-theme', resolved)
+    el.setAttribute('data-light-theme', prototypeTheme)
     el.setAttribute('data-dark-theme', 'dark')
   }
 }
 
 function _dispatchEvent(theme: ThemeValue, resolved: string): void {
   if (typeof document === 'undefined') return
+  const prototypeTheme = _syncTargets.prototype ? theme : 'light'
+  const prototypeResolved = _syncTargets.prototype ? resolved : 'light'
+  const toolbarResolved = _syncTargets.toolbar ? resolved : 'light'
+  const codeResolved = _syncTargets.codeBoxes ? resolved : 'light'
+
   document.dispatchEvent(
     new CustomEvent('storyboard:theme:changed', {
-      detail: { theme, resolved },
+      detail: {
+        theme,
+        resolved,
+        prototypeTheme,
+        prototypeResolved,
+        toolbarResolved,
+        codeResolved,
+      },
     }),
   )
 }

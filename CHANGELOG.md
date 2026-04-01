@@ -5,6 +5,7 @@
 ### Bug Fixes
 
 - **Inspector**: Normalize configured highlight theme names before palette lookup so aliases like `night owl` / `night owl light` resolve to supported dark/light palettes instead of falling back to dark.
+- **Theme sync targets**: Apply theme independently per target. Prototype now respects the Prototype toggle, code boxes follow `Code boxes`, and toolbar remains controlled by `Toolbar`.
 - **Side panel**: Keep toolbar offset rules applied in side/bottom panel modes by forcing `right`/`bottom` offsets with `!important`.
 
 ### Build & Tooling

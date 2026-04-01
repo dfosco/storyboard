@@ -37,8 +37,8 @@ export default function ThemeSync() {
   // Listen for theme changes from the Svelte CoreUIBar
   useEffect(() => {
     function handleThemeChanged(e) {
-      const { theme } = e.detail
-      applyToPrimer(setDayScheme, setNightScheme, theme)
+      const { prototypeTheme } = e.detail
+      applyToPrimer(setDayScheme, setNightScheme, prototypeTheme)
     }
     document.addEventListener('storyboard:theme:changed', handleThemeChanged)
     return () => document.removeEventListener('storyboard:theme:changed', handleThemeChanged)

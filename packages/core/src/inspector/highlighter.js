@@ -131,7 +131,7 @@ const THEMES = {
 
 /**
  * Resolve the current theme ID based on page theme and config.
- * Always follows the page theme (data-sb-theme attribute).
+ * Follows code-box theme (data-sb-code-theme attribute).
  */
 function normalizeThemeId(requested, mode) {
   const fallback = mode === 'light' ? 'github' : 'github-dark-dimmed'
@@ -166,11 +166,11 @@ function resolveThemeId() {
   const darkTheme = normalizeThemeId(highlighting.dark, 'dark')
   const lightTheme = normalizeThemeId(highlighting.light, 'light')
 
-  const sbTheme = typeof document !== 'undefined'
-    ? document.documentElement.getAttribute('data-sb-theme') || 'dark'
+  const codeTheme = typeof document !== 'undefined'
+    ? document.documentElement.getAttribute('data-sb-code-theme') || 'light'
     : 'dark'
 
-  return sbTheme.startsWith('dark') ? darkTheme : lightTheme
+  return codeTheme.startsWith('dark') ? darkTheme : lightTheme
 }
 
 /**

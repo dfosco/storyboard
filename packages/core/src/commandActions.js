@@ -224,6 +224,18 @@ export function getActionChildren(id) {
   return handler.getChildren()
 }
 
+/**
+ * Check if a handler provides dynamic children (getChildren).
+ * Used by CoreUIBar to distinguish action-menu tools (gate on children count)
+ * from custom-component menus (always visible, render their own content).
+ * @param {string} id
+ * @returns {boolean}
+ */
+export function hasChildrenProvider(id) {
+  const handler = _handlers.get(id)
+  return !!handler?.getChildren
+}
+
 // ---------------------------------------------------------------------------
 // Reactivity
 // ---------------------------------------------------------------------------

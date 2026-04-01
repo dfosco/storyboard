@@ -18,7 +18,7 @@
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
   import { sidePanelState, togglePanel } from './stores/sidePanelStore.js'
-  import { initCommandActions, registerCommandAction, getActionChildren, isExcludedByRoute, setRoutingBasePath } from './commandActions.js'
+  import { initCommandActions, registerCommandAction, getActionChildren, hasChildrenProvider, isExcludedByRoute, setRoutingBasePath } from './commandActions.js'
   import { isMenuHidden } from './uiConfig.js'
   import { subscribeToToolbarConfig, getToolbarConfig } from './toolbarConfigStore.js'
   import defaultToolbarConfig from '../toolbar.config.json'
@@ -112,9 +112,13 @@
       if (cfg.tools) {
         for (const [, tool] of Object.entries(cfg.tools as Record<string, any>)) {
           if (tool.surface !== 'command-list') continue
+          if (tool.render === 'separator') {
+            actions.push({ type: 'separator' })
+            continue
+          }
           actions.push({
             id: tool.handler || `core/${tool.label?.toLowerCase().replace(/\s+/g, '-')}`,
-            label: tool.label,
+            label: tool.label || tool.ariaLabel,
             type: tool.render || 'default',
             url: tool.url || null,
             modes: tool.modes || ['*'],
@@ -180,9 +184,10 @@
         if (menu.render === 'sidepanel') return true
         // For tools with components, check if loaded
         if (!toolComponents[menu.key]) return false
-        // For action-menu tools, check if there are children
+        // For action-menu tools (those with a getChildren handler), hide when empty.
+        // Custom-component menus (e.g. ThemeMenuButton) render their own content.
         const actionId = menu.handler || menu.action
-        if (actionId && menu.render === 'menu') {
+        if (actionId && menu.render === 'menu' && hasChildrenProvider(actionId)) {
           return getActionChildren(actionId).length > 0
         }
         return true

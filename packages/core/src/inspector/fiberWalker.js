@@ -50,6 +50,8 @@ function isUserComponent(fiber) {
 /**
  * Derive a human-readable name from a fiber's type.
  * Handles plain components, forwardRef, and memo wrappers.
+ * Skips minified names (single-char or generic) in favor of 'ForwardRef'/'Memo'
+ * so the caller can try walking up the tree for a better name.
  *
  * @param {object} fiber
  * @returns {string}
@@ -59,18 +61,41 @@ function getComponentName(fiber) {
   const t = fiber.type
   // Plain function/class
   if (typeof t === 'function') return t.displayName || t.name || 'Anonymous'
-  // forwardRef
+  // forwardRef / memo wrapper objects
   if (typeof t === 'object' && t !== null) {
     if (t.displayName) return t.displayName
-    if (typeof t.render === 'function') return t.render.displayName || t.render.name || 'ForwardRef'
-    // memo
+    // forwardRef: { render: fn }
+    if (typeof t.render === 'function') {
+      const name = t.render.displayName || t.render.name
+      return isUsableName(name) ? name : 'ForwardRef'
+    }
+    // memo: { type: ... }
     if (t.type) {
       const inner = t.type
-      if (typeof inner === 'function') return inner.displayName || inner.name || 'Memo'
-      if (typeof inner === 'object' && inner.render) return inner.render.displayName || inner.render.name || 'Memo'
+      if (typeof inner === 'function') {
+        const name = inner.displayName || inner.name
+        return isUsableName(name) ? name : 'Memo'
+      }
+      // memo(forwardRef)
+      if (typeof inner === 'object' && inner.render) {
+        if (inner.displayName) return inner.displayName
+        const name = inner.render.displayName || inner.render.name
+        return isUsableName(name) ? name : 'ForwardRef'
+      }
     }
   }
   return 'Unknown'
+}
+
+/**
+ * Check if a resolved component name is usable (not minified).
+ * Minified names are typically 1-2 chars or all lowercase short strings.
+ */
+function isUsableName(name) {
+  if (!name) return false
+  // Single-char names (e, t, r, n) are almost certainly minified
+  if (name.length <= 2) return false
+  return true
 }
 
 /**
@@ -133,10 +158,28 @@ export function getComponentInfo(fiber) {
 
   if (!current) return null
 
+  let name = getComponentName(current)
+
+  // If we got a generic name (ForwardRef, Memo), try walking up
+  // to find the nearest ancestor with a real component name
+  if (name === 'ForwardRef' || name === 'Memo') {
+    let ancestor = current.return
+    while (ancestor) {
+      if (isUserComponent(ancestor)) {
+        const ancestorName = getComponentName(ancestor)
+        if (ancestorName !== 'ForwardRef' && ancestorName !== 'Memo' && ancestorName !== 'Unknown') {
+          name = ancestorName
+          break
+        }
+      }
+      ancestor = ancestor.return
+    }
+  }
+
   const ownerFiber = current._debugOwner ?? null
 
   return {
-    name: getComponentName(current),
+    name,
     props: current.memoizedProps ?? {},
     source: getDebugSource(current),
     owner: ownerFiber ? getComponentName(ownerFiber) : null,

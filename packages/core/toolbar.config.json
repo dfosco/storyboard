@@ -16,8 +16,8 @@
   },
 
   "highlighting": {
-    "dark": "github-dark-dimmed",
-    "light": "github"
+    "dark": "night owl",
+    "light": "night owl light"
   },
 
   "tools": {

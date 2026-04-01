@@ -91,8 +91,8 @@ html.storyboard-mode-inspect {
 
 /* Dark trigger tokens — applied when toolbar follows a dark theme */
 :root[data-sb-toolbar-theme^="dark"] {
-  --trigger-bg: hsl(215 20% 16%);
-  --trigger-bg-hover: hsl(215 20% 22%);
-  --trigger-text: hsl(215 20% 75%);
-  --trigger-border: hsl(215 20% 30%);
+  --trigger-bg: #21262d;
+  --trigger-bg-hover: #30363d;
+  --trigger-text: #e6edf3;
+  --trigger-border: #30363d;
 }

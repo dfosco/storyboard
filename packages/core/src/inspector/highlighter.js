@@ -69,7 +69,7 @@ async function ensureThemeLoaded(themeName) {
   if (_loadedThemes.has(themeName)) return
   try {
     // Dynamic import of CSS — Vite handles this
-    await import(`highlight.js/styles/${themeName}.css`)
+    await import(/* @vite-ignore */ `highlight.js/styles/${themeName}.css`)
     _loadedThemes.set(themeName, true)
   } catch {
     // Fallback: try github-dark-dimmed if the requested theme doesn't exist

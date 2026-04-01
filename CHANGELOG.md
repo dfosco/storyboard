@@ -2,21 +2,37 @@
 
 ## 3.5.0
 
-Surface-based tool system, canvas toolbar integration, and inspector code view improvements.
+Surface-based tool system, canvas toolbar, theme sync targets, highlight.js migration, and deployed docs panel support.
 
 ### Features
 
+- **Per-prototype toolbar overrides** — Prototypes can now include a `toolbarConfig` key in their `.prototype.json` to override toolbar settings (tool visibility, labels, etc.) on a per-prototype basis (`7b9388d`)
+- **Theme sync targets** — New "Theme settings" submenu in the theme switcher with toggles for prototype, code boxes, and canvas. Each target can independently follow or ignore the global theme (`81b3587`)
+- **Canvas viewfinder styling** — Canvas entries in the viewfinder now render with the same card structure as prototypes, including a default 🎨 icon and folder organization support (`49ee33f`)
+- **Tool state store** — New `toolStateStore.js` with five states per tool: active, inactive, hidden, dimmed, disabled. Tools default to active unless config or `localOnly` gating overrides (`952e0ce`)
 - **Surface-based tool config** — Renamed `toolbar` to `surface` in tool config for clarity. Three surfaces: `main-toolbar`, `canvas-toolbar`, `command-list`. Any tool can target any surface (`cb9fac0`)
-- **Declarative canvas toolbar** — Canvas add-widget and zoom controls promoted from hardcoded components to declarative tools with `surface: "canvas-toolbar"`. New `CanvasZoomControl.svelte` component (`cb9fac0`)
+- **Declarative canvas toolbar** — Canvas add-widget and zoom controls promoted from hardcoded components to declarative tools with `surface: "canvas-toolbar"` (`cb9fac0`)
 - **Toolbar separators** — New `render: "separator"` tool type for visual grouping in toolbars (`cb9fac0`)
 - **Tool handler directory** — Tool handlers moved to `src/tools/handlers/` with surface resolvers in `src/tools/surfaces/` (`cb9fac0`)
-- **Inspector line numbers** — CSS counter-based line numbers on both shiki-highlighted and plain-text code views, no additional dependencies (`76a61e6`)
+- **Inspector line numbers** — CSS counter-based line numbers on both highlighted and plain-text code views (`76a61e6`)
+- **Deployed docs panel** — README.md and repo info are now emitted as static JSON files during production builds, so the documentation side panel works on GitHub Pages and other static hosts (`cd79f0c`)
+- **Local-only menu footer dot** — Green dot indicator added before "Supported in local development" footer text in create menus (`4216503`)
 
 ### Bug Fixes
 
-- **Inspector**: Restore syntax highlighting in source repo dev — plain string imports replace computed template literals so Vite dev can resolve shiki. A `computeShikiImports()` Rollup plugin rewrites them to computed specifiers in the compiled bundle only (`76a61e6`)
-- **Inspector**: Highlight only the matched line — shiki decoration end changed from `{ line: N, character: 0 }` to `{ line: N-1, character: Infinity }` to avoid bleeding into the next line (`862ae47`)
-- **Inspector**: Fix line number layout — use `inline-block` for `::before` pseudo-elements instead of flex, which broke shiki's inline span flow (`a31e55e`)
+- **Toolbar**: Show custom-component menus (Theme, Create) — visibility filter was gating all menu-type tools on `getActionChildren().length > 0`, hiding tools that render their own dropdown content. Added `hasChildrenProvider()` to distinguish them (`255a48e`)
+- **Toolbar**: Fix infinite effect loop in toolStateStore init — `initToolbarToolStates()` synchronous `_notify()` was creating a read/write cycle on `toolStateVersion` in Svelte's `$effect`. Fixed with `untrack()` (`5424400`)
+- **Toolbar**: Fix docs panel not opening from ⌘K — the docs tool had `surface: "command-list"` but no handler was registered for it. Added `handler()` export to `tools/handlers/docs.js` (`6b44575`)
+- **Toolbar**: Align submenu trigger padding to match regular menu items — changed from `px-1.5 py-1` to `px-2.5 py-2` (`5fbbbc9`)
+- **Canvas**: Prevent page scroll while holding space — `preventDefault()` was only called on the first space keydown, letting repeat events trigger browser default scroll (`8f81468`)
+- **Inspector**: Resolve Svelte empty block warning in code view (`952e0ce`)
+- **Build**: Preserve component names in production — added `esbuild.keepNames: true` so the inspector shows real component names instead of minified identifiers (`ac8b014`)
+- **Build**: Rebuild UI bundle before linking — merged `link:build` into `link` script so Svelte source changes are always compiled before `npm link` (`2abfbb3`)
+- **Build**: Fix shiki Vite warnings — preserved `@vite-ignore` comment in computed import specifiers (now superseded by highlight.js migration) (`7b9388d`)
+
+### Breaking Changes
+
+- **Shiki → highlight.js** — Replaced shiki (WASM-based) with highlight.js/core for inspector syntax highlighting. Consumers no longer need to externalize shiki in their Vite config. Remove any `external: (id) => id === 'shiki' || id.startsWith('shiki/')` from consumer `vite.config.js` (`a30cc52`)
 
 ## 3.4.0
 

@@ -47,7 +47,7 @@ function getThemeName() {
     try {
       const raw = localStorage.getItem('sb-theme-sync')
       if (raw) codeBoxesSynced = JSON.parse(raw).codeBoxes === true
-    } catch {}
+    } catch { /* ignore malformed localStorage */ }
   }
 
   // When not synced, always use dark theme for code boxes

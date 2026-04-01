@@ -9,6 +9,7 @@
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import { inspectElement, inspectElementChain } from './inspector/fiberWalker.js'
   import { createMouseMode } from './inspector/mouseMode.js'
+  import { getColors } from './inspector/highlighter.js'
 
   /** @type {{ name: string, props: object, source: { fileName: string, lineNumber: number, columnNumber?: number } | null, owner: string | null } | null} */
   let componentInfo = $state(null)
@@ -246,6 +247,9 @@
 
   let highlightedHtml = $state('')
 
+  // Code theme colors — refreshed on theme change events
+  let codeTheme = $state(getColors())
+
   /** @type {any} */
   let highlighter = null
 
@@ -254,6 +258,22 @@
     const { createInspectorHighlighter } = await import('./inspector/highlighter.js')
     highlighter = await createInspectorHighlighter()
     return highlighter
+  }
+
+  /** Re-highlight source code with current theme (called on theme change). */
+  async function rehighlight() {
+    codeTheme = getColors()
+    if (!sourceCode || !sourcePath) return
+    try {
+      const hl = await getHighlighter()
+      highlightedHtml = hl.codeToHtml(sourceCode, {
+        lang: getLang(sourcePath),
+        theme: 'github-dark',
+        decorations: matchedLine > 0
+          ? [{ start: { line: matchedLine - 1, character: 0 }, end: { line: matchedLine - 1, character: Infinity }, properties: { class: 'highlighted-line' } }]
+          : [],
+      })
+    } catch { /* ignore */ }
   }
 
   /**
@@ -429,6 +449,9 @@
       onDeactivate: handleDeactivate,
     })
 
+    // Re-highlight code when theme changes
+    document.addEventListener('storyboard:theme:changed', rehighlight)
+
     // Pre-fetch file list and repo info
     // In local dev, try dev middleware; in production, go straight to static JSON
     let filesLoaded = false
@@ -487,6 +510,7 @@
     mouseMode?.deactivate()
     mouseMode?.hideHighlight()
     setInspectParam(null)
+    document.removeEventListener('storyboard:theme:changed', rehighlight)
   })
 </script>
 
@@ -547,9 +571,12 @@
 
         <!-- Source code -->
         {#if sourcePath}
-          <div class="border rounded-md overflow-hidden flex-1 min-h-0 flex flex-col inspector-code-block" style:border-color="var(--borderColor-default, var(--color-border, #d1d9e0))">
+          <div class="border rounded-md overflow-hidden flex-1 min-h-0 flex flex-col" style:background={codeTheme.bg} style:border-color={codeTheme.border}>
             <div
-              class="flex items-center justify-between w-full px-3 py-1.5 text-xs font-semibold shrink-0 inspector-code-header"
+              class="flex items-center justify-between w-full px-3 py-1.5 text-xs font-semibold shrink-0"
+              style:background={codeTheme.headerBg}
+              style:color={codeTheme.headerFg}
+              style:border-bottom="1px solid {codeTheme.border}"
             >
               <span class="flex items-center gap-1.5 min-w-0">
                 <Icon name="primer/file-code" size={12} />
@@ -561,6 +588,7 @@
                   target="_blank"
                   rel="noopener noreferrer"
                   class="flex items-center gap-1 shrink-0 text-xs no-underline hover:underline inspector-mono inspector-code-link"
+                  style:color={codeTheme.headerFg}
                 >
                   <Icon name="primer/mark-github" size={14} />
                   <span>GitHub</span>
@@ -568,21 +596,21 @@
               {/if}
             </div>
 
-            <div class="border-t flex-1 min-h-0 flex flex-col" style:border-color="#30363d">
+            <div class="border-t flex-1 min-h-0 flex flex-col" style:border-color={codeTheme.border}>
                 {#if sourceLoading}
-                  <div class="px-3 py-4 text-xs text-center" style:color="#8b949e">
+                  <div class="px-3 py-4 text-xs text-center" style:color={codeTheme.headerFg}>
                     Loading source…
                   </div>
                 {:else if sourceCode}
-                  <div class="flex-1 min-h-0 overflow-y-auto source-scroll-container" bind:this={sourceContainer}>
+                  <div class="flex-1 min-h-0 overflow-y-auto source-scroll-container" bind:this={sourceContainer} style:--inspector-line-num-color={codeTheme.comment} style:--inspector-line-hover={codeTheme.lineHighlight}>
                     {#if highlightedHtml}
                       <div class="code-wrapper line-numbers">{@html highlightedHtml}</div>
                     {:else}
-                      <pre class="m-0 text-xs leading-relaxed inspector-mono source-pre line-numbers"><code>{#each sourceCode.split('\n') as line, i}<span class="line{matchedLine > 0 && i + 1 === matchedLine ? ' highlighted-line' : ''}">{line}</span>{#if i < sourceCode.split('\n').length - 1}{'\n'}{/if}{/each}</code></pre>
+                      <pre class="m-0 text-xs leading-relaxed inspector-mono source-pre line-numbers" style:background={codeTheme.bg} style:color={codeTheme.fg}><code>{#each sourceCode.split('\n') as line, i}<span class="line{matchedLine > 0 && i + 1 === matchedLine ? ' highlighted-line' : ''}">{line}</span>{#if i < sourceCode.split('\n').length - 1}{'\n'}{/if}{/each}</code></pre>
                     {/if}
                   </div>
                 {:else}
-                  <div class="px-3 py-4 text-xs text-center" style:color="#8b949e">
+                  <div class="px-3 py-4 text-xs text-center" style:color={codeTheme.headerFg}>
                     Unable to load source
                   </div>
                 {/if}
@@ -649,7 +677,7 @@
   }
 
   .source-pre .line:hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--inspector-line-hover, rgba(255, 255, 255, 0.04));
   }
 
   .source-pre :global(.highlighted-line) {
@@ -674,7 +702,7 @@
     width: 3.5ch;
     margin-right: 1.5ch;
     text-align: right;
-    color: #484f58;
+    color: var(--inspector-line-num-color, #484f58);
     user-select: none;
   }
 
@@ -702,7 +730,7 @@
   }
 
   .code-wrapper :global(.line:hover) {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--inspector-line-hover, rgba(255, 255, 255, 0.04));
   }
 
   .code-wrapper :global(.highlighted-line) {
@@ -712,21 +740,7 @@
   }
 
   /* Force dark chrome on the code block — independent of page theme */
-  .inspector-code-block {
-    background: #0d1117;
-    border-color: #30363d !important;
-  }
-
-  .inspector-code-header {
-    background: #161b22;
-    color: #8b949e;
-    border-bottom: 1px solid #30363d;
-  }
-
-  .inspector-code-link {
-    color: #8b949e;
-  }
   .inspector-code-link:hover {
-    color: #c9d1d9;
+    text-decoration: underline;
   }
 </style>

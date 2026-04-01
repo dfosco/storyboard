@@ -30,6 +30,11 @@ const THEMES = {
   'github-dark-dimmed': {
     bg: '#22272e',
     fg: '#adbac7',
+    headerBg: '#2d333b',
+    headerFg: '#768390',
+    border: '#373e47',
+    lineHighlight: 'rgba(99, 110, 123, 0.15)',
+    linkHover: '#adbac7',
     keyword: '#f47067',
     string: '#96d0ff',
     number: '#6cb6ff',
@@ -57,6 +62,11 @@ const THEMES = {
   'github-dark': {
     bg: '#0d1117',
     fg: '#e6edf3',
+    headerBg: '#161b22',
+    headerFg: '#8b949e',
+    border: '#30363d',
+    lineHighlight: 'rgba(110, 118, 129, 0.15)',
+    linkHover: '#c9d1d9',
     keyword: '#ff7b72',
     string: '#a5d6ff',
     number: '#79c0ff',
@@ -84,6 +94,11 @@ const THEMES = {
   github: {
     bg: '#ffffff',
     fg: '#1f2328',
+    headerBg: '#f6f8fa',
+    headerFg: '#656d76',
+    border: '#d1d9e0',
+    lineHighlight: 'rgba(234, 179, 8, 0.12)',
+    linkHover: '#1f2328',
     keyword: '#cf222e',
     string: '#0a3069',
     number: '#0550ae',
@@ -143,8 +158,9 @@ function resolveThemeId() {
 /**
  * Get the color palette for the current theme.
  * Falls back to github-dark-dimmed for unknown theme names.
+ * Exported so InspectorPanel can use it for header/container colors.
  */
-function getColors() {
+export function getColors() {
   const id = resolveThemeId()
   return THEMES[id] || THEMES['github-dark-dimmed']
 }

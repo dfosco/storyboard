@@ -10,7 +10,7 @@
 -->
 
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount, onDestroy, untrack } from 'svelte'
   import './core-ui-colors.css'
   import CommandMenu from './CommandMenu.svelte'
   import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
@@ -48,6 +48,14 @@
       ? storeConfig
       : (toolbarConfig || defaultToolbarConfig)
   )
+
+  // Re-seed tool states whenever config changes (e.g. prototype override on navigation)
+  $effect(() => {
+    const tools = config.tools || {}
+    // untrack so the synchronous _notify() → toolStateVersion++ inside
+    // initToolbarToolStates doesn't get tracked as a dependency of this effect
+    untrack(() => initToolbarToolStates(tools, { isLocalDev }))
+  })
 
   let visible = $state(true)
   // Hide the entire toolbar when loaded inside a prototype embed iframe
@@ -331,9 +339,6 @@
   onMount(async () => {
     window.addEventListener('keydown', handleKeydown)
     setRoutingBasePath(basePath)
-
-    // Initialize tool state store from config
-    initToolbarToolStates(config.tools || {}, { isLocalDev })
 
     // Re-evaluate action menus and prototype toolbar config on SPA navigation
     const { getPrototypeMetadata } = await import('./loader.js')

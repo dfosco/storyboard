@@ -5,11 +5,9 @@
  * (javascript, typescript, xml for JSX), producing small bundles with
  * no WASM dependencies.
  *
- * Theme is configurable via toolbar.config.json's `highlighting` key:
- *   { "highlighting": { "dark": "github-dark-dimmed", "light": "github" } }
- *
- * Returns an adapter object matching the codeToHtml() call signature
- * used by InspectorPanel.svelte.
+ * Theme is resolved at render time via toolbar.config.json's
+ * `highlighting` key and the theme sync settings. Colors are applied
+ * as inline styles — no global CSS injection, no theme conflicts.
  */
 
 import hljs from 'highlight.js/lib/core'
@@ -21,27 +19,110 @@ import { getToolbarConfig } from '../toolbarConfigStore.js'
 hljs.registerLanguage('javascript', javascript)
 hljs.registerLanguage('typescript', typescript)
 hljs.registerLanguage('xml', xml)
-// Aliases for JSX/TSX — highlight.js uses xml for the JSX part,
-// but we map these to typescript which handles JSX well enough
 hljs.registerLanguage('jsx', javascript)
 hljs.registerLanguage('tsx', typescript)
 
-/** Map of highlight.js theme name → loaded CSS text (cached). */
-const _loadedThemes = new Map()
+// ---------------------------------------------------------------------------
+// Color palettes — inline styles, no external CSS needed
+// ---------------------------------------------------------------------------
+
+const THEMES = {
+  'github-dark-dimmed': {
+    bg: '#22272e',
+    fg: '#adbac7',
+    keyword: '#f47067',
+    string: '#96d0ff',
+    number: '#6cb6ff',
+    comment: '#768390',
+    function: '#dcbdfb',
+    title: '#dcbdfb',
+    built_in: '#6cb6ff',
+    literal: '#6cb6ff',
+    type: '#6cb6ff',
+    attr: '#6cb6ff',
+    tag: '#8ddb8c',
+    name: '#8ddb8c',
+    attribute: '#6cb6ff',
+    variable: '#f69d50',
+    'template-variable': '#f69d50',
+    params: '#adbac7',
+    meta: '#768390',
+    regexp: '#96d0ff',
+    symbol: '#6cb6ff',
+    operator: '#adbac7',
+    punctuation: '#adbac7',
+    selector: '#8ddb8c',
+    property: '#6cb6ff',
+  },
+  'github-dark': {
+    bg: '#0d1117',
+    fg: '#e6edf3',
+    keyword: '#ff7b72',
+    string: '#a5d6ff',
+    number: '#79c0ff',
+    comment: '#8b949e',
+    function: '#d2a8ff',
+    title: '#d2a8ff',
+    built_in: '#79c0ff',
+    literal: '#79c0ff',
+    type: '#79c0ff',
+    attr: '#79c0ff',
+    tag: '#7ee787',
+    name: '#7ee787',
+    attribute: '#79c0ff',
+    variable: '#ffa657',
+    'template-variable': '#ffa657',
+    params: '#e6edf3',
+    meta: '#8b949e',
+    regexp: '#a5d6ff',
+    symbol: '#79c0ff',
+    operator: '#e6edf3',
+    punctuation: '#e6edf3',
+    selector: '#7ee787',
+    property: '#79c0ff',
+  },
+  github: {
+    bg: '#ffffff',
+    fg: '#1f2328',
+    keyword: '#cf222e',
+    string: '#0a3069',
+    number: '#0550ae',
+    comment: '#6e7781',
+    function: '#8250df',
+    title: '#8250df',
+    built_in: '#0550ae',
+    literal: '#0550ae',
+    type: '#0550ae',
+    attr: '#0550ae',
+    tag: '#116329',
+    name: '#116329',
+    attribute: '#0550ae',
+    variable: '#953800',
+    'template-variable': '#953800',
+    params: '#1f2328',
+    meta: '#6e7781',
+    regexp: '#0a3069',
+    symbol: '#0550ae',
+    operator: '#1f2328',
+    punctuation: '#1f2328',
+    selector: '#116329',
+    property: '#0550ae',
+  },
+}
+
+// ---------------------------------------------------------------------------
+// Theme resolution
+// ---------------------------------------------------------------------------
 
 /**
- * Get the highlight.js theme name for the current context.
- * Reads highlighting config (dark/light groups) from toolbar config.
- * Uses theme sync targets to decide whether to follow global theme.
- * When code boxes are not synced (default), always uses the dark theme.
+ * Resolve the current theme ID based on config and sync settings.
  */
-function getThemeName() {
+function resolveThemeId() {
   const config = getToolbarConfig()
   const highlighting = config?.highlighting || {}
   const darkTheme = highlighting.dark || 'github-dark-dimmed'
   const lightTheme = highlighting.light || 'github'
 
-  // Check if code boxes should follow the global theme
   let codeBoxesSynced = false
   if (typeof localStorage !== 'undefined') {
     try {
@@ -50,10 +131,8 @@ function getThemeName() {
     } catch { /* ignore malformed localStorage */ }
   }
 
-  // When not synced, always use dark theme for code boxes
   if (!codeBoxesSynced) return darkTheme
 
-  // When synced, follow the current resolved theme
   const sbTheme = typeof document !== 'undefined'
     ? document.documentElement.getAttribute('data-sb-theme') || 'dark'
     : 'dark'
@@ -62,29 +141,18 @@ function getThemeName() {
 }
 
 /**
- * Ensure a highlight.js theme CSS is loaded into the document.
- * Dynamically imports the CSS file and injects a <style> tag.
+ * Get the color palette for the current theme.
+ * Falls back to github-dark-dimmed for unknown theme names.
  */
-async function ensureThemeLoaded(themeName) {
-  if (_loadedThemes.has(themeName)) return
-  try {
-    // Dynamic import of CSS — Vite handles this
-    await import(/* @vite-ignore */ `highlight.js/styles/${themeName}.css`)
-    _loadedThemes.set(themeName, true)
-  } catch {
-    // Fallback: try github-dark-dimmed if the requested theme doesn't exist
-    if (themeName !== 'github-dark-dimmed') {
-      try {
-        await import('highlight.js/styles/github-dark-dimmed.css')
-        _loadedThemes.set(themeName, true)
-      } catch { /* ignore */ }
-    }
-  }
+function getColors() {
+  const id = resolveThemeId()
+  return THEMES[id] || THEMES['github-dark-dimmed']
 }
 
-/**
- * Escape HTML entities in a string.
- */
+// ---------------------------------------------------------------------------
+// HTML generation
+// ---------------------------------------------------------------------------
+
 function escapeHtml(str) {
   return str
     .replace(/&/g, '&amp;')
@@ -94,35 +162,45 @@ function escapeHtml(str) {
 }
 
 /**
+ * Convert highlight.js class-based spans to inline-styled spans.
+ * highlight.js emits `<span class="hljs-keyword">` etc.
+ * We replace each with `<span style="color:...">` using the palette.
+ */
+function applyInlineColors(html, colors) {
+  return html.replace(
+    /<span class="hljs-([^"]+)">/g,
+    (_, cls) => {
+      const color = colors[cls] || colors.fg
+      return `<span style="color:${color}">`
+    }
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
  * Create the inspector highlighter.
- * Returns an object with codeToHtml() matching the Shiki API shape.
- *
- * @returns {Promise<{ codeToHtml: (code: string, options: { lang?: string, theme?: string, decorations?: Array }) => string }>}
+ * Returns an object with codeToHtml() matching the Shiki-compatible API.
  */
 export async function createInspectorHighlighter() {
-  const themeName = getThemeName()
-  await ensureThemeLoaded(themeName)
-
   return {
     /**
-     * Highlight code and return HTML string.
+     * Highlight code and return HTML string with inline styles.
      *
      * @param {string} code - Source code to highlight
      * @param {object} options
      * @param {string} [options.lang] - Language identifier
-     * @param {string} [options.theme] - Ignored (theme comes from config)
+     * @param {string} [options.theme] - Ignored (theme resolved from config)
      * @param {Array<{ start: { line: number }, end: { line: number }, properties: { class: string } }>} [options.decorations]
      * @returns {string} HTML string with highlighted code
      */
     codeToHtml(code, options = {}) {
       const lang = options.lang || 'javascript'
       const decorations = options.decorations || []
+      const colors = getColors()
 
-      // Ensure current theme is loaded (non-blocking, already cached after first call)
-      const currentTheme = getThemeName()
-      ensureThemeLoaded(currentTheme)
-
-      // Highlight the code
       let highlighted
       try {
         highlighted = hljs.highlight(code, { language: lang, ignoreIllegals: true }).value
@@ -130,9 +208,10 @@ export async function createInspectorHighlighter() {
         highlighted = escapeHtml(code)
       }
 
-      // Split into lines and wrap each in a <span class="line">
+      // Convert class-based spans to inline styles
+      highlighted = applyInlineColors(highlighted, colors)
+
       const lines = highlighted.split('\n')
-      // Build a set of highlighted line numbers (0-indexed from decorations)
       const highlightedLines = new Set()
       for (const dec of decorations) {
         if (dec.start && dec.properties?.class) {
@@ -148,7 +227,7 @@ export async function createInspectorHighlighter() {
         return `<span class="${classes.join(' ')}">${line}</span>`
       }).join('\n')
 
-      return `<pre class="hljs"><code>${wrappedLines}</code></pre>`
+      return `<pre style="background:${colors.bg};color:${colors.fg};margin:0;padding:0;overflow-x:auto"><code>${wrappedLines}</code></pre>`
     },
   }
 }

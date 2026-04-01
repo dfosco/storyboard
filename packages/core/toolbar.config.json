@@ -15,6 +15,11 @@
     "hideChrome": { "key": ".", "label": "⌘ + . to hide" }
   },
 
+  "highlighting": {
+    "dark": "github-dark-dimmed",
+    "light": "github"
+  },
+
   "tools": {
     "inspector": {
       "ariaLabel": "Inspect components",
@@ -91,7 +96,7 @@
       "modes": ["*"],
       "localOnly": true,
       "meta": { "strokeWeight": 2, "scale": 1.2 },
-      "menuWidth": "220px"
+      "menuWidth": "300px"
     },
     "canvas-zoom": {
       "ariaLabel": "Zoom controls",

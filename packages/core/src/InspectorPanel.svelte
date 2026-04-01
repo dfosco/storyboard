@@ -576,7 +576,7 @@
                 {:else if sourceCode}
                   <div class="flex-1 min-h-0 overflow-y-auto source-scroll-container" bind:this={sourceContainer}>
                     {#if highlightedHtml}
-                      <div class="shiki-wrapper line-numbers">{@html highlightedHtml}</div>
+                      <div class="code-wrapper line-numbers">{@html highlightedHtml}</div>
                     {:else}
                       <pre class="m-0 text-xs leading-relaxed inspector-mono source-pre line-numbers"><code>{#each sourceCode.split('\n') as line, i}<span class="line{matchedLine > 0 && i + 1 === matchedLine ? ' highlighted-line' : ''}">{line}</span>{#if i < sourceCode.split('\n').length - 1}{'\n'}{/if}{/each}</code></pre>
                     {/if}
@@ -658,7 +658,7 @@
     padding-left: 10px;
   }
 
-  /* Line numbers via CSS counters — works for both shiki and plain-text */
+  /* Line numbers via CSS counters — works for both highlight.js and plain-text */
   .line-numbers :global(code) {
     counter-reset: line;
   }
@@ -678,7 +678,7 @@
     user-select: none;
   }
 
-  .shiki-wrapper :global(pre) {
+  .code-wrapper :global(pre) {
     margin: 0;
     padding: 12px 0;
     font-size: 12px;
@@ -689,23 +689,23 @@
     overflow-x: auto;
   }
 
-  .shiki-wrapper :global(code) {
+  .code-wrapper :global(code) {
     font-family: inherit;
     display: block;
   }
 
-  .shiki-wrapper :global(.line) {
+  .code-wrapper :global(.line) {
     padding: 0 12px 0 0;
     display: inline-block;
     width: 100%;
     min-height: 1.5em;
   }
 
-  .shiki-wrapper :global(.line:hover) {
+  .code-wrapper :global(.line:hover) {
     background: rgba(255, 255, 255, 0.04);
   }
 
-  .shiki-wrapper :global(.highlighted-line) {
+  .code-wrapper :global(.highlighted-line) {
     background: color-mix(in srgb, var(--color-purple, #7655a4) 20%, transparent);
     border-left: 2px solid var(--color-purple, #7655a4);
     padding-left: 10px;

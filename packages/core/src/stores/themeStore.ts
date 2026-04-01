@@ -95,6 +95,10 @@ function _applyToDOM(theme: ThemeValue, resolved: string): void {
   // Internal attribute
   el.setAttribute('data-sb-theme', resolved)
 
+  // Toolbar theme — follows global theme when synced, stays light otherwise
+  const toolbarTheme = _syncTargets.toolbar ? resolved : 'light'
+  el.setAttribute('data-sb-toolbar-theme', toolbarTheme)
+
   // Primer CSS attributes — these drive @primer/react ThemeProvider and
   // Primer CSS custom-property layers without needing React state updates.
   if (theme === 'system') {
@@ -162,6 +166,68 @@ if (typeof window !== 'undefined') {
       _dispatchEvent('system', state.resolved)
     })
 }
+
+// ---------------------------------------------------------------------------
+// Theme sync targets
+// ---------------------------------------------------------------------------
+
+/** Which parts of the UI follow the global theme */
+export interface ThemeSyncTargets {
+  prototype: boolean
+  toolbar: boolean
+  codeBoxes: boolean
+}
+
+const SYNC_STORAGE_KEY = 'sb-theme-sync'
+
+const DEFAULT_SYNC: ThemeSyncTargets = {
+  prototype: true,
+  toolbar: false,
+  codeBoxes: false,
+}
+
+function readStoredSync(): ThemeSyncTargets {
+  if (typeof localStorage === 'undefined') return { ...DEFAULT_SYNC }
+  try {
+    const raw = localStorage.getItem(SYNC_STORAGE_KEY)
+    if (!raw) return { ...DEFAULT_SYNC }
+    return { ...DEFAULT_SYNC, ...JSON.parse(raw) }
+  } catch {
+    return { ...DEFAULT_SYNC }
+  }
+}
+
+let _syncTargets: ThemeSyncTargets = readStoredSync()
+const _syncStore = writable<ThemeSyncTargets>(_syncTargets)
+
+/**
+ * Get the current theme sync targets.
+ */
+export function getThemeSyncTargets(): ThemeSyncTargets {
+  return { ..._syncTargets }
+}
+
+/**
+ * Set a theme sync target. Persists to localStorage.
+ */
+export function setThemeSyncTarget(target: keyof ThemeSyncTargets, value: boolean): void {
+  _syncTargets = { ..._syncTargets, [target]: value }
+  _syncStore.set(_syncTargets)
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(SYNC_STORAGE_KEY, JSON.stringify(_syncTargets))
+  }
+
+  // Re-apply DOM attributes so toolbar/codebox can react
+  const state = snapshot(_current)
+  _applyToDOM(_current, state.resolved)
+  _dispatchEvent(_current, state.resolved)
+}
+
+/**
+ * Readable Svelte store for sync target state.
+ */
+export const themeSyncState: Readable<ThemeSyncTargets> = { subscribe: _syncStore.subscribe }
 
 // ---------------------------------------------------------------------------
 // Boot — apply the stored theme immediately on import

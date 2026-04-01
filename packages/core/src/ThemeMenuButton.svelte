@@ -1,15 +1,15 @@
 <!--
   ThemeMenuButton — toolbar dropdown for switching the app color scheme.
 
-  Renders a radio group of theme options (System, Light, Dark, etc.)
-  and persists the selection via the themeStore.
+  Renders a radio group of theme options (System, Light, Dark, etc.),
+  followed by a separator and "Theme settings" submenu with sync toggles.
 -->
 
 <script lang="ts">
   import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
   import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
-  import { themeState, setTheme, THEMES, type ThemeValue } from './stores/themeStore.js'
+  import { themeState, setTheme, THEMES, type ThemeValue, themeSyncState, setThemeSyncTarget, type ThemeSyncTargets } from './stores/themeStore.js'
 
   interface Props {
     config?: {
@@ -29,6 +29,11 @@
   function handleSelect(value: ThemeValue) {
     setTheme(value)
     menuOpen = false
+  }
+
+  function handleSyncToggle(e: Event, target: keyof ThemeSyncTargets) {
+    e.preventDefault()
+    setThemeSyncTarget(target, !$themeSyncState[target])
   }
 </script>
 
@@ -62,5 +67,32 @@
         </DropdownMenu.RadioItem>
       {/each}
     </DropdownMenu.RadioGroup>
+
+    <DropdownMenu.Separator />
+
+    <DropdownMenu.Sub>
+      <DropdownMenu.SubTrigger>Theme settings</DropdownMenu.SubTrigger>
+      <DropdownMenu.SubContent class="min-w-[180px]">
+        <DropdownMenu.Label>Apply theme to</DropdownMenu.Label>
+        <DropdownMenu.CheckboxItem
+          checked={$themeSyncState.prototype}
+          onSelect={(e) => handleSyncToggle(e, 'prototype')}
+        >
+          Prototype
+        </DropdownMenu.CheckboxItem>
+        <DropdownMenu.CheckboxItem
+          checked={$themeSyncState.toolbar}
+          onSelect={(e) => handleSyncToggle(e, 'toolbar')}
+        >
+          Toolbar
+        </DropdownMenu.CheckboxItem>
+        <DropdownMenu.CheckboxItem
+          checked={$themeSyncState.codeBoxes}
+          onSelect={(e) => handleSyncToggle(e, 'codeBoxes')}
+        >
+          Code boxes
+        </DropdownMenu.CheckboxItem>
+      </DropdownMenu.SubContent>
+    </DropdownMenu.Sub>
   </DropdownMenu.Content>
 </DropdownMenu.Root>

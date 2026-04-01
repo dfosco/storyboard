@@ -27,8 +27,7 @@
         "test:svelte": "vitest run --config packages/svelte-ui/vitest.config.ts",
         "build:ui": "npm run build:ui -w @dfosco/storyboard-core",
         "dev:ui": "npm run dev:ui -w @dfosco/storyboard-core",
-        "link:build": "cd packages/core && npm run build:ui && cd - && npm run link",
-        "link": "./scripts/link.sh",
+        "link": "npm run build:ui && ./scripts/link.sh",
         "unlink": "./scripts/unlink.sh"
     },
     "dependencies": {

@@ -4,4 +4,8 @@
 export const id = 'docs'
 
 // No component needed — sidepanel tools use generic TriggerButton
-// No handler needed — toggle is handled by sidePanelStore
+
+export async function handler() {
+  const { togglePanel } = await import('../../stores/sidePanelStore.js')
+  return () => togglePanel('docs')
+}

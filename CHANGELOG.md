@@ -1,5 +1,17 @@
 # storyboard
 
+## Unreleased
+
+### Bug Fixes
+
+- **Inspector**: Normalize configured highlight theme names before palette lookup so aliases like `night owl` / `night owl light` resolve to supported dark/light palettes instead of falling back to dark.
+- **Side panel**: Keep toolbar offset rules applied in side/bottom panel modes by forcing `right`/`bottom` offsets with `!important`.
+
+### Build & Tooling
+
+- **Dev link script**: `npm run link` now starts `dev:ui` after rebuilding and linking, keeping the UI bundle watcher running during local linking workflows.
+- **Toolbar config**: Refresh default inspector highlighting config to explicit supported palette IDs (`github-dark-dimmed` and `github`).
+
 ## 3.5.0
 
 Surface-based tool system, canvas toolbar, theme sync targets, highlight.js migration, and deployed docs panel support.

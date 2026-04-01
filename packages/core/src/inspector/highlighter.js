@@ -133,11 +133,38 @@ const THEMES = {
  * Resolve the current theme ID based on page theme and config.
  * Always follows the page theme (data-sb-theme attribute).
  */
+function normalizeThemeId(requested, mode) {
+  const fallback = mode === 'light' ? 'github' : 'github-dark-dimmed'
+  if (!requested || typeof requested !== 'string') return fallback
+  if (THEMES[requested]) return requested
+
+  const key = requested.trim().toLowerCase().replace(/[\s_]+/g, '-')
+  const aliases = {
+    github: 'github',
+    'github-light': 'github',
+    light: 'github',
+    'night-owl-light': 'github',
+    'github-dark': 'github-dark',
+    dark: 'github-dark-dimmed',
+    'dark-dimmed': 'github-dark-dimmed',
+    'github-dark-dimmed': 'github-dark-dimmed',
+    'night-owl': 'github-dark-dimmed',
+  }
+
+  const resolved = aliases[key]
+  if (resolved && THEMES[resolved]) return resolved
+  return fallback
+}
+
+/**
+ * Resolve the current theme ID based on page theme and config.
+ * Always follows the page theme (data-sb-theme attribute).
+ */
 function resolveThemeId() {
   const config = getToolbarConfig()
   const highlighting = config?.highlighting || {}
-  const darkTheme = highlighting.dark || 'github-dark-dimmed'
-  const lightTheme = highlighting.light || 'github'
+  const darkTheme = normalizeThemeId(highlighting.dark, 'dark')
+  const lightTheme = normalizeThemeId(highlighting.light, 'light')
 
   const sbTheme = typeof document !== 'undefined'
     ? document.documentElement.getAttribute('data-sb-theme') || 'dark'

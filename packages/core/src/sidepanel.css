@@ -34,7 +34,7 @@ html:not(.sb-sidepanel-open) > body > #root {
 
 /* Push the CoreUIBar (fixed bottom-right) — side mode */
 html.sb-sidepanel-open:not(.sb-sidepanel-bottom) [data-core-ui-bar] {
-  right: calc(var(--sidepanel-width) + 24px);
+  right: calc(var(--sidepanel-width) + 24px) !important;
   transition: right 0.25s ease;
 }
 
@@ -76,7 +76,7 @@ html.sb-sidepanel-open.sb-sidepanel-bottom.storyboard-mode-inspect > body > #roo
 
 /* Push the CoreUIBar up — bottom mode */
 html.sb-sidepanel-open.sb-sidepanel-bottom [data-core-ui-bar] {
-  bottom: calc(var(--sidepanel-height) + 24px);
+  bottom: calc(var(--sidepanel-height) + 24px) !important;
   transition: bottom 0.25s ease;
 }
 

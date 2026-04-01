@@ -16,23 +16,11 @@
   },
 
   "highlighting": {
-    "dark": "night owl",
-    "light": "night owl light"
+    "dark": "github-dark-dimmed",
+    "light": "github"
   },
 
   "tools": {
-    "inspector": {
-      "ariaLabel": "Inspect components",
-      "icon": "iconoir/square-dashed",
-      "render": "sidepanel",
-      "surface": "main-toolbar",
-      "sidepanel": "inspector",
-      "handler": "core:inspector",
-      "modes": ["*"],
-      "excludeRoutes": ["^/$", "/viewfinder", "/canvas/"],
-      "meta": { "strokeWeight": 2, "scale": 1.1 },
-      "shortcut": { "key": "i", "label": "⌘I" }
-    },
     "flows": {
       "label": "Flows",
       "ariaLabel": "Switch flow",
@@ -42,7 +30,7 @@
       "modes": ["*"],
       "menuWidth": "260px",
       "handler": "core:flows"
-    },
+    },    
     "theme": {
       "label": "Theme",
       "ariaLabel": "Switch theme",
@@ -63,11 +51,18 @@
       "modes": ["*"],
       "excludeRoutes": ["^/$", "/viewfinder"]
     },
-    "sep-actions": {
-      "render": "separator",
-      "surface": "command-list",
-      "modes": ["*"]
-    },
+    "inspector": {
+      "ariaLabel": "Inspect components",
+      "icon": "iconoir/square-dashed",
+      "render": "sidepanel",
+      "surface": "main-toolbar",
+      "sidepanel": "inspector",
+      "handler": "core:inspector",
+      "modes": ["*"],
+      "excludeRoutes": ["^/$", "/viewfinder", "/canvas/"],
+      "meta": { "strokeWeight": 2, "scale": 1.1 },
+      "shortcut": { "key": "i", "label": "⌘I" }
+    },    
     "create": {
       "label": "Create",
       "ariaLabel": "Create",

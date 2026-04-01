@@ -32,7 +32,7 @@
       "ariaLabel": "Documentation",
       "icon": "primer/book",
       "render": "sidepanel",
-      "surface": "main-toolbar",
+      "surface": "command-list",
       "sidepanel": "docs",
       "handler": "core:docs",
       "modes": ["*"],

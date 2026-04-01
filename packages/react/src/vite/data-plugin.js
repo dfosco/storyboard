@@ -369,6 +369,21 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
         parsed = { ...parsed, folder: protoFolders[name] }
       }
 
+      // Load toolbar.config.json from prototype directory if present
+      if (suffix === 'prototype') {
+        const protoDir = path.dirname(absPath)
+        const toolbarConfigPath = path.join(protoDir, 'toolbar.config.json')
+        if (fs.existsSync(toolbarConfigPath)) {
+          try {
+            const toolbarRaw = fs.readFileSync(toolbarConfigPath, 'utf-8')
+            const toolbarConfig = parseJsonc(toolbarRaw)
+            if (toolbarConfig) {
+              parsed = { ...parsed, toolbarConfig }
+            }
+          } catch { /* skip invalid toolbar config */ }
+        }
+      }
+
       // Inject inferred _route into flow data (explicit route takes precedence)
       if (suffix === 'flow' && flowRoutes[name] && !parsed?.route) {
         parsed = { ...parsed, _route: flowRoutes[name] }
@@ -565,6 +580,17 @@ export default function storyboardDataPlugin() {
         // at runtime by the canvas server API. A full-reload would create
         // a feedback loop (save → file change → reload → lose editing state).
         if (/\.canvas\.jsonl$/.test(normalized)) return
+
+        // Invalidate when toolbar.config.json inside a prototype changes
+        if (normalized.endsWith('/toolbar.config.json') && normalized.includes('/prototypes/')) {
+          buildResult = null
+          const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
+          if (mod) {
+            server.moduleGraph.invalidateModule(mod)
+            server.ws.send({ type: 'full-reload' })
+          }
+          return
+        }
 
         const parsed = parseDataFile(filePath)
         // Also invalidate when files are added/removed inside .folder/ directories

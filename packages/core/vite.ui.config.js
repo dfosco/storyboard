@@ -38,6 +38,7 @@ const sharedStateModules = {
   'commandActions.js': '@dfosco/storyboard-core',
   'uiConfig.js': '@dfosco/storyboard-core',
   'toolRegistry.js': '@dfosco/storyboard-core',
+  'toolbarConfigStore.js': '@dfosco/storyboard-core',
   'featureFlags.js': '@dfosco/storyboard-core',
   'plugins.js': '@dfosco/storyboard-core',
   'localStorage.js': '@dfosco/storyboard-core',
@@ -103,7 +104,7 @@ function computeShikiImports() {
         // Match multiline import( /* @vite-ignore */ "shiki/..." ) patterns
         chunk.code = chunk.code.replace(
           /import\(\s*(?:\/\*[^*]*\*\/\s*)?["']shiki(\/[^"']*)?["']\s*\)/g,
-          (_, subpath) => `import(""+("shiki${subpath || ''}"))`
+          (_, subpath) => `import(/* @vite-ignore */ ""+("shiki${subpath || ''}"))`
         )
       }
     },

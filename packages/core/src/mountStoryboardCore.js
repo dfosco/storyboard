@@ -17,6 +17,7 @@ import { initCommentsConfig, isCommentsEnabled } from './comments/config.js'
 import { initFeatureFlags } from './featureFlags.js'
 import { initPlugins } from './plugins.js'
 import { initUIConfig } from './uiConfig.js'
+import { initToolbarConfig } from './toolbarConfigStore.js'
 
 let _mounted = false
 
@@ -148,6 +149,9 @@ export async function mountStoryboardCore(config = {}, options = {}) {
       if (repoAction) repoAction.url = repoUrl
     }
   }
+
+  // Seed the reactive toolbar config store (core → custom merge)
+  initToolbarConfig(toolbarConfig)
 
   // Skip all UI mounting when loaded inside a prototype embed iframe
   const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')

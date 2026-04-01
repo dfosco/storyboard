@@ -79,5 +79,8 @@ export { initUIConfig, isMenuHidden, getHiddenItems } from './uiConfig.js'
 // Tool registry (declarative tool system)
 export { initToolRegistry, registerToolModule, setToolComponent, setToolGuardResult, getToolComponent, getToolModule, getToolsForToolbar, getToolConfig, getAllToolConfigs, subscribeToToolRegistry, getToolRegistrySnapshot } from './toolRegistry.js'
 
+// Toolbar config store (reactive layered overrides: core → custom → prototype → user)
+export { initToolbarConfig, setPrototypeToolbarConfig, clearPrototypeToolbarConfig, getToolbarConfig, subscribeToToolbarConfig, getToolbarConfigSnapshot } from './toolbarConfigStore.js'
+
 // Comments system
 export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comments/config.js'

@@ -20,13 +20,28 @@
   import { sidePanelState, togglePanel } from './stores/sidePanelStore.js'
   import { initCommandActions, registerCommandAction, getActionChildren, isExcludedByRoute, setRoutingBasePath } from './commandActions.js'
   import { isMenuHidden } from './uiConfig.js'
+  import { subscribeToToolbarConfig, getToolbarConfig } from './toolbarConfigStore.js'
   import defaultToolbarConfig from '../toolbar.config.json'
 
   interface Props { basePath?: string; toolbarConfig?: any; customHandlers?: Record<string, () => Promise<any>> }
   let { basePath = '/', toolbarConfig, customHandlers = {} }: Props = $props()
 
-  // Use provided config (merged by mountStoryboardCore) or fall back to defaults
-  const config = $derived(toolbarConfig || defaultToolbarConfig)
+  // Reactive toolbar config — subscribes to the config store for prototype overrides.
+  // Falls back to the prop (for backward compat) or the bundled defaults.
+  let storeConfig = $state(getToolbarConfig())
+  let unsubConfig: (() => void) | null = null
+
+  $effect(() => {
+    unsubConfig = subscribeToToolbarConfig((cfg: any) => { storeConfig = cfg })
+    return () => { if (unsubConfig) unsubConfig() }
+  })
+
+  // Use store config if available, otherwise fall back to prop or defaults
+  const config = $derived(
+    (storeConfig && Object.keys(storeConfig).length > 0)
+      ? storeConfig
+      : (toolbarConfig || defaultToolbarConfig)
+  )
 
   let visible = $state(true)
   // Hide the entire toolbar when loaded inside a prototype embed iframe
@@ -294,13 +309,36 @@
     window.addEventListener('keydown', handleKeydown)
     setRoutingBasePath(basePath)
 
-    // Re-evaluate action menus on SPA navigation
-    bumpNav = () => { navVersion++ }
+    // Re-evaluate action menus and prototype toolbar config on SPA navigation
+    const { getPrototypeMetadata } = await import('./loader.js')
+    const { setPrototypeToolbarConfig, clearPrototypeToolbarConfig } = await import('./toolbarConfigStore.js')
+
+    function syncPrototypeToolbar() {
+      let pathname = window.location.pathname
+      const base = basePath.replace(/\/+$/, '')
+      if (base && pathname.startsWith(base)) pathname = pathname.slice(base.length)
+      const firstSegment = pathname.replace(/^\//, '').split('/')[0] || null
+      if (firstSegment) {
+        const meta = getPrototypeMetadata(firstSegment)
+        if (meta?.toolbarConfig) {
+          setPrototypeToolbarConfig(meta.toolbarConfig)
+        } else {
+          clearPrototypeToolbarConfig()
+        }
+      } else {
+        clearPrototypeToolbarConfig()
+      }
+    }
+
+    bumpNav = () => { navVersion++; syncPrototypeToolbar() }
     window.addEventListener('popstate', bumpNav)
     origPushState = history.pushState.bind(history)
     history.pushState = (...args: any[]) => { origPushState(...args); bumpNav() }
     origReplaceState = history.replaceState.bind(history)
     history.replaceState = (...args: any[]) => { origReplaceState(...args); bumpNav() }
+
+    // Apply prototype toolbar config for the initial route
+    syncPrototypeToolbar()
 
     // Seed the command action registry from config
     if (commandMenuConfig) {

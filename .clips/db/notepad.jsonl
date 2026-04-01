@@ -6,3 +6,5 @@
 {"event":"task_status_changed","goal_id":"notepad","task_id":"latest","timestamp":"2026-04-01T17:05:51.889Z","status":"closed"}
 {"event":"task_created","goal_id":"notepad","task_id":"t03","timestamp":"2026-04-01T17:20:39.547Z","title":"Fix theme sync target application","description":"Ensure prototype and code box themes respect their own sync toggles by separating DOM theme attributes and event payloads."}
 {"event":"task_status_changed","goal_id":"notepad","task_id":"latest","timestamp":"2026-04-01T17:20:40.781Z","status":"closed"}
+{"event":"task_created","goal_id":"notepad","task_id":"t04","timestamp":"2026-04-01T17:26:01.260Z","title":"Write changelog entry","description":"Updated CHANGELOG.md Unreleased section with the latest flow baseURL fix and recent theme/inspector/sidepanel/tooling fixes."}
+{"event":"task_status_changed","goal_id":"notepad","task_id":"latest","timestamp":"2026-04-01T17:26:02.295Z","status":"closed"}

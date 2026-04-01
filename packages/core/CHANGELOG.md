@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.6.0
+
+### Minor Changes
+
+-   Fix flow tool on branch deploys, fix theme application targets
+
 ## 3.5.0
 
 ### Minor Changes

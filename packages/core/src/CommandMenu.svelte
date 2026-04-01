@@ -12,6 +12,7 @@
   import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import { getActionsForMode, executeAction, getActionChildren, subscribeToCommandActions } from './commandActions.js'
+  import { getToolbarToolState, isToolbarToolLocalOnly, subscribeToToolbarToolStates } from './toolStateStore.js'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
 
   interface ShortcutConfig {
@@ -53,10 +54,20 @@
     return unsub
   })
 
+  $effect(() => {
+    const unsub = subscribeToToolbarToolStates(() => { actionsVersion++ })
+    return unsub
+  })
+
   // Resolve actions for current mode (re-derives on mode or registry change)
   const resolvedActions = $derived.by(() => {
     void actionsVersion
-    return getActionsForMode($modeState.mode)
+    const raw = getActionsForMode($modeState.mode)
+    return raw.filter(a => {
+      if (!a.toolKey) return true  // structural items (header, separator, footer)
+      const state = getToolbarToolState(a.toolKey)
+      return state !== 'disabled' && state !== 'hidden'
+    })
   })
 
   function handleAction(action: any) {
@@ -114,36 +125,76 @@
             </DropdownMenu.CheckboxItem>
 
           {:else if action.type === 'submenu'}
-            <DropdownMenu.Sub>
-              <DropdownMenu.SubTrigger>
-                {action.label}
-              </DropdownMenu.SubTrigger>
-              <DropdownMenu.SubContent class="min-w-[160px]">
-                {#each getActionChildren(action.id) as child (child.id || child.label)}
-                  {#if child.type === 'toggle'}
-                    <DropdownMenu.CheckboxItem
-                      checked={child.active}
-                      onSelect={(e) => handleSubmenuChildSelect(e, child)}
-                    >
-                      {child.label}
-                    </DropdownMenu.CheckboxItem>
-                  {:else}
-                    <DropdownMenu.Item onclick={() => { if (child.execute) child.execute(); open = false }}>
-                      {child.label}
-                    </DropdownMenu.Item>
+            {@const itemState = action.toolKey ? getToolbarToolState(action.toolKey) : 'active'}
+            {@const itemLocalOnly = action.toolKey ? isToolbarToolLocalOnly(action.toolKey) : false}
+            {#if itemState !== 'inactive'}
+              <DropdownMenu.Sub>
+                <DropdownMenu.SubTrigger class={itemState === 'dimmed' ? 'opacity-50' : ''}>
+                  <span class="flex items-center justify-between w-full gap-2">
+                    <span>{action.label}</span>
+                    {#if itemLocalOnly}
+                      <span class="local-dot"></span>
+                    {/if}
+                  </span>
+                </DropdownMenu.SubTrigger>
+                <DropdownMenu.SubContent class="min-w-[160px]">
+                  {#each getActionChildren(action.id) as child (child.id || child.label)}
+                    {#if child.type === 'toggle'}
+                      <DropdownMenu.CheckboxItem
+                        checked={child.active}
+                        onSelect={(e) => handleSubmenuChildSelect(e, child)}
+                      >
+                        {child.label}
+                      </DropdownMenu.CheckboxItem>
+                    {:else}
+                      <DropdownMenu.Item onclick={() => { if (child.execute) child.execute(); open = false }}>
+                        {child.label}
+                      </DropdownMenu.Item>
+                    {/if}
+                  {/each}
+                </DropdownMenu.SubContent>
+              </DropdownMenu.Sub>
+            {:else}
+              <DropdownMenu.Item disabled>
+                <span class="flex items-center justify-between w-full gap-2">
+                  <span>{action.label}</span>
+                  {#if itemLocalOnly}
+                    <span class="local-dot"></span>
                   {/if}
-                {/each}
-              </DropdownMenu.SubContent>
-            </DropdownMenu.Sub>
+                </span>
+              </DropdownMenu.Item>
+            {/if}
 
           {:else if action.type === 'link' && action.url}
-            <DropdownMenu.Item onclick={() => { open = false; window.location.href = action.url }}>
-              {action.label}
+            {@const itemState = action.toolKey ? getToolbarToolState(action.toolKey) : 'active'}
+            {@const itemLocalOnly = action.toolKey ? isToolbarToolLocalOnly(action.toolKey) : false}
+            <DropdownMenu.Item
+              onclick={() => { open = false; window.location.href = action.url }}
+              disabled={itemState === 'inactive'}
+              class={itemState === 'dimmed' ? 'opacity-50' : ''}
+            >
+              <span class="flex items-center justify-between w-full gap-2">
+                <span>{action.label}</span>
+                {#if itemLocalOnly}
+                  <span class="local-dot"></span>
+                {/if}
+              </span>
             </DropdownMenu.Item>
 
           {:else}
-            <DropdownMenu.Item onclick={() => handleAction(action)}>
-              {action.label}
+            {@const itemState = action.toolKey ? getToolbarToolState(action.toolKey) : 'active'}
+            {@const itemLocalOnly = action.toolKey ? isToolbarToolLocalOnly(action.toolKey) : false}
+            <DropdownMenu.Item
+              onclick={() => handleAction(action)}
+              disabled={itemState === 'inactive'}
+              class={itemState === 'dimmed' ? 'opacity-50' : ''}
+            >
+              <span class="flex items-center justify-between w-full gap-2">
+                <span>{action.label}</span>
+                {#if itemLocalOnly}
+                  <span class="local-dot"></span>
+                {/if}
+              </span>
             </DropdownMenu.Item>
           {/if}
         {/each}
@@ -177,3 +228,14 @@
       </Panel.Body>
     </Panel.Content>
   </Panel.Root>
+
+<style>
+  .local-dot {
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    background: #1a7f37;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+</style>

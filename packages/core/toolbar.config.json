@@ -29,6 +29,7 @@
       "shortcut": { "key": "i", "label": "⌘I" }
     },
     "docs": {
+      "label": "Documentation",
       "ariaLabel": "Documentation",
       "icon": "primer/book",
       "render": "sidepanel",
@@ -40,7 +41,7 @@
     },
     "sep-tools": {
       "render": "separator",
-      "surface": "main-toolbar",
+      "surface": "command-list",
       "modes": ["*"]
     },
     "flows": {
@@ -75,7 +76,7 @@
     },
     "sep-actions": {
       "render": "separator",
-      "surface": "main-toolbar",
+      "surface": "command-list",
       "modes": ["*"]
     },
     "create": {

@@ -192,6 +192,8 @@ export function getActionsForMode(mode) {
       label: a.label,
       type: a.type || 'default',
       url: a.url || null,
+      toolKey: a.toolKey || null,
+      localOnly: a.localOnly || false,
       handler,
       active,
     }

@@ -31,6 +31,9 @@
     class: className,
     wrapperClass = "",
     active = false,
+    inactive = false,
+    dimmed = false,
+    localOnly = false,
     size = "icon-2xl",
     children,
     ...restProps
@@ -41,13 +44,21 @@
   );
 </script>
 
-<span data-trigger-button data-active={active || undefined} style:--sb-trigger-border-width={borderWidth}>
+<span
+  data-trigger-button
+  data-active={active || undefined}
+  data-inactive={inactive || undefined}
+  data-dimmed={dimmed || undefined}
+  data-local-only={localOnly || undefined}
+  style:--sb-trigger-border-width={borderWidth}
+>
   <Button
     variant="trigger"
     {size}
+    disabled={inactive}
     wrapperClass={cn(
       "smooth-corners [--smooth-corners:4] hover:rotate-2 focus-visible:rotate-2 transition-transform",
-      active && "rotate-2",
+      active && !inactive && "rotate-2",
       wrapperClass
     )}
     class={cn(
@@ -62,7 +73,8 @@
 
 <style>
   [data-trigger-button] {
-    display: contents;
+    display: inline-flex;
+    position: relative;
   }
   [data-trigger-button] :global([data-slot="button-wrapper"]) {
     --sc-border-color: var(--trigger-border, var(--color-slate-400));
@@ -81,5 +93,37 @@
   [data-trigger-button] :global([data-slot="button"][aria-expanded="true"]),
   [data-trigger-button][data-active] :global([data-slot="button"]) {
     background-color: var(--trigger-bg-hover, var(--color-slate-300));
+  }
+
+  /* Inactive: disabled-looking, no interaction */
+  [data-trigger-button][data-inactive] {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  /* Dimmed: reduced visibility, interactive on hover/focus */
+  [data-trigger-button][data-dimmed] {
+    opacity: 0.3;
+    transition: opacity 200ms;
+  }
+  [data-trigger-button][data-dimmed]:hover,
+  [data-trigger-button][data-dimmed]:focus-within {
+    opacity: 1;
+  }
+
+  /* Local-only green dot indicator */
+  [data-trigger-button][data-local-only]::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 8px;
+    height: 8px;
+    background: hsl(137, 66%, 30%);
+    border-radius: 50%;
+    border: 2px solid hsl(194 46% 28%);
+    box-sizing: content-box;
+    pointer-events: none;
+    z-index: 1;
   }
 </style>

@@ -21,6 +21,7 @@
   import { initCommandActions, registerCommandAction, getActionChildren, hasChildrenProvider, isExcludedByRoute, setRoutingBasePath } from './commandActions.js'
   import { isMenuHidden } from './uiConfig.js'
   import { subscribeToToolbarConfig, getToolbarConfig } from './toolbarConfigStore.js'
+  import { initToolbarToolStates, getToolbarToolState, isToolbarToolLocalOnly, subscribeToToolbarToolStates } from './toolStateStore.js'
   import defaultToolbarConfig from '../toolbar.config.json'
 
   interface Props { basePath?: string; toolbarConfig?: any; customHandlers?: Record<string, () => Promise<any>> }
@@ -34,6 +35,11 @@
   $effect(() => {
     unsubConfig = subscribeToToolbarConfig((cfg: any) => { storeConfig = cfg })
     return () => { if (unsubConfig) unsubConfig() }
+  })
+
+  $effect(() => {
+    const unsub = subscribeToToolbarToolStates(() => { toolStateVersion++ })
+    return unsub
   })
 
   // Use store config if available, otherwise fall back to prop or defaults
@@ -58,6 +64,7 @@
   let canvasActive = $state(false)
   let activeCanvasName = $state('')
   let canvasZoom = $state(100)
+  let toolStateVersion = $state(0)
 
   // Roving tabindex: only one button in the toolbar is tabbable at a time
   let activeToolbarIndex = $state(-1)
@@ -95,7 +102,7 @@
         if (tool.render === 'menu' && tool.handler) {
           menu.action = tool.handler
         }
-        result[key] = menu
+        result[key] = { ...menu, _toolId: key }
       }
       return result
     }
@@ -110,7 +117,7 @@
 
       // Add command-list tools as actions
       if (cfg.tools) {
-        for (const [, tool] of Object.entries(cfg.tools as Record<string, any>)) {
+        for (const [toolKey, tool] of Object.entries(cfg.tools as Record<string, any>)) {
           if (tool.surface !== 'command-list') continue
           if (tool.render === 'separator') {
             actions.push({ type: 'separator' })
@@ -122,6 +129,8 @@
             type: tool.render || 'default',
             url: tool.url || null,
             modes: tool.modes || ['*'],
+            toolKey,
+            localOnly: tool.localOnly || false,
           })
         }
       }
@@ -152,7 +161,10 @@
   const orderedMenus = $derived(Object.entries(allMenus)
     .filter(([key]) => key !== 'command')
     .filter(([key]) => !isMenuHidden(key))
-    .filter(([, menu]) => !menu.localOnly || isLocalDev)
+    .filter(([key]) => {
+      void toolStateVersion
+      return getToolbarToolState(key) !== 'disabled'
+    })
     .map(([key, menu]) => ({ key, ...menu })))
 
   // Discover menus with sidepanel property
@@ -179,6 +191,9 @@
     orderedMenus
       .filter(menu => {
         void navVersion
+        void toolStateVersion
+        const toolState = getToolbarToolState(menu.key)
+        if (toolState === 'hidden') return false
         if (menu.render === 'separator') return true
         if (!menuVisibleInMode(menu, $modeState.mode)) return false
         if (menu.render === 'sidepanel') return true
@@ -301,6 +316,9 @@
       const shortcut = menu.shortcut
       if (!shortcut?.key) continue
       if (e.key === shortcut.key && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+        const toolState = getToolbarToolState(menu.key)
+        // Inactive and disabled tools don't respond to shortcuts
+        if (toolState === 'inactive' || toolState === 'disabled') break
         if (menu.sidepanel) {
           e.preventDefault()
           togglePanel(menu.sidepanel)
@@ -313,6 +331,9 @@
   onMount(async () => {
     window.addEventListener('keydown', handleKeydown)
     setRoutingBasePath(basePath)
+
+    // Initialize tool state store from config
+    initToolbarToolStates(config.tools || {}, { isLocalDev })
 
     // Re-evaluate action menus and prototype toolbar config on SPA navigation
     const { getPrototypeMetadata } = await import('./loader.js')
@@ -365,6 +386,9 @@
     for (const [toolId, toolConfig] of Object.entries(toolConfigs as Record<string, any>)) {
       // Skip non-tool entries (separators have no handler)
       if (toolConfig.render === 'separator') continue
+
+      // Skip disabled tools — don't load their modules at all
+      if (getToolbarToolState(toolId) === 'disabled') continue
 
       // Resolve handler module via core:/custom: prefix
       const handlerRef = toolConfig.handler || `core:${toolId}`
@@ -472,10 +496,10 @@
     >
       {#each canvasMenus as canvasTool (canvasTool.key)}
         {#if toolComponents[canvasTool.key]}
+          {@const CanvasToolComponent = toolComponents[canvasTool.key]}
           <Tooltip.Root>
             <Tooltip.Trigger>
-              <svelte:component
-                this={toolComponents[canvasTool.key]}
+              <CanvasToolComponent
                 config={canvasTool}
                 data={toolData[canvasTool.key]}
                 canvasName={activeCanvasName}
@@ -507,8 +531,12 @@
           <Tooltip.Root>
             <Tooltip.Trigger>
               {#if menu.render === 'sidepanel'}
+                {@const toolState = getToolbarToolState(menu.key)}
                 <TriggerButton
                   active={$sidePanelState.open && $sidePanelState.activeTab === menu.sidepanel}
+                  inactive={toolState === 'inactive'}
+                  dimmed={toolState === 'dimmed'}
+                  localOnly={isToolbarToolLocalOnly(menu.key)}
                   size="icon-xl"
                   aria-label={menu.ariaLabel || menu.key}
                   tabindex={getTabindex(i)}
@@ -518,12 +546,20 @@
                   <Icon name={menu.icon || menu.key} size={16} {...(menu.meta || {})} />
                 </TriggerButton>
               {:else if toolComponents[menu.key]}
-                <svelte:component
-                  this={toolComponents[menu.key]}
-                  config={menu}
-                  data={toolData[menu.key]}
-                  tabindex={getTabindex(i)}
-                />
+                {@const toolState = getToolbarToolState(menu.key)}
+                {@const ToolComponent = toolComponents[menu.key]}
+                <span
+                  data-tool-state={toolState}
+                  data-local-only={isToolbarToolLocalOnly(menu.key) || undefined}
+                  class={toolState === 'inactive' ? 'tool-inactive' : toolState === 'dimmed' ? 'tool-dimmed' : ''}
+                >
+                  <ToolComponent
+                    config={menu}
+                    data={toolData[menu.key]}
+                    tabindex={getTabindex(i)}
+                    localOnly={isToolbarToolLocalOnly(menu.key)}
+                  />
+                </span>
               {/if}
             </Tooltip.Trigger>
             <Tooltip.Content side="top">{menu.ariaLabel || menu.key}</Tooltip.Content>
@@ -565,6 +601,36 @@
   .default-button-dimmed:hover,
   .default-button-dimmed:focus-within {
     opacity: 1;
+  }
+
+  .tool-inactive {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  .tool-dimmed {
+    opacity: 0.3;
+    transition: opacity 200ms;
+  }
+  .tool-dimmed:hover,
+  .tool-dimmed:focus-within {
+    opacity: 1;
+  }
+  [data-local-only] {
+    position: relative;
+  }
+  [data-local-only]::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 4px;
+    height: 4px;
+    background: #1a7f37;
+    border-radius: 50%;
+    border: 2px solid var(--trigger-bg, var(--color-slate-100));
+    box-sizing: content-box;
+    pointer-events: none;
+    z-index: 1;
   }
 </style>
 

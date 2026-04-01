@@ -578,8 +578,7 @@
                     {#if highlightedHtml}
                       <div class="shiki-wrapper line-numbers">{@html highlightedHtml}</div>
                     {:else}
-                      <pre class="m-0 text-xs leading-relaxed inspector-mono source-pre line-numbers"><code>{#each sourceCode.split('\n') as line, i}<span class="line{matchedLine > 0 && i + 1 === matchedLine ? ' highlighted-line' : ''}">{line}</span>{#if i < sourceCode.split('\n').length - 1}
-{/if}{/each}</code></pre>
+                      <pre class="m-0 text-xs leading-relaxed inspector-mono source-pre line-numbers"><code>{#each sourceCode.split('\n') as line, i}<span class="line{matchedLine > 0 && i + 1 === matchedLine ? ' highlighted-line' : ''}">{line}</span>{#if i < sourceCode.split('\n').length - 1}{'\n'}{/if}{/each}</code></pre>
                     {/if}
                   </div>
                 {:else}

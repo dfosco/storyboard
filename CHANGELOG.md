@@ -1,5 +1,23 @@
 # storyboard
 
+## 3.5.0
+
+Surface-based tool system, canvas toolbar integration, and inspector code view improvements.
+
+### Features
+
+- **Surface-based tool config** — Renamed `toolbar` to `surface` in tool config for clarity. Three surfaces: `main-toolbar`, `canvas-toolbar`, `command-list`. Any tool can target any surface (`cb9fac0`)
+- **Declarative canvas toolbar** — Canvas add-widget and zoom controls promoted from hardcoded components to declarative tools with `surface: "canvas-toolbar"`. New `CanvasZoomControl.svelte` component (`cb9fac0`)
+- **Toolbar separators** — New `render: "separator"` tool type for visual grouping in toolbars (`cb9fac0`)
+- **Tool handler directory** — Tool handlers moved to `src/tools/handlers/` with surface resolvers in `src/tools/surfaces/` (`cb9fac0`)
+- **Inspector line numbers** — CSS counter-based line numbers on both shiki-highlighted and plain-text code views, no additional dependencies (`76a61e6`)
+
+### Bug Fixes
+
+- **Inspector**: Restore syntax highlighting in source repo dev — plain string imports replace computed template literals so Vite dev can resolve shiki. A `computeShikiImports()` Rollup plugin rewrites them to computed specifiers in the compiled bundle only (`76a61e6`)
+- **Inspector**: Highlight only the matched line — shiki decoration end changed from `{ line: N, character: 0 }` to `{ line: N-1, character: Infinity }` to avoid bleeding into the next line (`862ae47`)
+- **Inspector**: Fix line number layout — use `inline-block` for `::before` pseudo-elements instead of flex, which broke shiki's inline span flow (`a31e55e`)
+
 ## 3.4.0
 
 Declarative tool system for the toolbar. Every tool is now defined in `toolbar.config.json` with a standard shape — code is only a nugget of execution. Tools declare where they render, how they render, and their visibility rules.

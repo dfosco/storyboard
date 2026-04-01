@@ -19,8 +19,9 @@ export async function handler(ctx) {
       path = path.replace(/\/+$/, '') || '/'
       const segments = path.split('/').filter(Boolean)
 
-      // Skip branch-- segment on deployed branch builds
-      const protoIdx = (segments[0] && segments[0].startsWith('branch--')) ? 1 : 0
+      // Detect and preserve branch-- segment on deployed branch builds
+      const branchSegment = (segments[0] && segments[0].startsWith('branch--')) ? segments[0] : null
+      const protoIdx = branchSegment ? 1 : 0
       const proto = segments[protoIdx] || null
       if (!proto) return []
 
@@ -49,7 +50,13 @@ export async function handler(ctx) {
           label: meta?.title || f.name,
           type: 'radio',
           active: f.key === active,
-          execute: () => { window.location.href = vf.resolveFlowRoute(f.key) },
+          execute: () => {
+            let url = vf.resolveFlowRoute(f.key)
+            // Re-apply basePath and branch-- prefix so deployed branch builds stay on the correct path
+            const prefix = (base || '') + (branchSegment ? `/${branchSegment}` : '')
+            if (prefix) url = prefix + url
+            window.location.href = url
+          },
         }
       })
     },

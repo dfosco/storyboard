@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.5.0
+
+### Minor Changes
+
+-   Fix inspector and sidepanel bugs
+
 ## 3.4.0
 
 ### Minor Changes

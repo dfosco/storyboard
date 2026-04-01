@@ -620,22 +620,5 @@
   .tool-dimmed:focus-within {
     opacity: 1;
   }
-  [data-local-only] {
-    position: relative;
-  }
-  [data-local-only]::after {
-    content: '';
-    position: absolute;
-    top: -1px;
-    right: -1px;
-    width: 4px;
-    height: 4px;
-    background: #1a7f37;
-    border-radius: 50%;
-    border: 2px solid var(--trigger-bg, var(--color-slate-100));
-    box-sizing: content-box;
-    pointer-events: none;
-    z-index: 1;
-  }
 </style>
 

@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.4.0
+
+### Minor Changes
+
+-   Surface-based tool system, canvas toolbar, theme sync targets, highlight.js migration, and deployed docs panel support.
+
 ## 3.3.2
 
 ### Patch Changes

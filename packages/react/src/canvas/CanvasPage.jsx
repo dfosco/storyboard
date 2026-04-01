@@ -283,11 +283,11 @@ export default function CanvasPage({ name }) {
 
   useEffect(() => {
     function handleKeyDown(e) {
-      if (e.key === ' ' && !e.repeat) {
+      if (e.key === ' ') {
         const tag = e.target.tagName
         if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
         e.preventDefault()
-        setSpaceHeld(true)
+        if (!e.repeat) setSpaceHeld(true)
       }
     }
     function handleKeyUp(e) {

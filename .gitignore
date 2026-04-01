@@ -39,3 +39,5 @@ AGENTS_.md
 
 # Compiled UI bundle (built before publish, not tracked in git)
 packages/core/dist/storyboard-ui.*
+
+.clips

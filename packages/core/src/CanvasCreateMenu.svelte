@@ -60,6 +60,6 @@
       </DropdownMenu.Item>
     {/each}
     <DropdownMenu.Separator />
-    <div class="px-2 py-1.5 text-xs text-muted-foreground">Supported in local development</div>
+    <div class="px-2 py-1.5 text-xs text-muted-foreground"><span class="inline-block w-2 h-2 rounded-full mr-1.5 align-middle" style="background: hsl(137, 66%, 30%)"></span>Supported in local development</div>
   </DropdownMenu.Content>
 </DropdownMenu.Root>

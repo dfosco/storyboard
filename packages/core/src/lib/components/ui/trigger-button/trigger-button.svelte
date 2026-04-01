@@ -110,20 +110,4 @@
   [data-trigger-button][data-dimmed]:focus-within {
     opacity: 1;
   }
-
-  /* Local-only green dot indicator */
-  [data-trigger-button][data-local-only]::after {
-    content: '';
-    position: absolute;
-    top: -1px;
-    right: -1px;
-    width: 8px;
-    height: 8px;
-    background: hsl(137, 66%, 30%);
-    border-radius: 50%;
-    border: 2px solid hsl(194 46% 28%);
-    box-sizing: content-box;
-    pointer-events: none;
-    z-index: 1;
-  }
 </style>

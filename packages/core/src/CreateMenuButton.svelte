@@ -114,7 +114,7 @@
         <DropdownMenu.Separator />
       {:else if action.type === 'footer'}
         <DropdownMenu.Separator />
-        <div class="px-2 py-1.5 text-xs text-muted-foreground">{action.label}</div>
+        <div class="px-2 py-1.5 text-xs text-muted-foreground"><span class="inline-block w-2 h-2 rounded-full mr-1.5 align-middle" style="background: hsl(137, 66%, 30%)"></span>{action.label}</div>
       {:else if action._feature}
         <DropdownMenu.Item onclick={() => showOverlay(action._feature.overlayId)}>
           {action.label || action._feature.label}

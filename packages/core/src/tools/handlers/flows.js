@@ -18,7 +18,10 @@ export async function handler(ctx) {
       if (base && path.startsWith(base)) path = path.slice(base.length)
       path = path.replace(/\/+$/, '') || '/'
       const segments = path.split('/').filter(Boolean)
-      const proto = segments[0] || null
+
+      // Skip branch-- segment on deployed branch builds
+      const protoIdx = (segments[0] && segments[0].startsWith('branch--')) ? 1 : 0
+      const proto = segments[protoIdx] || null
       if (!proto) return []
 
       const params = new URLSearchParams(window.location.search)

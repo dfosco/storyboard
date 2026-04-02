@@ -4,7 +4,7 @@
  * Call mountComments() once at app startup (after initCommentsConfig).
  */
 
-import { isCommentsEnabled } from '../config.js'
+import { getCommentsConfig, isCommentsEnabled } from '../config.js'
 import { isAuthenticated, getCachedUser } from '../auth.js'
 import { toggleCommentMode, setCommentMode, isCommentModeActive, subscribeToCommentMode } from '../commentMode.js'
 import { fetchRouteCommentsSummary, fetchCommentDetail, moveComment, createComment } from '../api.js'
@@ -12,6 +12,12 @@ import { getCachedComments, setCachedComments, clearCachedComments, savePendingC
 import { showComposer } from './composer.js'
 import { openAuthModal } from './authModal.js'
 import { showCommentWindow, closeCommentWindow } from './commentWindow.js'
+
+const INVALID_PAT_ERROR_MESSAGE = 'GitHub PAT is invalid or expired. Please sign in again.'
+const TOKEN_ACCESS_ERROR_MESSAGE =
+  `Token doesn't have access to repository discussions. ` +
+  'Fine-grained tokens need "Discussions: Read and write". ' +
+  'Classic tokens need the "repo" scope.'
 
 let banner = null
 let overlay = null
@@ -62,6 +68,48 @@ function hideBanner() {
 
 function getCurrentRoute() {
   return window.location.pathname
+}
+
+function getAuthErrorMessage(err) {
+  const message = typeof err === 'string'
+    ? err
+    : (typeof err?.message === 'string' ? err.message : String(err ?? ''))
+
+  if (message.includes('invalid or expired')) {
+    return INVALID_PAT_ERROR_MESSAGE
+  }
+
+  if (message.includes('Not authenticated — no GitHub PAT found')) {
+    return 'Not authenticated — no GitHub PAT found. Please sign in.'
+  }
+
+  if (
+    message.includes('Resource not accessible by personal access token') ||
+    message.includes('insufficient') ||
+    message.includes("doesn't have access")
+  ) {
+    return TOKEN_ACCESS_ERROR_MESSAGE
+  }
+
+  if (message.includes('Could not resolve to a Repository with the name')) {
+    const config = getCommentsConfig()
+    const repo = config?.repo?.owner && config?.repo?.name
+      ? `${config.repo.owner}/${config.repo.name}`
+      : 'the configured repository'
+
+    return `Token cannot access repository \`${repo}\`. Please set the PAT repository access to \`${repo}\` and include Discussions read/write (classic tokens need repo scope).`
+  }
+
+  return null
+}
+
+async function promptReauthForAuthError(err) {
+  const errorMessage = getAuthErrorMessage(err)
+  if (!errorMessage) return false
+
+  setCommentMode(false)
+  openAuthModal({ initialError: errorMessage })
+  return true
 }
 
 function clearPins() {
@@ -118,7 +166,8 @@ function renderOptimisticPin(ov, xPct, yPct, text, user) {
           removePendingComment(route, pendingId)
           pin.classList.remove('sb-comment-pin-pending')
           reloadComments()
-        } catch {
+        } catch (err) {
+          if (await promptReauthForAuthError(err)) return
           pin.classList.remove('sb-comment-pin-pending')
           pin.classList.add('sb-comment-pin-failed')
           pin.title = `⚠ Failed to post — click to retry: ${text.slice(0, 60)}`
@@ -155,7 +204,8 @@ function renderPendingPins(ov) {
         removePendingComment(route, p.id)
         pin.remove()
         reloadComments()
-      } catch {
+      } catch (err) {
+        if (await promptReauthForAuthError(err)) return
         pin.classList.remove('sb-comment-pin-pending')
         pin.classList.add('sb-comment-pin-failed')
         pin.title = `⚠ Failed to post — click to retry: ${p.text?.slice(0, 60) ?? ''}`
@@ -224,6 +274,7 @@ function renderPin(ov, comment, index) {
         comment._rawBody = null
         clearCachedComments(getCurrentRoute())
       } catch (err) {
+        if (await promptReauthForAuthError(err)) return
         console.error('[storyboard] Failed to move pin:', err)
       }
     }
@@ -312,6 +363,7 @@ async function loadAndRenderComments() {
 
     autoOpenCommentFromUrl(ov, discussion)
   } catch (err) {
+    if (await promptReauthForAuthError(err)) return
     console.warn('[storyboard] Could not load comments:', err.message)
   }
 }
@@ -346,6 +398,7 @@ async function autoOpenCommentFromUrl(ov, discussion) {
       return
     }
   } catch (err) {
+    if (await promptReauthForAuthError(err)) return
     console.warn('[storyboard] Could not load comment detail:', err.message)
   }
 
@@ -388,8 +441,9 @@ function handleOverlayClick(e) {
           opt.succeed()
           reloadComments()
         })
-        .catch((err) => {
+        .catch(async (err) => {
           console.error('[storyboard] Failed to post comment:', err)
+          if (await promptReauthForAuthError(err)) return
           opt.fail()
         })
     },

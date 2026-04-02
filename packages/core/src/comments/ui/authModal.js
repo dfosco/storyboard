@@ -13,9 +13,12 @@ const MODAL_ID = 'sb-auth-modal'
 /**
  * Open the auth modal. Returns a promise that resolves with the user info
  * on successful sign-in, or null if cancelled.
+ * @param {{ initialError?: string|null }} [options]
  * @returns {Promise<{ login: string, avatarUrl: string }|null>}
  */
-export function openAuthModal() {
+export function openAuthModal(options = {}) {
+  const { initialError = null } = options
+
   return new Promise((resolve) => {
     const existing = document.getElementById(MODAL_ID)
     if (existing) existing.remove()
@@ -55,6 +58,7 @@ export function openAuthModal() {
     instance = mount(AuthModal, {
       target: backdrop,
       props: {
+        initialError,
         onDone: (user) => {
           cleanup()
           resolve(user)

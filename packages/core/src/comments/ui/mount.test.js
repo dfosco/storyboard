@@ -48,6 +48,9 @@ describe('mount.js', () => {
   let initCommentsConfig
   let setToken
   let clearToken
+  let createComment
+  let openAuthModal
+  let showComposer
 
   beforeEach(async () => {
     // Reset DOM
@@ -85,6 +88,9 @@ describe('mount.js', () => {
     const commentModeMod = await import('../commentMode.js')
     const configMod = await import('../config.js')
     const authMod = await import('../auth.js')
+    const apiMod = await import('../api.js')
+    const authModalMod = await import('./authModal.js')
+    const composerMod = await import('./composer.js')
 
     mountComments = mountMod.mountComments
     setCommentMode = commentModeMod.setCommentMode
@@ -92,6 +98,9 @@ describe('mount.js', () => {
     initCommentsConfig = configMod.initCommentsConfig
     setToken = authMod.setToken
     clearToken = authMod.clearToken
+    createComment = apiMod.createComment
+    openAuthModal = authModalMod.openAuthModal
+    showComposer = composerMod.showComposer
 
     // Reset storyboard state
     setCommentMode(false)
@@ -193,6 +202,46 @@ describe('mount.js', () => {
       mountComments()
       mountComments()
       // No error thrown — _mounted guard prevents double init
+    })
+  })
+
+  describe('auth error handling', () => {
+    it('opens auth modal with repo-specific message when PAT lacks repository access during submit', async () => {
+      initCommentsConfig({
+        comments: { discussions: { category: 'Comments' } },
+        repository: { owner: 'correct', name: 'repository' },
+      })
+      setToken('ghp_test')
+
+      createComment.mockRejectedValueOnce(
+        new Error("GraphQL error: Could not resolve to a Repository with the name 'github/storyboard'.")
+      )
+
+      showComposer.mockImplementation((ov, x, y, route, opts) => {
+        queueMicrotask(() => {
+          opts.onSubmitOptimistic('Hello', x, y)
+        })
+        return {
+          destroy: vi.fn(),
+          moveTo: vi.fn(),
+        }
+      })
+
+      mountComments()
+      setCommentMode(true)
+
+      const overlay = document.body.querySelector('.sb-comment-overlay')
+      overlay.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 10, clientY: 10 }))
+
+      await Promise.resolve()
+      await Promise.resolve()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(openAuthModal).toHaveBeenCalledTimes(1)
+      const call = openAuthModal.mock.calls[0]?.[0]
+      expect(call?.initialError).toContain('`correct/repository`')
+      expect(call?.initialError).toContain('PAT repository access')
+      expect(document.body.classList.contains('sb-comment-mode')).toBe(false)
     })
   })
 })

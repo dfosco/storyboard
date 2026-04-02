@@ -5,6 +5,7 @@
 ### Patch Changes
 
 -   Fix hosting of JSON file for inspector on branch deploys
+-   Comments auth UX: route token-related failures (invalid/expired token, missing token, insufficient access/scope, repository access mismatch) to the sign-in modal with a specific top alert and exit comment mode.
 
 ## 3.6.0
 

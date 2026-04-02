@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getEmbedChromeVars } from './PrototypeEmbed.jsx'
+import { getEmbedChromeVars } from './embedTheme.js'
 
 describe('getEmbedChromeVars', () => {
   it('follows toolbar theme variants for embed edit chrome', () => {

@@ -1,0 +1,49 @@
+export function getEmbedChromeVars(theme) {
+  const value = String(theme || 'light')
+  if (value === 'dark_dimmed') {
+    return {
+      '--bgColor-default': '#22272e',
+      '--bgColor-muted': '#2d333b',
+      '--bgColor-neutral-muted': 'rgba(99, 110, 123, 0.3)',
+      '--fgColor-default': '#adbac7',
+      '--fgColor-muted': '#768390',
+      '--fgColor-onEmphasis': '#ffffff',
+      '--borderColor-default': '#444c56',
+      '--borderColor-muted': '#545d68',
+      '--bgColor-accent-emphasis': '#316dca',
+      '--trigger-bg': '#2d333b',
+      '--trigger-bg-hover': '#373e47',
+      '--trigger-border': '#444c56',
+    }
+  }
+  if (value.startsWith('dark')) {
+    return {
+      '--bgColor-default': '#161b22',
+      '--bgColor-muted': '#21262d',
+      '--bgColor-neutral-muted': 'rgba(110, 118, 129, 0.2)',
+      '--fgColor-default': '#e6edf3',
+      '--fgColor-muted': '#8b949e',
+      '--fgColor-onEmphasis': '#ffffff',
+      '--borderColor-default': '#30363d',
+      '--borderColor-muted': '#30363d',
+      '--bgColor-accent-emphasis': '#2f81f7',
+      '--trigger-bg': '#21262d',
+      '--trigger-bg-hover': '#30363d',
+      '--trigger-border': '#30363d',
+    }
+  }
+  return {
+    '--bgColor-default': '#ffffff',
+    '--bgColor-muted': '#f6f8fa',
+    '--bgColor-neutral-muted': '#eaeef2',
+    '--fgColor-default': '#1f2328',
+    '--fgColor-muted': '#656d76',
+    '--fgColor-onEmphasis': '#ffffff',
+    '--borderColor-default': '#d0d7de',
+    '--borderColor-muted': '#d8dee4',
+    '--bgColor-accent-emphasis': '#2f81f7',
+    '--trigger-bg': '#f6f8fa',
+    '--trigger-bg-hover': '#eaeef2',
+    '--trigger-border': '#d0d7de',
+  }
+}

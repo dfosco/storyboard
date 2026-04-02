@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import CanvasPage, { getCanvasPrimerAttrs, getCanvasThemeVars } from './CanvasPage.jsx'
+import CanvasPage from './CanvasPage.jsx'
+import { getCanvasPrimerAttrs, getCanvasThemeVars } from './canvasTheme.js'
 import { updateCanvas } from './canvasApi.js'
 
 vi.mock('@dfosco/tiny-canvas', () => ({

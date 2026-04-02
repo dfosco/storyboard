@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
+import { getEmbedChromeVars } from './embedTheme.js'
 import styles from './PrototypeEmbed.module.css'
 
 function formatName(name) {
@@ -9,58 +10,6 @@ function formatName(name) {
     .replace(/[-_]/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
-
-function getEmbedChromeVars(theme) {
-  const value = String(theme || 'light')
-  if (value === 'dark_dimmed') {
-    return {
-      '--bgColor-default': '#22272e',
-      '--bgColor-muted': '#2d333b',
-      '--bgColor-neutral-muted': 'rgba(99, 110, 123, 0.3)',
-      '--fgColor-default': '#adbac7',
-      '--fgColor-muted': '#768390',
-      '--fgColor-onEmphasis': '#ffffff',
-      '--borderColor-default': '#444c56',
-      '--borderColor-muted': '#545d68',
-      '--bgColor-accent-emphasis': '#316dca',
-      '--trigger-bg': '#2d333b',
-      '--trigger-bg-hover': '#373e47',
-      '--trigger-border': '#444c56',
-    }
-  }
-  if (value.startsWith('dark')) {
-    return {
-      '--bgColor-default': '#161b22',
-      '--bgColor-muted': '#21262d',
-      '--bgColor-neutral-muted': 'rgba(110, 118, 129, 0.2)',
-      '--fgColor-default': '#e6edf3',
-      '--fgColor-muted': '#8b949e',
-      '--fgColor-onEmphasis': '#ffffff',
-      '--borderColor-default': '#30363d',
-      '--borderColor-muted': '#30363d',
-      '--bgColor-accent-emphasis': '#2f81f7',
-      '--trigger-bg': '#21262d',
-      '--trigger-bg-hover': '#30363d',
-      '--trigger-border': '#30363d',
-    }
-  }
-  return {
-    '--bgColor-default': '#ffffff',
-    '--bgColor-muted': '#f6f8fa',
-    '--bgColor-neutral-muted': '#eaeef2',
-    '--fgColor-default': '#1f2328',
-    '--fgColor-muted': '#656d76',
-    '--fgColor-onEmphasis': '#ffffff',
-    '--borderColor-default': '#d0d7de',
-    '--borderColor-muted': '#d8dee4',
-    '--bgColor-accent-emphasis': '#2f81f7',
-    '--trigger-bg': '#f6f8fa',
-    '--trigger-bg-hover': '#eaeef2',
-    '--trigger-border': '#d0d7de',
-  }
-}
-
-export { getEmbedChromeVars }
 
 function resolveCanvasThemeFromStorage() {
   if (typeof localStorage === 'undefined') return 'light'
@@ -88,10 +37,6 @@ export default function PrototypeEmbed({ props, onUpdate }) {
 
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
   const rawSrc = src ? `${basePath}${src}` : ''
-  const [refreshKey, setRefreshKey] = useState(0)
-  const iframeSrc = rawSrc
-    ? `${rawSrc}${rawSrc.includes('?') ? '&' : '?'}_sb_embed&_sb_theme_target=prototype&_sb_canvas_theme_key=${refreshKey}`
-    : ''
 
   const scale = zoom / 100
 
@@ -102,6 +47,10 @@ export default function PrototypeEmbed({ props, onUpdate }) {
   const inputRef = useRef(null)
   const filterRef = useRef(null)
   const embedRef = useRef(null)
+
+  const iframeSrc = rawSrc
+    ? `${rawSrc}${rawSrc.includes('?') ? '&' : '?'}_sb_embed&_sb_theme_target=prototype&_sb_canvas_theme=${canvasTheme}`
+    : ''
 
   // Build prototype index for the picker
   const prototypeIndex = useMemo(() => {
@@ -213,10 +162,6 @@ export default function PrototypeEmbed({ props, onUpdate }) {
     document.addEventListener('storyboard:theme:changed', readToolbarTheme)
     return () => document.removeEventListener('storyboard:theme:changed', readToolbarTheme)
   }, [])
-
-  useEffect(() => {
-    setRefreshKey((k) => k + 1)
-  }, [canvasTheme])
 
   const chromeVars = useMemo(() => getEmbedChromeVars(canvasTheme), [canvasTheme])
 

@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.8.1
+
+### Patch Changes
+
+-   Fix branch-deploy URL for canvases and canvas assets
+
 ## 3.8.0
 
 ### Minor Changes

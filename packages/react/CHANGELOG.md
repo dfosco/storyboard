@@ -1,5 +1,12 @@
 # @dfosco/storyboard-react
 
+## 3.8.1
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.8.1
+
 ## 3.8.0
 
 ### Patch Changes

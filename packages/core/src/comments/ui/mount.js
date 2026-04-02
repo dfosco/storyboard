@@ -12,6 +12,8 @@ import { getCachedComments, setCachedComments, clearCachedComments, savePendingC
 import { showComposer } from './composer.js'
 import { openAuthModal } from './authModal.js'
 import { showCommentWindow, closeCommentWindow } from './commentWindow.js'
+import './comment-layout.css'
+import './comments.css'
 
 const INVALID_PAT_ERROR_MESSAGE = 'GitHub PAT is invalid or expired. Please sign in again.'
 const TOKEN_ACCESS_ERROR_MESSAGE =
@@ -223,7 +225,7 @@ function renderPin(ov, comment, index) {
   pin.className = 'sb-comment-pin absolute br-100 sb-bg pointer sb-shadow pe-auto overflow-hidden'
   pin.style.left = `${comment.meta?.x ?? 0}%`
   pin.style.top = `${comment.meta?.y ?? 0}%`
-  pin.style.setProperty('--pin-hue', String(hue))
+  pin.style.setProperty('--sb--pin-hue', String(hue))
 
   if (comment.meta?.resolved) pin.setAttribute('data-resolved', 'true')
   pin.title = `${comment.author?.login ?? 'unknown'}: ${comment.text?.slice(0, 80) ?? ''}`

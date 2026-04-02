@@ -593,7 +593,7 @@
   .toolbar-separator {
     width: 1px;
     height: 20px;
-    background: var(--trigger-border, var(--color-slate-400));
+    background: var(--sb--trigger-border, var(--color-slate-400));
     opacity: 0.4;
     flex-shrink: 0;
   }
@@ -632,7 +632,7 @@
     height: 8px;
     background: hsl(137, 66%, 30%);
     border-radius: 50%;
-    border: 2px solid var(--sc-border-color, transparent);
+    border: 2px solid var(--sb--sc-border-color, transparent);
     box-sizing: content-box;
     pointer-events: none;
     z-index: 1;

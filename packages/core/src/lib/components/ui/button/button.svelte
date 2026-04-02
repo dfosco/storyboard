@@ -16,14 +16,14 @@
 			},
 			size: {
 				default: "text-sm gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-				xs: "text-xs gap-1 rounded-[min(var(--radius-md),10px)] px-2 in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-				sm: "text-[0.8rem] gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+				xs: "text-xs gap-1 rounded-[min(var(--sb--radius-md),10px)] px-2 in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+				sm: "text-[0.8rem] gap-1 rounded-[min(var(--sb--radius-md),12px)] px-2.5 in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
 				lg: "text-sm gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
 				xl: "text-base gap-2 px-4 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3 [&_svg:not([class*='size-'])]:size-5",
 				"2xl": "text-lg gap-2.5 px-5 has-data-[icon=inline-end]:pr-4 has-data-[icon=inline-start]:pl-4 [&_svg:not([class*='size-'])]:size-6",
 				icon: "text-sm",
-				"icon-xs": "text-xs rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
-				"icon-sm": "text-[0.8rem] rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
+				"icon-xs": "text-xs rounded-[min(var(--sb--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
+				"icon-sm": "text-[0.8rem] rounded-[min(var(--sb--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
 				"icon-lg": "text-sm",
 				"icon-xl": "text-base [&_svg:not([class*='size-'])]:size-5",
 				"icon-2xl": "text-lg [&_svg:not([class*='size-'])]:size-6",
@@ -40,14 +40,14 @@
 		variants: {
 			size: {
 				default: "h-8",
-				xs: "h-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg",
-				sm: "h-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
+				xs: "h-6 rounded-[min(var(--sb--radius-md),10px)] in-data-[slot=button-group]:rounded-lg",
+				sm: "h-7 rounded-[min(var(--sb--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
 				lg: "h-9",
 				xl: "h-11",
 				"2xl": "h-14",
 				icon: "size-8",
-				"icon-xs": "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg",
-				"icon-sm": "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
+				"icon-xs": "size-6 rounded-[min(var(--sb--radius-md),10px)] in-data-[slot=button-group]:rounded-lg",
+				"icon-sm": "size-7 rounded-[min(var(--sb--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
 				"icon-lg": "size-9",
 				"icon-xl": "size-11",
 				"icon-2xl": "size-14",
@@ -78,7 +78,7 @@
 <span
 	data-slot="button-wrapper"
 	class={cn(wrapperVariants({ size }), wrapperClass)}
-	style="background: var(--sc-border-color, transparent); padding: var(--sc-border-width, 0px);"
+	style="background: var(--sb--sc-border-color, transparent); padding: var(--sb--sc-border-width, 0px);"
 >
 	{#if href}
 		<a

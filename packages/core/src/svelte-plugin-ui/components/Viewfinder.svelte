@@ -152,7 +152,7 @@
       const w = 20 + (s * (i + 3)) % 80
       const ht = 8 + (s * (i + 7)) % 40
       const opacity = 0.06 + ((s * (i + 2)) % 20) / 100
-      const fill = i % 3 === 0 ? 'var(--placeholder-accent)' : i % 3 === 1 ? 'var(--placeholder-fg)' : 'var(--placeholder-muted)'
+      const fill = i % 3 === 0 ? 'var(--sb--placeholder-accent)' : i % 3 === 1 ? 'var(--sb--placeholder-fg)' : 'var(--sb--placeholder-muted)'
       rects += `<rect x="${x}" y="${y}" width="${w}" height="${ht}" rx="2" fill="${fill}" opacity="${opacity}" />`
     }
 
@@ -160,15 +160,15 @@
     for (let i = 0; i < 6; i++) {
       const s = h * (i + 5)
       const y = 10 + (s % 180)
-      lines += `<line x1="0" y1="${y}" x2="320" y2="${y}" stroke="var(--placeholder-grid)" stroke-width="0.5" opacity="0.4" />`
+      lines += `<line x1="0" y1="${y}" x2="320" y2="${y}" stroke="var(--sb--placeholder-grid)" stroke-width="0.5" opacity="0.4" />`
     }
     for (let i = 0; i < 8; i++) {
       const s = h * (i + 9)
       const x = 10 + (s % 300)
-      lines += `<line x1="${x}" y1="0" x2="${x}" y2="200" stroke="var(--placeholder-grid)" stroke-width="0.5" opacity="0.3" />`
+      lines += `<line x1="${x}" y1="0" x2="${x}" y2="200" stroke="var(--sb--placeholder-grid)" stroke-width="0.5" opacity="0.3" />`
     }
 
-    return `<svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="320" height="200" fill="var(--placeholder-bg)" />${lines}${rects}</svg>`
+    return `<svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="320" height="200" fill="var(--sb--placeholder-bg)" />${lines}${rects}</svg>`
   }
 
   // Branch switching
@@ -947,11 +947,11 @@
     overflow: hidden;
     background: var(--bgColor-inset, #010409);
 
-    --placeholder-bg: var(--bgColor-inset, #010409);
-    --placeholder-grid: var(--borderColor-default, #30363d);
-    --placeholder-accent: var(--fgColor-accent, #58a6ff);
-    --placeholder-fg: var(--fgColor-default, #c9d1d9);
-    --placeholder-muted: var(--fgColor-muted, #484f58);
+    --sb--placeholder-bg: var(--bgColor-inset, #010409);
+    --sb--placeholder-grid: var(--borderColor-default, #30363d);
+    --sb--placeholder-accent: var(--fgColor-accent, #58a6ff);
+    --sb--placeholder-fg: var(--fgColor-default, #c9d1d9);
+    --sb--placeholder-muted: var(--fgColor-muted, #484f58);
   }
 
   .thumbnail :global(svg) {
@@ -975,7 +975,7 @@
     padding: 10px 14px;
     margin-bottom: 16px;
     border-radius: 8px;
-    border: 1px solid var(--borderColor-default, var(--color-border, #d0d7de));
+    border: 1px solid var(--borderColor-default, var(--sb--color-border, #d0d7de));
     background: var(--bgColor-attention-muted, #3d2e00);
     color: var(--fgColor-attention, #9a6700);
     font-size: 13px;

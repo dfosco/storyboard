@@ -8,8 +8,8 @@
  */
 
 :root {
-  --sidepanel-width: 420px;
-  --sidepanel-height: 300px;
+  --sb--sidepanel-width: 420px;
+  --sb--sidepanel-height: 300px;
 }
 
 /* -----------------------------------------------------------------------
@@ -17,7 +17,7 @@
    ----------------------------------------------------------------------- */
 
 html.sb-sidepanel-open:not(.sb-sidepanel-bottom) > body > #root {
-  margin-right: var(--sidepanel-width);
+  margin-right: var(--sb--sidepanel-width);
   transition: margin-right 0.25s ease;
 }
 
@@ -25,7 +25,7 @@ html.sb-sidepanel-open:not(.sb-sidepanel-bottom) > body > #root {
 html.sb-sidepanel-open:not(.sb-sidepanel-bottom).storyboard-mode-present > body > #root,
 html.sb-sidepanel-open:not(.sb-sidepanel-bottom).storyboard-mode-plan > body > #root,
 html.sb-sidepanel-open:not(.sb-sidepanel-bottom).storyboard-mode-inspect > body > #root {
-  margin-right: calc(var(--sidepanel-width) + 12px);
+  margin-right: calc(var(--sb--sidepanel-width) + 12px);
 }
 
 html:not(.sb-sidepanel-open) > body > #root {
@@ -34,7 +34,7 @@ html:not(.sb-sidepanel-open) > body > #root {
 
 /* Push the CoreUIBar (fixed bottom-right) — side mode */
 html.sb-sidepanel-open:not(.sb-sidepanel-bottom) [data-core-ui-bar] {
-  right: calc(var(--sidepanel-width) + 24px) !important;
+  right: calc(var(--sb--sidepanel-width) + 24px) !important;
   transition: right 0.25s ease;
 }
 
@@ -44,7 +44,7 @@ html:not(.sb-sidepanel-open) [data-core-ui-bar] {
 
 /* Push the ModeSwitch (fixed bottom-center) — side mode */
 html.sb-sidepanel-open:not(.sb-sidepanel-bottom) .sb-mode-switch {
-  transform: translateX(calc(-50% - var(--sidepanel-width) / 2));
+  transform: translateX(calc(-50% - var(--sb--sidepanel-width) / 2));
   transition: transform 0.25s ease;
 }
 
@@ -55,7 +55,7 @@ html:not(.sb-sidepanel-open) .sb-mode-switch {
 /* When both modes collar padding AND sidepanel are active,
    the collar bottom bar should not extend under the panel + its right gap */
 html.sb-sidepanel-open:not(.sb-sidepanel-bottom)::before {
-  width: calc(100vw - var(--sidepanel-width) - 12px);
+  width: calc(100vw - var(--sb--sidepanel-width) - 12px);
 }
 
 /* -----------------------------------------------------------------------
@@ -63,7 +63,7 @@ html.sb-sidepanel-open:not(.sb-sidepanel-bottom)::before {
    ----------------------------------------------------------------------- */
 
 html.sb-sidepanel-open.sb-sidepanel-bottom > body > #root {
-  margin-bottom: var(--sidepanel-height);
+  margin-bottom: var(--sb--sidepanel-height);
   transition: margin-bottom 0.25s ease;
 }
 
@@ -71,17 +71,17 @@ html.sb-sidepanel-open.sb-sidepanel-bottom > body > #root {
 html.sb-sidepanel-open.sb-sidepanel-bottom.storyboard-mode-present > body > #root,
 html.sb-sidepanel-open.sb-sidepanel-bottom.storyboard-mode-plan > body > #root,
 html.sb-sidepanel-open.sb-sidepanel-bottom.storyboard-mode-inspect > body > #root {
-  margin-bottom: calc(var(--sidepanel-height) + 12px);
+  margin-bottom: calc(var(--sb--sidepanel-height) + 12px);
 }
 
 /* Push the CoreUIBar up — bottom mode */
 html.sb-sidepanel-open.sb-sidepanel-bottom [data-core-ui-bar] {
-  bottom: calc(var(--sidepanel-height) + 24px) !important;
+  bottom: calc(var(--sb--sidepanel-height) + 24px) !important;
   transition: bottom 0.25s ease;
 }
 
 /* Push the ModeSwitch up — bottom mode */
 html.sb-sidepanel-open.sb-sidepanel-bottom .sb-mode-switch {
-  bottom: calc(var(--sidepanel-height) + 24px);
+  bottom: calc(var(--sb--sidepanel-height) + 24px);
   transition: bottom 0.25s ease;
 }

@@ -3,10 +3,10 @@
   First component of the core UI kit for floating menus.
 
   Themable via CSS custom properties (set on any ancestor):
-    --trigger-bg         Background color        (default: slate-100)
-    --trigger-bg-hover   Background on hover/active (default: slate-200)
-    --trigger-text       Text / icon color        (default: slate-600)
-    --trigger-border     Border color             (default: slate-400)
+    --sb--trigger-bg         Background color        (default: slate-100)
+    --sb--trigger-bg-hover   Background on hover/active (default: slate-200)
+    --sb--trigger-text       Text / icon color        (default: slate-600)
+    --sb--trigger-border     Border color             (default: slate-400)
 -->
 
 <script module>
@@ -17,7 +17,7 @@
   // that breaks when this source is consumed from node_modules.
   if (typeof CSS !== 'undefined' && 'paintWorklet' in CSS) {
     try {
-      const worklet = `class P{static get inputProperties(){return["--smooth-corners"]}superellipse(a,b,nX=4,nY){if(Number.isNaN(nX))nX=4;if(typeof nY==="undefined"||Number.isNaN(nY))nY=nX;if(nX>100)nX=100;if(nY>100)nY=100;if(nX<1e-11)nX=1e-11;if(nY<1e-11)nY=1e-11;const nX2=2/nX,nY2=nY?2/nY:nX2,steps=360,step=(2*Math.PI)/steps;return Array.from({length:steps},(_,i)=>{const t=i*step,cosT=Math.cos(t),sinT=Math.sin(t);return{x:Math.abs(cosT)**nX2*a*Math.sign(cosT),y:Math.abs(sinT)**nY2*b*Math.sign(sinT)}})}paint(ctx,geom,props){const[nX,nY]=props.get("--smooth-corners").toString().replace(/ /g,"").split(",");const w=geom.width/2,h=geom.height/2,s=this.superellipse(w,h,parseFloat(nX),parseFloat(nY));ctx.fillStyle="#000";ctx.setTransform(1,0,0,1,w,h);ctx.beginPath();for(let i=0;i<s.length;i++){const{x,y}=s[i];i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}ctx.closePath();ctx.fill()}}registerPaint("smooth-corners",P);`;
+      const worklet = `class P{static get inputProperties(){return["--sb--smooth-corners"]}superellipse(a,b,nX=4,nY){if(Number.isNaN(nX))nX=4;if(typeof nY==="undefined"||Number.isNaN(nY))nY=nX;if(nX>100)nX=100;if(nY>100)nY=100;if(nX<1e-11)nX=1e-11;if(nY<1e-11)nY=1e-11;const nX2=2/nX,nY2=nY?2/nY:nX2,steps=360,step=(2*Math.PI)/steps;return Array.from({length:steps},(_,i)=>{const t=i*step,cosT=Math.cos(t),sinT=Math.sin(t);return{x:Math.abs(cosT)**nX2*a*Math.sign(cosT),y:Math.abs(sinT)**nY2*b*Math.sign(sinT)}})}paint(ctx,geom,props){const[nX,nY]=props.get("--sb--smooth-corners").toString().replace(/ /g,"").split(",");const w=geom.width/2,h=geom.height/2,s=this.superellipse(w,h,parseFloat(nX),parseFloat(nY));ctx.fillStyle="#000";ctx.setTransform(1,0,0,1,w,h);ctx.beginPath();for(let i=0;i<s.length;i++){const{x,y}=s[i];i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}ctx.closePath();ctx.fill()}}registerPaint("smooth-corners",P);`;
       const blob = new Blob([worklet], { type: 'application/javascript' });
       CSS.paintWorklet.addModule(URL.createObjectURL(blob));
     } catch {}
@@ -50,14 +50,14 @@
   data-inactive={inactive || undefined}
   data-dimmed={dimmed || undefined}
   data-local-only={localOnly || undefined}
-  style:--sb-trigger-border-width={borderWidth}
+  style:--sb--trigger-border-width={borderWidth}
 >
   <Button
     variant="trigger"
     {size}
     disabled={inactive}
     wrapperClass={cn(
-      "smooth-corners [--smooth-corners:4] hover:rotate-2 focus-visible:rotate-2 transition-transform",
+      "smooth-corners [--sb--smooth-corners:4] hover:rotate-2 focus-visible:rotate-2 transition-transform",
       active && !inactive && "rotate-2",
       wrapperClass
     )}
@@ -77,22 +77,22 @@
     position: relative;
   }
   [data-trigger-button] :global([data-slot="button-wrapper"]) {
-    --sc-border-color: var(--trigger-border, var(--color-slate-400));
-    --sc-border-width: var(--sb-trigger-border-width, 3px);
+    --sb--sc-border-color: var(--sb--trigger-border, var(--color-slate-400));
+    --sb--sc-border-width: var(--sb--trigger-border-width, 3px);
   }
   /* Accent-colored border/gap on focus — follows the superellipse shape */
   [data-trigger-button] :global([data-slot="button-wrapper"]:has([data-slot="button"]:focus-visible)) {
-    --sc-border-color: hsl(212 92% 45%);
+    --sb--sc-border-color: hsl(212 92% 45%);
   }
   [data-trigger-button] :global([data-slot="button"]) {
-    background-color: var(--trigger-bg, var(--color-slate-100));
-    color: var(--trigger-text, var(--color-slate-600));
+    background-color: var(--sb--trigger-bg, var(--color-slate-100));
+    color: var(--sb--trigger-text, var(--color-slate-600));
   }
   [data-trigger-button] :global([data-slot="button"]:hover),
   [data-trigger-button] :global([data-slot="button"]:focus-visible),
   [data-trigger-button] :global([data-slot="button"][aria-expanded="true"]),
   [data-trigger-button][data-active] :global([data-slot="button"]) {
-    background-color: var(--trigger-bg-hover, var(--color-slate-300));
+    background-color: var(--sb--trigger-bg-hover, var(--color-slate-300));
   }
 
   /* Inactive: disabled-looking, no interaction */

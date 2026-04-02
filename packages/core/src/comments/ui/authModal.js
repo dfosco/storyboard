@@ -7,6 +7,7 @@
 import { mount, unmount } from 'svelte'
 import AuthModal from './AuthModal.svelte'
 import { getCachedUser, clearToken } from '../auth.js'
+import './comment-layout.css'
 
 const MODAL_ID = 'sb-auth-modal'
 

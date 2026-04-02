@@ -69,6 +69,31 @@
   --radius: 0.5rem;
   --font-sans: "Ioskeley Mono", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --font-mono: "Ioskeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+  --sb--color-background: hsl(0 0% 100%);
+  --sb--color-foreground: hsl(222.2 84% 4.9%);
+  --sb--color-card: hsl(0 0% 100%);
+  --sb--color-card-foreground: hsl(222.2 84% 4.9%);
+  --sb--color-popover: hsl(0 0% 100%);
+  --sb--color-popover-foreground: hsl(222.2 84% 4.9%);
+  --sb--color-primary: hsl(222.2 47.4% 11.2%);
+  --sb--color-primary-foreground: hsl(210 40% 98%);
+  --sb--color-secondary: hsl(210 40% 96.1%);
+  --sb--color-secondary-foreground: hsl(222.2 47.4% 11.2%);
+  --sb--color-muted: hsl(210 40% 96.1%);
+  --sb--color-muted-foreground: hsl(215.4 16.3% 46.9%);
+  --sb--color-accent: hsl(210 40% 96.1%);
+  --sb--color-accent-foreground: hsl(222.2 47.4% 11.2%);
+  --sb--color-destructive: hsl(0 84.2% 60.2%);
+  --sb--color-destructive-foreground: hsl(210 40% 98%);
+  --sb--color-border: hsl(214.3 31.8% 91.4%);
+  --sb--color-input: hsl(214.3 31.8% 91.4%);
+  --sb--color-ring: hsl(222.2 84% 4.9%);
+  --sb--color-success: hsl(142 71% 36%);
+  --sb--color-success-foreground: hsl(0 0% 100%);
+  --sb--radius: var(--radius);
+  --sb--font-sans: var(--font-sans);
+  --sb--font-mono: var(--font-mono);
 }
 
 @layer base {
@@ -94,6 +119,28 @@
     --color-ring: hsl(212.7 26.8% 83.9%);
     --color-success: hsl(142 71% 45%);
     --color-success-foreground: hsl(0 0% 100%);
+
+    --sb--color-background: hsl(222.2 84% 4.9%);
+    --sb--color-foreground: hsl(210 40% 98%);
+    --sb--color-card: hsl(222.2 84% 4.9%);
+    --sb--color-card-foreground: hsl(210 40% 98%);
+    --sb--color-popover: hsl(222.2 84% 4.9%);
+    --sb--color-popover-foreground: hsl(210 40% 98%);
+    --sb--color-primary: hsl(210 40% 98%);
+    --sb--color-primary-foreground: hsl(222.2 47.4% 11.2%);
+    --sb--color-secondary: hsl(217.2 32.6% 17.5%);
+    --sb--color-secondary-foreground: hsl(210 40% 98%);
+    --sb--color-muted: hsl(217.2 32.6% 17.5%);
+    --sb--color-muted-foreground: hsl(215 20.2% 65.1%);
+    --sb--color-accent: hsl(217.2 32.6% 17.5%);
+    --sb--color-accent-foreground: hsl(210 40% 98%);
+    --sb--color-destructive: hsl(0 62.8% 30.6%);
+    --sb--color-destructive-foreground: hsl(210 40% 98%);
+    --sb--color-border: hsl(217.2 32.6% 17.5%);
+    --sb--color-input: hsl(217.2 32.6% 17.5%);
+    --sb--color-ring: hsl(212.7 26.8% 83.9%);
+    --sb--color-success: hsl(142 71% 45%);
+    --sb--color-success-foreground: hsl(0 0% 100%);
   }
 }
 @custom-variant data-open {
@@ -156,7 +203,8 @@
 
 @layer base {
   :root {
-    --smooth-corners: 4;
+    --sb--smooth-corners: 4;
+    --sb--radius-md: var(--radius-md);
   }
 }
 

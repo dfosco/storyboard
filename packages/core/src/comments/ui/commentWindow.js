@@ -10,6 +10,7 @@ import { mount, unmount } from 'svelte'
 import CommentWindowComponent from './CommentWindow.svelte'
 import { getCachedUser } from '../auth.js'
 import { saveDraft, replyDraftKey } from '../commentDrafts.js'
+import './comment-layout.css'
 
 // Track the currently open window so only one is open at a time
 let activeWindow = null

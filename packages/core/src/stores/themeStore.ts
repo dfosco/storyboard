@@ -96,6 +96,7 @@ function _applyToDOM(theme: ThemeValue, resolved: string): void {
   const prototypeTheme = _syncTargets.prototype ? resolved : 'light'
   const toolbarTheme = _syncTargets.toolbar ? resolved : 'light'
   const codeTheme = _syncTargets.codeBoxes ? resolved : 'light'
+  const canvasTheme = _syncTargets.canvas ? resolved : 'light'
 
   // Internal attributes
   el.setAttribute('data-sb-theme', prototypeTheme)
@@ -103,6 +104,7 @@ function _applyToDOM(theme: ThemeValue, resolved: string): void {
 
   // Toolbar theme — follows global theme when synced, stays light otherwise
   el.setAttribute('data-sb-toolbar-theme', toolbarTheme)
+  el.setAttribute('data-sb-canvas-theme', canvasTheme)
 
   // Primer CSS attributes — these drive @primer/react ThemeProvider and
   // Primer CSS custom-property layers without needing React state updates.
@@ -127,6 +129,7 @@ function _dispatchEvent(theme: ThemeValue, resolved: string): void {
   const prototypeResolved = _syncTargets.prototype ? resolved : 'light'
   const toolbarResolved = _syncTargets.toolbar ? resolved : 'light'
   const codeResolved = _syncTargets.codeBoxes ? resolved : 'light'
+  const canvasResolved = _syncTargets.canvas ? resolved : 'light'
 
   document.dispatchEvent(
     new CustomEvent('storyboard:theme:changed', {
@@ -137,6 +140,7 @@ function _dispatchEvent(theme: ThemeValue, resolved: string): void {
         prototypeResolved,
         toolbarResolved,
         codeResolved,
+        canvasResolved,
       },
     }),
   )
@@ -193,6 +197,7 @@ export interface ThemeSyncTargets {
   prototype: boolean
   toolbar: boolean
   codeBoxes: boolean
+  canvas: boolean
 }
 
 const SYNC_STORAGE_KEY = 'sb-theme-sync'
@@ -201,6 +206,7 @@ const DEFAULT_SYNC: ThemeSyncTargets = {
   prototype: true,
   toolbar: false,
   codeBoxes: true,
+  canvas: false,
 }
 
 function readStoredSync(): ThemeSyncTargets {

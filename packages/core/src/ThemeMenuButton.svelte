@@ -25,6 +25,7 @@
   let { config = {}, tabindex = -1 }: Props = $props()
 
   let menuOpen = $state(false)
+  let canvasActive = $state(false)
 
   function handleSelect(value: ThemeValue) {
     setTheme(value)
@@ -35,6 +36,28 @@
     e.preventDefault()
     setThemeSyncTarget(target, !$themeSyncState[target])
   }
+
+  $effect(() => {
+    function handleCanvasMounted() {
+      canvasActive = true
+    }
+    function handleCanvasUnmounted() {
+      canvasActive = false
+    }
+    document.addEventListener('storyboard:canvas:mounted', handleCanvasMounted)
+    document.addEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
+
+    const state = (window as any).__storyboardCanvasBridgeState
+    canvasActive = state?.active === true
+    if (!canvasActive) {
+      document.dispatchEvent(new CustomEvent('storyboard:canvas:status-request'))
+    }
+
+    return () => {
+      document.removeEventListener('storyboard:canvas:mounted', handleCanvasMounted)
+      document.removeEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
+    }
+  })
 </script>
 
 <DropdownMenu.Root bind:open={menuOpen}>
@@ -74,12 +97,21 @@
       <DropdownMenu.SubTrigger>Theme settings</DropdownMenu.SubTrigger>
       <DropdownMenu.SubContent class="min-w-[180px]">
         <DropdownMenu.Label>Apply theme to</DropdownMenu.Label>
-        <DropdownMenu.CheckboxItem
-          checked={$themeSyncState.prototype}
-          onSelect={(e) => handleSyncToggle(e, 'prototype')}
-        >
-          Prototype
-        </DropdownMenu.CheckboxItem>
+        {#if canvasActive}
+          <DropdownMenu.CheckboxItem
+            checked={$themeSyncState.canvas}
+            onSelect={(e) => handleSyncToggle(e, 'canvas')}
+          >
+            Canvas
+          </DropdownMenu.CheckboxItem>
+        {:else}
+          <DropdownMenu.CheckboxItem
+            checked={$themeSyncState.prototype}
+            onSelect={(e) => handleSyncToggle(e, 'prototype')}
+          >
+            Prototype
+          </DropdownMenu.CheckboxItem>
+        {/if}
         <DropdownMenu.CheckboxItem
           checked={$themeSyncState.toolbar}
           onSelect={(e) => handleSyncToggle(e, 'toolbar')}

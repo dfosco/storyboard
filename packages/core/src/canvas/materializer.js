@@ -16,21 +16,70 @@
  */
 
 /**
- * Parse a JSONL string into an array of event objects.
- * Blank lines and lines that fail to parse are silently skipped.
+ * Split a text blob into top-level JSON object snippets.
+ * Supports strict JSONL and accidentally concatenated objects.
  *
- * @param {string} text - Raw JSONL file contents
+ * @param {string} text
+ * @returns {string[]}
+ */
+function splitJsonObjects(text) {
+  const chunks = []
+  let start = -1
+  let depth = 0
+  let inString = false
+  let escaped = false
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+
+    if (inString) {
+      if (escaped) {
+        escaped = false
+      } else if (ch === '\\') {
+        escaped = true
+      } else if (ch === '"') {
+        inString = false
+      }
+      continue
+    }
+
+    if (ch === '"') {
+      inString = true
+      continue
+    }
+
+    if (ch === '{') {
+      if (depth === 0) start = i
+      depth++
+      continue
+    }
+
+    if (ch === '}') {
+      if (depth > 0) depth--
+      if (depth === 0 && start >= 0) {
+        chunks.push(text.slice(start, i + 1))
+        start = -1
+      }
+    }
+  }
+
+  return chunks
+}
+
+/**
+ * Parse canvas event text into an array of event objects.
+ * Blank lines and malformed JSON snippets are skipped.
+ *
+ * @param {string} text - Raw canvas event file contents
  * @returns {object[]} Parsed event objects
  */
 export function parseCanvasJsonl(text) {
   const events = []
-  for (const line of text.split('\n')) {
-    const trimmed = line.trim()
-    if (!trimmed) continue
+  for (const snippet of splitJsonObjects(text || '')) {
     try {
-      events.push(JSON.parse(trimmed))
+      events.push(JSON.parse(snippet))
     } catch {
-      // Skip malformed lines
+      // Skip malformed snippets
     }
   }
   return events

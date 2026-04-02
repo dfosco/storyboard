@@ -10,6 +10,75 @@ function formatName(name) {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+function getEmbedChromeVars(theme) {
+  const value = String(theme || 'light')
+  if (value === 'dark_dimmed') {
+    return {
+      '--bgColor-default': '#22272e',
+      '--bgColor-muted': '#2d333b',
+      '--bgColor-neutral-muted': 'rgba(99, 110, 123, 0.3)',
+      '--fgColor-default': '#adbac7',
+      '--fgColor-muted': '#768390',
+      '--fgColor-onEmphasis': '#ffffff',
+      '--borderColor-default': '#444c56',
+      '--borderColor-muted': '#545d68',
+      '--bgColor-accent-emphasis': '#316dca',
+      '--trigger-bg': '#2d333b',
+      '--trigger-bg-hover': '#373e47',
+      '--trigger-border': '#444c56',
+    }
+  }
+  if (value.startsWith('dark')) {
+    return {
+      '--bgColor-default': '#161b22',
+      '--bgColor-muted': '#21262d',
+      '--bgColor-neutral-muted': 'rgba(110, 118, 129, 0.2)',
+      '--fgColor-default': '#e6edf3',
+      '--fgColor-muted': '#8b949e',
+      '--fgColor-onEmphasis': '#ffffff',
+      '--borderColor-default': '#30363d',
+      '--borderColor-muted': '#30363d',
+      '--bgColor-accent-emphasis': '#2f81f7',
+      '--trigger-bg': '#21262d',
+      '--trigger-bg-hover': '#30363d',
+      '--trigger-border': '#30363d',
+    }
+  }
+  return {
+    '--bgColor-default': '#ffffff',
+    '--bgColor-muted': '#f6f8fa',
+    '--bgColor-neutral-muted': '#eaeef2',
+    '--fgColor-default': '#1f2328',
+    '--fgColor-muted': '#656d76',
+    '--fgColor-onEmphasis': '#ffffff',
+    '--borderColor-default': '#d0d7de',
+    '--borderColor-muted': '#d8dee4',
+    '--bgColor-accent-emphasis': '#2f81f7',
+    '--trigger-bg': '#f6f8fa',
+    '--trigger-bg-hover': '#eaeef2',
+    '--trigger-border': '#d0d7de',
+  }
+}
+
+export { getEmbedChromeVars }
+
+function resolveCanvasThemeFromStorage() {
+  if (typeof localStorage === 'undefined') return 'light'
+  let sync = { prototype: true, toolbar: false, codeBoxes: true, canvas: false }
+  try {
+    const rawSync = localStorage.getItem('sb-theme-sync')
+    if (rawSync) sync = { ...sync, ...JSON.parse(rawSync) }
+  } catch {
+    // Ignore malformed sync settings
+  }
+  if (!sync.canvas) return 'light'
+  const attrTheme = document.documentElement.getAttribute('data-sb-canvas-theme')
+  if (attrTheme) return attrTheme
+  const stored = localStorage.getItem('sb-color-scheme') || 'system'
+  if (stored !== 'system') return stored
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 export default function PrototypeEmbed({ props, onUpdate }) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
   const width = readProp(props, 'width', prototypeEmbedSchema)
@@ -19,13 +88,17 @@ export default function PrototypeEmbed({ props, onUpdate }) {
 
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
   const rawSrc = src ? `${basePath}${src}` : ''
-  const iframeSrc = rawSrc ? `${rawSrc}${rawSrc.includes('?') ? '&' : '?'}_sb_embed` : ''
+  const [refreshKey, setRefreshKey] = useState(0)
+  const iframeSrc = rawSrc
+    ? `${rawSrc}${rawSrc.includes('?') ? '&' : '?'}_sb_embed&_sb_theme_target=prototype&_sb_canvas_theme_key=${refreshKey}`
+    : ''
 
   const scale = zoom / 100
 
   const [editing, setEditing] = useState(false)
   const [interactive, setInteractive] = useState(false)
   const [filter, setFilter] = useState('')
+  const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
   const inputRef = useRef(null)
   const filterRef = useRef(null)
   const embedRef = useRef(null)
@@ -132,6 +205,21 @@ export default function PrototypeEmbed({ props, onUpdate }) {
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive])
 
+  useEffect(() => {
+    function readToolbarTheme() {
+      setCanvasTheme(resolveCanvasThemeFromStorage())
+    }
+    readToolbarTheme()
+    document.addEventListener('storyboard:theme:changed', readToolbarTheme)
+    return () => document.removeEventListener('storyboard:theme:changed', readToolbarTheme)
+  }, [])
+
+  useEffect(() => {
+    setRefreshKey((k) => k + 1)
+  }, [canvasTheme])
+
+  const chromeVars = useMemo(() => getEmbedChromeVars(canvasTheme), [canvasTheme])
+
   const enterInteractive = useCallback(() => setInteractive(true), [])
 
   function handlePickRoute(route) {
@@ -158,7 +246,7 @@ export default function PrototypeEmbed({ props, onUpdate }) {
       <div
         ref={embedRef}
         className={styles.embed}
-        style={{ width, height }}
+        style={{ width, height, ...chromeVars }}
       >
         {editing ? (
           <div

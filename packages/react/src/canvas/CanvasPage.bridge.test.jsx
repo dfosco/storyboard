@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import CanvasPage from './CanvasPage.jsx'
+import CanvasPage, { getCanvasPrimerAttrs, getCanvasThemeVars } from './CanvasPage.jsx'
 import { updateCanvas } from './canvasApi.js'
 
 vi.mock('@dfosco/tiny-canvas', () => ({
@@ -34,7 +34,13 @@ const mockCanvas = {
 }
 
 vi.mock('./useCanvas.js', () => ({
-  useCanvas: () => ({ canvas: mockCanvas, jsxExports: null, loading: false }),
+  useCanvas: () => ({
+    canvas: mockCanvas,
+    jsxExports: {
+      PrimaryButtons: () => <div data-testid="jsx-widget-content">jsx widget</div>,
+    },
+    loading: false,
+  }),
 }))
 
 vi.mock('./widgets/index.js', () => ({
@@ -136,5 +142,63 @@ describe('CanvasPage canvas bridge', () => {
         })
       )
     })
+  })
+})
+
+describe('getCanvasThemeVars', () => {
+  it('returns a distinct dark-dimmed background token', () => {
+    expect(getCanvasThemeVars('light')['--sb--canvas-bg']).toBe('#f6f8fa')
+    expect(getCanvasThemeVars('light')['--tc-bg-muted']).toBe('#f6f8fa')
+    expect(getCanvasThemeVars('dark')['--sb--canvas-bg']).toBe('#161b22')
+    expect(getCanvasThemeVars('dark')['--bgColor-muted']).toBe('#161b22')
+    expect(getCanvasThemeVars('dark')['--tc-bg-muted']).toBe('#161b22')
+    expect(getCanvasThemeVars('dark_dimmed')['--sb--canvas-bg']).toBe('#22272e')
+    expect(getCanvasThemeVars('dark_dimmed')['--bgColor-muted']).toBe('#22272e')
+    expect(getCanvasThemeVars('dark_dimmed')['--tc-bg-muted']).toBe('#22272e')
+    expect(getCanvasThemeVars('dark_dimmed')['--tc-dot-color']).toBe('rgba(205, 217, 229, 0.22)')
+    expect(getCanvasThemeVars('dark_dimmed')['--overlay-backdrop-bgColor']).toBe('rgba(205, 217, 229, 0.22)')
+  })
+})
+
+describe('getCanvasPrimerAttrs', () => {
+  it('maps canvas theme to local Primer mode attrs', () => {
+    expect(getCanvasPrimerAttrs('light')).toEqual({
+      'data-color-mode': 'light',
+      'data-dark-theme': 'dark',
+      'data-light-theme': 'light',
+    })
+    expect(getCanvasPrimerAttrs('dark')).toEqual({
+      'data-color-mode': 'dark',
+      'data-dark-theme': 'dark',
+      'data-light-theme': 'light',
+    })
+    expect(getCanvasPrimerAttrs('dark_dimmed')).toEqual({
+      'data-color-mode': 'dark',
+      'data-dark-theme': 'dark_dimmed',
+      'data-light-theme': 'light',
+    })
+  })
+})
+
+describe('canvas target fallback', () => {
+  it('stays light when canvas target is unchecked even if stale canvas attribute is dark', () => {
+    localStorage.setItem('sb-theme-sync', JSON.stringify({
+      prototype: true,
+      toolbar: true,
+      codeBoxes: true,
+      canvas: false,
+    }))
+    localStorage.setItem('sb-color-scheme', 'dark')
+    document.documentElement.setAttribute('data-sb-canvas-theme', 'dark')
+
+    render(<CanvasPage name="design-overview" />)
+
+    const scroll = document.querySelector('[data-storyboard-canvas-scroll]')
+    const jsxWidget = document.getElementById('jsx-PrimaryButtons')
+    expect(scroll?.style.getPropertyValue('--sb--canvas-bg')).toBe('#f6f8fa')
+    expect(scroll?.style.getPropertyValue('--tc-bg-muted')).toBe('#f6f8fa')
+    expect(scroll?.getAttribute('data-color-mode')).toBe('light')
+    expect(jsxWidget?.getAttribute('data-color-mode')).toBe('light')
+    expect(jsxWidget?.style.getPropertyValue('--bgColor-default')).toBe('#ffffff')
   })
 })

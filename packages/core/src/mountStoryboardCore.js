@@ -37,7 +37,7 @@ function applyEarlyTheme() {
     typeof localStorage !== 'undefined'
       ? localStorage.getItem('sb-theme-sync')
       : null
-  let syncTargets = { prototype: true, toolbar: false, codeBoxes: true }
+  let syncTargets = { prototype: true, toolbar: false, codeBoxes: true, canvas: false }
   if (storedSync) {
     try {
       syncTargets = { ...syncTargets, ...JSON.parse(storedSync) }
@@ -47,6 +47,9 @@ function applyEarlyTheme() {
   }
   const theme = stored || 'system'
   const el = document.documentElement
+  const searchParams =
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+  const forcedTarget = searchParams?.get('_sb_theme_target')
 
   // Resolve "system" to an actual theme for data-sb-theme
   let resolved = theme
@@ -58,13 +61,22 @@ function applyEarlyTheme() {
         : 'light'
   }
 
-  const prototypeTheme = syncTargets.prototype ? resolved : 'light'
-  const toolbarTheme = syncTargets.toolbar ? resolved : 'light'
+  const forcePrototype = forcedTarget === 'prototype'
+  const forceToolbar = forcedTarget === 'toolbar'
+
+  const prototypeTheme = forcePrototype
+    ? resolved
+    : (syncTargets.prototype ? resolved : 'light')
+  const toolbarTheme = forceToolbar
+    ? resolved
+    : (syncTargets.toolbar ? resolved : 'light')
   const codeTheme = syncTargets.codeBoxes ? resolved : 'light'
+  const canvasTheme = syncTargets.canvas ? resolved : 'light'
 
   el.setAttribute('data-sb-theme', prototypeTheme)
   el.setAttribute('data-sb-toolbar-theme', toolbarTheme)
   el.setAttribute('data-sb-code-theme', codeTheme)
+  el.setAttribute('data-sb-canvas-theme', canvasTheme)
 
   if (theme === 'system' && syncTargets.prototype) {
     el.setAttribute('data-color-mode', 'auto')

@@ -1,6 +1,11 @@
 .block {
   min-height: 80px;
-  background: var(--bgColor-default, #ffffff);
+  --sb--markdown-bg: var(--bgColor-default, #ffffff);
+  --sb--markdown-fg: var(--fgColor-default, #1f2328);
+  --sb--markdown-muted: var(--fgColor-muted, #656d76);
+  --sb--markdown-accent: var(--bgColor-accent-emphasis, #2f81f7);
+  background: var(--sb--markdown-bg);
+  color: var(--sb--markdown-fg);
   font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
 }
 
@@ -8,9 +13,13 @@
   padding: 16px 20px;
   font-size: 14px;
   line-height: 1.6;
-  color: var(--fgColor-default, #1f2328);
+  color: var(--sb--markdown-fg);
   cursor: text;
   min-height: 60px;
+}
+
+.preview :global(*) {
+  color: inherit;
 }
 
 .preview h1 {
@@ -56,7 +65,7 @@
 }
 
 .preview :global(.placeholder) {
-  color: var(--fgColor-muted, #656d76);
+  color: var(--sb--markdown-muted);
   font-style: italic;
 }
 
@@ -69,10 +78,10 @@
   padding: 16px 20px;
   border: none;
   outline: none;
-  background: var(--bgColor-default, #ffffff);
+  background: var(--sb--markdown-bg);
   font-family: ui-monospace, SFMono-Regular, monospace;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--fgColor-default, #1f2328);
+  color: var(--sb--markdown-fg);
   resize: none;
 }

@@ -26,6 +26,21 @@
   color-scheme: light;
 
   /* shadcn / Tailwind semantic tokens — pinned to light values */
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(222.2 84% 4.9%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(222.2 84% 4.9%);
+  --color-primary: hsl(222.2 47.4% 11.2%);
+  --color-primary-foreground: hsl(210 40% 98%);
+  --color-secondary: hsl(210 40% 96.1%);
+  --color-secondary-foreground: hsl(222.2 47.4% 11.2%);
+  --color-muted: hsl(210 40% 96.1%);
+  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
+  --color-accent: hsl(210 40% 96.1%);
+  --color-accent-foreground: hsl(222.2 47.4% 11.2%);
+  --color-border: hsl(214.3 31.8% 91.4%);
+  --color-input: hsl(214.3 31.8% 91.4%);
+
   --sb--color-background: hsl(0 0% 100%);
   --sb--color-foreground: hsl(222.2 84% 4.9%);
   --sb--color-popover: hsl(0 0% 100%);
@@ -58,6 +73,21 @@
 :root[data-sb-toolbar-theme^="dark"] [data-slot="dropdown-menu-content"],
 :root[data-sb-toolbar-theme^="dark"] [data-slot="dropdown-menu-sub-content"] {
   color-scheme: dark;
+
+  --color-background: #161b22;
+  --color-foreground: #e6edf3;
+  --color-popover: #161b22;
+  --color-popover-foreground: #e6edf3;
+  --color-primary: #e6edf3;
+  --color-primary-foreground: #161b22;
+  --color-secondary: #21262d;
+  --color-secondary-foreground: #e6edf3;
+  --color-muted: #21262d;
+  --color-muted-foreground: #8b949e;
+  --color-accent: #21262d;
+  --color-accent-foreground: #e6edf3;
+  --color-border: #30363d;
+  --color-input: #30363d;
 
   --sb--color-background: #161b22;
   --sb--color-foreground: #e6edf3;

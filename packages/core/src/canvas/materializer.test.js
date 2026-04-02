@@ -22,6 +22,22 @@ describe('parseCanvasJsonl', () => {
     expect(events).toHaveLength(2)
   })
 
+  it('parses concatenated JSON objects on a single line', () => {
+    const text = '{"event":"canvas_created","title":"Test"}{"event":"source_updated","sources":[]}'
+    const events = parseCanvasJsonl(text)
+    expect(events).toHaveLength(2)
+    expect(events[0].event).toBe('canvas_created')
+    expect(events[1].event).toBe('source_updated')
+  })
+
+  it('handles braces inside JSON strings', () => {
+    const text = '{"event":"canvas_created","title":"A {title}"}{"event":"widget_added","widget":{"id":"w1","props":{"text":"x}"}}}'
+    const events = parseCanvasJsonl(text)
+    expect(events).toHaveLength(2)
+    expect(events[0].title).toBe('A {title}')
+    expect(events[1].widget.props.text).toBe('x}')
+  })
+
   it('returns empty array for empty input', () => {
     expect(parseCanvasJsonl('')).toEqual([])
     expect(parseCanvasJsonl('\n\n')).toEqual([])

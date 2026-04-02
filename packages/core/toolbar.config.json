@@ -28,7 +28,7 @@
       "render": "menu",
       "surface": "main-toolbar",
       "modes": ["*"],
-      "menuWidth": "260px",
+      "menuWidth": "280px",
       "handler": "core:flows"
     },    
     "theme": {

@@ -7,6 +7,7 @@ import Textarea from '@/components/Textarea.jsx'
 import styles from './Example.module.css'
 
 function Example() {
+  const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')
   const [name, setName, clearName] = useOverride('user.name')
   const [username, setUsername, clearUsername] = useOverride('user.username')
   const [bio, clearBio] = useOverride('user.profile.bio')
@@ -28,7 +29,7 @@ function Example() {
 
   return (
     <div className={styles.containerOuter}>
-      <ColorModeSwitcher />
+      {!isEmbed && <ColorModeSwitcher />}
       <div className={styles.container}>
         <h2 className={styles.title}>useOverride Demo</h2>
         <p>Add <code>#user.name=Alice</code> to the URL hash to override any value.</p>

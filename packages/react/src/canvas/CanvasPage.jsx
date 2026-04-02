@@ -14,6 +14,108 @@ const ZOOM_MAX = 200
 
 const CANVAS_BRIDGE_STATE_KEY = '__storyboardCanvasBridgeState'
 
+function getToolbarColorMode(theme) {
+  return String(theme || 'light').startsWith('dark') ? 'dark' : 'light'
+}
+
+function getCanvasPrimerAttrs(theme) {
+  if (String(theme || 'light') === 'dark_dimmed') {
+    return {
+      'data-color-mode': 'dark',
+      'data-dark-theme': 'dark_dimmed',
+      'data-light-theme': 'light',
+    }
+  }
+  if (String(theme || 'light').startsWith('dark')) {
+    return {
+      'data-color-mode': 'dark',
+      'data-dark-theme': 'dark',
+      'data-light-theme': 'light',
+    }
+  }
+  return {
+    'data-color-mode': 'light',
+    'data-dark-theme': 'dark',
+    'data-light-theme': 'light',
+  }
+}
+
+function resolveCanvasThemeFromStorage() {
+  if (typeof localStorage === 'undefined') return 'light'
+  let sync = { prototype: true, toolbar: false, codeBoxes: true, canvas: false }
+  try {
+    const rawSync = localStorage.getItem('sb-theme-sync')
+    if (rawSync) sync = { ...sync, ...JSON.parse(rawSync) }
+  } catch {
+    // Ignore malformed sync settings
+  }
+
+  if (!sync.canvas) return 'light'
+
+  const attrTheme = document.documentElement.getAttribute('data-sb-canvas-theme')
+  if (attrTheme) return attrTheme
+
+  const stored = localStorage.getItem('sb-color-scheme') || 'system'
+  if (stored !== 'system') return stored
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+function getCanvasThemeVars(theme) {
+  const value = String(theme || 'light')
+  if (value === 'dark_dimmed') {
+    return {
+      '--sb--canvas-bg': '#22272e',
+      '--bgColor-default': '#22272e',
+      '--bgColor-muted': '#22272e',
+      '--bgColor-neutral-muted': 'rgba(99, 110, 123, 0.3)',
+      '--bgColor-accent-emphasis': '#316dca',
+      '--tc-bg-muted': '#22272e',
+      '--tc-dot-color': 'rgba(205, 217, 229, 0.22)',
+      '--overlay-backdrop-bgColor': 'rgba(205, 217, 229, 0.22)',
+      '--fgColor-muted': '#768390',
+      '--fgColor-default': '#adbac7',
+      '--fgColor-onEmphasis': '#ffffff',
+      '--borderColor-default': '#444c56',
+      '--borderColor-muted': '#545d68',
+    }
+  }
+  if (value.startsWith('dark')) {
+    return {
+      '--sb--canvas-bg': '#161b22',
+      '--bgColor-default': '#161b22',
+      '--bgColor-muted': '#161b22',
+      '--bgColor-neutral-muted': 'rgba(110, 118, 129, 0.2)',
+      '--bgColor-accent-emphasis': '#2f81f7',
+      '--tc-bg-muted': '#161b22',
+      '--tc-dot-color': 'rgba(255, 255, 255, 0.1)',
+      '--overlay-backdrop-bgColor': 'rgba(255, 255, 255, 0.1)',
+      '--fgColor-muted': '#8b949e',
+      '--fgColor-default': '#e6edf3',
+      '--fgColor-onEmphasis': '#ffffff',
+      '--borderColor-default': '#30363d',
+      '--borderColor-muted': '#30363d',
+    }
+  }
+  return {
+    '--sb--canvas-bg': '#f6f8fa',
+    '--bgColor-default': '#ffffff',
+    '--tc-bg-muted': '#f6f8fa',
+    '--tc-dot-color': 'rgba(0, 0, 0, 0.08)',
+    '--overlay-backdrop-bgColor': 'rgba(0, 0, 0, 0.08)',
+    '--bgColor-muted': '#f6f8fa',
+    '--bgColor-neutral-muted': '#eaeef2',
+    '--bgColor-accent-emphasis': '#2f81f7',
+    '--fgColor-muted': '#656d76',
+    '--fgColor-default': '#1f2328',
+    '--fgColor-onEmphasis': '#ffffff',
+    '--borderColor-default': '#d1d9e0',
+    '--borderColor-muted': '#d8dee4',
+  }
+}
+
+export { getCanvasThemeVars }
+export { getCanvasPrimerAttrs }
+
 /**
  * Debounce helper — returns a function that delays invocation.
  */
@@ -72,6 +174,7 @@ export default function CanvasPage({ name }) {
   const [canvasTitle, setCanvasTitle] = useState(canvas?.title || name)
   const titleInputRef = useRef(null)
   const [localSources, setLocalSources] = useState(canvas?.sources ?? [])
+  const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
 
   if (canvas !== trackedCanvas) {
     setTrackedCanvas(canvas)
@@ -221,6 +324,17 @@ export default function CanvasPage({ name }) {
     }
     document.addEventListener('storyboard:canvas:set-zoom', handleZoom)
     return () => document.removeEventListener('storyboard:canvas:set-zoom', handleZoom)
+  }, [])
+
+  // Canvas background should follow toolbar theme target.
+  useEffect(() => {
+    function readMode() {
+      setCanvasTheme(resolveCanvasThemeFromStorage())
+    }
+
+    readMode()
+    document.addEventListener('storyboard:theme:changed', readMode)
+    return () => document.removeEventListener('storyboard:theme:changed', readMode)
   }, [])
 
   // Broadcast zoom level to CoreUIBar whenever it changes
@@ -405,8 +519,13 @@ export default function CanvasPage({ name }) {
     dotted: canvas.dotted ?? false,
     grid: canvas.grid ?? false,
     gridSize: canvas.gridSize ?? 18,
-    colorMode: canvas.colorMode ?? 'auto',
+    colorMode: canvas.colorMode === 'auto'
+      ? getToolbarColorMode(canvasTheme)
+      : (canvas.colorMode ?? 'auto'),
   }
+
+  const canvasThemeVars = getCanvasThemeVars(canvasTheme)
+  const canvasPrimerAttrs = getCanvasPrimerAttrs(canvasTheme)
 
   // Merge JSX-sourced widgets (from .canvas.jsx) and JSON widgets
   const allChildren = []
@@ -427,6 +546,8 @@ export default function CanvasPage({ name }) {
           id={`jsx-${exportName}`}
           data-tc-x={sourcePosition.x}
           data-tc-y={sourcePosition.y}
+          {...canvasPrimerAttrs}
+          style={canvasThemeVars}
         >
           <ComponentWidget component={Component} />
         </div>
@@ -442,6 +563,8 @@ export default function CanvasPage({ name }) {
         id={widget.id}
         data-tc-x={widget?.position?.x ?? 0}
         data-tc-y={widget?.position?.y ?? 0}
+        {...canvasPrimerAttrs}
+        style={canvasThemeVars}
         onClick={(e) => {
           e.stopPropagation()
           setSelectedWidgetId(widget.id)
@@ -476,13 +599,19 @@ export default function CanvasPage({ name }) {
       <div
         ref={scrollRef}
         data-storyboard-canvas-scroll
+        data-sb-canvas-theme={canvasTheme}
+        {...canvasPrimerAttrs}
         className={styles.canvasScroll}
-        style={spaceHeld ? { cursor: panningActive ? 'grabbing' : 'grab' } : undefined}
+        style={{
+          ...canvasThemeVars,
+          ...(spaceHeld ? { cursor: panningActive ? 'grabbing' : 'grab' } : {}),
+        }}
         onClick={() => setSelectedWidgetId(null)}
         onMouseDown={handlePanStart}
       >
         <div
           data-storyboard-canvas-zoom
+          data-sb-canvas-theme={canvasTheme}
           className={styles.canvasZoom}
           style={{
             transform: `scale(${scale})`,

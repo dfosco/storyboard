@@ -17,6 +17,11 @@
 - **Theme sync bootstrap**: Apply persisted `sb-theme-sync` target settings during early mount so prototype, toolbar, and code theme attributes initialize consistently before UI render.
 - **tiny-canvas queue recovery**: Guard drag-position persistence against malformed `tiny-canvas-queue` localStorage values by resetting invalid JSON to an empty queue instead of throwing during drag saves.
 - **Prototype embeds flow param**: Avoid re-scoping already scoped `flow` query values (e.g. `Proto/flow`) so embedded prototypes no longer resolve to invalid doubled names like `Proto/Proto/flow`.
+- **Theme target mapping**: Canvas background now follows the `Toolbar` theme target, while prototype embeds explicitly force `Prototype` theme via `_sb_theme_target=prototype` in embed URLs.
+- **Embed theme controls**: Hide prototype-local theme switchers in `_sb_embed` views so embeds follow host-managed theme targeting instead of exposing competing in-embed toggles.
+- **Canvas JSONL materialization**: Parse concatenated canvas event objects in `.canvas.jsonl` (not just newline-delimited lines), so `canvas_created` metadata like title/description is preserved and Viewfinder/canvas headers stay in sync.
+- **Canvas dark theme parity**: Restore distinct toolbar-driven canvas backgrounds for `dark` vs `dark_dimmed` instead of collapsing both to the same dark token.
+- **Canvas theme target**: Added a dedicated `Canvas` theme sync target that controls canvas background/widget chrome independently, shows only on canvas pages in Theme settings, and refreshes prototype-embed iframes when canvas theme changes.
 - **Side panel**: Keep toolbar offset rules applied in side/bottom panel modes by forcing `right`/`bottom` offsets with `!important`.
 - **Comments auth UX**: Route token-related failures to the sign-in modal with a top inline alert instead of leaving the user in comment submission flow.
 - **Comments auth UX**: Treat invalid/expired PATs, missing PATs, insufficient token scope/access, and repository access mismatch as re-auth flows that exit comment mode and open sign-in with a specific guidance message.

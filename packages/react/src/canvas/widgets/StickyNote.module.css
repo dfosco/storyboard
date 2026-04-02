@@ -14,8 +14,7 @@
   position: relative;
 }
 
-:global(html[data-color-mode='dark']) .sticky,
-:global(html[data-sb-theme^='dark']) .sticky {
+:global([data-sb-canvas-theme^='dark']) .sticky {
   background: color-mix(in srgb, var(--sticky-bg) 30%, #0d1117 70%);
   border-color: color-mix(in srgb, var(--sticky-bg) 55%, #f0f6fc 18%);
   box-shadow: 2px 3px 10px rgba(0, 0, 0, 0.35);
@@ -33,8 +32,7 @@
   min-height: 60px;
 }
 
-:global(html[data-color-mode='dark']) .text,
-:global(html[data-sb-theme^='dark']) .text {
+:global([data-sb-canvas-theme^='dark']) .text {
   color: color-mix(in srgb, var(--sticky-bg) 30%, #f0f6fc 70%);
 }
 
@@ -59,8 +57,7 @@
   resize: none;
 }
 
-:global(html[data-color-mode='dark']) .textarea,
-:global(html[data-sb-theme^='dark']) .textarea {
+:global([data-sb-canvas-theme^='dark']) .textarea {
   color: color-mix(in srgb, var(--sticky-bg) 26%, #f0f6fc 74%);
 }
 
@@ -99,8 +96,7 @@
   z-index: 10;
 }
 
-:global(html[data-color-mode='dark']) .pickerPopup,
-:global(html[data-sb-theme^='dark']) .pickerPopup {
+:global([data-sb-canvas-theme^='dark']) .pickerPopup {
   background: var(--bgColor-muted, #161b22);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.08),

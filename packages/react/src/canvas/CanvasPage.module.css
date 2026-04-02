@@ -18,12 +18,12 @@
   width: 100vw;
   height: 100vh;
   overflow: auto;
-  background-color: var(--bgColor-muted, #f6f8fa);
+  background-color: var(--sb--canvas-bg, var(--bgColor-muted, #f6f8fa));
 }
 
 @media (prefers-color-scheme: dark) {
   .canvasScroll {
-    background-color: var(--bgColor-muted, #161b22);
+    background-color: var(--sb--canvas-bg, var(--bgColor-muted, #161b22));
   }
 }
 

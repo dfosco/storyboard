@@ -387,12 +387,9 @@
       requestAnimationFrame(() => {
         const el = sourceContainer.querySelector('.highlighted-line')
         if (el) {
-          // Jump near the target instantly, then smooth-scroll the last bit
-          const targetTop = el.offsetTop - sourceContainer.clientHeight / 2
-          sourceContainer.scrollTop = targetTop - 100
-          requestAnimationFrame(() => {
-            el.scrollIntoView({ block: 'center', behavior: 'smooth' })
-          })
+          // Align the highlighted line to the top of the code viewport.
+          const targetTop = Math.max(el.offsetTop - 24, 0)
+          sourceContainer.scrollTo({ top: targetTop, behavior: 'smooth' })
         } else {
           sourceContainer.scrollTop = 0
         }
@@ -531,7 +528,7 @@
         </p>
         <button
           class="mt-2 px-4 py-1.5 text-xs font-medium rounded-md border-none cursor-pointer transition-colors"
-          style:background="var(--color-purple, #7655a4)"
+          style:background="var(--sb--color-purple, #7655a4)"
           style:color="#fff"
           onclick={startInspecting}
         >
@@ -552,7 +549,7 @@
           class="mt-2 px-4 py-1.5 text-xs font-medium rounded-md border cursor-pointer transition-colors"
           style:background="transparent"
           style:color="var(--fgColor-muted)"
-          style:border-color="var(--borderColor-default, var(--color-border, #d1d9e0))"
+          style:border-color="var(--borderColor-default, var(--sb--color-border, #d1d9e0))"
           onclick={stopInspecting}
         >
           Cancel
@@ -564,7 +561,7 @@
       <div class="flex flex-col flex-1 min-h-0 p-3 pt-0 gap-3">
         <!-- Component name -->
         <div>
-          <h3 class="text-base font-bold m-0 inspector-mono" style:color="var(--color-purple, #7655a4)">
+          <h3 class="text-base font-bold m-0 inspector-mono" style:color="var(--sb--color-purple, #7655a4)">
             {componentInfo.name}
           </h3>
         </div>
@@ -621,7 +618,7 @@
         <!-- Re-select button -->
         <button
           class="flex items-center justify-center gap-1.5 w-full px-3 py-1.5 text-xs font-medium rounded-md border-none cursor-pointer transition-colors shrink-0"
-          style:background="var(--color-purple, #7655a4)"
+          style:background="var(--sb--color-purple, #7655a4)"
           style:color="#fff"
           onclick={startInspecting}
         >
@@ -642,7 +639,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--color-purple, #7655a4);
+    background: var(--sb--color-purple, #7655a4);
     animation: inspector-pulse 1.5s ease-in-out infinite;
     flex-shrink: 0;
   }
@@ -681,8 +678,8 @@
   }
 
   .source-pre :global(.highlighted-line) {
-    background: color-mix(in srgb, var(--color-purple, #7655a4) 20%, transparent);
-    border-left: 2px solid var(--color-purple, #7655a4);
+    background: color-mix(in srgb, var(--sb--color-purple, #7655a4) 20%, transparent);
+    border-left: 2px solid var(--sb--color-purple, #7655a4);
     padding-left: 10px;
   }
 
@@ -734,8 +731,8 @@
   }
 
   .code-wrapper :global(.highlighted-line) {
-    background: color-mix(in srgb, var(--color-purple, #7655a4) 20%, transparent);
-    border-left: 2px solid var(--color-purple, #7655a4);
+    background: color-mix(in srgb, var(--sb--color-purple, #7655a4) 20%, transparent);
+    border-left: 2px solid var(--sb--color-purple, #7655a4);
     padding-left: 10px;
   }
 

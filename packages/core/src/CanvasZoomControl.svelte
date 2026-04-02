@@ -53,8 +53,8 @@
     display: flex;
     align-items: center;
     border-radius: 10px;
-    border: 1.5px solid var(--trigger-border, var(--color-slate-400));
-    background: var(--trigger-bg, var(--color-slate-100));
+    border: 1.5px solid var(--sb--trigger-border, var(--color-slate-400));
+    background: var(--sb--trigger-bg, var(--color-slate-100));
     overflow: hidden;
   }
 
@@ -68,12 +68,12 @@
     height: 32px;
     font-size: 16px;
     font-weight: 600;
-    color: var(--trigger-text, var(--color-slate-600));
+    color: var(--sb--trigger-text, var(--color-slate-600));
     transition: background 120ms;
   }
 
   .canvas-zoom-btn:hover:not(:disabled) {
-    background: var(--trigger-bg-hover, var(--color-slate-300));
+    background: var(--sb--trigger-bg-hover, var(--color-slate-300));
   }
 
   .canvas-zoom-btn:disabled {
@@ -93,13 +93,13 @@
     font-size: 11px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    color: var(--trigger-text, var(--color-slate-600));
-    border-left: 1.5px solid var(--trigger-border, var(--color-slate-400));
-    border-right: 1.5px solid var(--trigger-border, var(--color-slate-400));
+    color: var(--sb--trigger-text, var(--color-slate-600));
+    border-left: 1.5px solid var(--sb--trigger-border, var(--color-slate-400));
+    border-right: 1.5px solid var(--sb--trigger-border, var(--color-slate-400));
     transition: background 120ms;
   }
 
   .canvas-zoom-label:hover {
-    background: var(--trigger-bg-hover, var(--color-slate-300));
+    background: var(--sb--trigger-bg-hover, var(--color-slate-300));
   }
 </style>

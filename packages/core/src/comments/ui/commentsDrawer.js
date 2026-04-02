@@ -10,6 +10,8 @@ import { mount, unmount } from 'svelte'
 import CommentsDrawerComponent from './CommentsDrawer.svelte'
 import { isAuthenticated } from '../auth.js'
 import { setCommentMode } from '../commentMode.js'
+import './comment-layout.css'
+import './comments.css'
 
 let activeDrawer = null
 

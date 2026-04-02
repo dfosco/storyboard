@@ -54,9 +54,9 @@ get along, so we shut typescript up by casting `value` to `never`.
 	data-variant={variant}
 	data-size={size}
 	data-spacing={spacing}
-	style={`--gap: ${spacing}`}
+	style={`--sb--gap: ${spacing}`}
 	class={cn(
-		"rounded-lg data-[size=sm]:rounded-[min(var(--radius-md),10px)] group/toggle-group flex w-fit flex-row items-center gap-[--spacing(var(--gap))] data-vertical:flex-col data-vertical:items-stretch",
+		"rounded-lg data-[size=sm]:rounded-[min(var(--sb--radius-md),10px)] group/toggle-group flex w-fit flex-row items-center gap-[--spacing(var(--sb--gap))] data-vertical:flex-col data-vertical:items-stretch",
 		className
 	)}
 	{...restProps}

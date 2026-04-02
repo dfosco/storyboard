@@ -9,6 +9,7 @@ import { mount, unmount } from 'svelte'
 import ComposerComponent from './Composer.svelte'
 import { getCachedUser } from '../auth.js'
 import { saveDraft, clearDraft, composerDraftKey } from '../commentDrafts.js'
+import './comment-layout.css'
 
 /**
  * Show the comment composer at a given position within a container.

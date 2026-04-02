@@ -48,7 +48,7 @@
   :global(html.storyboard-mode-present) .sb-mode-switch,
   :global(html.storyboard-mode-plan) .sb-mode-switch,
   :global(html.storyboard-mode-inspect) .sb-mode-switch {
-    background: color-mix(in srgb, var(--mode-color) 40%, black);
+    background: color-mix(in srgb, var(--sb--mode-color) 40%, black);
     transition: background 0.2s ease;
   }
 
@@ -103,7 +103,7 @@
   :global(html.storyboard-mode-plan) .sb-mode-btn-active,
   :global(html.storyboard-mode-inspect) .sb-mode-btn-active {
     background: rgba(255, 255, 255, 0.85);
-    color: color-mix(in srgb, var(--mode-color) 70%, black);
+    color: color-mix(in srgb, var(--sb--mode-color) 70%, black);
   }
 
   :global(html.storyboard-mode-prototype) .sb-mode-btn-active:hover,
@@ -111,7 +111,7 @@
   :global(html.storyboard-mode-plan) .sb-mode-btn-active:hover,
   :global(html.storyboard-mode-inspect) .sb-mode-btn-active:hover {
     background: rgba(255, 255, 255, 0.85);
-    color: color-mix(in srgb, var(--mode-color) 70%, black);
+    color: color-mix(in srgb, var(--sb--mode-color) 70%, black);
   }
 
   /* Hide when chrome is toggled off via ⌘ + . */

@@ -9,7 +9,7 @@
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import { inspectElement, inspectElementChain } from './inspector/fiberWalker.js'
   import { createMouseMode } from './inspector/mouseMode.js'
-  import { getColors } from './inspector/highlighter.js'
+  import { getColors, createInspectorHighlighter } from './inspector/highlighter.js'
 
   /** @type {{ name: string, props: object, source: { fileName: string, lineNumber: number, columnNumber?: number } | null, owner: string | null } | null} */
   let componentInfo = $state(null)
@@ -255,7 +255,6 @@
 
   async function getHighlighter() {
     if (highlighter) return highlighter
-    const { createInspectorHighlighter } = await import('./inspector/highlighter.js')
     highlighter = await createInspectorHighlighter()
     return highlighter
   }

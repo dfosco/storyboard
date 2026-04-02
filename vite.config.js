@@ -167,6 +167,15 @@ export default defineConfig(() => {
         // Raised from 500 KB default to suppress the warning for that chunk.
         chunkSizeWarningLimit: 700,
         rollupOptions: {
+            // Core UI modules (loader.js, svelte) are dynamically imported for the
+            // externalized UI bundle build but also statically imported by core
+            // exports. This is intentional — suppress the "won't move to another
+            // chunk" noise that only appears in the source-repo build.
+            onwarn(warning, warn) {
+                if (warning.code === 'IMPORT_IS_DEFINED' ||
+                    (warning.message && warning.message.includes('dynamic import will not move module'))) return
+                warn(warning)
+            },
             output: {
                 // Split heavy vendor deps into separate, long-lived cacheable chunks.
                 // Page code stays in small per-route chunks via generouted lazy routes.

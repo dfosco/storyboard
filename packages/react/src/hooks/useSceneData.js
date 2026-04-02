@@ -73,7 +73,9 @@ export function useFlowData(path) {
     }
 
     if (sceneValue === undefined) {
-      console.warn(`[useFlowData] Path "${path}" not found in flow data.`)
+      if (data != null && Object.keys(data).length > 0) {
+        console.warn(`[useFlowData] Path "${path}" not found in flow data.`)
+      }
       return {}
     }
 

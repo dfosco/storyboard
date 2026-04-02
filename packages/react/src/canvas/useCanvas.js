@@ -59,15 +59,18 @@ export function useCanvas(name) {
     })
   }, [name, buildTimeCanvas])
 
+  const jsxModule = canvas?._jsxModule
+  const jsxImport = canvas?._jsxImport
+
   useEffect(() => {
-    if (!canvas?._jsxModule) {
+    if (!jsxModule) {
       setJsxExports(null)
       return
     }
 
-    const loadPromise = canvas._jsxImport
-      ? canvas._jsxImport()
-      : import(/* @vite-ignore */ resolveCanvasModuleImport(canvas._jsxModule))
+    const loadPromise = jsxImport
+      ? jsxImport()
+      : import(/* @vite-ignore */ resolveCanvasModuleImport(jsxModule))
 
     loadPromise
       .then((mod) => {
@@ -80,10 +83,10 @@ export function useCanvas(name) {
         setJsxExports(exports)
       })
       .catch((err) => {
-        console.error(`[storyboard] Failed to load canvas JSX module: ${canvas._jsxModule}`, err)
+        console.error(`[storyboard] Failed to load canvas JSX module: ${jsxModule}`, err)
         setJsxExports(null)
       })
-  }, [canvas?._jsxModule])
+  }, [jsxModule, jsxImport])
 
   // In dev, react to file mutations from the data plugin without reloading
   // the current page. This keeps canvas editing state and route stable.

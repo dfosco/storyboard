@@ -86,8 +86,14 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
       const protoFlow = resolveFlowName(prototypeName, prototypeName)
       if (flowExists(protoFlow)) return protoFlow
     }
-    // 3. Global default
-    return 'default'
+    // 3. Prototype-scoped default (e.g. Example/default)
+    if (prototypeName) {
+      const scopedDefault = resolveFlowName(prototypeName, 'default')
+      if (flowExists(scopedDefault)) return scopedDefault
+    }
+    // 4. Global default — or null if no flow exists at all
+    if (flowExists('default')) return 'default'
+    return null
   }, [canvasName, sceneParam, flowName, sceneName, prototypeName, pageFlow])
 
   // Auto-install body class sync (sb-key--value classes on <body>)
@@ -109,9 +115,10 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     return () => cleanup?.()
   }, [])
 
-  // Skip flow loading for canvas pages
+  // Skip flow loading for canvas pages and flow-less pages
   const { data, error } = useMemo(() => {
     if (canvasName) return { data: null, error: null }
+    if (!activeFlowName) return { data: {}, error: null }
     try {
       let flowData = loadFlow(activeFlowName)
 

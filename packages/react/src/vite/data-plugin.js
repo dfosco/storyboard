@@ -444,7 +444,11 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
       }
       parsed = resolveTemplateVars(parsed, templateVars)
 
-      declarations.push(`const ${varName} = ${JSON.stringify(parsed)}`)
+      if (suffix === 'canvas' && parsed._jsxModule) {
+        declarations.push(`const ${varName} = Object.assign(${JSON.stringify(parsed)}, { _jsxImport: () => import(${JSON.stringify(parsed._jsxModule)}) })`)
+      } else {
+        declarations.push(`const ${varName} = ${JSON.stringify(parsed)}`)
+      }
       entries[suffix].push(`  ${JSON.stringify(name)}: ${varName}`)
     }
   }

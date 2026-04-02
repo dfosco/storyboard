@@ -65,8 +65,11 @@ export function useCanvas(name) {
       return
     }
 
-    const moduleImportPath = resolveCanvasModuleImport(canvas._jsxModule)
-    import(/* @vite-ignore */ moduleImportPath)
+    const loadPromise = canvas._jsxImport
+      ? canvas._jsxImport()
+      : import(/* @vite-ignore */ resolveCanvasModuleImport(canvas._jsxModule))
+
+    loadPromise
       .then((mod) => {
         const exports = {}
         for (const [key, value] of Object.entries(mod)) {
@@ -77,7 +80,7 @@ export function useCanvas(name) {
         setJsxExports(exports)
       })
       .catch((err) => {
-        console.error(`[storyboard] Failed to load canvas JSX module: ${moduleImportPath}`, err)
+        console.error(`[storyboard] Failed to load canvas JSX module: ${canvas._jsxModule}`, err)
         setJsxExports(null)
       })
   }, [canvas?._jsxModule])

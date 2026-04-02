@@ -18,19 +18,25 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 
 ## Skills
 
-- **Primer Primitives** (`.github/skills/primer-primitives/primer-primitives.md`) — Complete reference of all `@primer/primitives` CSS design tokens. **Only consult when you need tokens not covered by the Primer Builder's inline token tables** (e.g., motion, controls, overlays, breakpoints, component-specific colors).
+- **create** (`.github/skills/create/SKILL.md`) — Walks through creating Storyboard assets: prototype, external prototype, flow, page, canvas, object, or record.
 
-- **Storyboard** (`.github/skills/storyboard/SKILL.md`) — Detailed guide for data structuring. **Only consult for standalone data tasks** (refactoring, creating flows outside the builder flow). The Primer Builder skill has inline data structuring guidance.
+- **worktree** (`.github/skills/worktree/SKILL.md`) — Creates a git worktree in `.worktrees/<branch-name>` and switches into it.
 
-- **Architecture Scanner** (`.github/skills/architecture-scanner/SKILL.md`) Scans the codebase and generates architecture documentation in `.github/architecture/`. Invoke with: "scan the codebase architecture", "update the architecture", "update arch".
+- **tools** (`.github/skills/tools/SKILL.md`) — Reference for creating toolbar tools: config schema, handlers, surfaces, and render types.
 
-- **Worktree** (`.github/skills/worktree/SKILL.md`) — Creates a git worktree in `.worktrees/<branch-name>` and switches into it. Invoke with: "create worktree", "worktree for X", or just "worktree X".
+- **changeset** (`.github/skills/changeset/SKILL.md`) — Guides changeset/versioning/release workflows (changeset file, version bump, tag, push, publish).
 
-- **Storyboard Core** (`.github/skills/storyboard-core/SKILL.md`) — Guide for adding menu buttons to the CoreUIBar floating toolbar. Consult when asked to create a "workshop button", "menu button", "toolbar button", or add a new feature to the CoreUIBar chrome.
+- **storyboard-core** (`.github/skills/storyboard-core/SKILL.md`) — Guide for adding CoreUIBar menu buttons and wiring action handlers.
 
-- **Tools** (`.github/skills/tools/SKILL.md`) — Comprehensive guide for creating toolbar tools: handler modules, config schema, surface reference, custom handler registration. Consult when asked to create a "toolbar tool", "menu button", "canvas tool", or add functionality to the toolbar.
+- **vitest** (`.github/skills/vitest/SKILL.md`) — Vitest testing framework guidance for writing and configuring tests.
 
-- **Changelog** (`.github/skills/changelog/SKILL.md`) — Generates formatted changelog entries from git commits between versions. Invoke with: "generate changelog", "changelog since X", or "what changed since X".
+- **clips** (`.github/skills/clips/SKILL.md`) — Local-first issue tracking workflow for goals/tasks synced to GitHub.
+
+- **architecture-scanner** (`.github/skills/architecture-scanner/SKILL.md`) — Scans codebase architecture and generates docs in `.github/architecture/`.
+
+- **storyboard** (`.github/skills/storyboard/SKILL.md`) — Storyboard data structuring for flows, objects, and records.
+
+- **changelog** (`.github/skills/changelog/SKILL.md`) — Generates formatted changelog entries from commit ranges.
 
 ---
 

@@ -169,7 +169,15 @@
             {@const itemState = action.toolKey ? getToolbarToolState(action.toolKey) : 'active'}
             {@const itemLocalOnly = action.toolKey ? isToolbarToolLocalOnly(action.toolKey) : false}
             <DropdownMenu.Item
-              onclick={() => { open = false; window.location.href = action.url }}
+              onclick={() => {
+                open = false
+                if (action.url.startsWith('/') && !action.url.startsWith('//')) {
+                  const base = (basePath || '/').replace(/\/+$/, '')
+                  window.location.href = (base === '/' ? '' : base) + action.url
+                } else {
+                  window.location.href = action.url
+                }
+              }}
               disabled={itemState === 'inactive'}
               class={itemState === 'dimmed' ? 'opacity-50' : ''}
             >

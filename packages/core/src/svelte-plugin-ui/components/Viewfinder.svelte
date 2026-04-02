@@ -584,6 +584,8 @@
     background-color: var(--bgColor-default, #0d1117);
     color: var(--fgColor-default, #e6edf3);
     padding: 80px 32px 48px;
+    max-width: 960px;
+    margin: 0 auto;
   }
 
   .header {

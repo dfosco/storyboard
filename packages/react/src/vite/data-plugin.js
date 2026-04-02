@@ -573,13 +573,37 @@ export default function storyboardDataPlugin() {
     configureServer(server) {
       // Watch for data file changes in dev mode
       const watcher = server.watcher
+      if (!buildResult) buildResult = buildIndex(root)
+      const knownCanvasNames = new Set(Object.keys(buildResult.index.canvas || {}))
+      const pendingCanvasUnlinks = new Map()
+
+      const triggerFullReload = () => {
+        buildResult = null
+        const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
+        if (mod) {
+          server.moduleGraph.invalidateModule(mod)
+          server.ws.send({ type: 'full-reload' })
+        }
+      }
 
       const invalidate = (filePath) => {
         const normalized = filePath.replace(/\\/g, '/')
         // Skip .canvas.jsonl content changes entirely — these are mutated
         // at runtime by the canvas server API. A full-reload would create
         // a feedback loop (save → file change → reload → lose editing state).
-        if (/\.canvas\.jsonl$/.test(normalized)) return
+        // Instead, send a custom HMR event so the active canvas page can refetch
+        // file-backed data in place with no navigation or document reload.
+        if (/\.canvas\.jsonl$/.test(normalized)) {
+          const parsed = parseDataFile(filePath)
+          if (parsed?.suffix === 'canvas' && parsed?.name) {
+            server.ws.send({
+              type: 'custom',
+              event: 'storyboard:canvas-file-changed',
+              data: { name: parsed.name },
+            })
+          }
+          return
+        }
 
         // Invalidate when toolbar.config.json inside a prototype changes
         if (normalized.endsWith('/toolbar.config.json') && normalized.includes('/prototypes/')) {
@@ -605,17 +629,64 @@ export default function storyboardDataPlugin() {
         }
       }
 
-      const invalidateOnAddRemove = (filePath) => {
+      const invalidateOnAddRemove = (filePath, eventType) => {
         const parsed = parseDataFile(filePath)
         const inFolder = filePath.replace(/\\/g, '/').includes('.folder/')
         if (!parsed && !inFolder) return
-        // Canvas additions/removals DO need a reload (new routes)
-        buildResult = null
-        const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
-        if (mod) {
-          server.moduleGraph.invalidateModule(mod)
-          server.ws.send({ type: 'full-reload' })
+
+        // Canvas writers/editors can emit unlink+add for an in-place save.
+        // Treat canvas add/unlink as runtime data updates and never full-reload
+        // from watcher events. Canvas pages sync from disk via custom WS events.
+        if (parsed?.suffix === 'canvas') {
+          const name = parsed.name
+          if (eventType === 'unlink') {
+            const timer = setTimeout(() => {
+              pendingCanvasUnlinks.delete(name)
+              knownCanvasNames.delete(name)
+              server.ws.send({
+                type: 'custom',
+                event: 'storyboard:canvas-file-changed',
+                data: { name },
+              })
+            }, 1500)
+            pendingCanvasUnlinks.set(name, timer)
+            return
+          }
+
+          if (eventType === 'add') {
+            const pending = pendingCanvasUnlinks.get(name)
+            if (pending) {
+              clearTimeout(pending)
+              pendingCanvasUnlinks.delete(name)
+              server.ws.send({
+                type: 'custom',
+                event: 'storyboard:canvas-file-changed',
+                data: { name },
+              })
+              return
+            }
+
+            if (knownCanvasNames.has(name)) {
+              server.ws.send({
+                type: 'custom',
+                event: 'storyboard:canvas-file-changed',
+                data: { name },
+              })
+              return
+            }
+
+            knownCanvasNames.add(name)
+            server.ws.send({
+              type: 'custom',
+              event: 'storyboard:canvas-file-changed',
+              data: { name },
+            })
+            return
+          }
         }
+
+        // Non-canvas additions/removals and folder changes update the route/data graph.
+        triggerFullReload()
       }
 
       // Watch storyboard.config.json for changes
@@ -632,12 +703,31 @@ export default function storyboardDataPlugin() {
         }
       }
 
-      watcher.on('add', invalidateOnAddRemove)
-      watcher.on('unlink', invalidateOnAddRemove)
+      watcher.on('add', (filePath) => invalidateOnAddRemove(filePath, 'add'))
+      watcher.on('unlink', (filePath) => invalidateOnAddRemove(filePath, 'unlink'))
       watcher.on('change', (filePath) => {
         invalidate(filePath)
         invalidateConfig(filePath)
       })
+    },
+
+    handleHotUpdate(ctx) {
+      const normalized = ctx.file.replace(/\\/g, '/')
+      if (!/\.canvas\.jsonl$/.test(normalized)) return
+
+      const parsed = parseDataFile(ctx.file)
+      if (parsed?.suffix === 'canvas' && parsed?.name) {
+        ctx.server.ws.send({
+          type: 'custom',
+          event: 'storyboard:canvas-file-changed',
+          data: { name: parsed.name },
+        })
+      }
+
+      // Prevent Vite's default fallback behavior (full page reload) for
+      // non-module .canvas.jsonl edits. Canvas pages consume these updates
+      // through the custom WS event and in-page refetch.
+      return []
     },
 
     // Rebuild index on each build start

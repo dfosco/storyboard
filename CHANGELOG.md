@@ -4,6 +4,9 @@
 
 ### Bug Fixes
 
+- **Canvas dev no-reload sync**: Hardened `.canvas.jsonl` live updates in local development by handling canvas hot updates through custom WS events, suppressing default Vite fallback reloads for canvas edits, and guarding against editor atomic-save watcher patterns (`unlink`/`add`) that were still causing full refreshes in `storyboard-core`.
+- **Canvas sticky dark themes**: Sticky notes now switch to a dark-friendly palette (note surface, text, editor text, and picker popup) whenever the app is in dark mode (`data-color-mode='dark'` or `data-sb-theme^='dark'`).
+- **Canvas drag polish**: Widget tilt now uses a subtler `1.5deg` rotation, only activates after 10px of movement, and keeps smooth 150ms transitions while preserving click/double-click edit behavior.
 - **Core UI isolation**: Replaced the Shadow DOM approach with scoped Core UI token names (`--sb--*`) across toolbar, inspector, side panel, comments, and related UI surfaces to avoid style collisions with prototype CSS while preserving existing UI behavior.
 - **Popover/menu colors in linked clients**: Restored Tailwind-compatible `--color-*` aliases alongside `--sb--*` tokens so utilities like `bg-popover` and `text-popover-foreground` resolve correctly instead of falling back to Primer defaults in npm-linked consumers.
 - **Inspector source scrolling**: Updated highlighted-line scroll behavior to align near the top of the code viewport with a 24px offset, making long snippets land at a readable starting position.

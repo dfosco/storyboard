@@ -59,6 +59,37 @@ export default defineConfig(() => {
         },
     },
     plugins: [
+        // Guard against unexpected full-reloads caused by canvas JSONL writes.
+        // Some editors/save modes emit watcher sequences that can still trigger
+        // generic reload paths; suppress those and rely on canvas custom events.
+        {
+            name: 'canvas-reload-guard',
+            configureServer(server) {
+                let recentCanvasMutationAt = 0
+                const CANVAS_WINDOW_MS = 1500
+                const isCanvasFile = (file = '') => /\.canvas\.jsonl$/i.test(file.replace(/\\/g, '/'))
+
+                const markCanvasMutation = (file = '') => {
+                    if (isCanvasFile(file)) recentCanvasMutationAt = Date.now()
+                }
+
+                server.watcher.on('change', markCanvasMutation)
+                server.watcher.on('add', markCanvasMutation)
+                server.watcher.on('unlink', markCanvasMutation)
+
+                const originalSend = server.ws.send.bind(server.ws)
+                server.ws.send = (payload, ...rest) => {
+                    if (
+                        payload &&
+                        payload.type === 'full-reload' &&
+                        Date.now() - recentCanvasMutationAt < CANVAS_WINDOW_MS
+                    ) {
+                        return
+                    }
+                    return originalSend(payload, ...rest)
+                }
+            },
+        },
         tailwindcss(),
         storyboardData(),
         storyboardServer(),

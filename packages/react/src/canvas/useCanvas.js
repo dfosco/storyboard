@@ -70,5 +70,25 @@ export function useCanvas(name) {
       })
   }, [canvas?._jsxModule])
 
+  // In dev, react to file mutations from the data plugin without reloading
+  // the current page. This keeps canvas editing state and route stable.
+  useEffect(() => {
+    if (!import.meta.hot || !buildTimeCanvas) return
+
+    const handleCanvasFileChanged = ({ data }) => {
+      if (!data || data.name !== name) return
+      fetchCanvasFromServer(name).then((fresh) => {
+        if (fresh) {
+          setCanvas((prev) => ({ ...(prev || buildTimeCanvas), ...fresh }))
+        }
+      })
+    }
+
+    import.meta.hot.on('storyboard:canvas-file-changed', handleCanvasFileChanged)
+    return () => {
+      import.meta.hot.off('storyboard:canvas-file-changed', handleCanvasFileChanged)
+    }
+  }, [name, buildTimeCanvas])
+
   return { canvas, jsxExports, loading }
 }

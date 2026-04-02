@@ -14,6 +14,13 @@
   position: relative;
 }
 
+:global(html[data-color-mode='dark']) .sticky,
+:global(html[data-sb-theme^='dark']) .sticky {
+  background: color-mix(in srgb, var(--sticky-bg) 30%, #0d1117 70%);
+  border-color: color-mix(in srgb, var(--sticky-bg) 55%, #f0f6fc 18%);
+  box-shadow: 2px 3px 10px rgba(0, 0, 0, 0.35);
+}
+
 .text {
   padding: 16px 20px;
   margin: 0;
@@ -24,6 +31,11 @@
   word-break: break-word;
   cursor: text;
   min-height: 60px;
+}
+
+:global(html[data-color-mode='dark']) .text,
+:global(html[data-sb-theme^='dark']) .text {
+  color: color-mix(in srgb, var(--sticky-bg) 30%, #f0f6fc 70%);
 }
 
 .textarea {
@@ -45,6 +57,11 @@
   white-space: pre-wrap;
   word-break: break-word;
   resize: none;
+}
+
+:global(html[data-color-mode='dark']) .textarea,
+:global(html[data-sb-theme^='dark']) .textarea {
+  color: color-mix(in srgb, var(--sticky-bg) 26%, #f0f6fc 74%);
 }
 
 /* Color picker area — sits below the sticky */
@@ -80,6 +97,14 @@
   pointer-events: none;
   transition: opacity 150ms;
   z-index: 10;
+}
+
+:global(html[data-color-mode='dark']) .pickerPopup,
+:global(html[data-sb-theme^='dark']) .pickerPopup {
+  background: var(--bgColor-muted, #161b22);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
 .pickerArea:hover .pickerDot {

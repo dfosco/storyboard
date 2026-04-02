@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.7.0
+
+### Minor Changes
+
+-   Large fixes across themes, style isolation, and canvas behavior
+
 ## 3.6.1
 
 ### Patch Changes

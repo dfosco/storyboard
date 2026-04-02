@@ -32,36 +32,38 @@ function readSyncTargets() {
   }
 }
 
-function applyToPrimer(setDayScheme, setNightScheme, themeValue) {
+function applyToPrimer(setColorMode, setDayScheme, setNightScheme, themeValue) {
   if (themeValue === 'system' || !themeValue) {
+    setColorMode('auto')
     setDayScheme('light')
     setNightScheme('dark')
   } else {
+    setColorMode('day')
     setDayScheme(themeValue)
     setNightScheme(themeValue)
   }
 }
 
 export default function ThemeSync() {
-  const { setDayScheme, setNightScheme } = useTheme()
+  const { setColorMode, setDayScheme, setNightScheme } = useTheme()
 
   // Restore saved theme on mount
   useEffect(() => {
     const saved = localStorage.getItem(THEME_STORAGE_KEY)
     const syncTargets = readSyncTargets()
     const prototypeTheme = syncTargets.prototype ? saved : 'light'
-    applyToPrimer(setDayScheme, setNightScheme, prototypeTheme)
+    applyToPrimer(setColorMode, setDayScheme, setNightScheme, prototypeTheme)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Listen for theme changes from the Svelte CoreUIBar
   useEffect(() => {
     function handleThemeChanged(e) {
       const { prototypeTheme } = e.detail
-      applyToPrimer(setDayScheme, setNightScheme, prototypeTheme)
+      applyToPrimer(setColorMode, setDayScheme, setNightScheme, prototypeTheme)
     }
     document.addEventListener('storyboard:theme:changed', handleThemeChanged)
     return () => document.removeEventListener('storyboard:theme:changed', handleThemeChanged)
-  }, [setDayScheme, setNightScheme])
+  }, [setColorMode, setDayScheme, setNightScheme])
 
   return null
 }

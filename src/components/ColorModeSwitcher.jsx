@@ -5,22 +5,42 @@ import { SunIcon, MoonIcon } from '@primer/octicons-react'
 import styles from './ColorModeSwitcher.module.css'
 
 const THEME_STORAGE_KEY = 'sb-color-scheme'
+const THEME_SYNC_STORAGE_KEY = 'sb-theme-sync'
+
+function readSyncTargets() {
+    try {
+        const raw = localStorage.getItem(THEME_SYNC_STORAGE_KEY)
+        if (!raw) return { prototype: true }
+        return { prototype: true, ...JSON.parse(raw) }
+    } catch {
+        return { prototype: true }
+    }
+}
 
 function ColorModeSwitcher() {
-    const { setDayScheme, setNightScheme, colorScheme } = useTheme()
+    const { setColorMode, setDayScheme, setNightScheme, colorScheme } = useTheme()
 
-    // On mount, restore saved theme from localStorage
+    // On mount, restore saved theme from localStorage (respecting sync targets)
     useEffect(() => {
         const saved = localStorage.getItem(THEME_STORAGE_KEY)
-        if (saved) {
+        const syncTargets = readSyncTargets()
+        if (saved && syncTargets.prototype) {
+            setColorMode('day')
             setDayScheme(saved)
             setNightScheme(saved)
+        } else if (!syncTargets.prototype) {
+            setColorMode('day')
+            setDayScheme('light')
+            setNightScheme('light')
         }
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Keep data-sb-theme attribute in sync
+    // Keep data-sb-theme attribute in sync (only when prototype sync is on)
     useLayoutEffect(() => {
-        document.documentElement.setAttribute('data-sb-theme', colorScheme)
+        const syncTargets = readSyncTargets()
+        if (syncTargets.prototype) {
+            document.documentElement.setAttribute('data-sb-theme', colorScheme)
+        }
     }, [colorScheme])
 
     const setScheme = (schemeValue) => {

@@ -36,7 +36,7 @@ jobs:
           SAFE_NAME=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9._-]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
           FOLDER="branch--${SAFE_NAME}"
           echo "folder=$FOLDER" >> "$GITHUB_OUTPUT"
-          echo "base=/storyboard/${FOLDER}/" >> "$GITHUB_OUTPUT"
+          echo "base=/${FOLDER}/" >> "$GITHUB_OUTPUT"
           echo "Preview folder: $FOLDER"
 
       - name: Install dependencies

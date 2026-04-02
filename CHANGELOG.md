@@ -4,6 +4,7 @@
 
 ### Bug Fixes
 
+- **Branch preview deploys**: Fix preview `base` path in GitHub Actions so branch URLs resolve static inspector assets at `/{branch-folder}/_storyboard/*` and avoid `inspector.json` 404s.
 - **Flows**: Fix flow loading `baseURL` handling for branch deploys.
 - **Inspector**: Normalize configured highlight theme names before palette lookup so aliases like `night owl` / `night owl light` resolve to supported dark/light palettes instead of falling back to dark.
 - **Theme sync targets**: Apply theme independently per target. Prototype now respects the Prototype toggle, code boxes follow `Code boxes`, and toolbar remains controlled by `Toolbar`.

@@ -9,8 +9,10 @@
 -->
 
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte'
   import { buildPrototypeIndex } from '../../viewfinder.js'
   import { getLocal, setLocal } from '../../localStorage.js'
+  import { getParam, setParam, removeParam } from '../../session.js'
   import Icon from './Icon.svelte'
 
   interface Props {
@@ -85,6 +87,24 @@
   // View mode — top-level toggle between Prototypes and Canvases (hidden for now)
   type ViewMode = 'prototypes' | 'canvases'
   let viewMode: ViewMode = $state('prototypes')
+
+  function syncViewModeFromHash() {
+    viewMode = getParam('canvas') != null ? 'canvases' : 'prototypes'
+  }
+
+  onMount(() => {
+    syncViewModeFromHash()
+    window.addEventListener('hashchange', syncViewModeFromHash)
+  })
+
+  onDestroy(() => {
+    window.removeEventListener('hashchange', syncViewModeFromHash)
+  })
+
+  $effect(() => {
+    if (viewMode === 'canvases') setParam('canvas', '1')
+    else removeParam('canvas')
+  })
 
   // Canvas folder data: extract folders that contain canvases for canvas view
   const canvasFolders = $derived.by(() => {
@@ -450,7 +470,7 @@
           <a class="listItem" href={canvas.route}>
             <div class="cardBody">
               <p class="protoName">
-                <span class="protoIcon">{canvas.icon || '🎨'}</span>
+                <span class="protoIcon">{canvas.icon || ''}</span>
                 {canvas.name}
               </p>
               {#if canvas.description}

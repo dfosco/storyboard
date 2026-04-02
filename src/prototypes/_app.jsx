@@ -38,7 +38,7 @@ function FeatureFlagBanner() {
   if (!showBanner) return null
   return (
     <div className={appStyles.banner}>
-      🚩 Feature flag <strong>show-banner</strong> is enabled — toggle it off in DevTools.
+      🚩 Feature flag <strong>show-banner</strong> is enabled — toggle it off in the Command Menu on the bottom right.
     </div>
   )
 }

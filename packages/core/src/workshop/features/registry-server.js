@@ -18,4 +18,5 @@ import { createFlowsHandler } from './createFlow/server.js'
 export const serverFeatures = {
   createPrototype: { serverSetup: createPrototypesHandler },
   createFlow: { serverSetup: createFlowsHandler },
+  createPage: { serverSetup: createFlowsHandler },
 }

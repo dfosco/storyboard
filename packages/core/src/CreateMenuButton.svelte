@@ -20,7 +20,7 @@
     name: string
     label: string
     overlayId: string
-    overlay: Component<{ onClose?: () => void }>
+    overlay: Component<Record<string, any>>
   }
 
   interface CreateMenuConfig {
@@ -46,7 +46,7 @@
   const menuWidth = $derived((config as any).menuWidth || null)
 
   let menuOpen = $state(false)
-  let activeOverlay: string | null = $state(null)
+  let activeAction: any | null = $state(null)
 
   // Build a feature lookup for resolving config actions
   const featuresByName = $derived(
@@ -73,16 +73,12 @@
     }).filter(Boolean)
   })
 
-  const activeFeature = $derived(
-    activeOverlay ? features.find(f => f.overlayId === activeOverlay) ?? null : null
-  )
-
-  function showOverlay(id: string) {
-    activeOverlay = id
+  function showOverlay(action: any) {
+    activeAction = action
     menuOpen = false
   }
 
-  function closeOverlay() { activeOverlay = null }
+  function closeOverlay() { activeAction = null }
 </script>
 
 <DropdownMenu.Root bind:open={menuOpen}>
@@ -116,7 +112,7 @@
         <DropdownMenu.Separator />
         <div class="px-2 py-1.5 text-xs text-muted-foreground flex flex-row items-baseline"><span class="inline-flex w-2 h-2 rounded-full mr-1.5" style="background: hsl(137, 66%, 30%)"></span>Only available in dev environment</div>
       {:else if action._feature}
-        <DropdownMenu.Item onclick={() => showOverlay(action._feature.overlayId)}>
+        <DropdownMenu.Item onclick={() => showOverlay(action)}>
           {action.label || action._feature.label}
         </DropdownMenu.Item>
       {/if}
@@ -124,10 +120,10 @@
   </DropdownMenu.Content>
 </DropdownMenu.Root>
 
-{#if activeFeature}
+{#if activeAction?._feature}
   <Panel.Root open={true} onOpenChange={(open) => { if (!open) closeOverlay() }}>
     <Panel.Content>
-      <activeFeature.overlay onClose={closeOverlay} />
+      <activeAction._feature.overlay onClose={closeOverlay} {...(activeAction.overlayProps || {})} />
     </Panel.Content>
   </Panel.Root>
 {/if}

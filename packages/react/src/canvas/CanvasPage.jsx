@@ -2,6 +2,7 @@ import { createElement, useCallback, useEffect, useRef, useState } from 'react'
 import { Canvas } from '@dfosco/tiny-canvas'
 import '@dfosco/tiny-canvas/style.css'
 import { useCanvas } from './useCanvas.js'
+import { shouldPreventCanvasTextSelection } from './textSelection.js'
 import { getWidgetComponent } from './widgets/index.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
@@ -10,6 +11,8 @@ import styles from './CanvasPage.module.css'
 
 const ZOOM_MIN = 25
 const ZOOM_MAX = 200
+
+const CANVAS_BRIDGE_STATE_KEY = '__storyboardCanvasBridgeState'
 
 /**
  * Debounce helper — returns a function that delays invocation.
@@ -23,21 +26,6 @@ function debounce(fn, ms) {
 }
 
 /**
- * Save a drag position to localStorage so tiny-canvas picks it up on render.
- */
-function saveWidgetPosition(widgetId, x, y) {
-  try {
-    const queue = JSON.parse(localStorage.getItem('tiny-canvas-queue')) || []
-    const now = new Date().toISOString().replace(/[:.]/g, '-')
-    const entry = { id: widgetId, x, y, time: now }
-    const idx = queue.findIndex((item) => item.id === widgetId)
-    if (idx >= 0) queue[idx] = entry
-    else queue.push(entry)
-    localStorage.setItem('tiny-canvas-queue', JSON.stringify(queue))
-  } catch { /* localStorage unavailable */ }
-}
-
-/**
  * Get viewport-center coordinates for placing a new widget.
  */
 function getViewportCenter() {
@@ -45,6 +33,10 @@ function getViewportCenter() {
     x: Math.round(window.innerWidth / 2 - 120),
     y: Math.round(window.innerHeight / 2 - 80),
   }
+}
+
+function roundPosition(value) {
+  return Math.round(value)
 }
 
 /** Renders a single JSON-defined widget by type lookup. */
@@ -75,13 +67,16 @@ export default function CanvasPage({ name }) {
   const [trackedCanvas, setTrackedCanvas] = useState(canvas)
   const [selectedWidgetId, setSelectedWidgetId] = useState(null)
   const [zoom, setZoom] = useState(100)
+  const zoomRef = useRef(100)
   const scrollRef = useRef(null)
   const [canvasTitle, setCanvasTitle] = useState(canvas?.title || name)
   const titleInputRef = useRef(null)
+  const [localSources, setLocalSources] = useState(canvas?.sources ?? [])
 
   if (canvas !== trackedCanvas) {
     setTrackedCanvas(canvas)
     setLocalWidgets(canvas?.widgets ?? null)
+    setLocalSources(canvas?.sources ?? [])
     setCanvasTitle(canvas?.title || name)
   }
 
@@ -133,15 +128,61 @@ export default function CanvasPage({ name }) {
     )
   }, [name])
 
-  // Signal canvas mount/unmount to CoreUIBar (include zoom state)
+  const handleItemDragEnd = useCallback((dragId, position) => {
+    if (!dragId || !position) return
+    const rounded = { x: roundPosition(position.x), y: roundPosition(position.y) }
+
+    if (dragId.startsWith('jsx-')) {
+      const sourceExport = dragId.replace(/^jsx-/, '')
+      setLocalSources((prev) => {
+        const current = Array.isArray(prev) ? prev : []
+        const next = current.some((s) => s?.export === sourceExport)
+          ? current.map((s) => (s?.export === sourceExport ? { ...s, position: rounded } : s))
+          : [...current, { export: sourceExport, position: rounded }]
+        updateCanvas(name, { sources: next }).catch((err) =>
+          console.error('[canvas] Failed to save source position:', err)
+        )
+        return next
+      })
+      return
+    }
+
+    setLocalWidgets((prev) => {
+      if (!prev) return prev
+      const next = prev.map((w) =>
+        w.id === dragId ? { ...w, position: rounded } : w
+      )
+      updateCanvas(name, { widgets: next }).catch((err) =>
+        console.error('[canvas] Failed to save widget position:', err)
+      )
+      return next
+    })
+  }, [name])
+
   useEffect(() => {
+    zoomRef.current = zoom
+  }, [zoom])
+
+  // Signal canvas mount/unmount to CoreUIBar
+  useEffect(() => {
+    window[CANVAS_BRIDGE_STATE_KEY] = { active: true, name, zoom: zoomRef.current }
     document.dispatchEvent(new CustomEvent('storyboard:canvas:mounted', {
-      detail: { name, zoom }
+      detail: { name, zoom: zoomRef.current }
     }))
+
+    function handleStatusRequest() {
+      const state = window[CANVAS_BRIDGE_STATE_KEY] || { active: true, name, zoom: zoomRef.current }
+      document.dispatchEvent(new CustomEvent('storyboard:canvas:status', { detail: state }))
+    }
+
+    document.addEventListener('storyboard:canvas:status-request', handleStatusRequest)
+
     return () => {
+      document.removeEventListener('storyboard:canvas:status-request', handleStatusRequest)
+      window[CANVAS_BRIDGE_STATE_KEY] = { active: false, name: '', zoom: 100 }
       document.dispatchEvent(new CustomEvent('storyboard:canvas:unmounted'))
     }
-  }, [name, zoom])
+  }, [name])
 
   // Add a widget by type — used by CanvasControls and CoreUIBar event
   const addWidget = useCallback(async (type) => {
@@ -154,7 +195,6 @@ export default function CanvasPage({ name }) {
         position: pos,
       })
       if (result.success && result.widget) {
-        saveWidgetPosition(result.widget.id, pos.x, pos.y)
         setLocalWidgets((prev) => [...(prev || []), result.widget])
       }
     } catch (err) {
@@ -185,12 +225,23 @@ export default function CanvasPage({ name }) {
 
   // Broadcast zoom level to CoreUIBar whenever it changes
   useEffect(() => {
+    window[CANVAS_BRIDGE_STATE_KEY] = { active: true, name, zoom }
     document.dispatchEvent(new CustomEvent('storyboard:canvas:zoom-changed', {
       detail: { zoom }
     }))
-  }, [zoom])
+  }, [name, zoom])
 
   // Delete selected widget on Delete/Backspace key
+  useEffect(() => {
+    function handleSelectStart(e) {
+      if (shouldPreventCanvasTextSelection(e.target)) {
+        e.preventDefault()
+      }
+    }
+    document.addEventListener('selectstart', handleSelectStart)
+    return () => document.removeEventListener('selectstart', handleSelectStart)
+  }, [])
+
   useEffect(() => {
     function handleKeyDown(e) {
       if (!selectedWidgetId) return
@@ -246,7 +297,6 @@ export default function CanvasPage({ name }) {
           position: pos,
         })
         if (result.success && result.widget) {
-          saveWidgetPosition(result.widget.id, pos.x, pos.y)
           setLocalWidgets((prev) => [...(prev || []), result.widget])
         }
       } catch (err) {
@@ -361,11 +411,23 @@ export default function CanvasPage({ name }) {
   // Merge JSX-sourced widgets (from .canvas.jsx) and JSON widgets
   const allChildren = []
 
+  const sourcePositionByExport = Object.fromEntries(
+    (localSources || [])
+      .filter((source) => source?.export)
+      .map((source) => [source.export, source.position || { x: 0, y: 0 }])
+  )
+
   // 1. JSX-sourced component widgets
   if (jsxExports) {
     for (const [exportName, Component] of Object.entries(jsxExports)) {
+      const sourcePosition = sourcePositionByExport[exportName] || { x: 0, y: 0 }
       allChildren.push(
-        <div key={`jsx-${exportName}`} id={`jsx-${exportName}`}>
+        <div
+          key={`jsx-${exportName}`}
+          id={`jsx-${exportName}`}
+          data-tc-x={sourcePosition.x}
+          data-tc-y={sourcePosition.y}
+        >
           <ComponentWidget component={Component} />
         </div>
       )
@@ -378,6 +440,8 @@ export default function CanvasPage({ name }) {
       <div
         key={widget.id}
         id={widget.id}
+        data-tc-x={widget?.position?.x ?? 0}
+        data-tc-y={widget?.position?.y ?? 0}
         onClick={(e) => {
           e.stopPropagation()
           setSelectedWidgetId(widget.id)
@@ -411,12 +475,14 @@ export default function CanvasPage({ name }) {
       </div>
       <div
         ref={scrollRef}
+        data-storyboard-canvas-scroll
         className={styles.canvasScroll}
         style={spaceHeld ? { cursor: panningActive ? 'grabbing' : 'grab' } : undefined}
         onClick={() => setSelectedWidgetId(null)}
         onMouseDown={handlePanStart}
       >
         <div
+          data-storyboard-canvas-zoom
           className={styles.canvasZoom}
           style={{
             transform: `scale(${scale})`,
@@ -425,7 +491,7 @@ export default function CanvasPage({ name }) {
             height: `${Math.max(10000, 100 / scale)}vh`,
           }}
         >
-          <Canvas {...canvasProps}>
+          <Canvas {...canvasProps} onDragEnd={handleItemDragEnd}>
             {allChildren}
           </Canvas>
         </div>

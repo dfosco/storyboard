@@ -12,6 +12,7 @@
 
 import * as createPrototype from './createPrototype/index.js'
 import * as createFlow from './createFlow/index.js'
+import * as createPage from './createPage/index.js'
 import * as createCanvas from './createCanvas/index.js'
 
 /**
@@ -20,5 +21,6 @@ import * as createCanvas from './createCanvas/index.js'
 export const features = {
   createPrototype,
   createFlow,
+  createPage,
   createCanvas,
 }

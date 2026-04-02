@@ -449,6 +449,8 @@
     document.addEventListener('storyboard:canvas:mounted', handleCanvasMounted)
     document.addEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
     document.addEventListener('storyboard:canvas:zoom-changed', handleZoomChanged)
+    document.addEventListener('storyboard:canvas:status', handleCanvasMounted)
+    syncCanvasBridgeState()
   })
 
   onDestroy(() => {
@@ -459,6 +461,7 @@
     document.removeEventListener('storyboard:canvas:mounted', handleCanvasMounted)
     document.removeEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
     document.removeEventListener('storyboard:canvas:zoom-changed', handleZoomChanged)
+    document.removeEventListener('storyboard:canvas:status', handleCanvasMounted)
   })
 
   function handleCanvasMounted(e: Event) {
@@ -475,7 +478,21 @@
   }
 
   function handleZoomChanged(e: Event) {
+    if (!canvasActive) canvasActive = true
     canvasZoom = (e as CustomEvent).detail?.zoom ?? canvasZoom
+  }
+
+  function syncCanvasBridgeState() {
+    if (typeof window === 'undefined') return
+    const state = (window as any).__storyboardCanvasBridgeState
+    if (state && typeof state === 'object') {
+      canvasActive = state.active === true
+      activeCanvasName = state.name || ''
+      canvasZoom = typeof state.zoom === 'number' ? state.zoom : 100
+    }
+    if (!canvasActive) {
+      document.dispatchEvent(new CustomEvent('storyboard:canvas:status-request'))
+    }
   }
 
   // Flow info dialog state — driven by core/show-flow-info action
@@ -638,4 +655,3 @@
     z-index: 1;
   }
 </style>
-

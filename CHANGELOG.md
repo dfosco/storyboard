@@ -4,6 +4,9 @@
 
 ### Bug Fixes
 
+- **Core UI isolation**: Replaced the Shadow DOM approach with scoped Core UI token names (`--sb--*`) across toolbar, inspector, side panel, comments, and related UI surfaces to avoid style collisions with prototype CSS while preserving existing UI behavior.
+- **Popover/menu colors in linked clients**: Restored Tailwind-compatible `--color-*` aliases alongside `--sb--*` tokens so utilities like `bg-popover` and `text-popover-foreground` resolve correctly instead of falling back to Primer defaults in npm-linked consumers.
+- **Inspector source scrolling**: Updated highlighted-line scroll behavior to align near the top of the code viewport with a 24px offset, making long snippets land at a readable starting position.
 - **Branch preview deploys**: Fix preview `base` path in GitHub Actions so branch URLs resolve static inspector assets at `/{branch-folder}/_storyboard/*` and avoid `inspector.json` 404s.
 - **Flows**: Fix flow loading `baseURL` handling for branch deploys.
 - **Inspector**: Normalize configured highlight theme names before palette lookup so aliases like `night owl` / `night owl light` resolve to supported dark/light palettes instead of falling back to dark.
@@ -16,6 +19,24 @@
 
 - **Dev link script**: `npm run link` now starts `dev:ui` after rebuilding and linking, keeping the UI bundle watcher running during local linking workflows.
 - **Toolbar config**: Refresh default inspector highlighting config to explicit supported palette IDs (`github-dark-dimmed` and `github`).
+
+## 3.7.0
+
+Workshop creation flow polish across Flow/Page/Prototype creation, with scoped template discovery and clearer page setup behavior.
+
+### Features
+
+- **Create Page**: Added a dedicated Create Page form in the Create menu so page creation no longer reuses the Create Flow overlay.
+- **Scoped template/recipe index**: Template selectors now include both global entries and prototype-local entries discovered from each prototype's `templates/` and `recipes/` folders.
+- **Prototype-aware template groups**: Template/recipe pickers show local entries grouped under the selected prototype heading.
+- **Template picker parity**: New Page now uses the same dropdown component style as New Prototype for template/recipe selection.
+- **Create Flow UX**: Flows are always prototype-scoped, "Global prototype" is removed, and flow-copy options are scoped to the selected prototype.
+- **Starting page controls**: Create Flow now supports selecting an existing starting route or choosing "Create new page" inline with path + template inputs.
+
+### Bug Fixes
+
+- **Workshop routes**: Fixed malformed server template-string blocks that prevented workshop handlers from mounting and caused `/_storyboard/workshop/pages` 404s.
+- **Comments auth modal**: Fixed sign-in modal focus crash (`focus is not a function`) by binding focus to the underlying input ref.
 
 ## 3.5.0
 

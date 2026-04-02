@@ -12,8 +12,6 @@ import { getCachedComments, setCachedComments, clearCachedComments, savePendingC
 import { showComposer } from './composer.js'
 import { openAuthModal } from './authModal.js'
 import { showCommentWindow, closeCommentWindow } from './commentWindow.js'
-import './comment-layout.css'
-import './comments.css'
 
 const INVALID_PAT_ERROR_MESSAGE = 'GitHub PAT is invalid or expired. Please sign in again.'
 const TOKEN_ACCESS_ERROR_MESSAGE =
@@ -26,11 +24,98 @@ let overlay = null
 let activeComposer = null
 let renderedPins = []
 let cachedDiscussion = null
+const CANVAS_SCROLL_SELECTOR = '[data-storyboard-canvas-scroll]'
+const CANVAS_ZOOM_SELECTOR = '[data-storyboard-canvas-zoom]'
+const CANVAS_SURFACE_SELECTOR = '.tc-canvas'
 
 function esc(str) {
   const d = document.createElement('div')
   d.textContent = str ?? ''
   return d.innerHTML
+}
+
+function roundPct(value) {
+  return Math.round(value * 10) / 10
+}
+
+function parseScale(transform) {
+  if (!transform || transform === 'none') return 1
+  const scaleMatch = transform.match(/scale\(([^)]+)\)/)
+  if (scaleMatch) {
+    const parsed = Number.parseFloat(scaleMatch[1])
+    if (Number.isFinite(parsed) && parsed > 0) return parsed
+  }
+  const matrixMatch = transform.match(/matrix\(([^)]+)\)/)
+  if (matrixMatch) {
+    const first = Number.parseFloat(matrixMatch[1].split(',')[0])
+    if (Number.isFinite(first) && first > 0) return first
+  }
+  return 1
+}
+
+function getCanvasContext() {
+  const scrollEl = document.querySelector(CANVAS_SCROLL_SELECTOR)
+  const zoomEl = document.querySelector(CANVAS_ZOOM_SELECTOR)
+  const canvasEl = (zoomEl && zoomEl.querySelector(CANVAS_SURFACE_SELECTOR)) || null
+  if (!scrollEl || !zoomEl || !canvasEl) return null
+  const scale = parseScale(zoomEl.style.transform || getComputedStyle(zoomEl).transform)
+  const width = canvasEl.offsetWidth || canvasEl.clientWidth
+  const height = canvasEl.offsetHeight || canvasEl.clientHeight
+  if (!width || !height) return null
+  return { scrollEl, scale, width, height }
+}
+
+function getAnchorPosition(xPct, yPct) {
+  const canvas = getCanvasContext()
+  if (!canvas) {
+    return {
+      left: `${xPct}%`,
+      top: `${yPct}%`,
+      canvas: false,
+    }
+  }
+
+  const rect = canvas.scrollEl.getBoundingClientRect()
+  const canvasX = (xPct / 100) * canvas.width
+  const canvasY = (yPct / 100) * canvas.height
+  const left = rect.left + (canvasX * canvas.scale) - canvas.scrollEl.scrollLeft
+  const top = rect.top + (canvasY * canvas.scale) - canvas.scrollEl.scrollTop
+
+  return {
+    left: `${left}px`,
+    top: `${top}px`,
+    canvas: true,
+  }
+}
+
+function getPercentFromPointer(clientX, clientY) {
+  const canvas = getCanvasContext()
+  if (canvas) {
+    const rect = canvas.scrollEl.getBoundingClientRect()
+    const canvasX = (clientX - rect.left + canvas.scrollEl.scrollLeft) / canvas.scale
+    const canvasY = (clientY - rect.top + canvas.scrollEl.scrollTop) / canvas.scale
+    const xPct = roundPct((canvasX / canvas.width) * 100)
+    const yPct = roundPct((canvasY / canvas.height) * 100)
+    return { xPct, yPct, canvas: true }
+  }
+
+  const xPct = roundPct((clientX / window.innerWidth) * 100)
+  const docHeight = document.documentElement.scrollHeight
+  const yPct = roundPct(((clientY + window.scrollY) / docHeight) * 100)
+  return { xPct, yPct, canvas: false }
+}
+
+function syncOverlayCoordinateSpace() {
+  if (!overlay) return
+  if (getCanvasContext()) {
+    overlay.style.position = 'fixed'
+    overlay.style.width = '100vw'
+    overlay.style.height = '100vh'
+  } else {
+    overlay.style.position = 'absolute'
+    overlay.style.width = ''
+    overlay.style.height = ''
+  }
 }
 
 function ensureOverlay() {
@@ -39,6 +124,7 @@ function ensureOverlay() {
   overlay = document.createElement('div')
   overlay.className = 'sb-comment-overlay'
   document.body.appendChild(overlay)
+  syncOverlayCoordinateSpace()
 
   // Click handler for placing comments lives on the overlay itself
   overlay.addEventListener('click', (e) => {
@@ -46,6 +132,26 @@ function ensureOverlay() {
     if (e.target.closest('.sb-composer') || e.target.closest('.sb-comment-pin') || e.target.closest('.sb-comment-window')) return
     handleOverlayClick(e)
   })
+  // Keep canvas scroll usable while comment mode is active.
+  overlay.addEventListener('wheel', (e) => {
+    if (!isCommentModeActive()) return
+    const target = e.target
+    if (
+      target instanceof Element &&
+      (target.closest('.sb-composer') || target.closest('.sb-comment-pin') || target.closest('.sb-comment-window'))
+    ) {
+      return
+    }
+    const canvas = getCanvasContext()
+    if (!canvas) return
+    if (typeof canvas.scrollEl.scrollBy === 'function') {
+      canvas.scrollEl.scrollBy({ left: e.deltaX, top: e.deltaY, behavior: 'auto' })
+    } else {
+      canvas.scrollEl.scrollLeft += e.deltaX
+      canvas.scrollEl.scrollTop += e.deltaY
+    }
+    e.preventDefault()
+  }, { passive: false })
 
   return overlay
 }
@@ -132,8 +238,9 @@ function renderOptimisticPin(ov, xPct, yPct, text, user) {
   const pendingId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   const pin = document.createElement('div')
   pin.className = 'sb-comment-pin sb-comment-pin-pending absolute br-100 sb-bg pointer sb-shadow pe-auto overflow-hidden'
-  pin.style.left = `${xPct}%`
-  pin.style.top = `${yPct}%`
+  const anchor = getAnchorPosition(xPct, yPct)
+  pin.style.left = anchor.left
+  pin.style.top = anchor.top
   pin.title = `${user?.login ?? 'you'}: ${text.slice(0, 80)}`
 
   pin.innerHTML = user?.avatarUrl
@@ -188,8 +295,9 @@ function renderPendingPins(ov) {
   for (const p of pending) {
     const pin = document.createElement('div')
     pin.className = 'sb-comment-pin sb-comment-pin-failed absolute br-100 sb-bg pointer sb-shadow pe-auto overflow-hidden'
-    pin.style.left = `${p.x}%`
-    pin.style.top = `${p.y}%`
+    const anchor = getAnchorPosition(p.x, p.y)
+    pin.style.left = anchor.left
+    pin.style.top = anchor.top
     pin.title = `⚠ Failed to post — click to retry: ${p.text?.slice(0, 60) ?? ''}`
 
     pin.innerHTML = p.author?.avatarUrl
@@ -223,9 +331,10 @@ function renderPin(ov, comment, index) {
   const hue = Math.round((index * 137.5) % 360)
   const pin = document.createElement('div')
   pin.className = 'sb-comment-pin absolute br-100 sb-bg pointer sb-shadow pe-auto overflow-hidden'
-  pin.style.left = `${comment.meta?.x ?? 0}%`
-  pin.style.top = `${comment.meta?.y ?? 0}%`
-  pin.style.setProperty('--sb--pin-hue', String(hue))
+  const startAnchor = getAnchorPosition(comment.meta?.x ?? 0, comment.meta?.y ?? 0)
+  pin.style.left = startAnchor.left
+  pin.style.top = startAnchor.top
+  pin.style.setProperty('--pin-hue', String(hue))
 
   if (comment.meta?.resolved) pin.setAttribute('data-resolved', 'true')
   pin.title = `${comment.author?.login ?? 'unknown'}: ${comment.text?.slice(0, 80) ?? ''}`
@@ -244,19 +353,29 @@ function renderPin(ov, comment, index) {
     dragged = false
     const startX = e.clientX
     const startY = e.clientY
-    const startLeftPct = parseFloat(pin.style.left)
-    const startTopPct = parseFloat(pin.style.top)
+    const startCoords = getPercentFromPointer(e.clientX, e.clientY)
+    const startLeftPct = startCoords.xPct
+    const startTopPct = startCoords.yPct
+    let lastCoords = { xPct: startLeftPct, yPct: startTopPct }
 
     const onMove = (ev) => {
       const dx = ev.clientX - startX
       const dy = ev.clientY - startY
       if (!dragged && Math.abs(dx) < 4 && Math.abs(dy) < 4) return
       dragged = true
-      const xPct = Math.round((startLeftPct + (dx / window.innerWidth) * 100) * 10) / 10
-      const docHeight = document.documentElement.scrollHeight
-      const yPct = Math.round((startTopPct + (dy / docHeight) * 100) * 10) / 10
-      pin.style.left = `${xPct}%`
-      pin.style.top = `${yPct}%`
+
+      if (startCoords.canvas) {
+        lastCoords = getPercentFromPointer(ev.clientX, ev.clientY)
+        pin.style.left = `${ev.clientX}px`
+        pin.style.top = `${ev.clientY}px`
+      } else {
+        const xPct = roundPct(startLeftPct + (dx / window.innerWidth) * 100)
+        const docHeight = document.documentElement.scrollHeight
+        const yPct = roundPct(startTopPct + (dy / docHeight) * 100)
+        lastCoords = { xPct, yPct }
+        pin.style.left = `${xPct}%`
+        pin.style.top = `${yPct}%`
+      }
     }
 
     const onUp = async (ev) => {
@@ -264,11 +383,15 @@ function renderPin(ov, comment, index) {
       document.removeEventListener('mouseup', onUp)
       if (!dragged) return
 
-      const dx = ev.clientX - startX
-      const dy = ev.clientY - startY
-      const xPct = Math.round((startLeftPct + (dx / window.innerWidth) * 100) * 10) / 10
-      const docHeight = document.documentElement.scrollHeight
-      const yPct = Math.round((startTopPct + (dy / docHeight) * 100) * 10) / 10
+      let xPct = lastCoords.xPct
+      let yPct = lastCoords.yPct
+      if (!startCoords.canvas) {
+        const dx = ev.clientX - startX
+        const dy = ev.clientY - startY
+        xPct = roundPct(startLeftPct + (dx / window.innerWidth) * 100)
+        const docHeight = document.documentElement.scrollHeight
+        yPct = roundPct(startTopPct + (dy / docHeight) * 100)
+      }
       comment.meta = { ...comment.meta, x: xPct, y: yPct }
 
       try {
@@ -299,6 +422,7 @@ function renderPin(ov, comment, index) {
       if (detail) {
         detail._rawBody = detail.body
         showCommentWindow(ov, detail, cachedDiscussion, {
+          getAnchorPosition,
           onClose: () => {},
           onMove: () => reloadComments(),
         })
@@ -307,6 +431,7 @@ function renderPin(ov, comment, index) {
       console.warn('[storyboard] Could not load comment detail:', err.message)
       // Fall back to summary data
       showCommentWindow(ov, comment, cachedDiscussion, {
+        getAnchorPosition,
         onClose: () => {},
         onMove: () => reloadComments(),
       })
@@ -378,13 +503,25 @@ async function autoOpenCommentFromUrl(ov, discussion) {
   if (!comment) return
 
   if (comment.meta?.y != null) {
-    const docHeight = document.documentElement.scrollHeight
-    const yPx = (comment.meta.y / 100) * docHeight
-    const viewTop = window.scrollY
-    const viewBottom = viewTop + window.innerHeight
-    if (yPx < viewTop || yPx > viewBottom) {
-      const scrollTarget = Math.max(0, yPx - window.innerHeight / 3)
-      window.scrollTo({ top: scrollTarget, behavior: 'smooth' })
+    const canvas = getCanvasContext()
+    if (canvas) {
+      const canvasY = (comment.meta.y / 100) * canvas.height
+      const yPx = canvasY * canvas.scale
+      const viewTop = canvas.scrollEl.scrollTop
+      const viewBottom = viewTop + canvas.scrollEl.clientHeight
+      if (yPx < viewTop || yPx > viewBottom) {
+        const scrollTarget = Math.max(0, yPx - canvas.scrollEl.clientHeight / 3)
+        canvas.scrollEl.scrollTo({ top: scrollTarget, behavior: 'smooth' })
+      }
+    } else {
+      const docHeight = document.documentElement.scrollHeight
+      const yPx = (comment.meta.y / 100) * docHeight
+      const viewTop = window.scrollY
+      const viewBottom = viewTop + window.innerHeight
+      if (yPx < viewTop || yPx > viewBottom) {
+        const scrollTarget = Math.max(0, yPx - window.innerHeight / 3)
+        window.scrollTo({ top: scrollTarget, behavior: 'smooth' })
+      }
     }
   }
 
@@ -394,6 +531,7 @@ async function autoOpenCommentFromUrl(ov, discussion) {
     if (detail) {
       detail._rawBody = detail.body
       showCommentWindow(ov, detail, discussion, {
+        getAnchorPosition,
         onClose: () => {},
         onMove: () => reloadComments(),
       })
@@ -407,6 +545,7 @@ async function autoOpenCommentFromUrl(ov, discussion) {
   // Fallback to summary data
   comment._rawBody = comment.body
   showCommentWindow(ov, comment, discussion, {
+    getAnchorPosition,
     onClose: () => {},
     onMove: () => reloadComments(),
   })
@@ -418,10 +557,7 @@ function handleOverlayClick(e) {
 
   closeCommentWindow()
 
-  // x as percentage of viewport width, y as percentage of full document height
-  const xPct = Math.round((e.clientX / window.innerWidth) * 1000) / 10
-  const docHeight = document.documentElement.scrollHeight
-  const yPct = Math.round(((e.clientY + window.scrollY) / docHeight) * 1000) / 10
+  const { xPct, yPct } = getPercentFromPointer(e.clientX, e.clientY)
 
   // Move existing composer instead of destroying and recreating
   if (activeComposer) {
@@ -432,6 +568,7 @@ function handleOverlayClick(e) {
   const ov = ensureOverlay()
   const route = getCurrentRoute()
   activeComposer = showComposer(ov, xPct, yPct, route, {
+    getAnchorPosition,
     onCancel: () => { activeComposer = null },
     onSubmitOptimistic: (text, x, y) => {
       activeComposer = null
@@ -457,6 +594,7 @@ function setBodyCommentMode(active) {
     document.body.classList.add('sb-comment-mode')
     showBanner()
     ensureOverlay()
+    syncOverlayCoordinateSpace()
     renderCachedPins()
     loadAndRenderComments()
   } else {
@@ -487,6 +625,31 @@ export function mountComments() {
   _mounted = true
 
   subscribeToCommentMode(setBodyCommentMode)
+  window.addEventListener('popstate', () => {
+    if (isCommentModeActive()) {
+      setCommentMode(false)
+    }
+  })
+
+  document.addEventListener('storyboard:canvas:mounted', () => {
+    syncOverlayCoordinateSpace()
+    if (isCommentModeActive()) renderCachedPins()
+  })
+  document.addEventListener('storyboard:canvas:unmounted', () => {
+    syncOverlayCoordinateSpace()
+    if (isCommentModeActive()) renderCachedPins()
+  })
+  document.addEventListener('storyboard:canvas:zoom-changed', () => {
+    syncOverlayCoordinateSpace()
+    if (isCommentModeActive()) renderCachedPins()
+  })
+  document.addEventListener('scroll', (e) => {
+    const target = e.target
+    if (!(target instanceof Element)) return
+    if (!target.matches(CANVAS_SCROLL_SELECTOR)) return
+    if (!isCommentModeActive()) return
+    renderCachedPins()
+  }, true)
 
   window.addEventListener('keydown', (e) => {
     const tag = e.target.tagName

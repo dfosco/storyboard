@@ -5,11 +5,11 @@ description: Walks users through creating any Storyboard asset — prototype, ex
 
 # Create
 
-> Triggered by: "create a new prototype", "scaffold a prototype", "new prototype", "create prototype", "new flow", "create flow", "new canvas", "create canvas", "new object", "create object", "new record", "create record", "create new", "scaffold", "add external prototype", "link external prototype"
+> Triggered by: "create a new prototype", "scaffold a prototype", "new prototype", "create prototype", "new flow", "create flow", "new page", "create page", "new canvas", "create canvas", "new object", "create object", "new record", "create record", "create new", "scaffold", "add external prototype", "link external prototype"
 
 ## What This Does
 
-Guides the user through creating a new Storyboard **prototype**, **external prototype**, **flow**, **canvas**, **object**, or **record** by collecting inputs interactively, then writing the files directly or calling the scaffolding API.
+Guides the user through creating a new Storyboard **prototype**, **external prototype**, **flow**, **page**, **canvas**, **object**, or **record** by collecting inputs interactively, then writing the files directly or calling the scaffolding API.
 
 ## Procedure
 
@@ -22,7 +22,8 @@ Use `ask_user` to ask:
 Provide choices:
 - "Prototype" — A new page with routing and metadata
 - "External Prototype" — A link to a prototype hosted elsewhere (opens in new tab)
-- "Flow" — A new flow data file (.flow.json)
+- "Flow" — A new prototype-scoped flow data file (.flow.json)
+- "Page" — A new page inside an existing prototype
 - "Canvas" — A new freeform canvas (.canvas.jsonl)
 - "Object" — A reusable data fragment (.object.json)
 - "Record" — A parameterized collection (.record.json)
@@ -213,68 +214,152 @@ Use `ask_user` to ask:
 
 Validate the name is kebab-case.
 
-### Step F2: Ask for the title
+### Step F2: Ask for the target prototype
+
+Fetch available prototypes from Workshop API:
+
+```bash
+GET /_storyboard/workshop/flows
+```
+
+Use `ask_user` to ask:
+
+> Which prototype should this flow belong to?
+
+Provide choices:
+- Each non-external prototype from API response (`folder / prototype` label when folder exists)
+
+### Step F3: Ask for title
 
 Use `ask_user` with a humanized default:
 
 > What's the human-readable title for this flow?
 
-### Step F3: Ask about prototype scope
+### Step F4: Ask about copying from an existing flow (optional)
 
-First, list available prototypes:
+From the same API response, filter `flows` to the selected prototype (+ same folder when present).
 
-```bash
-find src/prototypes -name "*.prototype.json" -not -path "*/node_modules/*" 2>/dev/null | sed 's|src/prototypes/||;s|/[^/]*\.prototype\.json||' | sort -u
-```
-
-Use `ask_user` to ask:
-
-> Should this flow belong to a specific prototype, or be global?
-
-Provide choices:
-- "Global (available to all prototypes)"
-- Each existing prototype name
-
-### Step F4: Ask about copying from existing flow
-
-List existing flows:
-
-```bash
-find src -name "*.flow.json" -not -path "*/node_modules/*" 2>/dev/null | head -20
-```
-
-If flows exist, use `ask_user`:
+Use `ask_user`:
 
 > Would you like to copy data from an existing flow?
 
-Choices: "No, start empty", then list existing flow names.
+Choices: "No, start empty", then matching existing flow entries.
 
-### Step F5: Create the flow file
+### Step F5: Ask for starting page (optional)
 
-Determine the target directory:
-- If global: `src/data/`
-- If prototype-scoped: `src/prototypes/<name>/`
+Use the selected prototype's `routes` from API and ask:
 
-Create the file `<name>.flow.json` with:
+> Do you want a starting page route for this flow?
 
-```json
+Choices:
+- "None"
+- Existing routes (e.g. `/my-proto/repositories`)
+- "Create new page"
+
+If "Create new page" is selected, ask:
+
+1. New page path suffix (shown under `/<prototype>/...`, e.g. `security/new-page`)
+2. Template / recipe (optional; choices come from API `partials` filtered by current prototype scope)
+
+Template/recipe choice rules:
+- Always include global partials (`scope: "global"`)
+- Include prototype-scoped partials only when `partial.prototype` and `partial.folder` match the selected prototype
+- Submit the selected **partial `id`** (not display `name`)
+
+### Step F6: Create the flow via Workshop API
+
+Send:
+
+```bash
+POST /_storyboard/workshop/flows
 {
-  "meta": {
-    "title": "<title>"
-  },
-  "$global": []
+  "name": "<kebab-name>",
+  "title": "<title>",
+  "prototype": "<prototype>",
+  "folder": "<folder-if-any>",
+  "copyFrom": "<relative-flow-path-if-selected>",
+  "startingPage": "<existing-route-if-selected>",
+  "createPage": {
+    "path": "/<prototype>/<new-page-suffix>",
+    "template": "<partial-id-optional>"
+  }
 }
 ```
 
-If copying from another flow, read and adapt the source data.
+Notes:
+- `prototype` is required (no global flow creation in Workshop).
+- `createPage` is only sent when user selected "Create new page".
+- If `createPage` is sent, created page path is returned alongside created flow.
 
-### Step F6: Confirm and suggest next steps
+### Step F7: Confirm and suggest next steps
 
-1. Show the created file path
+1. Show created flow path (and created page path if applicable)
 2. Suggest next steps:
-   - Use the **storyboard** skill to add data objects and `$ref` references
-   - Add `$global` entries for shared objects (e.g., navigation, user)
-   - Switch to the flow with the Flows menu or `?flow=<name>`
+    - Use the **storyboard** skill to add data objects and `$ref` references
+    - Add `$global` entries for shared objects (e.g., navigation, user)
+    - Switch to the flow with the Flows menu or `?flow=<name>`
+
+---
+
+## Page Path
+
+### Step PG1: Ask for target prototype
+
+Fetch:
+
+```bash
+GET /_storyboard/workshop/pages
+```
+
+Use `ask_user`:
+
+> Which prototype should this page be created in?
+
+Choices: non-external prototypes (`folder / prototype` label when folder exists).
+
+### Step PG2: Ask for page path
+
+Use `ask_user`:
+
+> What should the page path be inside this prototype? (e.g., `new-page`, `security/overview`, `[id]`)
+
+Always normalize and submit as `/<prototype>/<path>`.
+
+### Step PG3: Ask for template / recipe (optional)
+
+Use `ask_user`:
+
+> Should this page start from a template?
+
+Choices:
+- "Blank page (Recommended)"
+- Matching `partials` from API (global + same-prototype scoped), grouped for the user by:
+  - Global
+  - `<selected-prototype>` (prototype-scoped)
+
+Use the selected partial's **`id`** in the request payload.
+
+### Step PG4: Create page via Workshop API
+
+Send:
+
+```bash
+POST /_storyboard/workshop/pages
+{
+  "prototype": "<prototype>",
+  "folder": "<folder-if-any>",
+  "path": "/<prototype>/<path>",
+  "template": "<partial-id-optional>"
+}
+```
+
+### Step PG5: Confirm and suggest next steps
+
+1. Show the created file path and route
+2. Suggest next steps:
+   - Open the page in dev server
+   - Add matching flow data or connect an existing flow
+   - Iterate in `index.jsx` / page component directly
 
 ---
 
@@ -499,6 +584,7 @@ Create `<name>.record.json` with the generated entries. Always include at least 
 - Titles default to a humanized version of the name if the user accepts the suggestion
 - Description is optional — skip it unless the user volunteers one
 - Available prototype recipes: `bare` (default), `security`, `security-org`
+- For **Workshop Flow** and **Workshop Page** creation, prefer API-backed creation (`/_storyboard/workshop/flows`, `/_storyboard/workshop/pages`) over direct file writes so validation and route/template behavior stay consistent
 - **Data files must live inside the prototype folder.** Every prototype must contain its own copies of any `.record.json`, `.object.json`, or `.flow.json` files it needs — never reference or import data files from other prototypes. Each prototype is an independent sandbox.
 - **Records must be arrays** with each entry having a unique identifier field (default: `id`)
 - **Objects are plain JSON** — no special keys required, any shape works

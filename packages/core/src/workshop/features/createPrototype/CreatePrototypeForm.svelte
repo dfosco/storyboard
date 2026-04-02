@@ -27,7 +27,14 @@
   let isExternal = $state(false)
   let externalUrl = $state('')
 
-  interface Partial { directory: string; name: string; globals?: string[] }
+  interface Partial {
+    id: string
+    name: string
+    kind: 'template' | 'recipe'
+    scope: 'global' | 'prototype'
+    prototype?: string
+    folder?: string
+  }
 
   let folders: string[] = $state([])
   let partials: Partial[] = $state([])
@@ -61,9 +68,23 @@
   })
   const canSubmit = $derived(!!kebabName && !nameError && !submitting && (!isExternal || (!!externalUrl.trim() && !urlError)))
 
-  const templateLabel = $derived(partial ? partials.find(p => p.name === partial)?.name ?? partial : 'No template')
-  const templates = $derived(partials.filter(p => p.directory === 'template' || p.directory === 'templates'))
-  const recipes = $derived(partials.filter(p => p.directory === 'recipe' || p.directory === 'recipes'))
+  const selectedFolderLabel = $derived(folder ? `${folder}.folder` : '')
+  const scopedPartials = $derived(
+    partials.filter((p) => {
+      if (p.scope === 'global') return true
+      if (!folder) return false
+      return p.folder === folder
+    })
+  )
+  const templateLabel = $derived(
+    partial ? scopedPartials.find((p) => p.id === partial)?.name ?? partial : 'No template'
+  )
+  const templates = $derived(scopedPartials.filter((p) => p.kind === 'template'))
+  const recipes = $derived(scopedPartials.filter((p) => p.kind === 'recipe'))
+  const globalTemplates = $derived(templates.filter((p) => p.scope === 'global'))
+  const globalRecipes = $derived(recipes.filter((p) => p.scope === 'global'))
+  const localTemplates = $derived(templates.filter((p) => p.scope === 'prototype'))
+  const localRecipes = $derived(recipes.filter((p) => p.scope === 'prototype'))
   let templateMenuOpen = $state(false)
 
   function getApiUrl() {
@@ -80,6 +101,14 @@
         if (data.partials?.length) { partials = data.partials }
       }
     } catch { /* defaults */ } finally { loading = false }
+  })
+
+  $effect(() => {
+    if (!partial) return
+    const stillAvailable = scopedPartials.some((p) => p.id === partial)
+    if (!stillAvailable) {
+      partial = ''
+    }
   })
 
   function handleTitleInput(e: Event) { title = (e.target as HTMLInputElement).value; titleTouched = true }
@@ -182,27 +211,51 @@
             {#if templates.length > 0}
               <DropdownMenu.Group>
                 <DropdownMenu.GroupHeading>Templates</DropdownMenu.GroupHeading>
-                {#each templates as t (t.name)}
-                  <DropdownMenu.Item onclick={() => { partial = t.name; templateMenuOpen = false }}>
-                    {t.name}
-                  </DropdownMenu.Item>
-                {/each}
-              </DropdownMenu.Group>
-            {/if}
+                  {#each globalTemplates as t (t.id)}
+                    <DropdownMenu.Item onclick={() => { partial = t.id; templateMenuOpen = false }}>
+                      {t.name}
+                    </DropdownMenu.Item>
+                  {/each}
+                </DropdownMenu.Group>
+              {/if}
 
-            {#if recipes.length > 0}
-              <DropdownMenu.Separator />
-              <DropdownMenu.Group>
-                <DropdownMenu.GroupHeading>Recipes</DropdownMenu.GroupHeading>
-                {#each recipes as r (r.name)}
-                  <DropdownMenu.Item onclick={() => { partial = r.name; templateMenuOpen = false }}>
-                    {r.name}
-                  </DropdownMenu.Item>
-                {/each}
-              </DropdownMenu.Group>
-            {/if}
-          </DropdownMenu.Content>
-        </DropdownMenu.Root>
+              {#if localTemplates.length > 0}
+                <DropdownMenu.Separator />
+                <DropdownMenu.Group>
+                  <DropdownMenu.GroupHeading>{selectedFolderLabel || 'Prototype local'} / Templates</DropdownMenu.GroupHeading>
+                  {#each localTemplates as t (t.id)}
+                    <DropdownMenu.Item onclick={() => { partial = t.id; templateMenuOpen = false }}>
+                      {t.name}
+                    </DropdownMenu.Item>
+                  {/each}
+                </DropdownMenu.Group>
+              {/if}
+
+              {#if globalRecipes.length > 0}
+                <DropdownMenu.Separator />
+                <DropdownMenu.Group>
+                  <DropdownMenu.GroupHeading>Recipes</DropdownMenu.GroupHeading>
+                  {#each globalRecipes as r (r.id)}
+                    <DropdownMenu.Item onclick={() => { partial = r.id; templateMenuOpen = false }}>
+                      {r.name}
+                    </DropdownMenu.Item>
+                  {/each}
+                </DropdownMenu.Group>
+              {/if}
+
+              {#if localRecipes.length > 0}
+                <DropdownMenu.Separator />
+                <DropdownMenu.Group>
+                  <DropdownMenu.GroupHeading>{selectedFolderLabel || 'Prototype local'} / Recipes</DropdownMenu.GroupHeading>
+                  {#each localRecipes as r (r.id)}
+                    <DropdownMenu.Item onclick={() => { partial = r.id; templateMenuOpen = false }}>
+                      {r.name}
+                    </DropdownMenu.Item>
+                  {/each}
+                </DropdownMenu.Group>
+              {/if}
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
       </div>
     {/if}
   </div>

@@ -62,6 +62,7 @@ export default function MarkdownBlock({ props, onUpdate }) {
           <textarea
             ref={textareaRef}
             className={styles.editor}
+            data-canvas-allow-text-selection
             style={{ minHeight: editHeight ? editHeight - 2 : undefined }}
             value={content}
             onChange={handleContentChange}

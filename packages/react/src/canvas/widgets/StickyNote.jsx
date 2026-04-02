@@ -53,6 +53,7 @@ export default function StickyNote({ props, onUpdate }) {
           <textarea
             ref={textareaRef}
             className={styles.textarea}
+            data-canvas-allow-text-selection
             value={text}
             onChange={handleTextChange}
             onBlur={() => setEditing(false)}
@@ -95,4 +96,3 @@ export default function StickyNote({ props, onUpdate }) {
     </div>
   )
 }
-

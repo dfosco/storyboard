@@ -95,6 +95,11 @@
         <div class="text-sm"><span class="text-foreground">{user.login}</span><span class="block text-xs text-success mt-0.5">&#10003; Signed in</span></div>
       </div>
     {/if}
+    <Alert.Root variant="warning" class="bg-amber-100 border-amber-300">
+      <Alert.Description class="text-amber-700">
+        ⚠️ Comments are an experimental feature and may be unstable.
+      </Alert.Description>
+    </Alert.Root>    
   </div>
   <div class="flex items-center justify-end px-4 py-3 border-t border-border gap-2">
     <Button variant="outline" size="sm" onclick={onClose}>Cancel</Button>

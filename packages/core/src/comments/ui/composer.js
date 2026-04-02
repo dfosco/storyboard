@@ -18,6 +18,7 @@ import './comment-layout.css'
  * @param {number} yPct - Y coordinate as percentage of container height
  * @param {string} route - Current route path
  * @param {object} [callbacks] - Optional callbacks
+ * @param {(xPct: number, yPct: number) => { left: string, top: string }} [callbacks.getAnchorPosition] - Resolve coordinates to overlay position
  * @param {() => void} [callbacks.onCancel] - Called when composer is dismissed
  * @param {(text: string) => void} [callbacks.onSubmitOptimistic] - Called with text for optimistic submission
  * @returns {{ el: HTMLElement, destroy: () => void }}
@@ -40,8 +41,11 @@ export function showComposer(container, xPct, yPct, route, callbacks = {}) {
   const draftKey = composerDraftKey(route)
 
   function applyPosition() {
-    composer.style.left = `${pos.x}%`
-    composer.style.top = `${pos.y}%`
+    const anchor = callbacks.getAnchorPosition
+      ? callbacks.getAnchorPosition(pos.x, pos.y)
+      : { left: `${pos.x}%`, top: `${pos.y}%` }
+    composer.style.left = anchor.left
+    composer.style.top = anchor.top
     composer.style.transform = 'translate(12px, -50%)'
 
     requestAnimationFrame(() => {

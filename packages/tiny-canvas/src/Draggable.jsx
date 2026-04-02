@@ -1,14 +1,13 @@
 import { useRef, useEffect, useState } from 'react';
 import { useDraggable } from '@neodrag/react';
-import { refreshStorage, getQueue, saveDrag } from './utils';
 
 const TRANSLATION_MS = 250;
 
-function Draggable({ children, dragId }) {
+function Draggable({ children, dragId, initialPosition, onDragEnd }) {
   const draggableRef = useRef(null);
-  const queueRef = useRef(getQueue(dragId));
+  const initialSavedPosition = initialPosition || { x: 0, y: 0 };
 
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState(initialSavedPosition);
   const [rotationVariation, setRotationVariation] = useState(
     () => Math.random() < 0.5 ? -0.5 : 0.5
   );
@@ -16,8 +15,11 @@ function Draggable({ children, dragId }) {
   // Animate elements with saved positions on mount
   useEffect(() => {
     const el = draggableRef.current;
-    const queue = queueRef.current;
-    if (el && dragId && queue && (queue.x !== 0 || queue.y !== 0)) {
+    if (
+      el &&
+      dragId &&
+      (initialSavedPosition.x !== 0 || initialSavedPosition.y !== 0)
+    ) {
       el.classList.add('tc-on-translation');
 
       const timer = setTimeout(() => {
@@ -28,16 +30,7 @@ function Draggable({ children, dragId }) {
         clearTimeout(timer);
       };
     }
-  }, [dragId]);
-
-  // Restore saved positions from localStorage
-  useEffect(() => {
-    refreshStorage();
-    const queue = queueRef.current;
-    if (draggableRef.current && queue) {
-      setPosition({ x: queue.x, y: queue.y });
-    }
-  }, []);
+  }, [dragId, initialSavedPosition.x, initialSavedPosition.y]);
 
   // Free-drag during drag, snap to grid on drop
   const { isDragging } = useDraggable(draggableRef, {
@@ -52,9 +45,7 @@ function Draggable({ children, dragId }) {
     onDragEnd: (data) => {
       setPosition({ x: data.offsetX, y: data.offsetY });
       setRotationVariation(Math.random() < 0.5 ? -0.5 : 0.5);
-      if (dragId !== null) {
-        saveDrag(dragId, data.offsetX, data.offsetY);
-      }
+      onDragEnd?.(dragId, { x: data.offsetX, y: data.offsetY });
     },
   });
 

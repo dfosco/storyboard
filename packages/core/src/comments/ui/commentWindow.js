@@ -21,6 +21,7 @@ let activeWindow = null
  * @param {object} comment - The parsed comment object (with meta, text, replies, reactionGroups, author, etc.)
  * @param {object} discussion - The discussion object (id needed for replies)
  * @param {object} [callbacks] - Optional callbacks
+ * @param {(xPct: number, yPct: number) => { left: string, top: string }} [callbacks.getAnchorPosition] - Resolve coordinates to overlay position
  * @param {() => void} [callbacks.onClose] - Called when window is closed
  * @param {() => void} [callbacks.onMove] - Called after comment is moved (for re-rendering pins)
  * @returns {{ el: HTMLElement, destroy: () => void }}
@@ -33,8 +34,11 @@ export function showCommentWindow(container, comment, discussion, callbacks = {}
 
   const user = getCachedUser()
   const win = document.createElement('div')
+  const anchor = callbacks.getAnchorPosition
+    ? callbacks.getAnchorPosition(comment.meta?.x ?? 0, comment.meta?.y ?? 0)
+    : { left: `${comment.meta?.x ?? 0}%`, top: `${comment.meta?.y ?? 0}%` }
   win.className = 'sb-comment-window absolute'
-  win.style.cssText = `z-index:100001;width:360px;max-height:480px;left:${comment.meta?.x ?? 0}%;top:${comment.meta?.y ?? 0}%;transform:translate(12px,-50%)`
+  win.style.cssText = `z-index:100001;width:360px;max-height:480px;left:${anchor.left};top:${anchor.top};transform:translate(12px,-50%)`
 
   // Stop click from propagating to overlay
   win.addEventListener('click', (e) => e.stopPropagation())

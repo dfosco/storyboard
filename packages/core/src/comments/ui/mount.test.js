@@ -205,6 +205,95 @@ describe('mount.js', () => {
     })
   })
 
+  describe('navigation and canvas coordinates', () => {
+    it('turns comment mode off on popstate navigation', () => {
+      initCommentsConfig({ comments: { repo: { owner: 'o', name: 'r' } } })
+      setToken('ghp_test')
+      mountComments()
+
+      setCommentMode(true)
+      expect(document.body.classList.contains('sb-comment-mode')).toBe(true)
+
+      window.dispatchEvent(new PopStateEvent('popstate'))
+      expect(document.body.classList.contains('sb-comment-mode')).toBe(false)
+    })
+
+    it('computes click coordinates relative to canvas absolute space', () => {
+      initCommentsConfig({ comments: { repo: { owner: 'o', name: 'r' } } })
+      setToken('ghp_test')
+      mountComments()
+
+      const scroll = document.createElement('div')
+      scroll.setAttribute('data-storyboard-canvas-scroll', '')
+      Object.defineProperty(scroll, 'scrollLeft', { value: 100, writable: true })
+      Object.defineProperty(scroll, 'scrollTop', { value: 50, writable: true })
+      Object.defineProperty(scroll, 'clientHeight', { value: 700, writable: true })
+      scroll.getBoundingClientRect = () => ({ left: 20, top: 10, right: 1020, bottom: 710, width: 1000, height: 700 })
+
+      const zoom = document.createElement('div')
+      zoom.setAttribute('data-storyboard-canvas-zoom', '')
+      zoom.style.transform = 'scale(2)'
+
+      const surface = document.createElement('main')
+      surface.className = 'tc-canvas'
+      Object.defineProperty(surface, 'offsetWidth', { value: 10000, writable: true })
+      Object.defineProperty(surface, 'offsetHeight', { value: 10000, writable: true })
+      zoom.appendChild(surface)
+      scroll.appendChild(zoom)
+      document.body.appendChild(scroll)
+
+      let captured = null
+      showComposer.mockImplementation((ov, x, y) => {
+        captured = { x, y }
+        return { destroy: vi.fn(), moveTo: vi.fn() }
+      })
+
+      setCommentMode(true)
+      const overlay = document.body.querySelector('.sb-comment-overlay')
+      overlay.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 220, clientY: 210 }))
+
+      expect(captured).toEqual({ x: 1.5, y: 1.3 })
+    })
+
+    it('scrolls canvas on wheel while comment mode is active', () => {
+      initCommentsConfig({ comments: { repo: { owner: 'o', name: 'r' } } })
+      setToken('ghp_test')
+      mountComments()
+
+      const scroll = document.createElement('div')
+      scroll.setAttribute('data-storyboard-canvas-scroll', '')
+      Object.defineProperty(scroll, 'scrollLeft', { value: 0, writable: true })
+      Object.defineProperty(scroll, 'scrollTop', { value: 0, writable: true })
+      scroll.scrollBy = vi.fn(({ left = 0, top = 0 }) => {
+        scroll.scrollLeft += left
+        scroll.scrollTop += top
+      })
+      scroll.getBoundingClientRect = () => ({ left: 0, top: 0, right: 1000, bottom: 700, width: 1000, height: 700 })
+
+      const zoom = document.createElement('div')
+      zoom.setAttribute('data-storyboard-canvas-zoom', '')
+      zoom.style.transform = 'scale(1)'
+
+      const surface = document.createElement('main')
+      surface.className = 'tc-canvas'
+      Object.defineProperty(surface, 'offsetWidth', { value: 10000, writable: true })
+      Object.defineProperty(surface, 'offsetHeight', { value: 10000, writable: true })
+      zoom.appendChild(surface)
+      scroll.appendChild(zoom)
+      document.body.appendChild(scroll)
+
+      setCommentMode(true)
+      const overlay = document.body.querySelector('.sb-comment-overlay')
+      const wheelEvent = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: 8, deltaY: 24 })
+      overlay.dispatchEvent(wheelEvent)
+
+      expect(scroll.scrollBy).toHaveBeenCalledTimes(1)
+      expect(scroll.scrollLeft).toBe(8)
+      expect(scroll.scrollTop).toBe(24)
+      expect(wheelEvent.defaultPrevented).toBe(true)
+    })
+  })
+
   describe('auth error handling', () => {
     it('opens auth modal with repo-specific message when PAT lacks repository access during submit', async () => {
       initCommentsConfig({

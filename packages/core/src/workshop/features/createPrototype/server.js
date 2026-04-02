@@ -17,16 +17,12 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import {
+  buildTemplateRecipeIndex,
+  resolveTemplateRecipeEntry,
+} from '../templateIndex.js'
 
 const FLOW_SKELETON = JSON.stringify({ $global: [] }, null, 2) + '\n'
-
-/**
- * Check whether a partial entry is a template (vs recipe).
- * Accepts both singular and plural forms: "template" or "templates".
- */
-function isTemplate(partialEntry) {
-  return partialEntry.directory === 'template' || partialEntry.directory === 'templates'
-}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -120,9 +116,9 @@ function generateBlankIndexJsx(componentName, title) {
  * @param {string} title - Human-readable title
  */
 function generateIndexJsx({ partialEntry, componentFile, componentName, title }) {
-  const importPath = `@/${partialEntry.directory}/${partialEntry.name}/${componentFile}`
+  const importPath = `@/${partialEntry.baseDir}/${partialEntry.name}/${componentFile}`
 
-  if (isTemplate(partialEntry)) {
+  if (partialEntry.kind === 'template') {
     return `import ${componentFile} from '${importPath}'
 
 export default function ${componentName}() {
@@ -182,12 +178,14 @@ function generatePrototypeJson({ title, author, description, partialEntry, url }
  */
 export function createPrototypesHandler(ctx) {
   const { root, sendJson, workshopConfig = {} } = ctx
-  const partials = workshopConfig.partials || []
+  const getTemplateRecipes = () => buildTemplateRecipeIndex(root, workshopConfig.partials)
 
   return async (req, res, { body, path: routePath, method }) => {
+    const templateRecipes = getTemplateRecipes()
+
     if (routePath === '/prototypes' && method === 'GET') {
       const folders = listFolders(root)
-      sendJson(res, 200, { folders, partials })
+      sendJson(res, 200, { folders, partials: templateRecipes })
       return
     }
 
@@ -282,11 +280,11 @@ export function createPrototypesHandler(ctx) {
 
       // Look up recipe in config (optional — blank prototype if none)
       const partialEntry = partialName
-        ? partials.find((r) => r.name === partialName)
+        ? resolveTemplateRecipeEntry(templateRecipes, partialName)
         : null
 
       if (partialName && !partialEntry) {
-        const validNames = partials.map((r) => r.name).join(', ')
+        const validNames = templateRecipes.map((r) => r.id).join(', ')
         sendJson(res, 400, { error: `Unknown recipe "${partialName}". Available: ${validNames}` })
         return
       }
@@ -304,10 +302,10 @@ export function createPrototypesHandler(ctx) {
       if (!partialEntry) {
         content = generateBlankIndexJsx(componentName, title)
       } else {
-        const partialDir = path.join(root, 'src', partialEntry.directory, partialEntry.name)
+        const partialDir = path.join(root, 'src', partialEntry.baseDir, partialEntry.name)
         const componentFile = findComponentFile(partialDir)
         if (!componentFile) {
-          sendJson(res, 400, { error: `No .jsx or .tsx file found in src/${partialEntry.directory}/${partialEntry.name}/` })
+          sendJson(res, 400, { error: `No .jsx or .tsx file found in src/${partialEntry.baseDir}/${partialEntry.name}/` })
           return
         }
 

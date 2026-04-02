@@ -1,5 +1,19 @@
 import React from 'react';
 
+const QUEUE_KEY = 'tiny-canvas-queue';
+
+function readQueue() {
+  const raw = localStorage.getItem(QUEUE_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    localStorage.setItem(QUEUE_KEY, JSON.stringify([]));
+    return [];
+  }
+}
+
 /**
  * Recursively searches through React component children.
  * Returns the id prop value if found, null if not.
@@ -72,7 +86,7 @@ export const generateDragId = (element, index) => {
  */
 export const getQueue = (dragId) => {
   try {
-    const queue = JSON.parse(localStorage.getItem('tiny-canvas-queue')) || [];
+    const queue = readQueue();
     const coordsMap = queue.reduce((map, item) => {
       map[item.id] = { id: item.id, x: item.x, y: item.y };
       return map;
@@ -89,9 +103,9 @@ export const getQueue = (dragId) => {
  */
 export const refreshStorage = () => {
   try {
-    const queue = localStorage.getItem('tiny-canvas-queue');
+    const queue = localStorage.getItem(QUEUE_KEY);
     if (!queue) {
-      localStorage.setItem('tiny-canvas-queue', JSON.stringify([]));
+      localStorage.setItem(QUEUE_KEY, JSON.stringify([]));
     }
   } catch (error) {
     console.error('LocalStorage is not available:', error);
@@ -103,7 +117,7 @@ export const refreshStorage = () => {
  */
 export const saveDrag = (dragId, x, y) => {
   try {
-    const queue = JSON.parse(localStorage.getItem('tiny-canvas-queue')) || [];
+    const queue = readQueue();
     const now = new Date().toISOString().replace(/[:.]/g, '-');
 
     const dragData = { id: dragId, x, y, time: now };
@@ -115,7 +129,7 @@ export const saveDrag = (dragId, x, y) => {
       queue.push(dragData);
     }
 
-    localStorage.setItem('tiny-canvas-queue', JSON.stringify(queue));
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
   } catch (error) {
     console.error('Error saving drag position:', error);
   }

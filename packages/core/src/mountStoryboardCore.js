@@ -33,6 +33,18 @@ function applyEarlyTheme() {
     typeof localStorage !== 'undefined'
       ? localStorage.getItem('sb-color-scheme')
       : null
+  const storedSync =
+    typeof localStorage !== 'undefined'
+      ? localStorage.getItem('sb-theme-sync')
+      : null
+  let syncTargets = { prototype: true, toolbar: false, codeBoxes: true }
+  if (storedSync) {
+    try {
+      syncTargets = { ...syncTargets, ...JSON.parse(storedSync) }
+    } catch {
+      // Ignore malformed persisted sync settings and use defaults.
+    }
+  }
   const theme = stored || 'system'
   const el = document.documentElement
 
@@ -46,19 +58,25 @@ function applyEarlyTheme() {
         : 'light'
   }
 
-  el.setAttribute('data-sb-theme', resolved)
+  const prototypeTheme = syncTargets.prototype ? resolved : 'light'
+  const toolbarTheme = syncTargets.toolbar ? resolved : 'light'
+  const codeTheme = syncTargets.codeBoxes ? resolved : 'light'
 
-  if (theme === 'system') {
+  el.setAttribute('data-sb-theme', prototypeTheme)
+  el.setAttribute('data-sb-toolbar-theme', toolbarTheme)
+  el.setAttribute('data-sb-code-theme', codeTheme)
+
+  if (theme === 'system' && syncTargets.prototype) {
     el.setAttribute('data-color-mode', 'auto')
     el.setAttribute('data-light-theme', 'light')
     el.setAttribute('data-dark-theme', 'dark')
-  } else if (resolved.startsWith('dark')) {
+  } else if (prototypeTheme.startsWith('dark')) {
     el.setAttribute('data-color-mode', 'dark')
-    el.setAttribute('data-dark-theme', resolved)
+    el.setAttribute('data-dark-theme', prototypeTheme)
     el.setAttribute('data-light-theme', 'light')
   } else {
     el.setAttribute('data-color-mode', 'light')
-    el.setAttribute('data-light-theme', resolved)
+    el.setAttribute('data-light-theme', prototypeTheme)
     el.setAttribute('data-dark-theme', 'dark')
   }
 }

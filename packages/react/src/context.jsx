@@ -73,6 +73,9 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     if (canvasName) return null
     const requested = sceneParam || flowName || sceneName
     if (requested) {
+      // Allow fully-scoped flow names from URLs/widgets without re-prefixing
+      // (e.g. "Proto/flow" should not become "Proto/Proto/flow").
+      if (requested.includes('/')) return requested
       return resolveFlowName(prototypeName, requested)
     }
     // 1. Page-specific flow (e.g., Example/Forms)

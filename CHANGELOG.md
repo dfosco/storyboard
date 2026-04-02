@@ -14,6 +14,9 @@
 - **Flows**: Fix flow loading `baseURL` handling for branch deploys.
 - **Inspector**: Normalize configured highlight theme names before palette lookup so aliases like `night owl` / `night owl light` resolve to supported dark/light palettes instead of falling back to dark.
 - **Theme sync targets**: Apply theme independently per target. Prototype now respects the Prototype toggle, code boxes follow `Code boxes`, and toolbar remains controlled by `Toolbar`.
+- **Theme sync bootstrap**: Apply persisted `sb-theme-sync` target settings during early mount so prototype, toolbar, and code theme attributes initialize consistently before UI render.
+- **tiny-canvas queue recovery**: Guard drag-position persistence against malformed `tiny-canvas-queue` localStorage values by resetting invalid JSON to an empty queue instead of throwing during drag saves.
+- **Prototype embeds flow param**: Avoid re-scoping already scoped `flow` query values (e.g. `Proto/flow`) so embedded prototypes no longer resolve to invalid doubled names like `Proto/Proto/flow`.
 - **Side panel**: Keep toolbar offset rules applied in side/bottom panel modes by forcing `right`/`bottom` offsets with `!important`.
 - **Comments auth UX**: Route token-related failures to the sign-in modal with a top inline alert instead of leaving the user in comment submission flow.
 - **Comments auth UX**: Treat invalid/expired PATs, missing PATs, insufficient token scope/access, and repository access mismatch as re-auth flows that exit comment mode and open sign-in with a specific guidance message.

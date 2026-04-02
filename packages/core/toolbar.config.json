@@ -40,7 +40,7 @@
       "surface": "main-toolbar",
       "handler": "core:theme",
       "modes": ["*"],
-      "menuWidth": "220px"
+      "menuWidth": "240px"
     },
     "comments": {
       "ariaLabel": "Comments",

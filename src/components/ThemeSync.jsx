@@ -14,6 +14,23 @@ import { useEffect } from 'react'
 import { useTheme } from '@primer/react'
 
 const THEME_STORAGE_KEY = 'sb-color-scheme'
+const THEME_SYNC_STORAGE_KEY = 'sb-theme-sync'
+
+const DEFAULT_SYNC = {
+  prototype: true,
+  toolbar: false,
+  codeBoxes: true,
+}
+
+function readSyncTargets() {
+  try {
+    const raw = localStorage.getItem(THEME_SYNC_STORAGE_KEY)
+    if (!raw) return DEFAULT_SYNC
+    return { ...DEFAULT_SYNC, ...JSON.parse(raw) }
+  } catch {
+    return DEFAULT_SYNC
+  }
+}
 
 function applyToPrimer(setDayScheme, setNightScheme, themeValue) {
   if (themeValue === 'system' || !themeValue) {
@@ -31,7 +48,9 @@ export default function ThemeSync() {
   // Restore saved theme on mount
   useEffect(() => {
     const saved = localStorage.getItem(THEME_STORAGE_KEY)
-    applyToPrimer(setDayScheme, setNightScheme, saved)
+    const syncTargets = readSyncTargets()
+    const prototypeTheme = syncTargets.prototype ? saved : 'light'
+    applyToPrimer(setDayScheme, setNightScheme, prototypeTheme)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Listen for theme changes from the Svelte CoreUIBar

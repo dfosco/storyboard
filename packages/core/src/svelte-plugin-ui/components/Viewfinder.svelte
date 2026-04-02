@@ -146,8 +146,15 @@
     setLocal(EXPANDED_KEY, JSON.stringify(expanded))
   }
 
+  function withBase(route: string): string {
+    const normalizedRoute = route.startsWith('/') ? route : `/${route}`
+    const normalizedBase = (basePath || '/').replace(/\/+$/, '')
+    if (!normalizedBase || normalizedBase === '/') return normalizedRoute
+    return `${normalizedBase}${normalizedRoute}`.replace(/\/+/g, '/')
+  }
+
   function protoRoute(dirName: string): string {
-    return `/${dirName}`
+    return withBase(`/${dirName}`)
   }
 
   function formatName(name: string): string {
@@ -342,7 +349,7 @@
             </a>
           {:else if proto.hideFlows && proto.flows.length === 1}
             <!-- Single flow, hidden — navigates directly to the flow -->
-            <a class="listItem" href={proto.flows[0].route}>
+            <a class="listItem" href={withBase(proto.flows[0].route)}>
               <div class="cardBody">
                 <p class="protoName" class:otherflows={proto.dirName === '__global__'}>
                   {#if proto.icon}<span class="protoIcon">{proto.icon}</span>{/if}
@@ -446,7 +453,7 @@
           {#if !(proto.hideFlows && proto.flows.length === 1) && isExpanded(proto.dirName) && proto.flows.length > 0}
             <div class="flowList">
               {#each proto.flows as flow (flow.key)}
-                <a href={flow.route} class="listItem flowItem">
+                <a href={withBase(flow.route)} class="listItem flowItem">
                   {#if showThumbnails}
                     <div class="thumbnail">
                       {@html placeholderSvg(flow.key)}
@@ -467,7 +474,7 @@
 
       {#snippet canvasEntry(canvas)}
         <section class="protoGroup">
-          <a class="listItem" href={canvas.route}>
+          <a class="listItem" href={withBase(canvas.route)}>
             <div class="cardBody">
               <p class="protoName">
                 <span class="protoIcon">{canvas.icon || ''}</span>

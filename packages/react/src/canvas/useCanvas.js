@@ -14,6 +14,17 @@ async function fetchCanvasFromServer(name) {
   return null
 }
 
+function isAbsoluteUrl(value) {
+  return /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(value)
+}
+
+export function resolveCanvasModuleImport(modulePath, baseUrl = import.meta.env?.BASE_URL || '/') {
+  if (!modulePath || isAbsoluteUrl(modulePath)) return modulePath
+  if (!modulePath.startsWith('/')) return modulePath
+  const base = String(baseUrl || '/').replace(/\/$/, '')
+  return `${base}${modulePath}` || modulePath
+}
+
 /**
  * Hook to load canvas data by name.
  * Uses build-time data for static config (routes, JSX path), but fetches
@@ -54,7 +65,8 @@ export function useCanvas(name) {
       return
     }
 
-    import(/* @vite-ignore */ canvas._jsxModule)
+    const moduleImportPath = resolveCanvasModuleImport(canvas._jsxModule)
+    import(/* @vite-ignore */ moduleImportPath)
       .then((mod) => {
         const exports = {}
         for (const [key, value] of Object.entries(mod)) {
@@ -65,7 +77,7 @@ export function useCanvas(name) {
         setJsxExports(exports)
       })
       .catch((err) => {
-        console.error(`[storyboard] Failed to load canvas JSX module: ${canvas._jsxModule}`, err)
+        console.error(`[storyboard] Failed to load canvas JSX module: ${moduleImportPath}`, err)
         setJsxExports(null)
       })
   }, [canvas?._jsxModule])

@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.8.0
+
+### Minor Changes
+
+-   Significant theme and canvas improvements and bugfixes
+
 ## 3.7.0
 
 ### Minor Changes

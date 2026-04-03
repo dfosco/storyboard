@@ -8,7 +8,7 @@ import './fonts.css'
 import './globals.css'
 import './tailwind.css'
 
-import ThemeSync from './components/ThemeSync'
+import { ThemeSync } from '@dfosco/storyboard-react-primer'
 import { installHashPreserver } from '@dfosco/storyboard-react/hash-preserver'
 import { mountStoryboardCore } from '@dfosco/storyboard-core'
 import '@dfosco/storyboard-core/comments/ui/comment-layout.css'

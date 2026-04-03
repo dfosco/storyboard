@@ -12,5 +12,8 @@ export { default as Checkbox } from './Checkbox.jsx'
 export { default as Textarea } from './Textarea.jsx'
 export { default as StoryboardForm } from './StoryboardForm.jsx'
 
+// Theme bridge (Primer ThemeProvider ↔ storyboard-core theme store)
+export { default as ThemeSync } from './ThemeSync.jsx'
+
 // Scene data demo
 export { default as SceneDataDemo } from './SceneDataDemo.jsx'

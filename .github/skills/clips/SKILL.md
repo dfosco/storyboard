@@ -23,6 +23,12 @@ clips is a local-first issue tracker that mirrors GitHub Issues. Data lives in `
 
 **Auto-sync**: Every mutation writes JSONL locally → pushes to GitHub API → commits `.clips/` to git.
 
+## Important Rules
+
+1. **Goal ID must match Issue ID.** After creating a goal, always verify the returned `goal_id` matches the `issue_number`. If they differ (e.g. `g047` → issue #48), rename the JSONL file and update all `goal_id` references inside it so they match.
+
+2. **Do not commit clips data.** `.clips/` is gitignored. Never `git add` or commit any clips-related files — the only changes you should commit are those to the GitHub Issue itself (via the clips CLI).
+
 ---
 
 ## Commands

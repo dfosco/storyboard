@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.8.2
+
+### Patch Changes
+
+-   Fix canvas x,y position serving on prod, theme inconsistencies
+
 ## 3.8.1
 
 ### Patch Changes

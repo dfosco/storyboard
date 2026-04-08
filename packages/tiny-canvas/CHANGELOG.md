@@ -1,5 +1,7 @@
 # @dfosco/tiny-canvas
 
+## 3.10.0-beta.0
+
 ## 3.9.1
 
 ### Patch Changes

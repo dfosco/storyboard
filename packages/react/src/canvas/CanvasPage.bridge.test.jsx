@@ -14,6 +14,12 @@ vi.mock('@dfosco/tiny-canvas', () => ({
         drag widget
       </button>
       <button
+        data-testid="drag-widget-negative"
+        onClick={() => onDragEnd?.('widget-1', { x: -50, y: -30 })}
+      >
+        drag widget negative
+      </button>
+      <button
         data-testid="drag-source"
         onClick={() => onDragEnd?.('jsx-PrimaryButtons', { x: 333.2, y: 444.8 })}
       >
@@ -138,6 +144,25 @@ describe('CanvasPage canvas bridge', () => {
             expect.objectContaining({
               export: 'PrimaryButtons',
               position: { x: 333, y: 445 },
+            }),
+          ]),
+        })
+      )
+    })
+  })
+
+  it('clamps negative drag positions to zero', async () => {
+    render(<CanvasPage name="design-overview" />)
+
+    fireEvent.click(screen.getByTestId('drag-widget-negative'))
+    await waitFor(() => {
+      expect(updateCanvas).toHaveBeenCalledWith(
+        'design-overview',
+        expect.objectContaining({
+          widgets: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'widget-1',
+              position: { x: 0, y: 0 },
             }),
           ]),
         })

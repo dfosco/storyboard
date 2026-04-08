@@ -156,7 +156,7 @@ export default function CanvasPage({ name }) {
 
   const handleItemDragEnd = useCallback((dragId, position) => {
     if (!dragId || !position) return
-    const rounded = { x: roundPosition(position.x), y: roundPosition(position.y) }
+    const rounded = { x: Math.max(0, roundPosition(position.x)), y: Math.max(0, roundPosition(position.y)) }
 
     if (dragId.startsWith('jsx-')) {
       const sourceExport = dragId.replace(/^jsx-/, '')
@@ -541,6 +541,7 @@ export default function CanvasPage({ name }) {
             transformOrigin: '0 0',
             width: `${Math.max(10000, 100 / scale)}vw`,
             height: `${Math.max(10000, 100 / scale)}vh`,
+            ...(spaceHeld ? { pointerEvents: 'none' } : {}),
           }}
         >
           <Canvas {...canvasProps} onDragEnd={handleItemDragEnd}>

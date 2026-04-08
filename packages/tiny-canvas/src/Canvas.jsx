@@ -6,7 +6,7 @@ function readInitialPosition(child) {
   const x = Number(child?.props?.['data-tc-x']);
   const y = Number(child?.props?.['data-tc-y']);
   if (Number.isFinite(x) && Number.isFinite(y)) {
-    return { x, y };
+    return { x: Math.max(0, x), y: Math.max(0, y) };
   }
   return null;
 }

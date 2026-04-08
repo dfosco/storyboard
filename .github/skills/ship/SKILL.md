@@ -8,11 +8,13 @@ metadata:
 
 # Ship Skill
 
-> Triggered by: "ship", "ship this", "ship a feature", "ship it"
+> Triggered by: "ship", "ship this", "ship a feature", "ship it", "ship a change"
+>
+> **⚠️ This skill MUST be invoked whenever the user says "ship". Do NOT implement changes directly — always go through this workflow. Every step is mandatory and sequential.**
 
 ## What This Does
 
-Runs an end-to-end feature shipping workflow: creates a worktree, plans the feature, implements it, validates with an adversarial rubber-duck review, pushes to a remote branch, and opens a PR.
+Runs an end-to-end feature shipping workflow: creates a worktree, plans the feature, implements it, validates with an adversarial rubber-duck review, pushes to a remote branch, and opens a PR. All work happens in an isolated worktree — never on `main`.
 
 ---
 
@@ -46,7 +48,18 @@ Generate an implementation plan for the requested feature:
 
 Do NOT proceed to Step 3 until the user confirms.
 
-### Step 3: Implement and commit
+### Step 3: Create clips goal/tasks
+
+**If the `clips` skill is available** (check for `.clips/` directory or `clips` CLI), create tracking issues before implementation begins:
+
+1. Run `clips view` to check for a relevant existing goal.
+2. If a matching goal exists, create tasks under it for the planned work.
+3. If no matching goal exists, create a new goal with tasks derived from the plan.
+4. **Save the goal ID and issue number** — you will need these for the PR body in Step 7.
+
+If clips is not available, skip this step silently.
+
+### Step 4: Implement and commit
 
 Execute the plan:
 
@@ -66,7 +79,26 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 Use conventional commit types (`feat`, `fix`, `refactor`, `docs`, `chore`, etc.).
 
-### Step 4: Adversarial rubber-duck review
+### Step 5: Write tests
+
+**Invoke the `vitest` skill** to write tests for the implementation:
+
+1. Identify all new or changed logic that is testable (utilities, data transformations, hooks, state management, etc.).
+2. Write tests using Vitest, following existing test patterns in the codebase.
+3. Run `npm run test` to verify all tests pass (new and existing).
+4. Fix any failures.
+5. Stage and commit tests separately:
+
+```bash
+git add -A
+git commit -m "test: add tests for <feature>
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
+
+**Skip this step only if** the change is purely documentation, configuration, or markup with no testable logic.
+
+### Step 6: Adversarial rubber-duck review
 
 Run a **two-pass adversarial review** to catch issues before pushing.
 
@@ -111,7 +143,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 6. If no findings required changes, skip the commit.
 
-### Step 5: Push to remote
+### Step 7: Push to remote
 
 ```bash
 git push -u origin <branch-name>
@@ -119,7 +151,7 @@ git push -u origin <branch-name>
 
 If the push fails due to permissions or remote issues, inform the user and suggest manual steps.
 
-### Step 6: Open a PR
+### Step 8: Open a PR
 
 Use the GitHub CLI to create a pull request:
 
@@ -136,23 +168,25 @@ The PR body must include:
 - **Changes** — bullet list of files changed and why
 - **Testing** — what was validated (lint, build, test results)
 - **Review notes** — summary of adversarial review findings and how they were addressed
+- **Fixes** — if clips issues were created in Step 3, include `Fixes #<issue_number>` for each goal/task so they auto-close when the PR merges
 
 Use `ask_user` to confirm the PR title and description before creating.
 
-### Step 7: Create clips task
+### Step 9: Close clips tasks
 
-After the PR is opened, create a clips task for the work done:
+After the PR is opened, mark clips tasks as closed:
 
-1. Check if a relevant goal exists (`clips view`).
-2. If a matching goal exists, create a task under it.
-3. If no matching goal exists, create a new goal with a task.
-4. Mark the task as closed since the work is complete.
+1. Run `clips view` to find the goal/tasks created in Step 3.
+2. Mark them as closed (`clips task status ... closed` / `clips goal status ... closed`).
+
+If clips was skipped in Step 3, skip this step too.
 
 ---
 
 ## Rules
 
-- **Always work inside the worktree** — never modify files in the main working tree.
+- **Always create a worktree first** — invoke the worktree skill as Step 1, before any exploration or implementation. Never commit to `main`. Never create a branch from `main` after the fact. The worktree IS the branch.
+- **Always open a PR** — every shipped feature must result in a Pull Request. This is non-negotiable. If `gh pr create` fails, inform the user immediately.
 - **Never skip the adversarial review** — this is the quality gate. Both passes (standard + adversarial) are mandatory.
 - **Always run lint/build/test** before committing — at minimum `npm run lint && npm run build && npm run test`.
 - **Always use `ask_user`** for confirmations — branch name, plan approval, PR details.
@@ -169,8 +203,10 @@ User says: "ship a feature to add a dark mode toggle to the settings page"
 
 1. Creates worktree `add-dark-mode-toggle`
 2. Plans the implementation (explores codebase, writes plan)
-3. Implements dark mode toggle, commits
-4. Runs standard + adversarial review, fixes findings, commits
-5. Pushes `add-dark-mode-toggle` to origin
-6. Opens PR "feat: add dark mode toggle to settings page"
-7. Creates clips task under relevant goal
+3. Creates clips goal + tasks for the work
+4. Implements dark mode toggle, commits
+5. Writes tests using vitest skill, commits
+6. Runs standard + adversarial review, fixes findings, commits
+7. Pushes `add-dark-mode-toggle` to origin
+8. Opens PR "feat: add dark mode toggle to settings page" with `Fixes #<issue>` in body
+9. Marks clips tasks as closed

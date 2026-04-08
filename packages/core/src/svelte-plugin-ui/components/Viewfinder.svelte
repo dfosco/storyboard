@@ -483,8 +483,22 @@
               {#if canvas.description}
                 <p class="protoDesc">{canvas.description}</p>
               {/if}
-              {#if canvas.widgetCount > 0}
-                <p class="flowDesc">{canvas.widgetCount} widget{canvas.widgetCount === 1 ? '' : 's'}</p>
+              {#if canvas.author}
+                {@const authors = Array.isArray(canvas.author) ? canvas.author : [canvas.author]}
+                <div class="author">
+                  <span class="authorAvatars">
+                    {#each authors as a (a)}
+                      <img
+                        src="https://github.com/{a}.png?size=48"
+                        alt={a}
+                        class="authorAvatar"
+                      />
+                    {/each}
+                  </span>
+                  <span class="authorName">{authors.join(', ')}</span>
+                </div>
+              {:else if canvas.gitAuthor}
+                <p class="authorPlain">{canvas.gitAuthor}</p>
               {/if}
             </div>
           </a>

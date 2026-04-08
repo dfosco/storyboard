@@ -13,6 +13,7 @@
   {"folder":"branch--main-advanced","branch":"main-advanced"},
   {"folder":"branch--main-backup-31-03-2026-14-23","branch":"main-backup-31-03-2026-14-23"},
   {"folder":"branch--proto-restructure","branch":"proto-restructure"},
+  {"folder":"branch--release-beta","branch":"release-beta"},
   {"folder":"branch--security-ux","branch":"security-ux"},
   {"folder":"branch--ship-skill-no-pr-mode","branch":"ship-skill-no-pr-mode"},
   {"folder":"branch--viewfinder-branches","branch":"viewfinder-branches"},

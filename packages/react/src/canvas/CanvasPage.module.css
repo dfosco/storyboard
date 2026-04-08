@@ -32,11 +32,7 @@
   min-height: 100%;
 }
 
-.selected {
-  outline: 2px solid var(--bgColor-accent-emphasis, #2f81f7);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
+/* Selection outline is now handled by WidgetChrome.module.css (.widgetSlotSelected) */
 
 .canvasTitle {
   position: fixed;

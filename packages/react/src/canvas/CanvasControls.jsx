@@ -1,15 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { getMenuWidgetTypes } from './widgets/widgetConfig.js'
 import styles from './CanvasControls.module.css'
 
 const ZOOM_STEPS = [25, 50, 75, 100, 125, 150, 200]
 export const ZOOM_MIN = ZOOM_STEPS[0]
 export const ZOOM_MAX = ZOOM_STEPS[ZOOM_STEPS.length - 1]
 
-const WIDGET_TYPES = [
-  { type: 'sticky-note', label: 'Sticky Note' },
-  { type: 'markdown', label: 'Markdown' },
-  { type: 'prototype', label: 'Prototype embed' },
-]
+const WIDGET_TYPES = getMenuWidgetTypes()
 
 /**
  * Focused canvas toolbar — bottom-left controls for zoom and widget creation.

@@ -1,0 +1,58 @@
+{
+  "widgets": {
+    "sticky-note": {
+      "label": "Sticky Note",
+      "icon": "📝",
+      "props": {
+        "text":   { "type": "text",   "label": "Text",    "category": "content",  "default": "" },
+        "color":  { "type": "select", "label": "Color",   "category": "settings", "default": "yellow",
+                    "options": ["yellow", "blue", "green", "pink", "purple", "orange"] },
+        "width":  { "type": "number", "label": "Width",   "category": "size", "min": 180 },
+        "height": { "type": "number", "label": "Height",  "category": "size", "min": 60 }
+      },
+      "features": [
+        { "id": "color",  "type": "color-picker", "prop": "color" },
+        { "id": "delete", "type": "action",        "action": "delete" }
+      ]
+    },
+    "markdown": {
+      "label": "Markdown",
+      "icon": "📄",
+      "props": {
+        "content": { "type": "text",   "label": "Content", "category": "content", "default": "" },
+        "width":   { "type": "number", "label": "Width",   "category": "size",    "default": 360, "min": 200, "max": 1200 }
+      },
+      "features": [
+        { "id": "delete", "type": "action", "action": "delete" }
+      ]
+    },
+    "prototype": {
+      "label": "Prototype",
+      "icon": "🖥️",
+      "props": {
+        "src":    { "type": "url",    "label": "URL",    "category": "content",  "default": "" },
+        "label":  { "type": "text",   "label": "Label",  "category": "settings", "default": "" },
+        "zoom":   { "type": "number", "label": "Zoom",   "category": "settings", "default": 100, "min": 25, "max": 200 },
+        "width":  { "type": "number", "label": "Width",  "category": "size",     "default": 800, "min": 200, "max": 2000 },
+        "height": { "type": "number", "label": "Height", "category": "size",     "default": 600, "min": 200, "max": 1500 }
+      },
+      "features": [
+        { "id": "zoom-in",  "type": "action", "action": "zoom-in" },
+        { "id": "zoom-out", "type": "action", "action": "zoom-out" },
+        { "id": "edit-url", "type": "action", "action": "edit" },
+        { "id": "delete",   "type": "action", "action": "delete" }
+      ]
+    },
+    "link-preview": {
+      "label": "Link Preview",
+      "icon": "🔗",
+      "props": {
+        "url":   { "type": "url",  "label": "URL",   "category": "content", "default": "" },
+        "title": { "type": "text", "label": "Title", "category": "content", "default": "" }
+      },
+      "features": [
+        { "id": "delete", "type": "action", "action": "delete" }
+      ]
+    }
+  }
+}

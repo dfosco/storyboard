@@ -4,9 +4,10 @@
 
 - Before running any other instruction, evaluate if the user prompt contains a trigger for one or more skills in `.github/skills`.
   - **"Ship", "ship this", "ship a change", "ship a feature"** → always invoke the **ship** skill. This is a hard rule — never implement changes directly on `main`. The ship skill creates a worktree, implements there, and opens a PR.
+  - **"Ship-no-pr", "[ship-no-pr]", "ship without PR"** → invoke the **ship** skill in **no-PR mode**. Same workflow but skips opening a Pull Request — the branch is pushed to the remote only.
 - If the user asks `how to use this repo`, `how to run this project` etc, give them an outline of `AGENTS.md` and point them to this file, the `README.md` and the `.github/architecture` docs
 - **After completing any change**, always:
-  1. Create a feature branch, push it, and open a Pull Request via `gh pr create`. Never leave committed work on `main` without a PR.
+  1. Create a feature branch, push it, and open a Pull Request via `gh pr create`. Never leave committed work on `main` without a PR. (Exception: when ship skill runs in no-PR mode, the branch is pushed but the PR is skipped.)
   2. Create a clips task for the work done and mark it as closed. Use the relevant goal if one exists, or create a new one.
   - Never skip either step.
 
@@ -44,7 +45,7 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 
 - **changelog** (`.github/skills/changelog/SKILL.md`) — Generates formatted changelog entries from commit ranges.
 
-- **ship** (`.github/skills/ship/SKILL.md`) — End-to-end feature shipping: worktree → plan → implement → adversarial review → push → PR.
+- **ship** (`.github/skills/ship/SKILL.md`) — End-to-end feature shipping: worktree → plan → implement → adversarial review → push → PR. Supports `no-pr` mode to skip the PR step.
 
 ---
 

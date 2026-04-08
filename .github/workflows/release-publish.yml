@@ -28,14 +28,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org
 
       - name: Configure git for HTTPS deps
         run: git config --global url."https://github.com/".insteadOf ssh://git@github.com/
-
-      - name: Upgrade npm for OIDC trusted publishing
-        run: npm install -g npm@latest
 
       - run: npm ci --legacy-peer-deps
 

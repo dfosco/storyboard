@@ -120,6 +120,8 @@ export const stickyNoteSchema = {
   text:  { type: 'text',   label: 'Text',  category: 'content', defaultValue: '' },
   color: { type: 'select', label: 'Color', category: 'settings', defaultValue: 'yellow',
            options: ['yellow', 'blue', 'green', 'pink', 'purple', 'orange'] },
+  width:  { type: 'number', label: 'Width',  category: 'size', min: 180 },
+  height: { type: 'number', label: 'Height', category: 'size', min: 60 },
 }
 
 export const markdownSchema = {

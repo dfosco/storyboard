@@ -6,6 +6,7 @@
   background: var(--sticky-bg, #fff8c5);
   border-radius: 6px;
   border: 2px solid color-mix(in srgb, var(--sticky-bg) 80%, rgb(0, 0, 0) 10%);
+  box-sizing: border-box;
   min-width: 180px;
   box-shadow: 2px 3px 8px rgba(0, 0, 0, 0.04);
   font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);

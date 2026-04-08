@@ -36,12 +36,14 @@ export default function PrototypeEmbed({ props, onUpdate }) {
   const label = readProp(props, 'label', prototypeEmbedSchema) || src
 
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+  const baseSegment = basePath.replace(/^\//, '')
   const rawSrc = useMemo(() => {
     if (!src) return ''
     if (/^https?:\/\//.test(src)) return src
-    if (basePath && src.startsWith(basePath)) return src
+    if (baseSegment && src.startsWith(basePath)) return src
+    if (baseSegment && src.startsWith(baseSegment)) return `/${src}`
     return `${basePath}${src}`
-  }, [src, basePath])
+  }, [src, basePath, baseSegment])
 
   const scale = zoom / 100
 

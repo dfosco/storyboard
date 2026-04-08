@@ -4,12 +4,15 @@
 
 ### Minor Changes
 
--   Add release infrastructure and agent skills
+- OIDC Trusted Publishing: CI publishes to npm without tokens or 2FA, with provenance attestation
+- New release skill for agent-driven releases
+- New ship skill for end-to-end feature shipping workflow
+- Canvas: lock widgets to non-negative positions and prevent drag during pan ([#53](https://github.com/dfosco/storyboard/pull/53))
 
-    -   OIDC Trusted Publishing: CI publishes to npm without tokens or 2FA, with provenance attestation
-    -   New release skill for agent-driven releases
-    -   New ship skill for end-to-end feature shipping workflow
-    -   Clips, changeset, and vitest skill improvements
+### Patch Changes
+
+- Fix repository URLs in package.json for provenance validation
+- Bump @dfosco/tiny-canvas to 1.2.0
 
 ## 3.8.2
 

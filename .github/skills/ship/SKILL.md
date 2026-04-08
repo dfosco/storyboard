@@ -79,7 +79,26 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 Use conventional commit types (`feat`, `fix`, `refactor`, `docs`, `chore`, etc.).
 
-### Step 5: Adversarial rubber-duck review
+### Step 5: Write tests
+
+**Invoke the `vitest` skill** to write tests for the implementation:
+
+1. Identify all new or changed logic that is testable (utilities, data transformations, hooks, state management, etc.).
+2. Write tests using Vitest, following existing test patterns in the codebase.
+3. Run `npm run test` to verify all tests pass (new and existing).
+4. Fix any failures.
+5. Stage and commit tests separately:
+
+```bash
+git add -A
+git commit -m "test: add tests for <feature>
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
+
+**Skip this step only if** the change is purely documentation, configuration, or markup with no testable logic.
+
+### Step 6: Adversarial rubber-duck review
 
 Run a **two-pass adversarial review** to catch issues before pushing.
 
@@ -124,7 +143,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 6. If no findings required changes, skip the commit.
 
-### Step 6: Push to remote
+### Step 7: Push to remote
 
 ```bash
 git push -u origin <branch-name>
@@ -132,7 +151,7 @@ git push -u origin <branch-name>
 
 If the push fails due to permissions or remote issues, inform the user and suggest manual steps.
 
-### Step 7: Open a PR
+### Step 8: Open a PR
 
 Use the GitHub CLI to create a pull request:
 
@@ -153,7 +172,7 @@ The PR body must include:
 
 Use `ask_user` to confirm the PR title and description before creating.
 
-### Step 8: Close clips tasks
+### Step 9: Close clips tasks
 
 After the PR is opened, mark clips tasks as closed:
 
@@ -186,7 +205,8 @@ User says: "ship a feature to add a dark mode toggle to the settings page"
 2. Plans the implementation (explores codebase, writes plan)
 3. Creates clips goal + tasks for the work
 4. Implements dark mode toggle, commits
-5. Runs standard + adversarial review, fixes findings, commits
-6. Pushes `add-dark-mode-toggle` to origin
-7. Opens PR "feat: add dark mode toggle to settings page" with `Fixes #<issue>` in body
-8. Marks clips tasks as closed
+5. Writes tests using vitest skill, commits
+6. Runs standard + adversarial review, fixes findings, commits
+7. Pushes `add-dark-mode-toggle` to origin
+8. Opens PR "feat: add dark mode toggle to settings page" with `Fixes #<issue>` in body
+9. Marks clips tasks as closed

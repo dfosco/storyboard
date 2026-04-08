@@ -93,7 +93,7 @@ For each package on [npmjs.com](https://www.npmjs.com):
 1. Go to **Settings → Trusted Publisher**
 2. Add GitHub Actions as a trusted publisher:
    - **Owner:** `dfosco`
-   - **Repository:** `storyboard-core`
+   - **Repository:** `storyboard`
    - **Workflow:** `release-publish.yml`
    - **Environment:** _(leave blank)_
 3. Repeat for all four packages

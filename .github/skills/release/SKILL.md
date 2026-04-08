@@ -152,7 +152,7 @@ Print:
 ✅ Version <version> tagged and pushed!
 
 🚀 CI will publish to npm via OIDC Trusted Publishing.
-   Track progress: https://github.com/dfosco/storyboard-core/actions/workflows/release-publish.yml
+   Track progress: https://github.com/dfosco/storyboard/actions/workflows/release-publish.yml
 
    If CI doesn't trigger, run manually:
    gh workflow run release-publish.yml -f tag=@dfosco/storyboard-core@<version>

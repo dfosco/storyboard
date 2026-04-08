@@ -24,7 +24,9 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 
 - **tools** (`.github/skills/tools/SKILL.md`) — Reference for creating toolbar tools: config schema, handlers, surfaces, and render types.
 
-- **changeset** (`.github/skills/changeset/SKILL.md`) — Guides changeset/versioning/release workflows (changeset file, version bump, tag, push, publish).
+- **changeset** (`.github/skills/changeset/SKILL.md`) — Low-level changeset operations: create changeset files, version bump, tag.
+
+- **release** (`.github/skills/release/SKILL.md`) — Full release workflow: generate changeset from commits, version, tag, push. CI publishes via OIDC.
 
 - **storyboard-core** (`.github/skills/storyboard-core/SKILL.md`) — Guide for adding CoreUIBar menu buttons and wiring action handlers.
 

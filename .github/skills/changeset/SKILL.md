@@ -1,6 +1,6 @@
 ---
 name: changeset
-description: Changeset versioning and release management system. Use when creating changesets, bumping versions, tagging releases, or publishing packages.
+description: Changeset versioning and management system. Use when creating changesets, bumping versions, or tagging releases. For full releases (publish to npm), use the `release` skill instead.
 metadata:
   author: Daniel Fosco
   version: "2026.3.09"
@@ -8,7 +8,7 @@ metadata:
 
 # Changeset Skill
 
-> Triggered by: "bump version", "create changeset", "release a new version", "version bump", "patch bump", "minor bump", "major bump", "tag release", "run changeset", "changeset", "publish", "release"
+> Triggered by: "bump version", "create changeset", "version bump", "patch bump", "minor bump", "major bump", "tag release", "run changeset", "changeset"
 
 ## What This Does
 

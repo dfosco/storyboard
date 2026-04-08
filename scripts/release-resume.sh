@@ -73,16 +73,18 @@ if [ -n "$PRE_TAG" ]; then
   fi
 fi
 
-echo "⬆️  Pushing with tags..."
-git push --follow-tags
-
 TAG="@dfosco/storyboard-core@${VERSION}"
 
+echo "⬆️  Pushing branch..."
+git push --set-upstream origin "$(git branch --show-current)" 2>/dev/null || git push
+
+echo "⬆️  Pushing tags..."
+git push --tags
+
+echo "🚀 Triggering publish workflow..."
+gh workflow run release-publish.yml -f "tag=${TAG}"
+
 echo ""
-echo "✅ Version ${VERSION} tags pushed!"
+echo "✅ Version ${VERSION} tags pushed and publish triggered!"
 echo ""
-echo "🚀 CI will publish to npm via OIDC Trusted Publishing."
 echo "   Track progress: https://github.com/dfosco/storyboard/actions/workflows/release-publish.yml"
-echo ""
-echo "   If CI doesn't trigger automatically, run:"
-echo "   gh workflow run release-publish.yml -f tag=${TAG}"

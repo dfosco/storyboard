@@ -1,18 +1,25 @@
 # @dfosco/storyboard-core
 
+## 3.9.1
+
+### Patch Changes
+
+-   Unify @dfosco/tiny-canvas into fixed version group — all storyboard packages now version together
+-   Pin storyboard-react → tiny-canvas dependency to exact version (was ^1.1.0)
+
 ## 3.9.0
 
 ### Minor Changes
 
-- OIDC Trusted Publishing: CI publishes to npm without tokens or 2FA, with provenance attestation
-- New release skill for agent-driven releases
-- New ship skill for end-to-end feature shipping workflow
-- Canvas: lock widgets to non-negative positions and prevent drag during pan ([#53](https://github.com/dfosco/storyboard/pull/53))
+-   OIDC Trusted Publishing: CI publishes to npm without tokens or 2FA, with provenance attestation
+-   New release skill for agent-driven releases
+-   New ship skill for end-to-end feature shipping workflow
+-   Canvas: lock widgets to non-negative positions and prevent drag during pan ([#53](https://github.com/dfosco/storyboard/pull/53))
 
 ### Patch Changes
 
-- Fix repository URLs in package.json for provenance validation
-- Bump @dfosco/tiny-canvas to 1.2.0
+-   Fix repository URLs in package.json for provenance validation
+-   Bump @dfosco/tiny-canvas to 1.2.0
 
 ## 3.8.2
 

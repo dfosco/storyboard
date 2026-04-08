@@ -141,16 +141,18 @@ if [ -n "$PRE_TAG" ]; then
   git commit -m "chore: exit prerelease mode" --allow-empty
 fi
 
-echo "⬆️  Pushing with tags..."
-git push --follow-tags
-
 TAG="@dfosco/storyboard-core@${VERSION}"
 
+echo "⬆️  Pushing branch..."
+git push --set-upstream origin "$(git branch --show-current)" 2>/dev/null || git push
+
+echo "⬆️  Pushing tags..."
+git push --tags
+
+echo "🚀 Triggering publish workflow..."
+gh workflow run release-publish.yml -f "tag=${TAG}"
+
 echo ""
-echo "✅ Version ${VERSION} tagged and pushed!"
+echo "✅ Version ${VERSION} tagged, pushed, and publish triggered!"
 echo ""
-echo "🚀 CI will publish to npm via OIDC Trusted Publishing."
 echo "   Track progress: https://github.com/dfosco/storyboard/actions/workflows/release-publish.yml"
-echo ""
-echo "   If CI doesn't trigger, run manually:"
-echo "   gh workflow run release-publish.yml -f tag=${TAG}"

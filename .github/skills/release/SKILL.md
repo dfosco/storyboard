@@ -140,25 +140,32 @@ git commit -m "chore: exit prerelease mode" --allow-empty
 
 ### Step 11: Push
 
+Push branch and tags **separately** — pushing a new branch + tags together in one command can cause GitHub Actions to miss the tag push event.
+
 ```bash
-git push --follow-tags
+git push --set-upstream origin "$(git branch --show-current)" 2>/dev/null || git push
+git push --tags
 ```
 
-### Step 12: Report success
+### Step 12: Trigger publish workflow
+
+Always trigger the publish workflow explicitly via `gh workflow run` — do **not** rely on the `push: tags:` event, which is unreliable when pushing from non-main branches.
+
+```bash
+gh workflow run release-publish.yml -f tag=@dfosco/storyboard-core@<version>
+```
+
+### Step 13: Report success
 
 Print:
 
 ```
-✅ Version <version> tagged and pushed!
+✅ Version <version> tagged, pushed, and publish triggered!
 
-🚀 CI will publish to npm via OIDC Trusted Publishing.
    Track progress: https://github.com/dfosco/storyboard/actions/workflows/release-publish.yml
-
-   If CI doesn't trigger, run manually:
-   gh workflow run release-publish.yml -f tag=@dfosco/storyboard-core@<version>
 ```
 
-### Step 13: Create clips task
+### Step 14: Create clips task
 
 If clips is available, create a task under a relevant goal (or create a new goal) to track the release, and close it immediately.
 

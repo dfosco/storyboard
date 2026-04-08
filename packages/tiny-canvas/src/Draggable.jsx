@@ -42,6 +42,7 @@ function Draggable({ children, dragId, initialPosition, onDragEnd }) {
   // Free-drag during drag, snap to grid on drop
   const { isDragging } = useDraggable(draggableRef, {
     axis: 'both',
+    bounds: 'parent',
     threshold: { delay: 50, distance: 30 },
     defaultClass: 'tc-drag',
     defaultClassDragging: 'tc-on',
@@ -63,21 +64,23 @@ function Draggable({ children, dragId, initialPosition, onDragEnd }) {
       if (!isRotating && distance >= ROTATION_DEADZONE_PX) {
         setIsRotating(true);
       }
-      setPosition({ x: offsetX, y: offsetY });
+      setPosition({ x: Math.max(0, offsetX), y: Math.max(0, offsetY) });
     },
     onDragEnd: (data) => {
-      setPosition({ x: data.offsetX, y: data.offsetY });
+      const clampedX = Math.max(0, data.offsetX);
+      const clampedY = Math.max(0, data.offsetY);
+      setPosition({ x: clampedX, y: clampedY });
       setRotationVariation(Math.random() < 0.5 ? -ROTATION_DEG : ROTATION_DEG);
       setIsRotating(false);
-      const dx = data.offsetX - dragStartRef.current.x;
-      const dy = data.offsetY - dragStartRef.current.y;
+      const dx = clampedX - dragStartRef.current.x;
+      const dy = clampedY - dragStartRef.current.y;
       const movedEnough = hasMovedRef.current || Math.hypot(dx, dy) >= PERSIST_DEADZONE_PX;
       if (!movedEnough) return
 
       if (dragId) {
-        saveDrag(dragId, data.offsetX, data.offsetY);
+        saveDrag(dragId, clampedX, clampedY);
       }
-      onDragEnd?.(dragId, { x: data.offsetX, y: data.offsetY });
+      onDragEnd?.(dragId, { x: clampedX, y: clampedY });
     },
   });
 

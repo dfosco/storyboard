@@ -7,6 +7,7 @@
   {"folder":"branch--comments-system","branch":"comments-system"},
   {"folder":"branch--design-modes","branch":"design-modes"},
   {"folder":"branch--feature-flags","branch":"feature-flags"},
+  {"folder":"branch--fix-prototype-embed-hash-params","branch":"fix-prototype-embed-hash-params"},
   {"folder":"branch--fix-widget-resize-persistence","branch":"fix-widget-resize-persistence"},
   {"folder":"branch--folders","branch":"folders"},
   {"folder":"branch--main-advanced","branch":"main-advanced"},

@@ -42,6 +42,16 @@ Print the current working directory and branch to confirm:
 pwd && git branch --show-current
 ```
 
+### Step 4: Start dev server
+
+Run the dev server in the worktree:
+
+```bash
+npm run dev
+```
+
+**Skip this step if the worktree skill was invoked from the ship skill** — ship runs the dev server as its own final step to avoid starting it twice.
+
 ---
 
 ## Notes

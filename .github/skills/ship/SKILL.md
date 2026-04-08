@@ -169,6 +169,16 @@ After the PR is opened, mark clips tasks as closed:
 
 If clips was skipped in Step 3, skip this step too.
 
+### Step 10: Start dev server
+
+Run the dev server in the worktree so the user can immediately preview changes:
+
+```bash
+npm run dev
+```
+
+This is the **only** place the dev server starts during a ship workflow — the worktree skill skips its own dev server step when called from ship.
+
 ---
 
 ## Rules
@@ -198,3 +208,4 @@ User says: "ship a feature to add a dark mode toggle to the settings page"
 7. Pushes `add-dark-mode-toggle` to origin
 8. Opens PR "feat: add dark mode toggle to settings page" with `Fixes #<issue>` in body
 9. Marks clips tasks as closed
+10. Starts dev server (`npm run dev`) in the worktree

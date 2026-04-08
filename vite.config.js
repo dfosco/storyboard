@@ -46,6 +46,7 @@ export default defineConfig(() => {
             '@dfosco/storyboard-core/comments/ui/comments.css': path.resolve(__dirname, 'packages/core/src/comments/ui/comment-layout.css'),
             '@dfosco/storyboard-core/comments/ui/comment-layout.css': path.resolve(__dirname, 'packages/core/src/comments/ui/comment-layout.css'),
             '@dfosco/storyboard-core/comments/svelte': path.resolve(__dirname, 'packages/core/src/comments/ui/index.js'),
+            '@dfosco/storyboard-core/widgets.config.json': path.resolve(__dirname, 'packages/core/widgets.config.json'),
             '@dfosco/storyboard-core/canvas/materializer': path.resolve(__dirname, 'packages/core/src/canvas/materializer.js'),
             '@dfosco/storyboard-core/modes.css': path.resolve(__dirname, 'packages/core/src/modes.css'),
             '@dfosco/storyboard-core/comments': path.resolve(__dirname, 'packages/core/src/comments/index.js'),

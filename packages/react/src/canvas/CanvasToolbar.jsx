@@ -1,13 +1,10 @@
 import { useState } from 'react'
 import { addWidget as addWidgetApi } from './canvasApi.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'
+import { getMenuWidgetTypes } from './widgets/widgetConfig.js'
 import styles from './CanvasToolbar.module.css'
 
-const WIDGET_TYPES = [
-  { type: 'sticky-note', label: 'Sticky Note', icon: '📝' },
-  { type: 'markdown', label: 'Markdown', icon: '📄' },
-  { type: 'prototype', label: 'Prototype embed', icon: '🖥️' },
-]
+const WIDGET_TYPES = getMenuWidgetTypes()
 
 /**
  * Floating toolbar for adding widgets to a canvas.

@@ -37,10 +37,6 @@ export default function StickyNote({ props, onUpdate }) {
     onUpdate?.({ text: e.target.value })
   }, [onUpdate])
 
-  const handleColorChange = useCallback((newColor) => {
-    onUpdate?.({ color: newColor })
-  }, [onUpdate])
-
   return (
     <div className={styles.container}>
       <article
@@ -86,33 +82,6 @@ export default function StickyNote({ props, onUpdate }) {
           onResize={handleResize}
         />
       </article>
-
-      {/* Color picker — dot trigger below the sticky */}
-      <div
-        className={styles.pickerArea}
-        onMouseDown={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <span
-          className={styles.pickerDot}
-          style={{ background: palette.dot }}
-        />
-        <div className={styles.pickerPopup}>
-          {Object.entries(COLORS).map(([colorName, c]) => (
-            <button
-              key={colorName}
-              className={`${styles.colorDot} ${colorName === color ? styles.active : ''}`}
-              style={{ background: c.bg, borderColor: c.border }}
-              onClick={(e) => {
-                e.stopPropagation()
-                handleColorChange(colorName)
-              }}
-              title={colorName}
-              aria-label={`Set color to ${colorName}`}
-            />
-          ))}
-        </div>
-      </div>
     </div>
   )
 }

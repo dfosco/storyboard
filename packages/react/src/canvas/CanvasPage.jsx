@@ -6,6 +6,8 @@ import { shouldPreventCanvasTextSelection } from './textSelection.js'
 import { getCanvasThemeVars, getCanvasPrimerAttrs } from './canvasTheme.js'
 import { getWidgetComponent } from './widgets/index.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'
+import { getFeatures } from './widgets/widgetConfig.js'
+import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi } from './canvasApi.js'
 import styles from './CanvasPage.module.css'
@@ -65,17 +67,61 @@ function roundPosition(value) {
 }
 
 /** Renders a single JSON-defined widget by type lookup. */
-function WidgetRenderer({ widget, onUpdate }) {
+function WidgetRenderer({ widget, onUpdate, widgetRef }) {
   const Component = getWidgetComponent(widget.type)
   if (!Component) {
     console.warn(`[canvas] Unknown widget type: ${widget.type}`)
     return null
   }
-  return createElement(Component, {
-    id: widget.id,
-    props: widget.props,
-    onUpdate,
-  })
+  // Only pass ref to forwardRef-wrapped components (e.g. PrototypeEmbed)
+  const elementProps = { id: widget.id, props: widget.props, onUpdate }
+  if (Component.$$typeof === Symbol.for('react.forward_ref')) {
+    elementProps.ref = widgetRef
+  }
+  return createElement(Component, elementProps)
+}
+
+/**
+ * Wrapper for each JSON widget that holds its own ref for imperative actions.
+ * This allows WidgetChrome to dispatch actions to the widget via ref.
+ */
+function ChromeWrappedWidget({
+  widget,
+  selected,
+  onSelect,
+  onDeselect,
+  onUpdate,
+  onRemove,
+}) {
+  const widgetRef = useRef(null)
+  const features = getFeatures(widget.type)
+
+  const handleAction = useCallback((actionId) => {
+    if (actionId === 'delete') {
+      onRemove(widget.id)
+    }
+  }, [widget.id, onRemove])
+
+  return (
+    <WidgetChrome
+      widgetId={widget.id}
+      widgetType={widget.type}
+      features={features}
+      selected={selected}
+      widgetProps={widget.props}
+      widgetRef={widgetRef}
+      onSelect={onSelect}
+      onDeselect={onDeselect}
+      onAction={handleAction}
+      onUpdate={(updates) => onUpdate(widget.id, updates)}
+    >
+      <WidgetRenderer
+        widget={widget}
+        onUpdate={(updates) => onUpdate(widget.id, updates)}
+        widgetRef={widgetRef}
+      />
+    </WidgetChrome>
+  )
 }
 
 /**
@@ -478,7 +524,7 @@ export default function CanvasPage({ name }) {
     }
   }
 
-  // 2. JSON-defined mutable widgets (selectable)
+  // 2. JSON-defined mutable widgets (selectable, wrapped in WidgetChrome)
   for (const widget of (localWidgets ?? [])) {
     allChildren.push(
       <div
@@ -492,11 +538,17 @@ export default function CanvasPage({ name }) {
           e.stopPropagation()
           setSelectedWidgetId(widget.id)
         }}
-        className={selectedWidgetId === widget.id ? styles.selected : undefined}
       >
-        <WidgetRenderer
+        <ChromeWrappedWidget
           widget={widget}
-          onUpdate={(updates) => handleWidgetUpdate(widget.id, updates)}
+          selected={selectedWidgetId === widget.id}
+          onSelect={() => setSelectedWidgetId(widget.id)}
+          onDeselect={() => setSelectedWidgetId(null)}
+          onUpdate={handleWidgetUpdate}
+          onRemove={(id) => {
+            handleWidgetRemove(id)
+            setSelectedWidgetId(null)
+          }}
         />
       </div>
     )

@@ -34,6 +34,9 @@ jobs:
       - name: Configure git for HTTPS deps
         run: git config --global url."https://github.com/".insteadOf ssh://git@github.com/
 
+      - name: Upgrade npm for OIDC trusted publishing
+        run: npm install -g npm@latest
+
       - run: npm ci --legacy-peer-deps
 
       - name: Determine version and dist-tag

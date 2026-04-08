@@ -8,11 +8,13 @@ metadata:
 
 # Ship Skill
 
-> Triggered by: "ship", "ship this", "ship a feature", "ship it"
+> Triggered by: "ship", "ship this", "ship a feature", "ship it", "ship a change"
+>
+> **⚠️ This skill MUST be invoked whenever the user says "ship". Do NOT implement changes directly — always go through this workflow. Every step is mandatory and sequential.**
 
 ## What This Does
 
-Runs an end-to-end feature shipping workflow: creates a worktree, plans the feature, implements it, validates with an adversarial rubber-duck review, pushes to a remote branch, and opens a PR.
+Runs an end-to-end feature shipping workflow: creates a worktree, plans the feature, implements it, validates with an adversarial rubber-duck review, pushes to a remote branch, and opens a PR. All work happens in an isolated worktree — never on `main`.
 
 ---
 
@@ -152,8 +154,8 @@ After the PR is opened, create a clips task for the work done:
 
 ## Rules
 
+- **Always create a worktree first** — invoke the worktree skill as Step 1, before any exploration or implementation. Never commit to `main`. Never create a branch from `main` after the fact. The worktree IS the branch.
 - **Always open a PR** — every shipped feature must result in a Pull Request. This is non-negotiable. If `gh pr create` fails, inform the user immediately.
-- **Always work inside the worktree** — never modify files in the main working tree.
 - **Never skip the adversarial review** — this is the quality gate. Both passes (standard + adversarial) are mandatory.
 - **Always run lint/build/test** before committing — at minimum `npm run lint && npm run build && npm run test`.
 - **Always use `ask_user`** for confirmations — branch name, plan approval, PR details.

@@ -3,6 +3,7 @@
 ## General instructions
 
 - Before running any other instruction, evaluate if the user prompt contains a trigger for one or more skills in `.github/skills`.
+  - **"Ship", "ship this", "ship a change", "ship a feature"** → always invoke the **ship** skill. This is a hard rule — never implement changes directly on `main`. The ship skill creates a worktree, implements there, and opens a PR.
 - If the user asks `how to use this repo`, `how to run this project` etc, give them an outline of `AGENTS.md` and point them to this file, the `README.md` and the `.github/architecture` docs
 - **After completing any change**, always:
   1. Create a feature branch, push it, and open a Pull Request via `gh pr create`. Never leave committed work on `main` without a PR.

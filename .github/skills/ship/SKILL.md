@@ -100,6 +100,25 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 ### Step 6: Adversarial rubber-duck review
 
+**Invoke the `vitest` skill** to write tests for the implementation:
+
+1. Identify all new or changed logic that is testable (utilities, data transformations, hooks, state management, etc.).
+2. Write tests using Vitest, following existing test patterns in the codebase.
+3. Run `npm run test` to verify all tests pass (new and existing).
+4. Fix any failures.
+5. Stage and commit tests separately:
+
+```bash
+git add -A
+git commit -m "test: add tests for <feature>
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
+
+**Skip this step only if** the change is purely documentation, configuration, or markup with no testable logic.
+
+### Step 6: Adversarial rubber-duck review
+
 Launch a single `rubber-duck` agent with an adversarial framing. Include the plan from Step 2, the diff of all changes (`git diff HEAD~1`), and the feature requirements from the user's original prompt. The prompt must include:
 
 > You are an adversarial code reviewer. Your job is to BREAK this implementation. Assume nothing works correctly until proven otherwise. Specifically:

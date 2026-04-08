@@ -211,7 +211,8 @@ export function buildPrototypeIndex(knownRoutes = []) {
       route: data._route || `/${canvasName}`,
       folder: data._folder || null,
       isCanvas: true,
-      widgetCount: (data.widgets || []).length + (data.sources || []).length,
+      author: data.author || null,
+      gitAuthor: data.gitAuthor || null,
     })
   }
 

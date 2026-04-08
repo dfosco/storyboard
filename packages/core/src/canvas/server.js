@@ -196,7 +196,7 @@ export function createCanvasHandler(ctx) {
         if (settings) {
           const filtered = {}
           for (const [key, value] of Object.entries(settings)) {
-            if (['title', 'description', 'grid', 'gridSize', 'colorMode', 'dotted', 'centered'].includes(key)) {
+            if (['title', 'description', 'grid', 'gridSize', 'colorMode', 'dotted', 'centered', 'author'].includes(key)) {
               filtered[key] = value
             }
           }
@@ -291,6 +291,7 @@ export function createCanvasHandler(ctx) {
         name,
         title,
         folder,
+        author,
         grid = true,
         gridSize = 24,
         colorMode = 'auto',
@@ -342,6 +343,10 @@ export function createCanvasHandler(ctx) {
         gridSize,
         colorMode,
         widgets: [],
+      }
+
+      if (author) {
+        creationEvent.author = author
       }
 
       if (includeJsx) {

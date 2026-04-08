@@ -1,5 +1,16 @@
 # @dfosco/storyboard-core
 
+## 3.9.0
+
+### Minor Changes
+
+-   Add release infrastructure and agent skills
+
+    -   OIDC Trusted Publishing: CI publishes to npm without tokens or 2FA, with provenance attestation
+    -   New release skill for agent-driven releases
+    -   New ship skill for end-to-end feature shipping workflow
+    -   Clips, changeset, and vitest skill improvements
+
 ## 3.8.2
 
 ### Patch Changes

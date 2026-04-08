@@ -28,7 +28,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           registry-url: https://registry.npmjs.org
 
       - name: Configure git for HTTPS deps
@@ -70,13 +70,15 @@ jobs:
             PUBLISH_ARGS+=(--tag "$DIST_TAG")
           fi
 
+          # OIDC trusted publishing requires npm 11.5.1+
+          # Node 22 ships npm 10.x, so we use npx to run npm@11 for publish
           for ws in "${WORKSPACES[@]}"; do
             PUBLISHED=$(npm view "${ws}@${VERSION}" version 2>/dev/null || true)
             if [ "$PUBLISHED" = "$VERSION" ]; then
               echo "⏭️  ${ws}@${VERSION} already published, skipping"
             else
               echo "📦 Publishing ${ws}@${VERSION}..."
-              npm publish --workspace "$ws" "${PUBLISH_ARGS[@]}"
+              npx --yes npm@11 publish --workspace "$ws" "${PUBLISH_ARGS[@]}"
             fi
           done
         # No NODE_AUTH_TOKEN — OIDC Trusted Publishing handles auth

@@ -48,9 +48,14 @@ export default function PrototypeEmbed({ props, onUpdate }) {
   const filterRef = useRef(null)
   const embedRef = useRef(null)
 
-  const iframeSrc = rawSrc
-    ? `${rawSrc}${rawSrc.includes('?') ? '&' : '?'}_sb_embed&_sb_theme_target=prototype&_sb_canvas_theme=${canvasTheme}`
-    : ''
+  const iframeSrc = useMemo(() => {
+    if (!rawSrc) return ''
+    const hashIdx = rawSrc.indexOf('#')
+    const base = hashIdx >= 0 ? rawSrc.slice(0, hashIdx) : rawSrc
+    const hash = hashIdx >= 0 ? rawSrc.slice(hashIdx) : ''
+    const sep = base.includes('?') ? '&' : '?'
+    return `${base}${sep}_sb_embed&_sb_theme_target=prototype&_sb_canvas_theme=${canvasTheme}${hash}`
+  }, [rawSrc, canvasTheme])
 
   // Build prototype index for the picker
   const prototypeIndex = useMemo(() => {

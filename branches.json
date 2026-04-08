@@ -12,5 +12,6 @@
   {"folder":"branch--proto-restructure","branch":"proto-restructure"},
   {"folder":"branch--security-ux","branch":"security-ux"},
   {"folder":"branch--viewfinder-branches","branch":"viewfinder-branches"},
+  {"folder":"branch--viewfinder-canvas-authors","branch":"viewfinder-canvas-authors"},
   {"folder":"branch--workshop","branch":"workshop"}
 ]

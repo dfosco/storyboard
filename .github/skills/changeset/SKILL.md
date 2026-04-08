@@ -129,7 +129,7 @@ npm view @dfosco/storyboard-core version
 - `changeset version` does NOT create git tags — that's why `npm run tag` is a separate step
 - Always commit the version bump BEFORE running `npm run tag`
 - The `.changeset/config.json` has `"privatePackages": { "version": true, "tag": true }` — this is required because the package is `"private": true` and changesets skips private packages by default
-- All four `@dfosco/storyboard-*` packages use **fixed versioning** — every release bumps them to the same version regardless of which packages changed
+- All five `@dfosco/storyboard-*` and `@dfosco/tiny-canvas` packages use **fixed versioning** — every release bumps them to the same version regardless of which packages changed
 - For npm publishing to work, you need an npm token configured either locally (`npm login`) or as the `NPM_TOKEN` GitHub Actions secret (see `releasing.md`)
 
 ---

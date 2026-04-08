@@ -60,6 +60,7 @@ jobs:
 
           WORKSPACES=(
             "@dfosco/storyboard-core"
+            "@dfosco/tiny-canvas"
             "@dfosco/storyboard-react"
             "@dfosco/storyboard-react-primer"
             "@dfosco/storyboard-react-reshaped"

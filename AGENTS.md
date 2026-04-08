@@ -38,6 +38,8 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 
 - **changelog** (`.github/skills/changelog/SKILL.md`) — Generates formatted changelog entries from commit ranges.
 
+- **ship** (`.github/skills/ship/SKILL.md`) — End-to-end feature shipping: worktree → plan → implement → adversarial review → push → PR.
+
 ---
 
 ## Build & Development

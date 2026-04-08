@@ -397,6 +397,14 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
         }
       }
 
+      // Auto-fill gitAuthor for canvas metadata from git history
+      if (suffix === 'canvas' && parsed && !parsed.gitAuthor) {
+        const gitAuthor = getGitAuthor(root, absPath)
+        if (gitAuthor) {
+          parsed = { ...parsed, gitAuthor }
+        }
+      }
+
       // Inject inferred route and resolve JSX companion for canvases
       if (suffix === 'canvas') {
         if (canvasRoutes[name]) {

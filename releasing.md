@@ -1,6 +1,6 @@
 # Releasing @dfosco/storyboard-* packages
 
-All four packages share a **fixed version** — every release bumps them together.
+All five packages share a **fixed version** — every release bumps them together.
 
 | Package | Description |
 |---------|-------------|
@@ -8,6 +8,7 @@ All four packages share a **fixed version** — every release bumps them togethe
 | `@dfosco/storyboard-react` | React hooks, context, Vite plugin |
 | `@dfosco/storyboard-react-primer` | Primer design system form wrappers |
 | `@dfosco/storyboard-react-reshaped` | Reshaped design system form wrappers |
+| `@dfosco/tiny-canvas` | Lightweight React canvas with draggable widgets |
 
 ---
 
@@ -22,6 +23,7 @@ Remove `"private": true` from each package.json:
 # packages/react/package.json
 # packages/react-primer/package.json
 # packages/react-reshaped/package.json
+# packages/tiny-canvas/package.json
 ```
 
 Add metadata to each package.json (adjust URLs):
@@ -86,7 +88,7 @@ The `@changesets/changelog-github` generator produces richer changelog entries t
 ### 5. Set up npm OIDC Trusted Publishing
 
 All packages must have been published at least once before configuring trusted publishing.
-Since all four `@dfosco/storyboard-*` packages are already published, you can configure OIDC immediately.
+Since all five `@dfosco/storyboard-*` and `@dfosco/tiny-canvas` packages are already published, you can configure OIDC immediately.
 
 For each package on [npmjs.com](https://www.npmjs.com):
 
@@ -96,7 +98,7 @@ For each package on [npmjs.com](https://www.npmjs.com):
    - **Repository:** `storyboard`
    - **Workflow:** `release-publish.yml`
    - **Environment:** _(leave blank)_
-3. Repeat for all four packages
+3. Repeat for all five packages
 
 Once configured, publishing uses OIDC — no npm tokens, no 2FA, automatic provenance attestation.
 
@@ -166,7 +168,7 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: npm ci --legacy-peer-deps
       - run: |
-          # Publishes all 4 packages with provenance
+          # Publishes all 5 packages with provenance
           # Skips already-published versions
           # No NODE_AUTH_TOKEN needed — OIDC handles auth
           npm publish -w @dfosco/storyboard-core --access public --provenance
@@ -187,7 +189,7 @@ npx changeset
 
 Select the affected packages, choose the bump type (patch / minor / major), and write a summary. This creates a markdown file in `.changeset/`.
 
-Since versioning is fixed, **all packages will be bumped to the same version** regardless of which ones you select.
+Since versioning is fixed, **all packages will be bumped to the same version** regardless of which ones you select. This includes `@dfosco/tiny-canvas`.
 
 ### 2. Commit and push
 
@@ -325,13 +327,13 @@ Prerelease versions are never tagged as `latest` on npm, so they won't affect us
 ### Minimal (React + Primer)
 
 ```bash
-npm install @dfosco/storyboard-core @dfosco/storyboard-react @dfosco/storyboard-react-primer
+npm install @dfosco/storyboard-core @dfosco/storyboard-react @dfosco/storyboard-react-primer @dfosco/tiny-canvas
 ```
 
 ### With Reshaped instead
 
 ```bash
-npm install @dfosco/storyboard-core @dfosco/storyboard-react @dfosco/storyboard-react-reshaped
+npm install @dfosco/storyboard-core @dfosco/storyboard-react @dfosco/storyboard-react-reshaped @dfosco/tiny-canvas
 ```
 
 ### Vite config

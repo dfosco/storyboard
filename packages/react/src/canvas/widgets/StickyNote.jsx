@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { readProp, stickyNoteSchema } from './widgetProps.js'
+import ResizeHandle from './ResizeHandle.jsx'
 import styles from './StickyNote.module.css'
 
 const COLORS = {
@@ -14,9 +15,16 @@ const COLORS = {
 export default function StickyNote({ props, onUpdate }) {
   const text = readProp(props, 'text', stickyNoteSchema)
   const color = readProp(props, 'color', stickyNoteSchema)
+  const width = readProp(props, 'width', stickyNoteSchema)
+  const height = readProp(props, 'height', stickyNoteSchema)
   const palette = COLORS[color] ?? COLORS.yellow
   const textareaRef = useRef(null)
+  const stickyRef = useRef(null)
   const [editing, setEditing] = useState(false)
+
+  const handleResize = useCallback((w, h) => {
+    onUpdate?.({ width: w, height: h })
+  }, [onUpdate])
 
   useEffect(() => {
     if (editing && textareaRef.current) {
@@ -36,8 +44,14 @@ export default function StickyNote({ props, onUpdate }) {
   return (
     <div className={styles.container}>
       <article
+        ref={stickyRef}
         className={styles.sticky}
-        style={{ '--sticky-bg': palette.bg, '--sticky-border': palette.border }}
+        style={{
+          '--sticky-bg': palette.bg,
+          '--sticky-border': palette.border,
+          ...(typeof width === 'number' ? { width: `${width}px` } : undefined),
+          ...(typeof height === 'number' ? { height: `${height}px` } : undefined),
+        }}
       >
         <p
           className={styles.text}
@@ -65,6 +79,12 @@ export default function StickyNote({ props, onUpdate }) {
             placeholder="Type here…"
           />
         )}
+        <ResizeHandle
+          targetRef={stickyRef}
+          minWidth={180}
+          minHeight={60}
+          onResize={handleResize}
+        />
       </article>
 
       {/* Color picker — dot trigger below the sticky */}

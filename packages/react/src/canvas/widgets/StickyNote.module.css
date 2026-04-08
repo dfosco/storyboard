@@ -9,7 +9,6 @@
   min-width: 180px;
   box-shadow: 2px 3px 8px rgba(0, 0, 0, 0.04);
   font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
-  resize: both;
   overflow: auto;
   position: relative;
 }

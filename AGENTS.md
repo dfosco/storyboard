@@ -4,7 +4,10 @@
 
 - Before running any other instruction, evaluate if the user prompt contains a trigger for one or more skills in `.github/skills`.
 - If the user asks `how to use this repo`, `how to run this project` etc, give them an outline of `AGENTS.md` and point them to this file, the `README.md` and the `.github/architecture` docs
-- **After completing any change**, always create a clips task for the work done and mark it as closed. Use the relevant goal if one exists, or create a new one. Never skip this step.
+- **After completing any change**, always:
+  1. Create a feature branch, push it, and open a Pull Request via `gh pr create`. Never leave committed work on `main` without a PR.
+  2. Create a clips task for the work done and mark it as closed. Use the relevant goal if one exists, or create a new one.
+  - Never skip either step.
 
 ---
 

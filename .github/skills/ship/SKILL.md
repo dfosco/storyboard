@@ -152,6 +152,7 @@ After the PR is opened, create a clips task for the work done:
 
 ## Rules
 
+- **Always open a PR** — every shipped feature must result in a Pull Request. This is non-negotiable. If `gh pr create` fails, inform the user immediately.
 - **Always work inside the worktree** — never modify files in the main working tree.
 - **Never skip the adversarial review** — this is the quality gate. Both passes (standard + adversarial) are mandatory.
 - **Always run lint/build/test** before committing — at minimum `npm run lint && npm run build && npm run test`.

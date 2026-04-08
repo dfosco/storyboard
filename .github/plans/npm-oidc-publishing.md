@@ -21,5 +21,5 @@ Use **npm OIDC Trusted Publishing** via GitHub Actions. Local script handles ver
 ## One-time setup required
 For each package on npmjs.com → Settings → Trusted Publisher:
 - Owner: `dfosco`
-- Repository: `storyboard-core`
+- Repository: `storyboard`
 - Workflow: `release-publish.yml`

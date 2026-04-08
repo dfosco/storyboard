@@ -100,18 +100,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 ### Step 6: Adversarial rubber-duck review
 
-Run a **two-pass adversarial review** to catch issues before pushing.
-
-#### Pass 1 — Standard rubber-duck critique
-
-Launch a `rubber-duck` agent with the full implementation context. Include:
-- The plan from Step 2
-- The diff of all changes (`git diff HEAD~1`)
-- The feature requirements from the user's original prompt
-
-#### Pass 2 — Adversarial stress-test
-
-Launch a **second** `rubber-duck` agent with an adversarial framing. The prompt must include:
+Launch a single `rubber-duck` agent with an adversarial framing. Include the plan from Step 2, the diff of all changes (`git diff HEAD~1`), and the feature requirements from the user's original prompt. The prompt must include:
 
 > You are an adversarial code reviewer. Your job is to BREAK this implementation. Assume nothing works correctly until proven otherwise. Specifically:
 >
@@ -126,11 +115,10 @@ Launch a **second** `rubber-duck` agent with an adversarial framing. The prompt 
 
 #### Process findings
 
-1. Collect findings from both passes.
-2. Apply all CRITICAL fixes immediately.
-3. Apply HIGH fixes unless they significantly complicate the implementation without clear benefit.
-4. Discard LOW findings.
-5. If any changes were made, run lint/build/test again and commit:
+1. Apply all CRITICAL fixes immediately.
+2. Apply HIGH fixes unless they significantly complicate the implementation without clear benefit.
+3. Discard LOW findings.
+4. If any changes were made, run lint/build/test again and commit:
 
 ```bash
 git add -A
@@ -141,7 +129,7 @@ git commit -m "fix: address review findings
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 ```
 
-6. If no findings required changes, skip the commit.
+5. If no findings required changes, skip the commit.
 
 ### Step 7: Push to remote
 
@@ -187,7 +175,7 @@ If clips was skipped in Step 3, skip this step too.
 
 - **Always create a worktree first** — invoke the worktree skill as Step 1, before any exploration or implementation. Never commit to `main`. Never create a branch from `main` after the fact. The worktree IS the branch.
 - **Always open a PR** — every shipped feature must result in a Pull Request. This is non-negotiable. If `gh pr create` fails, inform the user immediately.
-- **Never skip the adversarial review** — this is the quality gate. Both passes (standard + adversarial) are mandatory.
+- **Never skip the adversarial review** — this is the quality gate. The adversarial rubber-duck pass is mandatory.
 - **Always run lint/build/test** before committing — at minimum `npm run lint && npm run build && npm run test`.
 - **Always use `ask_user`** for confirmations — branch name, plan approval, PR details.
 - **Conventional commits** — use `feat:`, `fix:`, `refactor:`, `docs:`, `chore:` prefixes.
@@ -206,7 +194,7 @@ User says: "ship a feature to add a dark mode toggle to the settings page"
 3. Creates clips goal + tasks for the work
 4. Implements dark mode toggle, commits
 5. Writes tests using vitest skill, commits
-6. Runs standard + adversarial review, fixes findings, commits
+6. Runs adversarial rubber-duck review, fixes findings, commits
 7. Pushes `add-dark-mode-toggle` to origin
 8. Opens PR "feat: add dark mode toggle to settings page" with `Fixes #<issue>` in body
 9. Marks clips tasks as closed

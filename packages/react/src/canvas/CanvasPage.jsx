@@ -347,11 +347,20 @@ export default function CanvasPage({ name }) {
 
   // Tell the Vite dev server to suppress full-reloads while this canvas is active.
   // The ?canvas-hmr URL param opts out of the guard for canvas UI development.
+  // Sends a heartbeat every 3s so the guard auto-expires if the tab closes.
   useEffect(() => {
     if (!import.meta.hot) return
     const hmrEnabled = new URLSearchParams(window.location.search).has('canvas-hmr')
-    import.meta.hot.send('storyboard:canvas-hmr-guard', { active: true, hmrEnabled })
+    if (hmrEnabled) return
+
+    const msg = { active: true, hmrEnabled: false }
+    import.meta.hot.send('storyboard:canvas-hmr-guard', msg)
+    const interval = setInterval(() => {
+      import.meta.hot.send('storyboard:canvas-hmr-guard', msg)
+    }, 3000)
+
     return () => {
+      clearInterval(interval)
       import.meta.hot.send('storyboard:canvas-hmr-guard', { active: false, hmrEnabled: true })
     }
   }, [name])

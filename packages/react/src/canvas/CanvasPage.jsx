@@ -1,4 +1,5 @@
-import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createElement, useCallback, useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Canvas } from '@dfosco/tiny-canvas'
 import '@dfosco/tiny-canvas/style.css'
 import { useCanvas } from './useCanvas.js'
@@ -149,8 +150,6 @@ export default function CanvasPage({ name }) {
   const [zoom, setZoom] = useState(100)
   const zoomRef = useRef(100)
   const scrollRef = useRef(null)
-  const pendingZoomScroll = useRef(null)
-  const intendedScroll = useRef(null)
   const [canvasTitle, setCanvasTitle] = useState(canvas?.title || name)
   const titleInputRef = useRef(null)
   const [localSources, setLocalSources] = useState(canvas?.sources ?? [])
@@ -267,8 +266,8 @@ export default function CanvasPage({ name }) {
 
   /**
    * Zoom to a new level while keeping the viewport center stable.
-   * Computes the canvas-coordinate center, then stores scroll adjustments
-   * for the next layout paint so the same canvas point stays centered.
+   * Uses flushSync to force a synchronous render so the CSS transform
+   * and the scroll adjustment land in the same paint frame.
    */
   function applyZoom(newZoom) {
     const el = scrollRef.current
@@ -282,35 +281,18 @@ export default function CanvasPage({ name }) {
     const oldScale = zoomRef.current / 100
     const newScale = clampedZoom / 100
 
-    // Use intended scroll when batched updates haven't flushed yet
-    const scrollLeft = intendedScroll.current?.scrollLeft ?? el.scrollLeft
-    const scrollTop = intendedScroll.current?.scrollTop ?? el.scrollTop
-
     // Viewport center → canvas coordinate
-    const canvasX = (scrollLeft + el.clientWidth / 2) / oldScale
-    const canvasY = (scrollTop + el.clientHeight / 2) / oldScale
+    const canvasX = (el.scrollLeft + el.clientWidth / 2) / oldScale
+    const canvasY = (el.scrollTop + el.clientHeight / 2) / oldScale
 
-    // New scroll to keep the same canvas point centered
-    const newScroll = {
-      scrollLeft: canvasX * newScale - el.clientWidth / 2,
-      scrollTop: canvasY * newScale - el.clientHeight / 2,
-    }
-
-    pendingZoomScroll.current = newScroll
-    intendedScroll.current = newScroll
+    // Synchronous render so the DOM has the new transform before we adjust scroll
     zoomRef.current = clampedZoom
-    setZoom(clampedZoom)
-  }
+    flushSync(() => setZoom(clampedZoom))
 
-  // Apply pending scroll adjustment after the zoom CSS renders
-  useLayoutEffect(() => {
-    if (pendingZoomScroll.current && scrollRef.current) {
-      scrollRef.current.scrollLeft = pendingZoomScroll.current.scrollLeft
-      scrollRef.current.scrollTop = pendingZoomScroll.current.scrollTop
-      pendingZoomScroll.current = null
-      intendedScroll.current = null
-    }
-  }, [zoom])
+    // Scroll so the same canvas point stays at viewport center
+    el.scrollLeft = canvasX * newScale - el.clientWidth / 2
+    el.scrollTop = canvasY * newScale - el.clientHeight / 2
+  }
 
   // Signal canvas mount/unmount to CoreUIBar
   useEffect(() => {

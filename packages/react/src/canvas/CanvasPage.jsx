@@ -203,6 +203,7 @@ function ChromeWrappedWidget({
   onDeselect,
   onUpdate,
   onRemove,
+  onCopy,
 }) {
   const widgetRef = useRef(null)
   const features = getFeatures(widget.type)
@@ -210,8 +211,10 @@ function ChromeWrappedWidget({
   const handleAction = useCallback((actionId) => {
     if (actionId === 'delete') {
       onRemove(widget.id)
+    } else if (actionId === 'copy') {
+      onCopy(widget)
     }
-  }, [widget.id, onRemove])
+  }, [widget, onRemove, onCopy])
 
   return (
     <WidgetChrome
@@ -311,6 +314,25 @@ export default function CanvasPage({ name }) {
     removeWidgetApi(name, widgetId).catch((err) =>
       console.error('[canvas] Failed to remove widget:', err)
     )
+  }, [name])
+
+  const handleWidgetCopy = useCallback(async (widget) => {
+    const position = {
+      x: (widget.position?.x ?? 0) + 40,
+      y: (widget.position?.y ?? 0) + 40,
+    }
+    try {
+      const result = await addWidgetApi(name, {
+        type: widget.type,
+        props: { ...widget.props },
+        position,
+      })
+      if (result.success && result.widget) {
+        setLocalWidgets((prev) => [...(prev || []), result.widget])
+      }
+    } catch (err) {
+      console.error('[canvas] Failed to copy widget:', err)
+    }
   }, [name])
 
   const debouncedSourceSave = useRef(
@@ -941,6 +963,7 @@ export default function CanvasPage({ name }) {
           onSelect={() => setSelectedWidgetId(widget.id)}
           onDeselect={() => setSelectedWidgetId(null)}
           onUpdate={handleWidgetUpdate}
+          onCopy={handleWidgetCopy}
           onRemove={(id) => {
             handleWidgetRemove(id)
             setSelectedWidgetId(null)

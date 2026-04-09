@@ -11,6 +11,10 @@ const ROTATION_DEG = 1.5;
  *  If the user releases before this, neodrag never sees the event (clean click). */
 const DRAG_DELAY_MS = 150;
 
+/** Minimum distance (px) the pointer must travel to start drag.
+ *  neodrag requires BOTH delay AND distance to be met. */
+const DRAG_DISTANCE_PX = 10;
+
 function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
   const draggableRef = useRef(null);
   const initialSavedPosition = initialPosition || { x: 0, y: 0 };
@@ -43,61 +47,10 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
     }
   }, [dragId, initialSavedPosition.x, initialSavedPosition.y]);
 
-  // Gate neodrag's pointerdown: intercept in capture phase, hold for
-  // DRAG_DELAY_MS, then re-dispatch. If pointerup fires first, swallow
-  // the event entirely — neodrag never sees it (clean click).
-  useEffect(() => {
-    const el = draggableRef.current;
-    if (!el) return;
-
-    let delayTimer = null;
-    let pendingEvent = null;
-
-    function onPointerDownCapture(e) {
-      // Only gate events on the handle (or the whole element if no handle)
-      if (handle) {
-        const handleEl = el.querySelector(handle);
-        if (!handleEl || !handleEl.contains(e.target)) return;
-      }
-      e.stopPropagation();
-      pendingEvent = e;
-      delayTimer = setTimeout(() => {
-        if (!pendingEvent) return;
-        // Re-dispatch — neodrag picks it up in bubble phase
-        const synth = new PointerEvent('pointerdown', {
-          bubbles: true,
-          cancelable: true,
-          pointerId: pendingEvent.pointerId,
-          clientX: pendingEvent.clientX,
-          clientY: pendingEvent.clientY,
-          button: pendingEvent.button,
-          pointerType: pendingEvent.pointerType,
-        });
-        pendingEvent = null;
-        e.target.dispatchEvent(synth);
-      }, DRAG_DELAY_MS);
-    }
-
-    function onPointerUpCapture() {
-      // Released before delay — cancel, neodrag never sees it
-      if (pendingEvent) {
-        clearTimeout(delayTimer);
-        pendingEvent = null;
-      }
-    }
-
-    el.addEventListener('pointerdown', onPointerDownCapture, true);
-    el.addEventListener('pointerup', onPointerUpCapture, true);
-    return () => {
-      el.removeEventListener('pointerdown', onPointerDownCapture, true);
-      el.removeEventListener('pointerup', onPointerUpCapture, true);
-      clearTimeout(delayTimer);
-    };
-  }, [handle]);
-
   const { isDragging } = useDraggable(draggableRef, {
     axis: 'both',
     bounds: 'parent',
+    threshold: { delay: DRAG_DELAY_MS, distance: DRAG_DISTANCE_PX },
     defaultClass: 'tc-drag',
     defaultClassDragging: 'tc-on',
     defaultClassDragged: 'tc-off',

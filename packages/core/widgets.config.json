@@ -12,6 +12,7 @@
       },
       "features": [
         { "id": "color",  "type": "color-picker", "prop": "color" },
+        { "id": "copy",   "type": "action",        "action": "copy" },
         { "id": "delete", "type": "action",        "action": "delete" }
       ]
     },
@@ -23,6 +24,7 @@
         "width":   { "type": "number", "label": "Width",   "category": "size",    "default": 360, "min": 200, "max": 1200 }
       },
       "features": [
+        { "id": "copy",   "type": "action", "action": "copy" },
         { "id": "delete", "type": "action", "action": "delete" }
       ]
     },
@@ -41,6 +43,7 @@
         { "id": "zoom-in",  "type": "action", "action": "zoom-in" },
         { "id": "zoom-out", "type": "action", "action": "zoom-out" },
         { "id": "edit-url", "type": "action", "action": "edit" },
+        { "id": "copy",     "type": "action", "action": "copy" },
         { "id": "delete",   "type": "action", "action": "delete" }
       ]
     },
@@ -54,6 +57,7 @@
       },
       "features": [
         { "id": "open-external", "type": "action", "action": "open-external" },
+        { "id": "copy",          "type": "action", "action": "copy" },
         { "id": "delete",        "type": "action", "action": "delete" }
       ]
     },
@@ -65,6 +69,7 @@
         "title": { "type": "text", "label": "Title", "category": "content", "default": "" }
       },
       "features": [
+        { "id": "copy",   "type": "action", "action": "copy" },
         { "id": "delete", "type": "action", "action": "delete" }
       ]
     },
@@ -88,6 +93,7 @@
       },
       "features": [
         { "id": "toggle-private", "type": "action", "action": "toggle-private" },
+        { "id": "copy",           "type": "action", "action": "copy" },
         { "id": "delete",         "type": "action", "action": "delete" }
       ]
     }

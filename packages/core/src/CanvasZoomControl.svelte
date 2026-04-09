@@ -4,12 +4,15 @@
 -->
 
 <script lang="ts">
+  import * as Tooltip from './lib/components/ui/tooltip/index.js'
+
   interface Props {
     config?: any
     data?: {
       zoomIn: (zoom: number) => void
       zoomOut: (zoom: number) => void
       zoomReset: () => void
+      zoomToFit: () => void
       ZOOM_MIN: number
       ZOOM_MAX: number
     }
@@ -21,34 +24,69 @@
 </script>
 
 {#if data}
-  <div class="canvas-zoom-bar" role="group" aria-label={config.ariaLabel || 'Zoom controls'}>
-    <button
-      class="canvas-zoom-btn"
-      onclick={() => data.zoomOut(zoom)}
-      disabled={zoom <= data.ZOOM_MIN}
-      aria-label="Zoom out"
-      title="Zoom out"
-      {tabindex}
-    >−</button>
-    <button
-      class="canvas-zoom-label"
-      onclick={() => data.zoomReset()}
-      aria-label="Reset zoom to 100%"
-      title="Reset to 100%"
-      tabindex={-1}
-    >{zoom}%</button>
-    <button
-      class="canvas-zoom-btn"
-      onclick={() => data.zoomIn(zoom)}
-      disabled={zoom >= data.ZOOM_MAX}
-      aria-label="Zoom in"
-      title="Zoom in"
-      tabindex={-1}
-    >+</button>
+  <div class="canvas-zoom-group">
+    <div class="canvas-zoom-bar" role="group" aria-label={config.ariaLabel || 'Zoom controls'}>
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          <button
+            class="canvas-zoom-btn"
+            onclick={() => data.zoomOut(zoom)}
+            disabled={zoom <= data.ZOOM_MIN}
+            aria-label="Decrease zoom"
+            {tabindex}
+          >−</button>
+        </Tooltip.Trigger>
+        <Tooltip.Content side="top">Decrease zoom</Tooltip.Content>
+      </Tooltip.Root>
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          <button
+            class="canvas-zoom-label"
+            onclick={() => data.zoomReset()}
+            aria-label="Zoom to 100%"
+            tabindex={-1}
+          >{zoom}%</button>
+        </Tooltip.Trigger>
+        <Tooltip.Content side="top">Zoom to 100%</Tooltip.Content>
+      </Tooltip.Root>
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          <button
+            class="canvas-zoom-btn"
+            onclick={() => data.zoomIn(zoom)}
+            disabled={zoom >= data.ZOOM_MAX}
+            aria-label="Increase zoom"
+            tabindex={-1}
+          >+</button>
+        </Tooltip.Trigger>
+        <Tooltip.Content side="top">Increase zoom</Tooltip.Content>
+      </Tooltip.Root>
+    </div>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        <button
+          class="canvas-zoom-fit"
+          onclick={() => data.zoomToFit()}
+          aria-label="Zoom to objects"
+          tabindex={-1}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M1.75 10a.75.75 0 0 1 .75.75v2.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 0 1.5h-2.5A1.75 1.75 0 0 1 1 13.25v-2.5a.75.75 0 0 1 .75-.75Zm12.5 0a.75.75 0 0 1 .75.75v2.5A1.75 1.75 0 0 1 13.25 15h-2.5a.75.75 0 0 1 0-1.5h2.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 .75-.75ZM2.75 1a1.75 1.75 0 0 0-1.75 1.75v2.5a.75.75 0 0 0 1.5 0v-2.5a.25.25 0 0 1 .25-.25h2.5a.75.75 0 0 0 0-1.5h-2.5Zm10.5 0h-2.5a.75.75 0 0 0 0 1.5h2.5a.25.25 0 0 1 .25.25v2.5a.75.75 0 0 0 1.5 0v-2.5A1.75 1.75 0 0 0 13.25 1Z" />
+          </svg>
+        </button>
+      </Tooltip.Trigger>
+      <Tooltip.Content side="top">Zoom to objects</Tooltip.Content>
+    </Tooltip.Root>
   </div>
 {/if}
 
 <style>
+  .canvas-zoom-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
   .canvas-zoom-bar {
     display: flex;
     align-items: center;
@@ -100,6 +138,25 @@
   }
 
   .canvas-zoom-label:hover {
+    background: var(--sb--trigger-bg-hover, var(--color-slate-300));
+  }
+
+  .canvas-zoom-fit {
+    all: unset;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: 2.5px solid var(--sb--trigger-border, var(--color-slate-400));
+    background: var(--sb--trigger-bg, var(--color-slate-100));
+    color: var(--sb--trigger-text, var(--color-slate-600));
+    transition: background 120ms;
+  }
+
+  .canvas-zoom-fit:hover {
     background: var(--sb--trigger-bg-hover, var(--color-slate-300));
   }
 </style>

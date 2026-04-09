@@ -497,16 +497,16 @@ export default function CanvasPage({ name }) {
           const dataUrl = await blobToDataUrl(blob)
           const { width: natW, height: natH } = await getImageDimensions(dataUrl)
 
-          // Cap initial display at 600px wide, maintain aspect ratio
+          // Display at 2x retina: halve natural dimensions, then cap at 600px
           const maxWidth = 600
-          let displayW = natW
-          let displayH = natH
+          let displayW = Math.round(natW / 2)
+          let displayH = Math.round(natH / 2)
           if (displayW > maxWidth) {
             displayH = Math.round(displayH * (maxWidth / displayW))
             displayW = maxWidth
           }
 
-          const uploadResult = await uploadImage(dataUrl)
+          const uploadResult = await uploadImage(dataUrl, name)
           if (!uploadResult.success) {
             console.error('[canvas] Image upload failed:', uploadResult.error)
             return true

@@ -10,6 +10,7 @@
       zoomIn: (zoom: number) => void
       zoomOut: (zoom: number) => void
       zoomReset: () => void
+      zoomToFit: () => void
       ZOOM_MIN: number
       ZOOM_MAX: number
     }
@@ -45,6 +46,17 @@
       title="Zoom in"
       tabindex={-1}
     >+</button>
+    <button
+      class="canvas-zoom-fit"
+      onclick={() => data.zoomToFit()}
+      aria-label="Zoom to fit all"
+      title="Zoom to fit all"
+      tabindex={-1}
+    >
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M1.75 10a.75.75 0 0 1 .75.75v2.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 0 1.5h-2.5A1.75 1.75 0 0 1 1 13.25v-2.5a.75.75 0 0 1 .75-.75Zm12.5 0a.75.75 0 0 1 .75.75v2.5A1.75 1.75 0 0 1 13.25 15h-2.5a.75.75 0 0 1 0-1.5h2.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 .75-.75ZM2.75 1a1.75 1.75 0 0 0-1.75 1.75v2.5a.75.75 0 0 0 1.5 0v-2.5a.25.25 0 0 1 .25-.25h2.5a.75.75 0 0 0 0-1.5h-2.5Zm10.5 0h-2.5a.75.75 0 0 0 0 1.5h2.5a.25.25 0 0 1 .25.25v2.5a.75.75 0 0 0 1.5 0v-2.5A1.75 1.75 0 0 0 13.25 1Z" />
+      </svg>
+    </button>
   </div>
 {/if}
 
@@ -100,6 +112,23 @@
   }
 
   .canvas-zoom-label:hover {
+    background: var(--sb--trigger-bg-hover, var(--color-slate-300));
+  }
+
+  .canvas-zoom-fit {
+    all: unset;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 38px;
+    color: var(--sb--trigger-text, var(--color-slate-600));
+    border-left: 2.5px solid var(--sb--trigger-border, var(--color-slate-400));
+    transition: background 120ms;
+  }
+
+  .canvas-zoom-fit:hover {
     background: var(--sb--trigger-bg-hover, var(--color-slate-300));
   }
 </style>

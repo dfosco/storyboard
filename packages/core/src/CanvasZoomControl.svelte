@@ -53,7 +53,7 @@
     display: flex;
     align-items: center;
     border-radius: 10px;
-    border: 1.5px solid var(--sb--trigger-border, var(--color-slate-400));
+    border: 2.5px solid var(--sb--trigger-border, var(--color-slate-400));
     background: var(--sb--trigger-bg, var(--color-slate-100));
     overflow: hidden;
   }
@@ -65,7 +65,7 @@
     align-items: center;
     justify-content: center;
     width: 36px;
-    height: 32px;
+    height: 38px;
     font-size: 16px;
     font-weight: 600;
     color: var(--sb--trigger-text, var(--color-slate-600));
@@ -88,14 +88,14 @@
     align-items: center;
     justify-content: center;
     min-width: 48px;
-    height: 32px;
+    height: 38px;
     padding: 0 4px;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--sb--trigger-text, var(--color-slate-600));
-    border-left: 1.5px solid var(--sb--trigger-border, var(--color-slate-400));
-    border-right: 1.5px solid var(--sb--trigger-border, var(--color-slate-400));
+    border-left: 2.5px solid var(--sb--trigger-border, var(--color-slate-400));
+    border-right: 2.5px solid var(--sb--trigger-border, var(--color-slate-400));
     transition: background 120ms;
   }
 

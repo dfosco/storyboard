@@ -21,7 +21,7 @@
       "icon": "📄",
       "props": {
         "content": { "type": "text",   "label": "Content", "category": "content", "default": "" },
-        "width":   { "type": "number", "label": "Width",   "category": "size",    "default": 360, "min": 200, "max": 1200 }
+        "width":   { "type": "number", "label": "Width",   "category": "size",    "default": 530, "min": 200, "max": 1200 }
       },
       "features": [
         { "id": "copy",   "type": "action", "action": "copy" },

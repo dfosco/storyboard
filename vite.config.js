@@ -85,10 +85,17 @@ export default defineConfig(() => {
                 server.watcher.on('add', markCanvasMutation)
                 server.watcher.on('unlink', markCanvasMutation)
 
-                // Track whether a canvas page is active and whether HMR is enabled
-                let canvasHmrGuardActive = false
+                // Track whether a canvas page is active via heartbeat.
+                // The guard auto-expires 5s after the last heartbeat so a
+                // closed tab or crashed browser never leaves it stuck.
+                let canvasGuardUntil = 0
+                const GUARD_TTL_MS = 5000
                 server.hot.on('storyboard:canvas-hmr-guard', (data) => {
-                    canvasHmrGuardActive = data.active && !data.hmrEnabled
+                    if (data.active && !data.hmrEnabled) {
+                        canvasGuardUntil = Date.now() + GUARD_TTL_MS
+                    } else {
+                        canvasGuardUntil = 0
+                    }
                 })
 
                 const originalSend = server.ws.send.bind(server.ws)
@@ -99,7 +106,7 @@ export default defineConfig(() => {
                             return
                         }
                         // Suppress reloads while a canvas page is active (no ?canvas-hmr)
-                        if (canvasHmrGuardActive) {
+                        if (Date.now() < canvasGuardUntil) {
                             return
                         }
                     }

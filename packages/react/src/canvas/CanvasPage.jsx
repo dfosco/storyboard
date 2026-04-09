@@ -56,6 +56,30 @@ function debounce(fn, ms) {
   }
 }
 
+/** Per-canvas viewport state persistence (zoom + scroll position). */
+function getViewportStorageKey(canvasName) {
+  return `sb-canvas-viewport:${canvasName}`
+}
+
+function loadViewportState(canvasName) {
+  try {
+    const raw = localStorage.getItem(getViewportStorageKey(canvasName))
+    if (!raw) return null
+    const state = JSON.parse(raw)
+    return {
+      zoom: typeof state.zoom === 'number' ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, state.zoom)) : null,
+      scrollLeft: typeof state.scrollLeft === 'number' ? state.scrollLeft : null,
+      scrollTop: typeof state.scrollTop === 'number' ? state.scrollTop : null,
+    }
+  } catch { return null }
+}
+
+const saveViewportState = debounce((canvasName, state) => {
+  try {
+    localStorage.setItem(getViewportStorageKey(canvasName), JSON.stringify(state))
+  } catch { /* quota exceeded — non-critical */ }
+}, 300)
+
 /**
  * Get viewport-center coordinates in canvas space for placing a new widget.
  * Converts the visible center of the scroll container to unscaled canvas coordinates.
@@ -170,9 +194,11 @@ export default function CanvasPage({ name }) {
   const [localWidgets, setLocalWidgets] = useState(canvas?.widgets ?? null)
   const [trackedCanvas, setTrackedCanvas] = useState(canvas)
   const [selectedWidgetId, setSelectedWidgetId] = useState(null)
-  const [zoom, setZoom] = useState(100)
-  const zoomRef = useRef(100)
+  const initialViewport = loadViewportState(name)
+  const [zoom, setZoom] = useState(initialViewport?.zoom ?? 100)
+  const zoomRef = useRef(initialViewport?.zoom ?? 100)
   const scrollRef = useRef(null)
+  const pendingScrollRestore = useRef(initialViewport)
   const [canvasTitle, setCanvasTitle] = useState(canvas?.title || name)
   const titleInputRef = useRef(null)
   const [localSources, setLocalSources] = useState(canvas?.sources ?? [])
@@ -286,6 +312,41 @@ export default function CanvasPage({ name }) {
   useEffect(() => {
     zoomRef.current = zoom
   }, [zoom])
+
+  // Restore scroll position from localStorage after first render
+  useEffect(() => {
+    const el = scrollRef.current
+    const saved = pendingScrollRestore.current
+    if (el && saved) {
+      if (saved.scrollLeft != null) el.scrollLeft = saved.scrollLeft
+      if (saved.scrollTop != null) el.scrollTop = saved.scrollTop
+      pendingScrollRestore.current = null
+    }
+  }, [name, loading])
+
+  // Persist viewport state (zoom + scroll) to localStorage on changes
+  useEffect(() => {
+    const el = scrollRef.current
+    saveViewportState(name, {
+      zoom,
+      scrollLeft: el?.scrollLeft ?? 0,
+      scrollTop: el?.scrollTop ?? 0,
+    })
+  }, [name, zoom])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    function handleScroll() {
+      saveViewportState(name, {
+        zoom: zoomRef.current,
+        scrollLeft: el.scrollLeft,
+        scrollTop: el.scrollTop,
+      })
+    }
+    el.addEventListener('scroll', handleScroll, { passive: true })
+    return () => el.removeEventListener('scroll', handleScroll)
+  }, [name, loading])
 
   /**
    * Zoom to a new level, anchoring on an optional client-space point.

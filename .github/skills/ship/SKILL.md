@@ -1,41 +1,59 @@
 ---
 name: ship
-description: End-to-end feature shipping workflow — worktree, plan, implement, adversarial review, push, and open PR.
+description: Dual-mode feature shipping — fast lite mode (default) or thorough critical mode with adversarial review.
 metadata:
   author: Daniel Fosco
-  version: "2026.4.08"
+  version: "2026.4.09"
 ---
 
 # Ship Skill
 
-> Triggered by: "ship", "ship this", "ship a feature", "ship it", "ship a change"
->
-> **No-PR variant** triggered by: "ship-no-pr", "[ship-no-pr]", "ship without PR", "ship no pr", "ship but don't open a PR", or any ship trigger combined with an instruction to skip the PR step.
->
-> **⚠️ This skill MUST be invoked whenever the user says "ship". Do NOT implement changes directly — always go through this workflow. Every step is mandatory and sequential (except Step 8, which is skipped in no-PR mode).**
+This skill has two modes:
 
-## What This Does
+| Mode | Triggers | Best for |
+|------|----------|----------|
+| **Lite** (default) | `ship`, `ship this`, `ship it`, `ship a feature` | Docs, config, small fixes, non-critical features |
+| **Critical** | `ship-critical`, `[ship-critical]`, `ship thoroughly`, `ship with full review` | Core logic, security-sensitive, public API changes |
 
-Runs an end-to-end feature shipping workflow: creates a worktree, plans the feature, implements it, validates with an adversarial rubber-duck review, pushes to a remote branch, and opens a PR. All work happens in an isolated worktree — never on `main`.
+> **⚠️ This skill MUST be invoked whenever the user says "ship". Do NOT implement changes directly — always go through this workflow.**
+
+---
+
+## Mode Comparison
+
+| Aspect | `ship` (lite) | `ship-critical` |
+|--------|---------------|-----------------|
+| Token cost | ~30-50% of critical | 100% |
+| Time | Fast | Thorough |
+| Review quality | Lint/build/test only | Adversarial agent pass |
+| Clips integration | No | Yes |
+| Separate test step | No (inline) | Yes (vitest skill) |
+| No-PR option | ✅ Supported | ❌ Not supported |
 
 ---
 
 ## Parameters
 
-| Parameter | Description |
-|-----------|-------------|
-| **no-pr** | Skip opening a Pull Request (Step 8). The branch is still pushed to the remote. Use when you want to ship work to a branch without creating a PR — e.g., for draft work, local experiments, or when you'll open the PR manually later. |
+| Parameter | Applies to | Description |
+|-----------|------------|-------------|
+| **no-pr** | `ship` (lite only) | Skip opening a Pull Request. The branch is still pushed to the remote. Use for draft work or when you'll open the PR manually later. |
 
-**How to activate no-PR mode:**
+**How to activate no-PR mode (lite only):**
 - Verbal: *"ship this but don't create a PR"*, *"ship without PR"*
 - Short-form: *"ship-no-pr"*, *"[ship-no-pr]"*
 - Combined: *"ship a feature to add X — no PR"*
 
-When no-PR mode is active, Step 8 (Open a PR) and the PR-related parts of Step 9 (clips auto-close via `Fixes #`) are skipped. All other steps run normally.
+> **Note:** `ship-critical` always opens a PR. The no-PR option is not available for critical mode because thorough review warrants a PR for visibility.
 
 ---
 
-## How to Execute
+# Lite Mode (`ship`)
+
+> Triggered by: `ship`, `ship this`, `ship it`, `ship a feature`, `ship a change`
+
+Fast path for non-critical changes. Worktree isolation + validation + PR, without the heavyweight review loop.
+
+## Steps
 
 ### Step 1: Create a worktree
 
@@ -57,33 +75,23 @@ Generate an implementation plan for the requested feature:
    - **Problem statement** — what the feature does and why
    - **Approach** — high-level strategy
    - **Files to change** — list of files to create, modify, or delete
-   - **Steps** — ordered implementation steps with enough detail to execute without referring back to the user's prompt
+   - **Steps** — ordered implementation steps
    - **Edge cases & risks** — anything that could go wrong
 4. Present a summary of the plan to the user.
 5. Use `ask_user` to confirm:
    > Does this plan look good? Should I proceed with implementation?
 
-Do NOT proceed to Step 3 until the user confirms.
+Do NOT proceed until the user confirms.
 
-### Step 3: Create clips goal/tasks
-
-**If the `clips` skill is available** (check for `.clips/` directory or `clips` CLI), create tracking issues before implementation begins:
-
-1. Run `clips view` to check for a relevant existing goal.
-2. If a matching goal exists, create tasks under it for the planned work.
-3. If no matching goal exists, create a new goal with tasks derived from the plan.
-4. **Save the goal ID and issue number** — you will need these for the PR body in Step 7.
-
-If clips is not available, skip this step silently.
-
-### Step 4: Implement and commit
+### Step 3: Implement and commit
 
 Execute the plan:
 
 1. Implement the changes following the plan.
-2. Run existing linters and tests (`npm run lint`, `npm run build`, `npm run test`) to validate the changes.
-3. Fix any issues that arise.
-4. Stage and commit with a descriptive message:
+2. Write tests inline if the change includes testable logic (optional but encouraged).
+3. Run validation: `npm run lint && npm run build && npm run test`
+4. Fix any issues that arise.
+5. Stage and commit with a descriptive message:
 
 ```bash
 git add -A
@@ -95,6 +103,90 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 ```
 
 Use conventional commit types (`feat`, `fix`, `refactor`, `docs`, `chore`, etc.).
+
+### Step 4: Push to remote
+
+```bash
+git push -u origin <branch-name>
+```
+
+If the push fails due to permissions or remote issues, inform the user and suggest manual steps.
+
+### Step 5: Open a PR
+
+> **⏭️ Skip this step if no-PR mode is active.** After pushing, inform the user that the branch is available at `origin/<branch-name>` and they can open a PR manually when ready.
+
+Use the GitHub CLI to create a pull request:
+
+```bash
+gh pr create \
+  --title "<PR title>" \
+  --body "<PR body>" \
+  --base main \
+  --head <branch-name>
+```
+
+The PR body must include:
+- **Summary** — what this PR does (from the plan)
+- **Changes** — bullet list of files changed and why
+- **Testing** — what was validated (lint, build, test results)
+
+Use `ask_user` to confirm the PR title and description before creating.
+
+### Step 6: Start dev server
+
+Run the dev server in the worktree so the user can immediately preview changes:
+
+```bash
+npm run dev
+```
+
+---
+
+# Critical Mode (`ship-critical`)
+
+> Triggered by: `ship-critical`, `[ship-critical]`, `ship thoroughly`, `ship with full review`, `ship careful`
+
+Thorough path for critical changes. Includes clips integration, dedicated test writing, and adversarial rubber-duck review.
+
+## Steps
+
+### Step 1: Create a worktree
+
+Same as lite mode — invoke the **worktree** skill to create a git worktree.
+
+### Step 2: Plan the feature
+
+Same as lite mode — write plan to `.github/plans/<branch-name>.md` and get user confirmation.
+
+### Step 3: Create clips goal/tasks
+
+**If the `clips` skill is available** (check for `.clips/` directory or `clips` CLI), create tracking issues before implementation begins:
+
+1. Run `clips view` to check for a relevant existing goal.
+2. If a matching goal exists, create tasks under it for the planned work.
+3. If no matching goal exists, create a new goal with tasks derived from the plan.
+4. **Save the goal ID and issue number** — you will need these for the PR body.
+
+If clips is not available, skip this step silently.
+
+### Step 4: Implement and commit
+
+Execute the plan:
+
+1. Implement the changes following the plan.
+2. Run validation: `npm run lint && npm run build && npm run test`
+3. Fix any issues that arise.
+4. Stage and commit with a descriptive message:
+
+```bash
+git add -A
+git commit -m "<type>: <description>
+
+<body if needed>
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
 
 ### Step 5: Write tests
 
@@ -117,26 +209,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 ### Step 6: Adversarial rubber-duck review
 
-**Invoke the `vitest` skill** to write tests for the implementation:
-
-1. Identify all new or changed logic that is testable (utilities, data transformations, hooks, state management, etc.).
-2. Write tests using Vitest, following existing test patterns in the codebase.
-3. Run `npm run test` to verify all tests pass (new and existing).
-4. Fix any failures.
-5. Stage and commit tests separately:
-
-```bash
-git add -A
-git commit -m "test: add tests for <feature>
-
-Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
-```
-
-**Skip this step only if** the change is purely documentation, configuration, or markup with no testable logic.
-
-### Step 6: Adversarial rubber-duck review
-
-Launch a single `rubber-duck` agent with an adversarial framing. Include the plan from Step 2, the diff of all changes (`git diff HEAD~1`), and the feature requirements from the user's original prompt. The prompt must include:
+Launch a `rubber-duck` agent with an adversarial framing. Include the plan from Step 2, the diff of all changes (`git diff HEAD~1`), and the feature requirements from the user's original prompt. The prompt must include:
 
 > You are an adversarial code reviewer. Your job is to BREAK this implementation. Assume nothing works correctly until proven otherwise. Specifically:
 >
@@ -173,11 +246,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 git push -u origin <branch-name>
 ```
 
-If the push fails due to permissions or remote issues, inform the user and suggest manual steps.
-
 ### Step 8: Open a PR
-
-> **⏭️ Skip this step if no-PR mode is active.** After pushing, inform the user that the branch is available at `origin/<branch-name>` and they can open a PR manually when ready.
 
 Use the GitHub CLI to create a pull request:
 
@@ -209,21 +278,17 @@ If clips was skipped in Step 3, skip this step too.
 
 ### Step 10: Start dev server
 
-Run the dev server in the worktree so the user can immediately preview changes:
+Run the dev server in the worktree:
 
 ```bash
 npm run dev
 ```
 
-This is the **only** place the dev server starts during a ship workflow — the worktree skill skips its own dev server step when called from ship.
-
 ---
 
-## Rules
+## Rules (Both Modes)
 
-- **Always create a worktree first** — invoke the worktree skill as Step 1, before any exploration or implementation. Never commit to `main`. Never create a branch from `main` after the fact. The worktree IS the branch.
-- **Always open a PR** (unless no-PR mode is active) — every shipped feature must result in a Pull Request by default. If `gh pr create` fails, inform the user immediately. In no-PR mode, the branch is pushed but the PR step is skipped.
-- **Never skip the adversarial review** — this is the quality gate. The adversarial rubber-duck pass is mandatory.
+- **Always create a worktree first** — invoke the worktree skill as Step 1, before any exploration or implementation. Never commit to `main`. The worktree IS the branch.
 - **Always run lint/build/test** before committing — at minimum `npm run lint && npm run build && npm run test`.
 - **Always use `ask_user`** for confirmations — branch name, plan approval, PR details.
 - **Conventional commits** — use `feat:`, `fix:`, `refactor:`, `docs:`, `chore:` prefixes.
@@ -231,34 +296,48 @@ This is the **only** place the dev server starts during a ship workflow — the 
 - **If any step fails**, stop and inform the user with the error and suggested next steps. Do not silently continue.
 - **Context inference** — if the user's prompt already provides the branch name, feature description, or other details, skip the corresponding `ask_user` question and use the provided value directly.
 
+### Critical-mode specific rules
+
+- **Never skip the adversarial review** — this is the quality gate. The adversarial rubber-duck pass is mandatory.
+- **Always open a PR** — critical mode does not support no-PR. If `gh pr create` fails, inform the user immediately.
+
 ---
 
 ## Example Usage
 
-User says: "ship a feature to add a dark mode toggle to the settings page"
+### Lite Mode Example
 
-1. Creates worktree `add-dark-mode-toggle`
+User says: "ship a fix for the button alignment"
+
+1. Creates worktree `fix-button-alignment`
+2. Plans the fix, gets user confirmation
+3. Implements fix with inline tests if needed, commits
+4. Pushes to origin
+5. Opens PR "fix: correct button alignment"
+6. Starts dev server
+
+### Lite Mode No-PR Example
+
+User says: "[ship-no-pr] update the README"
+
+1. Creates worktree `update-readme`
+2. Plans the update, gets user confirmation
+3. Implements changes, commits
+4. Pushes to origin
+5. **Skips PR** — informs user: "Branch pushed to `origin/update-readme`. Open a PR when ready."
+6. Starts dev server
+
+### Critical Mode Example
+
+User says: "ship-critical: refactor the authentication flow"
+
+1. Creates worktree `refactor-authentication-flow`
 2. Plans the implementation (explores codebase, writes plan)
 3. Creates clips goal + tasks for the work
-4. Implements dark mode toggle, commits
+4. Implements refactor, commits
 5. Writes tests using vitest skill, commits
 6. Runs adversarial rubber-duck review, fixes findings, commits
-7. Pushes `add-dark-mode-toggle` to origin
-8. Opens PR "feat: add dark mode toggle to settings page" with `Fixes #<issue>` in body
+7. Pushes to origin
+8. Opens PR "refactor: overhaul authentication flow" with `Fixes #<issue>` in body
 9. Marks clips tasks as closed
-10. Starts dev server (`npm run dev`) in the worktree
-
-### No-PR Example
-
-User says: "[ship-no-pr] refactor the loader to use async iterators"
-
-1. Creates worktree `refactor-loader-async-iterators`
-2. Plans the implementation
-3. Creates clips goal + tasks
-4. Implements refactor, commits
-5. Writes tests, commits
-6. Runs adversarial rubber-duck review, fixes findings, commits
-7. Pushes `refactor-loader-async-iterators` to origin
-8. **Skips PR creation** — informs user: "Branch pushed to `origin/refactor-loader-async-iterators`. Open a PR when ready."
-9. Marks clips tasks as closed
-10. Starts dev server (`npm run dev`) in the worktree
+10. Starts dev server

@@ -3,8 +3,9 @@
 ## General instructions
 
 - Before running any other instruction, evaluate if the user prompt contains a trigger for one or more skills in `.github/skills`.
-  - **"Ship", "ship this", "ship a change", "ship a feature"** → always invoke the **ship** skill. This is a hard rule — never implement changes directly on `main`. The ship skill creates a worktree, implements there, and opens a PR.
-  - **"Ship-no-pr", "[ship-no-pr]", "ship without PR"** → invoke the **ship** skill in **no-PR mode**. Same workflow but skips opening a Pull Request — the branch is pushed to the remote only.
+  - **"Ship", "ship this", "ship a change", "ship a feature"** → invoke the **ship** skill in **lite mode** (default). Fast path: worktree → plan → implement → lint/build/test → push → PR. No adversarial review.
+  - **"Ship-no-pr", "[ship-no-pr]", "ship without PR"** → invoke the **ship** skill in **lite mode with no-PR**. Same as above but skips opening a Pull Request.
+  - **"Ship-critical", "[ship-critical]", "ship thoroughly", "ship with full review"** → invoke the **ship** skill in **critical mode**. Full workflow: worktree → plan → clips → implement → vitest → adversarial review → push → PR → close clips. Always opens a PR (no-PR not supported).
 - If the user asks `how to use this repo`, `how to run this project` etc, give them an outline of `AGENTS.md` and point them to this file, the `README.md` and the `.github/architecture` docs
 - **After completing any change**, always:
   1. Create a feature branch, push it, and open a Pull Request via `gh pr create`. Never leave committed work on `main` without a PR. (Exception: when ship skill runs in no-PR mode, the branch is pushed but the PR is skipped.)
@@ -45,7 +46,7 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 
 - **changelog** (`.github/skills/changelog/SKILL.md`) — Generates formatted changelog entries from commit ranges.
 
-- **ship** (`.github/skills/ship/SKILL.md`) — End-to-end feature shipping: worktree → plan → implement → adversarial review → push → PR. Supports `no-pr` mode to skip the PR step.
+- **ship** (`.github/skills/ship/SKILL.md`) — Dual-mode feature shipping. **Lite mode** (default): worktree → plan → implement → push → PR. **Critical mode**: adds clips, vitest, and adversarial review. Supports `no-pr` in lite mode only.
 
 ---
 

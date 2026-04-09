@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.10.0-beta.1
+
+### Patch Changes
+
+-   Widget Chrome beta.1: drag gate fix, ComponentWidget interactive overlay
+
 ## 3.10.0-beta.0
 
 ### Minor Changes

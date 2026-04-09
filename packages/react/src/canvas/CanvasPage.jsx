@@ -1,4 +1,4 @@
-import { createElement, useCallback, useEffect, useRef, useState } from 'react'
+import { createElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Canvas } from '@dfosco/tiny-canvas'
 import '@dfosco/tiny-canvas/style.css'
 import { useCanvas } from './useCanvas.js'
@@ -56,12 +56,18 @@ function debounce(fn, ms) {
 }
 
 /**
- * Get viewport-center coordinates for placing a new widget.
+ * Get viewport-center coordinates in canvas space for placing a new widget.
+ * Converts the visible center of the scroll container to unscaled canvas coordinates.
  */
-function getViewportCenter() {
+function getViewportCenter(scrollEl, scale) {
+  if (!scrollEl) {
+    return { x: 0, y: 0 }
+  }
+  const cx = scrollEl.scrollLeft + scrollEl.clientWidth / 2
+  const cy = scrollEl.scrollTop + scrollEl.clientHeight / 2
   return {
-    x: Math.round(window.innerWidth / 2 - 120),
-    y: Math.round(window.innerHeight / 2 - 80),
+    x: Math.round(cx / scale),
+    y: Math.round(cy / scale),
   }
 }
 
@@ -143,6 +149,8 @@ export default function CanvasPage({ name }) {
   const [zoom, setZoom] = useState(100)
   const zoomRef = useRef(100)
   const scrollRef = useRef(null)
+  const pendingZoomScroll = useRef(null)
+  const intendedScroll = useRef(null)
   const [canvasTitle, setCanvasTitle] = useState(canvas?.title || name)
   const titleInputRef = useRef(null)
   const [localSources, setLocalSources] = useState(canvas?.sources ?? [])
@@ -257,6 +265,53 @@ export default function CanvasPage({ name }) {
     zoomRef.current = zoom
   }, [zoom])
 
+  /**
+   * Zoom to a new level while keeping the viewport center stable.
+   * Computes the canvas-coordinate center, then stores scroll adjustments
+   * for the next layout paint so the same canvas point stays centered.
+   */
+  function applyZoom(newZoom) {
+    const el = scrollRef.current
+    const clampedZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newZoom))
+
+    if (!el) {
+      setZoom(clampedZoom)
+      return
+    }
+
+    const oldScale = zoomRef.current / 100
+    const newScale = clampedZoom / 100
+
+    // Use intended scroll when batched updates haven't flushed yet
+    const scrollLeft = intendedScroll.current?.scrollLeft ?? el.scrollLeft
+    const scrollTop = intendedScroll.current?.scrollTop ?? el.scrollTop
+
+    // Viewport center → canvas coordinate
+    const canvasX = (scrollLeft + el.clientWidth / 2) / oldScale
+    const canvasY = (scrollTop + el.clientHeight / 2) / oldScale
+
+    // New scroll to keep the same canvas point centered
+    const newScroll = {
+      scrollLeft: canvasX * newScale - el.clientWidth / 2,
+      scrollTop: canvasY * newScale - el.clientHeight / 2,
+    }
+
+    pendingZoomScroll.current = newScroll
+    intendedScroll.current = newScroll
+    zoomRef.current = clampedZoom
+    setZoom(clampedZoom)
+  }
+
+  // Apply pending scroll adjustment after the zoom CSS renders
+  useLayoutEffect(() => {
+    if (pendingZoomScroll.current && scrollRef.current) {
+      scrollRef.current.scrollLeft = pendingZoomScroll.current.scrollLeft
+      scrollRef.current.scrollTop = pendingZoomScroll.current.scrollTop
+      pendingZoomScroll.current = null
+      intendedScroll.current = null
+    }
+  }, [zoom])
+
   // Signal canvas mount/unmount to CoreUIBar
   useEffect(() => {
     window[CANVAS_BRIDGE_STATE_KEY] = { active: true, name, zoom: zoomRef.current }
@@ -281,7 +336,7 @@ export default function CanvasPage({ name }) {
   // Add a widget by type — used by CanvasControls and CoreUIBar event
   const addWidget = useCallback(async (type) => {
     const defaultProps = schemas[type] ? getDefaults(schemas[type]) : {}
-    const pos = getViewportCenter()
+    const pos = getViewportCenter(scrollRef.current, zoomRef.current / 100)
     try {
       const result = await addWidgetApi(name, {
         type,
@@ -310,7 +365,7 @@ export default function CanvasPage({ name }) {
     function handleZoom(e) {
       const { zoom: newZoom } = e.detail
       if (typeof newZoom === 'number') {
-        setZoom(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newZoom)))
+        applyZoom(newZoom)
       }
     }
     document.addEventListener('storyboard:canvas:set-zoom', handleZoom)
@@ -419,7 +474,7 @@ export default function CanvasPage({ name }) {
         props = { content: text }
       }
 
-      const pos = getViewportCenter()
+      const pos = getViewportCenter(scrollRef.current, zoomRef.current / 100)
       try {
         const result = await addWidgetApi(name, {
           type,
@@ -449,7 +504,7 @@ export default function CanvasPage({ name }) {
       const step = Math.trunc(zoomAccum.current)
       if (step === 0) return
       zoomAccum.current -= step
-      setZoom((z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z + step)))
+      applyZoom(zoomRef.current + step)
     }
     document.addEventListener('wheel', handleWheel, { passive: false })
     return () => document.removeEventListener('wheel', handleWheel)

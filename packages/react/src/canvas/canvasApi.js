@@ -39,3 +39,11 @@ export function addWidget(name, { type, props, position }) {
 export function removeWidget(name, widgetId) {
   return request('/widget', 'DELETE', { name, widgetId })
 }
+
+export function uploadImage(dataUrl) {
+  return request('/image', 'POST', { dataUrl })
+}
+
+export function toggleImagePrivacy(filename) {
+  return request('/image/toggle-private', 'POST', { filename })
+}

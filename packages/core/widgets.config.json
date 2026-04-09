@@ -62,6 +62,20 @@
         "height": { "type": "number", "label": "Height", "category": "size", "min": 60 }
       },
       "features": []
+    },
+    "image": {
+      "label": "Image",
+      "icon": "🖼️",
+      "props": {
+        "src":     { "type": "text",    "label": "Source",  "category": "content", "default": "" },
+        "private": { "type": "boolean", "label": "Private", "category": "settings", "default": false },
+        "width":   { "type": "number",  "label": "Width",   "category": "size", "min": 100 },
+        "height":  { "type": "number",  "label": "Height",  "category": "size", "min": 60 }
+      },
+      "features": [
+        { "id": "toggle-private", "type": "action", "action": "toggle-private" },
+        { "id": "delete",         "type": "action", "action": "delete" }
+      ]
     }
   }
 }

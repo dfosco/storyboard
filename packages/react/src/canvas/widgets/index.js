@@ -3,6 +3,7 @@ import MarkdownBlock from './MarkdownBlock.jsx'
 import PrototypeEmbed from './PrototypeEmbed.jsx'
 import LinkPreview from './LinkPreview.jsx'
 import ImageWidget from './ImageWidget.jsx'
+import FigmaEmbed from './FigmaEmbed.jsx'
 
 /**
  * Maps widget type strings to their React components.
@@ -14,6 +15,7 @@ export const widgetRegistry = {
   'prototype': PrototypeEmbed,
   'link-preview': LinkPreview,
   'image': ImageWidget,
+  'figma-embed': FigmaEmbed,
 }
 
 /**

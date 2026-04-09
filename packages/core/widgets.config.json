@@ -44,6 +44,19 @@
         { "id": "delete",   "type": "action", "action": "delete" }
       ]
     },
+    "figma-embed": {
+      "label": "Figma Embed",
+      "icon": "🎨",
+      "props": {
+        "url":    { "type": "url",    "label": "URL",    "category": "content", "default": "" },
+        "width":  { "type": "number", "label": "Width",  "category": "size",    "default": 800, "min": 200, "max": 2000 },
+        "height": { "type": "number", "label": "Height", "category": "size",    "default": 450, "min": 150, "max": 1500 }
+      },
+      "features": [
+        { "id": "open-external", "type": "action", "action": "open-external" },
+        { "id": "delete",        "type": "action", "action": "delete" }
+      ]
+    },
     "link-preview": {
       "label": "Link Preview",
       "icon": "🔗",

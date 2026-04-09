@@ -4,15 +4,15 @@ import { saveDrag } from './utils';
 
 const TRANSLATION_MS = 250;
 const PERSIST_DEADZONE_PX = 4;
-const ROTATION_DEADZONE_PX = 10;
+const ROTATION_DEADZONE_PX = 20;
 const ROTATION_DEG = 1.5;
 
 /** Minimum hold time (ms) before a pointerdown initiates drag.
- *  Prevents single-click and double-click from triggering drag state. */
-const DRAG_DELAY_MS = 100;
+ *  Prevents single-click from triggering drag state on the handle. */
+const DRAG_DELAY_MS = 150;
 
 /** Minimum distance (px) the pointer must move before drag starts. */
-const DRAG_DISTANCE_PX = 30;
+const DRAG_DISTANCE_PX = 6;
 
 function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
   const draggableRef = useRef(null);

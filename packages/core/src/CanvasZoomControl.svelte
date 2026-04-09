@@ -27,37 +27,37 @@
       class="canvas-zoom-btn"
       onclick={() => data.zoomOut(zoom)}
       disabled={zoom <= data.ZOOM_MIN}
-      aria-label="Zoom out"
-      title="Zoom out"
+      aria-label="Decrease zoom"
+      title="Decrease zoom"
       {tabindex}
     >−</button>
     <button
       class="canvas-zoom-label"
       onclick={() => data.zoomReset()}
-      aria-label="Reset zoom to 100%"
-      title="Reset to 100%"
+      aria-label="Zoom to 100%"
+      title="Zoom to 100%"
       tabindex={-1}
     >{zoom}%</button>
     <button
       class="canvas-zoom-btn"
       onclick={() => data.zoomIn(zoom)}
       disabled={zoom >= data.ZOOM_MAX}
-      aria-label="Zoom in"
-      title="Zoom in"
+      aria-label="Increase zoom"
+      title="Increase zoom"
       tabindex={-1}
     >+</button>
-    <button
-      class="canvas-zoom-fit"
-      onclick={() => data.zoomToFit()}
-      aria-label="Zoom to fit all"
-      title="Zoom to fit all"
-      tabindex={-1}
-    >
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-        <path d="M1.75 10a.75.75 0 0 1 .75.75v2.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 0 1.5h-2.5A1.75 1.75 0 0 1 1 13.25v-2.5a.75.75 0 0 1 .75-.75Zm12.5 0a.75.75 0 0 1 .75.75v2.5A1.75 1.75 0 0 1 13.25 15h-2.5a.75.75 0 0 1 0-1.5h2.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 .75-.75ZM2.75 1a1.75 1.75 0 0 0-1.75 1.75v2.5a.75.75 0 0 0 1.5 0v-2.5a.25.25 0 0 1 .25-.25h2.5a.75.75 0 0 0 0-1.5h-2.5Zm10.5 0h-2.5a.75.75 0 0 0 0 1.5h2.5a.25.25 0 0 1 .25.25v2.5a.75.75 0 0 0 1.5 0v-2.5A1.75 1.75 0 0 0 13.25 1Z" />
-      </svg>
-    </button>
   </div>
+  <button
+    class="canvas-zoom-fit"
+    onclick={() => data.zoomToFit()}
+    aria-label="Zoom to objects"
+    title="Zoom to objects"
+    tabindex={-1}
+  >
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M1.75 10a.75.75 0 0 1 .75.75v2.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 0 1.5h-2.5A1.75 1.75 0 0 1 1 13.25v-2.5a.75.75 0 0 1 .75-.75Zm12.5 0a.75.75 0 0 1 .75.75v2.5A1.75 1.75 0 0 1 13.25 15h-2.5a.75.75 0 0 1 0-1.5h2.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 .75-.75ZM2.75 1a1.75 1.75 0 0 0-1.75 1.75v2.5a.75.75 0 0 0 1.5 0v-2.5a.25.25 0 0 1 .25-.25h2.5a.75.75 0 0 0 0-1.5h-2.5Zm10.5 0h-2.5a.75.75 0 0 0 0 1.5h2.5a.25.25 0 0 1 .25.25v2.5a.75.75 0 0 0 1.5 0v-2.5A1.75 1.75 0 0 0 13.25 1Z" />
+    </svg>
+  </button>
 {/if}
 
 <style>
@@ -121,10 +121,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
+    width: 38px;
     height: 38px;
+    border-radius: 10px;
+    border: 2.5px solid var(--sb--trigger-border, var(--color-slate-400));
+    background: var(--sb--trigger-bg, var(--color-slate-100));
     color: var(--sb--trigger-text, var(--color-slate-600));
-    border-left: 2.5px solid var(--sb--trigger-border, var(--color-slate-400));
     transition: background 120ms;
   }
 

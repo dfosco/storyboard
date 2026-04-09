@@ -516,6 +516,10 @@ export default function CanvasPage({ name }) {
       if (!selectedWidgetId) return
       const tag = e.target.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setSelectedWidgetId(null)
+      }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault()
         handleWidgetRemove(selectedWidgetId)

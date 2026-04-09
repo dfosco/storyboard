@@ -113,6 +113,7 @@
         </Tooltip.Trigger>
         <Tooltip.Content side="top">Undo (⌘Z)</Tooltip.Content>
       </Tooltip.Root>
+      <span class="canvas-toolbar-separator"></span>
       <Tooltip.Root>
         <Tooltip.Trigger>
           <button
@@ -216,5 +217,12 @@
   .canvas-toolbar-standalone:disabled {
     opacity: 0.3;
     cursor: default;
+  }
+
+  .canvas-toolbar-separator {
+    width: 2.5px;
+    height: 24px;
+    background: var(--sb--trigger-border, var(--color-slate-400));
+    flex-shrink: 0;
   }
 </style>

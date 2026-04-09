@@ -345,6 +345,17 @@ export default function CanvasPage({ name }) {
     }
   }, [name])
 
+  // Tell the Vite dev server to suppress full-reloads while this canvas is active.
+  // The ?canvas-hmr URL param opts out of the guard for canvas UI development.
+  useEffect(() => {
+    if (!import.meta.hot) return
+    const hmrEnabled = new URLSearchParams(window.location.search).has('canvas-hmr')
+    import.meta.hot.send('storyboard:canvas-hmr-guard', { active: true, hmrEnabled })
+    return () => {
+      import.meta.hot.send('storyboard:canvas-hmr-guard', { active: false, hmrEnabled: true })
+    }
+  }, [name])
+
   // Add a widget by type — used by CanvasControls and CoreUIBar event
   const addWidget = useCallback(async (type) => {
     const defaultProps = schemas[type] ? getDefaults(schemas[type]) : {}

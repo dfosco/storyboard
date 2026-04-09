@@ -51,7 +51,7 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
       <div className={styles.embed} style={{ width, height }}>
         <div className={styles.header}>
           <FigmaLogo />
-          <span className={styles.headerTitle}>{typeLabel}: {title}</span>
+          <span className={styles.headerTitle}>{title}</span>
         </div>
         {embedUrl ? (
           <>

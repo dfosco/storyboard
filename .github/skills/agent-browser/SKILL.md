@@ -28,11 +28,11 @@ Before opening the browser, check for a saved `devURL` in the session database:
 SELECT value FROM session_state WHERE key = 'devURL';
 ```
 
-- **If set** — use that URL as the target.
-- **If the user provided a URL** (e.g. "inspect http://localhost:3000") — use it, and save it as `devURL` for the session:
+- **If the user provided a URL** (e.g. "inspect http://localhost:3000") — assume the dev server is already running at that URL. Use it directly and save it as `devURL` for the session. Do **not** start a dev server.
   ```sql
   INSERT OR REPLACE INTO session_state (key, value) VALUES ('devURL', 'http://localhost:3000');
   ```
+- **If set** — use the saved `devURL`. Assume the dev server is already running.
 - **If neither** — fall back to `http://localhost:1234` and save it as `devURL`.
 
 ### Step 1: Open the dev server

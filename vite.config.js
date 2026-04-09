@@ -100,16 +100,26 @@ export default defineConfig(() => {
 
                 const originalSend = server.ws.send.bind(server.ws)
                 server.ws.send = (payload, ...rest) => {
+                    const guardActive = Date.now() < canvasGuardUntil
+
                     if (payload && payload.type === 'full-reload') {
-                        // Suppress reloads caused by canvas file mutations
                         if (Date.now() - recentCanvasMutationAt < CANVAS_WINDOW_MS) {
                             return
                         }
-                        // Suppress reloads while a canvas page is active (no ?canvas-hmr)
-                        if (Date.now() < canvasGuardUntil) {
+                        if (guardActive) {
                             return
                         }
                     }
+
+                    // Suppress HMR module updates while canvas guard is active.
+                    // React Fast Refresh propagates virtual-module invalidations
+                    // up the component tree, re-mounting the canvas and losing
+                    // editing state. Iframes have their own Vite client and are
+                    // unaffected by this suppression.
+                    if (guardActive && payload && payload.type === 'update') {
+                        return
+                    }
+
                     return originalSend(payload, ...rest)
                 }
             },

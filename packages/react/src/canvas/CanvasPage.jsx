@@ -72,6 +72,29 @@ function getViewportCenter(scrollEl, scale) {
   }
 }
 
+/** Fallback sizes for widget types without explicit width/height defaults. */
+const WIDGET_FALLBACK_SIZES = {
+  'sticky-note':  { width: 180, height: 60 },
+  'markdown':     { width: 360, height: 200 },
+  'prototype':    { width: 800, height: 600 },
+  'link-preview': { width: 320, height: 120 },
+  'component':    { width: 200, height: 150 },
+}
+
+/**
+ * Offset a position so the widget's center (not its top-left corner)
+ * lands on the given point.
+ */
+function centerPositionForWidget(pos, type, props) {
+  const fallback = WIDGET_FALLBACK_SIZES[type] || { width: 200, height: 150 }
+  const w = props?.width ?? fallback.width
+  const h = props?.height ?? fallback.height
+  return {
+    x: Math.round(pos.x - w / 2),
+    y: Math.round(pos.y - h / 2),
+  }
+}
+
 function roundPosition(value) {
   return Math.round(value)
 }
@@ -325,7 +348,8 @@ export default function CanvasPage({ name }) {
   // Add a widget by type — used by CanvasControls and CoreUIBar event
   const addWidget = useCallback(async (type) => {
     const defaultProps = schemas[type] ? getDefaults(schemas[type]) : {}
-    const pos = getViewportCenter(scrollRef.current, zoomRef.current / 100)
+    const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
+    const pos = centerPositionForWidget(center, type, defaultProps)
     try {
       const result = await addWidgetApi(name, {
         type,
@@ -463,7 +487,8 @@ export default function CanvasPage({ name }) {
         props = { content: text }
       }
 
-      const pos = getViewportCenter(scrollRef.current, zoomRef.current / 100)
+      const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
+      const pos = centerPositionForWidget(center, type, props)
       try {
         const result = await addWidgetApi(name, {
           type,

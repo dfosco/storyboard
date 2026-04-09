@@ -20,6 +20,7 @@
 
 .preview :global(*) {
   color: inherit;
+  pointer-events: none;
 }
 
 .preview h1 {

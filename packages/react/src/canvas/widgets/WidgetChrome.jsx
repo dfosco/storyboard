@@ -177,8 +177,6 @@ export default function WidgetChrome({
       </div>
       <div
         className={styles.toolbar}
-        onMouseDown={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
       >
         {/* Trigger dot — visible at rest */}
         <span
@@ -220,7 +218,7 @@ export default function WidgetChrome({
           </div>
 
           <button
-            className={`${styles.selectHandle} ${selected ? styles.selectHandleActive : ''}`}
+            className={`tc-drag-handle ${styles.selectHandle} ${selected ? styles.selectHandleActive : ''}`}
             onClick={handleSelectClick}
             title={selected ? 'Deselect' : 'Select'}
             aria-label={selected ? 'Deselect widget' : 'Select widget'}

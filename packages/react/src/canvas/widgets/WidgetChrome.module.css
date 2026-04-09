@@ -114,7 +114,7 @@
 /* Select handle — right-aligned rounded rect */
 .selectHandle {
   all: unset;
-  cursor: pointer;
+  cursor: grab;
   width: 18px;
   height: 12px;
   border-radius: 4px;

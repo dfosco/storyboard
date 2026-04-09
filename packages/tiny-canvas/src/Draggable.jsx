@@ -14,7 +14,7 @@ const DRAG_DELAY_MS = 100;
 /** Minimum distance (px) the pointer must move before drag starts. */
 const DRAG_DISTANCE_PX = 30;
 
-function Draggable({ children, dragId, initialPosition, onDragEnd }) {
+function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
   const draggableRef = useRef(null);
   const initialSavedPosition = initialPosition || { x: 0, y: 0 };
   const dragStartRef = useRef(initialSavedPosition);
@@ -47,7 +47,7 @@ function Draggable({ children, dragId, initialPosition, onDragEnd }) {
   }, [dragId, initialSavedPosition.x, initialSavedPosition.y]);
 
   // Free-drag during drag, snap to grid on drop
-  const { isDragging } = useDraggable(draggableRef, {
+  const dragOptions = {
     axis: 'both',
     bounds: 'parent',
     threshold: { delay: DRAG_DELAY_MS, distance: DRAG_DISTANCE_PX },
@@ -89,14 +89,27 @@ function Draggable({ children, dragId, initialPosition, onDragEnd }) {
       }
       onDragEnd?.(dragId, { x: clampedX, y: clampedY });
     },
-  });
+  };
+
+  // When a handle is specified, only that element initiates drag
+  if (handle) {
+    dragOptions.handle = handle;
+  }
+
+  const { isDragging } = useDraggable(draggableRef, dragOptions);
 
   const rotation = isDragging && isRotating ? `${rotationVariation}deg` : '0deg';
+
+  // When a handle is set, only the handle shows grab cursor (via its own CSS).
+  // Otherwise the whole article is the drag surface.
+  const articleCursor = handle
+    ? (isDragging ? 'grabbing' : undefined)
+    : (isDragging ? 'grabbing' : 'grab');
 
   return (
     <article
       ref={draggableRef}
-      style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+      style={{ cursor: articleCursor }}
     >
       <div
         className="tc-draggable-inner"

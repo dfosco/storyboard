@@ -317,10 +317,17 @@ export default function CanvasPage({ name }) {
   }, [name])
 
   const handleWidgetCopy = useCallback(async (widget) => {
-    const position = {
-      x: (widget.position?.x ?? 0) + 40,
-      y: (widget.position?.y ?? 0) + 40,
+    // Find the next free offset — check how many copies already exist at +n*40
+    const baseX = widget.position?.x ?? 0
+    const baseY = widget.position?.y ?? 0
+    const occupied = new Set(
+      (localWidgets ?? []).map((w) => `${w.position?.x ?? 0},${w.position?.y ?? 0}`)
+    )
+    let n = 1
+    while (occupied.has(`${baseX + n * 40},${baseY + n * 40}`)) {
+      n++
     }
+    const position = { x: baseX + n * 40, y: baseY + n * 40 }
     try {
       const result = await addWidgetApi(name, {
         type: widget.type,
@@ -333,7 +340,7 @@ export default function CanvasPage({ name }) {
     } catch (err) {
       console.error('[canvas] Failed to copy widget:', err)
     }
-  }, [name])
+  }, [name, localWidgets])
 
   const debouncedSourceSave = useRef(
     debounce((canvasName, sources) => {

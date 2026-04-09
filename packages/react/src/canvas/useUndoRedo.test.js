@@ -219,9 +219,13 @@ describe('useUndoRedo', () => {
     expect(count).toBe(100)
   })
 
-  it('ignores snapshot when currentWidgets is null', () => {
+  it('snapshots null widgets as empty array (first widget on new canvas)', () => {
     const { result } = renderHook(() => useUndoRedo())
     act(() => result.current.snapshot(null, 'add'))
-    expect(result.current.canUndo).toBe(false)
+    expect(result.current.canUndo).toBe(true)
+
+    let restored
+    act(() => { restored = result.current.undo([{ id: '1' }]) })
+    expect(restored).toEqual([])
   })
 })

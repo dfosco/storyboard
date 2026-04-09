@@ -185,7 +185,30 @@ export async function mountStoryboardCore(config = {}, options = {}) {
 
   // Skip all UI mounting when loaded inside a prototype embed iframe
   const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')
-  if (isEmbed) return
+  if (isEmbed) {
+    // Broadcast route changes to the parent canvas via postMessage
+    if (window.parent !== window) {
+      let lastPath = window.location.pathname
+      function broadcastNavigation() {
+        const currentPath = window.location.pathname
+        if (currentPath !== lastPath) {
+          lastPath = currentPath
+          const basePath = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+          const src = basePath && currentPath.startsWith(basePath)
+            ? currentPath.slice(basePath.length) || '/'
+            : currentPath.replace(/^\/branch--[^/]+/, '') || '/'
+          window.parent.postMessage({ type: 'storyboard:embed:navigate', src }, '*')
+        }
+      }
+      // Intercept pushState/replaceState and popstate
+      const origPush = history.pushState.bind(history)
+      const origReplace = history.replaceState.bind(history)
+      history.pushState = (...args) => { origPush(...args); broadcastNavigation() }
+      history.replaceState = (...args) => { origReplace(...args); broadcastNavigation() }
+      window.addEventListener('popstate', broadcastNavigation)
+    }
+    return
+  }
 
   // Dynamically import the compiled UI bundle.
   // Uses the package self-reference so resolution differs by context:

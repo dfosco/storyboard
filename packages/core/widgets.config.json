@@ -32,11 +32,12 @@
       "label": "Prototype",
       "icon": "🖥️",
       "props": {
-        "src":    { "type": "url",    "label": "URL",    "category": "content",  "default": "" },
-        "label":  { "type": "text",   "label": "Label",  "category": "settings", "default": "" },
-        "zoom":   { "type": "number", "label": "Zoom",   "category": "settings", "default": 100, "min": 25, "max": 200 },
-        "width":  { "type": "number", "label": "Width",  "category": "size",     "default": 800, "min": 200, "max": 2000 },
-        "height": { "type": "number", "label": "Height", "category": "size",     "default": 600, "min": 200, "max": 1500 }
+        "src":         { "type": "url",    "label": "URL",          "category": "content",  "default": "" },
+        "originalSrc": { "type": "url",    "label": "Original URL", "category": "content",  "default": "" },
+        "label":       { "type": "text",   "label": "Label",        "category": "settings", "default": "" },
+        "zoom":        { "type": "number", "label": "Zoom",         "category": "settings", "default": 100, "min": 25, "max": 200 },
+        "width":       { "type": "number", "label": "Width",        "category": "size",     "default": 800, "min": 200, "max": 2000 },
+        "height":      { "type": "number", "label": "Height",       "category": "size",     "default": 600, "min": 200, "max": 1500 }
       },
       "features": [
         { "id": "open-external", "type": "action", "action": "open-external" },

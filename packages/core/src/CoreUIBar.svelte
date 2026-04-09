@@ -519,18 +519,13 @@
       {#each canvasMenus as canvasTool (canvasTool.key)}
         {#if toolComponents[canvasTool.key]}
           {@const CanvasToolComponent = toolComponents[canvasTool.key]}
-          <Tooltip.Root>
-            <Tooltip.Trigger>
-              <CanvasToolComponent
-                config={canvasTool}
-                data={toolData[canvasTool.key]}
-                canvasName={activeCanvasName}
-                zoom={canvasZoom}
-                tabindex={0}
-              />
-            </Tooltip.Trigger>
-            <Tooltip.Content side="top">{canvasTool.ariaLabel || canvasTool.key}</Tooltip.Content>
-          </Tooltip.Root>
+          <CanvasToolComponent
+            config={canvasTool}
+            data={toolData[canvasTool.key]}
+            canvasName={activeCanvasName}
+            zoom={canvasZoom}
+            tabindex={0}
+          />
         {/if}
       {/each}
     </div>

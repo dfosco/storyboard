@@ -125,7 +125,7 @@ export default function WidgetChrome({
 }) {
   const [hovered, setHovered] = useState(false)
   const leaveTimer = useRef(null)
-  const handlePointerDown = useRef(false)
+  const pointerStartPos = useRef(null)
 
   const handleMouseEnter = useCallback(() => {
     clearTimeout(leaveTimer.current)
@@ -136,16 +136,18 @@ export default function WidgetChrome({
     leaveTimer.current = setTimeout(() => setHovered(false), 80)
   }, [])
 
-  // Track pointerdown on the handle so we can select on pointerup
-  // even if the drag library swallows the click event.
-  const handleHandlePointerDown = useCallback(() => {
-    handlePointerDown.current = true
+  // Track pointer position on the handle to distinguish click from drag.
+  const handleHandlePointerDown = useCallback((e) => {
+    pointerStartPos.current = { x: e.clientX, y: e.clientY }
   }, [])
 
   const handleHandlePointerUp = useCallback((e) => {
-    if (!handlePointerDown.current) return
-    handlePointerDown.current = false
-    // Only select if the pointer didn't travel far (i.e. not a drag)
+    if (!pointerStartPos.current) return
+    const start = pointerStartPos.current
+    pointerStartPos.current = null
+    // Only toggle selection if the pointer stayed close (click, not drag)
+    const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y)
+    if (dist > 10) return
     e.stopPropagation()
     if (selected) {
       onDeselect?.()

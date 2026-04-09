@@ -11,8 +11,10 @@ const ROTATION_DEG = 1.5;
  *  Prevents single-click from triggering drag state on the handle. */
 const DRAG_DELAY_MS = 150;
 
-/** Minimum distance (px) the pointer must move before drag starts. */
-const DRAG_DISTANCE_PX = 6;
+/** Minimum distance (px) the pointer must travel while held to start drag.
+ *  Both delay AND distance must be met. Keep this high enough that a
+ *  slightly shaky click doesn't trigger drag. */
+const DRAG_DISTANCE_PX = 12;
 
 function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
   const draggableRef = useRef(null);

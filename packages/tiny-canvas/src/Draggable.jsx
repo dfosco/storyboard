@@ -24,8 +24,7 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
   const hasMovedRef = useRef(false);
   const [isRotating, setIsRotating] = useState(false);
 
-  // Drag gate: neodrag is disabled until our own threshold is met.
-  const [dragEnabled, setDragEnabled] = useState(false);
+  // Gate ref for our drag threshold
   const gateRef = useRef({
     timer: null,
     startX: 0,
@@ -33,6 +32,7 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
     delayMet: false,
     distanceMet: false,
     active: false,
+    lastEvent: null,
   });
 
   const [position, setPosition] = useState(initialSavedPosition);
@@ -60,33 +60,30 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
     }
   }, [dragId, initialSavedPosition.x, initialSavedPosition.y]);
 
-  // Our own threshold gate. neodrag's built-in distance threshold uses
-  // the element's translate offset, not the pointer start position, so
-  // it fires immediately on positioned widgets. We keep neodrag disabled
-  // until BOTH our delay and distance thresholds (based on raw clientX/Y)
-  // are met, then enable it so neodrag picks up the ongoing interaction.
+  // Gate neodrag: intercept pointerdown on the handle in bubble phase.
+  // stopPropagation prevents it from reaching the article (where neodrag
+  // listens). After the delay, re-dispatch a synthetic pointerdown from
+  // the handle — it bubbles up to the article and neodrag picks it up.
+  //
+  // React 18 captures events at the root container during capture phase,
+  // so React handlers (onPointerDown/onPointerUp on the handle) still
+  // fire even after we stopPropagation in bubble phase.
   useEffect(() => {
     const el = draggableRef.current;
-    if (!el) return;
+    if (!el || !handle) return;
 
     const g = gateRef.current;
+    const handleEl = el.querySelector(handle);
+    if (!handleEl) return;
 
-    function tryEnable() {
-      if (g.delayMet && g.distanceMet && g.active) {
-        setDragEnabled(true);
-      }
-    }
-
-    function onPointerDown(e) {
-      if (handle) {
-        const handleEl = el.querySelector(handle);
-        if (!handleEl || !handleEl.contains(e.target)) return;
-      }
+    function onHandlePointerDown(e) {
+      e.stopPropagation();
       g.active = true;
       g.delayMet = false;
       g.distanceMet = false;
       g.startX = e.clientX;
       g.startY = e.clientY;
+      g.lastEvent = e;
       clearTimeout(g.timer);
       g.timer = setTimeout(() => {
         g.delayMet = true;
@@ -94,7 +91,24 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
       }, DRAG_DELAY_MS);
     }
 
-    function onPointerMove(e) {
+    function tryEnable() {
+      if (g.delayMet && g.distanceMet && g.active && g.lastEvent) {
+        const ev = g.lastEvent;
+        g.lastEvent = null;
+        // Re-dispatch so neodrag picks it up on the article
+        handleEl.dispatchEvent(new PointerEvent('pointerdown', {
+          bubbles: true,
+          cancelable: true,
+          pointerId: ev.pointerId,
+          clientX: ev.clientX,
+          clientY: ev.clientY,
+          button: ev.button,
+          pointerType: ev.pointerType,
+        }));
+      }
+    }
+
+    function onDocPointerMove(e) {
       if (!g.active || g.distanceMet) return;
       const dx = e.clientX - g.startX;
       const dy = e.clientY - g.startY;
@@ -104,19 +118,19 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
       }
     }
 
-    function onPointerUp() {
+    function onDocPointerUp() {
       clearTimeout(g.timer);
       g.active = false;
-      setDragEnabled(false);
+      g.lastEvent = null;
     }
 
-    el.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('pointermove', onPointerMove);
-    document.addEventListener('pointerup', onPointerUp);
+    handleEl.addEventListener('pointerdown', onHandlePointerDown);
+    document.addEventListener('pointermove', onDocPointerMove);
+    document.addEventListener('pointerup', onDocPointerUp);
     return () => {
-      el.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('pointermove', onPointerMove);
-      document.removeEventListener('pointerup', onPointerUp);
+      handleEl.removeEventListener('pointerdown', onHandlePointerDown);
+      document.removeEventListener('pointermove', onDocPointerMove);
+      document.removeEventListener('pointerup', onDocPointerUp);
       clearTimeout(g.timer);
     };
   }, [handle]);
@@ -124,7 +138,6 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
   const { isDragging } = useDraggable(draggableRef, {
     axis: 'both',
     bounds: 'parent',
-    disabled: !dragEnabled,
     defaultClass: 'tc-drag',
     defaultClassDragging: 'tc-on',
     defaultClassDragged: 'tc-off',

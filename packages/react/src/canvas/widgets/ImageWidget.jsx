@@ -61,7 +61,7 @@ const ImageWidget = forwardRef(function ImageWidget({ props, onUpdate }, ref) {
   if (typeof width === 'number') sizeStyle.width = `${width}px`
 
   return (
-    <WidgetWrapper>
+    <WidgetWrapper className={styles.imageWrapper}>
       <div ref={containerRef} className={styles.container} style={sizeStyle}>
         <div className={styles.frame}>
           <img

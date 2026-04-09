@@ -27,12 +27,12 @@ This skill has two modes:
 | Written plan | ✅ | ✅ |
 | clips integration | ✅ | ✅ |
 | vitest skill | ✅ | ✅ |
-| Code review | ✅ Copilot CLI rubber duck | ✅ Cross-model adversarial |
+| Code review | ✅ Constructive (task agent) | ✅ Adversarial (adversarial-review skill) |
 | No-PR option | ✅ Supported | ❌ Not supported |
 
-The **key difference** between modes is the review mechanism:
-- **Standard mode**: Lightweight Copilot CLI rubber duck review (user runs `gh copilot suggest`)
-- **Critical mode**: Cross-model adversarial review (task agent with different model family)
+The **only difference** between modes is the review approach:
+- **Standard mode**: Constructive review — "help me improve this code"
+- **Critical mode**: Adversarial review — "try to break this code" (invokes **adversarial-review** skill)
 
 ---
 
@@ -53,22 +53,14 @@ The **key difference** between modes is the review mechanism:
 
 ## About the Code Review Step
 
-The two modes use different review mechanisms:
+Both modes use a **task agent** (via the `task` tool) to review the implementation. This is NOT the same as Copilot CLI's "rubber duck" mode — it's a separate agent launched in a subprocess to review the diff.
 
-| Review Type | Used in | Mechanism | Model |
-|-------------|---------|-----------|-------|
-| Rubber duck | `ship` (standard) | **Copilot CLI** (`gh copilot suggest -t review`) | User's default |
-| Adversarial | `ship-critical` | **Task agent** (cross-model) | Different family from current session |
+| Review Type | Used in | Framing |
+|-------------|---------|---------|
+| Constructive | `ship` (standard) | "Review this code and suggest improvements" |
+| Adversarial | `ship-critical` | Invokes **adversarial-review** skill — "Try to break this code" |
 
-### Standard mode: Copilot CLI rubber duck
-Uses GitHub Copilot CLI's built-in review mode. The agent prompts the user to run the review in their terminal — quick, lightweight, and uses the user's existing Copilot subscription.
-
-### Critical mode: Cross-model adversarial review
-Launches a **task agent** with adversarial framing using a model from a **different family** than the current session:
-- If current session is **Claude** (Opus, Sonnet, Haiku) → use **GPT** (`gpt-5.4` or `gpt-5.1-codex`)
-- If current session is **GPT** → use **Claude** (`claude-opus-4.6` or `claude-sonnet-4.6`)
-
-Cross-model review catches blind spots that same-model review might miss.
+The adversarial framing is more thorough but also more expensive (tokens + time). Use it for changes where finding bugs before merge is critical.
 
 ---
 
@@ -158,29 +150,35 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 **Skip this step only if** the change is purely documentation, configuration, or markup with no testable logic.
 
-### Step 6: Rubber duck review (Copilot CLI)
+### Step 6: Constructive code review
 
-Prompt the user to run a **Copilot CLI rubber duck review** on their implementation:
+Launch a **task agent** (using the `task` tool with `agent_type: "general-purpose"`) to review the implementation. Include the plan from Step 2 and the diff of all changes.
 
-1. Generate the diff to review:
-   ```bash
-   git diff main..HEAD > /tmp/changes.diff
-   ```
+The prompt should use **constructive framing**:
 
-2. Use `ask_user` to prompt:
-   > Implementation complete! Please run a quick rubber duck review using Copilot CLI:
-   >
-   > ```bash
-   > gh copilot suggest -t review "Review this diff for bugs, edge cases, and improvements" < /tmp/changes.diff
-   > ```
-   >
-   > Let me know if the review surfaces anything I should address, or say "looks good" to continue.
+> You are a helpful code reviewer. Review this implementation and suggest improvements. Look for:
+>
+> 1. **Code quality** — readability, maintainability, DRY violations
+> 2. **Potential bugs** — edge cases, error handling, type safety
+> 3. **Performance** — unnecessary re-renders, inefficient algorithms
+> 4. **Best practices** — following codebase conventions, proper abstractions
+>
+> Provide specific, actionable suggestions. Prioritize by impact.
 
-3. Wait for user response:
-   - If user reports issues → address them, re-run lint/build/test, commit fixes
-   - If user says "looks good" or similar → proceed to Step 7
+#### Process feedback
 
-**Note:** This step is collaborative — the user runs the CLI review and decides what feedback to incorporate. Skip if user explicitly declines review.
+1. Apply suggestions that improve code quality without over-engineering.
+2. Skip suggestions that are purely stylistic or don't provide clear value.
+3. If any changes were made, run lint/build/test again and commit:
+
+```bash
+git add -A
+git commit -m "refactor: address review feedback
+
+<summary of what was improved>
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
 
 ### Step 7: Push to remote
 
@@ -246,54 +244,26 @@ Steps 1-5 are identical to standard mode:
 4. Implement and commit
 5. Write tests
 
-### Step 6: Cross-model adversarial review
+### Step 6: Adversarial code review
 
-Launch a **task agent** with adversarial framing using a **model from a different family** than the current session.
+Invoke the **adversarial-review** skill to run a cross-model adversarial review.
 
-#### Model selection
+The adversarial-review skill will:
+1. Select a model from a different family than the current session
+2. Launch a task agent with adversarial framing
+3. Report CRITICAL and HIGH severity findings
+4. Apply fixes and commit changes
 
-Determine the current session's model family and select an adversarial reviewer:
-
-| If current session is... | Use adversarial model... |
-|--------------------------|--------------------------|
-| Claude (Opus, Sonnet, Haiku) | `gpt-5.4` or `gpt-5.1-codex` |
-| GPT (any variant) | `claude-opus-4.6` or `claude-sonnet-4.6` |
-| Gemini | `claude-opus-4.6` or `gpt-5.4` |
-
-Use the `task` tool with `agent_type: "general-purpose"` and the `model` parameter set to the cross-family model.
-
-#### Adversarial prompt
-
-Include the plan from Step 2, the diff of all changes (`git diff main..HEAD`), and the feature requirements from the user's original prompt. The prompt must include:
-
-> You are an adversarial code reviewer. Your job is to BREAK this implementation. Assume nothing works correctly until proven otherwise. Specifically:
->
-> 1. **Find bugs** — race conditions, off-by-one errors, null/undefined access, missing error handling
-> 2. **Find security issues** — injection, XSS, data leaks, unsafe defaults
-> 3. **Find logic errors** — incorrect assumptions, missing edge cases, broken invariants
-> 4. **Find integration issues** — does this break existing behavior? Are imports/exports correct? Are types consistent?
-> 5. **Find missing tests** — what scenarios are NOT covered?
->
-> For each finding, rate severity as CRITICAL (must fix), HIGH (should fix), or LOW (nice to fix).
-> Only report CRITICAL and HIGH findings. Ignore style, formatting, and naming.
+See the **adversarial-review** skill documentation for full details.
 
 #### Process findings
 
-1. Apply all CRITICAL fixes immediately.
-2. Apply HIGH fixes unless they significantly complicate the implementation without clear benefit.
-3. Discard LOW findings.
-4. If any changes were made, run lint/build/test again and commit:
+After the adversarial-review skill completes:
 
-```bash
-git add -A
-git commit -m "fix: address review findings
-
-<summary of what was fixed>
-
-Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
-```
-
-5. If no findings required changes, skip the commit.
+1. All CRITICAL fixes should already be applied.
+2. HIGH fixes should be applied unless intentionally deferred (with justification).
+3. If any changes were made, they should already be committed by the skill.
+4. Review the summary of findings for the PR body.
 
 Steps 7-10 are identical to standard mode:
 7. Push to remote
@@ -318,8 +288,7 @@ The PR body in critical mode must also include:
 
 ### Critical-mode specific rules
 
-- **Never skip the adversarial review** — this is the quality gate. The cross-model adversarial review pass is mandatory.
-- **Always use a different model family** — if session is Claude, use GPT; if session is GPT, use Claude. This catches blind spots.
+- **Always invoke adversarial-review skill** — this is the quality gate. The adversarial review pass is mandatory.
 - **Always open a PR** — critical mode does not support no-PR. If `gh pr create` fails, inform the user immediately.
 
 ---
@@ -335,7 +304,7 @@ User says: "ship a fix for the button alignment"
 3. Creates clips goal + tasks
 4. Implements fix, commits
 5. Writes tests using vitest skill, commits
-6. Prompts user to run `gh copilot suggest -t review` — user reports "looks good"
+6. Runs constructive code review (task agent), applies improvements, commits
 7. Pushes to origin
 8. Opens PR "fix: correct button alignment" with `Fixes #<issue>` in body
 9. Marks clips tasks as closed
@@ -350,7 +319,7 @@ User says: "[ship-no-pr] update the README"
 3. Creates clips goal + tasks
 4. Implements changes, commits
 5. Skips tests (docs-only change)
-6. Prompts user to run rubber duck review — user says "skip"
+6. Runs constructive code review
 7. Pushes to origin
 8. **Skips PR** — informs user: "Branch pushed to `origin/update-readme`. Open a PR when ready."
 9. Marks clips tasks as closed
@@ -365,7 +334,7 @@ User says: "ship-critical: refactor the authentication flow"
 3. Creates clips goal + tasks for the work
 4. Implements refactor, commits
 5. Writes tests using vitest skill, commits
-6. Runs **cross-model adversarial** review (e.g., GPT-5.4 if session is Claude), fixes findings, commits
+6. Invokes **adversarial-review** skill (cross-model review), fixes findings, commits
 7. Pushes to origin
 8. Opens PR "refactor: overhaul authentication flow" with `Fixes #<issue>` and review notes in body
 9. Marks clips tasks as closed

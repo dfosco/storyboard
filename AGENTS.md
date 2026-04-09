@@ -24,6 +24,8 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 
 ## Skills
 
+- **adversarial-review** (`.github/skills/adversarial-review/SKILL.md`) — Cross-model adversarial code review. Uses a model from a different family than the current session for thorough bug finding.
+
 - **create** (`.github/skills/create/SKILL.md`) — Walks through creating Storyboard assets: prototype, external prototype, flow, page, canvas, object, or record.
 
 - **worktree** (`.github/skills/worktree/SKILL.md`) — Creates a git worktree in `.worktrees/<branch-name>` and switches into it.
@@ -46,7 +48,7 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 
 - **changelog** (`.github/skills/changelog/SKILL.md`) — Generates formatted changelog entries from commit ranges.
 
-- **ship** (`.github/skills/ship/SKILL.md`) — Dual-mode feature shipping. **Standard mode** (default): worktree → plan → clips → implement → vitest → constructive review → push → PR. **Critical mode**: same but with adversarial review. Supports `no-pr` in standard mode only.
+- **ship** (`.github/skills/ship/SKILL.md`) — Dual-mode feature shipping. **Standard mode** (default): worktree → plan → clips → implement → vitest → constructive review → push → PR. **Critical mode**: same but invokes **adversarial-review** skill. Supports `no-pr` in standard mode only.
 
 ---
 

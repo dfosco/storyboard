@@ -7,6 +7,13 @@ const PERSIST_DEADZONE_PX = 4;
 const ROTATION_DEADZONE_PX = 10;
 const ROTATION_DEG = 1.5;
 
+/** Minimum hold time (ms) before a pointerdown initiates drag.
+ *  Prevents single-click and double-click from triggering drag state. */
+const DRAG_DELAY_MS = 100;
+
+/** Minimum distance (px) the pointer must move before drag starts. */
+const DRAG_DISTANCE_PX = 30;
+
 function Draggable({ children, dragId, initialPosition, onDragEnd }) {
   const draggableRef = useRef(null);
   const initialSavedPosition = initialPosition || { x: 0, y: 0 };
@@ -43,7 +50,7 @@ function Draggable({ children, dragId, initialPosition, onDragEnd }) {
   const { isDragging } = useDraggable(draggableRef, {
     axis: 'both',
     bounds: 'parent',
-    threshold: { delay: 50, distance: 30 },
+    threshold: { delay: DRAG_DELAY_MS, distance: DRAG_DISTANCE_PX },
     defaultClass: 'tc-drag',
     defaultClassDragging: 'tc-on',
     defaultClassDragged: 'tc-off',

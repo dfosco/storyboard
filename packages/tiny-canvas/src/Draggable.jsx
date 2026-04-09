@@ -36,6 +36,14 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
   });
 
   const [position, setPosition] = useState(initialSavedPosition);
+  const [prevInitial, setPrevInitial] = useState(initialSavedPosition);
+
+  // Sync position from parent when it changes externally (undo/redo)
+  if (initialPosition &&
+      (initialPosition.x !== prevInitial.x || initialPosition.y !== prevInitial.y)) {
+    setPrevInitial(initialPosition);
+    setPosition(initialPosition);
+  }
   const [rotationVariation, setRotationVariation] = useState(
     () => Math.random() < 0.5 ? -ROTATION_DEG : ROTATION_DEG
   );

@@ -115,8 +115,8 @@
 .selectHandle {
   all: unset;
   cursor: grab;
-  width: 18px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   border-radius: 4px;
   border: 1.6px solid var(--borderColor-muted, #d0d7de);
   background: var(--bgColor-default, #ffffff);

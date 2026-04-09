@@ -1,5 +1,32 @@
 # @dfosco/storyboard-core
 
+## 3.10.0
+
+### Minor Changes
+
+-   [#62](https://github.com/dfosco/storyboard/pull/62) [`092c28c`](https://github.com/dfosco/storyboard/commit/092c28ca0a07bf49e1b55b546b248888af259c60) Thanks [@dfosco](https://github.com/dfosco)! - Widget Chrome API & Canvas Interaction Overhaul
+
+    -   Config-driven widget chrome toolbar with hover trigger dot, feature buttons, and select handle
+    -   Select handle is the only drag source — click/double-click never triggers drag
+    -   Drag gate with 150ms delay + 8px distance threshold (bypasses neodrag's broken distance calc for positioned elements)
+    -   StickyNote color picker and PrototypeEmbed zoom/edit controls extracted into chrome toolbar
+    -   JSX source blocks wrapped in Component widget chrome with resize support
+    -   ComponentWidget double-click-to-interact overlay for stateful markup
+    -   Prototype embed URL matching supports branch deploy prefixes
+    -   Vite alias for tiny-canvas source resolution
+    -   widgets.config.json as single source of truth for widget definitions
+
+-   Canvas zoom and widget placement improvements
+
+    -   Cursor-anchored zoom — wheel/pinch keeps the canvas point under the cursor fixed
+    -   Viewport-centered zoom — toolbar zoom buttons center on the current viewport
+    -   Widget placement centered on viewport, aligned to widget visual center
+    -   Zero-delay zoom via flushSync rendering
+
+### Patch Changes
+
+-   [#62](https://github.com/dfosco/storyboard/pull/62) [`8e0bd21`](https://github.com/dfosco/storyboard/commit/8e0bd21841db2fd0c231eed82c71f8e3cb7dbf1b) Thanks [@dfosco](https://github.com/dfosco)! - Widget Chrome beta.1: drag gate fix, ComponentWidget interactive overlay
+
 ## 3.10.0-beta.1
 
 ### Patch Changes

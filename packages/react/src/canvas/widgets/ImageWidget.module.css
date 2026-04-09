@@ -1,3 +1,7 @@
+.imageWrapper {
+  min-width: unset;
+}
+
 .container {
   position: relative;
   overflow: hidden;

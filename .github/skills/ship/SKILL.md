@@ -1,6 +1,6 @@
 ---
 name: ship
-description: Dual-mode feature shipping — fast lite mode (default) or thorough critical mode with adversarial review.
+description: Dual-mode feature shipping — standard mode (default) or critical mode with adversarial review.
 metadata:
   author: Daniel Fosco
   version: "2026.4.09"
@@ -12,8 +12,8 @@ This skill has two modes:
 
 | Mode | Triggers | Best for |
 |------|----------|----------|
-| **Lite** (default) | `ship`, `ship this`, `ship it`, `ship a feature` | Docs, config, small fixes, non-critical features |
-| **Critical** | `ship-critical`, `[ship-critical]`, `ship thoroughly`, `ship with full review` | Core logic, security-sensitive, public API changes |
+| **Standard** (default) | `ship`, `ship this`, `ship it`, `ship a feature` | Most features, fixes, refactors |
+| **Critical** | `ship-critical`, `[ship-critical]`, `ship thoroughly`, `ship with full review` | Security-sensitive, public API changes, complex core logic |
 
 > **⚠️ This skill MUST be invoked whenever the user says "ship". Do NOT implement changes directly — always go through this workflow.**
 
@@ -21,14 +21,18 @@ This skill has two modes:
 
 ## Mode Comparison
 
-| Aspect | `ship` (lite) | `ship-critical` |
-|--------|---------------|-----------------|
-| Token cost | ~30-50% of critical | 100% |
-| Time | Fast | Thorough |
-| Review quality | Lint/build/test only | Adversarial agent pass |
-| clips integration | No | Yes |
-| Separate test step | No (inline) | Yes (vitest skill) |
+| Aspect | `ship` (standard) | `ship-critical` |
+|--------|-------------------|-----------------|
+| Worktree isolation | ✅ | ✅ |
+| Written plan | ✅ | ✅ |
+| clips integration | ✅ | ✅ |
+| vitest skill | ✅ | ✅ |
+| Code review (task agent) | ✅ Constructive | ✅ Adversarial |
 | No-PR option | ✅ Supported | ❌ Not supported |
+
+The **only difference** between modes is the review framing:
+- **Standard mode**: Constructive review — "help me improve this code"
+- **Critical mode**: Adversarial review — "try to break this code"
 
 ---
 
@@ -36,9 +40,9 @@ This skill has two modes:
 
 | Parameter | Applies to | Description |
 |-----------|------------|-------------|
-| **no-pr** | `ship` (lite only) | Skip opening a Pull Request. The branch is still pushed to the remote. Use for draft work or when you'll open the PR manually later. |
+| **no-pr** | `ship` (standard only) | Skip opening a Pull Request. The branch is still pushed to the remote. Use for draft work or when you'll open the PR manually later. |
 
-**How to activate no-PR mode (lite only):**
+**How to activate no-PR mode (standard only):**
 - Verbal: *"ship this but don't create a PR"*, *"ship without PR"*
 - Short-form: *"ship-no-pr"*, *"[ship-no-pr]"*
 - Combined: *"ship a feature to add X — no PR"*
@@ -47,11 +51,24 @@ This skill has two modes:
 
 ---
 
-# Lite Mode (`ship`)
+## About the Code Review Step
+
+Both modes use a **task agent** (via the `task` tool) to review the implementation. This is NOT the same as Copilot CLI's "rubber duck" mode — it's a separate agent launched in a subprocess to review the diff.
+
+| Review Type | Used in | Framing |
+|-------------|---------|---------|
+| Constructive | `ship` (standard) | "Review this code and suggest improvements" |
+| Adversarial | `ship-critical` | "Try to break this code — find bugs, security issues, logic errors" |
+
+The adversarial framing is more thorough but also more expensive (tokens + time). Use it for changes where finding bugs before merge is critical.
+
+---
+
+# Standard Mode (`ship`)
 
 > Triggered by: `ship`, `ship this`, `ship it`, `ship a feature`, `ship a change`
 
-Fast path for non-critical changes. Worktree isolation + validation + PR, without the heavyweight review loop.
+Full workflow for most changes. Includes clips, vitest, and constructive code review.
 
 ## Steps
 
@@ -83,82 +100,6 @@ Generate an implementation plan for the requested feature:
 
 Do NOT proceed until the user confirms.
 
-### Step 3: Implement and commit
-
-Execute the plan:
-
-1. Implement the changes following the plan.
-2. Write tests inline if the change includes testable logic (optional but encouraged).
-3. Run validation: `npm run lint && npm run build && npm run test`
-4. Fix any issues that arise.
-5. Stage and commit with a descriptive message:
-
-```bash
-git add -A
-git commit -m "<type>: <description>
-
-<body if needed>
-
-Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
-```
-
-Use conventional commit types (`feat`, `fix`, `refactor`, `docs`, `chore`, etc.).
-
-### Step 4: Push to remote
-
-```bash
-git push -u origin <branch-name>
-```
-
-If the push fails due to permissions or remote issues, inform the user and suggest manual steps.
-
-### Step 5: Open a PR
-
-> **⏭️ Skip this step if no-PR mode is active.** After pushing, inform the user that the branch is available at `origin/<branch-name>` and they can open a PR manually when ready.
-
-Use the GitHub CLI to create a pull request:
-
-```bash
-gh pr create \
-  --title "<PR title>" \
-  --body "<PR body>" \
-  --base main \
-  --head <branch-name>
-```
-
-The PR body must include:
-- **Summary** — what this PR does (from the plan)
-- **Changes** — bullet list of files changed and why
-- **Testing** — what was validated (lint, build, test results)
-
-Use `ask_user` to confirm the PR title and description before creating.
-
-### Step 6: Start dev server
-
-Run the dev server in the worktree so the user can immediately preview changes:
-
-```bash
-npm run dev
-```
-
----
-
-# Critical Mode (`ship-critical`)
-
-> Triggered by: `ship-critical`, `[ship-critical]`, `ship thoroughly`, `ship with full review`, `ship careful`
-
-Thorough path for critical changes. Includes clips integration, dedicated test writing, and adversarial rubber-duck review.
-
-## Steps
-
-### Step 1: Create a worktree
-
-Same as lite mode — invoke the **worktree** skill to create a git worktree.
-
-### Step 2: Plan the feature
-
-Same as lite mode — write plan to `.github/plans/<branch-name>.md` and get user confirmation.
-
 ### Step 3: Create clips goal/tasks
 
 **If the `clips` skill is available** (check for `.clips/` directory or `clips` CLI), create tracking issues before implementation begins:
@@ -188,6 +129,8 @@ git commit -m "<type>: <description>
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 ```
 
+Use conventional commit types (`feat`, `fix`, `refactor`, `docs`, `chore`, etc.).
+
 ### Step 5: Write tests
 
 **Invoke the `vitest` skill** to write tests for the implementation:
@@ -207,9 +150,105 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 **Skip this step only if** the change is purely documentation, configuration, or markup with no testable logic.
 
-### Step 6: Adversarial rubber-duck review
+### Step 6: Constructive code review
 
-Launch a `rubber-duck` agent with an adversarial framing. Include the plan from Step 2, the diff of all changes (`git diff HEAD~1`), and the feature requirements from the user's original prompt. The prompt must include:
+Launch a **task agent** (using the `task` tool with `agent_type: "general-purpose"`) to review the implementation. Include the plan from Step 2 and the diff of all changes.
+
+The prompt should use **constructive framing**:
+
+> You are a helpful code reviewer. Review this implementation and suggest improvements. Look for:
+>
+> 1. **Code quality** — readability, maintainability, DRY violations
+> 2. **Potential bugs** — edge cases, error handling, type safety
+> 3. **Performance** — unnecessary re-renders, inefficient algorithms
+> 4. **Best practices** — following codebase conventions, proper abstractions
+>
+> Provide specific, actionable suggestions. Prioritize by impact.
+
+#### Process feedback
+
+1. Apply suggestions that improve code quality without over-engineering.
+2. Skip suggestions that are purely stylistic or don't provide clear value.
+3. If any changes were made, run lint/build/test again and commit:
+
+```bash
+git add -A
+git commit -m "refactor: address review feedback
+
+<summary of what was improved>
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
+
+### Step 7: Push to remote
+
+```bash
+git push -u origin <branch-name>
+```
+
+If the push fails due to permissions or remote issues, inform the user and suggest manual steps.
+
+### Step 8: Open a PR
+
+> **⏭️ Skip this step if no-PR mode is active.** After pushing, inform the user that the branch is available at `origin/<branch-name>` and they can open a PR manually when ready.
+
+Use the GitHub CLI to create a pull request:
+
+```bash
+gh pr create \
+  --title "<PR title>" \
+  --body "<PR body>" \
+  --base main \
+  --head <branch-name>
+```
+
+The PR body must include:
+- **Summary** — what this PR does (from the plan)
+- **Changes** — bullet list of files changed and why
+- **Testing** — what was validated (lint, build, test results)
+- **Fixes** — if clips issues were created in Step 3, include `Fixes #<issue_number>` for each goal/task so they auto-close when the PR merges
+
+Use `ask_user` to confirm the PR title and description before creating.
+
+### Step 9: Close clips tasks
+
+After the PR is opened (or after push if no-PR mode), mark clips tasks as closed:
+
+1. Run `clips view` to find the goal/tasks created in Step 3.
+2. Mark them as closed (`clips task status ... closed` / `clips goal status ... closed`).
+
+If clips was skipped in Step 3, skip this step too.
+
+### Step 10: Start dev server
+
+Run the dev server in the worktree so the user can immediately preview changes:
+
+```bash
+npm run dev
+```
+
+---
+
+# Critical Mode (`ship-critical`)
+
+> Triggered by: `ship-critical`, `[ship-critical]`, `ship thoroughly`, `ship with full review`, `ship careful`
+
+Same workflow as standard mode, but with **adversarial code review** instead of constructive review.
+
+## Steps
+
+Steps 1-5 are identical to standard mode:
+1. Create a worktree
+2. Plan the feature
+3. Create clips goal/tasks
+4. Implement and commit
+5. Write tests
+
+### Step 6: Adversarial code review
+
+Launch a **task agent** (using the `task` tool with `agent_type: "general-purpose"`) with an **adversarial framing**. Include the plan from Step 2, the diff of all changes (`git diff HEAD~1`), and the feature requirements from the user's original prompt.
+
+The prompt must include:
 
 > You are an adversarial code reviewer. Your job is to BREAK this implementation. Assume nothing works correctly until proven otherwise. Specifically:
 >
@@ -240,49 +279,14 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 5. If no findings required changes, skip the commit.
 
-### Step 7: Push to remote
+Steps 7-10 are identical to standard mode:
+7. Push to remote
+8. Open a PR (required — no-PR not supported)
+9. Close clips tasks
+10. Start dev server
 
-```bash
-git push -u origin <branch-name>
-```
-
-### Step 8: Open a PR
-
-Use the GitHub CLI to create a pull request:
-
-```bash
-gh pr create \
-  --title "<PR title>" \
-  --body "<PR body>" \
-  --base main \
-  --head <branch-name>
-```
-
-The PR body must include:
-- **Summary** — what this PR does (from the plan)
-- **Changes** — bullet list of files changed and why
-- **Testing** — what was validated (lint, build, test results)
+The PR body in critical mode must also include:
 - **Review notes** — summary of adversarial review findings and how they were addressed
-- **Fixes** — if clips issues were created in Step 3, include `Fixes #<issue_number>` for each goal/task so they auto-close when the PR merges
-
-Use `ask_user` to confirm the PR title and description before creating.
-
-### Step 9: Close clips tasks
-
-After the PR is opened, mark clips tasks as closed:
-
-1. Run `clips view` to find the goal/tasks created in Step 3.
-2. Mark them as closed (`clips task status ... closed` / `clips goal status ... closed`).
-
-If clips was skipped in Step 3, skip this step too.
-
-### Step 10: Start dev server
-
-Run the dev server in the worktree:
-
-```bash
-npm run dev
-```
 
 ---
 
@@ -298,34 +302,42 @@ npm run dev
 
 ### Critical-mode specific rules
 
-- **Never skip the adversarial review** — this is the quality gate. The adversarial rubber-duck pass is mandatory.
+- **Never skip the adversarial review** — this is the quality gate. The adversarial review pass is mandatory.
 - **Always open a PR** — critical mode does not support no-PR. If `gh pr create` fails, inform the user immediately.
 
 ---
 
 ## Example Usage
 
-### Lite Mode Example
+### Standard Mode Example
 
 User says: "ship a fix for the button alignment"
 
 1. Creates worktree `fix-button-alignment`
 2. Plans the fix, gets user confirmation
-3. Implements fix with inline tests if needed, commits
-4. Pushes to origin
-5. Opens PR "fix: correct button alignment"
-6. Starts dev server
+3. Creates clips goal + tasks
+4. Implements fix, commits
+5. Writes tests using vitest skill, commits
+6. Runs constructive code review, applies improvements, commits
+7. Pushes to origin
+8. Opens PR "fix: correct button alignment" with `Fixes #<issue>` in body
+9. Marks clips tasks as closed
+10. Starts dev server
 
-### Lite Mode No-PR Example
+### Standard Mode No-PR Example
 
 User says: "[ship-no-pr] update the README"
 
 1. Creates worktree `update-readme`
 2. Plans the update, gets user confirmation
-3. Implements changes, commits
-4. Pushes to origin
-5. **Skips PR** — informs user: "Branch pushed to `origin/update-readme`. Open a PR when ready."
-6. Starts dev server
+3. Creates clips goal + tasks
+4. Implements changes, commits
+5. Skips tests (docs-only change)
+6. Runs constructive code review
+7. Pushes to origin
+8. **Skips PR** — informs user: "Branch pushed to `origin/update-readme`. Open a PR when ready."
+9. Marks clips tasks as closed
+10. Starts dev server
 
 ### Critical Mode Example
 
@@ -336,8 +348,8 @@ User says: "ship-critical: refactor the authentication flow"
 3. Creates clips goal + tasks for the work
 4. Implements refactor, commits
 5. Writes tests using vitest skill, commits
-6. Runs adversarial rubber-duck review, fixes findings, commits
+6. Runs **adversarial** code review, fixes findings, commits
 7. Pushes to origin
-8. Opens PR "refactor: overhaul authentication flow" with `Fixes #<issue>` in body
+8. Opens PR "refactor: overhaul authentication flow" with `Fixes #<issue>` and review notes in body
 9. Marks clips tasks as closed
 10. Starts dev server

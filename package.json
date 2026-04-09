@@ -1,5 +1,5 @@
 {
-    "name": "storyboard-source",
+    "name": "storyboard",
     "private": true,
     "type": "module",
     "workspaces": [

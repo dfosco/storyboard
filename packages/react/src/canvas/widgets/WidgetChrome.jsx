@@ -50,12 +50,29 @@ function OpenExternalIcon() {
   )
 }
 
+function EyeIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M8.002 2c1.34 0 2.585.402 3.672 1.047a10.742 10.742 0 0 1 2.894 2.524A1.784 1.784 0 0 1 14.93 7c0 .348-.125.694-.362 1.429a10.742 10.742 0 0 1-2.894 2.524C10.587 11.598 9.342 12 8.002 12s-2.585-.402-3.672-1.047a10.742 10.742 0 0 1-2.894-2.524A1.784 1.784 0 0 1 1.074 7c0-.348.125-.694.362-1.429A10.742 10.742 0 0 1 4.33 3.047C5.417 2.402 6.662 2 8.002 2ZM1.5 7a.284.284 0 0 0 .057.181 9.242 9.242 0 0 0 2.501 2.176C5.003 10.074 6.084 10.5 8 10.5c1.916 0 2.997-.426 3.942-1.143a9.242 9.242 0 0 0 2.501-2.176A.284.284 0 0 0 14.5 7a.284.284 0 0 0-.057-.181 9.242 9.242 0 0 0-2.501-2.176C10.997 3.926 9.916 3.5 8 3.5c-1.916 0-2.997.426-3.942 1.143A9.242 9.242 0 0 0 1.557 6.82.284.284 0 0 0 1.5 7ZM8 5.5a1.5 1.5 0 1 1-.001 3.001A1.5 1.5 0 0 1 8 5.5Z" />
+    </svg>
+  )
+}
+
+function EyeClosedIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M.143 2.31a.75.75 0 0 1 1.047-.167l14.5 10.5a.75.75 0 1 1-.88 1.214l-2.248-1.628C11.346 13.19 9.873 13.75 8 13.75c-1.34 0-2.585-.402-3.672-1.047a10.742 10.742 0 0 1-2.894-2.524A1.784 1.784 0 0 1 1.074 8.75c0-.348.125-.694.362-1.429a10.956 10.956 0 0 1 2.039-2.545L.31 3.357A.75.75 0 0 1 .143 2.31Zm4.653 3.37a9.2 9.2 0 0 0-2.239 2.38.284.284 0 0 0 0 .38 9.242 9.242 0 0 0 2.501 2.18c.945.717 2.026 1.13 3.942 1.13 1.424 0 2.56-.39 3.513-.925L10.78 9.52a2.25 2.25 0 0 1-2.907-2.168c0-.093.006-.185.017-.275ZM8 3.25c-.67 0-1.296.102-1.877.283a.75.75 0 1 1-.482-1.42A8.066 8.066 0 0 1 8 1.75c1.34 0 2.585.402 3.672 1.047a10.742 10.742 0 0 1 2.894 2.524c.237.735.362 1.081.362 1.429 0 .348-.125.694-.362 1.429a10.933 10.933 0 0 1-1.084 1.611.75.75 0 1 1-1.17-.937c.372-.464.67-.947.895-1.386a.284.284 0 0 0 0-.38 9.242 9.242 0 0 0-2.501-2.18C10.997 4.176 9.916 3.25 8 3.25Z" />
+    </svg>
+  )
+}
+
 const ACTION_ICONS = {
   'delete': DeleteIcon,
   'zoom-in': ZoomInIcon,
   'zoom-out': ZoomOutIcon,
   'edit': EditIcon,
   'open-external': OpenExternalIcon,
+  'toggle-private': EyeIcon,
 }
 
 const ACTION_LABELS = {
@@ -64,6 +81,7 @@ const ACTION_LABELS = {
   'zoom-out': 'Zoom out',
   'edit': 'Edit',
   'open-external': 'Open in new tab',
+  'toggle-private': 'Make private',
 }
 
 /**
@@ -221,14 +239,22 @@ export default function WidgetChrome({
               }
 
               if (feature.type === 'action') {
-                const Icon = ACTION_ICONS[feature.action]
+                let Icon = ACTION_ICONS[feature.action]
+                let label = ACTION_LABELS[feature.action] || feature.action
+
+                // Toggle-private: swap icon/label based on current state
+                if (feature.action === 'toggle-private' && widgetProps?.private) {
+                  Icon = EyeClosedIcon
+                  label = 'Private image'
+                }
+
                 return (
                   <button
                     key={feature.id}
                     className={styles.featureBtn}
                     onClick={(e) => handleActionClick(feature.action, e)}
-                    title={ACTION_LABELS[feature.action] || feature.action}
-                    aria-label={ACTION_LABELS[feature.action] || feature.action}
+                    title={label}
+                    aria-label={label}
                   >
                     {Icon ? <Icon /> : feature.action}
                   </button>

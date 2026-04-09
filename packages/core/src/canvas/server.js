@@ -15,10 +15,14 @@
  *   POST   /widget   — append a widget_added event
  *   DELETE /widget   — append a widget_removed event
  *   POST   /create   — create a new .canvas.jsonl file
+ *   POST   /image    — upload a pasted image to src/canvas/images/
+ *   GET    /images/* — serve an image file from src/canvas/images/
+ *   POST   /image/toggle-private — toggle _prefix on image filename
  */
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { Buffer } from 'node:buffer'
 import { materializeFromText, serializeEvent } from './materializer.js'
 
 /**
@@ -389,6 +393,124 @@ export function ${componentName}Example() {
         sendJson(res, 201, result)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to create canvas: ${err.message}` })
+      }
+      return
+    }
+
+    // ── Image routes ──────────────────────────────────────────────────
+
+    const imagesDir = path.join(root, 'src', 'canvas', 'images')
+
+    const MIME_TO_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' }
+    const EXT_TO_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' }
+    const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5 MB
+
+    // POST /image — upload a pasted image (base64 data URL)
+    if (routePath === '/image' && method === 'POST') {
+      const { dataUrl } = body
+
+      if (!dataUrl || typeof dataUrl !== 'string') {
+        sendJson(res, 400, { error: 'dataUrl is required' })
+        return
+      }
+
+      const match = dataUrl.match(/^data:(image\/[a-z+]+);base64,(.+)$/i)
+      if (!match) {
+        sendJson(res, 400, { error: 'Invalid data URL format' })
+        return
+      }
+
+      const mime = match[1].toLowerCase()
+      const ext = MIME_TO_EXT[mime]
+      if (!ext) {
+        sendJson(res, 400, { error: `Unsupported image type: ${mime}` })
+        return
+      }
+
+      const base64 = match[2]
+      const buffer = Buffer.from(base64, 'base64')
+
+      if (buffer.length > MAX_IMAGE_SIZE) {
+        sendJson(res, 413, { error: `Image exceeds ${MAX_IMAGE_SIZE / 1024 / 1024}MB limit` })
+        return
+      }
+
+      const timestamp = Date.now()
+      const suffix = Math.random().toString(36).slice(2, 8)
+      const filename = `${timestamp}-${suffix}.${ext}`
+
+      try {
+        fs.mkdirSync(imagesDir, { recursive: true })
+        fs.writeFileSync(path.join(imagesDir, filename), buffer)
+        sendJson(res, 201, { success: true, filename })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to save image: ${err.message}` })
+      }
+      return
+    }
+
+    // GET /images/<filename> — serve an image file
+    if (routePath.startsWith('/images/') && method === 'GET') {
+      const filename = routePath.slice('/images/'.length)
+
+      // Block path traversal
+      if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        sendJson(res, 400, { error: 'Invalid filename' })
+        return
+      }
+
+      const filePath = path.join(imagesDir, filename)
+      if (!fs.existsSync(filePath)) {
+        sendJson(res, 404, { error: 'Image not found' })
+        return
+      }
+
+      const ext = path.extname(filename).slice(1).toLowerCase()
+      const contentType = EXT_TO_MIME[ext] || 'application/octet-stream'
+
+      try {
+        const data = fs.readFileSync(filePath)
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Content-Length': data.length,
+          'Cache-Control': 'no-cache',
+        })
+        res.end(data)
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to serve image: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /image/toggle-private — toggle underscore prefix on image filename
+    if (routePath === '/image/toggle-private' && method === 'POST') {
+      const { filename } = body
+
+      if (!filename || typeof filename !== 'string') {
+        sendJson(res, 400, { error: 'filename is required' })
+        return
+      }
+
+      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        sendJson(res, 400, { error: 'Invalid filename' })
+        return
+      }
+
+      const isPrivate = filename.startsWith('_')
+      const newFilename = isPrivate ? filename.slice(1) : `_${filename}`
+      const oldPath = path.join(imagesDir, filename)
+      const newPath = path.join(imagesDir, newFilename)
+
+      if (!fs.existsSync(oldPath)) {
+        sendJson(res, 404, { error: 'Image not found' })
+        return
+      }
+
+      try {
+        fs.renameSync(oldPath, newPath)
+        sendJson(res, 200, { success: true, filename: newFilename, private: !isPrivate })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to toggle private: ${err.message}` })
       }
       return
     }

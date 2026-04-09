@@ -74,11 +74,11 @@ function loadViewportState(canvasName) {
   } catch { return null }
 }
 
-const saveViewportState = debounce((canvasName, state) => {
+function saveViewportState(canvasName, state) {
   try {
     localStorage.setItem(getViewportStorageKey(canvasName), JSON.stringify(state))
   } catch { /* quota exceeded — non-critical */ }
-}, 300)
+}
 
 /**
  * Get viewport-center coordinates in canvas space for placing a new widget.
@@ -346,7 +346,21 @@ export default function CanvasPage({ name }) {
       })
     }
     el.addEventListener('scroll', handleScroll, { passive: true })
-    return () => el.removeEventListener('scroll', handleScroll)
+
+    // Flush viewport state on page unload so a refresh never misses it
+    function handleBeforeUnload() {
+      saveViewportState(name, {
+        zoom: zoomRef.current,
+        scrollLeft: el.scrollLeft,
+        scrollTop: el.scrollTop,
+      })
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      el.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
   }, [name, loading])
 
   /**

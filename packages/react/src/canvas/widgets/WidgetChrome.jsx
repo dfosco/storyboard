@@ -60,6 +60,15 @@ function EyeClosedIcon() {
   return <OcticonEyeClosed size={12} />
 }
 
+function CopyIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z" />
+      <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z" />
+    </svg>
+  )
+}
+
 const ACTION_ICONS = {
   'delete': DeleteIcon,
   'zoom-in': ZoomInIcon,
@@ -67,6 +76,7 @@ const ACTION_ICONS = {
   'edit': EditIcon,
   'open-external': OpenExternalIcon,
   'toggle-private': EyeIcon,
+  'copy': CopyIcon,
 }
 
 const ACTION_LABELS = {
@@ -76,6 +86,7 @@ const ACTION_LABELS = {
   'edit': 'Edit',
   'open-external': 'Open in new tab',
   'toggle-private': 'Make private',
+  'copy': 'Copy widget',
 }
 
 /**
@@ -176,7 +187,7 @@ export default function WidgetChrome({
   const handleActionClick = useCallback((actionId, e) => {
     e.stopPropagation()
     // Standard actions go through onAction (handled by CanvasPage)
-    if (actionId === 'delete') {
+    if (actionId === 'delete' || actionId === 'copy') {
       onAction?.(actionId)
       return
     }

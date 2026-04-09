@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import tailwindcss from '@tailwindcss/vite'
 import generouted from '@generouted/react-router/plugin'
+// In worktrees, npm workspace links point at the main worktree. Import
+// Vite plugins via relative paths so each worktree runs its own source.
 import storyboardData from './packages/react/src/vite/data-plugin.js'
 import storyboardServer from './packages/core/src/vite/server-plugin.js'
 import postcssGlobalData from '@csstools/postcss-global-data'

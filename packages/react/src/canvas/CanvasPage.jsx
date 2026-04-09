@@ -99,7 +99,7 @@ function getViewportCenter(scrollEl, scale) {
 
 /** Fallback sizes for widget types without explicit width/height defaults. */
 const WIDGET_FALLBACK_SIZES = {
-  'sticky-note':  { width: 180, height: 60 },
+  'sticky-note':  { width: 270, height: 170 },
   'markdown':     { width: 360, height: 200 },
   'prototype':    { width: 800, height: 600 },
   'link-preview': { width: 320, height: 120 },

@@ -1,0 +1,83 @@
+.embed {
+  position: relative;
+  overflow: hidden;
+  background: var(--bgColor-default, #ffffff);
+  border: 3px solid var(--borderColor-default, #d0d7de);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fgColor-muted, #656d76);
+  background: var(--bgColor-muted, #f6f8fa);
+  border-bottom: 1px solid var(--borderColor-muted, #d8dee4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.figmaLogo {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.headerTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.iframeContainer {
+  width: 100%;
+  height: calc(100% - 31px); /* subtract header height */
+  overflow: hidden;
+}
+
+.iframe {
+  width: 100%;
+  height: calc(100% + 24px); /* clip Figma's built-in bottom toolbar */
+  border: none;
+  display: block;
+}
+
+.dragOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  cursor: grab;
+}
+
+.resizeHandle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  background: linear-gradient(
+    135deg,
+    transparent 40%,
+    var(--borderColor-muted, rgba(0, 0, 0, 0.15)) 40%,
+    var(--borderColor-muted, rgba(0, 0, 0, 0.15)) 50%,
+    transparent 50%,
+    transparent 65%,
+    var(--borderColor-muted, rgba(0, 0, 0, 0.15)) 65%,
+    var(--borderColor-muted, rgba(0, 0, 0, 0.15)) 75%,
+    transparent 75%
+  );
+  opacity: 0;
+  transition: opacity 150ms;
+  z-index: 2;
+}
+
+.embed:hover ~ .resizeHandle,
+.resizeHandle:hover {
+  opacity: 1;
+}

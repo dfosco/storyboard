@@ -8,6 +8,7 @@ import { getCanvasThemeVars, getCanvasPrimerAttrs } from './canvasTheme.js'
 import { getWidgetComponent } from './widgets/index.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'
 import { getFeatures } from './widgets/widgetConfig.js'
+import { isFigmaUrl, sanitizeFigmaUrl } from './widgets/figmaUrl.js'
 import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi } from './canvasApi.js'
@@ -102,6 +103,7 @@ const WIDGET_FALLBACK_SIZES = {
   'markdown':     { width: 360, height: 200 },
   'prototype':    { width: 800, height: 600 },
   'link-preview': { width: 320, height: 120 },
+  'figma-embed':  { width: 800, height: 450 },
   'component':    { width: 200, height: 150 },
 }
 
@@ -554,7 +556,10 @@ export default function CanvasPage({ name }) {
       let type, props
       try {
         const parsed = new URL(text)
-        if (isSameOriginPrototype(text)) {
+        if (isFigmaUrl(text)) {
+          type = 'figma-embed'
+          props = { url: sanitizeFigmaUrl(text), width: 800, height: 450 }
+        } else if (isSameOriginPrototype(text)) {
           const pathPortion = parsed.pathname + parsed.search + parsed.hash
           const src = extractPrototypeSrc(pathPortion)
           type = 'prototype'

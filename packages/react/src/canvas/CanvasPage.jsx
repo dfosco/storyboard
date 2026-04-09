@@ -880,6 +880,25 @@ export default function CanvasPage({ name }) {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleUndo, handleRedo])
 
+  // Listen for undo/redo from CoreUIBar (Svelte toolbar)
+  useEffect(() => {
+    function handleUndoEvent() { handleUndo() }
+    function handleRedoEvent() { handleRedo() }
+    document.addEventListener('storyboard:canvas:undo', handleUndoEvent)
+    document.addEventListener('storyboard:canvas:redo', handleRedoEvent)
+    return () => {
+      document.removeEventListener('storyboard:canvas:undo', handleUndoEvent)
+      document.removeEventListener('storyboard:canvas:redo', handleRedoEvent)
+    }
+  }, [handleUndo, handleRedo])
+
+  // Broadcast undo/redo availability to Svelte toolbar
+  useEffect(() => {
+    document.dispatchEvent(new CustomEvent('storyboard:canvas:undo-redo-state', {
+      detail: { canUndo: undoRedo.canUndo, canRedo: undoRedo.canRedo }
+    }))
+  }, [undoRedo.canUndo, undoRedo.canRedo])
+
   // Zoom change handler for CanvasControls
   const handleZoomChange = useCallback((valueOrFn) => {
     const newZoom = typeof valueOrFn === 'function' ? valueOrFn(zoomRef.current) : valueOrFn
@@ -1119,13 +1138,7 @@ export default function CanvasPage({ name }) {
         </div>
       </div>
       <CanvasControls
-        zoom={zoom}
-        onZoomChange={handleZoomChange}
         onAddWidget={addWidget}
-        canUndo={undoRedo.canUndo}
-        canRedo={undoRedo.canRedo}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
       />
     </>
   )

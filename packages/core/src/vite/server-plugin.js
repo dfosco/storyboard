@@ -108,6 +108,10 @@ export default function storyboardServer() {
       // Wire canvas API routes (always enabled — CRUD for .canvas.jsonl files)
       routeHandlers.set('canvas', createCanvasHandler({ root, sendJson }))
 
+      // Ignore src/canvas/images/ so pasted image writes don't trigger reloads
+      const canvasImagesDir = path.join(root, 'src', 'canvas', 'images')
+      server.watcher.unwatch(canvasImagesDir)
+
       // Watch toolbar.config.json for changes — trigger full reload so
       // CoreUIBar.svelte picks up menu/mode config changes during dev
       const toolbarConfigPath = path.resolve(

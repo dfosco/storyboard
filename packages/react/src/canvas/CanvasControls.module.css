@@ -138,3 +138,27 @@
 .menuItem:hover {
   background: var(--bgColor-muted, #f6f8fa);
 }
+
+.standaloneBtn {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 2.5px solid var(--sb--trigger-border, var(--borderColor-muted, #d0d7de));
+  background: var(--sb--trigger-bg, var(--bgColor-muted, #f6f8fa));
+  color: var(--sb--trigger-text, var(--fgColor-muted, #656d76));
+  transition: background 120ms;
+}
+
+.standaloneBtn:hover:not(:disabled) {
+  background: var(--sb--trigger-bg-hover, var(--bgColor-neutral-muted, #eaeef2));
+}
+
+.standaloneBtn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}

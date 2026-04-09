@@ -7,8 +7,8 @@
         "text":   { "type": "text",   "label": "Text",    "category": "content",  "default": "" },
         "color":  { "type": "select", "label": "Color",   "category": "settings", "default": "yellow",
                     "options": ["yellow", "blue", "green", "pink", "purple", "orange"] },
-        "width":  { "type": "number", "label": "Width",   "category": "size", "min": 180 },
-        "height": { "type": "number", "label": "Height",  "category": "size", "min": 60 }
+        "width":  { "type": "number", "label": "Width",   "category": "size", "min": 180, "default": 270 },
+        "height": { "type": "number", "label": "Height",  "category": "size", "min": 60, "default": 170 }
       },
       "features": [
         { "id": "color",  "type": "color-picker", "prop": "color" },

@@ -1,3 +1,8 @@
+---
+name: storyboard-core
+description: Guide for adding CoreUIBar menu buttons and wiring action handlers in the storyboard core package. Use when adding toolbar buttons, menu items, or action handlers to the CoreUIBar.
+---
+
 # Storyboard Core — CoreUIBar & Menu Buttons
 
 Guide for adding new menu buttons to the storyboard CoreUIBar — the floating toolbar at the bottom-right of every prototype page.

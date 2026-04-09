@@ -1,3 +1,8 @@
+---
+name: tools
+description: Declarative toolbar tool system architecture — config schema, handler modules, surfaces, render types, guards, and context. Use when creating, debugging, or extending toolbar tools.
+---
+
 # Toolbar Tool System
 
 ## Overview

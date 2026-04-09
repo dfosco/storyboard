@@ -519,7 +519,7 @@
       {#each canvasMenus as canvasTool (canvasTool.key)}
         {#if toolComponents[canvasTool.key]}
           {@const CanvasToolComponent = toolComponents[canvasTool.key]}
-          {#if canvasTool.render === 'zoom-control'}
+          {#if canvasTool.render === 'canvas-toolbar'}
             <CanvasToolComponent
               config={canvasTool}
               data={toolData[canvasTool.key]}

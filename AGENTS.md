@@ -3,11 +3,11 @@
 ## General instructions
 
 - Before running any other instruction, evaluate if the user prompt contains a trigger for one or more skills in `.github/skills`.
-  - **"Ship", "ship this", "ship a change", "ship a feature"** → always invoke the **ship** skill. This is a hard rule — never implement changes directly on `main`. The ship skill creates a worktree, implements there, and opens a PR.
-  - **"Ship-no-pr", "[ship-no-pr]", "ship without PR"** → invoke the **ship** skill in **no-PR mode**. Same workflow but skips opening a Pull Request — the branch is pushed to the remote only.
+  - **"Ship", "ship this", "ship a change", "ship a feature"** → always invoke the **ship** skill. This is a hard rule — never implement changes directly on `main`. The ship skill creates a worktree, implements there, and pushes to a remote branch (no PR by default).
+  - **"Ship-pr", "[ship-pr]", "ship with PR"** → invoke the **ship** skill in **PR mode**. Same workflow but also opens a Pull Request after pushing.
 - If the user asks `how to use this repo`, `how to run this project` etc, give them an outline of `AGENTS.md` and point them to this file, the `README.md` and the `.github/architecture` docs
 - **After completing any change**, always:
-  1. Create a feature branch, push it, and open a Pull Request via `gh pr create`. Never leave committed work on `main` without a PR. (Exception: when ship skill runs in no-PR mode, the branch is pushed but the PR is skipped.)
+  1. Create a feature branch, push it, and open a Pull Request via `gh pr create`. Never leave committed work on `main` without a PR. (Exception: when ship skill runs in default mode without `ship-pr`, the branch is pushed but the PR is skipped.)
   2. Create a clips task for the work done and mark it as closed. Use the relevant goal if one exists, or create a new one.
   - Never skip either step.
 
@@ -45,7 +45,9 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 
 - **changelog** (`.github/skills/changelog/SKILL.md`) — Generates formatted changelog entries from commit ranges.
 
-- **ship** (`.github/skills/ship/SKILL.md`) — End-to-end feature shipping: worktree → plan → implement → adversarial review → push → PR. Supports `no-pr` mode to skip the PR step.
+- **ship** (`.github/skills/ship/SKILL.md`) — End-to-end feature shipping: worktree → plan → implement → adversarial review → push. Supports `ship-pr` mode to also open a PR.
+
+- **agent-browser** (`.github/skills/agent-browser/SKILL.md`) — Browser inspection during development using `agent-browser` CLI. Snapshots, screenshots, console errors, element inspection.
 
 ---
 
@@ -57,6 +59,28 @@ npm run dev          # Start dev server at http://localhost:1234
 npm run build        # Production build
 npm run lint         # Run ESLint
 ```
+
+### Dev URL session state
+
+Whenever Copilot starts a dev server (e.g. `npm run dev`), save the URL as `devURL` in the SQL session database:
+
+```sql
+INSERT OR REPLACE INTO session_state (key, value) VALUES ('devURL', 'http://localhost:1234');
+```
+
+This `devURL` is used as the default target by the **agent-browser** skill when the user says "inspect the browser", "check the page", etc. — no URL argument needed.
+
+**How `devURL` gets set:**
+- **Automatically** — when Copilot runs `npm run dev` or any command that starts a dev server, persist the URL to `devURL`.
+- **From user input** — if the user says "the dev server is at http://localhost:3000", save that as `devURL`.
+- **Implicitly from inspection** — if no `devURL` is set and the user says "inspect http://localhost:1234", that URL becomes the `devURL` for the rest of the session.
+
+**How `devURL` gets read:**
+- Before opening a browser with `agent-browser`, always check for a saved `devURL`:
+  ```sql
+  SELECT value FROM session_state WHERE key = 'devURL';
+  ```
+- If set, use it as the default URL. If not set, ask the user or fall back to `http://localhost:1234`.
 
 ---
 
@@ -79,6 +103,7 @@ After any meaningful refactor, ask the user if the architecture documents should
 - Use **CSS Modules** (`*.module.css`) for component-specific styles
   - If you find any `sx` styled-components styling, migrate them to CSS Modules
 - **Every piece of data consumed in a page must gracefully handle `null` or `undefined` without crashing.** Since flow data, records, and overrides can all be partial, incomplete, or missing, components must never assume a field exists. Use optional chaining, fallback values, or conditional rendering for every data access.
+- **Branch URL support is required for any feature involving URL fragments or URL matching.** Branch deploys use `VITE_BASE_PATH=/branch--{branch-name}/` which changes `import.meta.env.BASE_URL`. Any URL matching, same-origin detection, or src resolution must account for branch-prefixed paths (e.g. `/branch--my-feature/MyPrototype`). When implementing URL-related features, ask the user about branch URL support — if they're unavailable, build for it by default.
 
 ---
 

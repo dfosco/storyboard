@@ -1,22 +1,22 @@
 ---
 name: ship
-description: End-to-end feature shipping workflow — worktree, plan, implement, adversarial review, push, and open PR.
+description: End-to-end feature shipping workflow — worktree, plan, implement, adversarial review, and push. Use ship-pr to also open a PR.
 metadata:
   author: Daniel Fosco
-  version: "2026.4.08"
+  version: "2026.4.09"
 ---
 
 # Ship Skill
 
 > Triggered by: "ship", "ship this", "ship a feature", "ship it", "ship a change"
 >
-> **No-PR variant** triggered by: "ship-no-pr", "[ship-no-pr]", "ship without PR", "ship no pr", "ship but don't open a PR", or any ship trigger combined with an instruction to skip the PR step.
+> **PR variant** triggered by: "ship-pr", "[ship-pr]", "ship with PR", "ship and open a PR", or any ship trigger combined with an instruction to open a PR.
 >
-> **⚠️ This skill MUST be invoked whenever the user says "ship". Do NOT implement changes directly — always go through this workflow. Every step is mandatory and sequential (except Step 8, which is skipped in no-PR mode).**
+> **⚠️ This skill MUST be invoked whenever the user says "ship". Do NOT implement changes directly — always go through this workflow. Every step is mandatory and sequential (except Step 8, which only runs in PR mode).**
 
 ## What This Does
 
-Runs an end-to-end feature shipping workflow: creates a worktree, plans the feature, implements it, validates with an adversarial rubber-duck review, pushes to a remote branch, and opens a PR. All work happens in an isolated worktree — never on `main`.
+Runs an end-to-end feature shipping workflow: creates a worktree, plans the feature, implements it, validates with an adversarial rubber-duck review, and pushes to a remote branch. In PR mode, it also opens a Pull Request. All work happens in an isolated worktree — never on `main`.
 
 ---
 
@@ -24,14 +24,14 @@ Runs an end-to-end feature shipping workflow: creates a worktree, plans the feat
 
 | Parameter | Description |
 |-----------|-------------|
-| **no-pr** | Skip opening a Pull Request (Step 8). The branch is still pushed to the remote. Use when you want to ship work to a branch without creating a PR — e.g., for draft work, local experiments, or when you'll open the PR manually later. |
+| **pr** | Also open a Pull Request (Step 8) after pushing. By default, ship pushes to a remote branch but does NOT open a PR. Use when the feature is ready for review. |
 
-**How to activate no-PR mode:**
-- Verbal: *"ship this but don't create a PR"*, *"ship without PR"*
-- Short-form: *"ship-no-pr"*, *"[ship-no-pr]"*
-- Combined: *"ship a feature to add X — no PR"*
+**How to activate PR mode:**
+- Verbal: *"ship this and open a PR"*, *"ship with PR"*
+- Short-form: *"ship-pr"*, *"[ship-pr]"*
+- Combined: *"ship a feature to add X — open a PR"*
 
-When no-PR mode is active, Step 8 (Open a PR) and the PR-related parts of Step 9 (clips auto-close via `Fixes #`) are skipped. All other steps run normally.
+When PR mode is active, Step 8 (Open a PR) and the PR-related parts of Step 9 (clips auto-close via `Fixes #`) run. Without PR mode, all other steps run normally and the branch is pushed to the remote.
 
 ---
 
@@ -175,9 +175,11 @@ git push -u origin <branch-name>
 
 If the push fails due to permissions or remote issues, inform the user and suggest manual steps.
 
+After pushing, inform the user: "Branch pushed to `origin/<branch-name>`."
+
 ### Step 8: Open a PR
 
-> **⏭️ Skip this step if no-PR mode is active.** After pushing, inform the user that the branch is available at `origin/<branch-name>` and they can open a PR manually when ready.
+> **⏭️ Skip this step unless PR mode is active.** By default, ship does not open a PR. The branch is available at `origin/<branch-name>` and the user can open a PR manually when ready.
 
 Use the GitHub CLI to create a pull request:
 
@@ -222,7 +224,7 @@ This is the **only** place the dev server starts during a ship workflow — the 
 ## Rules
 
 - **Always create a worktree first** — invoke the worktree skill as Step 1, before any exploration or implementation. Never commit to `main`. Never create a branch from `main` after the fact. The worktree IS the branch.
-- **Always open a PR** (unless no-PR mode is active) — every shipped feature must result in a Pull Request by default. If `gh pr create` fails, inform the user immediately. In no-PR mode, the branch is pushed but the PR step is skipped.
+- **Only open a PR in PR mode** — by default, ship pushes the branch but does NOT open a PR. Only open a PR when the user explicitly requests it (`ship-pr`, `[ship-pr]`, "ship with PR", etc.). If `gh pr create` fails in PR mode, inform the user immediately.
 - **Never skip the adversarial review** — this is the quality gate. The adversarial rubber-duck pass is mandatory.
 - **Always run lint/build/test** before committing — at minimum `npm run lint && npm run build && npm run test`.
 - **Always use `ask_user`** for confirmations — branch name, plan approval, PR details.
@@ -244,13 +246,13 @@ User says: "ship a feature to add a dark mode toggle to the settings page"
 5. Writes tests using vitest skill, commits
 6. Runs adversarial rubber-duck review, fixes findings, commits
 7. Pushes `add-dark-mode-toggle` to origin
-8. Opens PR "feat: add dark mode toggle to settings page" with `Fixes #<issue>` in body
+8. **Skips PR creation** — informs user: "Branch pushed to `origin/add-dark-mode-toggle`. Open a PR when ready."
 9. Marks clips tasks as closed
 10. Starts dev server (`npm run dev`) in the worktree
 
-### No-PR Example
+### PR Example
 
-User says: "[ship-no-pr] refactor the loader to use async iterators"
+User says: "[ship-pr] refactor the loader to use async iterators"
 
 1. Creates worktree `refactor-loader-async-iterators`
 2. Plans the implementation
@@ -259,6 +261,6 @@ User says: "[ship-no-pr] refactor the loader to use async iterators"
 5. Writes tests, commits
 6. Runs adversarial rubber-duck review, fixes findings, commits
 7. Pushes `refactor-loader-async-iterators` to origin
-8. **Skips PR creation** — informs user: "Branch pushed to `origin/refactor-loader-async-iterators`. Open a PR when ready."
+8. Opens PR "refactor: use async iterators in loader" with `Fixes #<issue>` in body
 9. Marks clips tasks as closed
 10. Starts dev server (`npm run dev`) in the worktree

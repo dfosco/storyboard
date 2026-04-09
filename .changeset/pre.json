@@ -1,0 +1,15 @@
+{
+  "mode": "exit",
+  "tag": "beta",
+  "initialVersions": {
+    "@dfosco/storyboard-core": "3.10.0-beta.0",
+    "@dfosco/storyboard-react": "3.10.0-beta.0",
+    "@dfosco/storyboard-react-primer": "3.10.0-beta.0",
+    "@dfosco/storyboard-react-reshaped": "3.10.0-beta.0",
+    "@dfosco/tiny-canvas": "3.10.0-beta.0"
+  },
+  "changesets": [
+    "beta1-bump",
+    "changeset-mnrfsmw5"
+  ]
+}

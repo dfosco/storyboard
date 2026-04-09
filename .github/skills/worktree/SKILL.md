@@ -1,3 +1,8 @@
+---
+name: worktree
+description: Creates a git worktree in .worktrees/<branch-name> and switches into it. Use when asked to create a worktree, new worktree, or worktree for a branch.
+---
+
 # Worktree Skill
 
 > Triggered by: "create worktree", "new worktree", "worktree for", "worktree"

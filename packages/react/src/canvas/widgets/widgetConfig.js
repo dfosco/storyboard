@@ -1,0 +1,79 @@
+/**
+ * Widget Config Loader
+ *
+ * Reads widgets.config.json from @dfosco/storyboard-core and builds
+ * schema objects compatible with the existing readProp/readAllProps/getDefaults API.
+ *
+ * The config is the single source of truth for widget definitions —
+ * prop schemas, feature lists, labels, and icons all come from here.
+ */
+import widgetsConfig from '@dfosco/storyboard-core/widgets.config.json'
+
+/**
+ * Convert a config prop definition to the schema shape used by widgetProps.js.
+ * Config uses `"default"`, schema uses `"defaultValue"`.
+ */
+function configPropToSchema(propDef) {
+  const schema = {
+    type: propDef.type,
+    label: propDef.label,
+    category: propDef.category,
+  }
+  if (propDef.default !== undefined) schema.defaultValue = propDef.default
+  if (propDef.options) schema.options = propDef.options
+  if (propDef.min !== undefined) schema.min = propDef.min
+  if (propDef.max !== undefined) schema.max = propDef.max
+  return schema
+}
+
+/**
+ * Build schema objects for all widget types from the config.
+ * Returns the same shape as the old hardcoded schemas in widgetProps.js.
+ */
+function buildSchemas() {
+  const result = {}
+  for (const [type, def] of Object.entries(widgetsConfig.widgets)) {
+    const schema = {}
+    for (const [key, propDef] of Object.entries(def.props || {})) {
+      schema[key] = configPropToSchema(propDef)
+    }
+    result[type] = schema
+  }
+  return result
+}
+
+/** All widget schemas, keyed by type string. */
+export const schemas = buildSchemas()
+
+/** Full widget config entries, keyed by type string. */
+export const widgetTypes = widgetsConfig.widgets
+
+/**
+ * Get the feature list for a widget type.
+ * @param {string} type — widget type string
+ * @returns {Array} features array from config, or empty array
+ */
+export function getFeatures(type) {
+  return widgetTypes[type]?.features ?? []
+}
+
+/**
+ * Get the display metadata (label, icon) for a widget type.
+ * @param {string} type — widget type string
+ * @returns {{ label: string, icon: string } | null}
+ */
+export function getWidgetMeta(type) {
+  const def = widgetTypes[type]
+  if (!def) return null
+  return { label: def.label, icon: def.icon }
+}
+
+/**
+ * Get all widget types as an array of { type, label, icon } for menus.
+ * Excludes link-preview which is created via paste only.
+ */
+export function getMenuWidgetTypes() {
+  return Object.entries(widgetTypes)
+    .filter(([type]) => type !== 'link-preview')
+    .map(([type, def]) => ({ type, label: def.label, icon: def.icon }))
+}

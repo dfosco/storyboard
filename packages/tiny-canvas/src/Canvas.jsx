@@ -11,6 +11,11 @@ function readInitialPosition(child) {
   return null;
 }
 
+/** Read an optional CSS selector that restricts drag to a handle element. */
+function readHandle(child) {
+  return child?.props?.['data-tc-handle'] || null;
+}
+
 function Canvas({
   children,
   dotted = false,
@@ -30,6 +35,7 @@ function Canvas({
       {Children.map(children, (child, index) => {
         const dragId = findDragId(child) ?? generateDragId(child, index);
         const initialPosition = readInitialPosition(child);
+        const handle = readHandle(child);
         return (
           <Draggable
             key={index}
@@ -37,6 +43,7 @@ function Canvas({
             dragId={dragId}
             initialPosition={initialPosition}
             onDragEnd={onDragEnd}
+            handle={handle}
           >
             {child}
           </Draggable>

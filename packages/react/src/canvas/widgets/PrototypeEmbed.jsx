@@ -186,6 +186,8 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
     handleAction(actionId) {
       if (actionId === 'edit') {
         setEditing(true)
+      } else if (actionId === 'open-external') {
+        if (rawSrc) window.open(rawSrc, '_blank', 'noopener')
       } else if (actionId === 'zoom-in') {
         const step = zoom < 75 ? 5 : 25
         onUpdate?.({ zoom: Math.min(200, zoom + step) })
@@ -194,7 +196,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
         onUpdate?.({ zoom: Math.max(25, zoom - step) })
       }
     },
-  }), [zoom, onUpdate])
+  }), [rawSrc, zoom, onUpdate])
 
   function handlePickRoute(route) {
     onUpdate?.({ src: route })

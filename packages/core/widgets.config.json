@@ -37,6 +37,7 @@
         "height": { "type": "number", "label": "Height", "category": "size",     "default": 600, "min": 200, "max": 1500 }
       },
       "features": [
+        { "id": "open-external", "type": "action", "action": "open-external" },
         { "id": "zoom-in",  "type": "action", "action": "zoom-in" },
         { "id": "zoom-out", "type": "action", "action": "zoom-out" },
         { "id": "edit-url", "type": "action", "action": "edit" },

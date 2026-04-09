@@ -5,7 +5,7 @@ import styles from './CanvasControls.module.css'
 const WIDGET_TYPES = getMenuWidgetTypes()
 
 /**
- * Focused canvas toolbar — bottom-left controls for zoom, widget creation, and undo/redo.
+ * Focused canvas toolbar — bottom-left add-widget control.
  */
 export default function CanvasControls({ onAddWidget }) {
   const [menuOpen, setMenuOpen] = useState(false)

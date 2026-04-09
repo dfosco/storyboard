@@ -53,6 +53,15 @@
       "features": [
         { "id": "delete", "type": "action", "action": "delete" }
       ]
+    },
+    "component": {
+      "label": "Component",
+      "icon": "⚛️",
+      "props": {
+        "width":  { "type": "number", "label": "Width",  "category": "size", "min": 100 },
+        "height": { "type": "number", "label": "Height", "category": "size", "min": 60 }
+      },
+      "features": []
     }
   }
 }

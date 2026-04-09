@@ -125,6 +125,7 @@ export default function WidgetChrome({
 }) {
   const [hovered, setHovered] = useState(false)
   const leaveTimer = useRef(null)
+  const handlePointerDown = useRef(false)
 
   const handleMouseEnter = useCallback(() => {
     clearTimeout(leaveTimer.current)
@@ -135,7 +136,16 @@ export default function WidgetChrome({
     leaveTimer.current = setTimeout(() => setHovered(false), 80)
   }, [])
 
-  const handleSelectClick = useCallback((e) => {
+  // Track pointerdown on the handle so we can select on pointerup
+  // even if the drag library swallows the click event.
+  const handleHandlePointerDown = useCallback(() => {
+    handlePointerDown.current = true
+  }, [])
+
+  const handleHandlePointerUp = useCallback((e) => {
+    if (!handlePointerDown.current) return
+    handlePointerDown.current = false
+    // Only select if the pointer didn't travel far (i.e. not a drag)
     e.stopPropagation()
     if (selected) {
       onDeselect?.()
@@ -219,7 +229,8 @@ export default function WidgetChrome({
 
           <button
             className={`tc-drag-handle ${styles.selectHandle} ${selected ? styles.selectHandleActive : ''}`}
-            onClick={handleSelectClick}
+            onPointerDown={handleHandlePointerDown}
+            onPointerUp={handleHandlePointerUp}
             title={selected ? 'Deselect' : 'Select'}
             aria-label={selected ? 'Deselect widget' : 'Select widget'}
             aria-pressed={selected}

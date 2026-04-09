@@ -1,9 +1,10 @@
 <!--
-  CanvasZoomControl — zoom in/out/reset bar for canvas pages.
-  Extracted from CoreUIBar to be config-driven.
+  CanvasToolbar — zoom, undo/redo, and fit controls for canvas pages.
+  Rendered in the CoreUIBar canvas toolbar slot.
 -->
 
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte'
   import * as Tooltip from './lib/components/ui/tooltip/index.js'
 
   interface Props {
@@ -13,6 +14,8 @@
       zoomOut: (zoom: number) => void
       zoomReset: () => void
       zoomToFit: () => void
+      undo: () => void
+      redo: () => void
       ZOOM_MIN: number
       ZOOM_MAX: number
     }
@@ -21,15 +24,31 @@
   }
 
   let { config = {}, data, zoom = 100, tabindex = -1 }: Props = $props()
+
+  let canUndo = $state(false)
+  let canRedo = $state(false)
+
+  function handleUndoRedoState(e: CustomEvent) {
+    canUndo = !!e.detail?.canUndo
+    canRedo = !!e.detail?.canRedo
+  }
+
+  onMount(() => {
+    document.addEventListener('storyboard:canvas:undo-redo-state', handleUndoRedoState as EventListener)
+  })
+
+  onDestroy(() => {
+    document.removeEventListener('storyboard:canvas:undo-redo-state', handleUndoRedoState as EventListener)
+  })
 </script>
 
 {#if data}
-  <div class="canvas-zoom-group">
-    <div class="canvas-zoom-bar" role="group" aria-label={config.ariaLabel || 'Zoom controls'}>
+  <div class="canvas-toolbar-group">
+    <div class="canvas-toolbar-bar" role="group" aria-label={config.ariaLabel || 'Zoom controls'}>
       <Tooltip.Root>
         <Tooltip.Trigger>
           <button
-            class="canvas-zoom-btn"
+            class="canvas-toolbar-btn"
             onclick={() => data.zoomOut(zoom)}
             disabled={zoom <= data.ZOOM_MIN}
             aria-label="Decrease zoom"
@@ -41,7 +60,7 @@
       <Tooltip.Root>
         <Tooltip.Trigger>
           <button
-            class="canvas-zoom-label"
+            class="canvas-toolbar-label"
             onclick={() => data.zoomReset()}
             aria-label="Zoom to 100%"
             tabindex={-1}
@@ -52,7 +71,7 @@
       <Tooltip.Root>
         <Tooltip.Trigger>
           <button
-            class="canvas-zoom-btn"
+            class="canvas-toolbar-btn"
             onclick={() => data.zoomIn(zoom)}
             disabled={zoom >= data.ZOOM_MAX}
             aria-label="Increase zoom"
@@ -65,7 +84,7 @@
     <Tooltip.Root>
       <Tooltip.Trigger>
         <button
-          class="canvas-zoom-fit"
+          class="canvas-toolbar-standalone"
           onclick={() => data.zoomToFit()}
           aria-label="Zoom to objects"
           tabindex={-1}
@@ -77,17 +96,49 @@
       </Tooltip.Trigger>
       <Tooltip.Content side="top">Zoom to objects</Tooltip.Content>
     </Tooltip.Root>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        <button
+          class="canvas-toolbar-standalone"
+          onclick={() => data.undo()}
+          disabled={!canUndo}
+          aria-label="Undo"
+          tabindex={-1}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M6.78 1.97a.75.75 0 0 1 0 1.06L3.81 6h6.44A4.75 4.75 0 0 1 15 10.75v2.5a.75.75 0 0 1-1.5 0v-2.5a3.25 3.25 0 0 0-3.25-3.25H3.81l2.97 2.97a.75.75 0 1 1-1.06 1.06L1.47 7.28a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" />
+          </svg>
+        </button>
+      </Tooltip.Trigger>
+      <Tooltip.Content side="top">Undo (⌘Z)</Tooltip.Content>
+    </Tooltip.Root>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        <button
+          class="canvas-toolbar-standalone"
+          onclick={() => data.redo()}
+          disabled={!canRedo}
+          aria-label="Redo"
+          tabindex={-1}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M9.22 1.97a.75.75 0 0 0 0 1.06L12.19 6H5.75A4.75 4.75 0 0 0 1 10.75v2.5a.75.75 0 0 0 1.5 0v-2.5a3.25 3.25 0 0 1 3.25-3.25h6.44l-2.97 2.97a.75.75 0 1 0 1.06 1.06l4.25-4.25a.75.75 0 0 0 0-1.06l-4.25-4.25a.75.75 0 0 0-1.06 0Z" />
+          </svg>
+        </button>
+      </Tooltip.Trigger>
+      <Tooltip.Content side="top">Redo (⌘⇧Z)</Tooltip.Content>
+    </Tooltip.Root>
   </div>
 {/if}
 
 <style>
-  .canvas-zoom-group {
+  .canvas-toolbar-group {
     display: flex;
     align-items: center;
     gap: 1rem;
   }
 
-  .canvas-zoom-bar {
+  .canvas-toolbar-bar {
     display: flex;
     align-items: center;
     border-radius: 10px;
@@ -96,7 +147,7 @@
     overflow: hidden;
   }
 
-  .canvas-zoom-btn {
+  .canvas-toolbar-btn {
     all: unset;
     cursor: pointer;
     display: flex;
@@ -110,16 +161,16 @@
     transition: background 120ms;
   }
 
-  .canvas-zoom-btn:hover:not(:disabled) {
+  .canvas-toolbar-btn:hover:not(:disabled) {
     background: var(--sb--trigger-bg-hover, var(--color-slate-300));
   }
 
-  .canvas-zoom-btn:disabled {
+  .canvas-toolbar-btn:disabled {
     opacity: 0.3;
     cursor: default;
   }
 
-  .canvas-zoom-label {
+  .canvas-toolbar-label {
     all: unset;
     cursor: pointer;
     display: flex;
@@ -137,11 +188,11 @@
     transition: background 120ms;
   }
 
-  .canvas-zoom-label:hover {
+  .canvas-toolbar-label:hover {
     background: var(--sb--trigger-bg-hover, var(--color-slate-300));
   }
 
-  .canvas-zoom-fit {
+  .canvas-toolbar-standalone {
     all: unset;
     cursor: pointer;
     display: flex;
@@ -156,7 +207,12 @@
     transition: background 120ms;
   }
 
-  .canvas-zoom-fit:hover {
+  .canvas-toolbar-standalone:hover:not(:disabled) {
     background: var(--sb--trigger-bg-hover, var(--color-slate-300));
+  }
+
+  .canvas-toolbar-standalone:disabled {
+    opacity: 0.3;
+    cursor: default;
   }
 </style>

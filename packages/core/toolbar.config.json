@@ -94,11 +94,11 @@
       "meta": { "strokeWeight": 2, "scale": 1.2 },
       "menuWidth": "300px"
     },
-    "canvas-zoom": {
-      "ariaLabel": "Zoom controls",
-      "render": "zoom-control",
+    "canvas-toolbar": {
+      "ariaLabel": "Canvas toolbar",
+      "render": "canvas-toolbar",
       "surface": "canvas-toolbar",
-      "handler": "core:canvas-zoom",
+      "handler": "core:canvas-toolbar",
       "modes": ["*"]
     },    
     "viewfinder": {

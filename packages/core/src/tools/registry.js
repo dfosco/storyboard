@@ -14,7 +14,7 @@ export const coreHandlers = {
   devtools:             () => import('./handlers/devtools.js'),
   'feature-flags':      () => import('./handlers/featureFlags.js'),
   'canvas-add-widget':  () => import('./handlers/canvasAddWidget.js'),
-  'canvas-zoom':        () => import('./handlers/canvasZoom.js'),
+  'canvas-toolbar':     () => import('./handlers/canvasToolbar.js'),
 }
 
 // Keep legacy export name for backward compatibility

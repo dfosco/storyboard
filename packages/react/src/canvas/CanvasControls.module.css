@@ -1,15 +1,8 @@
-.controlsRow {
+.toolbar {
   position: fixed;
   bottom: 24px;
   left: 24px;
   z-index: 9998;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
-}
-
-.toolbar {
   display: flex;
   align-items: center;
   gap: 2px;
@@ -55,35 +48,6 @@
 .btn:disabled {
   opacity: 0.35;
   cursor: default;
-}
-
-.zoomLevel {
-  all: unset;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  height: 32px;
-  padding: 0 4px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: var(--fgColor-muted, #656d76);
-  transition: background 120ms;
-}
-
-.zoomLevel:hover {
-  background: var(--bgColor-muted, #f6f8fa);
-  color: var(--fgColor-default, #1f2328);
-}
-
-.divider {
-  width: 1px;
-  height: 20px;
-  margin: 0 2px;
-  background: var(--borderColor-muted, #d8dee4);
 }
 
 /* Create widget menu */
@@ -137,28 +101,4 @@
 
 .menuItem:hover {
   background: var(--bgColor-muted, #f6f8fa);
-}
-
-.standaloneBtn {
-  all: unset;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  border: 2.5px solid var(--sb--trigger-border, var(--borderColor-muted, #d0d7de));
-  background: var(--sb--trigger-bg, var(--bgColor-muted, #f6f8fa));
-  color: var(--sb--trigger-text, var(--fgColor-muted, #656d76));
-  transition: background 120ms;
-}
-
-.standaloneBtn:hover:not(:disabled) {
-  background: var(--sb--trigger-bg-hover, var(--bgColor-neutral-muted, #eaeef2));
-}
-
-.standaloneBtn:disabled {
-  opacity: 0.3;
-  cursor: default;
 }

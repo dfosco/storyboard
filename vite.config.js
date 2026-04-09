@@ -57,6 +57,8 @@ export default defineConfig(() => {
             '@dfosco/storyboard-react': path.resolve(__dirname, 'packages/react/src/index.js'),
             '@dfosco/storyboard-react-primer': path.resolve(__dirname, 'packages/react-primer/src/index.js'),
             '@dfosco/storyboard-react-reshaped': path.resolve(__dirname, 'packages/react-reshaped/src/index.js'),
+            '@dfosco/tiny-canvas/style.css': path.resolve(__dirname, 'packages/tiny-canvas/src/style.css'),
+            '@dfosco/tiny-canvas': path.resolve(__dirname, 'packages/tiny-canvas/src/index.js'),
         },
     },
     plugins: [

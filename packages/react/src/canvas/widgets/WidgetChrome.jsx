@@ -167,16 +167,11 @@ export default function WidgetChrome({
     if (!pointerStartPos.current) return
     const start = pointerStartPos.current
     pointerStartPos.current = null
-    // Only toggle selection if the pointer stayed close (click, not drag)
     const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y)
     if (dist > 10) return
     e.stopPropagation()
-    if (selected) {
-      onDeselect?.()
-    } else {
-      onSelect?.()
-    }
-  }, [selected, onSelect, onDeselect])
+    onSelect?.()
+  }, [onSelect])
 
   const handleActionClick = useCallback((actionId, e) => {
     e.stopPropagation()
@@ -263,12 +258,12 @@ export default function WidgetChrome({
             })}
           </div>
 
-          <Tooltip text={selected ? 'Deselect' : 'Select'} direction="n">
+          <Tooltip text="Select" direction="n">
             <button
               className={`tc-drag-handle ${styles.selectHandle} ${selected ? styles.selectHandleActive : ''}`}
               onPointerDown={handleHandlePointerDown}
               onPointerUp={handleHandlePointerUp}
-              aria-label={selected ? 'Deselect widget' : 'Select widget'}
+              aria-label="Select widget"
               aria-pressed={selected}
             />
           </Tooltip>

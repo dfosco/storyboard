@@ -4,6 +4,8 @@
 -->
 
 <script lang="ts">
+  import * as Tooltip from './lib/components/ui/tooltip/index.js'
+
   interface Props {
     config?: any
     data?: {
@@ -24,41 +26,57 @@
 {#if data}
   <div class="canvas-zoom-group">
     <div class="canvas-zoom-bar" role="group" aria-label={config.ariaLabel || 'Zoom controls'}>
-      <button
-        class="canvas-zoom-btn"
-        onclick={() => data.zoomOut(zoom)}
-        disabled={zoom <= data.ZOOM_MIN}
-        aria-label="Decrease zoom"
-        title="Decrease zoom"
-        {tabindex}
-      >−</button>
-      <button
-        class="canvas-zoom-label"
-        onclick={() => data.zoomReset()}
-        aria-label="Zoom to 100%"
-        title="Zoom to 100%"
-        tabindex={-1}
-      >{zoom}%</button>
-      <button
-        class="canvas-zoom-btn"
-        onclick={() => data.zoomIn(zoom)}
-        disabled={zoom >= data.ZOOM_MAX}
-        aria-label="Increase zoom"
-        title="Increase zoom"
-        tabindex={-1}
-      >+</button>
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          <button
+            class="canvas-zoom-btn"
+            onclick={() => data.zoomOut(zoom)}
+            disabled={zoom <= data.ZOOM_MIN}
+            aria-label="Decrease zoom"
+            {tabindex}
+          >−</button>
+        </Tooltip.Trigger>
+        <Tooltip.Content side="top">Decrease zoom</Tooltip.Content>
+      </Tooltip.Root>
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          <button
+            class="canvas-zoom-label"
+            onclick={() => data.zoomReset()}
+            aria-label="Zoom to 100%"
+            tabindex={-1}
+          >{zoom}%</button>
+        </Tooltip.Trigger>
+        <Tooltip.Content side="top">Zoom to 100%</Tooltip.Content>
+      </Tooltip.Root>
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          <button
+            class="canvas-zoom-btn"
+            onclick={() => data.zoomIn(zoom)}
+            disabled={zoom >= data.ZOOM_MAX}
+            aria-label="Increase zoom"
+            tabindex={-1}
+          >+</button>
+        </Tooltip.Trigger>
+        <Tooltip.Content side="top">Increase zoom</Tooltip.Content>
+      </Tooltip.Root>
     </div>
-    <button
-      class="canvas-zoom-fit"
-      onclick={() => data.zoomToFit()}
-      aria-label="Zoom to objects"
-      title="Zoom to objects"
-      tabindex={-1}
-    >
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-        <path d="M1.75 10a.75.75 0 0 1 .75.75v2.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 0 1.5h-2.5A1.75 1.75 0 0 1 1 13.25v-2.5a.75.75 0 0 1 .75-.75Zm12.5 0a.75.75 0 0 1 .75.75v2.5A1.75 1.75 0 0 1 13.25 15h-2.5a.75.75 0 0 1 0-1.5h2.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 .75-.75ZM2.75 1a1.75 1.75 0 0 0-1.75 1.75v2.5a.75.75 0 0 0 1.5 0v-2.5a.25.25 0 0 1 .25-.25h2.5a.75.75 0 0 0 0-1.5h-2.5Zm10.5 0h-2.5a.75.75 0 0 0 0 1.5h2.5a.25.25 0 0 1 .25.25v2.5a.75.75 0 0 0 1.5 0v-2.5A1.75 1.75 0 0 0 13.25 1Z" />
-      </svg>
-    </button>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        <button
+          class="canvas-zoom-fit"
+          onclick={() => data.zoomToFit()}
+          aria-label="Zoom to objects"
+          tabindex={-1}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M1.75 10a.75.75 0 0 1 .75.75v2.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 0 1.5h-2.5A1.75 1.75 0 0 1 1 13.25v-2.5a.75.75 0 0 1 .75-.75Zm12.5 0a.75.75 0 0 1 .75.75v2.5A1.75 1.75 0 0 1 13.25 15h-2.5a.75.75 0 0 1 0-1.5h2.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 .75-.75ZM2.75 1a1.75 1.75 0 0 0-1.75 1.75v2.5a.75.75 0 0 0 1.5 0v-2.5a.25.25 0 0 1 .25-.25h2.5a.75.75 0 0 0 0-1.5h-2.5Zm10.5 0h-2.5a.75.75 0 0 0 0 1.5h2.5a.25.25 0 0 1 .25.25v2.5a.75.75 0 0 0 1.5 0v-2.5A1.75 1.75 0 0 0 13.25 1Z" />
+          </svg>
+        </button>
+      </Tooltip.Trigger>
+      <Tooltip.Content side="top">Zoom to objects</Tooltip.Content>
+    </Tooltip.Root>
   </div>
 {/if}
 

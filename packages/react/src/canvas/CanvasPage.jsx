@@ -200,6 +200,25 @@ export default function CanvasPage({ name }) {
     )
   }, [name])
 
+  const debouncedSourceSave = useRef(
+    debounce((canvasName, sources) => {
+      updateCanvas(canvasName, { sources }).catch((err) =>
+        console.error('[canvas] Failed to save sources:', err)
+      )
+    }, 2000)
+  ).current
+
+  const handleSourceUpdate = useCallback((exportName, updates) => {
+    setLocalSources((prev) => {
+      const current = Array.isArray(prev) ? prev : []
+      const next = current.some((s) => s?.export === exportName)
+        ? current.map((s) => (s?.export === exportName ? { ...s, ...updates } : s))
+        : [...current, { export: exportName, ...updates }]
+      debouncedSourceSave(name, next)
+      return next
+    })
+  }, [name, debouncedSourceSave])
+
   const handleItemDragEnd = useCallback((dragId, position) => {
     if (!dragId || !position) return
     const rounded = { x: Math.max(0, roundPosition(position.x)), y: Math.max(0, roundPosition(position.y)) }
@@ -499,26 +518,45 @@ export default function CanvasPage({ name }) {
   // Merge JSX-sourced widgets (from .canvas.jsx) and JSON widgets
   const allChildren = []
 
-  const sourcePositionByExport = Object.fromEntries(
+  const sourceDataByExport = Object.fromEntries(
     (localSources || [])
       .filter((source) => source?.export)
-      .map((source) => [source.export, source.position || { x: 0, y: 0 }])
+      .map((source) => [source.export, source])
   )
 
-  // 1. JSX-sourced component widgets
+  // 1. JSX-sourced component widgets (wrapped in WidgetChrome, not deletable)
+  const componentFeatures = getFeatures('component')
   if (jsxExports) {
     for (const [exportName, Component] of Object.entries(jsxExports)) {
-      const sourcePosition = sourcePositionByExport[exportName] || { x: 0, y: 0 }
+      const sourceData = sourceDataByExport[exportName] || {}
+      const sourcePosition = sourceData.position || { x: 0, y: 0 }
       allChildren.push(
         <div
           key={`jsx-${exportName}`}
           id={`jsx-${exportName}`}
           data-tc-x={sourcePosition.x}
           data-tc-y={sourcePosition.y}
+          data-tc-handle=".tc-drag-handle"
           {...canvasPrimerAttrs}
           style={canvasThemeVars}
+          onClick={(e) => {
+            e.stopPropagation()
+            setSelectedWidgetId(`jsx-${exportName}`)
+          }}
         >
-          <ComponentWidget component={Component} />
+          <WidgetChrome
+            features={componentFeatures}
+            selected={selectedWidgetId === `jsx-${exportName}`}
+            onSelect={() => setSelectedWidgetId(`jsx-${exportName}`)}
+            onDeselect={() => setSelectedWidgetId(null)}
+          >
+            <ComponentWidget
+              component={Component}
+              width={sourceData.width}
+              height={sourceData.height}
+              onUpdate={(updates) => handleSourceUpdate(exportName, updates)}
+            />
+          </WidgetChrome>
         </div>
       )
     }

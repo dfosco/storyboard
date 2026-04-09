@@ -532,6 +532,7 @@ export default function CanvasPage({ name }) {
         id={widget.id}
         data-tc-x={widget?.position?.x ?? 0}
         data-tc-y={widget?.position?.y ?? 0}
+        data-tc-handle=".tc-drag-handle"
         {...canvasPrimerAttrs}
         style={canvasThemeVars}
         onClick={(e) => {

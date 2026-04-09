@@ -126,6 +126,57 @@ function roundPosition(value) {
   return Math.round(value)
 }
 
+/** Padding (canvas-space pixels) around bounding box for zoom-to-fit. */
+const FIT_PADDING = 48
+
+/**
+ * Compute the axis-aligned bounding box that contains every widget and source.
+ * Returns { minX, minY, maxX, maxY } in canvas-space coordinates, or null if empty.
+ */
+function computeCanvasBounds(widgets, sources, jsxExports) {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  let hasItems = false
+
+  // JSON widgets
+  for (const w of (widgets ?? [])) {
+    const x = w?.position?.x ?? 0
+    const y = w?.position?.y ?? 0
+    const fallback = WIDGET_FALLBACK_SIZES[w.type] || { width: 200, height: 150 }
+    const width = w.props?.width ?? fallback.width
+    const height = w.props?.height ?? fallback.height
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x + width)
+    maxY = Math.max(maxY, y + height)
+    hasItems = true
+  }
+
+  // JSX sources
+  const sourceMap = Object.fromEntries(
+    (sources || []).filter((s) => s?.export).map((s) => [s.export, s])
+  )
+  if (jsxExports) {
+    for (const exportName of Object.keys(jsxExports)) {
+      const sourceData = sourceMap[exportName] || {}
+      const x = sourceData.position?.x ?? 0
+      const y = sourceData.position?.y ?? 0
+      const fallback = WIDGET_FALLBACK_SIZES['component']
+      const width = sourceData.width ?? fallback.width
+      const height = sourceData.height ?? fallback.height
+      minX = Math.min(minX, x)
+      minY = Math.min(minY, y)
+      maxX = Math.max(maxX, x + width)
+      maxY = Math.max(maxY, y + height)
+      hasItems = true
+    }
+  }
+
+  return hasItems ? { minX, minY, maxX, maxY } : null
+}
+
 /** Renders a single JSON-defined widget by type lookup. */
 function WidgetRenderer({ widget, onUpdate, widgetRef }) {
   const Component = getWidgetComponent(widget.type)
@@ -482,6 +533,38 @@ export default function CanvasPage({ name }) {
     document.addEventListener('storyboard:canvas:set-zoom', handleZoom)
     return () => document.removeEventListener('storyboard:canvas:set-zoom', handleZoom)
   }, [])
+
+  // Listen for zoom-to-fit from CoreUIBar
+  useEffect(() => {
+    function handleZoomToFit() {
+      const el = scrollRef.current
+      if (!el) return
+
+      const bounds = computeCanvasBounds(localWidgets, localSources, jsxExports)
+      if (!bounds) return
+
+      const boxW = bounds.maxX - bounds.minX + FIT_PADDING * 2
+      const boxH = bounds.maxY - bounds.minY + FIT_PADDING * 2
+
+      const viewW = el.clientWidth
+      const viewH = el.clientHeight
+
+      // Find the zoom level that fits the bounding box in the viewport
+      const fitScale = Math.min(viewW / boxW, viewH / boxH)
+      const fitZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(fitScale * 100)))
+      const newScale = fitZoom / 100
+
+      // Apply zoom synchronously so DOM updates before we scroll
+      zoomRef.current = fitZoom
+      flushSync(() => setZoom(fitZoom))
+
+      // Scroll so the bounding box top-left (with padding) is at viewport top-left
+      el.scrollLeft = (bounds.minX - FIT_PADDING) * newScale
+      el.scrollTop = (bounds.minY - FIT_PADDING) * newScale
+    }
+    document.addEventListener('storyboard:canvas:zoom-to-fit', handleZoomToFit)
+    return () => document.removeEventListener('storyboard:canvas:zoom-to-fit', handleZoomToFit)
+  }, [localWidgets, localSources, jsxExports])
 
   // Canvas background should follow toolbar theme target.
   useEffect(() => {

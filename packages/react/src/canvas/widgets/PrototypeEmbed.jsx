@@ -40,9 +40,11 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
   const rawSrc = useMemo(() => {
     if (!src) return ''
     if (/^https?:\/\//.test(src)) return src
-    if (baseSegment && src.startsWith(basePath)) return src
-    if (baseSegment && src.startsWith(baseSegment)) return `/${src}`
-    return `${basePath}${src}`
+    // Strip stale branch prefixes from stored src (e.g. /branch--old-feat/Page)
+    const cleaned = src.replace(/^\/branch--[^/]+/, '')
+    if (baseSegment && cleaned.startsWith(basePath)) return cleaned
+    if (baseSegment && cleaned.startsWith(baseSegment)) return `/${cleaned}`
+    return `${basePath}${cleaned}`
   }, [src, basePath, baseSegment])
 
   const scale = zoom / 100

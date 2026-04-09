@@ -9,9 +9,9 @@ export const ZOOM_MAX = ZOOM_STEPS[ZOOM_STEPS.length - 1]
 const WIDGET_TYPES = getMenuWidgetTypes()
 
 /**
- * Focused canvas toolbar — bottom-left controls for zoom and widget creation.
+ * Focused canvas toolbar — bottom-left controls for zoom, widget creation, and undo/redo.
  */
-export default function CanvasControls({ zoom, onZoomChange, onAddWidget }) {
+export default function CanvasControls({ zoom, onZoomChange, onAddWidget, canUndo, canRedo, onUndo, onRedo }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
 
@@ -113,6 +113,32 @@ export default function CanvasControls({ zoom, onZoomChange, onAddWidget }) {
       >
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
           <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z" />
+        </svg>
+      </button>
+
+      <div className={styles.divider} />
+
+      {/* Undo / Redo */}
+      <button
+        className={styles.btn}
+        onClick={onUndo}
+        disabled={!canUndo}
+        aria-label="Undo"
+        title="Undo (⌘Z)"
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M6.78 1.97a.75.75 0 0 1 0 1.06L3.81 6h6.44A4.75 4.75 0 0 1 15 10.75v2.5a.75.75 0 0 1-1.5 0v-2.5a3.25 3.25 0 0 0-3.25-3.25H3.81l2.97 2.97a.75.75 0 1 1-1.06 1.06L1.47 7.28a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" />
+        </svg>
+      </button>
+      <button
+        className={styles.btn}
+        onClick={onRedo}
+        disabled={!canRedo}
+        aria-label="Redo"
+        title="Redo (⌘⇧Z)"
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M9.22 1.97a.75.75 0 0 0 0 1.06L12.19 6H5.75A4.75 4.75 0 0 0 1 10.75v2.5a.75.75 0 0 0 1.5 0v-2.5a3.25 3.25 0 0 1 3.25-3.25h6.44l-2.97 2.97a.75.75 0 1 0 1.06 1.06l4.25-4.25a.75.75 0 0 0 0-1.06l-4.25-4.25a.75.75 0 0 0-1.06 0Z" />
         </svg>
       </button>
     </div>

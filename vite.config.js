@@ -66,9 +66,9 @@ export default defineConfig(() => {
         // Some editors/save modes emit watcher sequences that can still trigger
         // generic reload paths; suppress those and rely on canvas custom events.
         //
-        // Also suppresses full-reloads when a canvas page is active to prevent
-        // losing canvas editing state (zoom, scroll, selections). Prototype
-        // iframes have their own Vite client and still receive HMR updates.
+        // Also suppresses full-reloads and HMR updates per-client when a canvas
+        // page is active, preventing loss of editing state. Non-canvas clients
+        // (prototype iframes, other tabs) still receive all HMR updates normally.
         // Opt out with ?canvas-hmr in the URL when working on canvas UI code.
         {
             name: 'canvas-reload-guard',
@@ -85,41 +85,67 @@ export default defineConfig(() => {
                 server.watcher.on('add', markCanvasMutation)
                 server.watcher.on('unlink', markCanvasMutation)
 
-                // Track whether a canvas page is active via heartbeat.
-                // The guard auto-expires 5s after the last heartbeat so a
-                // closed tab or crashed browser never leaves it stuck.
-                let canvasGuardUntil = 0
+                // Per-client HMR guard via heartbeat. Canvas clients register
+                // themselves; the guard auto-expires 5s after the last heartbeat
+                // so closed tabs never leave it stuck. We track by the
+                // WebSocketClient wrapper that server.ws.clients exposes.
                 const GUARD_TTL_MS = 5000
-                server.hot.on('storyboard:canvas-hmr-guard', (data) => {
+                const guardedClients = new Map() // WebSocketClient → guardUntil timestamp
+
+                server.hot.on('storyboard:canvas-hmr-guard', (data, client) => {
                     if (data.active && !data.hmrEnabled) {
-                        canvasGuardUntil = Date.now() + GUARD_TTL_MS
+                        guardedClients.set(client, Date.now() + GUARD_TTL_MS)
                     } else {
-                        canvasGuardUntil = 0
+                        guardedClients.delete(client)
                     }
                 })
 
-                const originalSend = server.ws.send.bind(server.ws)
-                server.ws.send = (payload, ...rest) => {
-                    const guardActive = Date.now() < canvasGuardUntil
-
-                    if (payload && payload.type === 'full-reload') {
-                        if (Date.now() - recentCanvasMutationAt < CANVAS_WINDOW_MS) {
-                            return
-                        }
-                        if (guardActive) {
-                            return
+                // Clean up disconnected clients periodically
+                const cleanup = setInterval(() => {
+                    const now = Date.now()
+                    for (const [client, until] of guardedClients) {
+                        if (now > until || !server.ws.clients.has(client)) {
+                            guardedClients.delete(client)
                         }
                     }
+                }, 10000)
+                server.httpServer?.on('close', () => clearInterval(cleanup))
 
-                    // Suppress HMR module updates while canvas guard is active.
-                    // React Fast Refresh propagates virtual-module invalidations
-                    // up the component tree, re-mounting the canvas and losing
-                    // editing state. Iframes have their own Vite client and are
-                    // unaffected by this suppression.
-                    if (guardActive && payload && payload.type === 'update') {
+                function isClientGuarded(client) {
+                    const until = guardedClients.get(client)
+                    return until != null && Date.now() < until
+                }
+
+                // Intercept broadcast sends. For full-reload and update payloads,
+                // deliver only to non-guarded clients. Guarded canvas clients are
+                // skipped so they keep their editing state.
+                const originalSend = server.ws.send.bind(server.ws)
+                server.ws.send = (payload, ...rest) => {
+                    // Always suppress broadcast reloads within the canvas mutation window
+                    if (
+                        payload &&
+                        payload.type === 'full-reload' &&
+                        Date.now() - recentCanvasMutationAt < CANVAS_WINDOW_MS
+                    ) {
                         return
                     }
 
+                    // If no clients are guarded, broadcast normally
+                    if (guardedClients.size === 0) {
+                        return originalSend(payload, ...rest)
+                    }
+
+                    // For full-reload and update payloads, send only to unguarded clients
+                    if (payload && (payload.type === 'full-reload' || payload.type === 'update')) {
+                        for (const client of server.ws.clients) {
+                            if (!isClientGuarded(client)) {
+                                client.send(payload)
+                            }
+                        }
+                        return
+                    }
+
+                    // Everything else (custom events, errors, etc.) broadcasts normally
                     return originalSend(payload, ...rest)
                 }
             },

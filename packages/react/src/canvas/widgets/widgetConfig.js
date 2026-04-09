@@ -70,10 +70,10 @@ export function getWidgetMeta(type) {
 
 /**
  * Get all widget types as an array of { type, label, icon } for menus.
- * Excludes link-preview which is created via paste only.
+ * Excludes link-preview and figma-embed which are created via paste only.
  */
 export function getMenuWidgetTypes() {
   return Object.entries(widgetTypes)
-    .filter(([type]) => type !== 'link-preview')
+    .filter(([type]) => type !== 'link-preview' && type !== 'figma-embed')
     .map(([type, def]) => ({ type, label: def.label, icon: def.icon }))
 }

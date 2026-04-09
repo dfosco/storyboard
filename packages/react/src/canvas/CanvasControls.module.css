@@ -1,8 +1,15 @@
-.toolbar {
+.controlsRow {
   position: fixed;
   bottom: 24px;
   left: 24px;
   z-index: 9998;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
+}
+
+.toolbar {
   display: flex;
   align-items: center;
   gap: 2px;

@@ -47,6 +47,8 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 
 - **ship** (`.github/skills/ship/SKILL.md`) — End-to-end feature shipping: worktree → plan → implement → adversarial review → push → PR. Supports `no-pr` mode to skip the PR step.
 
+- **agent-browser** (`.github/skills/agent-browser/SKILL.md`) — Browser inspection during development using `agent-browser` CLI. Snapshots, screenshots, console errors, element inspection.
+
 ---
 
 ## Build & Development
@@ -57,6 +59,28 @@ npm run dev          # Start dev server at http://localhost:1234
 npm run build        # Production build
 npm run lint         # Run ESLint
 ```
+
+### Dev URL session state
+
+Whenever Copilot starts a dev server (e.g. `npm run dev`), save the URL as `devURL` in the SQL session database:
+
+```sql
+INSERT OR REPLACE INTO session_state (key, value) VALUES ('devURL', 'http://localhost:1234');
+```
+
+This `devURL` is used as the default target by the **agent-browser** skill when the user says "inspect the browser", "check the page", etc. — no URL argument needed.
+
+**How `devURL` gets set:**
+- **Automatically** — when Copilot runs `npm run dev` or any command that starts a dev server, persist the URL to `devURL`.
+- **From user input** — if the user says "the dev server is at http://localhost:3000", save that as `devURL`.
+- **Implicitly from inspection** — if no `devURL` is set and the user says "inspect http://localhost:1234", that URL becomes the `devURL` for the rest of the session.
+
+**How `devURL` gets read:**
+- Before opening a browser with `agent-browser`, always check for a saved `devURL`:
+  ```sql
+  SELECT value FROM session_state WHERE key = 'devURL';
+  ```
+- If set, use it as the default URL. If not set, ask the user or fall back to `http://localhost:1234`.
 
 ---
 

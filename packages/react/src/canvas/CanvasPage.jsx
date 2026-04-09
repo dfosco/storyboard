@@ -11,7 +11,6 @@ import { getFeatures } from './widgets/widgetConfig.js'
 import { isFigmaUrl, sanitizeFigmaUrl } from './widgets/figmaUrl.js'
 import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
-import CanvasControls from './CanvasControls.jsx'
 import useUndoRedo from './useUndoRedo.js'
 import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi, uploadImage } from './canvasApi.js'
 import styles from './CanvasPage.module.css'
@@ -355,6 +354,7 @@ export default function CanvasPage({ name }) {
     }
     const position = { x: baseX + n * 40, y: baseY + n * 40 }
     try {
+      undoRedo.snapshot(stateRef.current, 'add')
       const result = await addWidgetApi(name, {
         type: widget.type,
         props: { ...widget.props },
@@ -366,7 +366,7 @@ export default function CanvasPage({ name }) {
     } catch (err) {
       console.error('[canvas] Failed to copy widget:', err)
     }
-  }, [name, localWidgets])
+  }, [name, localWidgets, undoRedo])
 
   const debouncedSourceSave = useRef(
     debounce((canvasName, sources) => {
@@ -899,12 +899,6 @@ export default function CanvasPage({ name }) {
     }))
   }, [undoRedo.canUndo, undoRedo.canRedo])
 
-  // Zoom change handler for CanvasControls
-  const handleZoomChange = useCallback((valueOrFn) => {
-    const newZoom = typeof valueOrFn === 'function' ? valueOrFn(zoomRef.current) : valueOrFn
-    applyZoom(newZoom)
-  }, [])
-
   // Cmd+scroll / trackpad pinch to smooth-zoom the canvas
   // On macOS, pinch-to-zoom fires wheel events with ctrlKey: true and small
   // fractional deltaY values. We accumulate the delta to handle sub-pixel changes.
@@ -1137,9 +1131,6 @@ export default function CanvasPage({ name }) {
           </Canvas>
         </div>
       </div>
-      <CanvasControls
-        onAddWidget={addWidget}
-      />
     </>
   )
 }

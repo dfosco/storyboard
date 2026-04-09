@@ -10,7 +10,7 @@ import { schemas, getDefaults } from './widgets/widgetProps.js'
 import { getFeatures } from './widgets/widgetConfig.js'
 import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
-import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi } from './canvasApi.js'
+import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi, uploadImage } from './canvasApi.js'
 import styles from './CanvasPage.module.css'
 
 const ZOOM_MIN = 25
@@ -103,6 +103,7 @@ const WIDGET_FALLBACK_SIZES = {
   'prototype':    { width: 800, height: 600 },
   'link-preview': { width: 320, height: 120 },
   'component':    { width: 200, height: 150 },
+  'image':        { width: 400, height: 300 },
 }
 
 /**
@@ -511,7 +512,8 @@ export default function CanvasPage({ name }) {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [selectedWidgetId, handleWidgetRemove])
 
-  // Paste handler — same-origin URLs become prototypes, other URLs become link previews, text becomes markdown
+  // Paste handler — images become image widgets, same-origin URLs become prototypes,
+  // other URLs become link previews, text becomes markdown
   useEffect(() => {
     const origin = window.location.origin
     const basePath = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
@@ -542,9 +544,80 @@ export default function CanvasPage({ name }) {
       return pathname
     }
 
+    function blobToDataUrl(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = reject
+        reader.readAsDataURL(blob)
+      })
+    }
+
+    function getImageDimensions(dataUrl) {
+      return new Promise((resolve) => {
+        const img = new Image()
+        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight })
+        img.onerror = () => resolve({ width: 400, height: 300 })
+        img.src = dataUrl
+      })
+    }
+
+    async function handleImagePaste(e) {
+      const items = e.clipboardData?.items
+      if (!items) return false
+
+      for (const item of items) {
+        if (!item.type.startsWith('image/')) continue
+
+        const blob = item.getAsFile()
+        if (!blob) continue
+
+        e.preventDefault()
+
+        try {
+          const dataUrl = await blobToDataUrl(blob)
+          const { width: natW, height: natH } = await getImageDimensions(dataUrl)
+
+          // Display at 2x retina: halve natural dimensions, then cap at 600px
+          const maxWidth = 600
+          let displayW = Math.round(natW / 2)
+          let displayH = Math.round(natH / 2)
+          if (displayW > maxWidth) {
+            displayH = Math.round(displayH * (maxWidth / displayW))
+            displayW = maxWidth
+          }
+
+          const uploadResult = await uploadImage(dataUrl, name)
+          if (!uploadResult.success) {
+            console.error('[canvas] Image upload failed:', uploadResult.error)
+            return true
+          }
+
+          const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
+          const pos = centerPositionForWidget(center, 'image', { width: displayW, height: displayH })
+          const result = await addWidgetApi(name, {
+            type: 'image',
+            props: { src: uploadResult.filename, private: false, width: displayW, height: displayH },
+            position: pos,
+          })
+          if (result.success && result.widget) {
+            setLocalWidgets((prev) => [...(prev || []), result.widget])
+          }
+        } catch (err) {
+          console.error('[canvas] Failed to paste image:', err)
+        }
+        return true
+      }
+      return false
+    }
+
     async function handlePaste(e) {
       const tag = e.target.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
+
+      // Image paste takes priority
+      const handledImage = await handleImagePaste(e)
+      if (handledImage) return
 
       const text = e.clipboardData?.getData('text/plain')?.trim()
       if (!text) return

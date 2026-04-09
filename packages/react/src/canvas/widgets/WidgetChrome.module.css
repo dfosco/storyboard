@@ -1,0 +1,209 @@
+/* WidgetChrome — universal hover toolbar for canvas widgets */
+
+.chromeContainer {
+  position: relative;
+}
+
+/* Widget slot — contains the actual widget; selection outline targets this */
+.widgetSlot {
+  position: relative;
+  border-radius: 4px;
+}
+
+.widgetSlotSelected {
+  outline: 2px solid var(--bgColor-accent-emphasis, #2f81f7);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Toolbar — absolutely positioned below the widget so it doesn't affect
+   the draggable box dimensions (tiny-canvas measures children for drag). */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+}
+
+/* Trigger dot — centered, visible at rest */
+.triggerDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--borderColor-muted, #d0d7de);
+  opacity: 0.5;
+  transition: opacity 120ms;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+:global([data-sb-canvas-theme^='dark']) .triggerDot {
+  background: var(--borderColor-muted, #373e47);
+  opacity: 0.6;
+}
+
+.triggerDotHidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Toolbar content — feature buttons + select handle */
+.toolbarContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms;
+}
+
+.toolbarContentVisible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Feature buttons — left-aligned group */
+.featureButtons {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Individual feature button */
+.featureBtn {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  border: 1.6px solid var(--borderColor-muted, #d0d7de);
+  background: var(--bgColor-default, #ffffff);
+  color: var(--fgColor-muted, #656d76);
+  font-size: 12px;
+  transition: background 100ms, color 100ms, border-color 100ms;
+}
+
+:global([data-sb-canvas-theme^='dark']) .featureBtn {
+  background: var(--bgColor-muted, #161b22);
+  border-color: var(--borderColor-muted, #373e47);
+  color: var(--fgColor-muted, #8b949e);
+}
+
+.featureBtn:hover {
+  background: var(--bgColor-neutral-muted, #eaeef2);
+  color: var(--fgColor-default, #1f2328);
+  border-color: var(--borderColor-default, #d0d7de);
+}
+
+:global([data-sb-canvas-theme^='dark']) .featureBtn:hover {
+  background: var(--bgColor-neutral-muted, #272c33);
+  color: var(--fgColor-default, #e6edf3);
+  border-color: var(--borderColor-default, #484f58);
+}
+
+/* Select handle — right-aligned rounded rect */
+.selectHandle {
+  all: unset;
+  cursor: grab;
+  width: 18px;
+  height: 12px;
+  border-radius: 4px;
+  border: 1.6px solid var(--borderColor-muted, #d0d7de);
+  background: var(--bgColor-default, #ffffff);
+  transition: background 100ms, border-color 100ms;
+  flex-shrink: 0;
+}
+
+:global([data-sb-canvas-theme^='dark']) .selectHandle {
+  background: var(--bgColor-muted, #161b22);
+  border-color: var(--borderColor-muted, #373e47);
+}
+
+.selectHandle:hover {
+  border-color: var(--bgColor-accent-emphasis, #2f81f7);
+}
+
+.selectHandleActive {
+  background: var(--bgColor-accent-emphasis, #2f81f7);
+  border-color: var(--bgColor-accent-emphasis, #2f81f7);
+}
+
+.selectHandleActive:hover {
+  background: var(--bgColor-accent-emphasis, #388bfd);
+  border-color: var(--bgColor-accent-emphasis, #388bfd);
+}
+
+/* Color picker feature */
+.colorPickerWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.colorDotInner {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: block;
+}
+
+.colorPopup {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  padding: 6px 10px;
+  background: var(--bgColor-default, #ffffff);
+  border-radius: 20px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+:global([data-sb-canvas-theme^='dark']) .colorPopup {
+  background: var(--bgColor-muted, #161b22);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.colorPickerWrapper:hover .colorPopup {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.colorOption {
+  all: unset;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 100ms;
+}
+
+.colorOption:hover {
+  transform: scale(1.15);
+}
+
+.colorOptionActive {
+  border-color: currentColor;
+  box-shadow: 0 0 0 1px currentColor;
+}

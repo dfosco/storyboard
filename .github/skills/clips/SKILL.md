@@ -1,3 +1,8 @@
+---
+name: clips
+description: Local-first issue tracking workflow for goals and tasks synced to GitHub. Use when creating issues, tracking work, planning tasks, checking status, or managing goals.
+---
+
 # Skill: clips — Issue Tracking
 
 clips is a local-first issue tracker that mirrors GitHub Issues. Data lives in `.clips/db/` as append-only JSONL files. Every mutation syncs to GitHub and commits to git automatically.

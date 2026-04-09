@@ -1,6 +1,6 @@
 {
   "name": "@dfosco/storyboard-core",
-  "version": "3.9.1",
+  "version": "3.10.0-beta.1",
   "type": "module",
   "license": "MIT",
   "bin": {
@@ -15,7 +15,8 @@
     "src",
     "dist",
     "scaffold",
-    "toolbar.config.json"
+    "toolbar.config.json",
+    "widgets.config.json"
   ],
   "scripts": {
     "build:css": "tailwindcss -i src/styles/tailwind.css -o dist/tailwind.css --minify",
@@ -27,6 +28,7 @@
   "exports": {
     ".": "./src/index.js",
     "./toolbar.config.json": "./toolbar.config.json",
+    "./widgets.config.json": "./widgets.config.json",
     "./ui-runtime": "./dist/storyboard-ui.js",
     "./ui-runtime/style.css": "./dist/storyboard-ui.css",
     "./canvas/materializer": "./src/canvas/materializer.js",

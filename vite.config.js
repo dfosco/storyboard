@@ -46,6 +46,7 @@ export default defineConfig(() => {
             '@dfosco/storyboard-core/comments/ui/comments.css': path.resolve(__dirname, 'packages/core/src/comments/ui/comment-layout.css'),
             '@dfosco/storyboard-core/comments/ui/comment-layout.css': path.resolve(__dirname, 'packages/core/src/comments/ui/comment-layout.css'),
             '@dfosco/storyboard-core/comments/svelte': path.resolve(__dirname, 'packages/core/src/comments/ui/index.js'),
+            '@dfosco/storyboard-core/widgets.config.json': path.resolve(__dirname, 'packages/core/widgets.config.json'),
             '@dfosco/storyboard-core/canvas/materializer': path.resolve(__dirname, 'packages/core/src/canvas/materializer.js'),
             '@dfosco/storyboard-core/modes.css': path.resolve(__dirname, 'packages/core/src/modes.css'),
             '@dfosco/storyboard-core/comments': path.resolve(__dirname, 'packages/core/src/comments/index.js'),
@@ -56,6 +57,8 @@ export default defineConfig(() => {
             '@dfosco/storyboard-react': path.resolve(__dirname, 'packages/react/src/index.js'),
             '@dfosco/storyboard-react-primer': path.resolve(__dirname, 'packages/react-primer/src/index.js'),
             '@dfosco/storyboard-react-reshaped': path.resolve(__dirname, 'packages/react-reshaped/src/index.js'),
+            '@dfosco/tiny-canvas/style.css': path.resolve(__dirname, 'packages/tiny-canvas/src/style.css'),
+            '@dfosco/tiny-canvas': path.resolve(__dirname, 'packages/tiny-canvas/src/index.js'),
         },
     },
     plugins: [

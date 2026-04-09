@@ -1,5 +1,5 @@
 {
-    "name": "storyboard-source",
+    "name": "storyboard",
     "private": true,
     "type": "module",
     "workspaces": [
@@ -78,5 +78,5 @@
         "vite": "^7.3.1",
         "vitest": "^4.0.18"
     },
-    "version": "3.9.1"
+    "version": "3.10.0-beta.1"
 }

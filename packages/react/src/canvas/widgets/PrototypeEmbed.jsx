@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
@@ -28,7 +28,7 @@ function resolveCanvasThemeFromStorage() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-export default function PrototypeEmbed({ props, onUpdate }) {
+export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
   const width = readProp(props, 'width', prototypeEmbedSchema)
   const height = readProp(props, 'height', prototypeEmbedSchema)
@@ -40,9 +40,11 @@ export default function PrototypeEmbed({ props, onUpdate }) {
   const rawSrc = useMemo(() => {
     if (!src) return ''
     if (/^https?:\/\//.test(src)) return src
-    if (baseSegment && src.startsWith(basePath)) return src
-    if (baseSegment && src.startsWith(baseSegment)) return `/${src}`
-    return `${basePath}${src}`
+    // Strip stale branch prefixes from stored src (e.g. /branch--old-feat/Page)
+    const cleaned = src.replace(/^\/branch--[^/]+/, '')
+    if (baseSegment && cleaned.startsWith(basePath)) return cleaned
+    if (baseSegment && cleaned.startsWith(baseSegment)) return `/${cleaned}`
+    return `${basePath}${cleaned}`
   }, [src, basePath, baseSegment])
 
   const scale = zoom / 100
@@ -178,6 +180,21 @@ export default function PrototypeEmbed({ props, onUpdate }) {
   const chromeVars = useMemo(() => getEmbedChromeVars(canvasTheme), [canvasTheme])
 
   const enterInteractive = useCallback(() => setInteractive(true), [])
+
+  // Expose imperative action handlers for WidgetChrome
+  useImperativeHandle(ref, () => ({
+    handleAction(actionId) {
+      if (actionId === 'edit') {
+        setEditing(true)
+      } else if (actionId === 'zoom-in') {
+        const step = zoom < 75 ? 5 : 25
+        onUpdate?.({ zoom: Math.min(200, zoom + step) })
+      } else if (actionId === 'zoom-out') {
+        const step = zoom <= 75 ? 5 : 25
+        onUpdate?.({ zoom: Math.max(25, zoom - step) })
+      }
+    },
+  }), [zoom, onUpdate])
 
   function handlePickRoute(route) {
     onUpdate?.({ src: route })
@@ -320,45 +337,6 @@ export default function PrototypeEmbed({ props, onUpdate }) {
             <p>Double-click to set prototype URL</p>
           </div>
         )}
-        {iframeSrc && !editing && (
-          <button
-            className={styles.editBtn}
-            onClick={(e) => { e.stopPropagation(); setEditing(true) }}
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            title="Edit URL"
-            aria-label="Edit prototype URL"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"/></svg>
-          </button>
-        )}
-        {iframeSrc && !editing && (
-          <div
-            className={styles.zoomBar}
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <button
-              className={styles.zoomBtn}
-              onClick={() => {
-                const step = zoom <= 75 ? 5 : 25
-                onUpdate?.({ zoom: Math.max(25, zoom - step) })
-              }}
-              disabled={zoom <= 25}
-              aria-label="Zoom out"
-            >−</button>
-            <span className={styles.zoomLabel}>{zoom}%</span>
-            <button
-              className={styles.zoomBtn}
-              onClick={() => {
-                const step = zoom < 75 ? 5 : 25
-                onUpdate?.({ zoom: Math.min(200, zoom + step) })
-              }}
-              disabled={zoom >= 200}
-              aria-label="Zoom in"
-            >+</button>
-          </div>
-        )}
       </div>
       <div
         className={styles.resizeHandle}
@@ -385,4 +363,4 @@ export default function PrototypeEmbed({ props, onUpdate }) {
       />
     </WidgetWrapper>
   )
-}
+})

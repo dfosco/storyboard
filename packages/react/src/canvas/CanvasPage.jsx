@@ -1,4 +1,5 @@
 import { createElement, useCallback, useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Canvas } from '@dfosco/tiny-canvas'
 import '@dfosco/tiny-canvas/style.css'
 import { useCanvas } from './useCanvas.js'
@@ -6,6 +7,8 @@ import { shouldPreventCanvasTextSelection } from './textSelection.js'
 import { getCanvasThemeVars, getCanvasPrimerAttrs } from './canvasTheme.js'
 import { getWidgetComponent } from './widgets/index.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'
+import { getFeatures } from './widgets/widgetConfig.js'
+import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi } from './canvasApi.js'
 import styles from './CanvasPage.module.css'
@@ -14,6 +17,9 @@ const ZOOM_MIN = 25
 const ZOOM_MAX = 200
 
 const CANVAS_BRIDGE_STATE_KEY = '__storyboardCanvasBridgeState'
+
+/** Matches branch-deploy base path prefixes like /branch--my-feature/ */
+const BRANCH_PREFIX_RE = /^\/branch--[^/]+/
 
 function getToolbarColorMode(theme) {
   return String(theme || 'light').startsWith('dark') ? 'dark' : 'light'
@@ -51,12 +57,41 @@ function debounce(fn, ms) {
 }
 
 /**
- * Get viewport-center coordinates for placing a new widget.
+ * Get viewport-center coordinates in canvas space for placing a new widget.
+ * Converts the visible center of the scroll container to unscaled canvas coordinates.
  */
-function getViewportCenter() {
+function getViewportCenter(scrollEl, scale) {
+  if (!scrollEl) {
+    return { x: 0, y: 0 }
+  }
+  const cx = scrollEl.scrollLeft + scrollEl.clientWidth / 2
+  const cy = scrollEl.scrollTop + scrollEl.clientHeight / 2
   return {
-    x: Math.round(window.innerWidth / 2 - 120),
-    y: Math.round(window.innerHeight / 2 - 80),
+    x: Math.round(cx / scale),
+    y: Math.round(cy / scale),
+  }
+}
+
+/** Fallback sizes for widget types without explicit width/height defaults. */
+const WIDGET_FALLBACK_SIZES = {
+  'sticky-note':  { width: 180, height: 60 },
+  'markdown':     { width: 360, height: 200 },
+  'prototype':    { width: 800, height: 600 },
+  'link-preview': { width: 320, height: 120 },
+  'component':    { width: 200, height: 150 },
+}
+
+/**
+ * Offset a position so the widget's center (not its top-left corner)
+ * lands on the given point.
+ */
+function centerPositionForWidget(pos, type, props) {
+  const fallback = WIDGET_FALLBACK_SIZES[type] || { width: 200, height: 150 }
+  const w = props?.width ?? fallback.width
+  const h = props?.height ?? fallback.height
+  return {
+    x: Math.round(pos.x - w / 2),
+    y: Math.round(pos.y - h / 2),
   }
 }
 
@@ -65,17 +100,61 @@ function roundPosition(value) {
 }
 
 /** Renders a single JSON-defined widget by type lookup. */
-function WidgetRenderer({ widget, onUpdate }) {
+function WidgetRenderer({ widget, onUpdate, widgetRef }) {
   const Component = getWidgetComponent(widget.type)
   if (!Component) {
     console.warn(`[canvas] Unknown widget type: ${widget.type}`)
     return null
   }
-  return createElement(Component, {
-    id: widget.id,
-    props: widget.props,
-    onUpdate,
-  })
+  // Only pass ref to forwardRef-wrapped components (e.g. PrototypeEmbed)
+  const elementProps = { id: widget.id, props: widget.props, onUpdate }
+  if (Component.$$typeof === Symbol.for('react.forward_ref')) {
+    elementProps.ref = widgetRef
+  }
+  return createElement(Component, elementProps)
+}
+
+/**
+ * Wrapper for each JSON widget that holds its own ref for imperative actions.
+ * This allows WidgetChrome to dispatch actions to the widget via ref.
+ */
+function ChromeWrappedWidget({
+  widget,
+  selected,
+  onSelect,
+  onDeselect,
+  onUpdate,
+  onRemove,
+}) {
+  const widgetRef = useRef(null)
+  const features = getFeatures(widget.type)
+
+  const handleAction = useCallback((actionId) => {
+    if (actionId === 'delete') {
+      onRemove(widget.id)
+    }
+  }, [widget.id, onRemove])
+
+  return (
+    <WidgetChrome
+      widgetId={widget.id}
+      widgetType={widget.type}
+      features={features}
+      selected={selected}
+      widgetProps={widget.props}
+      widgetRef={widgetRef}
+      onSelect={onSelect}
+      onDeselect={onDeselect}
+      onAction={handleAction}
+      onUpdate={(updates) => onUpdate(widget.id, updates)}
+    >
+      <WidgetRenderer
+        widget={widget}
+        onUpdate={(updates) => onUpdate(widget.id, updates)}
+        widgetRef={widgetRef}
+      />
+    </WidgetChrome>
+  )
 }
 
 /**
@@ -154,6 +233,25 @@ export default function CanvasPage({ name }) {
     )
   }, [name])
 
+  const debouncedSourceSave = useRef(
+    debounce((canvasName, sources) => {
+      updateCanvas(canvasName, { sources }).catch((err) =>
+        console.error('[canvas] Failed to save sources:', err)
+      )
+    }, 2000)
+  ).current
+
+  const handleSourceUpdate = useCallback((exportName, updates) => {
+    setLocalSources((prev) => {
+      const current = Array.isArray(prev) ? prev : []
+      const next = current.some((s) => s?.export === exportName)
+        ? current.map((s) => (s?.export === exportName ? { ...s, ...updates } : s))
+        : [...current, { export: exportName, ...updates }]
+      debouncedSourceSave(name, next)
+      return next
+    })
+  }, [name, debouncedSourceSave])
+
   const handleItemDragEnd = useCallback((dragId, position) => {
     if (!dragId || !position) return
     const rounded = { x: Math.max(0, roundPosition(position.x)), y: Math.max(0, roundPosition(position.y)) }
@@ -189,6 +287,43 @@ export default function CanvasPage({ name }) {
     zoomRef.current = zoom
   }, [zoom])
 
+  /**
+   * Zoom to a new level, anchoring on an optional client-space point.
+   * When a cursor position is provided (e.g. from a wheel event), the
+   * canvas point under the cursor stays fixed. Otherwise falls back to
+   * the viewport center.
+   */
+  function applyZoom(newZoom, clientX, clientY) {
+    const el = scrollRef.current
+    const clampedZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newZoom))
+
+    if (!el) {
+      setZoom(clampedZoom)
+      return
+    }
+
+    const oldScale = zoomRef.current / 100
+    const newScale = clampedZoom / 100
+
+    // Anchor point in scroll-container space
+    const rect = el.getBoundingClientRect()
+    const useViewportCenter = clientX == null || clientY == null
+    const anchorX = useViewportCenter ? el.clientWidth / 2 : clientX - rect.left
+    const anchorY = useViewportCenter ? el.clientHeight / 2 : clientY - rect.top
+
+    // Anchor → canvas coordinate
+    const canvasX = (el.scrollLeft + anchorX) / oldScale
+    const canvasY = (el.scrollTop + anchorY) / oldScale
+
+    // Synchronous render so the DOM has the new transform before we adjust scroll
+    zoomRef.current = clampedZoom
+    flushSync(() => setZoom(clampedZoom))
+
+    // Scroll so the same canvas point stays under the anchor
+    el.scrollLeft = canvasX * newScale - anchorX
+    el.scrollTop = canvasY * newScale - anchorY
+  }
+
   // Signal canvas mount/unmount to CoreUIBar
   useEffect(() => {
     window[CANVAS_BRIDGE_STATE_KEY] = { active: true, name, zoom: zoomRef.current }
@@ -213,7 +348,8 @@ export default function CanvasPage({ name }) {
   // Add a widget by type — used by CanvasControls and CoreUIBar event
   const addWidget = useCallback(async (type) => {
     const defaultProps = schemas[type] ? getDefaults(schemas[type]) : {}
-    const pos = getViewportCenter()
+    const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
+    const pos = centerPositionForWidget(center, type, defaultProps)
     try {
       const result = await addWidgetApi(name, {
         type,
@@ -242,7 +378,7 @@ export default function CanvasPage({ name }) {
     function handleZoom(e) {
       const { zoom: newZoom } = e.detail
       if (typeof newZoom === 'number') {
-        setZoom(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newZoom)))
+        applyZoom(newZoom)
       }
     }
     document.addEventListener('storyboard:canvas:set-zoom', handleZoom)
@@ -296,7 +432,34 @@ export default function CanvasPage({ name }) {
 
   // Paste handler — same-origin URLs become prototypes, other URLs become link previews, text becomes markdown
   useEffect(() => {
-    const baseUrl = window.location.origin + (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+    const origin = window.location.origin
+    const basePath = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+    const baseUrl = origin + basePath
+
+    // Check if a URL is same-origin, accounting for branch-deploy prefixes.
+    // e.g. https://site.com/branch--my-feature/Proto and https://site.com/storyboard/Proto
+    // are both same-origin prototype URLs.
+    function isSameOriginPrototype(url) {
+      if (!url.startsWith(origin)) return false
+      if (url.startsWith(baseUrl)) return true
+      // Match branch deploy URLs: origin + /branch--*/...
+      const pathAfterOrigin = url.slice(origin.length)
+      return BRANCH_PREFIX_RE.test(pathAfterOrigin)
+    }
+
+    // Strip the base path (or any branch prefix) from a pathname to get a portable src.
+    function extractPrototypeSrc(pathname) {
+      // Strip current base path
+      if (basePath && pathname.startsWith(basePath)) {
+        return pathname.slice(basePath.length) || '/'
+      }
+      // Strip branch prefix: /branch--name/rest → /rest
+      const branchMatch = pathname.match(BRANCH_PREFIX_RE)
+      if (branchMatch) {
+        return pathname.slice(branchMatch[0].length) || '/'
+      }
+      return pathname
+    }
 
     async function handlePaste(e) {
       const tag = e.target.tagName
@@ -310,11 +473,9 @@ export default function CanvasPage({ name }) {
       let type, props
       try {
         const parsed = new URL(text)
-        if (text.startsWith(baseUrl)) {
-          // Same-origin URL → prototype embed with the path portion
+        if (isSameOriginPrototype(text)) {
           const pathPortion = parsed.pathname + parsed.search + parsed.hash
-          const basePath = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
-          const src = basePath ? pathPortion.replace(new RegExp(`^${basePath}`), '') : pathPortion
+          const src = extractPrototypeSrc(pathPortion)
           type = 'prototype'
           props = { src: src || '/', label: '', width: 800, height: 600 }
         } else {
@@ -326,7 +487,8 @@ export default function CanvasPage({ name }) {
         props = { content: text }
       }
 
-      const pos = getViewportCenter()
+      const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
+      const pos = centerPositionForWidget(center, type, props)
       try {
         const result = await addWidgetApi(name, {
           type,
@@ -356,7 +518,7 @@ export default function CanvasPage({ name }) {
       const step = Math.trunc(zoomAccum.current)
       if (step === 0) return
       zoomAccum.current -= step
-      setZoom((z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z + step)))
+      applyZoom(zoomRef.current + step, e.clientX, e.clientY)
     }
     document.addEventListener('wheel', handleWheel, { passive: false })
     return () => document.removeEventListener('wheel', handleWheel)
@@ -453,32 +615,51 @@ export default function CanvasPage({ name }) {
   // Merge JSX-sourced widgets (from .canvas.jsx) and JSON widgets
   const allChildren = []
 
-  const sourcePositionByExport = Object.fromEntries(
+  const sourceDataByExport = Object.fromEntries(
     (localSources || [])
       .filter((source) => source?.export)
-      .map((source) => [source.export, source.position || { x: 0, y: 0 }])
+      .map((source) => [source.export, source])
   )
 
-  // 1. JSX-sourced component widgets
+  // 1. JSX-sourced component widgets (wrapped in WidgetChrome, not deletable)
+  const componentFeatures = getFeatures('component')
   if (jsxExports) {
     for (const [exportName, Component] of Object.entries(jsxExports)) {
-      const sourcePosition = sourcePositionByExport[exportName] || { x: 0, y: 0 }
+      const sourceData = sourceDataByExport[exportName] || {}
+      const sourcePosition = sourceData.position || { x: 0, y: 0 }
       allChildren.push(
         <div
           key={`jsx-${exportName}`}
           id={`jsx-${exportName}`}
           data-tc-x={sourcePosition.x}
           data-tc-y={sourcePosition.y}
+          data-tc-handle=".tc-drag-handle"
           {...canvasPrimerAttrs}
           style={canvasThemeVars}
+          onClick={(e) => {
+            e.stopPropagation()
+            setSelectedWidgetId(`jsx-${exportName}`)
+          }}
         >
-          <ComponentWidget component={Component} />
+          <WidgetChrome
+            features={componentFeatures}
+            selected={selectedWidgetId === `jsx-${exportName}`}
+            onSelect={() => setSelectedWidgetId(`jsx-${exportName}`)}
+            onDeselect={() => setSelectedWidgetId(null)}
+          >
+            <ComponentWidget
+              component={Component}
+              width={sourceData.width}
+              height={sourceData.height}
+              onUpdate={(updates) => handleSourceUpdate(exportName, updates)}
+            />
+          </WidgetChrome>
         </div>
       )
     }
   }
 
-  // 2. JSON-defined mutable widgets (selectable)
+  // 2. JSON-defined mutable widgets (selectable, wrapped in WidgetChrome)
   for (const widget of (localWidgets ?? [])) {
     allChildren.push(
       <div
@@ -486,17 +667,24 @@ export default function CanvasPage({ name }) {
         id={widget.id}
         data-tc-x={widget?.position?.x ?? 0}
         data-tc-y={widget?.position?.y ?? 0}
+        data-tc-handle=".tc-drag-handle"
         {...canvasPrimerAttrs}
         style={canvasThemeVars}
         onClick={(e) => {
           e.stopPropagation()
           setSelectedWidgetId(widget.id)
         }}
-        className={selectedWidgetId === widget.id ? styles.selected : undefined}
       >
-        <WidgetRenderer
+        <ChromeWrappedWidget
           widget={widget}
-          onUpdate={(updates) => handleWidgetUpdate(widget.id, updates)}
+          selected={selectedWidgetId === widget.id}
+          onSelect={() => setSelectedWidgetId(widget.id)}
+          onDeselect={() => setSelectedWidgetId(null)}
+          onUpdate={handleWidgetUpdate}
+          onRemove={(id) => {
+            handleWidgetRemove(id)
+            setSelectedWidgetId(null)
+          }}
         />
       </div>
     )

@@ -20,7 +20,7 @@ export default function useUndoRedo() {
   const [counts, setCounts] = useState({ past: 0, future: 0 })
 
   const snapshot = useCallback((currentWidgets, actionType, widgetId) => {
-    if (!currentWidgets) return
+    const widgets = currentWidgets ?? []
 
     // Edit coalescing — skip snapshot if same edit target within timeout
     if (actionType === 'edit' && widgetId) {
@@ -36,7 +36,7 @@ export default function useUndoRedo() {
       }
     }
 
-    pastRef.current.push(structuredClone(currentWidgets))
+    pastRef.current.push(structuredClone(widgets))
     if (pastRef.current.length > MAX_HISTORY) pastRef.current.shift()
     futureRef.current = []
     lastActionRef.current = {
@@ -69,7 +69,10 @@ export default function useUndoRedo() {
     pastRef.current = []
     futureRef.current = []
     lastActionRef.current = { type: null, widgetId: null, time: 0 }
-    setCounts({ past: 0, future: 0 })
+    setCounts((prev) => {
+      if (prev.past === 0 && prev.future === 0) return prev
+      return { past: 0, future: 0 }
+    })
   }, [])
 
   return {

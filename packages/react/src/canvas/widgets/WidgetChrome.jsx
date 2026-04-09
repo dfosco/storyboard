@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
+import { Tooltip } from '@primer/react'
 import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed } from '@primer/octicons-react'
 import styles from './WidgetChrome.module.css'
 
@@ -236,21 +237,25 @@ export default function WidgetChrome({
                 let label = ACTION_LABELS[feature.action] || feature.action
 
                 // Toggle-private: swap icon/label based on current state
-                if (feature.action === 'toggle-private' && widgetProps?.private) {
-                  Icon = EyeClosedIcon
-                  label = 'Private image'
+                if (feature.action === 'toggle-private') {
+                  if (widgetProps?.private) {
+                    Icon = EyeClosedIcon
+                    label = 'Private image — only visible locally'
+                  } else {
+                    label = 'Published image — deployed with canvas'
+                  }
                 }
 
                 return (
-                  <button
-                    key={feature.id}
-                    className={styles.featureBtn}
-                    onClick={(e) => handleActionClick(feature.action, e)}
-                    title={label}
-                    aria-label={label}
-                  >
-                    {Icon ? <Icon /> : feature.action}
-                  </button>
+                  <Tooltip key={feature.id} text={label} direction="n">
+                    <button
+                      className={styles.featureBtn}
+                      onClick={(e) => handleActionClick(feature.action, e)}
+                      aria-label={label}
+                    >
+                      {Icon ? <Icon /> : feature.action}
+                    </button>
+                  </Tooltip>
                 )
               }
 
@@ -258,14 +263,15 @@ export default function WidgetChrome({
             })}
           </div>
 
-          <button
-            className={`tc-drag-handle ${styles.selectHandle} ${selected ? styles.selectHandleActive : ''}`}
-            onPointerDown={handleHandlePointerDown}
-            onPointerUp={handleHandlePointerUp}
-            title={selected ? 'Deselect' : 'Select'}
-            aria-label={selected ? 'Deselect widget' : 'Select widget'}
-            aria-pressed={selected}
-          />
+          <Tooltip text={selected ? 'Deselect' : 'Select'} direction="n">
+            <button
+              className={`tc-drag-handle ${styles.selectHandle} ${selected ? styles.selectHandleActive : ''}`}
+              onPointerDown={handleHandlePointerDown}
+              onPointerUp={handleHandlePointerUp}
+              aria-label={selected ? 'Deselect widget' : 'Select widget'}
+              aria-pressed={selected}
+            />
+          </Tooltip>
         </div>
       </div>
     </div>

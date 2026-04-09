@@ -54,6 +54,10 @@ vi.mock('./widgets/index.js', () => ({
   getWidgetComponent: () => function MockWidget() { return <div>mock widget</div> },
 }))
 
+vi.mock('./widgets/WidgetChrome.jsx', () => ({
+  default: ({ children }) => <div data-testid="widget-chrome">{children}</div>,
+}))
+
 vi.mock('./widgets/widgetProps.js', () => ({
   schemas: {},
   getDefaults: () => ({}),

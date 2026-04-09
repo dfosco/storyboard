@@ -11,6 +11,8 @@ import { getFeatures } from './widgets/widgetConfig.js'
 import { isFigmaUrl, sanitizeFigmaUrl } from './widgets/figmaUrl.js'
 import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
+import CanvasControls from './CanvasControls.jsx'
+import useUndoRedo from './useUndoRedo.js'
 import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi, uploadImage } from './canvasApi.js'
 import styles from './CanvasPage.module.css'
 
@@ -48,13 +50,16 @@ function resolveCanvasThemeFromStorage() {
 
 /**
  * Debounce helper — returns a function that delays invocation.
+ * Exposes `.cancel()` to abort pending calls (used by undo/redo).
  */
 function debounce(fn, ms) {
   let timer
-  return (...args) => {
+  const debounced = (...args) => {
     clearTimeout(timer)
     timer = setTimeout(() => fn(...args), ms)
   }
+  debounced.cancel = () => clearTimeout(timer)
+  return debounced
 }
 
 /** Per-canvas viewport state persistence (zoom + scroll position). */
@@ -261,11 +266,26 @@ export default function CanvasPage({ name }) {
   const [localSources, setLocalSources] = useState(canvas?.sources ?? [])
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
 
+  // Undo/redo history
+  const undoRedo = useUndoRedo()
+  const widgetsRef = useRef(localWidgets)
+  useEffect(() => { widgetsRef.current = localWidgets }, [localWidgets])
+
+  // Serialized write queue — ensures JSONL events land in the right order
+  const writeQueueRef = useRef(Promise.resolve())
+  function queueWrite(fn) {
+    writeQueueRef.current = writeQueueRef.current.then(fn).catch((err) =>
+      console.error('[canvas] Write queue error:', err)
+    )
+    return writeQueueRef.current
+  }
+
   if (canvas !== trackedCanvas) {
     setTrackedCanvas(canvas)
     setLocalWidgets(canvas?.widgets ?? null)
     setLocalSources(canvas?.sources ?? [])
     setCanvasTitle(canvas?.title || name)
+    undoRedo.reset()
   }
 
   // Debounced save to server
@@ -299,6 +319,7 @@ export default function CanvasPage({ name }) {
   }, [])
 
   const handleWidgetUpdate = useCallback((widgetId, updates) => {
+    undoRedo.snapshot(widgetsRef.current, 'edit', widgetId)
     setLocalWidgets((prev) => {
       if (!prev) return prev
       const next = prev.map((w) =>
@@ -307,14 +328,17 @@ export default function CanvasPage({ name }) {
       debouncedSave(name, next)
       return next
     })
-  }, [name, debouncedSave])
+  }, [name, debouncedSave, undoRedo])
 
   const handleWidgetRemove = useCallback((widgetId) => {
+    undoRedo.snapshot(widgetsRef.current, 'remove', widgetId)
     setLocalWidgets((prev) => prev ? prev.filter((w) => w.id !== widgetId) : prev)
-    removeWidgetApi(name, widgetId).catch((err) =>
-      console.error('[canvas] Failed to remove widget:', err)
+    queueWrite(() =>
+      removeWidgetApi(name, widgetId).catch((err) =>
+        console.error('[canvas] Failed to remove widget:', err)
+      )
     )
-  }, [name])
+  }, [name, undoRedo])
 
   const handleWidgetCopy = useCallback(async (widget) => {
     // Find the next free offset — check how many copies already exist at +n*40
@@ -380,17 +404,20 @@ export default function CanvasPage({ name }) {
       return
     }
 
+    undoRedo.snapshot(widgetsRef.current, 'move', dragId)
     setLocalWidgets((prev) => {
       if (!prev) return prev
       const next = prev.map((w) =>
         w.id === dragId ? { ...w, position: rounded } : w
       )
-      updateCanvas(name, { widgets: next }).catch((err) =>
-        console.error('[canvas] Failed to save widget position:', err)
+      queueWrite(() =>
+        updateCanvas(name, { widgets: next }).catch((err) =>
+          console.error('[canvas] Failed to save widget position:', err)
+        )
       )
       return next
     })
-  }, [name])
+  }, [name, undoRedo])
 
   useEffect(() => {
     zoomRef.current = zoom
@@ -535,12 +562,13 @@ export default function CanvasPage({ name }) {
         position: pos,
       })
       if (result.success && result.widget) {
+        undoRedo.snapshot(widgetsRef.current, 'add')
         setLocalWidgets((prev) => [...(prev || []), result.widget])
       }
     } catch (err) {
       console.error('[canvas] Failed to add widget:', err)
     }
-  }, [name])
+  }, [name, undoRedo])
 
   // Listen for CoreUIBar add-widget events
   useEffect(() => {
@@ -733,6 +761,7 @@ export default function CanvasPage({ name }) {
             position: pos,
           })
           if (result.success && result.widget) {
+            undoRedo.snapshot(widgetsRef.current, 'add')
             setLocalWidgets((prev) => [...(prev || []), result.widget])
           }
         } catch (err) {
@@ -785,6 +814,7 @@ export default function CanvasPage({ name }) {
           position: pos,
         })
         if (result.success && result.widget) {
+          undoRedo.snapshot(widgetsRef.current, 'add')
           setLocalWidgets((prev) => [...(prev || []), result.widget])
         }
       } catch (err) {
@@ -793,7 +823,58 @@ export default function CanvasPage({ name }) {
     }
     document.addEventListener('paste', handlePaste)
     return () => document.removeEventListener('paste', handlePaste)
-  }, [name])
+  }, [name, undoRedo])
+
+  // --- Undo / Redo ---
+  const handleUndo = useCallback(() => {
+    const previous = undoRedo.undo(widgetsRef.current)
+    if (!previous) return
+    debouncedSave.cancel()
+    setLocalWidgets(previous)
+    queueWrite(() =>
+      updateCanvas(name, { widgets: previous }).catch((err) =>
+        console.error('[canvas] Failed to persist undo:', err)
+      )
+    )
+  }, [name, debouncedSave, undoRedo])
+
+  const handleRedo = useCallback(() => {
+    const next = undoRedo.redo(widgetsRef.current)
+    if (!next) return
+    debouncedSave.cancel()
+    setLocalWidgets(next)
+    queueWrite(() =>
+      updateCanvas(name, { widgets: next }).catch((err) =>
+        console.error('[canvas] Failed to persist redo:', err)
+      )
+    )
+  }, [name, debouncedSave, undoRedo])
+
+  // Keyboard shortcuts — dev-only (Cmd+Z / Cmd+Shift+Z)
+  useEffect(() => {
+    if (!import.meta.hot) return
+    function handleKeyDown(e) {
+      const tag = e.target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
+      const mod = e.metaKey || e.ctrlKey
+      if (mod && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        handleUndo()
+      }
+      if (mod && e.key === 'z' && e.shiftKey) {
+        e.preventDefault()
+        handleRedo()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleUndo, handleRedo])
+
+  // Zoom change handler for CanvasControls
+  const handleZoomChange = useCallback((valueOrFn) => {
+    const newZoom = typeof valueOrFn === 'function' ? valueOrFn(zoomRef.current) : valueOrFn
+    applyZoom(newZoom)
+  }, [])
 
   // Cmd+scroll / trackpad pinch to smooth-zoom the canvas
   // On macOS, pinch-to-zoom fires wheel events with ctrlKey: true and small
@@ -1027,6 +1108,15 @@ export default function CanvasPage({ name }) {
           </Canvas>
         </div>
       </div>
+      <CanvasControls
+        zoom={zoom}
+        onZoomChange={handleZoomChange}
+        onAddWidget={addWidget}
+        canUndo={undoRedo.canUndo}
+        canRedo={undoRedo.canRedo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+      />
     </>
   )
 }

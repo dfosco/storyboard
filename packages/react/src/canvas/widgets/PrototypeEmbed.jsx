@@ -56,6 +56,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
   const inputRef = useRef(null)
   const filterRef = useRef(null)
   const embedRef = useRef(null)
+  const iframeRef = useRef(null)
 
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''
@@ -176,6 +177,21 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
     document.addEventListener('storyboard:theme:changed', readToolbarTheme)
     return () => document.removeEventListener('storyboard:theme:changed', readToolbarTheme)
   }, [])
+
+  // Listen for navigation events from the embedded prototype iframe
+  useEffect(() => {
+    function handleMessage(e) {
+      if (e.source !== iframeRef.current?.contentWindow) return
+      if (e.data?.type !== 'storyboard:embed:navigate') return
+      const newSrc = e.data.src
+      if (newSrc && newSrc !== src) {
+        const originalSrc = readProp(props, 'originalSrc', prototypeEmbedSchema)
+        onUpdate?.({ src: newSrc, originalSrc: originalSrc || src })
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [src, props, onUpdate])
 
   const chromeVars = useMemo(() => getEmbedChromeVars(canvasTheme), [canvasTheme])
 
@@ -309,6 +325,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
           <>
             <div className={styles.iframeContainer}>
               <iframe
+                ref={iframeRef}
                 src={iframeSrc}
                 className={styles.iframe}
                 style={{

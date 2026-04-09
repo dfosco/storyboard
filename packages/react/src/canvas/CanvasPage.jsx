@@ -801,7 +801,7 @@ export default function CanvasPage({ name }) {
           const pathPortion = parsed.pathname + parsed.search + parsed.hash
           const src = extractPrototypeSrc(pathPortion)
           type = 'prototype'
-          props = { src: src || '/', label: '', width: 800, height: 600 }
+          props = { src: src || '/', originalSrc: src || '/', label: '', width: 800, height: 600 }
         } else {
           type = 'link-preview'
           props = { url: text, title: '' }

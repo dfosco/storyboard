@@ -41,3 +41,6 @@ AGENTS_.md
 packages/core/dist/storyboard-ui.*
 
 .clips
+
+# Agent Browser
+agent-browser.json

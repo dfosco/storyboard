@@ -407,7 +407,7 @@ export function ${componentName}Example() {
 
     // POST /image — upload a pasted image (base64 data URL)
     if (routePath === '/image' && method === 'POST') {
-      const { dataUrl } = body
+      const { dataUrl, canvasName } = body
 
       if (!dataUrl || typeof dataUrl !== 'string') {
         sendJson(res, 400, { error: 'dataUrl is required' })
@@ -435,9 +435,11 @@ export function ${componentName}Example() {
         return
       }
 
-      const timestamp = Date.now()
-      const suffix = Math.random().toString(36).slice(2, 8)
-      const filename = `${timestamp}-${suffix}.${ext}`
+      const now = new Date()
+      const pad = (n) => String(n).padStart(2, '0')
+      const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}--${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
+      const prefix = canvasName ? `${canvasName}--` : ''
+      const filename = `${prefix}${dateStr}.${ext}`
 
       try {
         fs.mkdirSync(imagesDir, { recursive: true })

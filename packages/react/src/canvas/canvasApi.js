@@ -40,8 +40,8 @@ export function removeWidget(name, widgetId) {
   return request('/widget', 'DELETE', { name, widgetId })
 }
 
-export function uploadImage(dataUrl) {
-  return request('/image', 'POST', { dataUrl })
+export function uploadImage(dataUrl, canvasName) {
+  return request('/image', 'POST', { dataUrl, canvasName })
 }
 
 export function toggleImagePrivacy(filename) {

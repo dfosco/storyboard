@@ -17,6 +17,9 @@ const ZOOM_MAX = 200
 
 const CANVAS_BRIDGE_STATE_KEY = '__storyboardCanvasBridgeState'
 
+/** Matches branch-deploy base path prefixes like /branch--my-feature/ */
+const BRANCH_PREFIX_RE = /^\/branch--[^/]+/
+
 function getToolbarColorMode(theme) {
   return String(theme || 'light').startsWith('dark') ? 'dark' : 'light'
 }
@@ -361,7 +364,34 @@ export default function CanvasPage({ name }) {
 
   // Paste handler — same-origin URLs become prototypes, other URLs become link previews, text becomes markdown
   useEffect(() => {
-    const baseUrl = window.location.origin + (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+    const origin = window.location.origin
+    const basePath = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+    const baseUrl = origin + basePath
+
+    // Check if a URL is same-origin, accounting for branch-deploy prefixes.
+    // e.g. https://site.com/branch--my-feature/Proto and https://site.com/storyboard/Proto
+    // are both same-origin prototype URLs.
+    function isSameOriginPrototype(url) {
+      if (!url.startsWith(origin)) return false
+      if (url.startsWith(baseUrl)) return true
+      // Match branch deploy URLs: origin + /branch--*/...
+      const pathAfterOrigin = url.slice(origin.length)
+      return BRANCH_PREFIX_RE.test(pathAfterOrigin)
+    }
+
+    // Strip the base path (or any branch prefix) from a pathname to get a portable src.
+    function extractPrototypeSrc(pathname) {
+      // Strip current base path
+      if (basePath && pathname.startsWith(basePath)) {
+        return pathname.slice(basePath.length) || '/'
+      }
+      // Strip branch prefix: /branch--name/rest → /rest
+      const branchMatch = pathname.match(BRANCH_PREFIX_RE)
+      if (branchMatch) {
+        return pathname.slice(branchMatch[0].length) || '/'
+      }
+      return pathname
+    }
 
     async function handlePaste(e) {
       const tag = e.target.tagName
@@ -375,11 +405,9 @@ export default function CanvasPage({ name }) {
       let type, props
       try {
         const parsed = new URL(text)
-        if (text.startsWith(baseUrl)) {
-          // Same-origin URL → prototype embed with the path portion
+        if (isSameOriginPrototype(text)) {
           const pathPortion = parsed.pathname + parsed.search + parsed.hash
-          const basePath = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
-          const src = basePath ? pathPortion.replace(new RegExp(`^${basePath}`), '') : pathPortion
+          const src = extractPrototypeSrc(pathPortion)
           type = 'prototype'
           props = { src: src || '/', label: '', width: 800, height: 600 }
         } else {

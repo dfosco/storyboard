@@ -427,7 +427,7 @@ Or if the dev server isn't running, create the file directly at `src/canvas/<nam
 1. Show the created file path and route (`/canvas/<name>`)
 2. Suggest next steps:
    - Run `npm run dev` and navigate to the canvas
-   - Add widgets via the toolbar (sticky notes, markdown, prototypes)
+   - Use the **create-widget** skill to add widgets (sticky notes, markdown, prototype embeds, link previews)
    - Paste URLs to embed prototypes or link previews
 
 ---

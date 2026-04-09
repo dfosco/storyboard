@@ -49,6 +49,8 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 
 - **agent-browser** (`.github/skills/agent-browser/SKILL.md`) — Browser inspection during development using `agent-browser` CLI. Snapshots, screenshots, console errors, element inspection.
 
+- **create-widget** (`.github/skills/create-widget/SKILL.md`) — Canvas widget manipulation: add, edit, move, remove, and inspect widgets on `*.canvas.jsonl` canvases.
+
 ---
 
 ## Build & Development

@@ -60,30 +60,48 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
     }
   }, [dragId, initialSavedPosition.x, initialSavedPosition.y]);
 
-  // Gate neodrag: intercept pointerdown on the handle in bubble phase.
-  // stopPropagation prevents it from reaching the article (where neodrag
-  // listens). After the delay, re-dispatch a synthetic pointerdown from
-  // the handle — it bubbles up to the article and neodrag picks it up.
+  // Gate neodrag: intercept pointerdown on the handle via delegation.
+  // We listen on the article element and check if the event target is
+  // inside the handle. stopPropagation in bubble phase prevents neodrag
+  // (which also listens on the article in bubble phase) from seeing it.
+  //
+  // After both delay and distance thresholds are met, we re-dispatch a
+  // synthetic pointerdown from the original target — it bubbles up to
+  // the article and neodrag picks it up.
   //
   // React 18 captures events at the root container during capture phase,
-  // so React handlers (onPointerDown/onPointerUp on the handle) still
-  // fire even after we stopPropagation in bubble phase.
+  // so React handlers (onPointerDown/onPointerUp) still fire normally.
   useEffect(() => {
     const el = draggableRef.current;
     if (!el || !handle) return;
 
     const g = gateRef.current;
-    const handleEl = el.querySelector(handle);
-    if (!handleEl) return;
+    let synthEvent = null;
 
-    function onHandlePointerDown(e) {
-      e.stopPropagation();
+    function isHandleEvent(e) {
+      const handleEl = el.querySelector(handle);
+      return handleEl && handleEl.contains(e.target);
+    }
+
+    function onArticlePointerDownCapture(e) {
+      // Let synthetic re-dispatched events pass through to neodrag
+      if (e === synthEvent) {
+        synthEvent = null;
+        return;
+      }
+      if (!isHandleEvent(e)) return;
+      // stopImmediatePropagation prevents neodrag's bubble listener
+      // on this same article from seeing the event
+      e.stopImmediatePropagation();
       g.active = true;
       g.delayMet = false;
       g.distanceMet = false;
       g.startX = e.clientX;
       g.startY = e.clientY;
-      g.lastEvent = e;
+      g.target = e.target;
+      g.pointerId = e.pointerId;
+      g.button = e.button;
+      g.pointerType = e.pointerType;
       clearTimeout(g.timer);
       g.timer = setTimeout(() => {
         g.delayMet = true;
@@ -92,19 +110,19 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
     }
 
     function tryEnable() {
-      if (g.delayMet && g.distanceMet && g.active && g.lastEvent) {
-        const ev = g.lastEvent;
-        g.lastEvent = null;
-        // Re-dispatch so neodrag picks it up on the article
-        handleEl.dispatchEvent(new PointerEvent('pointerdown', {
+      if (g.delayMet && g.distanceMet && g.active && g.target) {
+        const synth = new PointerEvent('pointerdown', {
           bubbles: true,
           cancelable: true,
-          pointerId: ev.pointerId,
-          clientX: ev.clientX,
-          clientY: ev.clientY,
-          button: ev.button,
-          pointerType: ev.pointerType,
-        }));
+          pointerId: g.pointerId,
+          clientX: g.startX,
+          clientY: g.startY,
+          button: g.button,
+          pointerType: g.pointerType,
+        });
+        synthEvent = synth;
+        g.target.dispatchEvent(synth);
+        g.target = null;
       }
     }
 
@@ -121,14 +139,14 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
     function onDocPointerUp() {
       clearTimeout(g.timer);
       g.active = false;
-      g.lastEvent = null;
+      g.target = null;
     }
 
-    handleEl.addEventListener('pointerdown', onHandlePointerDown);
+    el.addEventListener('pointerdown', onArticlePointerDownCapture, true);
     document.addEventListener('pointermove', onDocPointerMove);
     document.addEventListener('pointerup', onDocPointerUp);
     return () => {
-      handleEl.removeEventListener('pointerdown', onHandlePointerDown);
+      el.removeEventListener('pointerdown', onArticlePointerDownCapture, true);
       document.removeEventListener('pointermove', onDocPointerMove);
       document.removeEventListener('pointerup', onDocPointerUp);
       clearTimeout(g.timer);

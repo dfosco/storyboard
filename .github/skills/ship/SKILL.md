@@ -26,7 +26,7 @@ This skill has two modes:
 | Token cost | ~30-50% of critical | 100% |
 | Time | Fast | Thorough |
 | Review quality | Lint/build/test only | Adversarial agent pass |
-| Clips integration | No | Yes |
+| clips integration | No | Yes |
 | Separate test step | No (inline) | Yes (vitest skill) |
 | No-PR option | ✅ Supported | ❌ Not supported |
 

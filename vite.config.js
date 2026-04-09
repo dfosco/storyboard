@@ -65,6 +65,11 @@ export default defineConfig(() => {
         // Guard against unexpected full-reloads caused by canvas JSONL writes.
         // Some editors/save modes emit watcher sequences that can still trigger
         // generic reload paths; suppress those and rely on canvas custom events.
+        //
+        // Also suppresses full-reloads when a canvas page is active to prevent
+        // losing canvas editing state (zoom, scroll, selections). Prototype
+        // iframes have their own Vite client and still receive HMR updates.
+        // Opt out with ?canvas-hmr in the URL when working on canvas UI code.
         {
             name: 'canvas-reload-guard',
             configureServer(server) {
@@ -80,14 +85,23 @@ export default defineConfig(() => {
                 server.watcher.on('add', markCanvasMutation)
                 server.watcher.on('unlink', markCanvasMutation)
 
+                // Track whether a canvas page is active and whether HMR is enabled
+                let canvasHmrGuardActive = false
+                server.hot.on('storyboard:canvas-hmr-guard', (data) => {
+                    canvasHmrGuardActive = data.active && !data.hmrEnabled
+                })
+
                 const originalSend = server.ws.send.bind(server.ws)
                 server.ws.send = (payload, ...rest) => {
-                    if (
-                        payload &&
-                        payload.type === 'full-reload' &&
-                        Date.now() - recentCanvasMutationAt < CANVAS_WINDOW_MS
-                    ) {
-                        return
+                    if (payload && payload.type === 'full-reload') {
+                        // Suppress reloads caused by canvas file mutations
+                        if (Date.now() - recentCanvasMutationAt < CANVAS_WINDOW_MS) {
+                            return
+                        }
+                        // Suppress reloads while a canvas page is active (no ?canvas-hmr)
+                        if (canvasHmrGuardActive) {
+                            return
+                        }
                     }
                     return originalSend(payload, ...rest)
                 }

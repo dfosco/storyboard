@@ -212,10 +212,12 @@ export default function CanvasPage({ name }) {
   const [localSources, setLocalSources] = useState(canvas?.sources ?? [])
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
 
-  // Undo/redo history
+  // Undo/redo history — tracks both widgets and sources as a combined snapshot
   const undoRedo = useUndoRedo()
-  const widgetsRef = useRef(localWidgets)
-  useEffect(() => { widgetsRef.current = localWidgets }, [localWidgets])
+  const stateRef = useRef({ widgets: localWidgets, sources: localSources })
+  useEffect(() => {
+    stateRef.current = { widgets: localWidgets, sources: localSources }
+  }, [localWidgets, localSources])
 
   // Serialized write queue — ensures JSONL events land in the right order
   const writeQueueRef = useRef(Promise.resolve())
@@ -265,7 +267,7 @@ export default function CanvasPage({ name }) {
   }, [])
 
   const handleWidgetUpdate = useCallback((widgetId, updates) => {
-    undoRedo.snapshot(widgetsRef.current, 'edit', widgetId)
+    undoRedo.snapshot(stateRef.current, 'edit', widgetId)
     setLocalWidgets((prev) => {
       if (!prev) return prev
       const next = prev.map((w) =>
@@ -277,7 +279,7 @@ export default function CanvasPage({ name }) {
   }, [name, debouncedSave, undoRedo])
 
   const handleWidgetRemove = useCallback((widgetId) => {
-    undoRedo.snapshot(widgetsRef.current, 'remove', widgetId)
+    undoRedo.snapshot(stateRef.current, 'remove', widgetId)
     setLocalWidgets((prev) => prev ? prev.filter((w) => w.id !== widgetId) : prev)
     queueWrite(() =>
       removeWidgetApi(name, widgetId).catch((err) =>
@@ -295,6 +297,7 @@ export default function CanvasPage({ name }) {
   ).current
 
   const handleSourceUpdate = useCallback((exportName, updates) => {
+    undoRedo.snapshot(stateRef.current, 'edit', `jsx-${exportName}`)
     setLocalSources((prev) => {
       const current = Array.isArray(prev) ? prev : []
       const next = current.some((s) => s?.export === exportName)
@@ -303,28 +306,31 @@ export default function CanvasPage({ name }) {
       debouncedSourceSave(name, next)
       return next
     })
-  }, [name, debouncedSourceSave])
+  }, [name, debouncedSourceSave, undoRedo])
 
   const handleItemDragEnd = useCallback((dragId, position) => {
     if (!dragId || !position) return
     const rounded = { x: Math.max(0, roundPosition(position.x)), y: Math.max(0, roundPosition(position.y)) }
 
     if (dragId.startsWith('jsx-')) {
+      undoRedo.snapshot(stateRef.current, 'move', dragId)
       const sourceExport = dragId.replace(/^jsx-/, '')
       setLocalSources((prev) => {
         const current = Array.isArray(prev) ? prev : []
         const next = current.some((s) => s?.export === sourceExport)
           ? current.map((s) => (s?.export === sourceExport ? { ...s, position: rounded } : s))
           : [...current, { export: sourceExport, position: rounded }]
-        updateCanvas(name, { sources: next }).catch((err) =>
-          console.error('[canvas] Failed to save source position:', err)
+        queueWrite(() =>
+          updateCanvas(name, { sources: next }).catch((err) =>
+            console.error('[canvas] Failed to save source position:', err)
+          )
         )
         return next
       })
       return
     }
 
-    undoRedo.snapshot(widgetsRef.current, 'move', dragId)
+    undoRedo.snapshot(stateRef.current, 'move', dragId)
     setLocalWidgets((prev) => {
       if (!prev) return prev
       const next = prev.map((w) =>
@@ -482,7 +488,7 @@ export default function CanvasPage({ name }) {
         position: pos,
       })
       if (result.success && result.widget) {
-        undoRedo.snapshot(widgetsRef.current, 'add')
+        undoRedo.snapshot(stateRef.current, 'add')
         setLocalWidgets((prev) => [...(prev || []), result.widget])
       }
     } catch (err) {
@@ -649,7 +655,7 @@ export default function CanvasPage({ name }) {
             position: pos,
           })
           if (result.success && result.widget) {
-            undoRedo.snapshot(widgetsRef.current, 'add')
+            undoRedo.snapshot(stateRef.current, 'add')
             setLocalWidgets((prev) => [...(prev || []), result.widget])
           }
         } catch (err) {
@@ -702,7 +708,7 @@ export default function CanvasPage({ name }) {
           position: pos,
         })
         if (result.success && result.widget) {
-          undoRedo.snapshot(widgetsRef.current, 'add')
+          undoRedo.snapshot(stateRef.current, 'add')
           setLocalWidgets((prev) => [...(prev || []), result.widget])
         }
       } catch (err) {
@@ -715,28 +721,32 @@ export default function CanvasPage({ name }) {
 
   // --- Undo / Redo ---
   const handleUndo = useCallback(() => {
-    const previous = undoRedo.undo(widgetsRef.current)
+    const previous = undoRedo.undo(stateRef.current)
     if (!previous) return
     debouncedSave.cancel()
-    setLocalWidgets(previous)
+    debouncedSourceSave.cancel()
+    setLocalWidgets(previous.widgets)
+    setLocalSources(previous.sources)
     queueWrite(() =>
-      updateCanvas(name, { widgets: previous }).catch((err) =>
+      updateCanvas(name, { widgets: previous.widgets, sources: previous.sources }).catch((err) =>
         console.error('[canvas] Failed to persist undo:', err)
       )
     )
-  }, [name, debouncedSave, undoRedo])
+  }, [name, debouncedSave, debouncedSourceSave, undoRedo])
 
   const handleRedo = useCallback(() => {
-    const next = undoRedo.redo(widgetsRef.current)
+    const next = undoRedo.redo(stateRef.current)
     if (!next) return
     debouncedSave.cancel()
-    setLocalWidgets(next)
+    debouncedSourceSave.cancel()
+    setLocalWidgets(next.widgets)
+    setLocalSources(next.sources)
     queueWrite(() =>
-      updateCanvas(name, { widgets: next }).catch((err) =>
+      updateCanvas(name, { widgets: next.widgets, sources: next.sources }).catch((err) =>
         console.error('[canvas] Failed to persist redo:', err)
       )
     )
-  }, [name, debouncedSave, undoRedo])
+  }, [name, debouncedSave, debouncedSourceSave, undoRedo])
 
   // Keyboard shortcuts — dev-only (Cmd+Z / Cmd+Shift+Z)
   useEffect(() => {

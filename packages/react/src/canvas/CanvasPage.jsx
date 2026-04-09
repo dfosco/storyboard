@@ -265,11 +265,12 @@ export default function CanvasPage({ name }) {
   }, [zoom])
 
   /**
-   * Zoom to a new level while keeping the viewport center stable.
-   * Uses flushSync to force a synchronous render so the CSS transform
-   * and the scroll adjustment land in the same paint frame.
+   * Zoom to a new level, anchoring on an optional client-space point.
+   * When a cursor position is provided (e.g. from a wheel event), the
+   * canvas point under the cursor stays fixed. Otherwise falls back to
+   * the viewport center.
    */
-  function applyZoom(newZoom) {
+  function applyZoom(newZoom, clientX, clientY) {
     const el = scrollRef.current
     const clampedZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newZoom))
 
@@ -281,17 +282,23 @@ export default function CanvasPage({ name }) {
     const oldScale = zoomRef.current / 100
     const newScale = clampedZoom / 100
 
-    // Viewport center → canvas coordinate
-    const canvasX = (el.scrollLeft + el.clientWidth / 2) / oldScale
-    const canvasY = (el.scrollTop + el.clientHeight / 2) / oldScale
+    // Anchor point in scroll-container space
+    const rect = el.getBoundingClientRect()
+    const useViewportCenter = clientX == null || clientY == null
+    const anchorX = useViewportCenter ? el.clientWidth / 2 : clientX - rect.left
+    const anchorY = useViewportCenter ? el.clientHeight / 2 : clientY - rect.top
+
+    // Anchor → canvas coordinate
+    const canvasX = (el.scrollLeft + anchorX) / oldScale
+    const canvasY = (el.scrollTop + anchorY) / oldScale
 
     // Synchronous render so the DOM has the new transform before we adjust scroll
     zoomRef.current = clampedZoom
     flushSync(() => setZoom(clampedZoom))
 
-    // Scroll so the same canvas point stays at viewport center
-    el.scrollLeft = canvasX * newScale - el.clientWidth / 2
-    el.scrollTop = canvasY * newScale - el.clientHeight / 2
+    // Scroll so the same canvas point stays under the anchor
+    el.scrollLeft = canvasX * newScale - anchorX
+    el.scrollTop = canvasY * newScale - anchorY
   }
 
   // Signal canvas mount/unmount to CoreUIBar
@@ -486,7 +493,7 @@ export default function CanvasPage({ name }) {
       const step = Math.trunc(zoomAccum.current)
       if (step === 0) return
       zoomAccum.current -= step
-      applyZoom(zoomRef.current + step)
+      applyZoom(zoomRef.current + step, e.clientX, e.clientY)
     }
     document.addEventListener('wheel', handleWheel, { passive: false })
     return () => document.removeEventListener('wheel', handleWheel)

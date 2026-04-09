@@ -159,9 +159,8 @@
 
 .colorPopup {
   position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
+  top: calc(100% + 2px);
+  left: -4px;
   display: flex;
   gap: 5px;
   padding: 6px 10px;
@@ -175,6 +174,17 @@
   transition: opacity 150ms;
   z-index: 10;
   white-space: nowrap;
+}
+
+/* Invisible bridge from the trigger button to the popup so mouse
+   travel doesn't create a gap that closes the picker. */
+.colorPopup::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  height: 8px;
 }
 
 :global([data-sb-canvas-theme^='dark']) .colorPopup {

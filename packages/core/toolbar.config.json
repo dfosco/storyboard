@@ -100,7 +100,17 @@
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
       "modes": ["*"],
-      "gridSize": 40
+      "gridSize": 40,
+      "snap": {
+        "label": "Snap to grid",
+        "labelOn": "Snap to grid (on)",
+        "labelOff": "Snap to grid (off)",
+        "icon": "iconoir/view-grid"
+      },
+      "zoomToFit": {
+        "label": "Zoom to objects",
+        "icon": "iconoir/square-3d-three-points"
+      }
     },    
     "viewfinder": {
       "label": "Go to index page",

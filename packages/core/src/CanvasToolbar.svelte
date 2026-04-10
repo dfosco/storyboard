@@ -102,13 +102,13 @@
         <button
           class="canvas-toolbar-standalone"
           onclick={() => data.zoomToFit()}
-          aria-label="Zoom to objects"
+          aria-label={config.zoomToFit?.label || 'Zoom to objects'}
           tabindex={-1}
         >
-          <Icon name="iconoir/square-3d-three-points" size={16} strokeWeight={2} />
+          <Icon name={config.zoomToFit?.icon || 'iconoir/square-3d-three-points'} size={16} strokeWeight={2} />
         </button>
       </Tooltip.Trigger>
-      <Tooltip.Content side="top">Zoom to objects</Tooltip.Content>
+      <Tooltip.Content side="top">{config.zoomToFit?.label || 'Zoom to objects'}</Tooltip.Content>
     </Tooltip.Root>
     <div class="canvas-toolbar-bar" role="group" aria-label="Undo and redo">
       <Tooltip.Root>
@@ -151,14 +151,14 @@
           class="canvas-toolbar-standalone"
           class:canvas-toolbar-standalone-active={snapEnabled}
           onclick={() => data.toggleSnap()}
-          aria-label="Snap to grid"
+          aria-label={config.snap?.label || 'Snap to grid'}
           aria-pressed={snapEnabled}
           tabindex={-1}
         >
-          <Icon name="iconoir/view-grid" size={16} strokeWeight={2} />
+          <Icon name={config.snap?.icon || 'iconoir/view-grid'} size={16} strokeWeight={2} />
         </button>
       </Tooltip.Trigger>
-      <Tooltip.Content side="top">{snapEnabled ? 'Snap to grid (on)' : 'Snap to grid (off)'}</Tooltip.Content>
+      <Tooltip.Content side="top">{snapEnabled ? (config.snap?.labelOn || 'Snap to grid (on)') : (config.snap?.labelOff || 'Snap to grid (off)')}</Tooltip.Content>
     </Tooltip.Root>
   </div>
 {/if}

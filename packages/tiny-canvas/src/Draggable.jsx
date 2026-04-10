@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { useDraggable } from '@neodrag/react';
 import { saveDrag } from './utils';
 
-const TRANSLATION_MS = 100;
+const TRANSLATION_MS = 250;
 const PERSIST_DEADZONE_PX = 4;
 
 /** Minimum hold time (ms) before drag can start.

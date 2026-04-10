@@ -99,11 +99,17 @@ export const widgetTypes = buildWidgetTypes()
 
 /**
  * Get the feature list for a widget type.
+ * In production, only features with `prod: true` are returned.
+ * In dev, all features are returned.
  * @param {string} type — widget type string
  * @returns {Array} features array from config (variables resolved), or empty array
  */
 export function getFeatures(type) {
-  return widgetTypes[type]?.features ?? []
+  const features = widgetTypes[type]?.features ?? []
+  if (import.meta.env?.PROD) {
+    return features.filter(f => f.prod)
+  }
+  return features
 }
 
 /**

@@ -440,9 +440,10 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
         onPointerDown={(e) => e.stopPropagation()}
       />
     </WidgetWrapper>
-    {expanded && createPortal(
+    {createPortal(
       <div
         className={styles.expandBackdrop}
+        style={expanded ? undefined : { display: 'none' }}
         onClick={() => setExpanded(false)}
         onPointerDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}

@@ -1290,13 +1290,13 @@ export default function CanvasPage({ name }) {
           id={`jsx-${exportName}`}
           data-tc-x={sourcePosition.x}
           data-tc-y={sourcePosition.y}
-          {...(isLocalDev ? { 'data-tc-handle': '.tc-drag-handle' } : {})}
+          {...(isLocalDev ? { 'data-tc-handle': '.tc-drag-handle, .tc-drag-surface' } : {})}
           {...canvasPrimerAttrs}
           style={canvasThemeVars}
           onClick={isLocalDev ? (e) => {
             e.stopPropagation()
             if (!e.target.closest('.tc-drag-handle')) {
-              setSelectedWidgetIds(new Set([`jsx-${exportName}`]))
+              handleWidgetSelect(`jsx-${exportName}`, e.shiftKey)
             }
           } : undefined}
         >
@@ -1328,13 +1328,13 @@ export default function CanvasPage({ name }) {
         id={widget.id}
         data-tc-x={widget?.position?.x ?? 0}
         data-tc-y={widget?.position?.y ?? 0}
-        {...(isLocalDev ? { 'data-tc-handle': '.tc-drag-handle' } : {})}
+        {...(isLocalDev ? { 'data-tc-handle': '.tc-drag-handle, .tc-drag-surface' } : {})}
         {...canvasPrimerAttrs}
         style={canvasThemeVars}
         onClick={isLocalDev ? (e) => {
           e.stopPropagation()
           if (!e.target.closest('.tc-drag-handle')) {
-            setSelectedWidgetIds(new Set([widget.id]))
+            handleWidgetSelect(widget.id, e.shiftKey)
           }
         } : undefined}
       >

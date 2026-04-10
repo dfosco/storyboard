@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 3.11.0-beta.6
+
+### Patch Changes
+
+-   Add autosync tool entry to toolbar.config.json so the AutoSync button renders in the main toolbar (dev-only).
+
 ## 3.11.0-beta.4
 
 ### Minor Changes

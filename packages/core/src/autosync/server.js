@@ -98,7 +98,7 @@ function runSyncCycle(root) {
       const username = getUsername(root)
       const time = formatTime()
       git(['add', '-A'], root)
-      git(['commit', '-m', `${username} update at ${time}`], root)
+      git(['commit', '-m', `[auto] ${username} update at ${time}`], root)
     }
 
     const branch = getCurrentBranch(root)

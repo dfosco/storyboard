@@ -47,7 +47,7 @@
         aria-pressed={snapEnabled}
         {tabindex}
       >
-        <Icon name={config.icon || 'iconoir/view-grid'} size={16} strokeWeight={2} />
+        <Icon name={config.icon || 'iconoir/view-grid'} size={16} {...(config.meta || {})} />
       </button>
     </Tooltip.Trigger>
     <Tooltip.Content side="top">{snapEnabled ? (config.labelOn || 'Snap to grid (on)') : (config.labelOff || 'Snap to grid (off)')}</Tooltip.Content>

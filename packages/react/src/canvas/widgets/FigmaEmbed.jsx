@@ -34,7 +34,6 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
   const iframeRef = useRef(null)
   const inlineContainerRef = useRef(null)
   const modalContainerRef = useRef(null)
-  const embedRef = useRef(null)
 
   // Validate URL at render time — only embed known Figma URLs
   const isValid = useMemo(() => isFigmaUrl(url), [url])
@@ -44,27 +43,6 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
   const typeLabel = figmaType ? TYPE_LABELS[figmaType] : 'Figma'
 
   const enterInteractive = useCallback(() => setInteractive(true), [])
-
-  // Exit interactive mode when clicking outside the embed
-  useEffect(() => {
-    if (!interactive) return
-    function handlePointerDown(e) {
-      if (embedRef.current && !embedRef.current.contains(e.target)) {
-        setInteractive(false)
-      }
-    }
-    document.addEventListener('pointerdown', handlePointerDown)
-    return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [interactive])
-
-  // Disable canvas scrolling while iframe is interactive
-  useEffect(() => {
-    if (!interactive) return
-    const scrollEl = document.querySelector('[data-storyboard-canvas-scroll]')
-    if (!scrollEl) return
-    scrollEl.style.overflow = 'hidden'
-    return () => { scrollEl.style.overflow = '' }
-  }, [interactive])
 
   // Close expanded modal on Escape
   useEffect(() => {
@@ -126,7 +104,7 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
   return (
     <>
     <WidgetWrapper>
-      <div ref={embedRef} className={styles.embed} style={{ width, height }}>
+      <div className={styles.embed} style={{ width, height }}>
         <div className={styles.header}>
           <FigmaLogo />
           <span className={styles.headerTitle}>{title}</span>

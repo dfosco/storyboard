@@ -36,7 +36,7 @@
 
 .iframeContainer {
   width: 100%;
-  height: calc(100% - 31px); /* subtract header height */
+  height: calc(100% - 10px); /* subtract header height */
   overflow: hidden;
 }
 

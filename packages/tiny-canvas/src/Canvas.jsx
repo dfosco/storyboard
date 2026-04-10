@@ -23,6 +23,7 @@ function Canvas({
   gridSize,
   snapGrid,
   colorMode = 'auto',
+  locked = false,
   onDragEnd,
 }) {
   const showDots = dotted || grid;
@@ -56,6 +57,7 @@ function Canvas({
             initialPosition={initialPosition}
             onDragEnd={onDragEnd}
             handle={handle}
+            locked={locked}
           >
             {child}
           </Draggable>

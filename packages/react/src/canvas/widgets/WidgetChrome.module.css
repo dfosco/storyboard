@@ -217,3 +217,67 @@
   border-color: currentColor;
   box-shadow: 0 0 0 1px currentColor;
 }
+
+/* Overflow menu */
+.overflowWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.overflowMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--bgColor-default, #ffffff);
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+}
+
+:global([data-sb-canvas-theme^='dark']) .overflowMenu {
+  background: var(--bgColor-muted, #161b22);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.overflowItem {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--fgColor-default, #1f2328);
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+:global([data-sb-canvas-theme^='dark']) .overflowItem {
+  color: var(--fgColor-default, #e6edf3);
+}
+
+.overflowItem:hover {
+  background: var(--bgColor-neutral-muted, #eaeef2);
+}
+
+:global([data-sb-canvas-theme^='dark']) .overflowItem:hover {
+  background: var(--bgColor-neutral-muted, #272c33);
+}
+
+.overflowItemDanger:hover {
+  background: var(--bgColor-danger-muted, #ffebe9);
+  color: var(--fgColor-danger, #d1242f);
+}
+
+:global([data-sb-canvas-theme^='dark']) .overflowItemDanger:hover {
+  background: var(--bgColor-danger-muted, #490202);
+  color: var(--fgColor-danger, #f85149);
+}

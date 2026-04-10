@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useMemo, useCallback, useState, useEffect } from 'react'
+import { forwardRef, useImperativeHandle, useMemo, useCallback, useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp } from './widgetProps.js'
@@ -31,6 +31,10 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
   const [interactive, setInteractive] = useState(false)
   const [expanded, setExpanded] = useState(false)
 
+  const iframeRef = useRef(null)
+  const inlineContainerRef = useRef(null)
+  const modalContainerRef = useRef(null)
+
   // Validate URL at render time — only embed known Figma URLs
   const isValid = useMemo(() => isFigmaUrl(url), [url])
   const embedUrl = useMemo(() => (isValid ? toFigmaEmbedUrl(url) : ''), [url, isValid])
@@ -53,6 +57,40 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
     return () => document.removeEventListener('keydown', handleKeyDown, true)
   }, [expanded])
 
+  // Reparent iframe DOM node between inline container and modal.
+  // Uses moveBefore() (Chrome 133+) which preserves the iframe's
+  // browsing context — no reload. Falls back to appendChild.
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+
+    if (expanded && modalContainerRef.current) {
+      iframe._savedClassName = iframe.className
+      iframe._savedStyle = iframe.getAttribute('style') || ''
+      iframe.className = styles.expandIframe
+      iframe.removeAttribute('style')
+      const target = modalContainerRef.current
+      if (target.moveBefore) {
+        target.moveBefore(iframe, target.firstChild)
+      } else {
+        target.prepend(iframe)
+      }
+    } else if (!expanded && inlineContainerRef.current) {
+      if (iframe._savedClassName !== undefined) {
+        iframe.className = iframe._savedClassName
+        iframe.setAttribute('style', iframe._savedStyle)
+        delete iframe._savedClassName
+        delete iframe._savedStyle
+      }
+      const target = inlineContainerRef.current
+      if (target.moveBefore) {
+        target.moveBefore(iframe, null)
+      } else {
+        target.appendChild(iframe)
+      }
+    }
+  }, [expanded])
+
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
       if (actionId === 'open-external') {
@@ -73,23 +111,19 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
         </div>
         {embedUrl ? (
           <>
-            {!expanded && (
-            <div className={styles.iframeContainer}>
+            <div
+              ref={inlineContainerRef}
+              className={styles.iframeContainer}
+              style={expanded ? { visibility: 'hidden' } : undefined}
+            >
               <iframe
+                ref={iframeRef}
                 src={embedUrl}
                 className={styles.iframe}
                 title={`Figma ${typeLabel}: ${title}`}
                 allowFullScreen
               />
             </div>
-            )}
-            {expanded && (
-              <div className={styles.iframeContainer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <p style={{ color: 'var(--fgColor-muted, #656d76)', fontSize: 13, fontStyle: 'italic' }}>
-                  Expanded
-                </p>
-              </div>
-            )}
             {!interactive && !expanded && (
               <div
                 className={styles.dragOverlay}
@@ -129,24 +163,21 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
         onPointerDown={(e) => e.stopPropagation()}
       />
     </WidgetWrapper>
-    {expanded && embedUrl && createPortal(
+    {createPortal(
       <div
         className={styles.expandBackdrop}
+        style={expanded && embedUrl ? undefined : { display: 'none' }}
         onClick={() => setExpanded(false)}
         onPointerDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         onWheel={(e) => e.stopPropagation()}
       >
         <div
+          ref={modalContainerRef}
           className={styles.expandContainer}
           onClick={(e) => e.stopPropagation()}
         >
-          <iframe
-            src={embedUrl}
-            className={styles.expandIframe}
-            title={`Figma ${typeLabel}: ${title} (expanded)`}
-            allowFullScreen
-          />
+          {/* iframe is reparented here via useEffect */}
           <button
             className={styles.expandClose}
             onClick={() => setExpanded(false)}

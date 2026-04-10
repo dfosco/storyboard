@@ -59,6 +59,8 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
   const filterRef = useRef(null)
   const embedRef = useRef(null)
   const iframeRef = useRef(null)
+  const inlineContainerRef = useRef(null)
+  const modalContainerRef = useRef(null)
 
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''
@@ -191,6 +193,41 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
     }
     document.addEventListener('keydown', handleKeyDown, true)
     return () => document.removeEventListener('keydown', handleKeyDown, true)
+  }, [expanded])
+
+  // Reparent iframe DOM node between inline container and modal.
+  // Uses moveBefore() (Chrome 133+) which preserves the iframe's
+  // browsing context — no reload. Falls back to appendChild which
+  // will reload but still works functionally.
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+
+    if (expanded && modalContainerRef.current) {
+      iframe._savedClassName = iframe.className
+      iframe._savedStyle = iframe.getAttribute('style') || ''
+      iframe.className = styles.expandIframe
+      iframe.removeAttribute('style')
+      const target = modalContainerRef.current
+      if (target.moveBefore) {
+        target.moveBefore(iframe, target.firstChild)
+      } else {
+        target.prepend(iframe)
+      }
+    } else if (!expanded && inlineContainerRef.current) {
+      if (iframe._savedClassName !== undefined) {
+        iframe.className = iframe._savedClassName
+        iframe.setAttribute('style', iframe._savedStyle)
+        delete iframe._savedClassName
+        delete iframe._savedStyle
+      }
+      const target = inlineContainerRef.current
+      if (target.moveBefore) {
+        target.moveBefore(iframe, null)
+      } else {
+        target.appendChild(iframe)
+      }
+    }
   }, [expanded])
 
   // Listen for navigation events from the embedded prototype iframe
@@ -341,8 +378,11 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
           </div>
         ) : iframeSrc ? (
           <>
-            {!expanded && (
-            <div className={styles.iframeContainer}>
+            <div
+              ref={inlineContainerRef}
+              className={styles.iframeContainer}
+              style={expanded ? { visibility: 'hidden' } : undefined}
+            >
               <iframe
                 ref={iframeRef}
                 src={iframeSrc}
@@ -357,14 +397,6 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
                 sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
               />
             </div>
-            )}
-            {expanded && (
-              <div className={styles.iframeContainer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <p style={{ color: 'var(--fgColor-muted, #656d76)', fontSize: 13, fontStyle: 'italic' }}>
-                  Expanded
-                </p>
-              </div>
-            )}
             {!interactive && !expanded && (
               <div
                 className={styles.dragOverlay}
@@ -408,25 +440,21 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
         onPointerDown={(e) => e.stopPropagation()}
       />
     </WidgetWrapper>
-    {expanded && createPortal(
+    {createPortal(
       <div
         className={styles.expandBackdrop}
+        style={expanded ? undefined : { display: 'none' }}
         onClick={() => setExpanded(false)}
         onPointerDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         onWheel={(e) => e.stopPropagation()}
       >
         <div
+          ref={modalContainerRef}
           className={styles.expandContainer}
           onClick={(e) => e.stopPropagation()}
         >
-          <iframe
-            ref={iframeRef}
-            src={iframeSrc}
-            className={styles.expandIframe}
-            title={label || 'Prototype embed (expanded)'}
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-          />
+          {/* iframe is reparented here via useEffect */}
           <button
             className={styles.expandClose}
             onClick={() => setExpanded(false)}

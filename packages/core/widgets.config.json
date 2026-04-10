@@ -1,7 +1,7 @@
 {
   "variables": {
     "label:duplicate":  "Duplicate",
-    "label:copy-link":  "Copy link",
+    "label:copy-link":  "Copy link to widget",
     "label:delete":     "Delete",
     "label:open-ext":   "Open in new tab",
     "label:zoom-in":    "Zoom in",

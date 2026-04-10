@@ -228,15 +228,16 @@ function ChromeWrappedWidget({
   onUpdate,
   onRemove,
   onCopy,
+  readOnly,
 }) {
   const widgetRef = useRef(null)
   const features = getFeatures(widget.type)
 
   const handleAction = useCallback((actionId) => {
     if (actionId === 'delete') {
-      onRemove(widget.id)
+      onRemove?.(widget.id)
     } else if (actionId === 'copy') {
-      onCopy(widget)
+      onCopy?.(widget)
     }
   }, [widget, onRemove, onCopy])
 
@@ -251,11 +252,12 @@ function ChromeWrappedWidget({
       onSelect={onSelect}
       onDeselect={onDeselect}
       onAction={handleAction}
-      onUpdate={(updates) => onUpdate(widget.id, updates)}
+      onUpdate={onUpdate ? (updates) => onUpdate(widget.id, updates) : undefined}
+      readOnly={readOnly}
     >
       <WidgetRenderer
         widget={widget}
-        onUpdate={(updates) => onUpdate(widget.id, updates)}
+        onUpdate={onUpdate ? (updates) => onUpdate(widget.id, updates) : undefined}
         widgetRef={widgetRef}
       />
     </WidgetChrome>
@@ -270,6 +272,7 @@ function ChromeWrappedWidget({
  */
 export default function CanvasPage({ name }) {
   const { canvas, jsxExports, loading } = useCanvas(name)
+  const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
 
   // Local mutable copy of widgets for instant UI updates
   const [localWidgets, setLocalWidgets] = useState(canvas?.widgets ?? null)
@@ -1142,13 +1145,13 @@ export default function CanvasPage({ name }) {
           id={`jsx-${exportName}`}
           data-tc-x={sourcePosition.x}
           data-tc-y={sourcePosition.y}
-          data-tc-handle=".tc-drag-handle"
+          {...(isLocalDev ? { 'data-tc-handle': '.tc-drag-handle' } : {})}
           {...canvasPrimerAttrs}
           style={canvasThemeVars}
-          onClick={(e) => {
+          onClick={isLocalDev ? (e) => {
             e.stopPropagation()
             setSelectedWidgetId(`jsx-${exportName}`)
-          }}
+          } : undefined}
         >
           <WidgetChrome
             widgetId={`jsx-${exportName}`}
@@ -1156,12 +1159,13 @@ export default function CanvasPage({ name }) {
             selected={selectedWidgetId === `jsx-${exportName}`}
             onSelect={() => setSelectedWidgetId(`jsx-${exportName}`)}
             onDeselect={() => setSelectedWidgetId(null)}
+            readOnly={!isLocalDev}
           >
             <ComponentWidget
               component={Component}
               width={sourceData.width}
               height={sourceData.height}
-              onUpdate={(updates) => handleSourceUpdate(exportName, updates)}
+              onUpdate={isLocalDev ? (updates) => handleSourceUpdate(exportName, updates) : undefined}
             />
           </WidgetChrome>
         </div>
@@ -1177,25 +1181,26 @@ export default function CanvasPage({ name }) {
         id={widget.id}
         data-tc-x={widget?.position?.x ?? 0}
         data-tc-y={widget?.position?.y ?? 0}
-        data-tc-handle=".tc-drag-handle"
+        {...(isLocalDev ? { 'data-tc-handle': '.tc-drag-handle' } : {})}
         {...canvasPrimerAttrs}
         style={canvasThemeVars}
-        onClick={(e) => {
+        onClick={isLocalDev ? (e) => {
           e.stopPropagation()
           setSelectedWidgetId(widget.id)
-        }}
+        } : undefined}
       >
         <ChromeWrappedWidget
           widget={widget}
           selected={selectedWidgetId === widget.id}
           onSelect={() => setSelectedWidgetId(widget.id)}
           onDeselect={() => setSelectedWidgetId(null)}
-          onUpdate={handleWidgetUpdate}
-          onCopy={handleWidgetCopy}
-          onRemove={(id) => {
+          onUpdate={isLocalDev ? handleWidgetUpdate : undefined}
+          onCopy={isLocalDev ? handleWidgetCopy : undefined}
+          onRemove={isLocalDev ? (id) => {
             handleWidgetRemove(id)
             setSelectedWidgetId(null)
-          }}
+          } : undefined}
+          readOnly={!isLocalDev}
         />
       </div>
     )
@@ -1217,6 +1222,9 @@ export default function CanvasPage({ name }) {
           aria-label="Canvas title"
           style={{ width: `${Math.max(80, canvasTitle.length * 8.5 + 20)}px` }}
         />
+        {isLocalDev && (
+          <span className={styles.localEditingLabel}>Local editing</span>
+        )}
       </div>
       <div
         ref={scrollRef}
@@ -1243,7 +1251,7 @@ export default function CanvasPage({ name }) {
             ...(spaceHeld ? { pointerEvents: 'none' } : {}),
           }}
         >
-          <Canvas {...canvasProps} onDragEnd={handleItemDragEnd}>
+          <Canvas {...canvasProps} onDragEnd={isLocalDev ? handleItemDragEnd : undefined}>
             {allChildren}
           </Canvas>
         </div>

@@ -311,6 +311,7 @@ export default function WidgetChrome({
   onAction,
   onUpdate,
   children,
+  readOnly = false,
 }) {
   const [hovered, setHovered] = useState(false)
   const leaveTimer = useRef(null)
@@ -360,13 +361,13 @@ export default function WidgetChrome({
     onUpdate?.({ color })
   }, [onUpdate])
 
-  const showToolbar = hovered || selected
+  const showToolbar = !readOnly && (hovered || selected)
 
   return (
     <div
       className={styles.chromeContainer}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={readOnly ? undefined : handleMouseEnter}
+      onMouseLeave={readOnly ? undefined : handleMouseLeave}
     >
       <div className={`${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''}`}>
         {children}

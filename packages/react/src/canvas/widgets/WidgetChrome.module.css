@@ -61,7 +61,7 @@
 .toolbarContent {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   width: 100%;
   opacity: 0;
   pointer-events: none;
@@ -126,6 +126,7 @@
   background: var(--bgColor-default, #ffffff);
   transition: background 100ms, border-color 100ms;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 :global([data-sb-canvas-theme^='dark']) .selectHandle {

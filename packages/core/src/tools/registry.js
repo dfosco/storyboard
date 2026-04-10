@@ -13,6 +13,7 @@ export const coreHandlers = {
   inspector:            () => import('./handlers/inspector.js'),
   devtools:             () => import('./handlers/devtools.js'),
   'feature-flags':      () => import('./handlers/featureFlags.js'),
+  autosync:             () => import('./handlers/autosync.js'),
   'canvas-add-widget':  () => import('./handlers/canvasAddWidget.js'),
   'canvas-toolbar':     () => import('./handlers/canvasToolbar.js'),
 }

@@ -105,14 +105,8 @@
       "ariaLabel": "Zoom to objects",
       "label": "Zoom to objects",
       "icon": "iconoir/square-3d-three-points",
+      "meta": { "strokeWeight": 2, "scale": 1.2 },
       "render": "canvas-zoom-to-fit",
-      "surface": "canvas-toolbar",
-      "handler": "core:canvas-toolbar",
-      "modes": ["*"]
-    },
-    "canvas-undo-redo": {
-      "ariaLabel": "Undo and redo",
-      "render": "canvas-undo-redo",
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
       "modes": ["*"]
@@ -123,11 +117,18 @@
       "labelOn": "Snap to grid (on)",
       "labelOff": "Snap to grid (off)",
       "icon": "primer/apps",
-      "meta": { "strokeWeight": 4, "scale": 2 },
+      "meta": { "strokeWeight": 1.5, "scale": 1.2 },
       "render": "canvas-snap",
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
       "gridSize": 40,
+      "modes": ["*"]
+    },
+    "canvas-undo-redo": {
+      "ariaLabel": "Undo and redo",
+      "render": "canvas-undo-redo",
+      "surface": "canvas-toolbar",
+      "handler": "core:canvas-toolbar",
       "modes": ["*"]
     },
     "viewfinder": {

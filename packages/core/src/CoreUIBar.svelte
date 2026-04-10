@@ -138,7 +138,7 @@
             url: tool.url || null,
             modes: tool.modes || ['*'],
             toolKey,
-            localOnly: tool.localOnly || false,
+            localOnly: !tool.prod,
           })
         }
       }
@@ -183,7 +183,7 @@
     config.tools
       ? Object.entries(config.tools as Record<string, any>)
           .filter(([, tool]) => tool.surface === 'canvas-toolbar')
-          .filter(([, tool]) => !tool.localOnly || isLocalDev)
+          .filter(([, tool]) => tool.prod || isLocalDev)
           .map(([key, tool]) => ({ key, ...tool }))
       : []
   )

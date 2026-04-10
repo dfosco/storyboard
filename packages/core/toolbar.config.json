@@ -1,9 +1,9 @@
 {
-  "modes": [
-    { "name": "prototype", "label": "Prototype", "hue": "#2a2a2a" },
-    { "name": "inspect", "label": "Inspect", "hue": "#2a2a2a" },
-    { "name": "present", "label": "Collaborate", "hue": "#2a9d8f" }
-  ],
+  "surfaces": {
+    "main-toolbar": { "position": "bottom-right", "layout": "row" },
+    "canvas-toolbar": { "position": "bottom-left", "layout": "row" },
+    "command-list": { "position": "command-menu", "layout": "list" }
+  },
 
   "command": {
     "icon": "iconoir/key-command",
@@ -83,17 +83,6 @@
         { "type": "footer", "label": "Only available in dev environment" }
       ]
     },
-    "autosync": {
-      "label": "Autosync",
-      "ariaLabel": "Autosync",
-      "icon": "primer/sync",
-      "render": "menu",
-      "surface": "main-toolbar",
-      "handler": "core:autosync",
-      "modes": ["*"],
-      "localOnly": true,
-      "menuWidth": "320px"
-    },
     "canvas-add-widget": {
       "ariaLabel": "Add widget",
       "icon": "iconoir/grid-plus",
@@ -111,12 +100,12 @@
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
       "modes": ["*"],
-      "gridSize": 40,
       "snap": {
         "label": "Snap to grid",
         "labelOn": "Snap to grid (on)",
         "labelOff": "Snap to grid (off)",
-        "icon": "iconoir/view-grid"
+        "icon": "iconoir/view-grid",
+        "gridSize": 40
       },
       "zoomToFit": {
         "label": "Zoom to objects",

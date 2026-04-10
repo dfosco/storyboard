@@ -163,7 +163,6 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle, snapG
 
   const { isDragging } = useDraggable(draggableRef, {
     axis: 'both',
-    bounds: 'parent',
     grid: snapGrid,
     defaultClass: 'tc-drag',
     defaultClassDragging: 'tc-on',

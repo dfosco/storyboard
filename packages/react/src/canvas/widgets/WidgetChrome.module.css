@@ -16,6 +16,10 @@
   border-radius: 4px;
 }
 
+.widgetSlotMultiSelected {
+  outline-style: dashed;
+}
+
 /* Toolbar — absolutely positioned below the widget so it doesn't affect
    the draggable box dimensions (tiny-canvas measures children for drag). */
 .toolbar {

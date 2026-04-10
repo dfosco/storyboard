@@ -57,7 +57,9 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
     return () => document.removeEventListener('keydown', handleKeyDown, true)
   }, [expanded])
 
-  // Reparent iframe DOM node between inline container and modal
+  // Reparent iframe DOM node between inline container and modal.
+  // Uses moveBefore() (Chrome 133+) which preserves the iframe's
+  // browsing context — no reload. Falls back to appendChild.
   useEffect(() => {
     const iframe = iframeRef.current
     if (!iframe) return
@@ -67,7 +69,12 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
       iframe._savedStyle = iframe.getAttribute('style') || ''
       iframe.className = styles.expandIframe
       iframe.removeAttribute('style')
-      modalContainerRef.current.prepend(iframe)
+      const target = modalContainerRef.current
+      if (target.moveBefore) {
+        target.moveBefore(iframe, target.firstChild)
+      } else {
+        target.prepend(iframe)
+      }
     } else if (!expanded && inlineContainerRef.current) {
       if (iframe._savedClassName !== undefined) {
         iframe.className = iframe._savedClassName
@@ -75,7 +82,12 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
         delete iframe._savedClassName
         delete iframe._savedStyle
       }
-      inlineContainerRef.current.appendChild(iframe)
+      const target = inlineContainerRef.current
+      if (target.moveBefore) {
+        target.moveBefore(iframe, null)
+      } else {
+        target.appendChild(iframe)
+      }
     }
   }, [expanded])
 

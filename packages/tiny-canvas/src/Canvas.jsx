@@ -24,6 +24,8 @@ function Canvas({
   snapGrid,
   colorMode = 'auto',
   locked = false,
+  onDragStart,
+  onDrag,
   onDragEnd,
 }) {
   const showDots = dotted || grid;
@@ -55,6 +57,8 @@ function Canvas({
             snapGrid={snapGrid}
             dragId={dragId}
             initialPosition={initialPosition}
+            onDragStart={onDragStart}
+            onDrag={onDrag}
             onDragEnd={onDragEnd}
             handle={handle}
             locked={locked}

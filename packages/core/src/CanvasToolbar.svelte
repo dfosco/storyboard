@@ -42,6 +42,12 @@
   onMount(() => {
     document.addEventListener('storyboard:canvas:undo-redo-state', handleUndoRedoState as EventListener)
     document.addEventListener('storyboard:canvas:snap-state', handleSnapState as EventListener)
+    // Broadcast configured gridSize to React on mount
+    if (config.gridSize) {
+      document.dispatchEvent(new CustomEvent('storyboard:canvas:grid-size', {
+        detail: { gridSize: config.gridSize }
+      }))
+    }
   })
 
   onDestroy(() => {

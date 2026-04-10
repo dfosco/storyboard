@@ -150,7 +150,7 @@
 }
 
 .pickerItem:focus-visible {
-  outline: 2px solid var(--bgColor-accent-emphasis, #2f81f7);
+  outline: 4px solid var(--bgColor-accent-emphasis, #2f81f7);
   outline-offset: -2px;
 }
 

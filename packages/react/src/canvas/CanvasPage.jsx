@@ -338,51 +338,61 @@ export default function CanvasPage({ name }) {
   }, [])
 
   // --- Multi-select live drag preview via imperative DOM transforms ---
-  // On drag start, snapshot each peer's neodrag article translate.
-  // On each tick, set peer article translate = snapshot + delta.
-  // Same delta, same rate, different starting points.
-  const dragStartPosRef = useRef(null)
-  const peerStartPositions = useRef(new Map())
+  // On drag start, snapshot ALL articles' translate values (same coord space).
+  // On each tick, read dragged article's current translate, compute delta
+  // from its snapshot, apply same delta to all peers.
+  const draggedArticleRef = useRef(null)
+  const draggedStartTranslate = useRef({ x: 0, y: 0 })
+  const peerSnapshots = useRef(new Map())
 
-  const handleItemDragStart = useCallback((dragId, startPos) => {
+  function parseTranslate(article) {
+    const raw = article?.style.translate || '0px 0px'
+    const parts = raw.match(/-?[\d.]+/g) || [0, 0]
+    return { x: parseFloat(parts[0]) || 0, y: parseFloat(parts[1]) || 0 }
+  }
+
+  const handleItemDragStart = useCallback((dragId) => {
     const ids = selectedIdsRef.current
-    peerStartPositions.current.clear()
-    if (ids.size <= 1 || !ids.has(dragId)) {
-      dragStartPosRef.current = null
-      return
-    }
-    dragStartPosRef.current = startPos
+    peerSnapshots.current.clear()
+    draggedArticleRef.current = null
+    if (ids.size <= 1 || !ids.has(dragId)) return
 
-    // Snapshot each peer's current neodrag translate
+    // Snapshot dragged widget's article translate
+    const draggedEl = document.getElementById(dragId)
+    const draggedArticle = draggedEl?.closest('article')
+    if (!draggedArticle) return
+    draggedArticleRef.current = draggedArticle
+    draggedStartTranslate.current = parseTranslate(draggedArticle)
+
+    // Snapshot each peer's article translate
     for (const id of ids) {
       if (id === dragId) continue
       const widgetEl = document.getElementById(id)
       const article = widgetEl?.closest('article')
       if (!article) continue
-      const raw = article.style.translate || '0px 0px'
-      const parts = raw.match(/-?[\d.]+/g) || [0, 0]
-      peerStartPositions.current.set(id, {
+      peerSnapshots.current.set(id, {
         article,
-        x: parseFloat(parts[0]) || 0,
-        y: parseFloat(parts[1]) || 0,
+        ...parseTranslate(article),
       })
     }
   }, [])
 
-  const handleItemDrag = useCallback((dragId, currentPos) => {
-    if (!dragStartPosRef.current) return
+  const handleItemDrag = useCallback(() => {
+    if (!draggedArticleRef.current) return
 
-    const dx = currentPos.x - dragStartPosRef.current.x
-    const dy = currentPos.y - dragStartPosRef.current.y
+    // Read dragged article's CURRENT translate (set by neodrag)
+    const current = parseTranslate(draggedArticleRef.current)
+    const dx = current.x - draggedStartTranslate.current.x
+    const dy = current.y - draggedStartTranslate.current.y
 
-    for (const [, peer] of peerStartPositions.current) {
+    for (const [, peer] of peerSnapshots.current) {
       peer.article.style.translate = `${peer.x + dx}px ${peer.y + dy}px`
     }
   }, [])
 
   const clearDragPreview = useCallback(() => {
-    peerStartPositions.current.clear()
-    dragStartPosRef.current = null
+    peerSnapshots.current.clear()
+    draggedArticleRef.current = null
   }, [])
 
   if (canvas !== trackedCanvas) {

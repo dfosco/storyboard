@@ -9,7 +9,8 @@ async function fetchCanvasFromServer(name) {
   try {
     const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
     const res = await fetch(`${base}/_storyboard/canvas/read?name=${encodeURIComponent(name)}`)
-    if (res.ok) return res.json()
+    const contentType = res.headers.get('content-type') || ''
+    if (res.ok && contentType.includes('application/json')) return res.json()
   } catch { /* fall back to build-time data */ }
   return null
 }

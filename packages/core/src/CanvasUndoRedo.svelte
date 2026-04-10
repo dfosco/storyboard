@@ -100,8 +100,8 @@
   }
 
   .canvas-undo-separator {
-    width: 2.5px;
-    height: 24px;
+    width: 2px;
+    height: 40px;
     background: var(--sb--trigger-border, var(--color-slate-400));
     flex-shrink: 0;
   }

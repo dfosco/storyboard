@@ -23,7 +23,7 @@
         aria-label={config.label || 'Zoom to objects'}
         {tabindex}
       >
-        <Icon name={config.icon || 'iconoir/square-3d-three-points'} size={16} strokeWeight={2} />
+        <Icon name={config.icon || 'iconoir/square-3d-three-points'} size={16} {...(config.meta || {})} />
       </button>
     </Tooltip.Trigger>
     <Tooltip.Content side="top">{config.label || 'Zoom to objects'}</Tooltip.Content>

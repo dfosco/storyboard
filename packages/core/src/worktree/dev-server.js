@@ -1,17 +1,25 @@
+#!/usr/bin/env node
 /**
- * Smart Dev Server Launcher (root repo wrapper)
+ * storyboard-dev — Smart Dev Server Launcher
  *
- * Delegates to the core worktree port logic published in @dfosco/storyboard-core.
- * In the source repo, we import directly from the local package path so edits
- * take effect immediately. Client repos use `npx storyboard-dev` instead.
+ * Detects whether the current working directory is inside a git worktree
+ * and resolves the correct port from .worktrees/ports.json.
  *
- * Usage:
- *   node scripts/dev-server.js          # auto-detect worktree
- *   node scripts/dev-server.js --port N # override port
+ * Fallback: port 1234 (the default) if not in a worktree or no registry exists.
+ *
+ * Published as a bin in @dfosco/storyboard-core so client repos can use:
+ *   npx storyboard-dev
+ *
+ * Or add to package.json scripts:
+ *   "dev": "storyboard-dev"
+ *
+ * Accepts:
+ *   --port N    Override port
+ *   [any]       Extra args forwarded to vite
  */
 
 import { spawn } from 'child_process'
-import { detectWorktreeName, getPort } from '../packages/core/src/worktree/port.js'
+import { detectWorktreeName, getPort } from './port.js'
 
 const DEFAULT_PORT = 1234
 

@@ -4,7 +4,8 @@
   "type": "module",
   "license": "MIT",
   "bin": {
-    "storyboard-scaffold": "./src/scaffold.js"
+    "storyboard-scaffold": "./src/scaffold.js",
+    "storyboard-dev": "./src/worktree/dev-server.js"
   },
   "repository": {
     "type": "git",
@@ -45,7 +46,8 @@
     "./ui/design-modes": "./src/ui/design-modes.ts",
     "./ui/viewfinder": "./src/ui/viewfinder.ts",
     "./svelte-plugin-ui/styles/base.css": "./dist/tailwind.css",
-    "./styles/tailwind.css": "./dist/tailwind.css"
+    "./styles/tailwind.css": "./dist/tailwind.css",
+    "./worktree/port": "./src/worktree/port.js"
   },
   "dependencies": {
     "@primer/octicons": "^19.22.0",

@@ -1217,6 +1217,7 @@ export default function CanvasPage({ name }) {
             ref={titleInputRef}
             className={styles.canvasTitleInput}
             value={canvasTitle}
+            size={1}
             onChange={handleTitleChange}
             onKeyDown={handleTitleKeyDown}
             onMouseDown={(e) => e.stopPropagation()}

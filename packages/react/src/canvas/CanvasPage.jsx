@@ -359,9 +359,12 @@ export default function CanvasPage({ name }) {
 
     for (const id of ids) {
       if (id === dragId) continue
-      const el = document.getElementById(id)
-      if (!el) continue
-      el.style.translate = `${dx}px ${dy}px`
+      const widgetEl = document.getElementById(id)
+      // Apply to tc-draggable-inner — sits inside neodrag's article,
+      // so we offset without fighting neodrag's own transform.
+      const inner = widgetEl?.closest('.tc-draggable-inner')
+      if (!inner) continue
+      inner.style.transform = `translate(${dx}px, ${dy}px)`
     }
   }, [])
 
@@ -369,8 +372,9 @@ export default function CanvasPage({ name }) {
     if (!dragStartPosRef.current) return
     const ids = selectedIdsRef.current
     for (const id of ids) {
-      const el = document.getElementById(id)
-      if (el) el.style.translate = ''
+      const widgetEl = document.getElementById(id)
+      const inner = widgetEl?.closest('.tc-draggable-inner')
+      if (inner) inner.style.transform = ''
     }
     dragStartPosRef.current = null
   }, [])

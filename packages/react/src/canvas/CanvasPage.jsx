@@ -338,10 +338,9 @@ export default function CanvasPage({ name }) {
   }, [])
 
   // --- Multi-select live drag preview via imperative DOM transforms ---
-  // On drag start, snapshot ALL articles' translate values (same coord space).
-  // On each tick, read dragged article's current translate, compute delta
-  // from its snapshot, apply same delta to all peers.
-  const draggedArticleRef = useRef(null)
+  // On drag start, snapshot dragged article's translate + all peer translates.
+  // On each tick, use the callback position (same frame as neodrag) to compute
+  // delta from the snapshot, and apply to all peers. No DOM reads during drag.
   const draggedStartTranslate = useRef({ x: 0, y: 0 })
   const peerSnapshots = useRef(new Map())
 
@@ -354,14 +353,15 @@ export default function CanvasPage({ name }) {
   const handleItemDragStart = useCallback((dragId) => {
     const ids = selectedIdsRef.current
     peerSnapshots.current.clear()
-    draggedArticleRef.current = null
-    if (ids.size <= 1 || !ids.has(dragId)) return
+    if (ids.size <= 1 || !ids.has(dragId)) {
+      draggedStartTranslate.current = null
+      return
+    }
 
-    // Snapshot dragged widget's article translate
+    // Snapshot dragged widget's article translate (same coord space as peers)
     const draggedEl = document.getElementById(dragId)
     const draggedArticle = draggedEl?.closest('article')
     if (!draggedArticle) return
-    draggedArticleRef.current = draggedArticle
     draggedStartTranslate.current = parseTranslate(draggedArticle)
 
     // Snapshot each peer's article translate
@@ -377,13 +377,12 @@ export default function CanvasPage({ name }) {
     }
   }, [])
 
-  const handleItemDrag = useCallback(() => {
-    if (!draggedArticleRef.current) return
+  const handleItemDrag = useCallback((dragId, currentPos) => {
+    if (!draggedStartTranslate.current) return
 
-    // Read dragged article's CURRENT translate (set by neodrag)
-    const current = parseTranslate(draggedArticleRef.current)
-    const dx = current.x - draggedStartTranslate.current.x
-    const dy = current.y - draggedStartTranslate.current.y
+    // currentPos comes from the same neodrag tick — zero lag
+    const dx = currentPos.x - draggedStartTranslate.current.x
+    const dy = currentPos.y - draggedStartTranslate.current.y
 
     for (const [, peer] of peerSnapshots.current) {
       peer.article.style.translate = `${peer.x + dx}px ${peer.y + dy}px`
@@ -392,7 +391,7 @@ export default function CanvasPage({ name }) {
 
   const clearDragPreview = useCallback(() => {
     peerSnapshots.current.clear()
-    draggedArticleRef.current = null
+    draggedStartTranslate.current = null
   }, [])
 
   if (canvas !== trackedCanvas) {

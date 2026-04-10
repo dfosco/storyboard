@@ -6,6 +6,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
   import * as Tooltip from './lib/components/ui/tooltip/index.js'
+  import Icon from './svelte-plugin-ui/components/Icon.svelte'
 
   interface Props {
     config?: any
@@ -155,9 +156,7 @@
           aria-pressed={snapEnabled}
           tabindex={-1}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-            <path d="M2 2h4v4H2V2Zm1.5 1.5v1h1v-1h-1ZM2 10h4v4H2v-4Zm1.5 1.5v1h1v-1h-1ZM10 2h4v4h-4V2Zm1.5 1.5v1h1v-1h-1ZM10 10h4v4h-4v-4Zm1.5 1.5v1h1v-1h-1ZM8 1v2h-.75a.75.75 0 0 0 0 1.5H8V7H5.5v-.75a.75.75 0 0 0-1.5 0V7H1V8h3v.75a.75.75 0 0 0 1.5 0V8H8v2.5h-.75a.75.75 0 0 0 0 1.5H8V15h1v-3h.75a.75.75 0 0 0 0-1.5H9V8h2.5v.75a.75.75 0 0 0 1.5 0V8H16V7h-3v-.75a.75.75 0 0 0-1.5 0V7H9V4.5h.75a.75.75 0 0 0 0-1.5H9V1H8Z" />
-          </svg>
+          <Icon name={snapEnabled ? 'iconoir/dots-grid-3x3-solid' : 'iconoir/dots-grid-3x3'} size={16} />
         </button>
       </Tooltip.Trigger>
       <Tooltip.Content side="top">{snapEnabled ? 'Snap to grid (on)' : 'Snap to grid (off)'}</Tooltip.Content>

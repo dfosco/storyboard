@@ -27,8 +27,13 @@ function Canvas({
 }) {
   const showDots = dotted || grid;
   const effectiveGridSize = snapGrid ? snapGrid[0] : gridSize;
+  const dotRadius = effectiveGridSize && effectiveGridSize < 16 ? 1 : 2;
   const canvasStyle = effectiveGridSize
-    ? { '--tc-grid-size': `${effectiveGridSize}px`, '--tc-grid-offset': `${effectiveGridSize / -2}px` }
+    ? {
+        '--tc-grid-size': `${effectiveGridSize}px`,
+        '--tc-grid-offset': `${effectiveGridSize / -2}px`,
+        '--tc-dot-radius': `${dotRadius}px`,
+      }
     : undefined;
 
   return (

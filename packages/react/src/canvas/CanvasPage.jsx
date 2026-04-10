@@ -130,6 +130,26 @@ function roundPosition(value) {
   return Math.round(value)
 }
 
+/** Snap a value to the nearest grid line. */
+function snapValue(value, gridSize) {
+  return Math.round(value / gridSize) * gridSize
+}
+
+/** Snap a position to the grid if snapping is enabled. */
+function snapPosition(pos, gridSize, enabled) {
+  if (!enabled || !gridSize) return pos
+  return {
+    x: Math.max(0, snapValue(pos.x, gridSize)),
+    y: Math.max(0, snapValue(pos.y, gridSize)),
+  }
+}
+
+/** Snap a dimension to the grid if snapping is enabled. */
+function snapDimension(value, gridSize, enabled, min = 0) {
+  if (!enabled || !gridSize) return value
+  return Math.max(min, snapValue(value, gridSize))
+}
+
 /** Padding (canvas-space pixels) around bounding box for zoom-to-fit. */
 const FIT_PADDING = 48
 
@@ -264,6 +284,8 @@ export default function CanvasPage({ name }) {
   const titleInputRef = useRef(null)
   const [localSources, setLocalSources] = useState(canvas?.sources ?? [])
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
+  const [snapEnabled, setSnapEnabled] = useState(canvas?.snapToGrid ?? false)
+  const snapGridSize = canvas?.gridSize || 40
 
   // Undo/redo history — tracks both widgets and sources as a combined snapshot
   const undoRedo = useUndoRedo()
@@ -321,15 +343,21 @@ export default function CanvasPage({ name }) {
 
   const handleWidgetUpdate = useCallback((widgetId, updates) => {
     undoRedo.snapshot(stateRef.current, 'edit', widgetId)
+    // Snap width/height to grid when snap is enabled
+    const snapped = { ...updates }
+    if (snapEnabled && snapGridSize) {
+      if (snapped.width != null) snapped.width = snapDimension(snapped.width, snapGridSize, true, 60)
+      if (snapped.height != null) snapped.height = snapDimension(snapped.height, snapGridSize, true, 60)
+    }
     setLocalWidgets((prev) => {
       if (!prev) return prev
       const next = prev.map((w) =>
-        w.id === widgetId ? { ...w, props: { ...w.props, ...updates } } : w
+        w.id === widgetId ? { ...w, props: { ...w.props, ...snapped } } : w
       )
       debouncedSave(name, next)
       return next
     })
-  }, [name, debouncedSave, undoRedo])
+  }, [name, debouncedSave, undoRedo, snapEnabled, snapGridSize])
 
   const handleWidgetRemove = useCallback((widgetId) => {
     undoRedo.snapshot(stateRef.current, 'remove', widgetId)
@@ -390,7 +418,8 @@ export default function CanvasPage({ name }) {
 
   const handleItemDragEnd = useCallback((dragId, position) => {
     if (!dragId || !position) return
-    const rounded = { x: Math.max(0, roundPosition(position.x)), y: Math.max(0, roundPosition(position.y)) }
+    const raw = { x: Math.max(0, roundPosition(position.x)), y: Math.max(0, roundPosition(position.y)) }
+    const rounded = snapPosition(raw, snapGridSize, snapEnabled)
 
     if (dragId.startsWith('jsx-')) {
       undoRedo.snapshot(stateRef.current, 'move', dragId)
@@ -423,7 +452,7 @@ export default function CanvasPage({ name }) {
       )
       return next
     })
-  }, [name, undoRedo])
+  }, [name, undoRedo, snapEnabled, snapGridSize])
 
   useEffect(() => {
     zoomRef.current = zoom
@@ -646,6 +675,28 @@ export default function CanvasPage({ name }) {
     document.addEventListener('storyboard:canvas:set-zoom', handleZoom)
     return () => document.removeEventListener('storyboard:canvas:set-zoom', handleZoom)
   }, [])
+
+  // Listen for snap-to-grid toggle from CoreUIBar
+  useEffect(() => {
+    function handleSnapToggle() {
+      setSnapEnabled((prev) => {
+        const next = !prev
+        updateCanvas(name, { snapToGrid: next }).catch((err) =>
+          console.error('[canvas] Failed to persist snap setting:', err)
+        )
+        return next
+      })
+    }
+    document.addEventListener('storyboard:canvas:toggle-snap', handleSnapToggle)
+    return () => document.removeEventListener('storyboard:canvas:toggle-snap', handleSnapToggle)
+  }, [name])
+
+  // Broadcast snap state to Svelte toolbar
+  useEffect(() => {
+    document.dispatchEvent(new CustomEvent('storyboard:canvas:snap-state', {
+      detail: { snapEnabled }
+    }))
+  }, [snapEnabled])
 
   // Listen for zoom-to-fit from CoreUIBar
   useEffect(() => {

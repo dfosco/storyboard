@@ -26,12 +26,17 @@ function Canvas({
   onDragEnd,
 }) {
   const showDots = dotted || grid;
+  const effectiveGridSize = snapGrid ? snapGrid[0] : gridSize;
+  const canvasStyle = effectiveGridSize
+    ? { '--tc-grid-size': `${effectiveGridSize}px`, '--tc-grid-offset': `${effectiveGridSize / -2}px` }
+    : undefined;
 
   return (
     <main
       className="tc-canvas"
       data-dotted={showDots || undefined}
       data-color-mode={colorMode !== 'auto' ? colorMode : undefined}
+      style={canvasStyle}
     >
       {Children.map(children, (child, index) => {
         const dragId = findDragId(child) ?? generateDragId(child, index);

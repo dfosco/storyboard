@@ -406,15 +406,20 @@ export default function CanvasPage({ name }) {
 
   const handleSourceUpdate = useCallback((exportName, updates) => {
     undoRedo.snapshot(stateRef.current, 'edit', `jsx-${exportName}`)
+    const snapped = { ...updates }
+    if (snapEnabled && snapGridSize) {
+      if (snapped.width != null) snapped.width = snapDimension(snapped.width, snapGridSize, true, 100)
+      if (snapped.height != null) snapped.height = snapDimension(snapped.height, snapGridSize, true, 60)
+    }
     setLocalSources((prev) => {
       const current = Array.isArray(prev) ? prev : []
       const next = current.some((s) => s?.export === exportName)
-        ? current.map((s) => (s?.export === exportName ? { ...s, ...updates } : s))
-        : [...current, { export: exportName, ...updates }]
+        ? current.map((s) => (s?.export === exportName ? { ...s, ...snapped } : s))
+        : [...current, { export: exportName, ...snapped }]
       debouncedSourceSave(name, next)
       return next
     })
-  }, [name, debouncedSourceSave, undoRedo])
+  }, [name, debouncedSourceSave, undoRedo, snapEnabled, snapGridSize])
 
   const handleItemDragEnd = useCallback((dragId, position) => {
     if (!dragId || !position) return

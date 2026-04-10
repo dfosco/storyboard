@@ -9,7 +9,8 @@
     "label:edit":       "Edit",
     "label:download":   "Download image",
     "label:copy-png":   "Copy as PNG",
-    "label:copy-path":  "Copy file path"
+    "label:copy-path":  "Copy file path",
+    "label:expand":     "Expand"
   },
   "widgets": {
     "sticky-note": {
@@ -54,10 +55,11 @@
         "height":      { "type": "number", "label": "Height",       "category": "size",     "default": 600, "min": 200, "max": 1500 }
       },
       "features": [
-        { "id": "open-external", "type": "action", "action": "open-external", "label": "$label:open-ext",   "icon": "open-external" },
+        { "id": "open-external", "type": "action", "action": "open-external", "label": "$label:open-ext",   "icon": "open-external", "prod": true },
         { "id": "zoom-in",      "type": "action", "action": "zoom-in",       "label": "$label:zoom-in",    "icon": "zoom-in" },
         { "id": "zoom-out",     "type": "action", "action": "zoom-out",      "label": "$label:zoom-out",   "icon": "zoom-out" },
         { "id": "edit-url",     "type": "action", "action": "edit",          "label": "$label:edit",       "icon": "edit" },
+        { "id": "expand",       "type": "action", "action": "expand",        "label": "$label:expand",     "icon": "expand", "prod": true },
         { "id": "copy",         "type": "action", "action": "copy",          "label": "$label:duplicate",  "icon": "copy" },
         { "id": "copy-link",    "type": "action", "action": "copy-link",     "label": "$label:copy-link",  "icon": "link",  "menu": true, "prod": true },
         { "id": "delete",       "type": "action", "action": "delete",        "label": "$label:delete",     "icon": "trash", "menu": true }
@@ -72,7 +74,8 @@
         "height": { "type": "number", "label": "Height", "category": "size",    "default": 450, "min": 150, "max": 1500 }
       },
       "features": [
-        { "id": "open-external", "type": "action", "action": "open-external", "label": "$label:open-ext",   "icon": "open-external" },
+        { "id": "open-external", "type": "action", "action": "open-external", "label": "$label:open-ext",   "icon": "open-external", "prod": true },
+        { "id": "expand",        "type": "action", "action": "expand",        "label": "$label:expand",     "icon": "expand", "prod": true },
         { "id": "copy",          "type": "action", "action": "copy",          "label": "$label:duplicate",  "icon": "copy" },
         { "id": "copy-link",     "type": "action", "action": "copy-link",     "label": "$label:copy-link",  "icon": "link",  "menu": true, "prod": true },
         { "id": "delete",        "type": "action", "action": "delete",        "label": "$label:delete",     "icon": "trash", "menu": true }

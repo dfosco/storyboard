@@ -81,3 +81,67 @@
 .resizeHandle:hover {
   opacity: 1;
 }
+
+/* Expand modal — fullscreen overlay for expanded iframe */
+.expandBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: expandFadeIn 0.15s ease;
+}
+
+@keyframes expandFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.expandContainer {
+  width: 90vw;
+  height: 90vh;
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bgColor-default, #ffffff);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  animation: expandScaleIn 0.2s ease;
+}
+
+@keyframes expandScaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.expandIframe {
+  border: none;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.expandClose {
+  all: unset;
+  cursor: pointer;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #ffffff;
+  font-size: 16px;
+  z-index: 1;
+  transition: background 100ms;
+  backdrop-filter: blur(4px);
+}
+
+.expandClose:hover {
+  background: rgba(0, 0, 0, 0.7);
+}

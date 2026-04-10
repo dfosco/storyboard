@@ -85,6 +85,23 @@ function LinkIcon() {
   )
 }
 
+function ChevronDownIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z" />
+    </svg>
+  )
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Z" />
+      <path d="M7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06Z" />
+    </svg>
+  )
+}
+
 /** Icon registry — maps icon name strings from config to React components. */
 const ICON_REGISTRY = {
   'trash': DeleteIcon,
@@ -97,6 +114,8 @@ const ICON_REGISTRY = {
   'copy': CopyIcon,
   'link': LinkIcon,
   'more': MoreIcon,
+  'chevron-down': ChevronDownIcon,
+  'download': DownloadIcon,
 }
 
 /** Danger-styled actions in the overflow menu. */
@@ -158,6 +177,64 @@ function WidgetOverflowMenu({ widgetId, menuFeatures, onAction }) {
               >
                 {Icon && <Icon />}
                 <span>{label}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Dropdown feature — a chevron button that opens a menu of actions.
+ * Items and their icons/labels come from config.
+ */
+function DropdownFeature({ feature, onAction }) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handlePointerDown(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [open])
+
+  const TriggerIcon = ICON_REGISTRY[feature.icon] || ChevronDownIcon
+
+  return (
+    <div ref={menuRef} className={styles.overflowWrapper}>
+      <Tooltip text={feature.label || 'Actions'} direction="n">
+        <button
+          className={styles.featureBtn}
+          onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
+          aria-label={feature.label || 'Actions'}
+          aria-expanded={open}
+        >
+          <TriggerIcon />
+        </button>
+      </Tooltip>
+      {open && (
+        <div className={styles.overflowMenu}>
+          {(feature.items || []).map((item) => {
+            const Icon = ICON_REGISTRY[item.icon]
+            return (
+              <button
+                key={item.action}
+                className={styles.overflowItem}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onAction?.(item.action)
+                  setOpen(false)
+                }}
+              >
+                {Icon && <Icon />}
+                <span>{item.label || item.action}</span>
               </button>
             )
           })}
@@ -344,6 +421,22 @@ export default function WidgetChrome({
                       {Icon ? <Icon /> : feature.action}
                     </button>
                   </Tooltip>
+                )
+              }
+
+              if (feature.type === 'dropdown') {
+                return (
+                  <DropdownFeature
+                    key={feature.id}
+                    feature={feature}
+                    onAction={(actionId) => {
+                      if (widgetRef?.current?.handleAction) {
+                        widgetRef.current.handleAction(actionId)
+                      } else {
+                        onAction?.(actionId)
+                      }
+                    }}
+                  />
                 )
               }
 

@@ -51,6 +51,28 @@ const ImageWidget = forwardRef(function ImageWidget({ props, onUpdate }, ref) {
         }).catch((err) => {
           console.error('[canvas] Failed to toggle image privacy:', err)
         })
+      } else if (actionId === 'download-image') {
+        if (!src) return
+        const url = getImageUrl(src)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = src.replace(/^_/, '')
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+      } else if (actionId === 'copy-as-png') {
+        if (!src) return
+        const url = getImageUrl(src)
+        fetch(url)
+          .then((r) => r.blob())
+          .then((blob) => {
+            const pngBlob = blob.type === 'image/png' ? blob : blob
+            navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]).catch(() => {})
+          })
+          .catch((err) => console.error('[canvas] Failed to copy image:', err))
+      } else if (actionId === 'copy-file-path') {
+        if (!src) return
+        navigator.clipboard.writeText(`src/canvas/images/${src}`).catch(() => {})
       }
     }
   }), [src, onUpdate])

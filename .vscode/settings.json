@@ -3,5 +3,27 @@
   "explorer.excludeGitIgnore": false,
   "files.associations": {
     "**/src/data/**/*.json": "jsonc"
-  }
+  },
+  "json.schemas": [
+    {
+      "fileMatch": ["**/*.prototype.json"],
+      "url": "./packages/core/schemas/prototype.schema.json"
+    },
+    {
+      "fileMatch": ["**/*.folder.json"],
+      "url": "./packages/core/schemas/folder.schema.json"
+    },
+    {
+      "fileMatch": ["**/*.flow.json"],
+      "url": "./packages/core/schemas/flow.schema.json"
+    },
+    {
+      "fileMatch": ["storyboard.config.json"],
+      "url": "./packages/core/schemas/storyboard-config.schema.json"
+    },
+    {
+      "fileMatch": ["**/toolbar.config.json"],
+      "url": "./packages/core/schemas/toolbar-config.schema.json"
+    }
+  ]
 }

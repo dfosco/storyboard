@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://storyboard.dev/schemas/prototype.schema.json",
+  "title": "Storyboard Prototype",
+  "description": "Metadata for a storyboard prototype. Place this file in your prototype directory as `name.prototype.json`.",
+  "type": "object",
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Prototype metadata displayed in the viewfinder and prototype chrome.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Display title for the prototype."
+        },
+        "description": {
+          "type": "string",
+          "description": "Short description shown in the viewfinder."
+        },
+        "author": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "GitHub username(s) of the author(s). Can be a single string or an array."
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Tags for filtering and organization in the viewfinder."
+        },
+        "team": {
+          "type": "string",
+          "description": "Team name associated with this prototype."
+        },
+        "icon": {
+          "type": "string",
+          "description": "Custom icon for the prototype (e.g., 'primer/rocket')."
+        },
+        "hideFlows": {
+          "type": "boolean",
+          "description": "When true, hides the flows menu for this prototype.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "For external prototypes: the URL to open in a new tab. When set, this prototype links externally instead of rendering locally."
+    }
+  },
+  "additionalProperties": false
+}

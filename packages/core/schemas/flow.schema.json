@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://storyboard.dev/schemas/flow.schema.json",
+  "title": "Storyboard Flow",
+  "description": "A flow file provides the data context for a prototype page. It can reference objects via $ref and merge globals via $global. Any additional properties become the flow data consumed by components.",
+  "type": "object",
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Flow metadata for display in the flows menu.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Display title for this flow in the flows menu."
+        },
+        "description": {
+          "type": "string",
+          "description": "Short description of this flow's purpose or state."
+        },
+        "author": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "GitHub username(s) of the author(s)."
+        },
+        "default": {
+          "type": "boolean",
+          "description": "When true, this flow is loaded by default for its route.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "route": {
+      "type": "string",
+      "description": "Explicit route path this flow targets. If omitted, the route is inferred from the file location."
+    },
+    "$global": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Array of object names to merge into the flow root. Flow values take precedence on conflicts."
+    }
+  },
+  "additionalProperties": true
+}

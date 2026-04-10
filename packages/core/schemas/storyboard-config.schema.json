@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://storyboard.dev/schemas/storyboard-config.schema.json",
+  "title": "Storyboard Config",
+  "description": "Project-level configuration for a storyboard application. Place this file in your project root as `storyboard.config.json`.",
+  "type": "object",
+  "properties": {
+    "repository": {
+      "type": "object",
+      "description": "GitHub repository information for linking and comments.",
+      "properties": {
+        "owner": {
+          "type": "string",
+          "description": "GitHub username or organization that owns the repository."
+        },
+        "name": {
+          "type": "string",
+          "description": "Repository name on GitHub."
+        }
+      },
+      "additionalProperties": false
+    },
+    "modes": {
+      "type": "object",
+      "description": "App mode configuration.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable/disable mode switching in the toolbar.",
+          "default": false
+        },
+        "defaults": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "label": { "type": "string" },
+              "hue": { "type": "string" }
+            }
+          },
+          "description": "Override the default mode definitions."
+        }
+      },
+      "additionalProperties": false
+    },
+    "comments": {
+      "type": "object",
+      "description": "Comments system configuration backed by GitHub Discussions.",
+      "properties": {
+        "discussions": {
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string",
+              "description": "GitHub Discussions category to use for comments.",
+              "default": "Comments"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "plugins": {
+      "type": "object",
+      "description": "Plugin toggles.",
+      "properties": {
+        "devtools": {
+          "type": "boolean",
+          "description": "Enable the devtools panel in the command palette.",
+          "default": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "featureFlags": {
+      "type": "object",
+      "description": "Key-value map of feature flags. Consumed via useFeatureFlag() hook.",
+      "additionalProperties": { "type": "boolean" }
+    },
+    "workshop": {
+      "type": "object",
+      "description": "Workshop feature configuration for creating prototypes/flows/canvases in dev mode.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Master toggle for workshop features.",
+          "default": false
+        },
+        "features": {
+          "type": "object",
+          "description": "Toggle individual workshop features.",
+          "properties": {
+            "createPrototype": {
+              "type": "boolean",
+              "description": "Enable 'New prototype' action.",
+              "default": true
+            },
+            "createFlow": {
+              "type": "boolean",
+              "description": "Enable 'New flow' action.",
+              "default": true
+            },
+            "createPage": {
+              "type": "boolean",
+              "description": "Enable 'New page' action.",
+              "default": false
+            },
+            "createCanvas": {
+              "type": "boolean",
+              "description": "Enable 'New canvas' action.",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "partials": {
+          "type": "array",
+          "description": "Template partials available when creating new prototypes.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string",
+                "description": "Directory name containing the partial template."
+              },
+              "name": {
+                "type": "string",
+                "description": "Display name for the partial in the UI."
+              }
+            },
+            "required": ["directory", "name"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,212 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://storyboard.dev/schemas/toolbar-config.schema.json",
+  "title": "Storyboard Toolbar Config",
+  "description": "Configuration for the storyboard toolbar, including modes, shortcuts, and tool definitions. Place this file in your project as `toolbar.config.json`.",
+  "type": "object",
+  "properties": {
+    "_comment": {
+      "type": "string",
+      "description": "Optional comment explaining the config file. Ignored at runtime."
+    },
+    "modes": {
+      "type": "array",
+      "description": "App mode definitions shown in the mode switcher.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Internal identifier for the mode."
+          },
+          "label": {
+            "type": "string",
+            "description": "Display label shown in the mode switcher."
+          },
+          "hue": {
+            "type": "string",
+            "description": "CSS color value for mode theming."
+          }
+        },
+        "required": ["name", "label"],
+        "additionalProperties": false
+      }
+    },
+    "command": {
+      "type": "object",
+      "description": "Command palette trigger configuration.",
+      "properties": {
+        "icon": {
+          "type": "string",
+          "description": "Icon identifier (e.g., 'iconoir/key-command')."
+        },
+        "meta": {
+          "type": "object",
+          "description": "Icon rendering options.",
+          "properties": {
+            "strokeWeight": { "type": "number" },
+            "scale": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        "shortcut": {
+          "$ref": "#/definitions/shortcut"
+        }
+      },
+      "additionalProperties": false
+    },
+    "shortcuts": {
+      "type": "object",
+      "description": "Global keyboard shortcuts.",
+      "additionalProperties": {
+        "$ref": "#/definitions/shortcut"
+      }
+    },
+    "highlighting": {
+      "type": "object",
+      "description": "Code highlighting theme configuration.",
+      "properties": {
+        "dark": {
+          "type": "string",
+          "description": "Shiki theme name for dark mode."
+        },
+        "light": {
+          "type": "string",
+          "description": "Shiki theme name for light mode."
+        }
+      },
+      "additionalProperties": false
+    },
+    "tools": {
+      "type": "object",
+      "description": "Tool definitions keyed by tool identifier.",
+      "additionalProperties": {
+        "$ref": "#/definitions/tool"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "shortcut": {
+      "type": "object",
+      "description": "Keyboard shortcut definition.",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The key to press (e.g., 'k', '.', 'i')."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable label (e.g., '⌘ + K')."
+        }
+      },
+      "required": ["key"],
+      "additionalProperties": false
+    },
+    "tool": {
+      "type": "object",
+      "description": "A toolbar tool definition.",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Display label for the tool."
+        },
+        "ariaLabel": {
+          "type": "string",
+          "description": "Accessible label for screen readers and tooltips."
+        },
+        "icon": {
+          "type": "string",
+          "description": "Icon identifier (e.g., 'primer/sun', 'feather/fast-forward')."
+        },
+        "meta": {
+          "type": "object",
+          "description": "Icon rendering options.",
+          "properties": {
+            "strokeWeight": { "type": "number" },
+            "scale": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        "render": {
+          "type": "string",
+          "enum": ["button", "menu", "sidepanel", "separator", "zoom-control", "link", "submenu"],
+          "description": "How the tool renders in the UI."
+        },
+        "surface": {
+          "type": "string",
+          "enum": ["main-toolbar", "canvas-toolbar", "command-list"],
+          "description": "Where the tool appears in the chrome."
+        },
+        "handler": {
+          "type": "string",
+          "pattern": "^(core|custom):.+$",
+          "description": "Handler module reference. Format: 'core:name' for built-in, 'custom:name' for custom handlers."
+        },
+        "sidepanel": {
+          "type": "string",
+          "description": "For render: 'sidepanel', the sidepanel identifier to open."
+        },
+        "modes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "App modes where this tool is visible. Use ['*'] for all modes."
+        },
+        "excludeRoutes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Regex patterns for routes where this tool should be hidden."
+        },
+        "localOnly": {
+          "type": "boolean",
+          "description": "When true, tool only appears in local dev environment.",
+          "default": false
+        },
+        "menuWidth": {
+          "type": "string",
+          "description": "CSS width for menu dropdowns (e.g., '280px')."
+        },
+        "url": {
+          "type": "string",
+          "description": "For render: 'link', the URL to navigate to."
+        },
+        "shortcut": {
+          "$ref": "#/definitions/shortcut"
+        },
+        "actions": {
+          "type": "array",
+          "description": "Menu actions for render: 'menu'.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Action identifier."
+              },
+              "label": {
+                "type": "string",
+                "description": "Display label for the action."
+              },
+              "type": {
+                "type": "string",
+                "enum": ["default", "header", "footer", "separator"],
+                "description": "Action type determining how it renders."
+              },
+              "modes": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Modes where this action is visible."
+              },
+              "feature": {
+                "type": "string",
+                "description": "Workshop feature flag that gates this action."
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

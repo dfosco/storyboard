@@ -57,14 +57,18 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
   const filterRef = useRef(null)
   const embedRef = useRef(null)
 
+  const isExternal = useMemo(() => /^https?:\/\//.test(rawSrc), [rawSrc])
+
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''
+    // External URLs are embedded as-is — storyboard query params only apply to local prototypes
+    if (isExternal) return rawSrc
     const hashIdx = rawSrc.indexOf('#')
     const base = hashIdx >= 0 ? rawSrc.slice(0, hashIdx) : rawSrc
     const hash = hashIdx >= 0 ? rawSrc.slice(hashIdx) : ''
     const sep = base.includes('?') ? '&' : '?'
     return `${base}${sep}_sb_embed&_sb_theme_target=prototype&_sb_canvas_theme=${canvasTheme}${hash}`
-  }, [rawSrc, canvasTheme])
+  }, [rawSrc, canvasTheme, isExternal])
 
   // Build prototype index for the picker
   const prototypeIndex = useMemo(() => {
@@ -285,14 +289,14 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
             )}
             <form className={styles.customUrlSection} onSubmit={handleSubmit}>
               <label className={styles.urlLabel}>
-                {hasPicker ? 'Or enter a custom URL' : 'Prototype URL path'}
+                {hasPicker ? 'Or enter a URL' : 'Prototype URL'}
               </label>
               <input
                 ref={inputRef}
                 className={styles.urlInput}
                 type="text"
                 defaultValue={src}
-                placeholder="/MyPrototype/page"
+                placeholder="/MyPrototype/page or https://…"
                 onKeyDown={(e) => { if (e.key === 'Escape') handleCancelEdit() }}
               />
               <div className={styles.urlActions}>

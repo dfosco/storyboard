@@ -34,6 +34,7 @@ yarn-error.log*
 .github/skills/playwright-cli
 AGENTS_.md
 .worktrees
+Caddyfile.local
 .github/agents/_buddy-rails.md
 .github/agents/_buddy.md
 

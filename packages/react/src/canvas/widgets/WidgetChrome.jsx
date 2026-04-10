@@ -85,18 +85,22 @@ function LinkIcon() {
   )
 }
 
-/** Actions rendered inside the overflow menu instead of inline. */
-const OVERFLOW_ACTIONS = new Set(['copy-link', 'delete'])
-
-const OVERFLOW_ICONS = {
-  'copy-link': LinkIcon,
-  'delete': DeleteIcon,
+/** Icon registry — maps icon name strings from config to React components. */
+const ICON_REGISTRY = {
+  'trash': DeleteIcon,
+  'zoom-in': ZoomInIcon,
+  'zoom-out': ZoomOutIcon,
+  'edit': EditIcon,
+  'open-external': OpenExternalIcon,
+  'eye': EyeIcon,
+  'eye-closed': EyeClosedIcon,
+  'copy': CopyIcon,
+  'link': LinkIcon,
+  'more': MoreIcon,
 }
 
-const OVERFLOW_LABELS = {
-  'copy-link': 'Copy link to widget',
-  'delete': 'Delete widget',
-}
+/** Danger-styled actions in the overflow menu. */
+const DANGER_ACTIONS = new Set(['delete'])
 
 /**
  * Overflow menu — `...` button that opens a dropdown with menu-only actions.
@@ -143,9 +147,9 @@ function WidgetOverflowMenu({ widgetId, menuFeatures, onAction }) {
       {open && (
         <div className={styles.overflowMenu}>
           {menuFeatures.map((feature) => {
-            const Icon = OVERFLOW_ICONS[feature.action]
-            const label = OVERFLOW_LABELS[feature.action] || feature.action
-            const isDanger = feature.action === 'delete'
+            const Icon = ICON_REGISTRY[feature.icon]
+            const label = feature.label || feature.action
+            const isDanger = DANGER_ACTIONS.has(feature.action)
             return (
               <button
                 key={feature.id}
@@ -161,26 +165,6 @@ function WidgetOverflowMenu({ widgetId, menuFeatures, onAction }) {
       )}
     </div>
   )
-}
-
-const ACTION_ICONS = {
-  'delete': DeleteIcon,
-  'zoom-in': ZoomInIcon,
-  'zoom-out': ZoomOutIcon,
-  'edit': EditIcon,
-  'open-external': OpenExternalIcon,
-  'toggle-private': EyeIcon,
-  'copy': CopyIcon,
-}
-
-const ACTION_LABELS = {
-  'delete': 'Delete widget',
-  'zoom-in': 'Zoom in',
-  'zoom-out': 'Zoom out',
-  'edit': 'Edit',
-  'open-external': 'Open in new tab',
-  'toggle-private': 'Make private',
-  'copy': 'Copy widget',
 }
 
 /**
@@ -322,8 +306,8 @@ export default function WidgetChrome({
         <div className={`${styles.toolbarContent} ${showToolbar ? styles.toolbarContentVisible : ''}`}>
           <div className={styles.featureButtons}>
             {features.map((feature) => {
-              // Overflow-menu actions are rendered in WidgetOverflowMenu
-              if (feature.type === 'action' && OVERFLOW_ACTIONS.has(feature.action)) return null
+              // Menu features are rendered in WidgetOverflowMenu
+              if (feature.menu) return null
 
               if (feature.type === 'color-picker') {
                 return (
@@ -337,13 +321,13 @@ export default function WidgetChrome({
               }
 
               if (feature.type === 'action') {
-                let Icon = ACTION_ICONS[feature.action]
-                let label = ACTION_LABELS[feature.action] || feature.action
+                let Icon = ICON_REGISTRY[feature.icon]
+                let label = feature.label || feature.action
 
                 // Toggle-private: swap icon/label based on current state
                 if (feature.action === 'toggle-private') {
                   if (widgetProps?.private) {
-                    Icon = EyeClosedIcon
+                    Icon = ICON_REGISTRY['eye-closed']
                     label = 'Private image — only visible locally'
                   } else {
                     label = 'Published image — deployed with canvas'
@@ -367,7 +351,7 @@ export default function WidgetChrome({
             })}
             <WidgetOverflowMenu
               widgetId={widgetId}
-              menuFeatures={features.filter((f) => f.type === 'action' && OVERFLOW_ACTIONS.has(f.action))}
+              menuFeatures={features.filter((f) => f.menu)}
               onAction={onAction}
             />
           </div>

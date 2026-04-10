@@ -36,4 +36,9 @@ const child = spawn('npx', ['vite', '--port', String(port), ...extraArgs], {
   shell: true,
 })
 
-child.on('exit', (code) => process.exit(code ?? 0))
+child.on('exit', (code) => {
+  if (code && code !== 0) {
+    console.error(`[storyboard] vite exited with code ${code}`)
+  }
+  process.exit(code ?? 0)
+})

@@ -53,7 +53,8 @@ git worktree add .worktrees/<branch-name> -b <branch-name>
 Assign a unique port for this worktree so multiple dev servers can run simultaneously:
 
 ```bash
-node scripts/worktree-port.js <branch-name>
+PORT=$(node scripts/worktree-port.js <branch-name>)
+echo "Assigned port: $PORT"
 ```
 
 This writes to `.worktrees/ports.json` (gitignored). The dev server (`npm run dev`) reads from this file automatically.

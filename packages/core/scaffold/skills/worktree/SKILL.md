@@ -45,10 +45,12 @@ git worktree add .worktrees/<branch-name> -b <branch-name>
 
 ### Step 2: Register a dev-server port
 
-Assign a unique port for this worktree so multiple dev servers can run simultaneously:
+Assign a unique port for this worktree so multiple dev servers can run simultaneously.
+
+If using `@dfosco/storyboard-core`:
 
 ```bash
-npx storyboard-dev --port # (auto-assigns on first run)
+node -e "import('@dfosco/storyboard-core/worktree/port').then(m => console.log(m.getPort('<branch-name>')))"
 ```
 
 Or if the project has `scripts/worktree-port.js`:
@@ -57,7 +59,7 @@ Or if the project has `scripts/worktree-port.js`:
 node scripts/worktree-port.js <branch-name>
 ```
 
-This writes to `.worktrees/ports.json` (gitignored). The dev server reads from this file automatically.
+This writes to `.worktrees/ports.json` (gitignored). The dev server (`npx storyboard-dev`) reads from this file automatically.
 
 ### Step 3: Change into the worktree directory
 

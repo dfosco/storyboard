@@ -94,24 +94,42 @@
       "meta": { "strokeWeight": 2, "scale": 1.2 },
       "menuWidth": "300px"
     },
-    "canvas-toolbar": {
-      "ariaLabel": "Canvas toolbar",
-      "render": "canvas-toolbar",
+    "canvas-zoom": {
+      "ariaLabel": "Zoom controls",
+      "render": "canvas-zoom",
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
-      "modes": ["*"],
-      "snap": {
-        "label": "Snap to grid",
-        "labelOn": "Snap to grid (on)",
-        "labelOff": "Snap to grid (off)",
-        "icon": "iconoir/view-grid",
-        "gridSize": 40
-      },
-      "zoomToFit": {
-        "label": "Zoom to objects",
-        "icon": "iconoir/square-3d-three-points"
-      }
-    },    
+      "modes": ["*"]
+    },
+    "canvas-zoom-to-fit": {
+      "ariaLabel": "Zoom to objects",
+      "label": "Zoom to objects",
+      "icon": "iconoir/square-3d-three-points",
+      "render": "canvas-zoom-to-fit",
+      "surface": "canvas-toolbar",
+      "handler": "core:canvas-toolbar",
+      "modes": ["*"]
+    },
+    "canvas-undo-redo": {
+      "ariaLabel": "Undo and redo",
+      "render": "canvas-undo-redo",
+      "surface": "canvas-toolbar",
+      "handler": "core:canvas-toolbar",
+      "modes": ["*"]
+    },
+    "canvas-snap": {
+      "ariaLabel": "Snap to grid",
+      "label": "Snap to grid",
+      "labelOn": "Snap to grid (on)",
+      "labelOff": "Snap to grid (off)",
+      "icon": "iconoir/view-grid",
+      "meta": { "strokeWeight": 4, "scale": 1.2 },
+      "render": "canvas-snap",
+      "surface": "canvas-toolbar",
+      "handler": "core:canvas-toolbar",
+      "gridSize": 40,
+      "modes": ["*"]
+    },
     "viewfinder": {
       "label": "Go to index page",
       "render": "link",

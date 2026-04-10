@@ -446,29 +446,49 @@ export default function CanvasPage({ name }) {
     const targetId = params.get('widget')
     if (!targetId || loading) return
 
-    const widgets = localWidgets ?? []
-    const widget = widgets.find((w) => w.id === targetId)
-    if (!widget) return
-
     const el = scrollRef.current
     if (!el) return
 
-    const scale = zoomRef.current / 100
-    const fallback = WIDGET_FALLBACK_SIZES[widget.type] || { width: 200, height: 150 }
-    const wW = (widget.props?.width ?? fallback.width) * scale
-    const wH = (widget.props?.height ?? fallback.height) * scale
-    const wX = (widget.position?.x ?? 0) * scale
-    const wY = (widget.position?.y ?? 0) * scale
+    let x, y, w, h
 
-    // Center the widget in the viewport
-    el.scrollLeft = wX + wW / 2 - el.clientWidth / 2
-    el.scrollTop = wY + wH / 2 - el.clientHeight / 2
+    // Check JSON widgets first
+    const widgets = localWidgets ?? []
+    const widget = widgets.find((wgt) => wgt.id === targetId)
+    if (widget) {
+      const fallback = WIDGET_FALLBACK_SIZES[widget.type] || { width: 200, height: 150 }
+      x = widget.position?.x ?? 0
+      y = widget.position?.y ?? 0
+      w = widget.props?.width ?? fallback.width
+      h = widget.props?.height ?? fallback.height
+    }
+
+    // Check JSX sources (jsx-ExportName)
+    if (!widget && targetId.startsWith('jsx-')) {
+      const exportName = targetId.slice(4)
+      const sourceMap = Object.fromEntries(
+        (localSources || []).filter((s) => s?.export).map((s) => [s.export, s])
+      )
+      const sourceData = sourceMap[exportName]
+      if (sourceData || (jsxExports && exportName in jsxExports)) {
+        const fallback = WIDGET_FALLBACK_SIZES['component']
+        x = sourceData?.position?.x ?? 0
+        y = sourceData?.position?.y ?? 0
+        w = sourceData?.width ?? fallback.width
+        h = sourceData?.height ?? fallback.height
+      }
+    }
+
+    if (x == null) return
+
+    const scale = zoomRef.current / 100
+    el.scrollLeft = (x + w / 2) * scale - el.clientWidth / 2
+    el.scrollTop = (y + h / 2) * scale - el.clientHeight / 2
 
     // Clean the URL param without triggering navigation
     const url = new URL(window.location.href)
     url.searchParams.delete('widget')
     window.history.replaceState({}, '', url.toString())
-  }, [loading, localWidgets])
+  }, [loading, localWidgets, localSources, jsxExports])
 
   // Persist viewport state (zoom + scroll) to localStorage on changes
   useEffect(() => {
@@ -1065,6 +1085,7 @@ export default function CanvasPage({ name }) {
           }}
         >
           <WidgetChrome
+            widgetId={`jsx-${exportName}`}
             features={componentFeatures}
             selected={selectedWidgetId === `jsx-${exportName}`}
             onSelect={() => setSelectedWidgetId(`jsx-${exportName}`)}

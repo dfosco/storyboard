@@ -231,6 +231,9 @@
         {/if}
       </div>
     {/if}
+
+    <DropdownMenu.Separator />
+    <p class="footer"><span class="footerDot"></span>Only available in dev environment</p>
   </DropdownMenu.Content>
 </DropdownMenu.Root>
 
@@ -312,5 +315,23 @@
   .statusOk {
     font-size: 11px;
     color: var(--fgColor-muted, #848d97);
+  }
+
+  .footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--fgColor-muted, #848d97);
+    padding: 2px 6px 0;
+    margin: 0;
+  }
+
+  .footerDot {
+    width: 8px;
+    height: 8px;
+    background: hsl(137, 66%, 30%);
+    border-radius: 50%;
+    flex-shrink: 0;
   }
 </style>

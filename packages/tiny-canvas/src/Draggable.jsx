@@ -17,7 +17,7 @@ const DRAG_DELAY_MS = 150;
  *  broken for positioned elements). */
 const DRAG_DISTANCE_PX = 8;
 
-function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
+function Draggable({ children, dragId, initialPosition, onDragEnd, handle, snapGrid }) {
   const draggableRef = useRef(null);
   const initialSavedPosition = initialPosition || { x: 0, y: 0 };
   const dragStartRef = useRef(initialSavedPosition);
@@ -164,6 +164,7 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
   const { isDragging } = useDraggable(draggableRef, {
     axis: 'both',
     bounds: 'parent',
+    grid: snapGrid,
     defaultClass: 'tc-drag',
     defaultClassDragging: 'tc-on',
     defaultClassDragged: 'tc-off',

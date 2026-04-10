@@ -26,12 +26,20 @@ function resolveVar(value) {
 }
 
 /**
- * Resolve all string values in a feature object.
+ * Resolve all string values in a feature object, including nested items.
  */
 function resolveFeature(feature) {
   const resolved = {}
   for (const [key, val] of Object.entries(feature)) {
-    resolved[key] = resolveVar(val)
+    if (key === 'items' && Array.isArray(val)) {
+      resolved[key] = val.map((item) => {
+        const r = {}
+        for (const [k, v] of Object.entries(item)) r[k] = resolveVar(v)
+        return r
+      })
+    } else {
+      resolved[key] = resolveVar(val)
+    }
   }
   return resolved
 }

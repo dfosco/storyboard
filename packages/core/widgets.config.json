@@ -6,7 +6,10 @@
     "label:open-ext":   "Open in new tab",
     "label:zoom-in":    "Zoom in",
     "label:zoom-out":   "Zoom out",
-    "label:edit":       "Edit"
+    "label:edit":       "Edit",
+    "label:download":   "Download image",
+    "label:copy-png":   "Copy as PNG",
+    "label:copy-path":  "Copy file path"
   },
   "widgets": {
     "sticky-note": {
@@ -95,7 +98,9 @@
         "width":  { "type": "number", "label": "Width",  "category": "size", "min": 100 },
         "height": { "type": "number", "label": "Height", "category": "size", "min": 60 }
       },
-      "features": []
+      "features": [
+        { "id": "copy-link", "type": "action", "action": "copy-link", "label": "$label:copy-link", "icon": "link", "menu": true }
+      ]
     },
     "image": {
       "label": "Image",
@@ -109,6 +114,11 @@
       "features": [
         { "id": "toggle-private", "type": "action", "action": "toggle-private", "label": "Make private", "icon": "eye" },
         { "id": "copy",           "type": "action", "action": "copy",           "label": "$label:duplicate",  "icon": "copy" },
+        { "id": "image-actions",  "type": "dropdown", "icon": "chevron-down", "label": "Image actions", "items": [
+          { "action": "download-image",  "label": "$label:download",  "icon": "download" },
+          { "action": "copy-as-png",     "label": "$label:copy-png",  "icon": "copy" },
+          { "action": "copy-file-path",  "label": "$label:copy-path", "icon": "link" }
+        ]},
         { "id": "copy-link",      "type": "action", "action": "copy-link",      "label": "$label:copy-link",  "icon": "link",  "menu": true },
         { "id": "delete",         "type": "action", "action": "delete",         "label": "$label:delete",     "icon": "trash", "menu": true }
       ]

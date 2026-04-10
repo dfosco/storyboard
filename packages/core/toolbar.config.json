@@ -83,6 +83,16 @@
         { "type": "footer", "label": "Only available in dev environment" }
       ]
     },
+    "autosync": {
+      "ariaLabel": "Auto sync",
+      "icon": "primer/sync",
+      "render": "menu",
+      "surface": "main-toolbar",
+      "handler": "core:autosync",
+      "modes": ["*"],
+      "localOnly": true,
+      "menuWidth": "280px"
+    },
     "canvas-add-widget": {
       "ariaLabel": "Add widget",
       "icon": "iconoir/grid-plus",

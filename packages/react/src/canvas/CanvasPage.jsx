@@ -337,6 +337,64 @@ export default function CanvasPage({ name }) {
     }
   }, [])
 
+  // --- Multi-select live drag preview via imperative DOM transforms ---
+  // On drag start, snapshot ALL articles' translate values (same coord space).
+  // On each tick, read dragged article's current translate, compute delta
+  // from its snapshot, apply same delta to all peers.
+  const draggedArticleRef = useRef(null)
+  const draggedStartTranslate = useRef({ x: 0, y: 0 })
+  const peerSnapshots = useRef(new Map())
+
+  function parseTranslate(article) {
+    const raw = article?.style.translate || '0px 0px'
+    const parts = raw.match(/-?[\d.]+/g) || [0, 0]
+    return { x: parseFloat(parts[0]) || 0, y: parseFloat(parts[1]) || 0 }
+  }
+
+  const handleItemDragStart = useCallback((dragId) => {
+    const ids = selectedIdsRef.current
+    peerSnapshots.current.clear()
+    draggedArticleRef.current = null
+    if (ids.size <= 1 || !ids.has(dragId)) return
+
+    // Snapshot dragged widget's article translate
+    const draggedEl = document.getElementById(dragId)
+    const draggedArticle = draggedEl?.closest('article')
+    if (!draggedArticle) return
+    draggedArticleRef.current = draggedArticle
+    draggedStartTranslate.current = parseTranslate(draggedArticle)
+
+    // Snapshot each peer's article translate
+    for (const id of ids) {
+      if (id === dragId) continue
+      const widgetEl = document.getElementById(id)
+      const article = widgetEl?.closest('article')
+      if (!article) continue
+      peerSnapshots.current.set(id, {
+        article,
+        ...parseTranslate(article),
+      })
+    }
+  }, [])
+
+  const handleItemDrag = useCallback(() => {
+    if (!draggedArticleRef.current) return
+
+    // Read dragged article's CURRENT translate (set by neodrag)
+    const current = parseTranslate(draggedArticleRef.current)
+    const dx = current.x - draggedStartTranslate.current.x
+    const dy = current.y - draggedStartTranslate.current.y
+
+    for (const [, peer] of peerSnapshots.current) {
+      peer.article.style.translate = `${peer.x + dx}px ${peer.y + dy}px`
+    }
+  }, [])
+
+  const clearDragPreview = useCallback(() => {
+    peerSnapshots.current.clear()
+    draggedArticleRef.current = null
+  }, [])
+
   if (canvas !== trackedCanvas) {
     setTrackedCanvas(canvas)
     setLocalWidgets(canvas?.widgets ?? null)
@@ -480,6 +538,7 @@ export default function CanvasPage({ name }) {
     const ids = selectedIdsRef.current
     // Multi-select move: apply same delta to all selected widgets
     if (ids.size > 1 && ids.has(dragId)) {
+      clearDragPreview()
       undoRedo.snapshot(stateRef.current, 'multi-move')
       const currentWidgets = stateRef.current.widgets ?? []
       const draggedWidget = currentWidgets.find(w => w.id === dragId)
@@ -527,7 +586,7 @@ export default function CanvasPage({ name }) {
       )
       return next
     })
-  }, [name, undoRedo, debouncedSave])
+  }, [name, undoRedo, debouncedSave, clearDragPreview])
 
   useEffect(() => {
     zoomRef.current = zoom
@@ -1345,7 +1404,7 @@ export default function CanvasPage({ name }) {
             ...(spaceHeld ? { pointerEvents: 'none' } : {}),
           }}
         >
-          <Canvas {...canvasProps} onDragEnd={isLocalDev ? handleItemDragEnd : undefined}>
+          <Canvas {...canvasProps} onDragStart={isLocalDev ? handleItemDragStart : undefined} onDrag={isLocalDev ? handleItemDrag : undefined} onDragEnd={isLocalDev ? handleItemDragEnd : undefined}>
             {allChildren}
           </Canvas>
         </div>

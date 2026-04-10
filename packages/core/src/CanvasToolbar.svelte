@@ -248,12 +248,12 @@
   }
 
   .canvas-toolbar-standalone-active {
-    background: var(--sb--trigger-text, var(--color-slate-600));
-    color: var(--sb--trigger-bg, var(--color-slate-100));
+    background: var(--sb--trigger-bg-hover, var(--color-slate-300));
     border-color: var(--sb--trigger-text, var(--color-slate-600));
   }
 
   .canvas-toolbar-standalone-active:hover {
+    background: var(--sb--trigger-bg-hover, var(--color-slate-300));
     opacity: 0.85;
   }
 

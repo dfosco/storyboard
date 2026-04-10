@@ -4,8 +4,6 @@ import { saveDrag } from './utils';
 
 const TRANSLATION_MS = 250;
 const PERSIST_DEADZONE_PX = 4;
-const ROTATION_DEADZONE_PX = 20;
-const ROTATION_DEG = 1.5;
 
 /** Minimum hold time (ms) before drag can start.
  *  Quick clicks (release before this) never trigger drag. */
@@ -22,7 +20,6 @@ function Draggable({ children, dragId, initialPosition, onDragStart: onDragStart
   const initialSavedPosition = initialPosition || { x: 0, y: 0 };
   const dragStartRef = useRef(initialSavedPosition);
   const hasMovedRef = useRef(false);
-  const [isRotating, setIsRotating] = useState(false);
 
   // Gate ref for our drag threshold
   const gateRef = useRef({
@@ -44,9 +41,6 @@ function Draggable({ children, dragId, initialPosition, onDragStart: onDragStart
     setPrevInitial(initialPosition);
     setPosition(initialPosition);
   }
-  const [rotationVariation, setRotationVariation] = useState(
-    () => Math.random() < 0.5 ? -ROTATION_DEG : ROTATION_DEG
-  );
 
   // Animate elements with saved positions on mount
   useEffect(() => {
@@ -174,7 +168,6 @@ function Draggable({ children, dragId, initialPosition, onDragStart: onDragStart
     onDragStart: () => {
       dragStartRef.current = position;
       hasMovedRef.current = false;
-      setIsRotating(false);
       onDragStartProp?.(dragId, position);
     },
     onDrag: ({ offsetX, offsetY }) => {
@@ -184,9 +177,6 @@ function Draggable({ children, dragId, initialPosition, onDragStart: onDragStart
       if (!hasMovedRef.current && distance >= PERSIST_DEADZONE_PX) {
         hasMovedRef.current = true;
       }
-      if (!isRotating && distance >= ROTATION_DEADZONE_PX) {
-        setIsRotating(true);
-      }
       const clamped = { x: Math.max(0, offsetX), y: Math.max(0, offsetY) };
       setPosition(clamped);
       onDragProp?.(dragId, clamped);
@@ -195,8 +185,6 @@ function Draggable({ children, dragId, initialPosition, onDragStart: onDragStart
       const clampedX = Math.max(0, data.offsetX);
       const clampedY = Math.max(0, data.offsetY);
       setPosition({ x: clampedX, y: clampedY });
-      setRotationVariation(Math.random() < 0.5 ? -ROTATION_DEG : ROTATION_DEG);
-      setIsRotating(false);
       const dx = clampedX - dragStartRef.current.x;
       const dy = clampedY - dragStartRef.current.y;
       const movedEnough = hasMovedRef.current || Math.hypot(dx, dy) >= PERSIST_DEADZONE_PX;
@@ -208,8 +196,6 @@ function Draggable({ children, dragId, initialPosition, onDragStart: onDragStart
       onDragEnd?.(dragId, { x: clampedX, y: clampedY });
     },
   });
-
-  const rotation = isDragging && isRotating ? `${rotationVariation}deg` : '0deg';
 
   // When locked, no drag cursor. When a handle is set, only the handle
   // shows grab cursor (via its own CSS). Otherwise the whole article is
@@ -225,13 +211,7 @@ function Draggable({ children, dragId, initialPosition, onDragStart: onDragStart
       ref={draggableRef}
       style={{ cursor: articleCursor }}
     >
-      <div
-        className="tc-draggable-inner"
-        style={{
-          transform: isDragging ? `rotate(${rotation})` : undefined,
-          transition: 'transform ease-in-out 150ms',
-        }}
-      >
+      <div className="tc-draggable-inner">
         {children}
       </div>
     </article>

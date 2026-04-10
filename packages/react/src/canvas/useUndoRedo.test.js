@@ -53,7 +53,7 @@ describe('useUndoRedo', () => {
     const { result } = renderHook(() => useUndoRedo())
     const s0 = [{ id: '1' }]
     const s1 = [{ id: '1' }, { id: '2' }]
-    const s2 = [{ id: '1' }, { id: '3' }]
+    const s2 = [{ id: '1' }, { id: '3' }] // eslint-disable-line no-unused-vars
 
     act(() => result.current.snapshot(s0, 'add'))
     act(() => result.current.undo(s1))

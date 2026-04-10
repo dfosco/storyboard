@@ -325,7 +325,6 @@ export default function WidgetChrome({
 }) {
   const [hovered, setHovered] = useState(false)
   const leaveTimer = useRef(null)
-  const pointerStartPos = useRef(null)
 
   const handleMouseEnter = useCallback(() => {
     clearTimeout(leaveTimer.current)
@@ -336,17 +335,10 @@ export default function WidgetChrome({
     leaveTimer.current = setTimeout(() => setHovered(false), 80)
   }, [])
 
-  // Track pointer position on the handle to distinguish click from drag.
-  const handleHandlePointerDown = useCallback((e) => {
-    pointerStartPos.current = { x: e.clientX, y: e.clientY }
-  }, [])
-
-  const handleHandlePointerUp = useCallback((e) => {
-    if (!pointerStartPos.current) return
-    const start = pointerStartPos.current
-    pointerStartPos.current = null
-    const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y)
-    if (dist > 10) return
+  // Handle select via click — pointer events are intercepted by the drag
+  // gate in Draggable, so onPointerDown never reaches React on the handle.
+  // onClick fires reliably after pointer up.
+  const handleHandleClick = useCallback((e) => {
     e.stopPropagation()
     onSelect?.(e.shiftKey)
   }, [onSelect])
@@ -466,8 +458,7 @@ export default function WidgetChrome({
           <Tooltip text="Select" direction="n">
             <button
               className={`tc-drag-handle ${styles.selectHandle} ${selected ? styles.selectHandleActive : ''}`}
-              onPointerDown={handleHandlePointerDown}
-              onPointerUp={handleHandlePointerUp}
+              onClick={handleHandleClick}
               aria-label="Select widget"
               aria-pressed={selected}
             />

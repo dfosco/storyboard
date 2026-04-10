@@ -337,6 +337,44 @@ export default function CanvasPage({ name }) {
     }
   }, [])
 
+  // --- Multi-select live drag preview via imperative DOM transforms ---
+  const dragStartPosRef = useRef(null)
+
+  const handleItemDragStart = useCallback((dragId, startPos) => {
+    const ids = selectedIdsRef.current
+    if (ids.size <= 1 || !ids.has(dragId)) {
+      dragStartPosRef.current = null
+      return
+    }
+    dragStartPosRef.current = startPos
+  }, [])
+
+  const handleItemDrag = useCallback((dragId, currentPos) => {
+    if (!dragStartPosRef.current) return
+    const ids = selectedIdsRef.current
+    if (ids.size <= 1 || !ids.has(dragId)) return
+
+    const dx = currentPos.x - dragStartPosRef.current.x
+    const dy = currentPos.y - dragStartPosRef.current.y
+
+    for (const id of ids) {
+      if (id === dragId) continue
+      const el = document.getElementById(id)
+      if (!el) continue
+      el.style.translate = `${dx}px ${dy}px`
+    }
+  }, [])
+
+  const clearDragPreview = useCallback(() => {
+    if (!dragStartPosRef.current) return
+    const ids = selectedIdsRef.current
+    for (const id of ids) {
+      const el = document.getElementById(id)
+      if (el) el.style.translate = ''
+    }
+    dragStartPosRef.current = null
+  }, [])
+
   if (canvas !== trackedCanvas) {
     setTrackedCanvas(canvas)
     setLocalWidgets(canvas?.widgets ?? null)
@@ -480,6 +518,7 @@ export default function CanvasPage({ name }) {
     const ids = selectedIdsRef.current
     // Multi-select move: apply same delta to all selected widgets
     if (ids.size > 1 && ids.has(dragId)) {
+      clearDragPreview()
       undoRedo.snapshot(stateRef.current, 'multi-move')
       const currentWidgets = stateRef.current.widgets ?? []
       const draggedWidget = currentWidgets.find(w => w.id === dragId)
@@ -527,7 +566,7 @@ export default function CanvasPage({ name }) {
       )
       return next
     })
-  }, [name, undoRedo, debouncedSave])
+  }, [name, undoRedo, debouncedSave, clearDragPreview])
 
   useEffect(() => {
     zoomRef.current = zoom
@@ -1345,7 +1384,7 @@ export default function CanvasPage({ name }) {
             ...(spaceHeld ? { pointerEvents: 'none' } : {}),
           }}
         >
-          <Canvas {...canvasProps} onDragEnd={isLocalDev ? handleItemDragEnd : undefined}>
+          <Canvas {...canvasProps} onDragStart={isLocalDev ? handleItemDragStart : undefined} onDrag={isLocalDev ? handleItemDrag : undefined} onDragEnd={isLocalDev ? handleItemDragEnd : undefined}>
             {allChildren}
           </Canvas>
         </div>

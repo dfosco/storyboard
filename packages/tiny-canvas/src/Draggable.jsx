@@ -17,7 +17,7 @@ const DRAG_DELAY_MS = 150;
  *  broken for positioned elements). */
 const DRAG_DISTANCE_PX = 8;
 
-function Draggable({ children, dragId, initialPosition, onDragEnd, handle, snapGrid, locked = false }) {
+function Draggable({ children, dragId, initialPosition, onDragStart: onDragStartProp, onDrag: onDragProp, onDragEnd, handle, snapGrid, locked = false }) {
   const draggableRef = useRef(null);
   const initialSavedPosition = initialPosition || { x: 0, y: 0 };
   const dragStartRef = useRef(initialSavedPosition);
@@ -175,6 +175,7 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle, snapG
       dragStartRef.current = position;
       hasMovedRef.current = false;
       setIsRotating(false);
+      onDragStartProp?.(dragId, position);
     },
     onDrag: ({ offsetX, offsetY }) => {
       const dx = offsetX - dragStartRef.current.x;
@@ -186,7 +187,9 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle, snapG
       if (!isRotating && distance >= ROTATION_DEADZONE_PX) {
         setIsRotating(true);
       }
-      setPosition({ x: Math.max(0, offsetX), y: Math.max(0, offsetY) });
+      const clamped = { x: Math.max(0, offsetX), y: Math.max(0, offsetY) };
+      setPosition(clamped);
+      onDragProp?.(dragId, clamped);
     },
     onDragEnd: (data) => {
       const clampedX = Math.max(0, data.offsetX);

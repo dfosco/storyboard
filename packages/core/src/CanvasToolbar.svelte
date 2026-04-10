@@ -21,11 +21,12 @@
       ZOOM_MIN: number
       ZOOM_MAX: number
     }
+    canvasName?: string
     zoom?: number
     tabindex?: number
   }
 
-  let { config = {}, data, zoom = 100, tabindex = -1 }: Props = $props()
+  let { config = {}, data, canvasName, zoom = 100, tabindex = -1 }: Props = $props()
 
   let canUndo = $state(false)
   let canRedo = $state(false)

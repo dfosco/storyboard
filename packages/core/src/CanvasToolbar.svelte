@@ -16,6 +16,7 @@
       zoomToFit: () => void
       undo: () => void
       redo: () => void
+      toggleSnap: () => void
       ZOOM_MIN: number
       ZOOM_MAX: number
     }
@@ -27,18 +28,25 @@
 
   let canUndo = $state(false)
   let canRedo = $state(false)
+  let snapEnabled = $state(false)
 
   function handleUndoRedoState(e: CustomEvent) {
     canUndo = !!e.detail?.canUndo
     canRedo = !!e.detail?.canRedo
   }
 
+  function handleSnapState(e: CustomEvent) {
+    snapEnabled = !!e.detail?.snapEnabled
+  }
+
   onMount(() => {
     document.addEventListener('storyboard:canvas:undo-redo-state', handleUndoRedoState as EventListener)
+    document.addEventListener('storyboard:canvas:snap-state', handleSnapState as EventListener)
   })
 
   onDestroy(() => {
     document.removeEventListener('storyboard:canvas:undo-redo-state', handleUndoRedoState as EventListener)
+    document.removeEventListener('storyboard:canvas:snap-state', handleSnapState as EventListener)
   })
 </script>
 
@@ -131,6 +139,23 @@
         <Tooltip.Content side="top">Redo (⌘⇧Z)</Tooltip.Content>
       </Tooltip.Root>
     </div>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        <button
+          class="canvas-toolbar-standalone"
+          class:canvas-toolbar-standalone-active={snapEnabled}
+          onclick={() => data.toggleSnap()}
+          aria-label="Snap to grid"
+          aria-pressed={snapEnabled}
+          tabindex={-1}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M2 2h4v4H2V2Zm1.5 1.5v1h1v-1h-1ZM2 10h4v4H2v-4Zm1.5 1.5v1h1v-1h-1ZM10 2h4v4h-4V2Zm1.5 1.5v1h1v-1h-1ZM10 10h4v4h-4v-4Zm1.5 1.5v1h1v-1h-1ZM8 1v2h-.75a.75.75 0 0 0 0 1.5H8V7H5.5v-.75a.75.75 0 0 0-1.5 0V7H1V8h3v.75a.75.75 0 0 0 1.5 0V8H8v2.5h-.75a.75.75 0 0 0 0 1.5H8V15h1v-3h.75a.75.75 0 0 0 0-1.5H9V8h2.5v.75a.75.75 0 0 0 1.5 0V8H16V7h-3v-.75a.75.75 0 0 0-1.5 0V7H9V4.5h.75a.75.75 0 0 0 0-1.5H9V1H8Z" />
+          </svg>
+        </button>
+      </Tooltip.Trigger>
+      <Tooltip.Content side="top">{snapEnabled ? 'Snap to grid (on)' : 'Snap to grid (off)'}</Tooltip.Content>
+    </Tooltip.Root>
   </div>
 {/if}
 
@@ -217,6 +242,16 @@
   .canvas-toolbar-standalone:disabled {
     opacity: 0.3;
     cursor: default;
+  }
+
+  .canvas-toolbar-standalone-active {
+    background: var(--sb--trigger-text, var(--color-slate-600));
+    color: var(--sb--trigger-bg, var(--color-slate-100));
+    border-color: var(--sb--trigger-text, var(--color-slate-600));
+  }
+
+  .canvas-toolbar-standalone-active:hover {
+    opacity: 0.85;
   }
 
   .canvas-toolbar-separator {

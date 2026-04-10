@@ -3,6 +3,7 @@ import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
+import useWidgetEscape from './useWidgetEscape.js'
 import styles from './PrototypeEmbed.module.css'
 
 function formatName(name) {
@@ -56,6 +57,11 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
   const inputRef = useRef(null)
   const filterRef = useRef(null)
   const embedRef = useRef(null)
+
+  const exitInteractive = useCallback(() => setInteractive(false), [])
+  const exitEditing = useCallback(() => { setEditing(false); setFilter('') }, [])
+  useWidgetEscape(interactive, exitInteractive)
+  useWidgetEscape(editing, exitEditing)
 
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''
@@ -246,7 +252,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                   placeholder="Filter…"
-                  onKeyDown={(e) => { if (e.key === 'Escape') handleCancelEdit() }}
+                  onKeyDown={(e) => { if (e.key === 'Escape') exitEditing() }}
                 />
                 <div className={styles.pickerList} role="listbox">
                   {filteredGroups.map((group) => (
@@ -293,7 +299,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
                 type="text"
                 defaultValue={src}
                 placeholder="/MyPrototype/page"
-                onKeyDown={(e) => { if (e.key === 'Escape') handleCancelEdit() }}
+                onKeyDown={(e) => { if (e.key === 'Escape') exitEditing() }}
               />
               <div className={styles.urlActions}>
                 <button type="submit" className={styles.urlSave}>Save</button>

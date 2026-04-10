@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, markdownSchema } from './widgetProps.js'
+import useWidgetEscape from './useWidgetEscape.js'
 import styles from './MarkdownBlock.module.css'
 
 /**
@@ -32,6 +33,8 @@ export default function MarkdownBlock({ props, onUpdate }) {
   const textareaRef = useRef(null)
   const blockRef = useRef(null)
   const [editHeight, setEditHeight] = useState(null)
+  const exitEditing = useCallback(() => setEditing(false), [])
+  useWidgetEscape(editing, exitEditing)
 
   const handleContentChange = useCallback((e) => {
     onUpdate?.({ content: e.target.value })
@@ -69,9 +72,6 @@ export default function MarkdownBlock({ props, onUpdate }) {
             onBlur={() => setEditing(false)}
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') setEditing(false)
-            }}
             placeholder="Write markdown…"
           />
         ) : (

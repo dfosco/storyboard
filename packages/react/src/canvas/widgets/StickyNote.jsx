@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { readProp, stickyNoteSchema } from './widgetProps.js'
 import ResizeHandle from './ResizeHandle.jsx'
+import useWidgetEscape from './useWidgetEscape.js'
 import styles from './StickyNote.module.css'
 
 const COLORS = {
@@ -21,6 +22,8 @@ export default function StickyNote({ props, onUpdate }) {
   const textareaRef = useRef(null)
   const stickyRef = useRef(null)
   const [editing, setEditing] = useState(false)
+  const exitEditing = useCallback(() => setEditing(false), [])
+  useWidgetEscape(editing, exitEditing)
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -69,9 +72,6 @@ export default function StickyNote({ props, onUpdate }) {
             onBlur={() => setEditing(false)}
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') setEditing(false)
-            }}
             placeholder="Type here…"
           />
         )}

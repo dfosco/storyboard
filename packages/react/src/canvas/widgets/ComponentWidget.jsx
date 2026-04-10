@@ -1,6 +1,7 @@
 import { useRef, useCallback, useState, useEffect } from 'react'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
+import useWidgetEscape from './useWidgetEscape.js'
 import styles from './ComponentWidget.module.css'
 
 /**
@@ -14,6 +15,8 @@ import styles from './ComponentWidget.module.css'
 export default function ComponentWidget({ component: Component, width, height, onUpdate }) {
   const containerRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
+  const exitInteractive = useCallback(() => setInteractive(false), [])
+  useWidgetEscape(interactive, exitInteractive)
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })

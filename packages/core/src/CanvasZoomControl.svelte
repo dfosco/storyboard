@@ -100,8 +100,8 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--sb--trigger-text, var(--color-slate-600));
-    border-left: 2.5px solid var(--sb--trigger-border, var(--color-slate-400));
-    border-right: 2.5px solid var(--sb--trigger-border, var(--color-slate-400));
+    border-left: 2px solid var(--sb--trigger-border, var(--color-slate-400));
+    border-right: 2px solid var(--sb--trigger-border, var(--color-slate-400));
     transition: background 120ms;
   }
 

@@ -85,10 +85,23 @@ function LinkIcon() {
   )
 }
 
+/** Actions rendered inside the overflow menu instead of inline. */
+const OVERFLOW_ACTIONS = new Set(['copy-link', 'delete'])
+
+const OVERFLOW_ICONS = {
+  'copy-link': LinkIcon,
+  'delete': DeleteIcon,
+}
+
+const OVERFLOW_LABELS = {
+  'copy-link': 'Copy link to widget',
+  'delete': 'Delete widget',
+}
+
 /**
- * Overflow menu — `...` button that opens a dropdown with delete + copy link.
+ * Overflow menu — `...` button that opens a dropdown with menu-only actions.
  */
-function WidgetOverflowMenu({ widgetId, onAction }) {
+function WidgetOverflowMenu({ widgetId, menuFeatures, onAction }) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef(null)
 
@@ -103,19 +116,17 @@ function WidgetOverflowMenu({ widgetId, onAction }) {
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [open])
 
-  const handleCopyLink = useCallback((e) => {
+  const handleItemClick = useCallback((action, e) => {
     e.stopPropagation()
-    const url = new URL(window.location.href)
-    url.searchParams.set('widget', widgetId)
-    navigator.clipboard.writeText(url.toString()).catch(() => {})
+    if (action === 'copy-link') {
+      const url = new URL(window.location.href)
+      url.searchParams.set('widget', widgetId)
+      navigator.clipboard.writeText(url.toString()).catch(() => {})
+    } else {
+      onAction?.(action)
+    }
     setOpen(false)
-  }, [widgetId])
-
-  const handleDelete = useCallback((e) => {
-    e.stopPropagation()
-    onAction?.('delete')
-    setOpen(false)
-  }, [onAction])
+  }, [widgetId, onAction])
 
   return (
     <div ref={menuRef} className={styles.overflowWrapper}>
@@ -131,14 +142,21 @@ function WidgetOverflowMenu({ widgetId, onAction }) {
       </Tooltip>
       {open && (
         <div className={styles.overflowMenu}>
-          <button className={styles.overflowItem} onClick={handleCopyLink}>
-            <LinkIcon />
-            <span>Copy link to widget</span>
-          </button>
-          <button className={`${styles.overflowItem} ${styles.overflowItemDanger}`} onClick={handleDelete}>
-            <DeleteIcon />
-            <span>Delete widget</span>
-          </button>
+          {menuFeatures.map((feature) => {
+            const Icon = OVERFLOW_ICONS[feature.action]
+            const label = OVERFLOW_LABELS[feature.action] || feature.action
+            const isDanger = feature.action === 'delete'
+            return (
+              <button
+                key={feature.id}
+                className={`${styles.overflowItem} ${isDanger ? styles.overflowItemDanger : ''}`}
+                onClick={(e) => handleItemClick(feature.action, e)}
+              >
+                {Icon && <Icon />}
+                <span>{label}</span>
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
@@ -304,8 +322,8 @@ export default function WidgetChrome({
         <div className={`${styles.toolbarContent} ${showToolbar ? styles.toolbarContentVisible : ''}`}>
           <div className={styles.featureButtons}>
             {features.map((feature) => {
-              // delete goes in overflow menu, skip here
-              if (feature.action === 'delete') return null
+              // Overflow-menu actions are rendered in WidgetOverflowMenu
+              if (feature.type === 'action' && OVERFLOW_ACTIONS.has(feature.action)) return null
 
               if (feature.type === 'color-picker') {
                 return (
@@ -347,7 +365,11 @@ export default function WidgetChrome({
 
               return null
             })}
-            <WidgetOverflowMenu widgetId={widgetId} onAction={onAction} />
+            <WidgetOverflowMenu
+              widgetId={widgetId}
+              menuFeatures={features.filter((f) => f.type === 'action' && OVERFLOW_ACTIONS.has(f.action))}
+              onAction={onAction}
+            />
           </div>
 
           <Tooltip text="Select" direction="n">

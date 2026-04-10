@@ -34,10 +34,11 @@
           "items": {
             "type": "object",
             "properties": {
-              "name": { "type": "string" },
-              "label": { "type": "string" },
-              "hue": { "type": "string" }
-            }
+              "name": { "type": "string", "description": "Internal identifier for the mode." },
+              "label": { "type": "string", "description": "Display label in the mode switcher." },
+              "hue": { "type": "string", "description": "CSS color value for mode theming." }
+            },
+            "required": ["name", "label"]
           },
           "description": "Override the default mode definitions."
         }

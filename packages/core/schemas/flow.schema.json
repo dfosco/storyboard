@@ -39,7 +39,7 @@
     "$global": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Array of object names to merge into the flow root. Flow values take precedence on conflicts."
+      "description": "Array of object names to merge into the flow root. Flow values take precedence on conflicts. Object names are resolved at runtime; circular references throw an error."
     }
   },
   "additionalProperties": true

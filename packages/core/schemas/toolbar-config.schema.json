@@ -140,7 +140,7 @@
         },
         "handler": {
           "type": "string",
-          "pattern": "^(core|custom):.+$",
+          "pattern": "^(core|custom):[^\\s]+$",
           "description": "Handler module reference. Format: 'core:name' for built-in, 'custom:name' for custom handlers."
         },
         "sidepanel": {

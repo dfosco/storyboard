@@ -35,10 +35,11 @@
     features?: CreateMenuFeature[]
     data?: { features?: CreateMenuFeature[] }
     config?: CreateMenuConfig
+    localOnly?: boolean
     tabindex?: number
   }
 
-  let { features: featuresProp = [], data, config = { label: 'Create' }, tabindex }: Props = $props()
+  let { features: featuresProp = [], data, config = { label: 'Create' }, localOnly, tabindex }: Props = $props()
 
   // Support both direct `features` prop (legacy) and `data.features` (generic toolbar)
   const features = $derived(featuresProp.length > 0 ? featuresProp : (data?.features || []))

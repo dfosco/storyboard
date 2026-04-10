@@ -25,10 +25,12 @@
       label?: string
       action?: string
     }
+    data?: any
+    localOnly?: boolean
     tabindex?: number
   }
 
-  let { config = {}, tabindex = -1 }: Props = $props()
+  let { config = {}, data, localOnly, tabindex = -1 }: Props = $props()
 
   let menuOpen = $state(false)
   let actionsVersion = $state(0)

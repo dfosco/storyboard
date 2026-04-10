@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
+import { createPortal } from 'react-dom'
 import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
@@ -51,6 +52,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
 
   const [editing, setEditing] = useState(false)
   const [interactive, setInteractive] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const [filter, setFilter] = useState('')
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
   const inputRef = useRef(null)
@@ -178,6 +180,19 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
     return () => document.removeEventListener('storyboard:theme:changed', readToolbarTheme)
   }, [])
 
+  // Close expanded modal on Escape
+  useEffect(() => {
+    if (!expanded) return
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setExpanded(false)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => document.removeEventListener('keydown', handleKeyDown, true)
+  }, [expanded])
+
   // Listen for navigation events from the embedded prototype iframe
   useEffect(() => {
     function handleMessage(e) {
@@ -202,6 +217,8 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
     handleAction(actionId) {
       if (actionId === 'edit') {
         setEditing(true)
+      } else if (actionId === 'expand') {
+        setExpanded(true)
       } else if (actionId === 'open-external') {
         if (rawSrc) window.open(rawSrc, '_blank', 'noopener')
       } else if (actionId === 'zoom-in') {
@@ -234,6 +251,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
   }
 
   return (
+    <>
     <WidgetWrapper>
       <div
         ref={embedRef}
@@ -323,6 +341,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
           </div>
         ) : iframeSrc ? (
           <>
+            {!expanded && (
             <div className={styles.iframeContainer}>
               <iframe
                 ref={iframeRef}
@@ -338,7 +357,15 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
                 sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
               />
             </div>
-            {!interactive && (
+            )}
+            {expanded && (
+              <div className={styles.iframeContainer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <p style={{ color: 'var(--fgColor-muted, #656d76)', fontSize: 13, fontStyle: 'italic' }}>
+                  Expanded
+                </p>
+              </div>
+            )}
+            {!interactive && !expanded && (
               <div
                 className={styles.dragOverlay}
                 onDoubleClick={enterInteractive}
@@ -381,5 +408,35 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
         onPointerDown={(e) => e.stopPropagation()}
       />
     </WidgetWrapper>
+    {expanded && createPortal(
+      <div
+        className={styles.expandBackdrop}
+        onClick={() => setExpanded(false)}
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        onWheel={(e) => e.stopPropagation()}
+      >
+        <div
+          className={styles.expandContainer}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <iframe
+            ref={iframeRef}
+            src={iframeSrc}
+            className={styles.expandIframe}
+            title={label || 'Prototype embed (expanded)'}
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+          />
+          <button
+            className={styles.expandClose}
+            onClick={() => setExpanded(false)}
+            aria-label="Close expanded view"
+            autoFocus
+          >✕</button>
+        </div>
+      </div>,
+      document.body
+    )}
+    </>
   )
 })

@@ -304,6 +304,7 @@ export default function WidgetChrome({
   widgetId,
   features = [],
   selected = false,
+  multiSelected = false,
   widgetProps,
   widgetRef,
   onSelect,
@@ -338,7 +339,7 @@ export default function WidgetChrome({
     const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y)
     if (dist > 10) return
     e.stopPropagation()
-    onSelect?.()
+    onSelect?.(e.shiftKey)
   }, [onSelect])
 
   const handleActionClick = useCallback((actionId, e) => {
@@ -362,6 +363,7 @@ export default function WidgetChrome({
   }, [onUpdate])
 
   const showToolbar = !readOnly && (hovered || selected)
+  const showFeatures = showToolbar && !multiSelected
 
   return (
     <div
@@ -369,7 +371,7 @@ export default function WidgetChrome({
       onMouseEnter={readOnly ? undefined : handleMouseEnter}
       onMouseLeave={readOnly ? undefined : handleMouseLeave}
     >
-      <div className={`${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''}`}>
+      <div className={`${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''} ${multiSelected ? styles.widgetSlotMultiSelected : ''}`}>
         {children}
       </div>
       <div
@@ -382,6 +384,7 @@ export default function WidgetChrome({
 
         {/* Toolbar content — visible on hover */}
         <div className={`${styles.toolbarContent} ${showToolbar ? styles.toolbarContentVisible : ''}`}>
+          {showFeatures && (
           <div className={styles.featureButtons}>
             {features.map((feature) => {
               // Menu features are rendered in WidgetOverflowMenu
@@ -449,6 +452,7 @@ export default function WidgetChrome({
               onAction={onAction}
             />
           </div>
+          )}
 
           <Tooltip text="Select" direction="n">
             <button

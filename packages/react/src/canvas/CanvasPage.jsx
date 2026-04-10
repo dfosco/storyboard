@@ -224,6 +224,7 @@ function WidgetRenderer({ widget, onUpdate, widgetRef }) {
 function ChromeWrappedWidget({
   widget,
   selected,
+  multiSelected,
   onSelect,
   onDeselect,
   onUpdate,
@@ -248,6 +249,7 @@ function ChromeWrappedWidget({
       widgetType={widget.type}
       features={features}
       selected={selected}
+      multiSelected={multiSelected}
       widgetProps={widget.props}
       widgetRef={widgetRef}
       onSelect={onSelect}
@@ -278,7 +280,7 @@ export default function CanvasPage({ name }) {
   // Local mutable copy of widgets for instant UI updates
   const [localWidgets, setLocalWidgets] = useState(canvas?.widgets ?? null)
   const [trackedCanvas, setTrackedCanvas] = useState(canvas)
-  const [selectedWidgetId, setSelectedWidgetId] = useState(null)
+  const [selectedWidgetIds, setSelectedWidgetIds] = useState(() => new Set())
   const initialViewport = loadViewportState(name)
   const [zoom, setZoom] = useState(initialViewport?.zoom ?? 100)
   const zoomRef = useRef(initialViewport?.zoom ?? 100)
@@ -306,6 +308,34 @@ export default function CanvasPage({ name }) {
     )
     return writeQueueRef.current
   }
+
+  // Ref for selectedWidgetIds to avoid stale closures in callbacks
+  const selectedIdsRef = useRef(selectedWidgetIds)
+  useEffect(() => {
+    selectedIdsRef.current = selectedWidgetIds
+  }, [selectedWidgetIds])
+
+  const isMultiSelected = selectedWidgetIds.size > 1
+
+  /**
+   * Selection handler — shift+click toggles in/out of multi-select set,
+   * plain click single-selects (clears others).
+   */
+  const handleWidgetSelect = useCallback((widgetId, shiftKey) => {
+    if (shiftKey) {
+      setSelectedWidgetIds(prev => {
+        const next = new Set(prev)
+        if (next.has(widgetId)) {
+          next.delete(widgetId)
+        } else {
+          next.add(widgetId)
+        }
+        return next
+      })
+    } else {
+      setSelectedWidgetIds(new Set([widgetId]))
+    }
+  }, [])
 
   if (canvas !== trackedCanvas) {
     setTrackedCanvas(canvas)
@@ -447,6 +477,43 @@ export default function CanvasPage({ name }) {
       return
     }
 
+    const ids = selectedIdsRef.current
+    // Multi-select move: apply same delta to all selected widgets
+    if (ids.size > 1 && ids.has(dragId)) {
+      undoRedo.snapshot(stateRef.current, 'multi-move')
+      const currentWidgets = stateRef.current.widgets ?? []
+      const draggedWidget = currentWidgets.find(w => w.id === dragId)
+      if (!draggedWidget) return
+      const oldPos = draggedWidget.position || { x: 0, y: 0 }
+      const dx = rounded.x - oldPos.x
+      const dy = rounded.y - oldPos.y
+
+      debouncedSave.cancel()
+      setLocalWidgets((prev) => {
+        if (!prev) return prev
+        const next = prev.map((w) => {
+          if (w.id === dragId) return { ...w, position: rounded }
+          if (ids.has(w.id)) {
+            return {
+              ...w,
+              position: {
+                x: Math.max(0, roundPosition((w.position?.x ?? 0) + dx)),
+                y: Math.max(0, roundPosition((w.position?.y ?? 0) + dy)),
+              },
+            }
+          }
+          return w
+        })
+        queueWrite(() =>
+          updateCanvas(name, { widgets: next }).catch((err) =>
+            console.error('[canvas] Failed to save multi-move:', err)
+          )
+        )
+        return next
+      })
+      return
+    }
+
     undoRedo.snapshot(stateRef.current, 'move', dragId)
     setLocalWidgets((prev) => {
       if (!prev) return prev
@@ -460,7 +527,7 @@ export default function CanvasPage({ name }) {
       )
       return next
     })
-  }, [name, undoRedo])
+  }, [name, undoRedo, debouncedSave])
 
   useEffect(() => {
     zoomRef.current = zoom
@@ -780,22 +847,39 @@ export default function CanvasPage({ name }) {
 
   useEffect(() => {
     function handleKeyDown(e) {
-      if (!selectedWidgetId) return
+      if (selectedWidgetIds.size === 0) return
       const tag = e.target.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
       if (e.key === 'Escape') {
         e.preventDefault()
-        setSelectedWidgetId(null)
+        setSelectedWidgetIds(new Set())
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault()
-        handleWidgetRemove(selectedWidgetId)
-        setSelectedWidgetId(null)
+        if (selectedWidgetIds.size > 1) {
+          // Multi-delete — snapshot once, remove all, persist via updateCanvas
+          undoRedo.snapshot(stateRef.current, 'multi-remove')
+          debouncedSave.cancel()
+          setLocalWidgets((prev) => {
+            if (!prev) return prev
+            const next = prev.filter(w => !selectedWidgetIds.has(w.id))
+            queueWrite(() =>
+              updateCanvas(name, { widgets: next }).catch(err =>
+                console.error('[canvas] Failed to save multi-delete:', err)
+              )
+            )
+            return next
+          })
+        } else {
+          const widgetId = [...selectedWidgetIds][0]
+          if (widgetId) handleWidgetRemove(widgetId)
+        }
+        setSelectedWidgetIds(new Set())
       }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [selectedWidgetId, handleWidgetRemove])
+  }, [selectedWidgetIds, handleWidgetRemove, undoRedo, name, debouncedSave])
 
   // Paste handler — images become image widgets, same-origin URLs become prototypes,
   // other URLs become link previews, text becomes markdown
@@ -1152,15 +1236,17 @@ export default function CanvasPage({ name }) {
           style={canvasThemeVars}
           onClick={isLocalDev ? (e) => {
             e.stopPropagation()
-            setSelectedWidgetId(`jsx-${exportName}`)
+            if (!e.target.closest('.tc-drag-handle')) {
+              setSelectedWidgetIds(new Set([`jsx-${exportName}`]))
+            }
           } : undefined}
         >
           <WidgetChrome
             widgetId={`jsx-${exportName}`}
             features={componentFeatures}
-            selected={selectedWidgetId === `jsx-${exportName}`}
-            onSelect={() => setSelectedWidgetId(`jsx-${exportName}`)}
-            onDeselect={() => setSelectedWidgetId(null)}
+            selected={selectedWidgetIds.has(`jsx-${exportName}`)}
+            onSelect={(shiftKey) => handleWidgetSelect(`jsx-${exportName}`, shiftKey)}
+            onDeselect={() => setSelectedWidgetIds(new Set())}
             readOnly={!isLocalDev}
           >
             <ComponentWidget
@@ -1188,19 +1274,22 @@ export default function CanvasPage({ name }) {
         style={canvasThemeVars}
         onClick={isLocalDev ? (e) => {
           e.stopPropagation()
-          setSelectedWidgetId(widget.id)
+          if (!e.target.closest('.tc-drag-handle')) {
+            setSelectedWidgetIds(new Set([widget.id]))
+          }
         } : undefined}
       >
         <ChromeWrappedWidget
           widget={widget}
-          selected={selectedWidgetId === widget.id}
-          onSelect={() => setSelectedWidgetId(widget.id)}
-          onDeselect={() => setSelectedWidgetId(null)}
+          selected={selectedWidgetIds.has(widget.id)}
+          multiSelected={isMultiSelected && selectedWidgetIds.has(widget.id)}
+          onSelect={(shiftKey) => handleWidgetSelect(widget.id, shiftKey)}
+          onDeselect={() => setSelectedWidgetIds(new Set())}
           onUpdate={isLocalDev ? handleWidgetUpdate : undefined}
           onCopy={isLocalDev ? handleWidgetCopy : undefined}
           onRemove={isLocalDev ? (id) => {
             handleWidgetRemove(id)
-            setSelectedWidgetId(null)
+            setSelectedWidgetIds(new Set())
           } : undefined}
           readOnly={!isLocalDev}
         />
@@ -1241,7 +1330,7 @@ export default function CanvasPage({ name }) {
           ...canvasThemeVars,
           ...(spaceHeld ? { cursor: panningActive ? 'grabbing' : 'grab' } : {}),
         }}
-        onClick={() => setSelectedWidgetId(null)}
+        onClick={() => setSelectedWidgetIds(new Set())}
         onMouseDown={handlePanStart}
       >
         <div

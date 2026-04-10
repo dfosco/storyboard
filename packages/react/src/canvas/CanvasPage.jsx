@@ -1120,6 +1120,7 @@ export default function CanvasPage({ name }) {
     colorMode: canvas.colorMode === 'auto'
       ? getToolbarColorMode(canvasTheme)
       : (canvas.colorMode ?? 'auto'),
+    locked: !isLocalDev,
   }
 
   const canvasThemeVars = getCanvasThemeVars(canvasTheme)

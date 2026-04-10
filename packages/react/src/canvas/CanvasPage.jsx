@@ -418,8 +418,7 @@ export default function CanvasPage({ name }) {
 
   const handleItemDragEnd = useCallback((dragId, position) => {
     if (!dragId || !position) return
-    const raw = { x: Math.max(0, roundPosition(position.x)), y: Math.max(0, roundPosition(position.y)) }
-    const rounded = snapPosition(raw, snapGridSize, snapEnabled)
+    const rounded = { x: Math.max(0, roundPosition(position.x)), y: Math.max(0, roundPosition(position.y)) }
 
     if (dragId.startsWith('jsx-')) {
       undoRedo.snapshot(stateRef.current, 'move', dragId)
@@ -452,7 +451,7 @@ export default function CanvasPage({ name }) {
       )
       return next
     })
-  }, [name, undoRedo, snapEnabled, snapGridSize])
+  }, [name, undoRedo])
 
   useEffect(() => {
     zoomRef.current = zoom
@@ -1108,6 +1107,7 @@ export default function CanvasPage({ name }) {
     dotted: canvas.dotted ?? false,
     grid: canvas.grid ?? false,
     gridSize: canvas.gridSize ?? 18,
+    snapGrid: snapEnabled ? [snapGridSize, snapGridSize] : undefined,
     colorMode: canvas.colorMode === 'auto'
       ? getToolbarColorMode(canvasTheme)
       : (canvas.colorMode ?? 'auto'),

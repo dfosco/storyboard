@@ -330,7 +330,7 @@
   .footerDot {
     width: 8px;
     height: 8px;
-    background: hsl(137, 66%, 30%);
+    background: hsl(212, 92%, 45%);
     border-radius: 50%;
     flex-shrink: 0;
   }

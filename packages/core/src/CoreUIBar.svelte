@@ -431,7 +431,7 @@
 
         // Load component
         if (mod.component) {
-          const component = await mod.component()
+          const component = await mod.component(toolConfig.render)
           toolComponents[toolId] = component
         }
       } catch { /* tool failed to load — skip gracefully */ }
@@ -519,15 +519,7 @@
       {#each canvasMenus as canvasTool (canvasTool.key)}
         {#if toolComponents[canvasTool.key]}
           {@const CanvasToolComponent = toolComponents[canvasTool.key]}
-          {#if canvasTool.render === 'canvas-toolbar'}
-            <CanvasToolComponent
-              config={canvasTool}
-              data={toolData[canvasTool.key]}
-              canvasName={activeCanvasName}
-              zoom={canvasZoom}
-              tabindex={0}
-            />
-          {:else}
+          {#if canvasTool.render === 'menu'}
             <Tooltip.Root>
               <Tooltip.Trigger>
                 <span data-local-only={isToolbarToolLocalOnly(canvasTool.key) || undefined}>
@@ -542,6 +534,14 @@
               </Tooltip.Trigger>
               <Tooltip.Content side="top">{canvasTool.ariaLabel || canvasTool.key}</Tooltip.Content>
             </Tooltip.Root>
+          {:else}
+            <CanvasToolComponent
+              config={canvasTool}
+              data={toolData[canvasTool.key]}
+              canvasName={activeCanvasName}
+              zoom={canvasZoom}
+              tabindex={0}
+            />
           {/if}
         {/if}
       {/each}
@@ -659,7 +659,7 @@
     right: -1px;
     width: 8px;
     height: 8px;
-    background: hsl(137, 66%, 30%);
+    background: hsl(212, 92%, 45%);
     border-radius: 50%;
     border: 2px solid var(--sb--sc-border-color, transparent);
     box-sizing: content-box;

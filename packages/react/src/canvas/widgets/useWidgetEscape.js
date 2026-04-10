@@ -5,8 +5,12 @@ import { useEffect } from 'react'
  *
  * When `active` is true (widget is in edit or interactive mode),
  * registers a document-level keydown listener that calls `exitFn`
- * on Escape. This works even when focus is trapped in an iframe
- * or foreign component tree.
+ * on Escape. Uses bubble phase so child components (menus, popovers)
+ * can handle Escape first — only fires if nothing else stops propagation.
+ *
+ * Limitation: does NOT work when focus is inside an iframe (events stay
+ * in the iframe's browsing context). Widgets with iframes should keep
+ * a click-outside handler as a fallback for exiting interactive mode.
  *
  * Usage:
  *   useWidgetEscape(editing, () => setEditing(false))

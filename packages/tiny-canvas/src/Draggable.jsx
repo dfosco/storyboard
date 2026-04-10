@@ -17,7 +17,7 @@ const DRAG_DELAY_MS = 150;
  *  broken for positioned elements). */
 const DRAG_DISTANCE_PX = 8;
 
-function Draggable({ children, dragId, initialPosition, onDragEnd, handle, snapGrid }) {
+function Draggable({ children, dragId, initialPosition, onDragEnd, handle, snapGrid, locked = false }) {
   const draggableRef = useRef(null);
   const initialSavedPosition = initialPosition || { x: 0, y: 0 };
   const dragStartRef = useRef(initialSavedPosition);
@@ -81,7 +81,7 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle, snapG
   // so React handlers (onPointerDown/onPointerUp) still fire normally.
   useEffect(() => {
     const el = draggableRef.current;
-    if (!el || !handle) return;
+    if (!el || !handle || locked) return;
 
     const g = gateRef.current;
     let synthEvent = null;
@@ -159,7 +159,7 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle, snapG
       document.removeEventListener('pointerup', onDocPointerUp);
       clearTimeout(g.timer);
     };
-  }, [handle]);
+  }, [handle, locked]);
 
   const { isDragging } = useDraggable(draggableRef, {
     axis: 'both',
@@ -168,6 +168,7 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle, snapG
     defaultClassDragging: 'tc-on',
     defaultClassDragged: 'tc-off',
     applyUserSelectHack: true,
+    disabled: locked,
     ...(handle ? { handle } : {}),
     position: { x: position.x, y: position.y },
     onDragStart: () => {
@@ -207,11 +208,14 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle, snapG
 
   const rotation = isDragging && isRotating ? `${rotationVariation}deg` : '0deg';
 
-  // When a handle is set, only the handle shows grab cursor (via its own CSS).
-  // Otherwise the whole article is the drag surface.
-  const articleCursor = handle
-    ? (isDragging ? 'grabbing' : undefined)
-    : (isDragging ? 'grabbing' : 'grab');
+  // When locked, no drag cursor. When a handle is set, only the handle
+  // shows grab cursor (via its own CSS). Otherwise the whole article is
+  // the drag surface.
+  const articleCursor = locked
+    ? undefined
+    : handle
+      ? (isDragging ? 'grabbing' : undefined)
+      : (isDragging ? 'grabbing' : 'grab');
 
   return (
     <article

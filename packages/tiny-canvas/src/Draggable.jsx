@@ -81,8 +81,9 @@ function Draggable({ children, dragId, initialPosition, onDragStart: onDragStart
     let synthEvent = null;
 
     function isHandleEvent(e) {
-      const handleEl = el.querySelector(handle);
-      return handleEl && handleEl.contains(e.target);
+      if (!(e.target instanceof Element)) return false;
+      const match = e.target.closest(handle);
+      return match != null && el.contains(match);
     }
 
     function onArticlePointerDownCapture(e) {
@@ -138,7 +139,7 @@ function Draggable({ children, dragId, initialPosition, onDragStart: onDragStart
       }
     }
 
-    function onDocPointerUp() {
+    function resetGate() {
       clearTimeout(g.timer);
       g.active = false;
       g.target = null;
@@ -146,11 +147,13 @@ function Draggable({ children, dragId, initialPosition, onDragStart: onDragStart
 
     el.addEventListener('pointerdown', onArticlePointerDownCapture, true);
     document.addEventListener('pointermove', onDocPointerMove);
-    document.addEventListener('pointerup', onDocPointerUp);
+    document.addEventListener('pointerup', resetGate);
+    document.addEventListener('pointercancel', resetGate);
     return () => {
       el.removeEventListener('pointerdown', onArticlePointerDownCapture, true);
       document.removeEventListener('pointermove', onDocPointerMove);
-      document.removeEventListener('pointerup', onDocPointerUp);
+      document.removeEventListener('pointerup', resetGate);
+      document.removeEventListener('pointercancel', resetGate);
       clearTimeout(g.timer);
     };
   }, [handle, locked]);

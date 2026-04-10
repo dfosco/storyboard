@@ -1,307 +1,368 @@
-import { jsx as Z } from "react/jsx-runtime";
-import xt, { useRef as W, useState as H, useEffect as dt, Children as Ct, useCallback as Rt } from "react";
-var it = { dragStart: !0 }, ct = { delay: 0, distance: 3 };
-function It(t, e = {}) {
-  let n, o, { bounds: a, axis: i = "both", gpuAcceleration: u = !0, legacyTranslate: d = !1, transform: v, applyUserSelectHack: x = !0, disabled: w = !1, ignoreMultitouch: A = !1, recomputeBounds: N = it, grid: I, threshold: m = ct, position: S, cancel: f, handle: g, defaultClass: s = "neodrag", defaultClassDragging: b = "neodrag-dragging", defaultClassDragged: D = "neodrag-dragged", defaultPosition: gt = { x: 0, y: 0 }, onDragStart: Et, onDrag: Nt, onDragEnd: At } = e, X = !1, $ = !1, pt = 0, k = !1, _ = !1, T = 0, O = 0, q = 0, L = 0, G = 0, K = 0, { x: U, y: J } = S ? { x: (S == null ? void 0 : S.x) ?? 0, y: (S == null ? void 0 : S.y) ?? 0 } : gt;
-  nt(U, J);
-  let M, P, B, tt, et, ht = "", Mt = !!S;
-  N = { ...it, ...N }, m = { ...ct, ...m ?? {} };
-  let j = /* @__PURE__ */ new Set();
-  function yt(r) {
-    X && !$ && _ && k && et && ($ = !0, (function(c) {
-      ot("neodrag:start", Et, c);
-    })(r), R.add(b), x && (ht = rt.userSelect, rt.userSelect = "none"));
+import { jsx as tt } from "react/jsx-runtime";
+import Dt, { useRef as j, useState as et, useEffect as nt, Children as Ct, useCallback as Nt } from "react";
+var ft = { dragStart: !0 }, gt = { delay: 0, distance: 3 };
+function Tt(t, e = {}) {
+  let r, a, { bounds: s, axis: p = "both", gpuAcceleration: i = !0, legacyTranslate: C = !1, transform: b, applyUserSelectHack: E = !0, disabled: m = !1, ignoreMultitouch: h = !1, recomputeBounds: y = ft, grid: T, threshold: f = gt, position: S, cancel: D, handle: N, defaultClass: g = "neodrag", defaultClassDragging: P = "neodrag-dragging", defaultClassDragged: c = "neodrag-dragged", defaultPosition: o = { x: 0, y: 0 }, onDragStart: x, onDrag: I, onDragEnd: q } = e, A = !1, L = !1, B = 0, l = !1, R = !1, X = 0, O = 0, k = 0, G = 0, rt = 0, ot = 0, { x: F, y: Q } = S ? { x: S?.x ?? 0, y: S?.y ?? 0 } : o;
+  ct(F, Q);
+  let Y, U, J, at, st, yt = "", At = !!S;
+  y = { ...ft, ...y }, f = { ...gt, ...f ?? {} };
+  let W = /* @__PURE__ */ new Set();
+  function vt(n) {
+    A && !L && R && l && st && (L = !0, (function(d) {
+      lt("neodrag:start", x, d);
+    })(n), H.add(P), E && (yt = it.userSelect, it.userSelect = "none"));
   }
-  const rt = document.body.style, R = t.classList;
-  function nt(r = T, c = O) {
-    if (!v) {
-      if (d) {
-        let h = `${+r}px, ${+c}px`;
-        return Q(t, "transform", u ? `translate3d(${h}, 0)` : `translate(${h})`);
+  const it = document.body.style, H = t.classList;
+  function ct(n = X, d = O) {
+    if (!b) {
+      if (C) {
+        let M = `${+n}px, ${+d}px`;
+        return Z(t, "transform", i ? `translate3d(${M}, 0)` : `translate(${M})`);
       }
-      return Q(t, "translate", `${+r}px ${+c}px`);
+      return Z(t, "translate", `${+n}px ${+d}px`);
     }
-    const p = v({ offsetX: r, offsetY: c, rootNode: t });
-    lt(p) && Q(t, "transform", p);
+    const w = b({ offsetX: n, offsetY: d, rootNode: t });
+    pt(w) && Z(t, "transform", w);
   }
-  function ot(r, c, p) {
-    const h = /* @__PURE__ */ (function(y) {
-      return { offsetX: T, offsetY: O, rootNode: t, currentNode: et, event: y };
-    })(p);
-    t.dispatchEvent(new CustomEvent(r, { detail: h })), c == null || c(h);
+  function lt(n, d, w) {
+    const M = /* @__PURE__ */ (function(v) {
+      return { offsetX: X, offsetY: O, rootNode: t, currentNode: st, event: v };
+    })(w);
+    t.dispatchEvent(new CustomEvent(n, { detail: M })), d?.(M);
   }
-  const F = addEventListener, at = new AbortController(), st = { signal: at.signal, capture: !1 };
-  function mt() {
-    let r = t.offsetWidth / P.width;
-    return isNaN(r) && (r = 1), r;
+  const K = addEventListener, ut = new AbortController(), dt = { signal: ut.signal, capture: !1 };
+  function xt() {
+    let n = t.offsetWidth / U.width;
+    return isNaN(n) && (n = 1), n;
   }
-  return Q(t, "touch-action", "none"), F("pointerdown", ((r) => {
-    if (w || r.button === 2) return;
-    if (j.add(r.pointerId), A && j.size > 1) return r.preventDefault();
-    if (N.dragStart && (M = ut(a, t)), lt(g) && lt(f) && g === f) throw new Error("`handle` selector can't be same as `cancel` selector");
-    if (R.add(s), B = (function(l, E) {
-      if (!l) return [E];
-      if (ft(l)) return [l];
-      if (Array.isArray(l)) return l;
-      const C = E.querySelectorAll(l);
-      if (C === null) throw new Error("Selector passed for `handle` option should be child of the element on which the action is applied");
-      return Array.from(C.values());
-    })(g, t), tt = (function(l, E) {
-      if (!l) return [];
-      if (ft(l)) return [l];
-      if (Array.isArray(l)) return l;
-      const C = E.querySelectorAll(l);
-      if (C === null) throw new Error("Selector passed for `cancel` option should be child of the element on which the action is applied");
-      return Array.from(C.values());
-    })(f, t), n = /(both|x)/.test(i), o = /(both|y)/.test(i), St(tt, B)) throw new Error("Element being dragged can't be a child of the element on which `cancel` is applied");
-    const c = r.composedPath()[0];
-    if (!B.some(((l) => {
-      var E;
-      return l.contains(c) || ((E = l.shadowRoot) == null ? void 0 : E.contains(c));
-    })) || St(tt, [c])) return;
-    et = B.length === 1 ? t : B.find(((l) => l.contains(c))), X = !0, pt = Date.now(), m.delay || (k = !0), P = t.getBoundingClientRect();
-    const { clientX: p, clientY: h } = r, y = mt();
-    n && (q = p - U / y), o && (L = h - J / y), M && (G = p - P.left, K = h - P.top);
-  }), st), F("pointermove", ((r) => {
-    if (!X || A && j.size > 1) return;
-    if (!$) {
-      if (k || Date.now() - pt >= m.delay && (k = !0, yt(r)), !_) {
-        const y = r.clientX - q, l = r.clientY - L;
-        Math.sqrt(y ** 2 + l ** 2) >= m.distance && (_ = !0, yt(r));
+  return Z(t, "touch-action", "none"), K("pointerdown", ((n) => {
+    if (m || n.button === 2) return;
+    if (W.add(n.pointerId), h && W.size > 1) return n.preventDefault();
+    if (y.dragStart && (Y = ht(s, t)), pt(N) && pt(D) && N === D) throw new Error("`handle` selector can't be same as `cancel` selector");
+    if (H.add(g), J = (function(u, _) {
+      if (!u) return [_];
+      if (mt(u)) return [u];
+      if (Array.isArray(u)) return u;
+      const $ = _.querySelectorAll(u);
+      if ($ === null) throw new Error("Selector passed for `handle` option should be child of the element on which the action is applied");
+      return Array.from($.values());
+    })(N, t), at = (function(u, _) {
+      if (!u) return [];
+      if (mt(u)) return [u];
+      if (Array.isArray(u)) return u;
+      const $ = _.querySelectorAll(u);
+      if ($ === null) throw new Error("Selector passed for `cancel` option should be child of the element on which the action is applied");
+      return Array.from($.values());
+    })(D, t), r = /(both|x)/.test(p), a = /(both|y)/.test(p), Et(at, J)) throw new Error("Element being dragged can't be a child of the element on which `cancel` is applied");
+    const d = n.composedPath()[0];
+    if (!J.some(((u) => u.contains(d) || u.shadowRoot?.contains(d))) || Et(at, [d])) return;
+    st = J.length === 1 ? t : J.find(((u) => u.contains(d))), A = !0, B = Date.now(), f.delay || (l = !0), U = t.getBoundingClientRect();
+    const { clientX: w, clientY: M } = n, v = xt();
+    r && (k = w - F / v), a && (G = M - Q / v), Y && (rt = w - U.left, ot = M - U.top);
+  }), dt), K("pointermove", ((n) => {
+    if (!A || h && W.size > 1) return;
+    if (!L) {
+      if (l || Date.now() - B >= f.delay && (l = !0, vt(n)), !R) {
+        const v = n.clientX - k, u = n.clientY - G;
+        Math.sqrt(v ** 2 + u ** 2) >= f.distance && (R = !0, vt(n));
       }
-      if (!$) return;
+      if (!L) return;
     }
-    N.drag && (M = ut(a, t)), r.preventDefault(), P = t.getBoundingClientRect();
-    let c = r.clientX, p = r.clientY;
-    const h = mt();
-    if (M) {
-      const y = { left: M.left + G, top: M.top + K, right: M.right + G - P.width, bottom: M.bottom + K - P.height };
-      c = bt(c, y.left, y.right), p = bt(p, y.top, y.bottom);
+    y.drag && (Y = ht(s, t)), n.preventDefault(), U = t.getBoundingClientRect();
+    let d = n.clientX, w = n.clientY;
+    const M = xt();
+    if (Y) {
+      const v = { left: Y.left + rt, top: Y.top + ot, right: Y.right + rt - U.width, bottom: Y.bottom + ot - U.height };
+      d = bt(d, v.left, v.right), w = bt(w, v.top, v.bottom);
     }
-    if (Array.isArray(I)) {
-      let [y, l] = I;
-      if (isNaN(+y) || y < 0) throw new Error("1st argument of `grid` must be a valid positive number");
-      if (isNaN(+l) || l < 0) throw new Error("2nd argument of `grid` must be a valid positive number");
-      let E = c - q, C = p - L;
-      [E, C] = Tt([y / h, l / h], E, C), c = q + E, p = L + C;
+    if (Array.isArray(T)) {
+      let [v, u] = T;
+      if (isNaN(+v) || v < 0) throw new Error("1st argument of `grid` must be a valid positive number");
+      if (isNaN(+u) || u < 0) throw new Error("2nd argument of `grid` must be a valid positive number");
+      let _ = d - k, $ = w - G;
+      [_, $] = It([v / M, u / M], _, $), d = k + _, w = G + $;
     }
-    n && (T = Math.round((c - q) * h)), o && (O = Math.round((p - L) * h)), U = T, J = O, ot("neodrag", Nt, r), nt();
-  }), st), F("pointerup", ((r) => {
-    j.delete(r.pointerId), X && ($ && (F("click", ((c) => c.stopPropagation()), { once: !0, signal: at.signal, capture: !0 }), N.dragEnd && (M = ut(a, t)), R.remove(b), R.add(D), x && (rt.userSelect = ht), ot("neodrag:end", At, r), n && (q = T), o && (L = O)), X = !1, $ = !1, k = !1, _ = !1);
-  }), st), { destroy: () => at.abort(), update: (r) => {
-    var p, h;
-    i = r.axis || "both", w = r.disabled ?? !1, A = r.ignoreMultitouch ?? !1, g = r.handle, a = r.bounds, N = r.recomputeBounds ?? it, f = r.cancel, x = r.applyUserSelectHack ?? !0, I = r.grid, u = r.gpuAcceleration ?? !0, d = r.legacyTranslate ?? !1, v = r.transform, m = { ...ct, ...r.threshold ?? {} };
-    const c = R.contains(D);
-    R.remove(s, D), s = r.defaultClass ?? "neodrag", b = r.defaultClassDragging ?? "neodrag-dragging", D = r.defaultClassDragged ?? "neodrag-dragged", R.add(s), c && R.add(D), Mt && (U = T = ((p = r.position) == null ? void 0 : p.x) ?? T, J = O = ((h = r.position) == null ? void 0 : h.y) ?? O, nt());
+    r && (X = Math.round((d - k) * M)), a && (O = Math.round((w - G) * M)), F = X, Q = O, lt("neodrag", I, n), ct();
+  }), dt), K("pointerup", ((n) => {
+    W.delete(n.pointerId), A && (L && (K("click", ((d) => d.stopPropagation()), { once: !0, signal: ut.signal, capture: !0 }), y.dragEnd && (Y = ht(s, t)), H.remove(P), H.add(c), E && (it.userSelect = yt), lt("neodrag:end", q, n), r && (k = X), a && (G = O)), A = !1, L = !1, l = !1, R = !1);
+  }), dt), { destroy: () => ut.abort(), update: (n) => {
+    p = n.axis || "both", m = n.disabled ?? !1, h = n.ignoreMultitouch ?? !1, N = n.handle, s = n.bounds, y = n.recomputeBounds ?? ft, D = n.cancel, E = n.applyUserSelectHack ?? !0, T = n.grid, i = n.gpuAcceleration ?? !0, C = n.legacyTranslate ?? !1, b = n.transform, f = { ...gt, ...n.threshold ?? {} };
+    const d = H.contains(c);
+    H.remove(g, c), g = n.defaultClass ?? "neodrag", P = n.defaultClassDragging ?? "neodrag-dragging", c = n.defaultClassDragged ?? "neodrag-dragged", H.add(g), d && H.add(c), At && (F = X = n.position?.x ?? X, Q = O = n.position?.y ?? O, ct());
   } };
 }
-var bt = (t, e, n) => Math.min(Math.max(t, e), n), lt = (t) => typeof t == "string", Tt = ([t, e], n, o) => {
-  const a = (i, u) => u === 0 ? 0 : Math.ceil(i / u) * u;
-  return [a(n, t), a(o, e)];
-}, St = (t, e) => t.some(((n) => e.some(((o) => n.contains(o)))));
-function ut(t, e) {
+var bt = (t, e, r) => Math.min(Math.max(t, e), r), pt = (t) => typeof t == "string", It = ([t, e], r, a) => {
+  const s = (p, i) => i === 0 ? 0 : Math.ceil(p / i) * i;
+  return [s(r, t), s(a, e)];
+}, Et = (t, e) => t.some(((r) => e.some(((a) => r.contains(a)))));
+function ht(t, e) {
   if (t === void 0) return;
-  if (ft(t)) return t.getBoundingClientRect();
+  if (mt(t)) return t.getBoundingClientRect();
   if (typeof t == "object") {
-    const { top: o = 0, left: a = 0, right: i = 0, bottom: u = 0 } = t;
-    return { top: o, right: window.innerWidth - i, bottom: window.innerHeight - u, left: a };
+    const { top: a = 0, left: s = 0, right: p = 0, bottom: i = 0 } = t;
+    return { top: a, right: window.innerWidth - p, bottom: window.innerHeight - i, left: s };
   }
   if (t === "parent") return e.parentNode.getBoundingClientRect();
-  const n = document.querySelector(t);
-  if (n === null) throw new Error("The selector provided for bound doesn't exists in the document.");
-  return n.getBoundingClientRect();
+  const r = document.querySelector(t);
+  if (r === null) throw new Error("The selector provided for bound doesn't exists in the document.");
+  return r.getBoundingClientRect();
 }
-var Q = (t, e, n) => t.style.setProperty(e, n), ft = (t) => t instanceof HTMLElement;
-function z(t) {
+var Z = (t, e, r) => t.style.setProperty(e, r), mt = (t) => t instanceof HTMLElement;
+function V(t) {
   return t == null || typeof t == "string" || t instanceof HTMLElement ? t : "current" in t ? t.current : Array.isArray(t) ? t.map(((e) => e instanceof HTMLElement ? e : e.current)) : void 0;
 }
-function Ot(t, e = {}) {
-  const n = W(), [o, a] = H(!1), [i, u] = H();
-  let { onDragStart: d, onDrag: v, onDragEnd: x, handle: w, cancel: A } = e, N = z(w), I = z(A);
-  function m(s, b) {
-    u(s), b == null || b(s);
+function Lt(t, e = {}) {
+  const r = j(), [a, s] = et(!1), [p, i] = et();
+  let { onDragStart: C, onDrag: b, onDragEnd: E, handle: m, cancel: h } = e, y = V(m), T = V(h);
+  function f(g, P) {
+    i(g), P?.(g);
   }
-  function S(s) {
-    a(!0), m(s, d);
+  function S(g) {
+    s(!0), f(g, C);
   }
-  function f(s) {
-    m(s, v);
+  function D(g) {
+    f(g, b);
   }
-  function g(s) {
-    a(!1), m(s, x);
+  function N(g) {
+    s(!1), f(g, E);
   }
-  return dt((() => {
+  return nt((() => {
     if (typeof window > "u") return;
-    const s = t.current;
-    if (!s) return;
-    ({ onDragStart: d, onDrag: v, onDragEnd: x } = e);
-    const { update: b, destroy: D } = It(s, { ...e, handle: N, cancel: I, onDragStart: S, onDrag: f, onDragEnd: g });
-    return n.current = b, D;
-  }), []), dt((() => {
-    var s;
-    (s = n.current) == null || s.call(n, { ...e, handle: z(w), cancel: z(A), onDragStart: S, onDrag: f, onDragEnd: g });
-  }), [e]), { isDragging: o, dragState: i };
+    const g = t.current;
+    if (!g) return;
+    ({ onDragStart: C, onDrag: b, onDragEnd: E } = e);
+    const { update: P, destroy: c } = Tt(g, { ...e, handle: y, cancel: T, onDragStart: S, onDrag: D, onDragEnd: N });
+    return r.current = P, c;
+  }), []), nt((() => {
+    r.current?.({ ...e, handle: V(m), cancel: V(h), onDragStart: S, onDrag: D, onDragEnd: N });
+  }), [e]), { isDragging: a, dragState: p };
 }
-const Y = "tiny-canvas-queue";
+const z = "tiny-canvas-queue";
 function wt() {
-  const t = localStorage.getItem(Y);
+  const t = localStorage.getItem(z);
   if (!t) return [];
   try {
     const e = JSON.parse(t);
     return Array.isArray(e) ? e : [];
   } catch {
-    return localStorage.setItem(Y, JSON.stringify([])), [];
+    return localStorage.setItem(z, JSON.stringify([])), [];
   }
 }
-const Pt = (t) => {
+const Rt = (t) => {
   if (!t) return null;
   let e = null;
-  const n = (o) => {
-    if (o.props && o.props.id) {
-      e = o.props.id;
+  const r = (a) => {
+    if (a.props && a.props.id) {
+      e = a.props.id;
       return;
     }
-    o.props && o.props.children && xt.Children.forEach(o.props.children, n);
+    a.props && a.props.children && Dt.Children.forEach(a.props.children, r);
   };
-  return n(t), e;
+  return r(t), e;
 };
-function $t(t) {
+function Xt(t) {
   let e = 5381;
-  for (let n = 0; n < t.length; n++)
-    e = (e << 5) + e + t.charCodeAt(n) >>> 0;
+  for (let r = 0; r < t.length; r++)
+    e = (e << 5) + e + t.charCodeAt(r) >>> 0;
   return e.toString(16).padStart(8, "0");
 }
-function Dt(t) {
-  var i;
+function Mt(t) {
   if (t == null || typeof t == "boolean") return "";
   if (typeof t == "string" || typeof t == "number") return "#text";
-  const e = t.type, n = typeof e == "function" ? e.displayName || e.name || "Anonymous" : typeof e == "string" ? e : "Fragment", o = (i = t.props) == null ? void 0 : i.children;
-  if (o == null) return n;
-  const a = [];
-  return xt.Children.forEach(o, (u) => {
-    const d = Dt(u);
-    d && a.push(d);
-  }), a.length ? `${n}(${a.join(",")})` : n;
+  const e = t.type, r = typeof e == "function" ? e.displayName || e.name || "Anonymous" : typeof e == "string" ? e : "Fragment", a = t.props?.children;
+  if (a == null) return r;
+  const s = [];
+  return Dt.Children.forEach(a, (p) => {
+    const i = Mt(p);
+    i && s.push(i);
+  }), s.length ? `${r}(${s.join(",")})` : r;
 }
-const qt = (t, e) => {
-  const n = Dt(t);
-  return `tc-${$t(n)}-${e}`;
-}, Ut = (t) => {
+const Yt = (t, e) => {
+  const r = Mt(t);
+  return `tc-${Xt(r)}-${e}`;
+}, Gt = (t) => {
   try {
-    return wt().reduce((o, a) => (o[a.id] = { id: a.id, x: a.x, y: a.y }, o), {})[t] || { x: 0, y: 0 };
+    return wt().reduce((a, s) => (a[s.id] = { id: s.id, x: s.x, y: s.y }, a), {})[t] || { x: 0, y: 0 };
   } catch (e) {
     return console.error("Error getting saved coordinates:", e), { x: 0, y: 0 };
   }
 }, Jt = () => {
   try {
-    localStorage.getItem(Y) || localStorage.setItem(Y, JSON.stringify([]));
+    localStorage.getItem(z) || localStorage.setItem(z, JSON.stringify([]));
   } catch (t) {
     console.error("LocalStorage is not available:", t);
   }
-}, Lt = (t, e, n) => {
+}, $t = (t, e, r) => {
   try {
-    const o = wt(), a = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-"), i = { id: t, x: e, y: n, time: a }, u = o.findIndex((d) => d.id === t);
-    u >= 0 ? o[u] = i : o.push(i), localStorage.setItem(Y, JSON.stringify(o));
-  } catch (o) {
-    console.error("Error saving drag position:", o);
+    const a = wt(), s = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-"), p = { id: t, x: e, y: r, time: s }, i = a.findIndex((C) => C.id === t);
+    i >= 0 ? a[i] = p : a.push(p), localStorage.setItem(z, JSON.stringify(a));
+  } catch (a) {
+    console.error("Error saving drag position:", a);
   }
-}, Xt = 250, vt = 4, kt = 10, V = 1.5;
-function Bt({ children: t, dragId: e, initialPosition: n, onDragEnd: o }) {
-  const a = W(null), i = n || { x: 0, y: 0 }, u = W(i), d = W(!1), [v, x] = H(!1), [w, A] = H(i), [N, I] = H(
-    () => Math.random() < 0.5 ? -V : V
-  );
-  dt(() => {
-    const f = a.current;
-    if (f && e && (i.x !== 0 || i.y !== 0)) {
-      f.classList.add("tc-on-translation");
-      const g = setTimeout(() => {
-        f.classList.remove("tc-on-translation");
-      }, Xt * 4);
+}, Pt = 250, St = 4, qt = 150, Ht = 8;
+function _t({ children: t, dragId: e, initialPosition: r, onDragStart: a, onDrag: s, onDragEnd: p, handle: i, snapGrid: C, locked: b = !1 }) {
+  const E = j(null), m = r || { x: 0, y: 0 }, h = j(m), y = j(!1), T = j({
+    timer: null,
+    startX: 0,
+    startY: 0,
+    delayMet: !1,
+    distanceMet: !1,
+    active: !1,
+    lastEvent: null
+  }), [f, S] = et(m), [D, N] = et(m);
+  r && (r.x !== D.x || r.y !== D.y) && (N(r), S(r)), nt(() => {
+    const c = E.current;
+    if (c && e && (m.x !== 0 || m.y !== 0)) {
+      c.classList.add("tc-on-translation");
+      const o = setTimeout(() => {
+        c.classList.remove("tc-on-translation");
+      }, Pt * 4);
       return () => {
-        clearTimeout(g);
+        clearTimeout(o);
       };
     }
-  }, [e, i.x, i.y]);
-  const { isDragging: m } = Ot(a, {
+  }, [e, m.x, m.y]), nt(() => {
+    const c = E.current;
+    if (!c || !i || b) return;
+    const o = T.current;
+    let x = null;
+    function I(l) {
+      if (!(l.target instanceof Element)) return !1;
+      const R = l.target.closest(i);
+      return R != null && c.contains(R);
+    }
+    function q(l) {
+      if (l === x) {
+        x = null;
+        return;
+      }
+      I(l) && (l.stopImmediatePropagation(), o.active = !0, o.delayMet = !1, o.distanceMet = !1, o.startX = l.clientX, o.startY = l.clientY, o.target = l.target, o.pointerId = l.pointerId, o.button = l.button, o.pointerType = l.pointerType, clearTimeout(o.timer), o.timer = setTimeout(() => {
+        o.delayMet = !0, A();
+      }, qt));
+    }
+    function A() {
+      if (o.delayMet && o.distanceMet && o.active && o.target) {
+        const l = new PointerEvent("pointerdown", {
+          bubbles: !0,
+          cancelable: !0,
+          pointerId: o.pointerId,
+          clientX: o.startX,
+          clientY: o.startY,
+          button: o.button,
+          pointerType: o.pointerType
+        });
+        x = l, o.target.dispatchEvent(l), o.target = null;
+      }
+    }
+    function L(l) {
+      if (!o.active || o.distanceMet) return;
+      const R = l.clientX - o.startX, X = l.clientY - o.startY;
+      Math.hypot(R, X) >= Ht && (o.distanceMet = !0, A());
+    }
+    function B() {
+      clearTimeout(o.timer), o.active = !1, o.target = null;
+    }
+    return c.addEventListener("pointerdown", q, !0), document.addEventListener("pointermove", L), document.addEventListener("pointerup", B), document.addEventListener("pointercancel", B), () => {
+      c.removeEventListener("pointerdown", q, !0), document.removeEventListener("pointermove", L), document.removeEventListener("pointerup", B), document.removeEventListener("pointercancel", B), clearTimeout(o.timer);
+    };
+  }, [i, b]);
+  const { isDragging: g } = Lt(E, {
     axis: "both",
-    bounds: "parent",
-    threshold: { delay: 50, distance: 30 },
+    grid: C,
     defaultClass: "tc-drag",
     defaultClassDragging: "tc-on",
     defaultClassDragged: "tc-off",
     applyUserSelectHack: !0,
-    position: { x: w.x, y: w.y },
+    disabled: b,
+    ...i ? { handle: i } : {},
+    position: { x: f.x, y: f.y },
+    // Clamp in the transform callback so neodrag never paints a
+    // negative position — avoids the one-frame flicker that happens
+    // when clamping only in onDrag (React re-render lag).
+    transform: ({ offsetX: c, offsetY: o }) => {
+      const x = Math.max(0, c), I = Math.max(0, o);
+      return `translate3d(${x}px, ${I}px, 0)`;
+    },
     onDragStart: () => {
-      u.current = w, d.current = !1, x(!1);
+      h.current = f, y.current = !1, a?.(e, f);
     },
-    onDrag: ({ offsetX: f, offsetY: g }) => {
-      const s = f - u.current.x, b = g - u.current.y, D = Math.hypot(s, b);
-      !d.current && Math.hypot(s, b) >= vt && (d.current = !0), !v && D >= kt && x(!0), A({ x: Math.max(0, f), y: Math.max(0, g) });
+    onDrag: ({ offsetX: c, offsetY: o }) => {
+      const x = c - h.current.x, I = o - h.current.y, q = Math.hypot(x, I);
+      !y.current && q >= St && (y.current = !0);
+      const A = { x: Math.max(0, c), y: Math.max(0, o) };
+      S(A), s?.(e, A);
     },
-    onDragEnd: (f) => {
-      const g = Math.max(0, f.offsetX), s = Math.max(0, f.offsetY);
-      A({ x: g, y: s }), I(Math.random() < 0.5 ? -V : V), x(!1);
-      const b = g - u.current.x, D = s - u.current.y;
-      (d.current || Math.hypot(b, D) >= vt) && (e && Lt(e, g, s), o == null || o(e, { x: g, y: s }));
+    onDragEnd: (c) => {
+      const o = Math.max(0, c.offsetX), x = Math.max(0, c.offsetY);
+      S({ x: o, y: x });
+      const I = o - h.current.x, q = x - h.current.y;
+      (y.current || Math.hypot(I, q) >= St) && (e && $t(e, o, x), p?.(e, { x: o, y: x }));
     }
-  }), S = m && v ? `${N}deg` : "0deg";
-  return /* @__PURE__ */ Z(
+  });
+  return /* @__PURE__ */ tt(
     "article",
     {
-      ref: a,
-      style: { cursor: m ? "grabbing" : "grab" },
-      children: /* @__PURE__ */ Z(
-        "div",
-        {
-          className: "tc-draggable-inner",
-          style: {
-            transform: m ? `rotate(${S})` : void 0,
-            transition: "transform ease-in-out 150ms"
-          },
-          children: t
-        }
-      )
+      ref: E,
+      style: { cursor: b ? void 0 : i ? g ? "grabbing" : void 0 : g ? "grabbing" : "grab" },
+      children: /* @__PURE__ */ tt("div", { className: "tc-draggable-inner", children: t })
     }
   );
 }
-function Ht(t) {
-  var o, a;
-  const e = Number((o = t == null ? void 0 : t.props) == null ? void 0 : o["data-tc-x"]), n = Number((a = t == null ? void 0 : t.props) == null ? void 0 : a["data-tc-y"]);
-  return Number.isFinite(e) && Number.isFinite(n) ? { x: Math.max(0, e), y: Math.max(0, n) } : null;
+function Bt(t) {
+  const e = Number(t?.props?.["data-tc-x"]), r = Number(t?.props?.["data-tc-y"]);
+  return Number.isFinite(e) && Number.isFinite(r) ? { x: Math.max(0, e), y: Math.max(0, r) } : null;
+}
+function Ot(t) {
+  return t?.props?.["data-tc-handle"] || null;
 }
 function jt({
   children: t,
   dotted: e = !1,
-  grid: n = !1,
-  gridSize: o,
-  colorMode: a = "auto",
-  onDragEnd: i
+  grid: r = !1,
+  gridSize: a,
+  snapGrid: s,
+  colorMode: p = "auto",
+  locked: i = !1,
+  onDragStart: C,
+  onDrag: b,
+  onDragEnd: E
 }) {
-  return /* @__PURE__ */ Z(
+  const m = e || r, h = a, y = h && h < 16 ? 1 : 2, T = h ? {
+    "--tc-grid-size": `${h}px`,
+    "--tc-grid-offset": `${h / -2}px`,
+    "--tc-dot-radius": `${y}px`
+  } : void 0;
+  return /* @__PURE__ */ tt(
     "main",
     {
       className: "tc-canvas",
-      "data-dotted": e || n || void 0,
-      "data-color-mode": a !== "auto" ? a : void 0,
-      children: Ct.map(t, (d, v) => {
-        const x = Pt(d) ?? qt(d, v), w = Ht(d);
-        return /* @__PURE__ */ Z(
-          Bt,
+      "data-dotted": m || void 0,
+      "data-color-mode": p !== "auto" ? p : void 0,
+      style: T,
+      children: Ct.map(t, (f, S) => {
+        const D = Rt(f) ?? Yt(f, S), N = Bt(f), g = Ot(f);
+        return /* @__PURE__ */ tt(
+          _t,
           {
-            gridSize: o,
-            dragId: x,
-            initialPosition: w,
-            onDragEnd: i,
-            children: d
+            gridSize: a,
+            snapGrid: s,
+            dragId: D,
+            initialPosition: N,
+            onDragStart: C,
+            onDrag: b,
+            onDragEnd: E,
+            handle: g,
+            locked: i,
+            children: f
           },
-          v
+          D
         );
       })
     }
   );
 }
-function Ft({ reload: t = !1 } = {}) {
-  return Rt(() => {
+function zt({ reload: t = !1 } = {}) {
+  return Nt(() => {
     try {
       localStorage.removeItem("tiny-canvas-queue");
     } catch (e) {
@@ -312,11 +373,11 @@ function Ft({ reload: t = !1 } = {}) {
 }
 export {
   jt as Canvas,
-  Bt as Draggable,
-  Pt as findDragId,
-  qt as generateDragId,
-  Ut as getQueue,
+  _t as Draggable,
+  Rt as findDragId,
+  Yt as generateDragId,
+  Gt as getQueue,
   Jt as refreshStorage,
-  Lt as saveDrag,
-  Ft as useResetCanvas
+  $t as saveDrag,
+  zt as useResetCanvas
 };

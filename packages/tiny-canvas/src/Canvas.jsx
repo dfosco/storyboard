@@ -50,7 +50,7 @@ function Canvas({
         const handle = readHandle(child);
         return (
           <Draggable
-            key={index}
+            key={dragId}
             gridSize={gridSize}
             snapGrid={snapGrid}
             dragId={dragId}

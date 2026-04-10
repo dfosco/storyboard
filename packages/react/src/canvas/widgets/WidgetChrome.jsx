@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Tooltip } from '@primer/react'
 import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed } from '@primer/octicons-react'
 import styles from './WidgetChrome.module.css'
@@ -66,6 +66,82 @@ function CopyIcon() {
       <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z" />
       <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z" />
     </svg>
+  )
+}
+
+function MoreIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M8 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM1.5 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm13 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
+    </svg>
+  )
+}
+
+function LinkIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z" />
+    </svg>
+  )
+}
+
+/**
+ * Overflow menu — `...` button that opens a dropdown with delete + copy link.
+ */
+function WidgetOverflowMenu({ widgetId, onAction }) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handlePointerDown(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [open])
+
+  const handleCopyLink = useCallback((e) => {
+    e.stopPropagation()
+    const url = new URL(window.location.href)
+    url.searchParams.set('widget', widgetId)
+    navigator.clipboard.writeText(url.toString()).catch(() => {})
+    setOpen(false)
+  }, [widgetId])
+
+  const handleDelete = useCallback((e) => {
+    e.stopPropagation()
+    onAction?.('delete')
+    setOpen(false)
+  }, [onAction])
+
+  return (
+    <div ref={menuRef} className={styles.overflowWrapper}>
+      <Tooltip text="More actions" direction="n">
+        <button
+          className={styles.featureBtn}
+          onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
+          aria-label="More actions"
+          aria-expanded={open}
+        >
+          <MoreIcon />
+        </button>
+      </Tooltip>
+      {open && (
+        <div className={styles.overflowMenu}>
+          <button className={styles.overflowItem} onClick={handleCopyLink}>
+            <LinkIcon />
+            <span>Copy link to widget</span>
+          </button>
+          <button className={`${styles.overflowItem} ${styles.overflowItemDanger}`} onClick={handleDelete}>
+            <DeleteIcon />
+            <span>Delete widget</span>
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -146,6 +222,7 @@ function ColorPickerFeature({ currentColor, options, onColorChange }) {
  * non-standard actions (anything other than 'delete').
  */
 export default function WidgetChrome({
+  widgetId,
   features = [],
   selected = false,
   widgetProps,
@@ -227,6 +304,9 @@ export default function WidgetChrome({
         <div className={`${styles.toolbarContent} ${showToolbar ? styles.toolbarContentVisible : ''}`}>
           <div className={styles.featureButtons}>
             {features.map((feature) => {
+              // delete goes in overflow menu, skip here
+              if (feature.action === 'delete') return null
+
               if (feature.type === 'color-picker') {
                 return (
                   <ColorPickerFeature
@@ -267,6 +347,7 @@ export default function WidgetChrome({
 
               return null
             })}
+            <WidgetOverflowMenu widgetId={widgetId} onAction={onAction} />
           </div>
 
           <Tooltip text="Select" direction="n">

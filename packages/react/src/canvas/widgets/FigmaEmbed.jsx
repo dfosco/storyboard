@@ -1,4 +1,5 @@
-import { forwardRef, useImperativeHandle, useMemo, useCallback, useState } from 'react'
+import { forwardRef, useImperativeHandle, useMemo, useCallback, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetConfig.js'
@@ -28,6 +29,7 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
   const height = readProp(props, 'height', figmaEmbedSchema)
 
   const [interactive, setInteractive] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   // Validate URL at render time — only embed known Figma URLs
   const isValid = useMemo(() => isFigmaUrl(url), [url])
@@ -38,15 +40,31 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
 
   const enterInteractive = useCallback(() => setInteractive(true), [])
 
+  // Close expanded modal on Escape
+  useEffect(() => {
+    if (!expanded) return
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setExpanded(false)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => document.removeEventListener('keydown', handleKeyDown, true)
+  }, [expanded])
+
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
       if (actionId === 'open-external') {
         if (url) window.open(url, '_blank', 'noopener')
+      } else if (actionId === 'expand') {
+        setExpanded(true)
       }
     },
   }), [url])
 
   return (
+    <>
     <WidgetWrapper>
       <div className={styles.embed} style={{ width, height }}>
         <div className={styles.header}>
@@ -55,6 +73,7 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
         </div>
         {embedUrl ? (
           <>
+            {!expanded && (
             <div className={styles.iframeContainer}>
               <iframe
                 src={embedUrl}
@@ -63,7 +82,15 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
                 allowFullScreen
               />
             </div>
-            {!interactive && (
+            )}
+            {expanded && (
+              <div className={styles.iframeContainer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <p style={{ color: 'var(--fgColor-muted, #656d76)', fontSize: 13, fontStyle: 'italic' }}>
+                  Expanded
+                </p>
+              </div>
+            )}
+            {!interactive && !expanded && (
               <div
                 className={styles.dragOverlay}
                 onDoubleClick={enterInteractive}
@@ -102,5 +129,34 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
         onPointerDown={(e) => e.stopPropagation()}
       />
     </WidgetWrapper>
+    {expanded && embedUrl && createPortal(
+      <div
+        className={styles.expandBackdrop}
+        onClick={() => setExpanded(false)}
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        onWheel={(e) => e.stopPropagation()}
+      >
+        <div
+          className={styles.expandContainer}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <iframe
+            src={embedUrl}
+            className={styles.expandIframe}
+            title={`Figma ${typeLabel}: ${title} (expanded)`}
+            allowFullScreen
+          />
+          <button
+            className={styles.expandClose}
+            onClick={() => setExpanded(false)}
+            aria-label="Close expanded view"
+            autoFocus
+          >✕</button>
+        </div>
+      </div>,
+      document.body
+    )}
+    </>
   )
 })

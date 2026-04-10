@@ -100,7 +100,7 @@
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
       "modes": ["*"],
-      "gridSize": 40
+      "gridSize": 12
     },    
     "viewfinder": {
       "label": "Go to index page",

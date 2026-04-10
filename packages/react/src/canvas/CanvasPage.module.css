@@ -59,8 +59,8 @@
   font-size: 14px;
   font-weight: 600;
   padding: 4px 8px;
+  border: 1px solid transparent;
   min-width: 80px;
-  max-width: 300px;
   pointer-events: none;
 }
 
@@ -74,8 +74,8 @@
   border-radius: 6px;
   padding: 4px 8px;
   outline: none;
-  min-width: 80px;
-  max-width: 300px;
+  width: 100%;
+  min-width: 0;
   transition: border-color 150ms, background-color 150ms, color 150ms;
 }
 

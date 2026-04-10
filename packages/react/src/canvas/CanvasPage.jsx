@@ -285,7 +285,7 @@ export default function CanvasPage({ name }) {
   const [localSources, setLocalSources] = useState(canvas?.sources ?? [])
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
   const [snapEnabled, setSnapEnabled] = useState(canvas?.snapToGrid ?? false)
-  const snapGridSize = canvas?.gridSize || 40
+  const [snapGridSize, setSnapGridSize] = useState(canvas?.gridSize || 40)
 
   // Undo/redo history — tracks both widgets and sources as a combined snapshot
   const undoRedo = useUndoRedo()
@@ -697,6 +697,16 @@ export default function CanvasPage({ name }) {
       detail: { snapEnabled }
     }))
   }, [snapEnabled])
+
+  // Listen for gridSize from Svelte toolbar config
+  useEffect(() => {
+    function handleGridSize(e) {
+      const size = e.detail?.gridSize
+      if (typeof size === 'number' && size > 0) setSnapGridSize(size)
+    }
+    document.addEventListener('storyboard:canvas:grid-size', handleGridSize)
+    return () => document.removeEventListener('storyboard:canvas:grid-size', handleGridSize)
+  }, [])
 
   // Listen for zoom-to-fit from CoreUIBar
   useEffect(() => {

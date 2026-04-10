@@ -99,7 +99,8 @@
       "render": "canvas-toolbar",
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
-      "modes": ["*"]
+      "modes": ["*"],
+      "gridSize": 40
     },    
     "viewfinder": {
       "label": "Go to index page",

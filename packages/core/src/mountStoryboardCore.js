@@ -95,9 +95,19 @@ function applyEarlyTheme() {
 
 /**
  * Inject the compiled UI stylesheet if not already present.
+ * In the source repo, Vite bundles this CSS into the ui-entry chunk
+ * automatically, so this is a no-op. In consumer repos it loads the
+ * pre-compiled dist/storyboard-ui.css.
  */
 async function injectUIStyles() {
   if (document.querySelector('[data-storyboard-ui-css]')) return
+
+  // If the styles are already present from Vite's CSS code-splitting,
+  // skip the redundant import.
+  try {
+    const val = getComputedStyle(document.documentElement).getPropertyValue('--sb--bg')
+    if (val && val.trim()) return
+  } catch { /* fall through */ }
 
   try {
     // Dynamic import of CSS — Vite handles this as a side-effect import.
@@ -151,8 +161,8 @@ export async function mountStoryboardCore(config = {}, options = {}) {
     initCommentsConfig(config, { basePath })
   }
 
-  // Inject compiled UI styles
-  injectUIStyles()
+  // Inject compiled UI styles (await to prevent late restyle / FOUC)
+  await injectUIStyles()
 
   // Load and merge toolbar config.
   // Core defaults come from toolbar.config.json (bundled).

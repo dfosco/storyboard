@@ -195,28 +195,38 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
     return () => document.removeEventListener('keydown', handleKeyDown, true)
   }, [expanded])
 
-  // Reparent iframe DOM node between inline container and modal
+  // Reparent iframe DOM node between inline container and modal.
+  // Uses moveBefore() (Chrome 133+) which preserves the iframe's
+  // browsing context — no reload. Falls back to appendChild which
+  // will reload but still works functionally.
   useEffect(() => {
     const iframe = iframeRef.current
     if (!iframe) return
 
     if (expanded && modalContainerRef.current) {
-      // Save original inline styles so we can restore them
       iframe._savedClassName = iframe.className
       iframe._savedStyle = iframe.getAttribute('style') || ''
-      // Apply fullscreen styles and move into modal
       iframe.className = styles.expandIframe
       iframe.removeAttribute('style')
-      modalContainerRef.current.prepend(iframe)
+      const target = modalContainerRef.current
+      if (target.moveBefore) {
+        target.moveBefore(iframe, target.firstChild)
+      } else {
+        target.prepend(iframe)
+      }
     } else if (!expanded && inlineContainerRef.current) {
-      // Restore inline styles and move back
       if (iframe._savedClassName !== undefined) {
         iframe.className = iframe._savedClassName
         iframe.setAttribute('style', iframe._savedStyle)
         delete iframe._savedClassName
         delete iframe._savedStyle
       }
-      inlineContainerRef.current.appendChild(iframe)
+      const target = inlineContainerRef.current
+      if (target.moveBefore) {
+        target.moveBefore(iframe, null)
+      } else {
+        target.appendChild(iframe)
+      }
     }
   }, [expanded])
 

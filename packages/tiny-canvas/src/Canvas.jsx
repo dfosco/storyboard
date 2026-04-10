@@ -21,6 +21,7 @@ function Canvas({
   dotted = false,
   grid = false,
   gridSize,
+  snapGrid,
   colorMode = 'auto',
   onDragEnd,
 }) {
@@ -40,6 +41,7 @@ function Canvas({
           <Draggable
             key={index}
             gridSize={gridSize}
+            snapGrid={snapGrid}
             dragId={dragId}
             initialPosition={initialPosition}
             onDragEnd={onDragEnd}

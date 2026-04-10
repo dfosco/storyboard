@@ -178,7 +178,7 @@
     style={config.menuWidth ? `min-width: ${config.menuWidth}` : undefined}
     class="min-w-[280px]"
   >
-    <DropdownMenu.Label>{config.label || 'Autosync'}</DropdownMenu.Label>
+    <p class="menuTitle">{config.label || 'Autosync'}</p>
 
     <p class="description">
       Automatically commit and push changes every 30 seconds
@@ -235,6 +235,14 @@
 </DropdownMenu.Root>
 
 <style>
+  .menuTitle {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--fgColor-default, #e6edf3);
+    padding: 6px 6px 0;
+    margin: 0;
+  }
+
   .description {
     font-size: 12px;
     color: var(--fgColor-muted, #848d97);

@@ -173,15 +173,6 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive])
 
-  // Disable canvas scrolling while iframe is interactive
-  useEffect(() => {
-    if (!interactive) return
-    const scrollEl = document.querySelector('[data-storyboard-canvas-scroll]')
-    if (!scrollEl) return
-    scrollEl.style.overflow = 'hidden'
-    return () => { scrollEl.style.overflow = '' }
-  }, [interactive])
-
   useEffect(() => {
     function readToolbarTheme() {
       setCanvasTheme(resolveCanvasThemeFromStorage())

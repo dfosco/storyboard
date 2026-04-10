@@ -440,6 +440,36 @@ export default function CanvasPage({ name }) {
     }
   }, [name, loading])
 
+  // Center on a specific widget if `?widget=<id>` is in the URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const targetId = params.get('widget')
+    if (!targetId || loading) return
+
+    const widgets = localWidgets ?? []
+    const widget = widgets.find((w) => w.id === targetId)
+    if (!widget) return
+
+    const el = scrollRef.current
+    if (!el) return
+
+    const scale = zoomRef.current / 100
+    const fallback = WIDGET_FALLBACK_SIZES[widget.type] || { width: 200, height: 150 }
+    const wW = (widget.props?.width ?? fallback.width) * scale
+    const wH = (widget.props?.height ?? fallback.height) * scale
+    const wX = (widget.position?.x ?? 0) * scale
+    const wY = (widget.position?.y ?? 0) * scale
+
+    // Center the widget in the viewport
+    el.scrollLeft = wX + wW / 2 - el.clientWidth / 2
+    el.scrollTop = wY + wH / 2 - el.clientHeight / 2
+
+    // Clean the URL param without triggering navigation
+    const url = new URL(window.location.href)
+    url.searchParams.delete('widget')
+    window.history.replaceState({}, '', url.toString())
+  }, [loading, localWidgets])
+
   // Persist viewport state (zoom + scroll) to localStorage on changes
   useEffect(() => {
     const el = scrollRef.current

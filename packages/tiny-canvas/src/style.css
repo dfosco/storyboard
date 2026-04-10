@@ -71,8 +71,8 @@ body .tc-draggable-inner:not(:active) {
 }
 
 .tc-on-translation {
-  transition: translate calc(var(--tc-translation-ms, 100ms) * 2)
-    cubic-bezier(0.78, 0.1, 0.51, 0.78) var(--tc-translation-ms, 100ms);
+  transition: transform calc(var(--tc-translation-ms, 250ms) * 2)
+    cubic-bezier(0.78, 0.1, 0.51, 0.78) var(--tc-translation-ms, 250ms);
 }
 
 .tc-drag {

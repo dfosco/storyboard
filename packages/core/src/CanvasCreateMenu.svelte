@@ -62,6 +62,6 @@
       </DropdownMenu.Item>
     {/each}
     <DropdownMenu.Separator />
-    <div class="px-2 py-1.5 text-xs text-muted-foreground flex flex-row items-baseline"><span class="inline-flex w-2 h-2 rounded-full mr-1.5" style="background: hsl(137, 66%, 30%)"></span>Only available in dev environment</div>
+    <div class="px-2 py-1.5 text-xs text-muted-foreground flex flex-row items-baseline"><span class="inline-flex w-2 h-2 rounded-full mr-1.5" style="background: hsl(212, 92%, 45%)"></span>Only available in dev environment</div>
   </DropdownMenu.Content>
 </DropdownMenu.Root>

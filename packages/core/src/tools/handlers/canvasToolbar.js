@@ -32,6 +32,9 @@ export async function handler() {
     redo() {
       document.dispatchEvent(new CustomEvent('storyboard:canvas:redo'))
     },
+    toggleSnap() {
+      document.dispatchEvent(new CustomEvent('storyboard:canvas:toggle-snap'))
+    },
     ZOOM_MIN,
     ZOOM_MAX,
   }

@@ -372,7 +372,7 @@ export default function WidgetChrome({
       onMouseEnter={readOnly ? undefined : handleMouseEnter}
       onMouseLeave={readOnly ? undefined : handleMouseLeave}
     >
-      <div className={`${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''} ${multiSelected ? styles.widgetSlotMultiSelected : ''}`}>
+      <div className={`tc-drag-surface ${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''} ${multiSelected ? styles.widgetSlotMultiSelected : ''}`}>
         {children}
       </div>
       <div
@@ -455,11 +455,11 @@ export default function WidgetChrome({
           </div>
           )}
 
-          <Tooltip text="Select" direction="n">
+          <Tooltip text={selected ? "Click and drag to move" : "Select"} direction="n">
             <button
               className={`tc-drag-handle ${styles.selectHandle} ${selected ? styles.selectHandleActive : ''}`}
               onClick={handleHandleClick}
-              aria-label="Select widget"
+              aria-label={selected ? "Drag to move widget" : "Select widget"}
               aria-pressed={selected}
             />
           </Tooltip>

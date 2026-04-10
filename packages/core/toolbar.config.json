@@ -28,6 +28,7 @@
       "render": "menu",
       "surface": "main-toolbar",
       "modes": ["*"],
+      "prod": true,
       "menuWidth": "280px",
       "handler": "core:flows"
     },    
@@ -40,6 +41,7 @@
       "surface": "main-toolbar",
       "handler": "core:theme",
       "modes": ["*"],
+      "prod": true,
       "menuWidth": "240px"
     },
     "comments": {
@@ -49,6 +51,7 @@
       "surface": "main-toolbar",
       "handler": "core:comments",
       "modes": ["*"],
+      "prod": true,
       "excludeRoutes": ["^/$", "/viewfinder"]
     },
     "inspector": {
@@ -59,6 +62,7 @@
       "sidepanel": "inspector",
       "handler": "core:inspector",
       "modes": ["*"],
+      "prod": true,
       "excludeRoutes": ["^/$", "/viewfinder", "/canvas/"],
       "meta": { "strokeWeight": 2, "scale": 1.1 },
       "shortcut": { "key": "i", "label": "⌘I" }
@@ -72,7 +76,6 @@
       "surface": "main-toolbar",
       "handler": "core:create",
       "modes": ["*"],
-      "localOnly": true,
       "menuWidth": "290px",
       "actions": [
         { "type": "header", "label": "Create" },
@@ -90,7 +93,6 @@
       "surface": "main-toolbar",
       "handler": "core:autosync",
       "modes": ["*"],
-      "localOnly": true,
       "menuWidth": "280px"
     },
     "canvas-add-widget": {
@@ -100,7 +102,6 @@
       "surface": "canvas-toolbar",
       "handler": "core:canvas-add-widget",
       "modes": ["*"],
-      "localOnly": true,
       "meta": { "strokeWeight": 2, "scale": 1.2 },
       "menuWidth": "300px"
     },
@@ -109,7 +110,8 @@
       "render": "canvas-zoom",
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
-      "modes": ["*"]
+      "modes": ["*"],
+      "prod": true
     },
     "canvas-zoom-to-fit": {
       "ariaLabel": "Zoom to objects",
@@ -119,7 +121,8 @@
       "render": "canvas-zoom-to-fit",
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
-      "modes": ["*"]
+      "modes": ["*"],
+      "prod": true
     },
     "canvas-snap": {
       "ariaLabel": "Snap to grid",
@@ -146,6 +149,7 @@
       "render": "link",
       "surface": "command-list",
       "modes": ["*"],
+      "prod": true,
       "url": "/"
     },
     "repository": {
@@ -153,6 +157,7 @@
       "render": "link",
       "surface": "command-list",
       "modes": ["*"],
+      "prod": true,
       "url": "https://github.com/dfosco/storyboard"
     },
     "docs": {
@@ -164,6 +169,7 @@
       "sidepanel": "docs",
       "handler": "core:docs",
       "modes": ["*"],
+      "prod": true,
       "shortcut": { "key": "d", "label": "⌘D" }
     },    
     "devtools": {
@@ -171,6 +177,7 @@
       "render": "submenu",
       "surface": "command-list",
       "modes": ["*"],
+      "prod": true,
       "handler": "core:devtools"
     },
     "feature-flags": {
@@ -178,6 +185,7 @@
       "render": "submenu",
       "surface": "command-list",
       "modes": ["*"],
+      "prod": true,
       "handler": "core:feature-flags"
     }
   }

@@ -165,6 +165,14 @@ function Draggable({ children, dragId, initialPosition, onDragStart: onDragStart
     disabled: locked,
     ...(handle ? { handle } : {}),
     position: { x: position.x, y: position.y },
+    // Clamp in the transform callback so neodrag never paints a
+    // negative position — avoids the one-frame flicker that happens
+    // when clamping only in onDrag (React re-render lag).
+    transform: ({ offsetX, offsetY }) => {
+      const x = Math.max(0, offsetX)
+      const y = Math.max(0, offsetY)
+      return `translate3d(${x}px, ${y}px, 0)`
+    },
     onDragStart: () => {
       dragStartRef.current = position;
       hasMovedRef.current = false;

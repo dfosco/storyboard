@@ -6,8 +6,35 @@
  *
  * The config is the single source of truth for widget definitions —
  * prop schemas, feature lists, labels, and icons all come from here.
+ *
+ * Supports `$variable` references in string values, resolved from
+ * the top-level `variables` object in widgets.config.json.
  */
 import widgetsConfig from '@dfosco/storyboard-core/widgets.config.json'
+
+/** Variables defined in config — used to resolve `$key` references. */
+const variables = widgetsConfig.variables || {}
+
+/**
+ * Resolve `$variable` references in a string value.
+ * Returns the original value if it's not a string or doesn't start with `$`.
+ */
+function resolveVar(value) {
+  if (typeof value !== 'string' || !value.startsWith('$')) return value
+  const key = value.slice(1)
+  return variables[key] ?? value
+}
+
+/**
+ * Resolve all string values in a feature object.
+ */
+function resolveFeature(feature) {
+  const resolved = {}
+  for (const [key, val] of Object.entries(feature)) {
+    resolved[key] = resolveVar(val)
+  }
+  return resolved
+}
 
 /**
  * Convert a config prop definition to the schema shape used by widgetProps.js.
@@ -42,16 +69,30 @@ function buildSchemas() {
   return result
 }
 
+/**
+ * Build resolved widget type entries with variables expanded in features.
+ */
+function buildWidgetTypes() {
+  const result = {}
+  for (const [type, def] of Object.entries(widgetsConfig.widgets)) {
+    result[type] = {
+      ...def,
+      features: (def.features || []).map(resolveFeature),
+    }
+  }
+  return result
+}
+
 /** All widget schemas, keyed by type string. */
 export const schemas = buildSchemas()
 
-/** Full widget config entries, keyed by type string. */
-export const widgetTypes = widgetsConfig.widgets
+/** Full widget config entries (with resolved variables), keyed by type string. */
+export const widgetTypes = buildWidgetTypes()
 
 /**
  * Get the feature list for a widget type.
  * @param {string} type — widget type string
- * @returns {Array} features array from config, or empty array
+ * @returns {Array} features array from config (variables resolved), or empty array
  */
 export function getFeatures(type) {
   return widgetTypes[type]?.features ?? []

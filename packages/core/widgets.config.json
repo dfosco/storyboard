@@ -1,4 +1,13 @@
 {
+  "variables": {
+    "label:duplicate":  "Duplicate widget",
+    "label:copy-link":  "Copy link to widget",
+    "label:delete":     "Delete widget",
+    "label:open-ext":   "Open in new tab",
+    "label:zoom-in":    "Zoom in",
+    "label:zoom-out":   "Zoom out",
+    "label:edit":       "Edit"
+  },
   "widgets": {
     "sticky-note": {
       "label": "Sticky Note",
@@ -12,9 +21,9 @@
       },
       "features": [
         { "id": "color",     "type": "color-picker", "prop": "color" },
-        { "id": "copy",      "type": "action", "action": "copy" },
-        { "id": "copy-link", "type": "action", "action": "copy-link" },
-        { "id": "delete",    "type": "action", "action": "delete" }
+        { "id": "copy",      "type": "action", "action": "copy",      "label": "$label:duplicate",  "icon": "copy" },
+        { "id": "copy-link", "type": "action", "action": "copy-link", "label": "$label:copy-link",  "icon": "link",  "menu": true },
+        { "id": "delete",    "type": "action", "action": "delete",    "label": "$label:delete",     "icon": "trash", "menu": true }
       ]
     },
     "markdown": {
@@ -25,9 +34,9 @@
         "width":   { "type": "number", "label": "Width",   "category": "size",    "default": 530, "min": 200, "max": 1200 }
       },
       "features": [
-        { "id": "copy",      "type": "action", "action": "copy" },
-        { "id": "copy-link", "type": "action", "action": "copy-link" },
-        { "id": "delete",    "type": "action", "action": "delete" }
+        { "id": "copy",      "type": "action", "action": "copy",      "label": "$label:duplicate",  "icon": "copy" },
+        { "id": "copy-link", "type": "action", "action": "copy-link", "label": "$label:copy-link",  "icon": "link",  "menu": true },
+        { "id": "delete",    "type": "action", "action": "delete",    "label": "$label:delete",     "icon": "trash", "menu": true }
       ]
     },
     "prototype": {
@@ -42,13 +51,13 @@
         "height":      { "type": "number", "label": "Height",       "category": "size",     "default": 600, "min": 200, "max": 1500 }
       },
       "features": [
-        { "id": "open-external", "type": "action", "action": "open-external" },
-        { "id": "zoom-in",  "type": "action", "action": "zoom-in" },
-        { "id": "zoom-out", "type": "action", "action": "zoom-out" },
-        { "id": "edit-url", "type": "action", "action": "edit" },
-        { "id": "copy",      "type": "action", "action": "copy" },
-        { "id": "copy-link", "type": "action", "action": "copy-link" },
-        { "id": "delete",    "type": "action", "action": "delete" }
+        { "id": "open-external", "type": "action", "action": "open-external", "label": "$label:open-ext",   "icon": "open-external" },
+        { "id": "zoom-in",      "type": "action", "action": "zoom-in",       "label": "$label:zoom-in",    "icon": "zoom-in" },
+        { "id": "zoom-out",     "type": "action", "action": "zoom-out",      "label": "$label:zoom-out",   "icon": "zoom-out" },
+        { "id": "edit-url",     "type": "action", "action": "edit",          "label": "$label:edit",       "icon": "edit" },
+        { "id": "copy",         "type": "action", "action": "copy",          "label": "$label:duplicate",  "icon": "copy" },
+        { "id": "copy-link",    "type": "action", "action": "copy-link",     "label": "$label:copy-link",  "icon": "link",  "menu": true },
+        { "id": "delete",       "type": "action", "action": "delete",        "label": "$label:delete",     "icon": "trash", "menu": true }
       ]
     },
     "figma-embed": {
@@ -60,10 +69,10 @@
         "height": { "type": "number", "label": "Height", "category": "size",    "default": 450, "min": 150, "max": 1500 }
       },
       "features": [
-        { "id": "open-external", "type": "action", "action": "open-external" },
-        { "id": "copy",      "type": "action", "action": "copy" },
-        { "id": "copy-link", "type": "action", "action": "copy-link" },
-        { "id": "delete",    "type": "action", "action": "delete" }
+        { "id": "open-external", "type": "action", "action": "open-external", "label": "$label:open-ext",   "icon": "open-external" },
+        { "id": "copy",          "type": "action", "action": "copy",          "label": "$label:duplicate",  "icon": "copy" },
+        { "id": "copy-link",     "type": "action", "action": "copy-link",     "label": "$label:copy-link",  "icon": "link",  "menu": true },
+        { "id": "delete",        "type": "action", "action": "delete",        "label": "$label:delete",     "icon": "trash", "menu": true }
       ]
     },
     "link-preview": {
@@ -74,9 +83,9 @@
         "title": { "type": "text", "label": "Title", "category": "content", "default": "" }
       },
       "features": [
-        { "id": "copy",      "type": "action", "action": "copy" },
-        { "id": "copy-link", "type": "action", "action": "copy-link" },
-        { "id": "delete",    "type": "action", "action": "delete" }
+        { "id": "copy",      "type": "action", "action": "copy",      "label": "$label:duplicate",  "icon": "copy" },
+        { "id": "copy-link", "type": "action", "action": "copy-link", "label": "$label:copy-link",  "icon": "link",  "menu": true },
+        { "id": "delete",    "type": "action", "action": "delete",    "label": "$label:delete",     "icon": "trash", "menu": true }
       ]
     },
     "component": {
@@ -98,10 +107,10 @@
         "height":  { "type": "number",  "label": "Height",  "category": "size", "min": 60 }
       },
       "features": [
-        { "id": "toggle-private", "type": "action", "action": "toggle-private" },
-        { "id": "copy",      "type": "action", "action": "copy" },
-        { "id": "copy-link", "type": "action", "action": "copy-link" },
-        { "id": "delete",    "type": "action", "action": "delete" }
+        { "id": "toggle-private", "type": "action", "action": "toggle-private", "label": "Make private", "icon": "eye" },
+        { "id": "copy",           "type": "action", "action": "copy",           "label": "$label:duplicate",  "icon": "copy" },
+        { "id": "copy-link",      "type": "action", "action": "copy-link",      "label": "$label:copy-link",  "icon": "link",  "menu": true },
+        { "id": "delete",         "type": "action", "action": "delete",         "label": "$label:delete",     "icon": "trash", "menu": true }
       ]
     }
   }

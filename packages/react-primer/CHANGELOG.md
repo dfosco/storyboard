@@ -1,5 +1,12 @@
 # @dfosco/storyboard-react-primer
 
+## 3.11.0-beta.7
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-react@3.11.0-beta.7
+
 ## 3.11.0-beta.6
 
 ### Patch Changes

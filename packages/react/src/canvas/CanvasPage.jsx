@@ -136,6 +136,7 @@ function snapValue(value, gridSize) {
 }
 
 /** Snap a position to the grid if snapping is enabled. */
+// eslint-disable-next-line no-unused-vars
 function snapPosition(pos, gridSize, enabled) {
   if (!enabled || !gridSize) return pos
   return {

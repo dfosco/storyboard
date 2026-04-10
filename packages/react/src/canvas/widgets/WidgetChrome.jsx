@@ -307,7 +307,7 @@ export default function WidgetChrome({
   widgetProps,
   widgetRef,
   onSelect,
-  onDeselect,
+  onDeselect, // eslint-disable-line no-unused-vars
   onAction,
   onUpdate,
   children,

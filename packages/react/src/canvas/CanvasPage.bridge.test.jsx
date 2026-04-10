@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, act } from '@testing-library/react'
+import { fireEvent, render, screen, act } from '@testing-library/react'
 import CanvasPage from './CanvasPage.jsx'
 import { getCanvasPrimerAttrs, getCanvasThemeVars } from './canvasTheme.js'
 import { updateCanvas } from './canvasApi.js'

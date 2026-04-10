@@ -337,54 +337,6 @@ export default function CanvasPage({ name }) {
     }
   }, [])
 
-  // --- Multi-select live drag preview via imperative DOM transforms ---
-  // On drag start, snapshot each peer's neodrag article translate.
-  // On each tick, set peer article translate = snapshot + delta.
-  // Same delta, same rate, different starting points.
-  const dragStartPosRef = useRef(null)
-  const peerStartPositions = useRef(new Map())
-
-  const handleItemDragStart = useCallback((dragId, startPos) => {
-    const ids = selectedIdsRef.current
-    peerStartPositions.current.clear()
-    if (ids.size <= 1 || !ids.has(dragId)) {
-      dragStartPosRef.current = null
-      return
-    }
-    dragStartPosRef.current = startPos
-
-    // Snapshot each peer's current neodrag translate
-    for (const id of ids) {
-      if (id === dragId) continue
-      const widgetEl = document.getElementById(id)
-      const article = widgetEl?.closest('article')
-      if (!article) continue
-      const raw = article.style.translate || '0px 0px'
-      const parts = raw.match(/-?[\d.]+/g) || [0, 0]
-      peerStartPositions.current.set(id, {
-        article,
-        x: parseFloat(parts[0]) || 0,
-        y: parseFloat(parts[1]) || 0,
-      })
-    }
-  }, [])
-
-  const handleItemDrag = useCallback((dragId, currentPos) => {
-    if (!dragStartPosRef.current) return
-
-    const dx = currentPos.x - dragStartPosRef.current.x
-    const dy = currentPos.y - dragStartPosRef.current.y
-
-    for (const [, peer] of peerStartPositions.current) {
-      peer.article.style.translate = `${peer.x + dx}px ${peer.y + dy}px`
-    }
-  }, [])
-
-  const clearDragPreview = useCallback(() => {
-    peerStartPositions.current.clear()
-    dragStartPosRef.current = null
-  }, [])
-
   if (canvas !== trackedCanvas) {
     setTrackedCanvas(canvas)
     setLocalWidgets(canvas?.widgets ?? null)
@@ -528,7 +480,6 @@ export default function CanvasPage({ name }) {
     const ids = selectedIdsRef.current
     // Multi-select move: apply same delta to all selected widgets
     if (ids.size > 1 && ids.has(dragId)) {
-      clearDragPreview()
       undoRedo.snapshot(stateRef.current, 'multi-move')
       const currentWidgets = stateRef.current.widgets ?? []
       const draggedWidget = currentWidgets.find(w => w.id === dragId)
@@ -576,7 +527,7 @@ export default function CanvasPage({ name }) {
       )
       return next
     })
-  }, [name, undoRedo, debouncedSave, clearDragPreview])
+  }, [name, undoRedo, debouncedSave])
 
   useEffect(() => {
     zoomRef.current = zoom
@@ -1394,7 +1345,7 @@ export default function CanvasPage({ name }) {
             ...(spaceHeld ? { pointerEvents: 'none' } : {}),
           }}
         >
-          <Canvas {...canvasProps} onDragStart={isLocalDev ? handleItemDragStart : undefined} onDrag={isLocalDev ? handleItemDrag : undefined} onDragEnd={isLocalDev ? handleItemDragEnd : undefined}>
+          <Canvas {...canvasProps} onDragEnd={isLocalDev ? handleItemDragEnd : undefined}>
             {allChildren}
           </Canvas>
         </div>

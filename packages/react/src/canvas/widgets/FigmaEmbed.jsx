@@ -163,9 +163,10 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate }, ref) {
         onPointerDown={(e) => e.stopPropagation()}
       />
     </WidgetWrapper>
-    {expanded && embedUrl && createPortal(
+    {createPortal(
       <div
         className={styles.expandBackdrop}
+        style={expanded && embedUrl ? undefined : { display: 'none' }}
         onClick={() => setExpanded(false)}
         onPointerDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}

@@ -26,12 +26,12 @@ function Canvas({
   onDragEnd,
 }) {
   const showDots = dotted || grid;
-  const effectiveGridSize = snapGrid ? snapGrid[0] : gridSize;
-  const dotRadius = effectiveGridSize && effectiveGridSize < 16 ? 1 : 2;
-  const canvasStyle = effectiveGridSize
+  const visualGridSize = gridSize;
+  const dotRadius = visualGridSize && visualGridSize < 16 ? 1 : 2;
+  const canvasStyle = visualGridSize
     ? {
-        '--tc-grid-size': `${effectiveGridSize}px`,
-        '--tc-grid-offset': `${effectiveGridSize / -2}px`,
+        '--tc-grid-size': `${visualGridSize}px`,
+        '--tc-grid-offset': `${visualGridSize / -2}px`,
         '--tc-dot-radius': `${dotRadius}px`,
       }
     : undefined;

@@ -11,11 +11,13 @@
 
   interface Props {
     config?: any
+    data?: any
     canvasName?: string
+    zoom?: number
     tabindex?: number
   }
 
-  let { config = {}, canvasName = '', tabindex }: Props = $props()
+  let { config = {}, data, canvasName = '', zoom, tabindex }: Props = $props()
 
   const widgetTypes = [
     { type: 'sticky-note', label: 'Sticky Note' },

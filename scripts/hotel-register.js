@@ -33,7 +33,13 @@ if (!existsSync(PORTS_FILE)) {
   process.exit(0)
 }
 
-const ports = JSON.parse(readFileSync(PORTS_FILE, 'utf8'))
+let ports
+try {
+  ports = JSON.parse(readFileSync(PORTS_FILE, 'utf8'))
+} catch {
+  console.error('Failed to parse .worktrees/ports.json — delete it and re-run `npm run dev` in each worktree.')
+  process.exit(1)
+}
 
 for (const [name, port] of Object.entries(ports)) {
   // Sanitize dots to hyphens for valid subdomain names

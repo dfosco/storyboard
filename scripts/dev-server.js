@@ -57,7 +57,13 @@ function resolvePort(worktreeName) {
     try {
       const resolved = resolve(portsFile)
       if (existsSync(resolved)) {
-        const ports = JSON.parse(readFileSync(resolved, 'utf8'))
+        const raw = readFileSync(resolved, 'utf8')
+        let ports
+        try {
+          ports = JSON.parse(raw)
+        } catch {
+          continue // Corrupted file — try next candidate
+        }
         if (ports[worktreeName] != null) return ports[worktreeName]
       }
     } catch {

@@ -21,9 +21,14 @@ export function getPort(worktreeName) {
   const dir = dirname(PORTS_FILE)
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
 
-  const ports = existsSync(PORTS_FILE)
-    ? JSON.parse(readFileSync(PORTS_FILE, 'utf8'))
-    : { main: BASE_PORT }
+  let ports = { main: BASE_PORT }
+  if (existsSync(PORTS_FILE)) {
+    try {
+      ports = JSON.parse(readFileSync(PORTS_FILE, 'utf8'))
+    } catch {
+      // Corrupted file — start fresh
+    }
+  }
 
   if (worktreeName === 'main') return ports.main || BASE_PORT
 

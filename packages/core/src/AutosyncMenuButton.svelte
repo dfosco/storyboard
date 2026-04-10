@@ -196,6 +196,9 @@
         onchange={handleBranchChange}
         disabled={enabled || loading}
       >
+        {#if !selectedBranch && branches.length === 0}
+          <option value="" disabled selected>Select branch</option>
+        {/if}
         {#if currentBranch && !branches.includes(currentBranch)}
           <option value={currentBranch}>{currentBranch}</option>
         {/if}
@@ -242,33 +245,41 @@
 
   .branchRow {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 6px;
     padding: 6px 6px;
   }
 
   .branchLabel {
-    font-size: 12px;
-    color: var(--fgColor-muted, #848d97);
-    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--fgColor-default, #e6edf3);
   }
 
   .branchSelect {
-    flex: 1;
+    width: 100%;
     appearance: none;
-    background-color: var(--bgColor-inset, #010409);
+    background-color: var(--bgColor-default, #0d1117);
     color: var(--fgColor-default, #e6edf3);
     border: 1px solid var(--borderColor-default, #30363d);
-    border-radius: 6px;
-    padding: 4px 8px;
-    font-size: 12px;
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    border-radius: 8px;
+    padding: 8px 32px 8px 12px;
+    font-size: 13px;
+    font-family: inherit;
     cursor: pointer;
-    min-width: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%23848d97'%3E%3Cpath d='M5 7L1 3h8L5 7z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23848d97'%3E%3Cpath d='M6 8.5L1.5 4h9L6 8.5z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 6px center;
-    padding-right: 22px;
+    background-position: right 10px center;
+    transition: border-color 0.15s ease;
+  }
+
+  .branchSelect:hover:not(:disabled) {
+    border-color: var(--fgColor-muted, #848d97);
+  }
+
+  .branchSelect:focus-visible {
+    outline: 2px solid var(--borderColor-accent-emphasis, #1f6feb);
+    outline-offset: -1px;
   }
 
   .branchSelect:disabled {

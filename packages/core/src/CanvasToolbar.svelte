@@ -154,7 +154,7 @@
           aria-pressed={snapEnabled}
           tabindex={-1}
         >
-          <Icon name={snapEnabled ? 'iconoir/dots-grid-3x3-solid' : 'iconoir/dots-grid-3x3'} size={16} />
+          <Icon name="iconoir/view-grid" size={16} strokeWeight={2} />
         </button>
       </Tooltip.Trigger>
       <Tooltip.Content side="top">{snapEnabled ? 'Snap to grid (on)' : 'Snap to grid (off)'}</Tooltip.Content>

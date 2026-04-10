@@ -1,8 +1,9 @@
 /**
- * Canvas toolbar tool module — zoom, undo/redo, and fit controls.
+ * Canvas toolbar tool module — shared actions for all canvas toolbar tools.
  *
- * Provides actions via custom events (Svelte↔React bridge).
- * Uses the unique "canvas-toolbar" render type.
+ * Each canvas tool (zoom, zoom-to-fit, undo-redo, snap) references this
+ * handler. The component() export returns the component matching the tool's
+ * render type, resolved at load time via the toolConfig passed to component().
  */
 export const id = 'canvas-toolbar'
 
@@ -40,7 +41,16 @@ export async function handler() {
   }
 }
 
-export async function component() {
-  const mod = await import('../../CanvasToolbar.svelte')
+const componentMap = {
+  'canvas-zoom':        () => import('../../CanvasZoomControl.svelte'),
+  'canvas-zoom-to-fit': () => import('../../CanvasZoomToFit.svelte'),
+  'canvas-undo-redo':   () => import('../../CanvasUndoRedo.svelte'),
+  'canvas-snap':        () => import('../../CanvasSnap.svelte'),
+}
+
+export async function component(renderType) {
+  const loader = componentMap[renderType]
+  if (!loader) return null
+  const mod = await loader()
   return mod.default
 }

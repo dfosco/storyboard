@@ -20,23 +20,50 @@ const STYLE_ID = 'sb-svelte-ui-styles'
 let stylesInjected = false
 
 /**
- * Inject shared base styles (Tachyons + sb-* tokens) into <head>.
- * Idempotent — only injects once per page.
+ * Check whether the shared base styles are already present in the document
+ * (e.g. bundled by Vite's CSS code-splitting for the ui-entry chunk).
  */
-export function injectStyles(): void {
-  if (stylesInjected) return
-  if (typeof document === 'undefined') return
+function stylesAlreadyLoaded(): boolean {
+  if (typeof document === 'undefined') return false
+  // Check for an existing sb- custom property which is defined in the
+  // base stylesheet. If any <style> or <link> already defines it, the
+  // styles are present and we can skip dynamic injection.
+  try {
+    const val = getComputedStyle(document.documentElement).getPropertyValue('--sb--bg')
+    if (val && val.trim()) return true
+  } catch { /* SSR or non-standard env — fall through */ }
+  return false
+}
+
+/**
+ * Inject shared base styles (Tachyons + sb-* tokens) into <head>.
+ * Idempotent — only injects once per page. Returns a promise that
+ * resolves when the stylesheet is ready.
+ */
+export function injectStyles(): Promise<void> {
+  if (stylesInjected) return Promise.resolve()
+  if (typeof document === 'undefined') return Promise.resolve()
   if (document.getElementById(STYLE_ID)) {
     stylesInjected = true
-    return
+    return Promise.resolve()
   }
 
-  const link = document.createElement('link')
-  link.id = STYLE_ID
-  link.rel = 'stylesheet'
-  link.href = new URL('../styles/tailwind.css', import.meta.url).href
-  document.head.appendChild(link)
-  stylesInjected = true
+  // If Vite already bundled the styles into the page, skip the <link>.
+  if (stylesAlreadyLoaded()) {
+    stylesInjected = true
+    return Promise.resolve()
+  }
+
+  return new Promise<void>((resolve) => {
+    const link = document.createElement('link')
+    link.id = STYLE_ID
+    link.rel = 'stylesheet'
+    link.href = new URL('../styles/tailwind.css', import.meta.url).href
+    link.onload = () => resolve()
+    link.onerror = () => resolve() // resolve anyway so the UI still appears
+    document.head.appendChild(link)
+    stylesInjected = true
+  })
 }
 
 export interface PluginHandle {
@@ -44,6 +71,8 @@ export interface PluginHandle {
   destroy: () => void
   /** The wrapper element containing the Svelte component */
   element: HTMLElement
+  /** Resolves when all styles are loaded and the component is ready to show */
+  ready: Promise<void>
 }
 
 /**
@@ -52,14 +81,17 @@ export interface PluginHandle {
  * @param target - DOM element to append the component wrapper to
  * @param ComponentClass - Svelte component constructor
  * @param props - Props to pass to the component
- * @returns Handle with destroy() method
+ * @returns Handle with destroy() method and a `ready` promise
  */
 export function mountSveltePlugin<T extends Record<string, unknown>>(
   target: HTMLElement,
   ComponentClass: Component<T>,
   props?: T,
 ): PluginHandle {
-  injectStyles()
+  // Fire-and-forget — styles are either already present (Vite bundle)
+  // or will load in parallel. The `ready` promise on PluginHandle can
+  // be awaited by callers that need to wait for CSS.
+  const stylesReady = injectStyles()
 
   const wrapper = document.createElement('div')
   wrapper.classList.add('sb-plugin-root')
@@ -73,6 +105,7 @@ export function mountSveltePlugin<T extends Record<string, unknown>>(
 
   return {
     element: wrapper,
+    ready: stylesReady,
     destroy() {
       unmount(instance)
       wrapper.remove()

@@ -1,8 +1,10 @@
 # Named Localhost Port Bindings for Worktrees
 
-Exploration of approaches to map worktree names → unique ports → friendly local domains.
+Map worktree names → unique ports → friendly local domains using **hotel** or **Caddy**.
 
-**Goal:** `main` → `localhost:1234` → `storyboard.local`, worktree `security-ux` → `localhost:1235` → `security-ux.storyboard.local`
+**Goal:** `main` → `localhost:1234` → `storyboard.localhost`, worktree `security-ux` → `localhost:1235` → `security-ux.localhost`
+
+**Constraint:** Fully optional — repo works without any local proxy setup.
 
 ---
 
@@ -19,186 +21,334 @@ Exploration of approaches to map worktree names → unique ports → friendly lo
 
 > "Would I need to have my worktree names without dots?"
 
-**Short answer: yes, avoid dots in worktree/branch names for subdomain routing.**
+**Short answer: yes, avoid dots for subdomain routing.**
 
-- `3.11.0.storyboard.local` looks like a 4-level domain — browsers and TLS treat each dot as a subdomain boundary.
-- Some browsers refuse to set cookies or apply HSTS for multi-dot `.local` names.
-- Workaround: **sanitize** dots to hyphens for the domain label: `3-11-0.storyboard.local`.
-- For **path-based routing** (`storyboard.local/3.11.0`), dots are fine in the path segment — no ambiguity.
+- `3.11.0.localhost` looks like a 3-level domain — browsers treat each dot as a subdomain boundary.
+- Workaround: **sanitize** dots to hyphens: `3-11-0.localhost`
+- The sanitization happens in the proxy layer, preserving the original worktree directory name.
 
-**Recommendation:** Use path-based routing (`storyboard.local/branch-name/`) since it mirrors the existing `VITE_BASE_PATH` pattern and avoids dot issues entirely.
-
----
-
-## Approach A — Path-Based with a Single Reverse Proxy (Recommended)
-
-One proxy on `storyboard.local:80` dispatches to per-worktree Vite instances by path prefix.
-
-```
-storyboard.local/             →  localhost:1234  (main)
-storyboard.local/security-ux/ →  localhost:1235  (worktree)
-storyboard.local/3.11.0/      →  localhost:1236  (worktree)
-```
-
-### How it works
-
-1. **Port registry** — a JSON file (`.worktrees/ports.json`) mapping worktree names to ports:
-   ```json
-   {
-     "main": 1234,
-     "security-ux": 1235,
-     "3.11.0": 1236
-   }
-   ```
-
-2. **Auto-assign ports** — the worktree skill (or a small `dev:worktree` script) picks the next free port starting from `1234` (main) + incrementing. Writes to `ports.json`.
-
-3. **Start Vite with matching port + base path**:
-   ```bash
-   VITE_BASE_PATH=/security-ux/ vite --port 1235
-   ```
-   This already works — `vite.config.js` reads `VITE_BASE_PATH` from env.
-
-4. **Reverse proxy** — a lightweight local proxy routes by path prefix:
-   - **Caddy** (simplest, auto-HTTPS not needed for `.local`):
-     ```
-     storyboard.local {
-       handle_path /security-ux/* {
-         reverse_proxy localhost:1235
-       }
-       handle_path /3.11.0/* {
-         reverse_proxy localhost:1236
-       }
-       reverse_proxy localhost:1234
-     }
-     ```
-   - **Alternatives:** nginx, Traefik, or a tiny Node proxy.
-
-5. **DNS** — add a single line to `/etc/hosts`:
-   ```
-   127.0.0.1  storyboard.local
-   ```
-   Only needed once (not per worktree, since path-based routing uses one domain).
-
-### Pros
-- Mirrors the existing `VITE_BASE_PATH` pattern used in GitHub Pages branch deploys
-- No dot ambiguity — branch name is a path segment
-- Single `/etc/hosts` entry
-- No wildcard DNS needed
-
-### Cons
-- Requires a running reverse proxy process
-- Need to regenerate proxy config when worktrees are added/removed
+**Recommendation:** Name worktrees with kebab-case (`v3-11-0` instead of `3.11.0`) to avoid the sanitization step entirely. The ship skill already enforces kebab-case.
 
 ---
 
-## Approach B — Subdomain-Based with Wildcard DNS
+## Architecture: hotel vs Caddy
 
-Each worktree gets its own subdomain.
+Both achieve the same goal. Choose based on your environment:
 
-```
-storyboard.local       →  localhost:1234  (main)
-security-ux.storyboard.local  →  localhost:1235
-v3-11-0.storyboard.local      →  localhost:1236
-```
+| Feature | hotel | Caddy |
+|---------|-------|-------|
+| Install | `npm i -g hotel` | Single binary (brew/apt) |
+| DNS config | None (`.localhost` special-cased) | `/etc/hosts` entry |
+| Process management | Built-in (auto-starts servers) | External (run alongside Vite) |
+| Config format | CLI commands | Caddyfile |
+| HTTPS | No | Yes (auto-generated certs) |
 
-### How it works
-
-1. Same port registry as Approach A.
-2. Start Vite with `VITE_BASE_PATH=/` (each instance is at root).
-3. **Wildcard DNS** — resolve `*.storyboard.local` to `127.0.0.1`:
-   - **dnsmasq** (macOS): `echo "address=/storyboard.local/127.0.0.1" > /etc/dnsmasq.d/storyboard.conf`
-   - **systemd-resolved** (Linux): similar config
-   - **Alternative:** Use [`hotel`](https://github.com/typicode/hotel) or [`local-ssl-proxy`](https://github.com/cameronhunter/local-ssl-proxy)
-4. **Reverse proxy** routes by `Host` header instead of path.
-
-### Sanitization rule
-Branch names → subdomain labels: replace dots with hyphens, strip leading/trailing hyphens.
-- `3.11.0` → `v3-11-0` (prefix `v` if starts with digit)
-- `feature/dark-mode` → `feature-dark-mode`
-
-### Pros
-- Cleaner URLs — each worktree feels like its own site
-- `VITE_BASE_PATH` stays `/` — no path prefix needed
-
-### Cons
-- Requires wildcard DNS (dnsmasq / systemd-resolved / third-party tool)
-- Dots in branch names must be sanitized → potential name collisions
-- More moving parts to configure initially
+**Recommendation:** Use **hotel** for simplicity (Node.js ecosystem, zero DNS config). Use **Caddy** if you need HTTPS locally or prefer a standalone binary.
 
 ---
 
-## Approach C — Port-Only (No Custom Domain)
+## Implementation Plan
 
-Skip the `.local` domain entirely. Just auto-assign unique ports per worktree.
+### Phase 1: Auto-Port Assignment (required, zero external deps)
 
+This is the foundation — works standalone and enables optional proxy layer.
+
+#### 1.1 Port registry file
+
+Create `.worktrees/ports.json` (gitignored) mapping worktree names to ports:
+
+```json
+{
+  "main": 1234,
+  "security-ux": 1235,
+  "v3-11-0": 1236
+}
 ```
-localhost:1234  (main)
-localhost:1235  (security-ux)
-localhost:1236  (3.11.0)
+
+#### 1.2 Add `scripts/worktree-port.js`
+
+A small Node script that:
+- Reads `.worktrees/ports.json`
+- Assigns next available port for new worktrees (starting from 1235)
+- Called by worktree skill on creation
+
+```js
+// scripts/worktree-port.js
+import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { join } from 'path'
+
+const PORTS_FILE = join(process.cwd(), '.worktrees', 'ports.json')
+const BASE_PORT = 1234
+
+export function getPort(worktreeName) {
+  const ports = existsSync(PORTS_FILE) 
+    ? JSON.parse(readFileSync(PORTS_FILE, 'utf8')) 
+    : { main: BASE_PORT }
+  
+  if (!ports[worktreeName]) {
+    const usedPorts = Object.values(ports)
+    let nextPort = BASE_PORT + 1
+    while (usedPorts.includes(nextPort)) nextPort++
+    ports[worktreeName] = nextPort
+    writeFileSync(PORTS_FILE, JSON.stringify(ports, null, 2))
+  }
+  
+  return ports[worktreeName]
+}
+
+// CLI usage: node scripts/worktree-port.js <name>
+if (process.argv[2]) {
+  console.log(getPort(process.argv[2]))
+}
 ```
 
-### How it works
+#### 1.3 Update worktree skill
 
-1. Port registry file (`.worktrees/ports.json`).
-2. Modify the worktree skill to auto-assign a port on creation.
-3. A new `dev:worktree` script reads the port for the current worktree and starts Vite:
-   ```bash
-   vite --port $(jq -r '."'"$(basename $(pwd))"'"' ../../.worktrees/ports.json)
-   ```
-4. Update `AGENTS.md` dev URL tracking to save the correct port per worktree.
+Modify `.github/skills/worktree/SKILL.md` to call the port script after creating a worktree:
 
-### Pros
-- Zero external dependencies (no proxy, no DNS config)
-- Works immediately on any OS
-- Can be a stepping stone — add the proxy/domain layer later
+```bash
+# After git worktree add...
+node scripts/worktree-port.js <branch-name>
+```
 
-### Cons
-- No friendly domain names
-- Need to remember which port is which (mitigated by the port registry)
+#### 1.4 Smart `npm run dev`
+
+Update the dev script to auto-detect worktree context and use the correct port:
+
+```json
+{
+  "scripts": {
+    "dev": "node scripts/dev-server.js",
+    "dev:port": "vite --port"
+  }
+}
+```
+
+```js
+// scripts/dev-server.js
+import { spawn } from 'child_process'
+import { basename, resolve } from 'path'
+import { existsSync, readFileSync } from 'fs'
+
+const cwd = process.cwd()
+const worktreeName = basename(cwd)
+const portsFile = resolve(cwd, '../../.worktrees/ports.json') // up from .worktrees/<name>
+
+let port = 1234 // default
+if (existsSync(portsFile)) {
+  const ports = JSON.parse(readFileSync(portsFile, 'utf8'))
+  port = ports[worktreeName] || ports.main || 1234
+}
+
+console.log(`Starting dev server on port ${port}...`)
+spawn('npx', ['vite', '--port', String(port)], { stdio: 'inherit', shell: true })
+```
+
+**Fallback behavior:** If not in a worktree or no port assigned, uses default `1234`.
 
 ---
 
-## Approach D — Use an Existing Tool (hotel, local-ssl-proxy, Valet)
+### Phase 2: hotel Integration (optional, recommended)
 
-### [`hotel`](https://github.com/typicode/hotel) (Node.js)
-- Registers local dev servers by name
-- Provides `http://my-app.localhost` subdomains automatically
-- Zero DNS config needed (`.localhost` is special-cased by browsers)
-- Run: `hotel add 'npm run dev' --name storyboard-main --port 1234`
+Users who want friendly URLs can opt-in to hotel.
 
-### [`Caddy`](https://caddyserver.com/) with Caddyfile
-- Single binary, auto-generates config
-- Can watch a directory and auto-reload
+#### 2.1 One-time setup (user's machine)
 
-### [`local-ssl-proxy`](https://github.com/cameronhunter/local-ssl-proxy)
-- Provides HTTPS wrapper around localhost
-- Useful if you need HTTPS for testing
+```bash
+# Install hotel globally
+npm install -g hotel
+
+# Start hotel daemon (runs on port 2000, proxies *.localhost)
+hotel start
+```
+
+#### 2.2 Register storyboard servers
+
+Add a `npm run hotel:add` script:
+
+```json
+{
+  "scripts": {
+    "hotel:add": "node scripts/hotel-register.js"
+  }
+}
+```
+
+```js
+// scripts/hotel-register.js
+import { execSync } from 'child_process'
+import { readFileSync, existsSync } from 'fs'
+import { join } from 'path'
+
+const PORTS_FILE = join(process.cwd(), '.worktrees', 'ports.json')
+
+if (!existsSync(PORTS_FILE)) {
+  console.log('No ports.json found. Run `npm run dev` first in each worktree.')
+  process.exit(0)
+}
+
+const ports = JSON.parse(readFileSync(PORTS_FILE, 'utf8'))
+
+for (const [name, port] of Object.entries(ports)) {
+  const slug = name.replace(/\./g, '-') // sanitize dots
+  try {
+    execSync(`hotel add http://localhost:${port} --name storyboard-${slug}`, { stdio: 'inherit' })
+    console.log(`✓ storyboard-${slug}.localhost → localhost:${port}`)
+  } catch (e) {
+    console.error(`✗ Failed to register ${name}`)
+  }
+}
+```
+
+**Result:** After running `npm run hotel:add`, you get:
+- `http://storyboard-main.localhost` → `localhost:1234`
+- `http://storyboard-security-ux.localhost` → `localhost:1235`
+- `http://storyboard-v3-11-0.localhost` → `localhost:1236`
+
+#### 2.3 Document in README
+
+Add an optional section to README:
+
+```markdown
+## Local Domain Names (optional)
+
+For friendly URLs like `http://storyboard-main.localhost`:
+
+1. Install [hotel](https://github.com/typicode/hotel): `npm i -g hotel`
+2. Start hotel: `hotel start`
+3. Register worktrees: `npm run hotel:add`
+
+Your worktrees will be available at `http://storyboard-{name}.localhost`.
+```
 
 ---
 
-## Implementation Recommendation
+### Phase 3: Caddy Alternative (optional)
 
-**Start with Approach C (port-only), then layer on Approach A (path-based proxy) when needed.**
+For users who prefer Caddy or need HTTPS.
 
-### Phase 1: Auto-Port Assignment (low effort, high value)
+#### 3.1 One-time setup
 
-1. Add port auto-assignment to the worktree skill
-2. Create `.worktrees/ports.json` as the registry
-3. Modify `npm run dev` or add `npm run dev:worktree` to read port from registry
-4. Update agent `devURL` tracking to use the correct port
+```bash
+# macOS
+brew install caddy
 
-### Phase 2: Local Domain (optional, when you want nicer URLs)
+# Add to /etc/hosts (one time)
+echo "127.0.0.1 storyboard.localhost" | sudo tee -a /etc/hosts
+```
 
-1. Add a `Caddyfile` (or `scripts/local-proxy.js`) that reads `.worktrees/ports.json` and generates routes
-2. Add `storyboard.local` to `/etc/hosts`
-3. Add a `npm run proxy` script to start the proxy
-4. Document the one-time DNS setup in README
+#### 3.2 Generate Caddyfile from ports.json
 
-### On Worktree Naming
+Add `npm run caddy:generate`:
+
+```js
+// scripts/caddy-generate.js
+import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { join } from 'path'
+
+const PORTS_FILE = join(process.cwd(), '.worktrees', 'ports.json')
+
+if (!existsSync(PORTS_FILE)) {
+  console.log('No ports.json found.')
+  process.exit(0)
+}
+
+const ports = JSON.parse(readFileSync(PORTS_FILE, 'utf8'))
+
+let caddyfile = `# Auto-generated from .worktrees/ports.json
+# Run: caddy run --config Caddyfile.local
+
+storyboard.localhost {
+`
+
+// Add path-based routes for each worktree
+for (const [name, port] of Object.entries(ports)) {
+  if (name === 'main') continue
+  caddyfile += `  handle_path /${name}/* {
+    reverse_proxy localhost:${port}
+  }
+`
+}
+
+// Default route to main
+caddyfile += `  reverse_proxy localhost:${ports.main || 1234}
+}
+`
+
+writeFileSync('Caddyfile.local', caddyfile)
+console.log('Generated Caddyfile.local')
+console.log('Run: caddy run --config Caddyfile.local')
+```
+
+**Result:**
+- `http://storyboard.localhost/` → main
+- `http://storyboard.localhost/security-ux/` → worktree
+- `http://storyboard.localhost/v3-11-0/` → worktree
+
+#### 3.3 Gitignore the generated file
+
+```gitignore
+Caddyfile.local
+```
+
+---
+
+## File Changes Summary
+
+| File | Change |
+|------|--------|
+| `scripts/worktree-port.js` | New — port registry management |
+| `scripts/dev-server.js` | New — smart dev server with port detection |
+| `scripts/hotel-register.js` | New — optional hotel integration |
+| `scripts/caddy-generate.js` | New — optional Caddy config generator |
+| `package.json` | Add scripts: `dev`, `hotel:add`, `caddy:generate` |
+| `.gitignore` | Add `.worktrees/ports.json`, `Caddyfile.local` |
+| `.github/skills/worktree/SKILL.md` | Update to call port script |
+| `README.md` | Add optional "Local Domain Names" section |
+
+---
+
+## User Experience
+
+### Without proxy (default)
+
+```bash
+npm run dev           # → localhost:1234 (main)
+cd .worktrees/fix-bug
+npm run dev           # → localhost:1235 (auto-assigned)
+```
+
+Ports are stable and tracked in `.worktrees/ports.json`.
+
+### With hotel (opt-in)
+
+```bash
+npm i -g hotel && hotel start  # one-time
+npm run hotel:add              # register all worktrees
+
+# Now available at:
+# http://storyboard-main.localhost
+# http://storyboard-fix-bug.localhost
+```
+
+### With Caddy (opt-in)
+
+```bash
+brew install caddy                    # one-time
+npm run caddy:generate                # regenerate when worktrees change
+caddy run --config Caddyfile.local    # start proxy
+
+# Now available at:
+# http://storyboard.localhost/
+# http://storyboard.localhost/fix-bug/
+```
+
+---
+
+## On Worktree Naming
 
 For maximum compatibility, **use kebab-case branch names without dots**:
 - `v3-11-0` instead of `3.11.0`
 - `feature-dark-mode` instead of `feature/dark-mode`
 
-This is already the convention in the ship skill (which derives kebab-case branch names). If you need to support existing dotted tags/versions as worktrees, the port registry and proxy config can use a sanitized slug for the domain while preserving the original name for the worktree directory.
+This is already the convention in the ship skill. The hotel/Caddy integration sanitizes dots to hyphens automatically, so `3.11.0` becomes `storyboard-3-11-0.localhost` — but it's cleaner to avoid dots from the start.

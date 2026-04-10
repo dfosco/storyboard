@@ -45,6 +45,10 @@ export default function Viewfinder({ pageModules = {}, basePath, title = 'Storyb
         showThumbnails,
         hideDefaultFlow: shouldHideDefault,
       })
+      // Reveal after CSS has been processed to prevent FOUC
+      requestAnimationFrame(() => {
+        if (containerRef.current) containerRef.current.style.opacity = '1'
+      })
     })
 
     return () => {
@@ -56,6 +60,11 @@ export default function Viewfinder({ pageModules = {}, basePath, title = 'Storyb
     }
   }, [title, subtitle, basePath, knownRoutes, showThumbnails, shouldHideDefault])
 
-  return <div ref={containerRef} style={{ minHeight: '100vh' }} />
+  return <div ref={containerRef} style={{
+    minHeight: '100vh',
+    background: 'var(--bgColor-default, #0d1117)',
+    opacity: 0,
+    transition: 'opacity 0.15s ease',
+  }} />
 }
 

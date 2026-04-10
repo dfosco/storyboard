@@ -45,9 +45,11 @@ export default function Viewfinder({ pageModules = {}, basePath, title = 'Storyb
         showThumbnails,
         hideDefaultFlow: shouldHideDefault,
       })
-      // Reveal after CSS has been processed to prevent FOUC
-      requestAnimationFrame(() => {
-        if (containerRef.current) containerRef.current.style.opacity = '1'
+      // Wait for styles to be fully loaded before revealing
+      handleRef.current.ready.then(() => {
+        requestAnimationFrame(() => {
+          if (containerRef.current) containerRef.current.style.opacity = '1'
+        })
       })
     })
 

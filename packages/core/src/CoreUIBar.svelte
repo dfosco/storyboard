@@ -530,13 +530,15 @@
           {:else}
             <Tooltip.Root>
               <Tooltip.Trigger>
-                <CanvasToolComponent
-                  config={canvasTool}
-                  data={toolData[canvasTool.key]}
-                  canvasName={activeCanvasName}
-                  zoom={canvasZoom}
-                  tabindex={0}
-                />
+                <span data-local-only={isToolbarToolLocalOnly(canvasTool.key) || undefined}>
+                  <CanvasToolComponent
+                    config={canvasTool}
+                    data={toolData[canvasTool.key]}
+                    canvasName={activeCanvasName}
+                    zoom={canvasZoom}
+                    tabindex={0}
+                  />
+                </span>
               </Tooltip.Trigger>
               <Tooltip.Content side="top">{canvasTool.ariaLabel || canvasTool.key}</Tooltip.Content>
             </Tooltip.Root>

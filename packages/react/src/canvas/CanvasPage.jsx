@@ -341,51 +341,50 @@ export default function CanvasPage({ name }) {
     }
   }, [])
 
-  // --- Multi-select live drag preview via imperative DOM transforms ---
-  // On drag start, snapshot peer article elements and the drag start position.
-  // On each drag tick, compute delta from the callback position and apply
-  // the same delta to all peers via style.translate (composes on top of
-  // neodrag's style.transform).
-  const dragStartPosition = useRef({ x: 0, y: 0 })
-  const peerSnapshots = useRef(new Map())
+  // --- Multi-select drag: peers animate to new positions on drag end ---
+  // During drag, only the dragged widget moves (via neodrag). On drag end,
+  // peer widget positions are updated via React state, and we add the
+  // tc-on-translation class so they animate smoothly to their new spots.
+  const peerArticlesRef = useRef(new Map())
   // Flag to suppress the click-based selection reset that fires after a drag
   const justDraggedRef = useRef(false)
 
   const handleItemDragStart = useCallback((dragId, position) => {
     const ids = selectedIdsRef.current
-    peerSnapshots.current.clear()
+    peerArticlesRef.current.clear()
     if (ids.size <= 1 || !ids.has(dragId)) return
 
-    // Store start position from callback (neodrag uses style.transform,
-    // not style.translate, so DOM reading doesn't work here)
-    dragStartPosition.current = position || { x: 0, y: 0 }
-
-    // Snapshot each peer's article element for applying transforms
+    // Collect peer article elements for transition on drag end
     for (const id of ids) {
       if (id === dragId) continue
       const widgetEl = document.getElementById(id)
       const article = widgetEl?.closest('article')
       if (!article) continue
-      peerSnapshots.current.set(id, { article })
+      peerArticlesRef.current.set(id, article)
     }
   }, [])
 
-  const handleItemDrag = useCallback((dragId, position) => {
-    if (peerSnapshots.current.size === 0) return
+  const handleItemDrag = useCallback(() => {
+    // Peers stay put during drag — they animate on drag end
+  }, [])
 
-    const dx = (position?.x ?? 0) - dragStartPosition.current.x
-    const dy = (position?.y ?? 0) - dragStartPosition.current.y
-
-    for (const [, peer] of peerSnapshots.current) {
-      peer.article.style.translate = `${dx}px ${dy}px`
+  /** Add transition class to peer articles so they animate to new positions. */
+  const transitionPeers = useCallback(() => {
+    for (const [, article] of peerArticlesRef.current) {
+      article.classList.add('tc-on-translation')
     }
+    // Remove class after animation completes
+    const articles = [...peerArticlesRef.current.values()]
+    setTimeout(() => {
+      for (const article of articles) {
+        article.classList.remove('tc-on-translation')
+      }
+    }, 250 * 4)
+    peerArticlesRef.current.clear()
   }, [])
 
   const clearDragPreview = useCallback(() => {
-    for (const [, peer] of peerSnapshots.current) {
-      peer.article.style.translate = ''
-    }
-    peerSnapshots.current.clear()
+    peerArticlesRef.current.clear()
   }, [])
 
   if (canvas !== trackedCanvas) {
@@ -534,7 +533,7 @@ export default function CanvasPage({ name }) {
     const ids = selectedIdsRef.current
     // Multi-select move: apply same delta to all selected widgets
     if (ids.size > 1 && ids.has(dragId)) {
-      clearDragPreview()
+      transitionPeers()
       // Suppress the click-based selection reset that fires after pointerup
       justDraggedRef.current = true
       requestAnimationFrame(() => { justDraggedRef.current = false })
@@ -585,7 +584,7 @@ export default function CanvasPage({ name }) {
       )
       return next
     })
-  }, [name, undoRedo, debouncedSave, clearDragPreview])
+  }, [name, undoRedo, debouncedSave, transitionPeers, clearDragPreview])
 
   useEffect(() => {
     zoomRef.current = zoom

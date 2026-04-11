@@ -264,7 +264,7 @@ describe('CanvasPage multi-select', () => {
     )
   })
 
-  it('multi-select drag sets up peer tracking on drag start', async () => {
+  it('multi-select drag captures peer articles on drag start', async () => {
     render(<CanvasPage name="test-canvas" />)
 
     // Multi-select w1 and w2
@@ -272,7 +272,7 @@ describe('CanvasPage multi-select', () => {
     fireEvent.click(screen.getByTestId('shift-select-w2'))
     await act(async () => { await new Promise((r) => setTimeout(r, 0)) })
 
-    // onDragStart should be captured
+    // All drag callbacks should be captured
     expect(capturedOnDragStart).toBeTruthy()
     expect(capturedOnDrag).toBeTruthy()
 
@@ -281,7 +281,7 @@ describe('CanvasPage multi-select', () => {
       capturedOnDragStart('w1', { x: 100, y: 100 })
     })
 
-    // Trigger drag — should not throw
+    // Drag tick — peers stay put (no live preview), should not throw
     act(() => {
       capturedOnDrag('w1', { x: 150, y: 200 })
     })
@@ -298,7 +298,10 @@ describe('CanvasPage multi-select', () => {
     expect(screen.getByTestId('chrome-w1').dataset.selected).toBeDefined()
     expect(screen.getByTestId('chrome-w2').dataset.selected).toBeDefined()
 
-    // Simulate drag end
+    // Simulate full drag: start → drag → end
+    act(() => {
+      capturedOnDragStart('w1', { x: 100, y: 100 })
+    })
     act(() => {
       capturedOnDragEnd('w1', { x: 150, y: 200 })
     })
@@ -307,5 +310,36 @@ describe('CanvasPage multi-select', () => {
     // Selection should still include both widgets (justDraggedRef prevents collapse)
     expect(screen.getByTestId('chrome-w1').dataset.selected).toBeDefined()
     expect(screen.getByTestId('chrome-w2').dataset.selected).toBeDefined()
+  })
+
+  it('any selected widget can serve as drag handler for the group', async () => {
+    render(<CanvasPage name="test-canvas" />)
+
+    // Multi-select w1 (100,100), w2 (300,100), w3 (500,200)
+    fireEvent.click(screen.getByTestId('select-w1'))
+    fireEvent.click(screen.getByTestId('shift-select-w2'))
+    fireEvent.click(screen.getByTestId('shift-select-w3'))
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)) })
+
+    // Drag w2 (the middle one) to (350, 150) → delta (+50, +50)
+    act(() => {
+      capturedOnDragStart('w2', { x: 300, y: 100 })
+    })
+    act(() => {
+      capturedOnDragEnd('w2', { x: 350, y: 150 })
+    })
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)) })
+
+    // All selected widgets should move by the same delta (+50, +50)
+    expect(updateCanvas).toHaveBeenCalledWith(
+      'test-canvas',
+      expect.objectContaining({
+        widgets: expect.arrayContaining([
+          expect.objectContaining({ id: 'w1', position: { x: 150, y: 150 } }),
+          expect.objectContaining({ id: 'w2', position: { x: 350, y: 150 } }),
+          expect.objectContaining({ id: 'w3', position: { x: 550, y: 250 } }),
+        ]),
+      })
+    )
   })
 })

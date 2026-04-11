@@ -15,10 +15,14 @@ vi.mock('./useUndoRedo.js', () => ({
   default: () => MOCK_UNDO_REDO,
 }))
 
-// Expose onDragEnd so tests can trigger drags with specific IDs
+// Expose drag callbacks so tests can trigger drags with specific IDs
+let capturedOnDragStart = null
+let capturedOnDrag = null
 let capturedOnDragEnd = null
 vi.mock('@dfosco/tiny-canvas', () => ({
-  Canvas: ({ children, onDragEnd }) => {
+  Canvas: ({ children, onDragStart, onDrag, onDragEnd }) => {
+    capturedOnDragStart = onDragStart
+    capturedOnDrag = onDrag
     capturedOnDragEnd = onDragEnd
     return <div data-testid="tiny-canvas">{children}</div>
   },
@@ -109,6 +113,8 @@ describe('CanvasPage multi-select', () => {
     delete window.__storyboardCanvasBridgeState
     window.__SB_LOCAL_DEV__ = true
     vi.clearAllMocks()
+    capturedOnDragStart = null
+    capturedOnDrag = null
     capturedOnDragEnd = null
   })
 
@@ -256,5 +262,50 @@ describe('CanvasPage multi-select', () => {
         ]),
       })
     )
+  })
+
+  it('multi-select drag sets up peer tracking on drag start', async () => {
+    render(<CanvasPage name="test-canvas" />)
+
+    // Multi-select w1 and w2
+    fireEvent.click(screen.getByTestId('select-w1'))
+    fireEvent.click(screen.getByTestId('shift-select-w2'))
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)) })
+
+    // onDragStart should be captured
+    expect(capturedOnDragStart).toBeTruthy()
+    expect(capturedOnDrag).toBeTruthy()
+
+    // Trigger drag start — should not throw
+    act(() => {
+      capturedOnDragStart('w1', { x: 100, y: 100 })
+    })
+
+    // Trigger drag — should not throw
+    act(() => {
+      capturedOnDrag('w1', { x: 150, y: 200 })
+    })
+  })
+
+  it('multi-select drag preserves selection after drag end', async () => {
+    render(<CanvasPage name="test-canvas" />)
+
+    // Multi-select w1 and w2
+    fireEvent.click(screen.getByTestId('select-w1'))
+    fireEvent.click(screen.getByTestId('shift-select-w2'))
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)) })
+
+    expect(screen.getByTestId('chrome-w1').dataset.selected).toBeDefined()
+    expect(screen.getByTestId('chrome-w2').dataset.selected).toBeDefined()
+
+    // Simulate drag end
+    act(() => {
+      capturedOnDragEnd('w1', { x: 150, y: 200 })
+    })
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)) })
+
+    // Selection should still include both widgets (justDraggedRef prevents collapse)
+    expect(screen.getByTestId('chrome-w1').dataset.selected).toBeDefined()
+    expect(screen.getByTestId('chrome-w2').dataset.selected).toBeDefined()
   })
 })

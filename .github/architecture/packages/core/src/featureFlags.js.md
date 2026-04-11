@@ -10,31 +10,33 @@ importance: high
 
 ## Goal
 
-Feature flag system for Storyboard. Flags are defined in `storyboard.config.json` under `"featureFlags"` and initialized at app startup via the Vite data plugin. The system supports a three-tier read priority (URL hash → localStorage → config defaults) and writes to the URL hash for shareability. All flag keys in hash/localStorage are prefixed with `flag.` to avoid collisions with scene overrides. Active flags are also reflected as `sb-ff-{name}` CSS classes on `<body>`.
+Feature flag system for Storyboard. Flags are defined in `storyboard.config.json` under `"featureFlags"` and initialized at app startup via [`mountStoryboardCore.js`](./mountStoryboardCore.js.md). The system supports a two-tier read priority (localStorage → config defaults) and writes to localStorage for persistence. All flag keys in localStorage are prefixed with `flag.` to avoid collisions with scene overrides. Active flags are also reflected as `sb-ff-{name}` CSS classes on `<body>`.
 
 ## Composition
 
-**`initFeatureFlags(defaults)`** — Seeds the flag system with config defaults. Syncs localStorage with config defaults on every call (user overrides live in the URL hash, which is checked first).
+**`initFeatureFlags(defaults)`** — Seeds the flag system with config defaults. Only writes a default to localStorage when no user override exists yet, so toggled values survive across reloads.
 
 ```js
 export function initFeatureFlags(defaults = {}) {
   _defaults = { ...defaults }
   for (const [key, value] of Object.entries(_defaults)) {
-    setLocal(FLAG_PREFIX + key, String(value))
+    if (getLocal(FLAG_PREFIX + key) === null) {
+      setLocal(FLAG_PREFIX + key, String(value))
+    }
   }
   syncFlagBodyClasses()
 }
 ```
 
-**`getFlag(key)`** — Reads a flag value with priority: hash → localStorage → config default.
+**`getFlag(key)`** — Reads a flag value with priority: localStorage → config default.
 
-**`setFlag(key, value)`** — Writes a flag to URL hash and syncs body classes.
+**`setFlag(key, value)`** — Writes a flag to localStorage and syncs body classes.
 
 **`toggleFlag(key)`** — Reads current value and writes opposite.
 
 **`getAllFlags()`** — Returns all flags with `{ default, current }` values.
 
-**`resetFlags()`** — Removes all hash and localStorage overrides, reverting to config defaults.
+**`resetFlags()`** — Removes all localStorage overrides, reverting to config defaults.
 
 **`getFlagKeys()`** — Returns all registered flag key names.
 
@@ -42,11 +44,12 @@ export function initFeatureFlags(defaults = {}) {
 
 ## Dependencies
 
-- [`packages/core/src/session.js`](./session.js.md) — `getParam`, `setParam`, `removeParam`, `getAllParams` for URL hash read/write
 - [`packages/core/src/localStorage.js`](./localStorage.js.md) — `getLocal`, `setLocal`, `removeLocal`, `getAllLocal` for localStorage persistence
 
 ## Dependents
 
 - [`packages/core/src/index.js`](./index.js.md) — Re-exports all public functions
 - [`packages/core/src/bodyClasses.js`](./bodyClasses.js.md) — Imports `syncFlagBodyClasses` for the combined body class sync
-- [`packages/core/src/devtools.js`](./devtools.js.md) — Imports `getAllFlags`, `toggleFlag`, `getFlagKeys` for the feature flags panel
+- [`packages/core/src/mountStoryboardCore.js`](./mountStoryboardCore.js.md) — Calls `initFeatureFlags` at app startup
+- `packages/core/src/tools/handlers/featureFlags.js` — Feature flags tool handler
+- `packages/core/src/tools/registry.js` — Tool registry references feature flags

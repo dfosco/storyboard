@@ -33,9 +33,9 @@ export function registerMode(name, config = {}) {
 
 ### Mode Switching
 
-**`getCurrentMode()`** — Reads `?mode=` from the URL, falls back to `"prototype"`.
+**`getCurrentMode()`** — Reads `?mode=` from the URL, falls back to `"prototype"`. Returns the locked mode if one is set and registered.
 
-**`activateMode(name, options)`** — Switches modes: deactivates previous (removes CSS classes, calls `onDeactivate`), updates URL param, activates new (applies CSS classes, calls `onActivate`), emits events.
+**`activateMode(name, options)`** — Switches modes: deactivates previous (removes CSS classes, calls `onDeactivate`), updates URL param, activates new (applies CSS classes, calls `onActivate`), emits events. No-op when modes are locked.
 
 **`deactivateMode()`** — Returns to the default "prototype" mode.
 
@@ -49,9 +49,13 @@ export function registerMode(name, config = {}) {
 
 ### Configuration
 
-**`initModesConfig(config)`** — Initialize modes from storyboard.config.json. Controls whether modes UI is enabled.
+**`initModesConfig(config)`** — Initialize modes from storyboard.config.json. Controls whether modes UI is enabled and whether modes are locked to a specific mode.
 
 **`isModesEnabled()`** — Returns whether the modes UI should be shown.
+
+**`getLockedMode()`** — Returns the locked mode name, or `null` if modes are not locked. When locked, the mode switcher is hidden and `activateMode()` is a no-op.
+
+**`isModeSwitcherVisible()`** — Returns `false` when modes are disabled or locked to a specific mode.
 
 ### Tool Registry
 

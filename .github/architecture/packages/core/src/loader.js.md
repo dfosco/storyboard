@@ -10,9 +10,9 @@ importance: high
 
 ## Goal
 
-The loader is the heart of the storyboard data system. It manages a module-level data index (flows, objects, records, prototypes) that is seeded at app startup via `init()`, and provides functions to load and resolve flow data with `$ref` and `$global` references. Flows are the primary data context for pages — they compose objects into a complete data shape that components consume.
+The loader is the heart of the storyboard data system. It manages a module-level data index (flows, objects, records, prototypes, folders, canvases) that is seeded at app startup via `init()`, and provides functions to load and resolve flow data with `$ref` and `$global` references. Flows are the primary data context for pages — they compose objects into a complete data shape that components consume.
 
-The loader is framework-agnostic with zero npm dependencies. It supports case-insensitive flow lookup, circular `$ref` detection, deep merging of `$global` data, scoped name resolution for prototypes, and returns `structuredClone`d data to prevent consumer mutation of the index.
+The loader is framework-agnostic with zero npm dependencies. It supports case-insensitive flow lookup, circular `$ref` detection, deep merging of `$global` data, prototype-scoped name resolution (for flows, records, and objects), and returns `structuredClone`d data to prevent consumer mutation of the index.
 
 ## Composition
 
@@ -25,15 +25,18 @@ export function init(index) {
     objects: index.objects || {},
     records: index.records || {},
     prototypes: index.prototypes || {},
+    folders: index.folders || {},
+    canvases: index.canvases || {},
   }
 }
 ```
 
-**`loadFlow(flowName)`** — Loads a flow and resolves `$global` (root-level merges) and `$ref` (inline object replacement). Returns a `structuredClone` to prevent mutation. Provides helpful error messages with suggestions for scoped flow names.
+**`loadFlow(flowName)`** — Loads a flow and resolves `$global` (root-level merges) and `$ref` (inline object replacement). Extracts prototype scope from scoped names (e.g. `"Dashboard/default"` → scope `"Dashboard"`). Returns a `structuredClone` to prevent mutation. Provides helpful error messages with suggestions for scoped flow names.
 
 ```js
 export function loadFlow(flowName = 'default') {
-  // loads flow, handles $global merge, resolves $ref, clones
+  const scope = flowName.includes('/') ? flowName.split('/')[0] : null
+  // loads flow, handles $global merge with scoped resolution, resolves $ref, clones
   return structuredClone(flowData)
 }
 ```
@@ -46,21 +49,27 @@ export function loadFlow(flowName = 'default') {
 
 **`listFlows()`** — Returns all registered flow names. `listScenes()` is a deprecated alias.
 
+**`getFlowsForPrototype(prototypeName)`** — Returns flows scoped to a specific prototype (e.g. all flows starting with `"Dashboard/"`), with resolved metadata.
+
 **`loadRecord(recordName)`** / **`findRecord(recordName, id)`** — Load record collections (arrays) and find individual entries by id. Both return clones.
 
-**`loadObject(objectName)`** — Loads an object data file, resolves nested `$ref` references, returns a deep clone.
+**`loadObject(objectName, scope?)`** — Loads an object data file, resolves nested `$ref` references with optional prototype scope, returns a deep clone.
 
 **`resolveFlowName(scope, name)`** — Resolves a flow name within a prototype scope. Tries `{scope}/{name}` first, falls back to the plain name.
 
 **`resolveRecordName(scope, name)`** — Same as `resolveFlowName` but for records.
 
-**`listPrototypes()`** — Returns all registered prototype names.
+**`resolveObjectName(scope, name)`** — Same as `resolveFlowName` but for objects.
 
-**`getPrototypeMetadata(name)`** — Returns metadata from a `.prototype.json` file.
+**`listPrototypes()`** / **`getPrototypeMetadata(name)`** — Returns all registered prototype names / metadata from `.prototype.json`.
+
+**`listFolders()`** / **`getFolderMetadata(name)`** — Returns all registered folder names / metadata from `.folder.json`.
+
+**`listCanvases()`** / **`getCanvasData(name)`** — Returns all registered canvas names / data from `.canvas.json`.
 
 Internal helpers:
 - `loadDataFile(name, type)` — Resolves a data file from the index with case-insensitive fallback for flows
-- `resolveRefs(node, seen)` — Recursively resolves `$ref` objects with circular dependency detection
+- `resolveRefs(node, seen, scope)` — Recursively resolves `$ref` objects with circular dependency detection and optional prototype scope
 
 ## Dependencies
 
@@ -80,4 +89,6 @@ No external dependencies. Pure JavaScript with no imports.
 
 - The `$ref` resolution looks up objects first, then falls back to searching all types. This means object names take priority.
 - Circular `$ref` chains throw immediately — the `seen` Set tracks visited names during resolution.
-- `$global` entries that fail to load are silently warned (not thrown), allowing partial scene resolution.
+- `$global` entries that fail to load are silently warned (not thrown), allowing partial flow resolution.
+- Scoped name resolution (`resolveObjectName`, `resolveFlowName`, `resolveRecordName`) tries `{scope}/{name}` first, then falls back to the global name — this enables prototype-scoped data that shadows global data.
+- `resolveRefs` passes the `scope` parameter through recursive calls, so nested `$ref`s within scoped flows also resolve scoped objects first.

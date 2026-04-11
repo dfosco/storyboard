@@ -1,6 +1,6 @@
 {
   "name": "@dfosco/storyboard-core",
-  "version": "3.11.0-beta.8",
+  "version": "3.11.0-beta.9",
   "type": "module",
   "license": "MIT",
   "bin": {

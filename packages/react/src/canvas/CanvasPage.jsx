@@ -7,7 +7,7 @@ import { shouldPreventCanvasTextSelection } from './textSelection.js'
 import { getCanvasThemeVars, getCanvasPrimerAttrs } from './canvasTheme.js'
 import { getWidgetComponent } from './widgets/index.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'
-import { getFeatures } from './widgets/widgetConfig.js'
+import { getFeatures, isResizable } from './widgets/widgetConfig.js'
 import { isFigmaUrl, sanitizeFigmaUrl } from './widgets/figmaUrl.js'
 import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
@@ -209,8 +209,9 @@ function WidgetRenderer({ widget, onUpdate, widgetRef }) {
     console.warn(`[canvas] Unknown widget type: ${widget.type}`)
     return null
   }
+  const resizable = isResizable(widget.type) && !!onUpdate
   // Only pass ref to forwardRef-wrapped components (e.g. PrototypeEmbed)
-  const elementProps = { id: widget.id, props: widget.props, onUpdate }
+  const elementProps = { id: widget.id, props: widget.props, onUpdate, resizable }
   if (Component.$$typeof === Symbol.for('react.forward_ref')) {
     elementProps.ref = widgetRef
   }
@@ -1313,6 +1314,7 @@ export default function CanvasPage({ name }) {
               width={sourceData.width}
               height={sourceData.height}
               onUpdate={isLocalDev ? (updates) => handleSourceUpdate(exportName, updates) : undefined}
+              resizable={isResizable('component') && isLocalDev}
             />
           </WidgetChrome>
         </div>

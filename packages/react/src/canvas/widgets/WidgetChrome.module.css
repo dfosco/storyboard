@@ -138,12 +138,14 @@
   border-color: var(--bgColor-accent-emphasis, #2f81f7);
 }
 
-.selectHandleActive {
+.selectHandleActive,
+:global([data-sb-canvas-theme^='dark']) .selectHandleActive {
   background: var(--bgColor-accent-emphasis, #2f81f7);
   border-color: var(--bgColor-accent-emphasis, #2f81f7);
 }
 
-.selectHandleActive:hover {
+.selectHandleActive:hover,
+:global([data-sb-canvas-theme^='dark']) .selectHandleActive:hover {
   background: var(--bgColor-accent-emphasis, #388bfd);
   border-color: var(--bgColor-accent-emphasis, #388bfd);
 }

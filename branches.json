@@ -1,6 +1,7 @@
 [
   {"folder":"branch--3.11.0-auto-sync","branch":"3.11.0-auto-sync"},
   {"folder":"branch--3.11.0-canvas-hmr","branch":"3.11.0-canvas-hmr"},
+  {"folder":"branch--3.11.0-config-driven-resize","branch":"3.11.0-config-driven-resize"},
   {"folder":"branch--3.11.0-copy-widget","branch":"3.11.0-copy-widget"},
   {"folder":"branch--3.11.0-expand-iterate","branch":"3.11.0-expand-iterate"},
   {"folder":"branch--3.11.0-figma-embed","branch":"3.11.0-figma-embed"},

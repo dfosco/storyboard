@@ -1,5 +1,15 @@
 # @dfosco/storyboard-core
 
+## 3.11.0-beta.8
+
+### Minor Changes
+
+-   Config-driven widget resize and dark mode fix
+
+    -   Widget resize is now controlled via `resize: { enabled, prod }` in widgets.config.json
+    -   New `isResizable(type)` helper respects config + build environment + mutability
+    -   Fix: select handle now shows correct accent color in dark mode
+
 ## 3.11.0-beta.7
 
 ### Patch Changes

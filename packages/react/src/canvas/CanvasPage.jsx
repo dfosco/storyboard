@@ -321,8 +321,11 @@ export default function CanvasPage({ name }) {
   /**
    * Selection handler — shift+click toggles in/out of multi-select set,
    * plain click single-selects (clears others).
+   * Suppressed immediately after a multi-drag to prevent the post-drag
+   * click from collapsing the selection.
    */
   const handleWidgetSelect = useCallback((widgetId, shiftKey) => {
+    if (justDraggedRef.current) return
     if (shiftKey) {
       setSelectedWidgetIds(prev => {
         const next = new Set(prev)
@@ -339,61 +342,50 @@ export default function CanvasPage({ name }) {
   }, [])
 
   // --- Multi-select live drag preview via imperative DOM transforms ---
-  // On drag start, snapshot ALL articles' translate values (same coord space).
-  // On each tick, read dragged article's current translate, compute delta
-  // from its snapshot, apply same delta to all peers.
-  const draggedArticleRef = useRef(null)
-  const draggedStartTranslate = useRef({ x: 0, y: 0 })
+  // On drag start, snapshot peer article elements and the drag start position.
+  // On each drag tick, compute delta from the callback position and apply
+  // the same delta to all peers via style.translate (composes on top of
+  // neodrag's style.transform).
+  const dragStartPosition = useRef({ x: 0, y: 0 })
   const peerSnapshots = useRef(new Map())
+  // Flag to suppress the click-based selection reset that fires after a drag
+  const justDraggedRef = useRef(false)
 
-  function parseTranslate(article) {
-    const raw = article?.style.translate || '0px 0px'
-    const parts = raw.match(/-?[\d.]+/g) || [0, 0]
-    return { x: parseFloat(parts[0]) || 0, y: parseFloat(parts[1]) || 0 }
-  }
-
-  const handleItemDragStart = useCallback((dragId) => {
+  const handleItemDragStart = useCallback((dragId, position) => {
     const ids = selectedIdsRef.current
     peerSnapshots.current.clear()
-    draggedArticleRef.current = null
     if (ids.size <= 1 || !ids.has(dragId)) return
 
-    // Snapshot dragged widget's article translate
-    const draggedEl = document.getElementById(dragId)
-    const draggedArticle = draggedEl?.closest('article')
-    if (!draggedArticle) return
-    draggedArticleRef.current = draggedArticle
-    draggedStartTranslate.current = parseTranslate(draggedArticle)
+    // Store start position from callback (neodrag uses style.transform,
+    // not style.translate, so DOM reading doesn't work here)
+    dragStartPosition.current = position || { x: 0, y: 0 }
 
-    // Snapshot each peer's article translate
+    // Snapshot each peer's article element for applying transforms
     for (const id of ids) {
       if (id === dragId) continue
       const widgetEl = document.getElementById(id)
       const article = widgetEl?.closest('article')
       if (!article) continue
-      peerSnapshots.current.set(id, {
-        article,
-        ...parseTranslate(article),
-      })
+      peerSnapshots.current.set(id, { article })
     }
   }, [])
 
-  const handleItemDrag = useCallback(() => {
-    if (!draggedArticleRef.current) return
+  const handleItemDrag = useCallback((dragId, position) => {
+    if (peerSnapshots.current.size === 0) return
 
-    // Read dragged article's CURRENT translate (set by neodrag)
-    const current = parseTranslate(draggedArticleRef.current)
-    const dx = current.x - draggedStartTranslate.current.x
-    const dy = current.y - draggedStartTranslate.current.y
+    const dx = (position?.x ?? 0) - dragStartPosition.current.x
+    const dy = (position?.y ?? 0) - dragStartPosition.current.y
 
     for (const [, peer] of peerSnapshots.current) {
-      peer.article.style.translate = `${peer.x + dx}px ${peer.y + dy}px`
+      peer.article.style.translate = `${dx}px ${dy}px`
     }
   }, [])
 
   const clearDragPreview = useCallback(() => {
+    for (const [, peer] of peerSnapshots.current) {
+      peer.article.style.translate = ''
+    }
     peerSnapshots.current.clear()
-    draggedArticleRef.current = null
   }, [])
 
   if (canvas !== trackedCanvas) {
@@ -515,7 +507,10 @@ export default function CanvasPage({ name }) {
   }, [name, debouncedSourceSave, undoRedo, snapEnabled, snapGridSize])
 
   const handleItemDragEnd = useCallback((dragId, position) => {
-    if (!dragId || !position) return
+    if (!dragId || !position) {
+      clearDragPreview()
+      return
+    }
     const rounded = { x: Math.max(0, roundPosition(position.x)), y: Math.max(0, roundPosition(position.y)) }
 
     if (dragId.startsWith('jsx-')) {
@@ -540,6 +535,9 @@ export default function CanvasPage({ name }) {
     // Multi-select move: apply same delta to all selected widgets
     if (ids.size > 1 && ids.has(dragId)) {
       clearDragPreview()
+      // Suppress the click-based selection reset that fires after pointerup
+      justDraggedRef.current = true
+      requestAnimationFrame(() => { justDraggedRef.current = false })
       undoRedo.snapshot(stateRef.current, 'multi-move')
       const currentWidgets = stateRef.current.widgets ?? []
       const draggedWidget = currentWidgets.find(w => w.id === dragId)

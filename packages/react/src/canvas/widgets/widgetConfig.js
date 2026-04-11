@@ -113,6 +113,19 @@ export function getFeatures(type) {
 }
 
 /**
+ * Check if a widget type supports resize in the current environment.
+ * Returns false if resize is disabled, or if in production and prod is not true.
+ * @param {string} type — widget type string
+ * @returns {boolean}
+ */
+export function isResizable(type) {
+  const resize = widgetTypes[type]?.resize
+  if (!resize?.enabled) return false
+  if (import.meta.env?.PROD && !resize.prod) return false
+  return true
+}
+
+/**
  * Get the display metadata (label, icon) for a widget type.
  * @param {string} type — widget type string
  * @returns {{ label: string, icon: string } | null}

@@ -29,7 +29,7 @@ function resolveCanvasThemeFromStorage() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
+export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }, ref) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
   const width = readProp(props, 'width', prototypeEmbedSchema)
   const height = readProp(props, 'height', prototypeEmbedSchema)
@@ -416,29 +416,31 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
           </div>
         )}
       </div>
-      <div
-        className={styles.resizeHandle}
-        onMouseDown={(e) => {
-          e.stopPropagation()
-          e.preventDefault()
-          const startX = e.clientX
-          const startY = e.clientY
-          const startW = width
-          const startH = height
-          function onMove(ev) {
-            const newW = Math.max(200, startW + ev.clientX - startX)
-            const newH = Math.max(150, startH + ev.clientY - startY)
-            onUpdate?.({ width: newW, height: newH })
-          }
-          function onUp() {
-            document.removeEventListener('mousemove', onMove)
-            document.removeEventListener('mouseup', onUp)
-          }
-          document.addEventListener('mousemove', onMove)
-          document.addEventListener('mouseup', onUp)
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
-      />
+      {resizable && (
+        <div
+          className={styles.resizeHandle}
+          onMouseDown={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            const startX = e.clientX
+            const startY = e.clientY
+            const startW = width
+            const startH = height
+            function onMove(ev) {
+              const newW = Math.max(200, startW + ev.clientX - startX)
+              const newH = Math.max(150, startH + ev.clientY - startY)
+              onUpdate?.({ width: newW, height: newH })
+            }
+            function onUp() {
+              document.removeEventListener('mousemove', onMove)
+              document.removeEventListener('mouseup', onUp)
+            }
+            document.addEventListener('mousemove', onMove)
+            document.addEventListener('mouseup', onUp)
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        />
+      )}
     </WidgetWrapper>
     {createPortal(
       <div

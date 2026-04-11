@@ -11,7 +11,7 @@ import styles from './ComponentWidget.module.css'
  * Double-click the overlay to enter interactive mode (dropdowns, buttons work).
  * Click outside to exit interactive mode.
  */
-export default function ComponentWidget({ component: Component, width, height, onUpdate }) {
+export default function ComponentWidget({ component: Component, width, height, onUpdate, resizable }) {
   const containerRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
 
@@ -51,12 +51,14 @@ export default function ComponentWidget({ component: Component, width, height, o
             onDoubleClick={enterInteractive}
           />
         )}
-        <ResizeHandle
-          targetRef={containerRef}
-          minWidth={100}
-          minHeight={60}
-          onResize={handleResize}
-        />
+        {resizable && (
+          <ResizeHandle
+            targetRef={containerRef}
+            minWidth={100}
+            minHeight={60}
+            onResize={handleResize}
+          />
+        )}
       </div>
     </WidgetWrapper>
   )

@@ -455,7 +455,7 @@ Storyboard provides form components that automatically persist to URL session st
 
 ```jsx
 import { FormControl, Button } from '@primer/react'
-import { StoryboardForm, TextInput, Textarea } from '@storyboard/primer'
+import { StoryboardForm, TextInput, Textarea } from '@dfosco/storyboard-react-primer'
 
 function ProfileForm() {
   return (
@@ -485,7 +485,7 @@ Values are buffered locally while typing. On submit, they flush to the URL hash:
 #user.name=Alice&user.profile.bio=Hello%20world
 ```
 
-Available form components: `TextInput`, `Textarea`, `Select`, `Checkbox`. They look and behave identically to Primer React originals — just import from `'@storyboard/primer'` instead of `'@primer/react'`. Equivalent Reshaped form components are available from `'@storyboard/reshaped'`.
+Available form components: `TextInput`, `Textarea`, `Select`, `Checkbox`. They look and behave identically to Primer React originals — just import from `'@dfosco/storyboard-react-primer'` instead of `'@primer/react'`. Equivalent Reshaped form components are available from `'@dfosco/storyboard-react-reshaped'`.
 
 ### Override Namespaces
 
@@ -574,16 +574,15 @@ function Banner() {
 ### Changing flags at runtime
 
 - **DevTools UI:** Open DevTools → **Feature Flags** and toggle any configured flag.
-- **URL hash override (shareable):** Set `#flag.show-banner=true` or `#flag.show-banner=false`.
 - **Programmatic API:** Use `setFlag()`, `toggleFlag()`, or `resetFlags()` from `@dfosco/storyboard-core`.
 
 Flag resolution priority is:
 
 ```
-URL hash override  →  localStorage  →  storyboard.config.json default
+localStorage  →  storyboard.config.json default
 ```
 
-Use plain flag keys in hooks/APIs (for example, `show-banner`). The `flag.` prefix is only for URL/hash storage keys.
+Flags are persisted to localStorage when set via `setFlag()`, `toggleFlag()`, or the DevTools UI. Use plain flag keys in hooks/APIs (for example, `show-banner`). The `flag.` prefix is used internally as a localStorage key prefix.
 
 ### Body CSS classes
 
@@ -772,7 +771,7 @@ Use `:global()` to reference body classes from CSS Modules:
 
 ### Setup
 
-`installBodyClassSync()` is called in the app entry (`src/index.jsx`) alongside other install functions. `setFlowClass()` is called automatically by `StoryboardProvider`. No additional setup needed.
+Body class sync is automatically initialized by `mountStoryboardCore()` in the app entry (`src/index.jsx`). `setFlowClass()` is called automatically by `StoryboardProvider`. No additional setup needed.
 
 ---
 
@@ -793,28 +792,30 @@ Use `:global()` to reference body classes from CSS Modules:
 | `useLocalStorage(path)` | `[value, setValue, clearValue]` | Persist overrides in localStorage. Read priority: hash → localStorage → flow data. |
 | `useHideMode()` | `[isHidden, toggle]` | Toggle clean-URL mode. When active, overrides read/write to localStorage shadow keys instead of the URL hash. |
 | `useUndoRedo()` | `{ canUndo, canRedo, undo, redo }` | Undo/redo for override history snapshots. |
-| `useFeatureFlag(key)` | `boolean` | Read a feature flag by key. Reactively updates when hash/localStorage-backed flag values change. |
+| `useFeatureFlag(key)` | `boolean` | Read a feature flag by key. Reactively updates when localStorage-backed flag values change. |
+| `useMode()` | `{ mode, switchMode }` | Read the current design mode and switch between modes (e.g., `prototype`, `inspect`, `present`). |
 
 ### Components
 
 | Component | Package | Description |
 |-----------|---------|-------------|
 | `<StoryboardProvider>` | `@dfosco/storyboard-react` | Wraps the app. Loads flow from `?flow=` param. Already configured in `src/pages/_app.jsx`. |
-| `<DevTools>` | `@storyboard/primer` | Floating debug panel showing current flow, hash params, and flow data. Includes comments menu when configured. Already configured in `src/index.jsx`. |
-| `<FlowDebug>` | `@storyboard/primer` | Renders resolved flow data as formatted JSON. |
-| `<FlowDataDemo>` | `@storyboard/primer` | Interactive demo of flow data and overrides. |
-| `<StoryboardForm>` | `@storyboard/primer` | Form wrapper. `data` prop sets root path for child inputs. Buffers values locally; flushes to URL hash on submit. |
-| `<TextInput>` | `@storyboard/primer` | Wrapped Primer TextInput. `name` prop auto-binds to session state via form context. |
-| `<Textarea>` | `@storyboard/primer` | Wrapped Primer Textarea. `name` prop auto-binds to session state via form context. |
-| `<Select>` | `@storyboard/primer` | Wrapped Primer Select. `name` prop auto-binds to session state via form context. |
-| `<Checkbox>` | `@storyboard/primer` | Wrapped Primer Checkbox. `name` prop auto-binds to session state via form context. |
+| `<DevTools>` | `@dfosco/storyboard-react-primer` | Floating debug panel showing current flow, hash params, and flow data. Includes comments menu when configured. Already configured in `src/index.jsx`. |
+| `<FlowDebug>` | `@dfosco/storyboard-react-primer` | Renders resolved flow data as formatted JSON. |
+| `<FlowDataDemo>` | `@dfosco/storyboard-react-primer` | Interactive demo of flow data and overrides. |
+| `<StoryboardForm>` | `@dfosco/storyboard-react-primer` | Form wrapper. `data` prop sets root path for child inputs. Buffers values locally; flushes to URL hash on submit. |
+| `<TextInput>` | `@dfosco/storyboard-react-primer` | Wrapped Primer TextInput. `name` prop auto-binds to session state via form context. |
+| `<Textarea>` | `@dfosco/storyboard-react-primer` | Wrapped Primer Textarea. `name` prop auto-binds to session state via form context. |
+| `<Select>` | `@dfosco/storyboard-react-primer` | Wrapped Primer Select. `name` prop auto-binds to session state via form context. |
+| `<Checkbox>` | `@dfosco/storyboard-react-primer` | Wrapped Primer Checkbox. `name` prop auto-binds to session state via form context. |
 
-> **Reshaped equivalents:** `StoryboardForm`, `TextInput`, `Textarea`, `Select`, and `Checkbox` are also available from `@storyboard/reshaped` with the same API but Reshaped styling.
+> **Reshaped equivalents:** `StoryboardForm`, `TextInput`, `Textarea`, `Select`, and `Checkbox` are also available from `@dfosco/storyboard-react-reshaped` with the same API but Reshaped styling.
 
 ### Utilities (`@dfosco/storyboard-core`)
 
 | Function | Description |
 |----------|-------------|
+| `mountStoryboardCore(config, options)` | Initialize the entire storyboard system: toolbar, feature flags, body class sync, hide mode, comments. Call once at app startup with `storyboard.config.json` contents. |
 | `init({ flows, objects, records })` | Seed the data index. Called automatically by the Vite plugin. |
 | `loadFlow(name)` | Low-level flow loader. Returns resolved flow data. |
 | `loadObject(name)` | Low-level object loader. Resolves `$ref`s, returns deep clone. |
@@ -842,8 +843,8 @@ Use `:global()` to reference body classes from CSS Modules:
 | `setFlowClass(name)` | Sets `sb-flow--{name}` class on `<body>`. Called automatically by `StoryboardProvider`. |
 | `syncOverrideClasses()` | Manually sync override classes (called automatically by `installBodyClassSync`). |
 | `initFeatureFlags(defaults)` | Initialize feature flags from config defaults. Called automatically by the Vite plugin when `featureFlags` is present in `storyboard.config.json`. |
-| `getFlag(key)` | Read a feature flag value. Resolution order: hash → localStorage → config defaults. |
-| `setFlag(key, value)` | Set a flag value by writing an override to URL hash (`flag.{key}`). |
+| `getFlag(key)` | Read a feature flag value. Resolution order: localStorage → config defaults. |
+| `setFlag(key, value)` | Set a flag value. Writes to localStorage for persistence. |
 | `toggleFlag(key)` | Toggle a flag value by key. |
 | `getAllFlags()` | Get all configured flags as `{ key: { default, current } }`. |
 | `resetFlags()` | Clear all flag overrides from hash and localStorage; values revert to config defaults. |
@@ -889,15 +890,15 @@ Storyboard includes an optional **comments system** backed by GitHub Discussions
 ### Setup
 
 1. Enable [GitHub Discussions](https://docs.github.com/en/discussions) on your repository
-2. Create a `storyboard.config.json` at the repo root:
+2. Add comments and repository configuration to `storyboard.config.json` at the repo root:
 
 ```json
 {
+  "repository": {
+    "owner": "your-username",
+    "name": "your-repo"
+  },
   "comments": {
-    "repo": {
-      "owner": "your-username",
-      "name": "your-repo"
-    },
     "discussions": {
       "category": "General"
     }
@@ -905,14 +906,13 @@ Storyboard includes an optional **comments system** backed by GitHub Discussions
 }
 ```
 
-3. Import and initialize in your app entry:
+3. Comments are automatically initialized when `mountStoryboardCore()` is called with a config that includes the `comments` key. No separate import is needed:
 
 ```js
-import { initCommentsConfig, mountComments } from '@dfosco/storyboard-core/comments'
+import { mountStoryboardCore } from '@dfosco/storyboard-core'
 import storyboardConfig from '../storyboard.config.json'
 
-initCommentsConfig(storyboardConfig)
-mountComments()
+mountStoryboardCore(storyboardConfig, { basePath: import.meta.env.BASE_URL })
 ```
 
 The comment button appears automatically in the toolbar when configured. Clicking it toggles comment mode directly — no submenu. Remove the `comments` key from `storyboard.config.json` to disable.
@@ -951,22 +951,24 @@ Detailed architecture docs live in `.github/architecture/`. Implementation plan 
 
 ### Package Structure
 
-The storyboard system is organized as an npm workspace with four packages:
+The storyboard system is organized as an npm workspace with five publishable packages:
 
 ```
 packages/
-├── core/      ← @dfosco/storyboard-core — Framework-agnostic (pure JS, zero dependencies)
-├── react/     ← @dfosco/storyboard-react — React hooks, context, provider (design-system agnostic)
-├── primer/    ← @storyboard/primer — Primer React form components, DevTools
-└── reshaped/  ← @storyboard/reshaped — Reshaped form components
+├── core/            ← @dfosco/storyboard-core — Framework-agnostic (pure JS, zero dependencies)
+├── react/           ← @dfosco/storyboard-react — React hooks, context, provider (design-system agnostic)
+├── react-primer/    ← @dfosco/storyboard-react-primer — Primer React form components, DevTools
+├── react-reshaped/  ← @dfosco/storyboard-react-reshaped — Reshaped form components
+└── tiny-canvas/     ← @dfosco/tiny-canvas — Lightweight canvas rendering engine
 ```
 
 | Package | Purpose | Import |
 |---------|---------|--------|
-| `@dfosco/storyboard-core` | Data loading, URL hash state, dot-path utilities, localStorage, hide mode, comments | `import { loadFlow, getParam } from '@dfosco/storyboard-core'` |
-| `@dfosco/storyboard-react` | Provider, hooks (`useFlowData`, `useOverride`, `useRecord`, etc.), hash preserver | `import { useFlowData } from '@dfosco/storyboard-react'` |
-| `@storyboard/primer` | Primer-styled form inputs, DevTools, FlowDebug | `import { TextInput, DevTools } from '@storyboard/primer'` |
-| `@storyboard/reshaped` | Reshaped-styled form inputs (same API as Primer) | `import { TextInput } from '@storyboard/reshaped'` |
+| `@dfosco/storyboard-core` | Data loading, URL hash state, dot-path utilities, localStorage, hide mode, comments, toolbar | `import { loadFlow, getParam } from '@dfosco/storyboard-core'` |
+| `@dfosco/storyboard-react` | Provider, hooks (`useFlowData`, `useOverride`, `useRecord`, etc.), hash preserver, Viewfinder, CanvasPage | `import { useFlowData } from '@dfosco/storyboard-react'` |
+| `@dfosco/storyboard-react-primer` | Primer-styled form inputs, DevTools, FlowDebug | `import { TextInput, DevTools } from '@dfosco/storyboard-react-primer'` |
+| `@dfosco/storyboard-react-reshaped` | Reshaped-styled form inputs (same API as Primer) | `import { TextInput } from '@dfosco/storyboard-react-reshaped'` |
+| `@dfosco/tiny-canvas` | Canvas rendering engine for widget-based canvases | `import { ... } from '@dfosco/tiny-canvas'` |
 
 **For non-React frontends** (Alpine.js, Vue, Svelte, vanilla JS), import only from `@dfosco/storyboard-core`:
 

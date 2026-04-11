@@ -1,5 +1,13 @@
 # @dfosco/storyboard-core
 
+## 3.11.0-beta.10
+
+### Patch Changes
+
+-   Fix multi-select drag not applying to component widgets
+
+    -   Pass multiSelected prop to component widget WidgetChrome so they participate in group drag operations
+
 ## 3.11.0-beta.9
 
 ### Patch Changes

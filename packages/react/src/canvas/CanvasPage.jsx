@@ -1349,6 +1349,7 @@ export default function CanvasPage({ name }) {
             widgetId={`jsx-${exportName}`}
             features={componentFeatures}
             selected={selectedWidgetIds.has(`jsx-${exportName}`)}
+            multiSelected={isMultiSelected && selectedWidgetIds.has(`jsx-${exportName}`)}
             onSelect={(shiftKey) => handleWidgetSelect(`jsx-${exportName}`, shiftKey)}
             onDeselect={() => setSelectedWidgetIds(new Set())}
             readOnly={!isLocalDev}

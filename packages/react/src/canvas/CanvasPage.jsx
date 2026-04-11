@@ -354,6 +354,9 @@ export default function CanvasPage({ name }) {
     peerArticlesRef.current.clear()
     if (ids.size <= 1 || !ids.has(dragId)) return
 
+    // Suppress selection changes for the duration of the drag
+    justDraggedRef.current = true
+
     // Collect peer article elements for transition on drag end
     for (const id of ids) {
       if (id === dragId) continue
@@ -512,40 +515,33 @@ export default function CanvasPage({ name }) {
     }
     const rounded = { x: Math.max(0, roundPosition(position.x)), y: Math.max(0, roundPosition(position.y)) }
 
-    if (dragId.startsWith('jsx-')) {
-      undoRedo.snapshot(stateRef.current, 'move', dragId)
-      const sourceExport = dragId.replace(/^jsx-/, '')
-      setLocalSources((prev) => {
-        const current = Array.isArray(prev) ? prev : []
-        const next = current.some((s) => s?.export === sourceExport)
-          ? current.map((s) => (s?.export === sourceExport ? { ...s, position: rounded } : s))
-          : [...current, { export: sourceExport, position: rounded }]
-        queueWrite(() =>
-          updateCanvas(name, { sources: next }).catch((err) =>
-            console.error('[canvas] Failed to save source position:', err)
-          )
-        )
-        return next
-      })
-      return
-    }
-
     const ids = selectedIdsRef.current
     // Multi-select move: apply same delta to all selected widgets
+    // Checked BEFORE the jsx- early return so mixed selections work
     if (ids.size > 1 && ids.has(dragId)) {
       transitionPeers()
       // Suppress the click-based selection reset that fires after pointerup
       justDraggedRef.current = true
       requestAnimationFrame(() => { justDraggedRef.current = false })
       undoRedo.snapshot(stateRef.current, 'multi-move')
-      const currentWidgets = stateRef.current.widgets ?? []
-      const draggedWidget = currentWidgets.find(w => w.id === dragId)
-      if (!draggedWidget) return
-      const oldPos = draggedWidget.position || { x: 0, y: 0 }
+
+      // Compute delta from the dragged widget's old position
+      const isJsx = dragId.startsWith('jsx-')
+      let oldPos = { x: 0, y: 0 }
+      if (isJsx) {
+        const sourceExport = dragId.replace(/^jsx-/, '')
+        const source = (stateRef.current.sources ?? []).find(s => s?.export === sourceExport)
+        oldPos = source?.position || { x: 0, y: 0 }
+      } else {
+        const draggedWidget = (stateRef.current.widgets ?? []).find(w => w.id === dragId)
+        oldPos = draggedWidget?.position || { x: 0, y: 0 }
+      }
       const dx = rounded.x - oldPos.x
       const dy = rounded.y - oldPos.y
 
       debouncedSave.cancel()
+
+      // Update JSON widget positions
       setLocalWidgets((prev) => {
         if (!prev) return prev
         const next = prev.map((w) => {
@@ -564,6 +560,57 @@ export default function CanvasPage({ name }) {
         queueWrite(() =>
           updateCanvas(name, { widgets: next }).catch((err) =>
             console.error('[canvas] Failed to save multi-move:', err)
+          )
+        )
+        return next
+      })
+
+      // Update JSX source positions
+      setLocalSources((prev) => {
+        const current = Array.isArray(prev) ? prev : []
+        let changed = false
+        const next = current.map((s) => {
+          if (!s?.export) return s
+          const sid = `jsx-${s.export}`
+          if (sid === dragId) {
+            changed = true
+            return { ...s, position: rounded }
+          }
+          if (ids.has(sid)) {
+            changed = true
+            return {
+              ...s,
+              position: {
+                x: Math.max(0, roundPosition((s.position?.x ?? 0) + dx)),
+                y: Math.max(0, roundPosition((s.position?.y ?? 0) + dy)),
+              },
+            }
+          }
+          return s
+        })
+        if (changed) {
+          queueWrite(() =>
+            updateCanvas(name, { sources: next }).catch((err) =>
+              console.error('[canvas] Failed to save multi-move sources:', err)
+            )
+          )
+        }
+        return changed ? next : current
+      })
+      return
+    }
+
+    if (dragId.startsWith('jsx-')) {
+      undoRedo.snapshot(stateRef.current, 'move', dragId)
+      const sourceExport = dragId.replace(/^jsx-/, '')
+      setLocalSources((prev) => {
+        const current = Array.isArray(prev) ? prev : []
+        const next = current.some((s) => s?.export === sourceExport)
+          ? current.map((s) => (s?.export === sourceExport ? { ...s, position: rounded } : s))
+          : [...current, { export: sourceExport, position: rounded }]
+        queueWrite(() =>
+          updateCanvas(name, { sources: next }).catch((err) =>
+            console.error('[canvas] Failed to save source position:', err)
           )
         )
         return next

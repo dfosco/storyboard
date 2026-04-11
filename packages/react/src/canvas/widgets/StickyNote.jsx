@@ -12,7 +12,7 @@ const COLORS = {
   orange: { bg: '#fff1e5', border: '#d18616', dot: '#e8a844' },
 }
 
-export default function StickyNote({ props, onUpdate }) {
+export default function StickyNote({ props, onUpdate, resizable }) {
   const text = readProp(props, 'text', stickyNoteSchema)
   const color = readProp(props, 'color', stickyNoteSchema)
   const width = readProp(props, 'width', stickyNoteSchema)
@@ -75,12 +75,14 @@ export default function StickyNote({ props, onUpdate }) {
             placeholder="Type here…"
           />
         )}
-        <ResizeHandle
-          targetRef={stickyRef}
-          minWidth={180}
-          minHeight={60}
-          onResize={handleResize}
-        />
+        {resizable && (
+          <ResizeHandle
+            targetRef={stickyRef}
+            minWidth={180}
+            minHeight={60}
+            onResize={handleResize}
+          />
+        )}
       </article>
     </div>
   )

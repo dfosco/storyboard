@@ -49,16 +49,22 @@ describe('StickyNote', () => {
     expect(sticky.style.height).toBe('200px')
   })
 
-  it('renders a resize handle', () => {
-    const { container } = render(<StickyNote props={{ text: 'Hi' }} onUpdate={vi.fn()} />)
+  it('renders a resize handle when resizable', () => {
+    const { container } = render(<StickyNote props={{ text: 'Hi' }} onUpdate={vi.fn()} resizable />)
     const handle = container.querySelector('[role="separator"]')
     expect(handle).not.toBeNull()
+  })
+
+  it('does not render a resize handle when not resizable', () => {
+    const { container } = render(<StickyNote props={{ text: 'Hi' }} onUpdate={vi.fn()} resizable={false} />)
+    const handle = container.querySelector('[role="separator"]')
+    expect(handle).toBeNull()
   })
 
   it('calls onUpdate with new dimensions on resize drag', () => {
     const onUpdate = vi.fn()
     const { container } = render(
-      <StickyNote props={{ text: 'Hi', width: 200, height: 150 }} onUpdate={onUpdate} />
+      <StickyNote props={{ text: 'Hi', width: 200, height: 150 }} onUpdate={onUpdate} resizable />
     )
     const handle = container.querySelector('[role="separator"]')
     const sticky = container.querySelector('article')
@@ -78,7 +84,7 @@ describe('StickyNote', () => {
   it('enforces minimum dimensions during resize', () => {
     const onUpdate = vi.fn()
     const { container } = render(
-      <StickyNote props={{ text: 'Hi', width: 200, height: 150 }} onUpdate={onUpdate} />
+      <StickyNote props={{ text: 'Hi', width: 200, height: 150 }} onUpdate={onUpdate} resizable />
     )
     const handle = container.querySelector('[role="separator"]')
     const sticky = container.querySelector('article')

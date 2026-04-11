@@ -65,6 +65,7 @@ vi.mock('./widgets/widgetProps.js', () => ({
 
 vi.mock('./widgets/widgetConfig.js', () => ({
   getFeatures: () => [],
+  isResizable: () => false,
   schemas: {},
   getMenuWidgetTypes: () => [],
 }))

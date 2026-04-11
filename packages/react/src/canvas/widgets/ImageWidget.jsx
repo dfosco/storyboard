@@ -18,7 +18,7 @@ function getImageUrl(src) {
  * Canvas widget that displays a pasted image.
  * Supports aspect-ratio locked resize and privacy toggle.
  */
-const ImageWidget = forwardRef(function ImageWidget({ props, onUpdate }, ref) {
+const ImageWidget = forwardRef(function ImageWidget({ props, onUpdate, resizable }, ref) {
   const containerRef = useRef(null)
   const [naturalRatio, setNaturalRatio] = useState(null)
 
@@ -99,12 +99,14 @@ const ImageWidget = forwardRef(function ImageWidget({ props, onUpdate }, ref) {
             </span>
           )}
         </div>
-        <ResizeHandle
-          targetRef={containerRef}
-          minWidth={100}
-          minHeight={60}
-          onResize={(w) => handleResize(w)}
-        />
+        {resizable && (
+          <ResizeHandle
+            targetRef={containerRef}
+            minWidth={100}
+            minHeight={60}
+            onResize={(w) => handleResize(w)}
+          />
+        )}
       </div>
     </WidgetWrapper>
   )

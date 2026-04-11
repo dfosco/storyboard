@@ -1127,7 +1127,7 @@ Use the toolbar's create menu → **New canvas**, or create a `.canvas.jsonl` fi
 |--------|-------------|
 | **Sticky note** | Colored sticky note with editable text |
 | **Markdown** | Rich text block with Markdown rendering |
-| **Prototype** | Embedded iframe of another prototype |
+| **Prototype** | Embedded iframe of another prototype or any URL — including Figma embeds, CodePen, deployed apps, etc. Supports zoom controls. |
 | **Link preview** | Preview card for an external URL |
 | **Component** | Custom JSX component from a companion `.canvas.jsx` file |
 
@@ -1139,6 +1139,18 @@ Use the toolbar's create menu → **New canvas**, or create a `.canvas.jsonl` fi
 - **Resize widgets** by dragging edges
 - **Edit widgets** by double-clicking or using the widget toolbar
 - **Select multiple** by shift-clicking
+
+### Embedding Figma files
+
+The **Prototype** widget can embed any URL in an iframe — including Figma designs. To add a Figma embed:
+
+1. In Figma, click **Share** → **Get embed code**, or copy the file URL
+2. Add a Prototype widget to your canvas
+3. Paste the Figma embed URL (e.g., `https://www.figma.com/embed?embed_host=share&url=...`)
+
+The widget supports zoom controls, so you can zoom in/out on the embedded Figma file directly from the canvas.
+
+This also works for any embeddable URL: CodePen, CodeSandbox, deployed apps, Google Docs, etc.
 
 ### Custom component widgets
 

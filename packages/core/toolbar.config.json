@@ -42,7 +42,7 @@
       "handler": "core:theme",
       "modes": ["*"],
       "prod": true,
-      "menuWidth": "240px"
+      "menuWidth": "260px"
     },
     "comments": {
       "ariaLabel": "Comments",
@@ -93,7 +93,7 @@
       "surface": "main-toolbar",
       "handler": "core:autosync",
       "modes": ["*"],
-      "menuWidth": "320px"
+      "menuWidth": "380px"
     },
     "canvas-add-widget": {
       "ariaLabel": "Add widget",

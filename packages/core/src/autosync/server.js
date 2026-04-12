@@ -2,16 +2,16 @@
  * Autosync Server — automatic commit + push watcher.
  *
  * Dev-server middleware that provides git automation:
- * - List branches (excluding main/master)
+  * - List branches (excluding main/master)
  * - Enable/disable autosync with branch switching
- * - Push watcher: every 30s commits changes, pulls --rebase, and pushes
+ * - Push watcher: every 30s commits scoped changes, pulls --rebase, and pushes
  *
  * Routes (mounted at /_storyboard/autosync/):
  *   GET    /branches — list local git branches (excludes main/master)
- *   GET    /status   — current state (branch, enabled, last sync, errors)
+ *   GET    /status   — current state (branch, enabled, scope, last sync, errors)
  *   POST   /enable   — enable autosync (stash → checkout → apply → start watcher)
  *   POST   /disable  — disable autosync (stop watcher, stay on branch)
- *   POST   /sync     — trigger a single sync cycle manually
+ *   POST   /sync     — trigger a single sync cycle manually (using current scope)
  */
 
 import { execFileSync } from 'node:child_process'
@@ -25,8 +25,10 @@ let originalBranch = null
 let lastSyncTime = null
 let lastError = null
 let syncing = false
+let syncScope = 'canvas'
 
 const SYNC_INTERVAL_MS = 30_000
+const AUTOSYNC_SCOPES = new Set(['canvas', 'prototype'])
 
 // Branch names must match git ref format — alphanumeric, hyphens, dots, slashes
 const BRANCH_NAME_RE = /^[\w][\w.\-/]*$/
@@ -54,12 +56,52 @@ function getBranches(root) {
   return raw
     .split('\n')
     .map(b => b.trim())
-    .filter(b => b && b !== 'main' && b !== 'master')
+    .filter((b) => b && b.toLowerCase() !== 'main' && b.toLowerCase() !== 'master')
 }
 
 function hasUncommittedChanges(root) {
   const status = git(['status', '--porcelain'], root)
   return status.length > 0
+}
+
+function listChangedFiles(root) {
+  const tracked = git(['diff', '--name-only'], root)
+  const staged = git(['diff', '--name-only', '--cached'], root)
+  const untracked = git(['ls-files', '--others', '--exclude-standard'], root)
+  return [...tracked, ...staged, ...untracked]
+    .flatMap((raw) => raw.split('\n'))
+    .map((file) => file.trim())
+    .filter(Boolean)
+    .filter((file, idx, arr) => arr.indexOf(file) === idx)
+}
+
+export function normalizeAutosyncScope(scope) {
+  return AUTOSYNC_SCOPES.has(scope) ? scope : 'canvas'
+}
+
+export function matchesAutosyncScope(scope, filePath) {
+  const normalizedScope = normalizeAutosyncScope(scope)
+  const file = String(filePath || '').replaceAll('\\', '/').replace(/^\.\//, '')
+  if (!file) return false
+
+  if (normalizedScope === 'prototype') {
+    return file === 'src/prototypes' || file.startsWith('src/prototypes/')
+  }
+
+  // canvas scope
+  return (
+    file === 'src/canvas' ||
+    file.startsWith('src/canvas/') ||
+    file.endsWith('.canvas.jsonl')
+  )
+}
+
+export function filterFilesForAutosyncScope(scope, files) {
+  return (files || []).filter((file) => matchesAutosyncScope(scope, file))
+}
+
+function listScopedChangedFiles(root, scope) {
+  return filterFilesForAutosyncScope(scope, listChangedFiles(root))
 }
 
 function remoteBranchExists(root, branch) {
@@ -88,17 +130,18 @@ function formatTime() {
 // ── Sync cycle ──
 
 /** Run a single sync cycle. Returns true on success, false on failure. */
-function runSyncCycle(root) {
+function runSyncCycle(root, scope = syncScope) {
   if (syncing) return false
   syncing = true
   lastError = null
 
   try {
-    if (hasUncommittedChanges(root)) {
+    const scopedFiles = listScopedChangedFiles(root, scope)
+    if (scopedFiles.length > 0) {
       const username = getUsername(root)
       const time = formatTime()
-      git(['add', '-A'], root)
-      git(['commit', '-m', `[auto] ${username} update at ${time}`], root)
+      git(['add', '-A', '--', ...scopedFiles], root)
+      git(['commit', '-m', `[auto:${scope}] ${username} update at ${time}`, '--', ...scopedFiles], root)
     }
 
     const branch = getCurrentBranch(root)
@@ -158,6 +201,8 @@ export function createAutosyncHandler({ root, sendJson }) {
           branch: current,
           targetBranch,
           originalBranch,
+          scope: syncScope,
+          availableScopes: [...AUTOSYNC_SCOPES],
           lastSyncTime,
           lastError,
           syncing,
@@ -171,7 +216,7 @@ export function createAutosyncHandler({ root, sendJson }) {
     // POST /enable — enable autosync
     if (routePath === '/enable' && method === 'POST') {
       try {
-        const { branch } = body || {}
+        const { branch, scope } = body || {}
         if (!branch) {
           sendJson(res, 400, { error: 'branch is required' })
           return
@@ -182,11 +227,12 @@ export function createAutosyncHandler({ root, sendJson }) {
           return
         }
 
-        if (branch === 'main' || branch === 'master') {
+        if (branch.toLowerCase() === 'main' || branch.toLowerCase() === 'master') {
           sendJson(res, 400, { error: 'Cannot autosync to main/master' })
           return
         }
 
+        syncScope = normalizeAutosyncScope(scope)
         const currentBranch = getCurrentBranch(root)
         originalBranch = currentBranch
         targetBranch = branch
@@ -231,6 +277,7 @@ export function createAutosyncHandler({ root, sendJson }) {
           branch: getCurrentBranch(root),
           targetBranch,
           originalBranch,
+          scope: syncScope,
           lastError,
         })
       } catch (err) {
@@ -247,6 +294,7 @@ export function createAutosyncHandler({ root, sendJson }) {
       sendJson(res, 200, {
         enabled: false,
         branch: getCurrentBranch(root),
+        scope: syncScope,
       })
       return
     }
@@ -254,9 +302,11 @@ export function createAutosyncHandler({ root, sendJson }) {
     // POST /sync — manual single sync cycle
     if (routePath === '/sync' && method === 'POST') {
       try {
-        const ok = runSyncCycle(root)
+        syncScope = normalizeAutosyncScope(body?.scope || syncScope)
+        const ok = runSyncCycle(root, syncScope)
         sendJson(res, ok ? 200 : 500, {
           ok,
+          scope: syncScope,
           lastSyncTime,
           lastError,
           branch: getCurrentBranch(root),

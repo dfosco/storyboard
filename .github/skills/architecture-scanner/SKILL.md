@@ -8,7 +8,7 @@ metadata:
 
 # Architecture Scanner Skill
 
-> Triggered by: "scan the codebase architecture", "update the architecture", "update arch", "generate architecture docs", "scan arch"
+> Triggered by: "scan the codebase architecture", "update the architecture", "update arch", "generate architecture docs", "scan arch", "full update", "full architecture update", "full refresh architecture"
 
 ## What This Does
 
@@ -52,6 +52,7 @@ This outputs every non-low file regardless of change status. Use this for:
 - **Template changes** (when the doc format itself changed, so all docs need regeneration)
 - **When `--stale` suggests it** (many files changed across multiple commits)
 - **When the user explicitly requests a full scan**
+- **When the user says natural-language variants like "full update" / "full refresh"**
 
 **Low importance files are excluded from both manifests and should NOT get architecture docs.**
 

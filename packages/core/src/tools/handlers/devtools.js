@@ -17,13 +17,24 @@ export async function handler(ctx) {
   let loader = null
   let hm = null
   let commentsAuth = null
+  let prodMode = null
   try { loader = await import('../../loader.js') } catch { /* optional */ }
   try { hm = await import('../../hideMode.js') } catch { /* optional */ }
   try { commentsAuth = await import('../../comments/auth.js') } catch { /* optional */ }
+  try { prodMode = await import('../../prodMode.js') } catch { /* optional */ }
 
   return {
     getChildren: () => {
       const children = []
+      if (prodMode) {
+        children.push({
+          id: 'core/prod-mode',
+          label: 'Production mode',
+          type: 'toggle',
+          active: prodMode.isProdMode(),
+          execute: () => { prodMode.toggleProdMode() },
+        })
+      }
       if (loader) {
         children.push({
           id: 'core/show-flow-info',

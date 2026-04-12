@@ -5,7 +5,7 @@ This directory replaces the single-file plan and splits work into feature-isolat
 ## Execution order for one implementation run
 
 1. `00-contracts-and-compatibility.md` (must start first)
-2. `01-paste-rules.md`, `02-sticky-markdown.md`, and `08-widget-escape-modes-pr83.md` (can run in parallel)
+2. `01-paste-rules.md`, `02-sticky-markdown.md`, and `08-widget-mode-system.md` (can run in parallel)
 3. `03-github-embeds-and-sync.md` (depends on paste rules)
 4. `04-multi-page-canvas.md` and `05-story-widgets.md` (can run in parallel)
 5. `06-command-palette.md` (depends on multi-page + story indexing)
@@ -21,7 +21,7 @@ This directory replaces the single-file plan and splits work into feature-isolat
 - `05-story-widgets.md` — `t06` story-backed component widgets
 - `06-command-palette.md` — `t07` fuzzy command palette
 - `07-release-verification-and-signoff.md` — automated + agent-browser + manual gates
-- `08-widget-escape-modes-pr83.md` — PR #83 carryover: system-level Escape behavior for widget edit/interactive modes
+- `08-widget-mode-system.md` — declarative widget mode API + Escape/read-only/prodMode enforcement
 
 ## Hard dependency edges
 

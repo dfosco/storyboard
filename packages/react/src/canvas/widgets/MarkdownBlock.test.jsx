@@ -27,4 +27,27 @@ describe('MarkdownBlock', () => {
     expect(screen.getByText('No content')).toBeTruthy()
     expect(screen.queryByText('Double-click to edit…')).toBeNull()
   })
+
+  it('stops click propagation in read-only mode', () => {
+    const onParentClick = vi.fn()
+    render(
+      <div onClick={onParentClick}>
+        <MarkdownBlock props={{ content: 'Hello', width: 420 }} />
+      </div>
+    )
+
+    fireEvent.click(screen.getByText('Hello'))
+
+    expect(onParentClick).not.toHaveBeenCalled()
+  })
+
+  it('copies markdown source in read-only mode', () => {
+    render(<MarkdownBlock props={{ content: '**Hello**\n- item', width: 420 }} />)
+
+    const preview = screen.getByText('Hello').closest('[data-canvas-allow-text-selection]')
+    const setData = vi.fn()
+    fireEvent.copy(preview, { clipboardData: { setData } })
+
+    expect(setData).toHaveBeenCalledWith('text/plain', '**Hello**\n- item')
+  })
 })

@@ -1410,18 +1410,21 @@ export default function CanvasPage({ name }) {
       <div className={styles.canvasTitle}>
         <div className={styles.canvasTitleWrap}>
           <span className={styles.canvasTitleMeasure} aria-hidden="true">{canvasTitle || ' '}</span>
-          <input
-            ref={titleInputRef}
-            className={styles.canvasTitleInput}
-            value={canvasTitle}
-            size={1}
-            onChange={isLocalDev ? handleTitleChange : undefined}
-            onKeyDown={isLocalDev ? handleTitleKeyDown : undefined}
-            onMouseDown={(e) => e.stopPropagation()}
-            readOnly={!isLocalDev}
-            spellCheck={false}
-            aria-label="Canvas title"
-          />
+          {isLocalDev ? (
+            <input
+              ref={titleInputRef}
+              className={styles.canvasTitleInput}
+              value={canvasTitle}
+              size={1}
+              onChange={handleTitleChange}
+              onKeyDown={handleTitleKeyDown}
+              onMouseDown={(e) => e.stopPropagation()}
+              spellCheck={false}
+              aria-label="Canvas title"
+            />
+          ) : (
+            <h1 className={styles.canvasTitleInput}>{canvasTitle}</h1>
+          )}
         </div>
         {isLocalDev && (
           <span className={styles.localEditingLabel}>Local editing</span>

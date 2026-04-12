@@ -22,6 +22,11 @@ function matchCanvasRoute(pathname) {
   return canvasRouteMap.get(normalized) || null
 }
 
+function isCanvasPath(pathname) {
+  const normalized = pathname.replace(/\/+$/, '') || '/'
+  return normalized === '/canvas' || normalized.startsWith('/canvas/')
+}
+
 /**
  * Derives the top-level prototype name from a pathname.
  * "/Dashboard" → "Dashboard", "/Dashboard/sub" → "Dashboard"
@@ -62,6 +67,10 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
 
   // Canvas route detection — matches current URL against registered canvas routes
   const canvasName = useMemo(() => matchCanvasRoute(location.pathname), [location.pathname])
+  const isMissingCanvasRoute = useMemo(
+    () => isCanvasPath(location.pathname) && !canvasName,
+    [location.pathname, canvasName],
+  )
 
   const searchParams = new URLSearchParams(location.search)
   const sceneParam = searchParams.get('flow') || searchParams.get('scene')
@@ -70,7 +79,7 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
 
   // Resolve flow name with prototype scoping (skip for canvas pages)
   const activeFlowName = useMemo(() => {
-    if (canvasName) return null
+    if (canvasName || isMissingCanvasRoute) return null
     const requested = sceneParam || flowName || sceneName
     if (requested) {
       // Allow fully-scoped flow names from URLs/widgets without re-prefixing
@@ -94,7 +103,7 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     // 4. Global default — or null if no flow exists at all
     if (flowExists('default')) return 'default'
     return null
-  }, [canvasName, sceneParam, flowName, sceneName, prototypeName, pageFlow])
+  }, [canvasName, isMissingCanvasRoute, sceneParam, flowName, sceneName, prototypeName, pageFlow])
 
   // Auto-install body class sync (sb-key--value classes on <body>)
   useEffect(() => installBodyClassSync(), [])
@@ -117,7 +126,7 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
 
   // Skip flow loading for canvas pages and flow-less pages
   const { data, error } = useMemo(() => {
-    if (canvasName) return { data: null, error: null }
+    if (canvasName || isMissingCanvasRoute) return { data: null, error: null }
     if (!activeFlowName) return { data: {}, error: null }
     try {
       let flowData = loadFlow(activeFlowName)
@@ -136,7 +145,7 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     } catch (err) {
       return { data: null, error: err.message }
     }
-  }, [canvasName, activeFlowName, recordName, recordParam, params, prototypeName])
+  }, [canvasName, isMissingCanvasRoute, activeFlowName, recordName, recordParam, params, prototypeName])
 
   // Canvas pages get their own rendering path — no flow data needed
   if (canvasName) {
@@ -154,6 +163,27 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
           <CanvasPageLazy name={canvasName} />
         </Suspense>
       </StoryboardContext.Provider>
+    )
+  }
+
+  if (isMissingCanvasRoute) {
+    const currentUrl = `${location.pathname}${location.search}`
+    const truncatedUrl = currentUrl.length > 60
+      ? currentUrl.slice(0, 60) + '…'
+      : currentUrl
+
+    return (
+      <main className={styles.container}>
+        <div className={styles.banner}>
+          <strong>Canvas not found</strong>
+          No canvas matches this route.
+        </div>
+        <p className={styles.meta}>
+          Tried to open{' '}
+          <a href={currentUrl} title={currentUrl}>{truncatedUrl}</a>
+        </p>
+        <a className={styles.homeLink} href="/">← Go to index page</a>
+      </main>
     )
   }
 

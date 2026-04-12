@@ -129,7 +129,7 @@ export function getToolsForToolbar(toolbar, mode, options = {}) {
 
   for (const [id, config] of Object.entries(_toolConfigs)) {
     if (config.toolbar !== toolbar) continue
-    if (config.localOnly && !isLocalDev) continue
+    if (!config.prod && !isLocalDev) continue
     if (!isToolVisibleInMode(config, mode)) continue
 
     // Check guard result if one was registered

@@ -1,9 +1,9 @@
 {
-  "modes": [
-    { "name": "prototype", "label": "Prototype", "hue": "#2a2a2a" },
-    { "name": "inspect", "label": "Inspect", "hue": "#2a2a2a" },
-    { "name": "present", "label": "Collaborate", "hue": "#2a9d8f" }
-  ],
+  "surfaces": {
+    "main-toolbar": { "position": "bottom-right", "layout": "row" },
+    "canvas-toolbar": { "position": "bottom-left", "layout": "row" },
+    "command-list": { "position": "command-menu", "layout": "list" }
+  },
 
   "command": {
     "icon": "iconoir/key-command",
@@ -28,6 +28,7 @@
       "render": "menu",
       "surface": "main-toolbar",
       "modes": ["*"],
+      "prod": true,
       "menuWidth": "280px",
       "handler": "core:flows"
     },    
@@ -40,7 +41,8 @@
       "surface": "main-toolbar",
       "handler": "core:theme",
       "modes": ["*"],
-      "menuWidth": "240px"
+      "prod": true,
+      "menuWidth": "260px"
     },
     "comments": {
       "ariaLabel": "Comments",
@@ -49,6 +51,7 @@
       "surface": "main-toolbar",
       "handler": "core:comments",
       "modes": ["*"],
+      "prod": true,
       "excludeRoutes": ["^/$", "/viewfinder"]
     },
     "inspector": {
@@ -59,6 +62,7 @@
       "sidepanel": "inspector",
       "handler": "core:inspector",
       "modes": ["*"],
+      "prod": true,
       "excludeRoutes": ["^/$", "/viewfinder", "/canvas/"],
       "meta": { "strokeWeight": 2, "scale": 1.1 },
       "shortcut": { "key": "i", "label": "⌘I" }
@@ -72,7 +76,6 @@
       "surface": "main-toolbar",
       "handler": "core:create",
       "modes": ["*"],
-      "localOnly": true,
       "menuWidth": "290px",
       "actions": [
         { "type": "header", "label": "Create" },
@@ -83,6 +86,15 @@
         { "type": "footer", "label": "Only available in dev environment" }
       ]
     },
+    "autosync": {
+      "ariaLabel": "Auto sync",
+      "icon": "primer/sync",
+      "render": "menu",
+      "surface": "main-toolbar",
+      "handler": "core:autosync",
+      "modes": ["*"],
+      "menuWidth": "400px"
+    },
     "canvas-add-widget": {
       "ariaLabel": "Add widget",
       "icon": "iconoir/grid-plus",
@@ -90,22 +102,54 @@
       "surface": "canvas-toolbar",
       "handler": "core:canvas-add-widget",
       "modes": ["*"],
-      "localOnly": true,
       "meta": { "strokeWeight": 2, "scale": 1.2 },
       "menuWidth": "300px"
     },
     "canvas-zoom": {
       "ariaLabel": "Zoom controls",
-      "render": "zoom-control",
+      "render": "canvas-zoom",
       "surface": "canvas-toolbar",
-      "handler": "core:canvas-zoom",
+      "handler": "core:canvas-toolbar",
+      "modes": ["*"],
+      "prod": true
+    },
+    "canvas-zoom-to-fit": {
+      "ariaLabel": "Zoom to objects",
+      "label": "Zoom to objects",
+      "icon": "iconoir/square-3d-three-points",
+      "meta": { "strokeWeight": 2, "scale": 1.2 },
+      "render": "canvas-zoom-to-fit",
+      "surface": "canvas-toolbar",
+      "handler": "core:canvas-toolbar",
+      "modes": ["*"],
+      "prod": true
+    },
+    "canvas-snap": {
+      "ariaLabel": "Snap to grid",
+      "label": "Snap to grid",
+      "labelOn": "Snap to grid (on)",
+      "labelOff": "Snap to grid (off)",
+      "icon": "primer/apps",
+      "meta": { "strokeWeight": 1.5, "scale": 1.2 },
+      "render": "canvas-snap",
+      "surface": "canvas-toolbar",
+      "handler": "core:canvas-toolbar",
+      "gridSize": 40,
       "modes": ["*"]
-    },    
+    },
+    "canvas-undo-redo": {
+      "ariaLabel": "Undo and redo",
+      "render": "canvas-undo-redo",
+      "surface": "canvas-toolbar",
+      "handler": "core:canvas-toolbar",
+      "modes": ["*"]
+    },
     "viewfinder": {
       "label": "Go to index page",
       "render": "link",
       "surface": "command-list",
       "modes": ["*"],
+      "prod": true,
       "url": "/"
     },
     "repository": {
@@ -113,6 +157,7 @@
       "render": "link",
       "surface": "command-list",
       "modes": ["*"],
+      "prod": true,
       "url": "https://github.com/dfosco/storyboard"
     },
     "docs": {
@@ -124,6 +169,7 @@
       "sidepanel": "docs",
       "handler": "core:docs",
       "modes": ["*"],
+      "prod": true,
       "shortcut": { "key": "d", "label": "⌘D" }
     },    
     "devtools": {
@@ -131,6 +177,7 @@
       "render": "submenu",
       "surface": "command-list",
       "modes": ["*"],
+      "prod": true,
       "handler": "core:devtools"
     },
     "feature-flags": {
@@ -138,6 +185,7 @@
       "render": "submenu",
       "surface": "command-list",
       "modes": ["*"],
+      "prod": true,
       "handler": "core:feature-flags"
     }
   }

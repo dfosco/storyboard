@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
+import { createPortal } from 'react-dom'
 import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
@@ -28,7 +29,7 @@ function resolveCanvasThemeFromStorage() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
+export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }, ref) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
   const width = readProp(props, 'width', prototypeEmbedSchema)
   const height = readProp(props, 'height', prototypeEmbedSchema)
@@ -51,11 +52,15 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
 
   const [editing, setEditing] = useState(false)
   const [interactive, setInteractive] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const [filter, setFilter] = useState('')
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
   const inputRef = useRef(null)
   const filterRef = useRef(null)
   const embedRef = useRef(null)
+  const iframeRef = useRef(null)
+  const inlineContainerRef = useRef(null)
+  const modalContainerRef = useRef(null)
 
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''
@@ -177,6 +182,69 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
     return () => document.removeEventListener('storyboard:theme:changed', readToolbarTheme)
   }, [])
 
+  // Close expanded modal on Escape
+  useEffect(() => {
+    if (!expanded) return
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setExpanded(false)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => document.removeEventListener('keydown', handleKeyDown, true)
+  }, [expanded])
+
+  // Reparent iframe DOM node between inline container and modal.
+  // Uses moveBefore() (Chrome 133+) which preserves the iframe's
+  // browsing context — no reload. Falls back to appendChild which
+  // will reload but still works functionally.
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+
+    if (expanded && modalContainerRef.current) {
+      iframe._savedClassName = iframe.className
+      iframe._savedStyle = iframe.getAttribute('style') || ''
+      iframe.className = styles.expandIframe
+      iframe.removeAttribute('style')
+      const target = modalContainerRef.current
+      if (target.moveBefore) {
+        target.moveBefore(iframe, target.firstChild)
+      } else {
+        target.prepend(iframe)
+      }
+    } else if (!expanded && inlineContainerRef.current) {
+      if (iframe._savedClassName !== undefined) {
+        iframe.className = iframe._savedClassName
+        iframe.setAttribute('style', iframe._savedStyle)
+        delete iframe._savedClassName
+        delete iframe._savedStyle
+      }
+      const target = inlineContainerRef.current
+      if (target.moveBefore) {
+        target.moveBefore(iframe, null)
+      } else {
+        target.appendChild(iframe)
+      }
+    }
+  }, [expanded])
+
+  // Listen for navigation events from the embedded prototype iframe
+  useEffect(() => {
+    function handleMessage(e) {
+      if (e.source !== iframeRef.current?.contentWindow) return
+      if (e.data?.type !== 'storyboard:embed:navigate') return
+      const newSrc = e.data.src
+      if (newSrc && newSrc !== src) {
+        const originalSrc = readProp(props, 'originalSrc', prototypeEmbedSchema)
+        onUpdate?.({ src: newSrc, originalSrc: originalSrc || src })
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [src, props, onUpdate])
+
   const chromeVars = useMemo(() => getEmbedChromeVars(canvasTheme), [canvasTheme])
 
   const enterInteractive = useCallback(() => setInteractive(true), [])
@@ -186,6 +254,10 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
     handleAction(actionId) {
       if (actionId === 'edit') {
         setEditing(true)
+      } else if (actionId === 'expand') {
+        setExpanded(true)
+      } else if (actionId === 'open-external') {
+        if (rawSrc) window.open(rawSrc, '_blank', 'noopener')
       } else if (actionId === 'zoom-in') {
         const step = zoom < 75 ? 5 : 25
         onUpdate?.({ zoom: Math.min(200, zoom + step) })
@@ -194,7 +266,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
         onUpdate?.({ zoom: Math.max(25, zoom - step) })
       }
     },
-  }), [zoom, onUpdate])
+  }), [rawSrc, zoom, onUpdate])
 
   function handlePickRoute(route) {
     onUpdate?.({ src: route })
@@ -216,6 +288,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
   }
 
   return (
+    <>
     <WidgetWrapper>
       <div
         ref={embedRef}
@@ -305,8 +378,13 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
           </div>
         ) : iframeSrc ? (
           <>
-            <div className={styles.iframeContainer}>
+            <div
+              ref={inlineContainerRef}
+              className={styles.iframeContainer}
+              style={expanded ? { visibility: 'hidden' } : undefined}
+            >
               <iframe
+                ref={iframeRef}
                 src={iframeSrc}
                 className={styles.iframe}
                 style={{
@@ -319,7 +397,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
                 sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
               />
             </div>
-            {!interactive && (
+            {!interactive && !expanded && (
               <div
                 className={styles.dragOverlay}
                 onDoubleClick={enterInteractive}
@@ -338,29 +416,57 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate }, ref) {
           </div>
         )}
       </div>
-      <div
-        className={styles.resizeHandle}
-        onMouseDown={(e) => {
-          e.stopPropagation()
-          e.preventDefault()
-          const startX = e.clientX
-          const startY = e.clientY
-          const startW = width
-          const startH = height
-          function onMove(ev) {
-            const newW = Math.max(200, startW + ev.clientX - startX)
-            const newH = Math.max(150, startH + ev.clientY - startY)
-            onUpdate?.({ width: newW, height: newH })
-          }
-          function onUp() {
-            document.removeEventListener('mousemove', onMove)
-            document.removeEventListener('mouseup', onUp)
-          }
-          document.addEventListener('mousemove', onMove)
-          document.addEventListener('mouseup', onUp)
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
-      />
+      {resizable && (
+        <div
+          className={styles.resizeHandle}
+          onMouseDown={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            const startX = e.clientX
+            const startY = e.clientY
+            const startW = width
+            const startH = height
+            function onMove(ev) {
+              const newW = Math.max(200, startW + ev.clientX - startX)
+              const newH = Math.max(150, startH + ev.clientY - startY)
+              onUpdate?.({ width: newW, height: newH })
+            }
+            function onUp() {
+              document.removeEventListener('mousemove', onMove)
+              document.removeEventListener('mouseup', onUp)
+            }
+            document.addEventListener('mousemove', onMove)
+            document.addEventListener('mouseup', onUp)
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        />
+      )}
     </WidgetWrapper>
+    {createPortal(
+      <div
+        className={styles.expandBackdrop}
+        style={expanded ? undefined : { display: 'none' }}
+        onClick={() => setExpanded(false)}
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        onWheel={(e) => e.stopPropagation()}
+      >
+        <div
+          ref={modalContainerRef}
+          className={styles.expandContainer}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* iframe is reparented here via useEffect */}
+          <button
+            className={styles.expandClose}
+            onClick={() => setExpanded(false)}
+            aria-label="Close expanded view"
+            autoFocus
+          >✕</button>
+        </div>
+      </div>,
+      document.body
+    )}
+    </>
   )
 })

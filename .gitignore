@@ -44,3 +44,6 @@ packages/core/dist/storyboard-ui.*
 
 # Agent Browser
 agent-browser.json
+
+# Private canvas images (underscore prefix = not committed)
+src/canvas/images/_*

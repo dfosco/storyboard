@@ -1,5 +1,109 @@
 # @dfosco/storyboard-react
 
+## 3.11.0
+
+### Patch Changes
+
+-   Updated dependencies [[`62538dd`](https://github.com/dfosco/storyboard/commit/62538dd30dc7052a386be4729f214a5664758869), [`3715731`](https://github.com/dfosco/storyboard/commit/3715731be4e7559b958af9e0f550f895ae759d85), [`542d59d`](https://github.com/dfosco/storyboard/commit/542d59d5cb3028ea77d7b8a55b888cf19f7bbd7b), [`917bd74`](https://github.com/dfosco/storyboard/commit/917bd74fdbc20ea29b4cf1ff73350056934f111a), [`79b55bf`](https://github.com/dfosco/storyboard/commit/79b55bfe4ada902df569afbf2753d3cd6ebae276), [`709917c`](https://github.com/dfosco/storyboard/commit/709917c4d85fec150515882e4992e3b27034a18b), [`0bb755e`](https://github.com/dfosco/storyboard/commit/0bb755e23cd9d797ce2e09d5b55c148737732d43), [`c781179`](https://github.com/dfosco/storyboard/commit/c781179eb51ce0efed1f68af2265d82633a56740), [`7994b34`](https://github.com/dfosco/storyboard/commit/7994b343bf2bc9a6160f3442c1b9944bdc55ca0b), [`444e732`](https://github.com/dfosco/storyboard/commit/444e73206abc444295d00e9a40cd682d92d8ac98), [`3800568`](https://github.com/dfosco/storyboard/commit/3800568a0585ce61a7811d00b6c26c82aebab07c), [`e97a4de`](https://github.com/dfosco/storyboard/commit/e97a4def7fc4cd1412aa3700ea727bfd99cb69b9)]:
+    -   @dfosco/storyboard-core@3.11.0
+    -   @dfosco/tiny-canvas@3.11.0
+
+## 3.11.0-beta.12
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.12
+    -   @dfosco/tiny-canvas@3.11.0-beta.12
+
+## 3.11.0-beta.11
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.11
+    -   @dfosco/tiny-canvas@3.11.0-beta.11
+
+## 3.11.0-beta.10
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.10
+    -   @dfosco/tiny-canvas@3.11.0-beta.10
+
+## 3.11.0-beta.9
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.9
+    -   @dfosco/tiny-canvas@3.11.0-beta.9
+
+## 3.11.0-beta.8
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.8
+    -   @dfosco/tiny-canvas@3.11.0-beta.8
+
+## 3.11.0-beta.7
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.7
+    -   @dfosco/tiny-canvas@3.11.0-beta.7
+
+## 3.11.0-beta.6
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.6
+    -   @dfosco/tiny-canvas@3.11.0-beta.6
+
+## 3.11.0-beta.4
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.4
+    -   @dfosco/tiny-canvas@3.11.0-beta.4
+
+## 3.11.0-beta.3
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.3
+    -   @dfosco/tiny-canvas@3.11.0-beta.3
+
+## 3.11.0-beta.2
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.2
+    -   @dfosco/tiny-canvas@3.11.0-beta.2
+
+## 3.11.0-beta.1
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.1
+    -   @dfosco/tiny-canvas@3.11.0-beta.1
+
+## 3.11.0-beta.0
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.0
+    -   @dfosco/tiny-canvas@3.11.0-beta.0
+
 ## 3.10.0
 
 ### Patch Changes

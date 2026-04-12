@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import tailwindcss from '@tailwindcss/vite'
 import generouted from '@generouted/react-router/plugin'
+// In worktrees, npm workspace links point at the main worktree. Import
+// Vite plugins via relative paths so each worktree runs its own source.
 import storyboardData from './packages/react/src/vite/data-plugin.js'
 import storyboardServer from './packages/core/src/vite/server-plugin.js'
 import postcssGlobalData from '@csstools/postcss-global-data'
@@ -65,6 +67,11 @@ export default defineConfig(() => {
         // Guard against unexpected full-reloads caused by canvas JSONL writes.
         // Some editors/save modes emit watcher sequences that can still trigger
         // generic reload paths; suppress those and rely on canvas custom events.
+        //
+        // Also suppresses full-reloads and HMR updates per-client when a canvas
+        // page is active, preventing loss of editing state. Non-canvas clients
+        // (prototype iframes, other tabs) still receive all HMR updates normally.
+        // Opt out with ?canvas-hmr in the URL when working on canvas UI code.
         {
             name: 'canvas-reload-guard',
             configureServer(server) {
@@ -80,8 +87,43 @@ export default defineConfig(() => {
                 server.watcher.on('add', markCanvasMutation)
                 server.watcher.on('unlink', markCanvasMutation)
 
+                // Per-client HMR guard via heartbeat. Canvas clients register
+                // themselves; the guard auto-expires 5s after the last heartbeat
+                // so closed tabs never leave it stuck. We track by the
+                // WebSocketClient wrapper that server.ws.clients exposes.
+                const GUARD_TTL_MS = 5000
+                const guardedClients = new Map() // WebSocketClient → guardUntil timestamp
+
+                server.hot.on('storyboard:canvas-hmr-guard', (data, client) => {
+                    if (data.active && !data.hmrEnabled) {
+                        guardedClients.set(client, Date.now() + GUARD_TTL_MS)
+                    } else {
+                        guardedClients.delete(client)
+                    }
+                })
+
+                // Clean up disconnected clients periodically
+                const cleanup = setInterval(() => {
+                    const now = Date.now()
+                    for (const [client, until] of guardedClients) {
+                        if (now > until || !server.ws.clients.has(client)) {
+                            guardedClients.delete(client)
+                        }
+                    }
+                }, 10000)
+                server.httpServer?.on('close', () => clearInterval(cleanup))
+
+                function isClientGuarded(client) {
+                    const until = guardedClients.get(client)
+                    return until != null && Date.now() < until
+                }
+
+                // Intercept broadcast sends. For full-reload and update payloads,
+                // deliver only to non-guarded clients. Guarded canvas clients are
+                // skipped so they keep their editing state.
                 const originalSend = server.ws.send.bind(server.ws)
                 server.ws.send = (payload, ...rest) => {
+                    // Always suppress broadcast reloads within the canvas mutation window
                     if (
                         payload &&
                         payload.type === 'full-reload' &&
@@ -89,6 +131,23 @@ export default defineConfig(() => {
                     ) {
                         return
                     }
+
+                    // If no clients are guarded, broadcast normally
+                    if (guardedClients.size === 0) {
+                        return originalSend(payload, ...rest)
+                    }
+
+                    // For full-reload and update payloads, send only to unguarded clients
+                    if (payload && (payload.type === 'full-reload' || payload.type === 'update')) {
+                        for (const client of server.ws.clients) {
+                            if (!isClientGuarded(client)) {
+                                client.send(payload)
+                            }
+                        }
+                        return
+                    }
+
+                    // Everything else (custom events, errors, etc.) broadcasts normally
                     return originalSend(payload, ...rest)
                 }
             },
@@ -158,7 +217,7 @@ export default defineConfig(() => {
         },
     },
     optimizeDeps: {
-        include: ['reshaped', '@primer/react', '@primer/octicons-react', 'prop-types'],
+        include: ['reshaped', '@primer/react', '@primer/octicons-react'],
     },
     esbuild: {
         // Preserve function names so the storyboard inspector shows

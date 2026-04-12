@@ -95,9 +95,19 @@ function applyEarlyTheme() {
 
 /**
  * Inject the compiled UI stylesheet if not already present.
+ * In the source repo, Vite bundles this CSS into the ui-entry chunk
+ * automatically, so this is a no-op. In consumer repos it loads the
+ * pre-compiled dist/storyboard-ui.css.
  */
 async function injectUIStyles() {
   if (document.querySelector('[data-storyboard-ui-css]')) return
+
+  // If the styles are already present from Vite's CSS code-splitting,
+  // skip the redundant import.
+  try {
+    const val = getComputedStyle(document.documentElement).getPropertyValue('--sb--bg')
+    if (val && val.trim()) return
+  } catch { /* fall through */ }
 
   try {
     // Dynamic import of CSS — Vite handles this as a side-effect import.
@@ -151,8 +161,8 @@ export async function mountStoryboardCore(config = {}, options = {}) {
     initCommentsConfig(config, { basePath })
   }
 
-  // Inject compiled UI styles
-  injectUIStyles()
+  // Inject compiled UI styles (await to prevent late restyle / FOUC)
+  await injectUIStyles()
 
   // Load and merge toolbar config.
   // Core defaults come from toolbar.config.json (bundled).
@@ -185,7 +195,34 @@ export async function mountStoryboardCore(config = {}, options = {}) {
 
   // Skip all UI mounting when loaded inside a prototype embed iframe
   const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')
-  if (isEmbed) return
+  if (isEmbed) {
+    // Broadcast route and hash changes to the parent canvas via postMessage
+    if (window.parent !== window) {
+      let lastHref = window.location.pathname + window.location.hash
+      function broadcastNavigation() {
+        const currentHref = window.location.pathname + window.location.hash
+        if (currentHref !== lastHref) {
+          lastHref = currentHref
+          const basePath = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+          const pathname = window.location.pathname
+          const hash = window.location.hash
+          const stripped = basePath && pathname.startsWith(basePath)
+            ? pathname.slice(basePath.length) || '/'
+            : pathname.replace(/^\/branch--[^/]+/, '') || '/'
+          const src = stripped + hash
+          window.parent.postMessage({ type: 'storyboard:embed:navigate', src }, '*')
+        }
+      }
+      // Intercept pushState/replaceState, popstate, and hashchange
+      const origPush = history.pushState.bind(history)
+      const origReplace = history.replaceState.bind(history)
+      history.pushState = (...args) => { origPush(...args); broadcastNavigation() }
+      history.replaceState = (...args) => { origReplace(...args); broadcastNavigation() }
+      window.addEventListener('popstate', broadcastNavigation)
+      window.addEventListener('hashchange', broadcastNavigation)
+    }
+    return
+  }
 
   // Dynamically import the compiled UI bundle.
   // Uses the package self-reference so resolution differs by context:

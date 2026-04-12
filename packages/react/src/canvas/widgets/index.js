@@ -2,6 +2,8 @@ import StickyNote from './StickyNote.jsx'
 import MarkdownBlock from './MarkdownBlock.jsx'
 import PrototypeEmbed from './PrototypeEmbed.jsx'
 import LinkPreview from './LinkPreview.jsx'
+import ImageWidget from './ImageWidget.jsx'
+import FigmaEmbed from './FigmaEmbed.jsx'
 
 /**
  * Maps widget type strings to their React components.
@@ -12,6 +14,8 @@ export const widgetRegistry = {
   'markdown': MarkdownBlock,
   'prototype': PrototypeEmbed,
   'link-preview': LinkPreview,
+  'image': ImageWidget,
+  'figma-embed': FigmaEmbed,
 }
 
 /**

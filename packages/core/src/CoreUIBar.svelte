@@ -77,7 +77,7 @@
   // Roving tabindex: only one button in the toolbar is tabbable at a time
   let activeToolbarIndex = $state(-1)
 
-  const isLocalDev = typeof window !== 'undefined' && (window as any).__SB_LOCAL_DEV__ === true
+  const isLocalDev = typeof window !== 'undefined' && (window as any).__SB_LOCAL_DEV__ === true && !new URLSearchParams(window.location.search).has('prodMode')
 
   /**
    * Resolve a handler reference to a module loader function.
@@ -138,7 +138,7 @@
             url: tool.url || null,
             modes: tool.modes || ['*'],
             toolKey,
-            localOnly: tool.localOnly || false,
+            localOnly: !tool.prod,
           })
         }
       }
@@ -183,7 +183,7 @@
     config.tools
       ? Object.entries(config.tools as Record<string, any>)
           .filter(([, tool]) => tool.surface === 'canvas-toolbar')
-          .filter(([, tool]) => !tool.localOnly || isLocalDev)
+          .filter(([, tool]) => tool.prod || isLocalDev)
           .map(([key, tool]) => ({ key, ...tool }))
       : []
   )
@@ -431,7 +431,7 @@
 
         // Load component
         if (mod.component) {
-          const component = await mod.component()
+          const component = await mod.component(toolConfig.render)
           toolComponents[toolId] = component
         }
       } catch { /* tool failed to load — skip gracefully */ }
@@ -519,18 +519,30 @@
       {#each canvasMenus as canvasTool (canvasTool.key)}
         {#if toolComponents[canvasTool.key]}
           {@const CanvasToolComponent = toolComponents[canvasTool.key]}
-          <Tooltip.Root>
-            <Tooltip.Trigger>
-              <CanvasToolComponent
-                config={canvasTool}
-                data={toolData[canvasTool.key]}
-                canvasName={activeCanvasName}
-                zoom={canvasZoom}
-                tabindex={0}
-              />
-            </Tooltip.Trigger>
-            <Tooltip.Content side="top">{canvasTool.ariaLabel || canvasTool.key}</Tooltip.Content>
-          </Tooltip.Root>
+          {#if canvasTool.render === 'menu'}
+            <Tooltip.Root>
+              <Tooltip.Trigger>
+                <span data-local-only={isToolbarToolLocalOnly(canvasTool.key) || undefined}>
+                  <CanvasToolComponent
+                    config={canvasTool}
+                    data={toolData[canvasTool.key]}
+                    canvasName={activeCanvasName}
+                    zoom={canvasZoom}
+                    tabindex={0}
+                  />
+                </span>
+              </Tooltip.Trigger>
+              <Tooltip.Content side="top">{canvasTool.ariaLabel || canvasTool.key}</Tooltip.Content>
+            </Tooltip.Root>
+          {:else}
+            <CanvasToolComponent
+              config={canvasTool}
+              data={toolData[canvasTool.key]}
+              canvasName={activeCanvasName}
+              zoom={canvasZoom}
+              tabindex={0}
+            />
+          {/if}
         {/if}
       {/each}
     </div>
@@ -647,7 +659,7 @@
     right: -1px;
     width: 8px;
     height: 8px;
-    background: hsl(137, 66%, 30%);
+    background: hsl(212, 92%, 45%);
     border-radius: 50%;
     border: 2px solid var(--sb--sc-border-color, transparent);
     box-sizing: content-box;

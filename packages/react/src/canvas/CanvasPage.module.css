@@ -39,6 +39,29 @@
   top: 12px;
   left: 16px;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.canvasTitleWrap {
+  display: inline-grid;
+}
+
+.canvasTitleWrap > * {
+  grid-area: 1 / 1;
+}
+
+.canvasTitleMeasure {
+  visibility: hidden;
+  white-space: pre;
+  font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  min-width: 80px;
+  pointer-events: none;
 }
 
 .canvasTitleInput {
@@ -50,9 +73,10 @@
   border: 1px solid transparent;
   border-radius: 6px;
   padding: 4px 8px;
+  margin: 0;
   outline: none;
-  min-width: 80px;
-  max-width: 300px;
+  width: 100%;
+  min-width: 0;
   transition: border-color 150ms, background-color 150ms, color 150ms;
 }
 
@@ -68,7 +92,28 @@
   background: var(--bgColor-default, #ffffff);
 }
 
+.canvasTitleStatic {
+  composes: canvasTitleInput;
+  cursor: default;
+  pointer-events: none;
+}
+
 /* Remove tiny-canvas wrapper clipping — widgets handle their own overflow/radius */
 :global(.tc-draggable-inner) {
   overflow: visible;
+}
+
+.localEditingLabel {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  background: hsl(212, 92%, 45%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
 }

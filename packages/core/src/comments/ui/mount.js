@@ -465,6 +465,7 @@ async function loadAndRenderComments() {
   if (cached) {
     cachedDiscussion = cached
     renderCachedPins()
+    autoOpenCommentFromUrl(ensureOverlay(), cached)
     return
   }
 

@@ -26,7 +26,11 @@ export async function handler(ctx) {
   return {
     getChildren: () => {
       const children = []
-      if (prodMode) {
+      const canToggleProdMode = prodMode
+        && typeof window !== 'undefined'
+        && window.__SB_LOCAL_DEV__ === true
+
+      if (canToggleProdMode) {
         children.push({
           id: 'core/prod-mode',
           label: 'Production mode',

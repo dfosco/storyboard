@@ -382,7 +382,7 @@ export default function CanvasPage({ name }) {
       for (const article of articles) {
         article.classList.remove('tc-on-translation')
       }
-    }, 250 * 4)
+    }, 150 + 50 + 200)
     peerArticlesRef.current.clear()
   }, [])
 

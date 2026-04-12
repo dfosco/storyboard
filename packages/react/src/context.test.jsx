@@ -280,4 +280,17 @@ describe('StoryboardProvider', () => {
     )
     expect(screen.getByTestId('ctx')).toHaveTextContent('Global Default')
   })
+
+  it('shows a simple 404 for unknown canvas routes with an index link', () => {
+    mockUseLocation.mockReturnValue({ pathname: '/canvas/unknown-board', search: '', hash: '' })
+
+    render(
+      <StoryboardProvider>
+        <ContextReader />
+      </StoryboardProvider>,
+    )
+
+    expect(screen.getByText('Canvas not found')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /go to index page/i })).toHaveAttribute('href', '/')
+  })
 })

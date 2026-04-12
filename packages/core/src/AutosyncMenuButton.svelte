@@ -137,6 +137,10 @@
     selectedBranch = (e.target as HTMLSelectElement).value
   }
 
+  function getOtherScope(currentScope: 'canvas' | 'prototype'): 'canvas' | 'prototype' {
+    return currentScope === 'canvas' ? 'prototype' : 'canvas'
+  }
+
   function startPolling() {
     if (statusPollInterval) return
     statusPollInterval = setInterval(fetchStatus, 5000)
@@ -240,9 +244,15 @@
         onSelect={disableAutosync}
         disabled={loading}
       >
-        Disable autosync
+        Disable autosync for {scope} changes
       </DropdownMenu.CheckboxItem>
-      <p class="scopeHint">Syncing <strong>{scope}</strong> changes</p>
+      <DropdownMenu.CheckboxItem
+        checked={false}
+        onSelect={(e) => enableAutosync(getOtherScope(scope), e)}
+        disabled={loading || !selectedBranch}
+      >
+        Enable autosync for {getOtherScope(scope)} changes
+      </DropdownMenu.CheckboxItem>
     {:else}
       <DropdownMenu.CheckboxItem
         checked={false}
@@ -262,7 +272,11 @@
 
     <!-- Status display -->
     {#if enabled || lastError || lastSyncTime}
+      <DropdownMenu.Separator />
       <div class="statusRow">
+        {#if enabled}
+          <p class="scopeHint">Syncing <strong>{scope}</strong> changes</p>
+        {/if}
         {#if lastError}
           <span class="statusError">⚠ {lastError}</span>
         {:else if syncing}

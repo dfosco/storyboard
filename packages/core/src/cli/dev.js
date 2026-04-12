@@ -31,8 +31,8 @@ async function main() {
   const isMain = worktreeName === 'main'
 
   const basePath = isMain
-    ? `/${repoName}/`
-    : `/branch--${worktreeName}/${repoName}/`
+    ? '/'
+    : `/branch--${worktreeName}/`
 
   const proxyUrl = `http://storyboard.localhost${basePath}`
 

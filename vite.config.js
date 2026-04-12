@@ -22,7 +22,7 @@ const __dirname = path.dirname(new URL(import.meta.url).pathname)
 const { repository } = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'storyboard.config.json'), 'utf-8'))
 
 export default defineConfig(() => {
-    const base = process.env.VITE_BASE_PATH || `/${repository.name}/`
+    const base = process.env.VITE_BASE_PATH || '/'
 
     return {
     base,

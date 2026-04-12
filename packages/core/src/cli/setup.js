@@ -9,6 +9,29 @@ import { existsSync } from 'fs'
 import { execSync } from 'child_process'
 import { generateCaddyfile, isCaddyInstalled, isCaddyRunning, startCaddy, reloadCaddy } from './proxy.js'
 
+// ANSI colors
+const dim = (s) => `\x1b[2m${s}\x1b[0m`
+const magenta = (s) => `\x1b[35m${s}\x1b[0m`
+const cyan = (s) => `\x1b[36m${s}\x1b[0m`
+const green = (s) => `\x1b[32m${s}\x1b[0m`
+const bold = (s) => `\x1b[1m${s}\x1b[0m`
+const yellow = (s) => `\x1b[33m${s}\x1b[0m`
+
+function mascot() {
+  const dot = dim('·')
+  const face = magenta
+  const lines = [
+    `  ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}`,
+    `    ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}  `,
+    `  ${dot}   ${face('(')} ${face(')')}   ${dot}   ${face('(')} ${face(')')}   ${dot}   ${dot}`,
+    `    ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}  `,
+    `  ${dot}   ${dot} ${face('\\___/')} ${dot}   ${dot}   ${dot}   ${dot}`,
+    `    ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}  `,
+    `  ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}`,
+  ]
+  return lines.join('\n')
+}
+
 function run(cmd, opts = {}) {
   execSync(cmd, { stdio: 'pipe', ...opts })
 }
@@ -106,7 +129,25 @@ if (isCaddyInstalled()) {
     startCaddy(caddyfilePath)
     proxySpin.stop('Proxy started')
   }
-  p.outro('Ready! Run: npx storyboard dev')
-} else {
-  p.outro('Partially complete — install Caddy for clean URLs')
 }
+
+// 6. Welcome
+console.log()
+console.log(mascot())
+console.log()
+
+p.note(
+  [
+    `${bold('Welcome to Storyboard!')} Here's how to get started:`,
+    '',
+    `  ${green('npx storyboard dev')}     Start the dev server`,
+    `  ${cyan('Create a prototype')}     Use the ${yellow('Create')} tool in the toolbar`,
+    `  ${cyan('Create a canvas')}        Use the ${yellow('Create')} tool in the toolbar`,
+    '',
+    `  ${dim('Using an AI assistant? Ask it to')}`,
+    `  ${dim('"create a prototype"')} ${dim('or')} ${dim('"create a canvas"')} ${dim('for you!')}`,
+  ].join('\n'),
+  'Getting started'
+)
+
+p.outro('Happy prototyping! 🎨')

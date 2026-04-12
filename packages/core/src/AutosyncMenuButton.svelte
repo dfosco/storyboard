@@ -32,11 +32,13 @@
   let branches: string[] = $state([])
   let currentBranch = $state('')
   let selectedBranch = $state('')
-  let enabled = $state(false)
-  let scope = $state<'canvas' | 'prototype'>('canvas')
+  let enabledScopes = $state<{ canvas: boolean; prototype: boolean }>({ canvas: false, prototype: false })
   let lastSyncTime: string | null = $state(null)
+  let lastSyncByScope = $state<{ canvas: string | null; prototype: string | null }>({ canvas: null, prototype: null })
   let lastError: string | null = $state(null)
+  let lastErrorByScope = $state<{ canvas: string | null; prototype: string | null }>({ canvas: null, prototype: null })
   let syncing = $state(false)
+  let syncingScope = $state<'canvas' | 'prototype' | null>(null)
   let loading = $state(false)
 
   let statusPollInterval: ReturnType<typeof setInterval> | null = null
@@ -58,73 +60,95 @@
     } catch { /* ignore */ }
   }
 
+  function isScopeEnabled(target: 'canvas' | 'prototype') {
+    return enabledScopes[target] === true
+  }
+
+  function hasEnabledScopes() {
+    return enabledScopes.canvas || enabledScopes.prototype
+  }
+
+  function applyStatus(data: any) {
+    const wasEnabled = hasEnabledScopes()
+    const incomingScopes = data.enabledScopes
+    if (incomingScopes && typeof incomingScopes === 'object') {
+      enabledScopes = {
+        canvas: incomingScopes.canvas === true,
+        prototype: incomingScopes.prototype === true,
+      }
+    } else {
+      enabledScopes = {
+        canvas: data.enabled === true && data.scope === 'canvas',
+        prototype: data.enabled === true && data.scope === 'prototype',
+      }
+    }
+
+    currentBranch = data.branch || currentBranch
+    if (data.targetBranch) selectedBranch = data.targetBranch
+    lastSyncTime = data.lastSyncTime || null
+    lastError = data.lastError || null
+    syncing = data.syncing === true
+    syncingScope = data.syncingScope === 'prototype' || data.syncingScope === 'canvas'
+      ? data.syncingScope
+      : null
+
+    const incomingSyncByScope = data.lastSyncByScope
+    if (incomingSyncByScope && typeof incomingSyncByScope === 'object') {
+      lastSyncByScope = {
+        canvas: incomingSyncByScope.canvas || null,
+        prototype: incomingSyncByScope.prototype || null,
+      }
+    }
+
+    const incomingErrorByScope = data.lastErrorByScope
+    if (incomingErrorByScope && typeof incomingErrorByScope === 'object') {
+      lastErrorByScope = {
+        canvas: incomingErrorByScope.canvas || null,
+        prototype: incomingErrorByScope.prototype || null,
+      }
+    }
+
+    // Manage polling based on enabled state
+    if (hasEnabledScopes() && !statusPollInterval) startPolling()
+    if (!hasEnabledScopes() && !menuOpen && wasEnabled) stopPolling()
+  }
+
   async function fetchStatus() {
     try {
       const res = await fetch(`${API_BASE}/status`)
       const data = await res.json()
-      const wasEnabled = enabled
-      enabled = data.enabled
-      currentBranch = data.branch || currentBranch
-      lastSyncTime = data.lastSyncTime
-      lastError = data.lastError
-      syncing = data.syncing
-      if (data.targetBranch) selectedBranch = data.targetBranch
-      if (data.scope === 'prototype' || data.scope === 'canvas') scope = data.scope
-
-      // Manage polling based on enabled state
-      if (enabled && !statusPollInterval) startPolling()
-      if (!enabled && !menuOpen && wasEnabled) stopPolling()
+      applyStatus(data)
     } catch { /* ignore */ }
   }
 
-  async function enableAutosync(nextScope: 'canvas' | 'prototype', e: Event) {
+  async function setAutosyncScope(scope: 'canvas' | 'prototype', shouldEnable: boolean, e: Event) {
     e.preventDefault()
     loading = true
     lastError = null
 
     try {
-      if (!selectedBranch) {
+      if (shouldEnable && !selectedBranch) {
         lastError = 'Select a non-main branch first'
         return
       }
 
-      const res = await fetch(`${API_BASE}/enable`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ branch: selectedBranch, scope: nextScope }),
-      })
+      const res = await fetch(
+        shouldEnable ? `${API_BASE}/enable` : `${API_BASE}/disable`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            shouldEnable
+              ? { branch: selectedBranch, scope }
+              : { scope },
+          ),
+        },
+      )
       const data = await res.json()
       if (!res.ok) {
         lastError = data.error || 'Failed to enable'
       } else {
-        enabled = data.enabled !== false
-        scope = data.scope === 'prototype' ? 'prototype' : 'canvas'
-        if (data.lastError) lastError = data.lastError
-        if (data.branch) currentBranch = data.branch
-        startPolling()
-      }
-    } catch (err: any) {
-      lastError = err.message || 'Request failed'
-    } finally {
-      loading = false
-    }
-  }
-
-  async function disableAutosync(e: Event) {
-    e.preventDefault()
-    loading = true
-    lastError = null
-
-    try {
-      const res = await fetch(`${API_BASE}/disable`, {
-        method: 'POST',
-      })
-      const data = await res.json()
-      if (res.ok) {
-        enabled = false
-        if (data.scope === 'prototype' || data.scope === 'canvas') scope = data.scope
-        if (data.branch) currentBranch = data.branch
-        if (!menuOpen) stopPolling()
+        applyStatus(data)
       }
     } catch (err: any) {
       lastError = err.message || 'Request failed'
@@ -135,10 +159,6 @@
 
   function handleBranchChange(e: Event) {
     selectedBranch = (e.target as HTMLSelectElement).value
-  }
-
-  function getOtherScope(currentScope: 'canvas' | 'prototype'): 'canvas' | 'prototype' {
-    return currentScope === 'canvas' ? 'prototype' : 'canvas'
   }
 
   function startPolling() {
@@ -159,7 +179,7 @@
       fetchBranches()
       fetchStatus()
       startPolling()
-    } else if (!enabled) {
+    } else if (!hasEnabledScopes()) {
       stopPolling()
     }
   }
@@ -190,7 +210,7 @@
   <DropdownMenu.Trigger>
     {#snippet child({ props })}
       <TriggerButton
-        active={menuOpen || enabled}
+        active={menuOpen || hasEnabledScopes()}
         size="icon-xl"
         aria-label={config.ariaLabel || 'Autosync'}
         {tabindex}
@@ -224,7 +244,7 @@
         class="branchSelect"
         value={selectedBranch}
         onchange={handleBranchChange}
-        disabled={enabled || loading}
+        disabled={hasEnabledScopes() || loading}
       >
         {#if branches.length === 0}
           <option value="" disabled selected>No non-main branches available</option>
@@ -238,50 +258,48 @@
     <DropdownMenu.Separator />
 
     <!-- Enable options -->
-    {#if enabled}
-      <DropdownMenu.CheckboxItem
-        checked={enabled}
-        onSelect={disableAutosync}
-        disabled={loading}
-      >
-        Disable autosync for {scope} changes
-      </DropdownMenu.CheckboxItem>
-      <DropdownMenu.CheckboxItem
-        checked={false}
-        onSelect={(e) => enableAutosync(getOtherScope(scope), e)}
-        disabled={loading || !selectedBranch}
-      >
-        Enable autosync for {getOtherScope(scope)} changes
-      </DropdownMenu.CheckboxItem>
-    {:else}
-      <DropdownMenu.CheckboxItem
-        checked={false}
-        onSelect={(e) => enableAutosync('canvas', e)}
-        disabled={loading || !selectedBranch}
-      >
-        Enable autosync for canvas changes
-      </DropdownMenu.CheckboxItem>
-      <DropdownMenu.CheckboxItem
-        checked={false}
-        onSelect={(e) => enableAutosync('prototype', e)}
-        disabled={loading || !selectedBranch}
-      >
-        Enable autosync for prototype changes
-      </DropdownMenu.CheckboxItem>
-    {/if}
+    <DropdownMenu.CheckboxItem
+      checked={isScopeEnabled('canvas')}
+      onSelect={(e) => setAutosyncScope('canvas', !isScopeEnabled('canvas'), e)}
+      disabled={loading || (!isScopeEnabled('canvas') && !selectedBranch)}
+    >
+      {isScopeEnabled('canvas')
+        ? 'Disable autosync for canvas changes'
+        : 'Enable autosync for canvas changes'}
+    </DropdownMenu.CheckboxItem>
+    <DropdownMenu.CheckboxItem
+      checked={isScopeEnabled('prototype')}
+      onSelect={(e) => setAutosyncScope('prototype', !isScopeEnabled('prototype'), e)}
+      disabled={loading || (!isScopeEnabled('prototype') && !selectedBranch)}
+    >
+      {isScopeEnabled('prototype')
+        ? 'Disable autosync for prototype changes'
+        : 'Enable autosync for prototype changes'}
+    </DropdownMenu.CheckboxItem>
 
     <!-- Status display -->
-    {#if enabled || lastError || lastSyncTime}
+    {#if hasEnabledScopes() || lastError || lastSyncTime || lastErrorByScope.canvas || lastErrorByScope.prototype}
       <DropdownMenu.Separator />
       <div class="statusRow">
-        {#if enabled}
-          <p class="scopeHint">Syncing <strong>{scope}</strong> changes</p>
+        {#if syncing && syncingScope}
+          <p class="scopeHint">Syncing <strong>{syncingScope}</strong> changes</p>
         {/if}
         {#if lastError}
           <span class="statusError">⚠ {lastError}</span>
-        {:else if syncing}
-          <span class="statusSyncing">Syncing…</span>
-        {:else if lastSyncTime}
+        {/if}
+        {#if lastErrorByScope.canvas}
+          <span class="statusError">⚠ Canvas: {lastErrorByScope.canvas}</span>
+        {/if}
+        {#if lastErrorByScope.prototype}
+          <span class="statusError">⚠ Prototype: {lastErrorByScope.prototype}</span>
+        {/if}
+        {#if !syncing && lastSyncByScope.canvas}
+          <span class="statusOk">Canvas last sync: {formatSyncTime(lastSyncByScope.canvas)}</span>
+        {/if}
+        {#if !syncing && lastSyncByScope.prototype}
+          <span class="statusOk">Prototype last sync: {formatSyncTime(lastSyncByScope.prototype)}</span>
+        {/if}
+        {#if !syncing && !lastSyncByScope.canvas && !lastSyncByScope.prototype && lastSyncTime}
           <span class="statusOk">Last sync: {formatSyncTime(lastSyncTime)}</span>
         {/if}
       </div>
@@ -360,18 +378,13 @@
   .scopeHint {
     font-size: 11px;
     color: var(--fgColor-muted, #848d97);
-    padding: 4px 6px 2px;
+    padding: 4px 0;
     margin: 0;
   }
 
   .statusError {
     font-size: 11px;
     color: var(--fgColor-danger, #f85149);
-  }
-
-  .statusSyncing {
-    font-size: 11px;
-    color: var(--fgColor-accent, #58a6ff);
   }
 
   .statusOk {

@@ -45,6 +45,7 @@ function Canvas({
     <main
       className="tc-canvas"
       data-dotted={showDots || undefined}
+      data-locked={locked || undefined}
       data-color-mode={colorMode !== 'auto' ? colorMode : undefined}
       style={canvasStyle}
     >

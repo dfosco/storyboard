@@ -1,5 +1,12 @@
 # @dfosco/storyboard-react-primer
 
+## 3.12.0
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-react@3.12.0
+
 ## 3.11.0
 
 ### Patch Changes

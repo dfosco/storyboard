@@ -54,23 +54,26 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 
 ```bash
 npm install          # Install dependencies
-npm run dev          # Start dev server at http://localhost:1234
+npm run dev          # Start dev server (auto-detects worktree port)
+npm run dev:vite     # Start vite directly (always port 1234)
 npm run build        # Production build
 npm run lint         # Run ESLint
 ```
 
+`npm run dev` uses `scripts/dev-server.js` which auto-detects the worktree context and assigns a unique, stable port from `.worktrees/ports.json`. Main always gets port 1234; worktrees get 1235+.
+
 ### Dev URL session state
 
-Whenever Copilot starts a dev server (e.g. `npm run dev`), save the URL as `devURL` in the SQL session database:
+Whenever Copilot starts a dev server (e.g. `npm run dev`), save the URL as `devURL` in the SQL session database. Read the port from the dev server's startup output (`[storyboard] worktree: <name>, port: <port>`):
 
 ```sql
-INSERT OR REPLACE INTO session_state (key, value) VALUES ('devURL', 'http://localhost:1234');
+INSERT OR REPLACE INTO session_state (key, value) VALUES ('devURL', 'http://localhost:<port>');
 ```
 
 This `devURL` is used as the default target by the **agent-browser** skill when the user says "inspect the browser", "check the page", etc. — no URL argument needed.
 
 **How `devURL` gets set:**
-- **Automatically** — when Copilot runs `npm run dev` or any command that starts a dev server, persist the URL to `devURL`.
+- **Automatically** — when Copilot runs `npm run dev` or any command that starts a dev server, persist the URL to `devURL` using the port from the output.
 - **From user input** — if the user says "the dev server is at http://localhost:3000", save that as `devURL`.
 - **Implicitly from inspection** — if no `devURL` is set and the user says "inspect http://localhost:1234", that URL becomes the `devURL` for the rest of the session.
 

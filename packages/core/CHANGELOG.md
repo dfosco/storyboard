@@ -1,5 +1,23 @@
 # @dfosco/storyboard-core
 
+## 3.12.0
+
+### Minor Changes
+
+-   Storyboard CLI, Caddy proxy, and canvas/autosync improvements
+
+    -   `storyboard` CLI (`sb` alias) with `dev`, `setup`, `proxy`, and `update:flag` commands
+    -   Caddy reverse proxy for clean worktree URLs: `http://storyboard.localhost/branch--<name>/storyboard/`
+    -   Turn-key `npm run setup` — auto-installs Homebrew, Caddy, and GitHub CLI
+    -   Worktree port registry with unique, stable ports per worktree
+    -   PrototypeEmbed: external HTTP/HTTPS URLs embedded without storyboard query params
+    -   Worktree skill: branch name slugification and port registration steps
+    -   Canvas: undo/redo, multi-select drag, snap-to-grid, zoom-to-fit, Figma embeds, image paste, widget URLs
+    -   Canvas: config-driven toolbar tools, prod mode, read-only mode
+    -   Autosync: isolated worktree sync, scope modes, stash/rebase reliability
+    -   Viewfinder: fixed FOUC, localStorage tab state
+    -   Various bug fixes and documentation updates
+
 ## 3.11.0
 
 ### Minor Changes

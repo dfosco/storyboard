@@ -49,16 +49,22 @@ describe('StickyNote', () => {
     expect(sticky.style.height).toBe('200px')
   })
 
-  it('renders a resize handle', () => {
-    const { container } = render(<StickyNote props={{ text: 'Hi' }} onUpdate={vi.fn()} />)
+  it('renders a resize handle when resizable', () => {
+    const { container } = render(<StickyNote props={{ text: 'Hi' }} onUpdate={vi.fn()} resizable />)
     const handle = container.querySelector('[role="separator"]')
     expect(handle).not.toBeNull()
+  })
+
+  it('does not render a resize handle when not resizable', () => {
+    const { container } = render(<StickyNote props={{ text: 'Hi' }} onUpdate={vi.fn()} resizable={false} />)
+    const handle = container.querySelector('[role="separator"]')
+    expect(handle).toBeNull()
   })
 
   it('calls onUpdate with new dimensions on resize drag', () => {
     const onUpdate = vi.fn()
     const { container } = render(
-      <StickyNote props={{ text: 'Hi', width: 200, height: 150 }} onUpdate={onUpdate} />
+      <StickyNote props={{ text: 'Hi', width: 200, height: 150 }} onUpdate={onUpdate} resizable />
     )
     const handle = container.querySelector('[role="separator"]')
     const sticky = container.querySelector('article')
@@ -78,7 +84,7 @@ describe('StickyNote', () => {
   it('enforces minimum dimensions during resize', () => {
     const onUpdate = vi.fn()
     const { container } = render(
-      <StickyNote props={{ text: 'Hi', width: 200, height: 150 }} onUpdate={onUpdate} />
+      <StickyNote props={{ text: 'Hi', width: 200, height: 150 }} onUpdate={onUpdate} resizable />
     )
     const handle = container.querySelector('[role="separator"]')
     const sticky = container.querySelector('article')
@@ -92,5 +98,19 @@ describe('StickyNote', () => {
     fireEvent.mouseUp(document)
 
     expect(onUpdate).toHaveBeenCalledWith({ width: 180, height: 60 })
+  })
+
+  it('does not enter edit mode without onUpdate (read-only/prod)', () => {
+    const { container } = render(<StickyNote props={{ text: 'Read me' }} />)
+    const text = container.querySelector('p')
+    fireEvent.doubleClick(text)
+    expect(container.querySelector('textarea')).toBeNull()
+    expect(container.querySelector('[data-canvas-allow-text-selection]')).not.toBeNull()
+  })
+
+  it('shows non-editable empty-state text in read-only mode', () => {
+    const { container } = render(<StickyNote props={{ text: '' }} />)
+    expect(container.textContent).toContain('No content')
+    expect(container.textContent).not.toContain('Double-click to edit…')
   })
 })

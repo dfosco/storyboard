@@ -1,5 +1,283 @@
 # @dfosco/storyboard-core
 
+## 3.11.0
+
+### Minor Changes
+
+-   [`3715731`](https://github.com/dfosco/storyboard/commit/3715731be4e7559b958af9e0f550f895ae759d85) Thanks [@dfosco](https://github.com/dfosco)! - Config-driven dropdown menus and image widget actions
+
+    -   New `dropdown` feature type — renders a chevron button with a menu of actions, fully config-driven
+    -   Image widget dropdown: Download image, Copy as PNG, Copy file path
+    -   Component widgets now have "Copy link to widget" in overflow menu
+    -   Widget URL centering supports JSX source widgets (jsx-\* IDs)
+
+-   [`542d59d`](https://github.com/dfosco/storyboard/commit/542d59d5cb3028ea77d7b8a55b888cf19f7bbd7b) Thanks [@dfosco](https://github.com/dfosco)! - Canvas editing improvements and image paste support
+
+    -   Paste images directly onto the canvas — retina-aware sizing, privacy toggle, aspect-ratio-correct rendering
+    -   Figma embed widget for pasted Figma URLs
+    -   Persist viewport position (scroll x/y) and zoom across sessions via localStorage
+    -   Per-client HMR guard — canvas pages suppress reloads while editing, other tabs unaffected
+    -   Color picker renders below trigger with seamless hover bridge
+    -   Widget toolbar improvements: Primer Tooltips, Octicon icons, ESC to deselect, open-in-new-tab for prototype embeds
+    -   Fix: use relative imports for Vite plugins so worktrees load their own source
+
+-   [`917bd74`](https://github.com/dfosco/storyboard/commit/917bd74fdbc20ea29b4cf1ff73350056934f111a) Thanks [@dfosco](https://github.com/dfosco)! - Canvas tooling: zoom-to-fit, copy widget, undo/redo, and embed navigation
+
+    -   Zoom to objects button frames all widgets in the viewport
+    -   Copy widget tool duplicates any widget at cascading +40px offsets
+    -   Full undo/redo system for canvas operations (⌘Z / ⌘⇧Z)
+    -   Prototype embed navigation is now persisted and undoable
+    -   Canvas toolbar moved to Svelte CoreUIBar (zoom, undo/redo, zoom-to-objects)
+    -   Default sizes: sticky note 270×170, markdown 530×240
+    -   Tooltip delay reduced to 50ms
+
+-   [`709917c`](https://github.com/dfosco/storyboard/commit/709917c4d85fec150515882e4992e3b27034a18b) Thanks [@dfosco](https://github.com/dfosco)! - Config-driven widget resize and dark mode fix
+
+    -   Widget resize is now controlled via `resize: { enabled, prod }` in widgets.config.json
+    -   New `isResizable(type)` helper respects config + build environment + mutability
+    -   Fix: select handle now shows correct accent color in dark mode
+
+-   Storyboard 3.11.0
+
+    Canvas
+
+    -   Multi-select: shift+click widgets, group drag with animated peer transitions
+    -   Undo/redo for widget moves, resizes, and component widgets
+    -   Snap-to-grid toggle for widget positions and resize
+    -   Zoom-to-fit button, viewport persistence across sessions
+    -   Figma embed widget for pasted Figma URLs
+    -   Paste images directly on canvas
+    -   Widget URLs, copy widget, open-in-new-tab actions
+    -   Config-driven widget resize, dropdown menus, and feature flags
+    -   Expand modal for prototype and figma embed widgets
+    -   Drag surface and improved widget selection
+    -   Canvas route 404 fallback
+    -   gridSize edge padding on canvas boundary
+    -   Suppress HMR full-reloads while canvas is active
+
+    Production mode
+
+    -   ?prodMode URL param and devtools toggle to simulate production rendering in dev
+    -   Canvas title renders as static h1 in prod
+    -   Default cursor on all widgets in locked/prod mode
+    -   Markdown text selection and copy in prod, edit mode disabled
+    -   Prod flag system for toolbar tools and widget chrome features
+
+    Autosync
+
+    -   Automatic commit and push tool
+    -   Scope modes (all/branch), hide main branch from relay list
+    -   Isolate sync in branch worktree
+    -   Stash external edits during sync
+
+    Canvas polish
+
+    -   Faster multi-drag peer transition (150ms + 50ms delay)
+    -   Accent color select handle in dark mode
+    -   Solid outline for multi-selected widgets
+    -   Drag boundary flicker fix with transform callback
+
+-   [`3800568`](https://github.com/dfosco/storyboard/commit/3800568a0585ce61a7811d00b6c26c82aebab07c) Thanks [@dfosco](https://github.com/dfosco)! - Snap-to-grid and viewfinder tab persistence
+
+    -   Snap-to-grid toggle in canvas toolbar — snaps widget positions and resize to grid (default 40px)
+    -   Persisted as snapToGrid in canvas settings, configurable via gridSize
+    -   Viewfinder canvas/prototype tab now stored in localStorage instead of URL hash
+
+-   [`e97a4de`](https://github.com/dfosco/storyboard/commit/e97a4def7fc4cd1412aa3700ea727bfd99cb69b9) Thanks [@dfosco](https://github.com/dfosco)! - Widget URLs, overflow menu, and config-driven widget tools
+
+    -   Each widget has a unique URL (?widget=id) that centers the viewport on load
+    -   Widget toolbar "..." overflow menu with "Copy link to widget" and "Delete widget"
+    -   Widget tools (icons, labels, menu placement) fully driven by widgets.config.json
+    -   Config variables system ($label:duplicate, etc.) for shared text
+    -   Fix: comment deep links (?comment=id) now open the comment box on cache hit
+    -   Prototype embed navigation persisted with undo/redo support
+
+### Patch Changes
+
+-   [`62538dd`](https://github.com/dfosco/storyboard/commit/62538dd30dc7052a386be4729f214a5664758869) Thanks [@dfosco](https://github.com/dfosco)! - Add autosync tool entry to toolbar.config.json so the AutoSync button renders in the main toolbar (dev-only).
+
+-   [`79b55bf`](https://github.com/dfosco/storyboard/commit/79b55bfe4ada902df569afbf2753d3cd6ebae276) Thanks [@dfosco](https://github.com/dfosco)! - Canvas expand modal, multi-select, and drag improvements
+
+    -   feat: expand modal for prototype and figma embed widgets — iframe reparenting via moveBefore() for instant expand without reload
+    -   feat: multi-select for canvas widgets with shift-click support
+    -   feat: drag surface and improved widget selection UX
+    -   feat: prod flag system for toolbar tool features
+    -   fix: viewfinder FOUC from duplicate async CSS loading paths
+    -   fix: drag boundary flicker eliminated via neodrag transform callback
+    -   fix: canvas stuck on loading in production builds
+    -   fix: drag handle detection supports multi-handle selectors
+    -   fix: select handle uses onClick, better drag/select distinction
+    -   fix: solid outline for multi-selected widgets
+
+-   [`0bb755e`](https://github.com/dfosco/storyboard/commit/0bb755e23cd9d797ce2e09d5b55c148737732d43) Thanks [@dfosco](https://github.com/dfosco)! - Fix multi-select drag on canvas
+
+    -   Any selected widget can now serve as the drag handler for the entire group
+    -   Peers animate to new positions on drag end via delayed CSS transition
+    -   Selection is preserved during and after drag (no longer collapses on click)
+    -   Mixed selections of JSON + JSX component widgets now move together
+
+-   [`c781179`](https://github.com/dfosco/storyboard/commit/c781179eb51ce0efed1f68af2265d82633a56740) Thanks [@dfosco](https://github.com/dfosco)! - Fix multi-select drag not applying to component widgets
+
+    -   Pass multiSelected prop to component widget WidgetChrome so they participate in group drag operations
+
+-   [`7994b34`](https://github.com/dfosco/storyboard/commit/7994b343bf2bc9a6160f3442c1b9944bdc55ca0b) Thanks [@dfosco](https://github.com/dfosco)! - Production mode simulation and canvas polish
+
+    -   Add ?prodMode URL param and devtools toggle to simulate production rendering in dev
+    -   Add gridSize edge padding to canvas boundary
+    -   Faster multi-drag peer transition (150ms duration + 50ms delay)
+    -   Canvas title renders as static h1 in prod (no hover/edit)
+    -   Default cursor on all widgets in prod/locked mode
+    -   Markdown widgets: text selection and copy works in prod, edit mode disabled
+
+-   [`444e732`](https://github.com/dfosco/storyboard/commit/444e73206abc444295d00e9a40cd682d92d8ac98) Thanks [@dfosco](https://github.com/dfosco)! - Autosync scope modes, canvas fallback, and polish
+
+    -   Autosync: add scope modes (all/branch) and hide main branch from relay list
+    -   Autosync: isolate sync in branch worktree, stash external edits during sync
+    -   Autosync: refine enabled-state menu actions, show single relay last-sync time
+    -   Add canvas route 404 fallback for unknown canvas names
+    -   Fix border radius on embed widgets
+    -   Update canvas and toolbar configs
+
+## 3.11.0-beta.12
+
+### Patch Changes
+
+-   Autosync scope modes, canvas fallback, and polish
+
+    -   Autosync: add scope modes (all/branch) and hide main branch from relay list
+    -   Autosync: isolate sync in branch worktree, stash external edits during sync
+    -   Autosync: refine enabled-state menu actions, show single relay last-sync time
+    -   Add canvas route 404 fallback for unknown canvas names
+    -   Fix border radius on embed widgets
+    -   Update canvas and toolbar configs
+
+## 3.11.0-beta.11
+
+### Patch Changes
+
+-   Production mode simulation and canvas polish
+
+    -   Add ?prodMode URL param and devtools toggle to simulate production rendering in dev
+    -   Add gridSize edge padding to canvas boundary
+    -   Faster multi-drag peer transition (150ms duration + 50ms delay)
+    -   Canvas title renders as static h1 in prod (no hover/edit)
+    -   Default cursor on all widgets in prod/locked mode
+    -   Markdown widgets: text selection and copy works in prod, edit mode disabled
+
+## 3.11.0-beta.10
+
+### Patch Changes
+
+-   Fix multi-select drag not applying to component widgets
+
+    -   Pass multiSelected prop to component widget WidgetChrome so they participate in group drag operations
+
+## 3.11.0-beta.9
+
+### Patch Changes
+
+-   Fix multi-select drag on canvas
+
+    -   Any selected widget can now serve as the drag handler for the entire group
+    -   Peers animate to new positions on drag end via delayed CSS transition
+    -   Selection is preserved during and after drag (no longer collapses on click)
+    -   Mixed selections of JSON + JSX component widgets now move together
+
+## 3.11.0-beta.8
+
+### Minor Changes
+
+-   Config-driven widget resize and dark mode fix
+
+    -   Widget resize is now controlled via `resize: { enabled, prod }` in widgets.config.json
+    -   New `isResizable(type)` helper respects config + build environment + mutability
+    -   Fix: select handle now shows correct accent color in dark mode
+
+## 3.11.0-beta.7
+
+### Patch Changes
+
+-   Canvas expand modal, multi-select, and drag improvements
+
+    -   feat: expand modal for prototype and figma embed widgets — iframe reparenting via moveBefore() for instant expand without reload
+    -   feat: multi-select for canvas widgets with shift-click support
+    -   feat: drag surface and improved widget selection UX
+    -   feat: prod flag system for toolbar tool features
+    -   fix: viewfinder FOUC from duplicate async CSS loading paths
+    -   fix: drag boundary flicker eliminated via neodrag transform callback
+    -   fix: canvas stuck on loading in production builds
+    -   fix: drag handle detection supports multi-handle selectors
+    -   fix: select handle uses onClick, better drag/select distinction
+    -   fix: solid outline for multi-selected widgets
+
+## 3.11.0-beta.6
+
+### Patch Changes
+
+-   Add autosync tool entry to toolbar.config.json so the AutoSync button renders in the main toolbar (dev-only).
+
+## 3.11.0-beta.4
+
+### Minor Changes
+
+-   Snap-to-grid and viewfinder tab persistence
+
+    -   Snap-to-grid toggle in canvas toolbar — snaps widget positions and resize to grid (default 40px)
+    -   Persisted as snapToGrid in canvas settings, configurable via gridSize
+    -   Viewfinder canvas/prototype tab now stored in localStorage instead of URL hash
+
+## 3.11.0-beta.3
+
+### Minor Changes
+
+-   Config-driven dropdown menus and image widget actions
+
+    -   New `dropdown` feature type — renders a chevron button with a menu of actions, fully config-driven
+    -   Image widget dropdown: Download image, Copy as PNG, Copy file path
+    -   Component widgets now have "Copy link to widget" in overflow menu
+    -   Widget URL centering supports JSX source widgets (jsx-\* IDs)
+
+## 3.11.0-beta.2
+
+### Minor Changes
+
+-   Widget URLs, overflow menu, and config-driven widget tools
+
+    -   Each widget has a unique URL (?widget=id) that centers the viewport on load
+    -   Widget toolbar "..." overflow menu with "Copy link to widget" and "Delete widget"
+    -   Widget tools (icons, labels, menu placement) fully driven by widgets.config.json
+    -   Config variables system ($label:duplicate, etc.) for shared text
+    -   Fix: comment deep links (?comment=id) now open the comment box on cache hit
+    -   Prototype embed navigation persisted with undo/redo support
+
+## 3.11.0-beta.1
+
+### Minor Changes
+
+-   Canvas tooling: zoom-to-fit, copy widget, undo/redo, and embed navigation
+
+    -   Zoom to objects button frames all widgets in the viewport
+    -   Copy widget tool duplicates any widget at cascading +40px offsets
+    -   Full undo/redo system for canvas operations (⌘Z / ⌘⇧Z)
+    -   Prototype embed navigation is now persisted and undoable
+    -   Canvas toolbar moved to Svelte CoreUIBar (zoom, undo/redo, zoom-to-objects)
+    -   Default sizes: sticky note 270×170, markdown 530×240
+    -   Tooltip delay reduced to 50ms
+
+## 3.11.0-beta.0
+
+### Minor Changes
+
+-   Canvas editing improvements and image paste support
+
+    -   Paste images directly onto the canvas — retina-aware sizing, privacy toggle, aspect-ratio-correct rendering
+    -   Figma embed widget for pasted Figma URLs
+    -   Persist viewport position (scroll x/y) and zoom across sessions via localStorage
+    -   Per-client HMR guard — canvas pages suppress reloads while editing, other tabs unaffected
+    -   Color picker renders below trigger with seamless hover bridge
+    -   Widget toolbar improvements: Primer Tooltips, Octicon icons, ESC to deselect, open-in-new-tab for prototype embeds
+    -   Fix: use relative imports for Vite plugins so worktrees load their own source
+
 ## 3.10.0
 
 ### Minor Changes

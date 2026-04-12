@@ -6,8 +6,43 @@
  *
  * The config is the single source of truth for widget definitions —
  * prop schemas, feature lists, labels, and icons all come from here.
+ *
+ * Supports `$variable` references in string values, resolved from
+ * the top-level `variables` object in widgets.config.json.
  */
 import widgetsConfig from '@dfosco/storyboard-core/widgets.config.json'
+
+/** Variables defined in config — used to resolve `$key` references. */
+const variables = widgetsConfig.variables || {}
+
+/**
+ * Resolve `$variable` references in a string value.
+ * Returns the original value if it's not a string or doesn't start with `$`.
+ */
+function resolveVar(value) {
+  if (typeof value !== 'string' || !value.startsWith('$')) return value
+  const key = value.slice(1)
+  return variables[key] ?? value
+}
+
+/**
+ * Resolve all string values in a feature object, including nested items.
+ */
+function resolveFeature(feature) {
+  const resolved = {}
+  for (const [key, val] of Object.entries(feature)) {
+    if (key === 'items' && Array.isArray(val)) {
+      resolved[key] = val.map((item) => {
+        const r = {}
+        for (const [k, v] of Object.entries(item)) r[k] = resolveVar(v)
+        return r
+      })
+    } else {
+      resolved[key] = resolveVar(val)
+    }
+  }
+  return resolved
+}
 
 /**
  * Convert a config prop definition to the schema shape used by widgetProps.js.
@@ -42,19 +77,52 @@ function buildSchemas() {
   return result
 }
 
+/**
+ * Build resolved widget type entries with variables expanded in features.
+ */
+function buildWidgetTypes() {
+  const result = {}
+  for (const [type, def] of Object.entries(widgetsConfig.widgets)) {
+    result[type] = {
+      ...def,
+      features: (def.features || []).map(resolveFeature),
+    }
+  }
+  return result
+}
+
 /** All widget schemas, keyed by type string. */
 export const schemas = buildSchemas()
 
-/** Full widget config entries, keyed by type string. */
-export const widgetTypes = widgetsConfig.widgets
+/** Full widget config entries (with resolved variables), keyed by type string. */
+export const widgetTypes = buildWidgetTypes()
 
 /**
  * Get the feature list for a widget type.
+ * In production, only features with `prod: true` are returned.
+ * In dev, all features are returned.
  * @param {string} type — widget type string
- * @returns {Array} features array from config, or empty array
+ * @returns {Array} features array from config (variables resolved), or empty array
  */
 export function getFeatures(type) {
-  return widgetTypes[type]?.features ?? []
+  const features = widgetTypes[type]?.features ?? []
+  if (import.meta.env?.PROD) {
+    return features.filter(f => f.prod)
+  }
+  return features
+}
+
+/**
+ * Check if a widget type supports resize in the current environment.
+ * Returns false if resize is disabled, or if in production and prod is not true.
+ * @param {string} type — widget type string
+ * @returns {boolean}
+ */
+export function isResizable(type) {
+  const resize = widgetTypes[type]?.resize
+  if (!resize?.enabled) return false
+  if (import.meta.env?.PROD && !resize.prod) return false
+  return true
 }
 
 /**
@@ -70,10 +138,10 @@ export function getWidgetMeta(type) {
 
 /**
  * Get all widget types as an array of { type, label, icon } for menus.
- * Excludes link-preview which is created via paste only.
+ * Excludes link-preview, image, and figma-embed which are created via paste only.
  */
 export function getMenuWidgetTypes() {
   return Object.entries(widgetTypes)
-    .filter(([type]) => type !== 'link-preview')
+    .filter(([type]) => type !== 'link-preview' && type !== 'image' && type !== 'figma-embed')
     .map(([type, def]) => ({ type, label: def.label, icon: def.icon }))
 }

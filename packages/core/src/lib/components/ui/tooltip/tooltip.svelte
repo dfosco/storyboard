@@ -4,6 +4,6 @@
 	let { ...restProps } = $props();
 </script>
 
-<TooltipPrimitive.Provider delayDuration={400}>
+<TooltipPrimitive.Provider delayDuration={50}>
 	<TooltipPrimitive.Root {...restProps} />
 </TooltipPrimitive.Provider>

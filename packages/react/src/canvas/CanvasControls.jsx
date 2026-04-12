@@ -2,16 +2,12 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { getMenuWidgetTypes } from './widgets/widgetConfig.js'
 import styles from './CanvasControls.module.css'
 
-const ZOOM_STEPS = [25, 50, 75, 100, 125, 150, 200]
-export const ZOOM_MIN = ZOOM_STEPS[0]
-export const ZOOM_MAX = ZOOM_STEPS[ZOOM_STEPS.length - 1]
-
 const WIDGET_TYPES = getMenuWidgetTypes()
 
 /**
- * Focused canvas toolbar — bottom-left controls for zoom and widget creation.
+ * Focused canvas toolbar — bottom-left add-widget control.
  */
-export default function CanvasControls({ zoom, onZoomChange, onAddWidget }) {
+export default function CanvasControls({ onAddWidget }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
 
@@ -27,24 +23,6 @@ export default function CanvasControls({ zoom, onZoomChange, onAddWidget }) {
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [menuOpen])
 
-  const zoomIn = useCallback(() => {
-    onZoomChange((z) => {
-      const next = ZOOM_STEPS.find((s) => s > z)
-      return next ?? ZOOM_MAX
-    })
-  }, [onZoomChange])
-
-  const zoomOut = useCallback(() => {
-    onZoomChange((z) => {
-      const next = [...ZOOM_STEPS].reverse().find((s) => s < z)
-      return next ?? ZOOM_MIN
-    })
-  }, [onZoomChange])
-
-  const resetZoom = useCallback(() => {
-    onZoomChange(100)
-  }, [onZoomChange])
-
   const handleAddWidget = useCallback((type) => {
     onAddWidget(type)
     setMenuOpen(false)
@@ -52,7 +30,6 @@ export default function CanvasControls({ zoom, onZoomChange, onAddWidget }) {
 
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="Canvas controls">
-      {/* Create widget */}
       <div ref={menuRef} className={styles.createGroup}>
         <button
           className={styles.btn}
@@ -81,40 +58,6 @@ export default function CanvasControls({ zoom, onZoomChange, onAddWidget }) {
           </div>
         )}
       </div>
-
-      <div className={styles.divider} />
-
-      {/* Zoom controls */}
-      <button
-        className={styles.btn}
-        onClick={zoomOut}
-        disabled={zoom <= ZOOM_MIN}
-        aria-label="Zoom out"
-        title="Zoom out"
-      >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-          <path d="M2.75 7.25h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5Z" />
-        </svg>
-      </button>
-      <button
-        className={styles.zoomLevel}
-        onClick={resetZoom}
-        title="Reset to 100%"
-        aria-label={`Zoom ${zoom}%, click to reset`}
-      >
-        {zoom}%
-      </button>
-      <button
-        className={styles.btn}
-        onClick={zoomIn}
-        disabled={zoom >= ZOOM_MAX}
-        aria-label="Zoom in"
-        title="Zoom in"
-      >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-          <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z" />
-        </svg>
-      </button>
     </div>
   )
 }

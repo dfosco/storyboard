@@ -2,6 +2,7 @@ import {
   normalizeAutosyncScope,
   matchesAutosyncScope,
   filterFilesForAutosyncScope,
+  isRetryablePushError,
 } from './server.js'
 
 describe('autosync scope helpers', () => {
@@ -34,5 +35,13 @@ describe('autosync scope helpers', () => {
     expect(filterFilesForAutosyncScope('prototype', files)).toEqual([
       'src/prototypes/demo/default.flow.json',
     ])
+  })
+
+  it('detects retryable push failures', () => {
+    expect(isRetryablePushError('failed to push some refs')).toBe(true)
+    expect(isRetryablePushError('non-fast-forward')).toBe(true)
+    expect(isRetryablePushError('hint: Updates were rejected because the tip of your current branch is behind')).toBe(true)
+    expect(isRetryablePushError('fetch first')).toBe(true)
+    expect(isRetryablePushError('some other git error')).toBe(false)
   })
 })

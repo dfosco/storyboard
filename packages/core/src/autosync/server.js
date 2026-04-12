@@ -28,6 +28,7 @@ let syncing = false
 let syncScope = 'canvas'
 
 const SYNC_INTERVAL_MS = 30_000
+const PUSH_RETRY_LIMIT = 3
 const AUTOSYNC_SCOPES = new Set(['canvas', 'prototype'])
 
 // Branch names must match git ref format — alphanumeric, hyphens, dots, slashes
@@ -62,6 +63,44 @@ function getBranches(root) {
 function hasUncommittedChanges(root) {
   const status = git(['status', '--porcelain'], root)
   return status.length > 0
+}
+
+function parseStashEntries(raw) {
+  if (!raw) return []
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [ref, ...messageParts] = line.split(' ')
+      return { ref, message: messageParts.join(' ') }
+    })
+}
+
+function listStashes(root) {
+  const raw = git(['stash', 'list', '--format=%gd %s'], root)
+  return parseStashEntries(raw)
+}
+
+function stashWorkingChanges(root, label) {
+  if (!hasUncommittedChanges(root)) return null
+
+  const marker = `autosync:${label}:${Date.now()}`
+  const beforeRefs = new Set(listStashes(root).map((stash) => stash.ref))
+  const output = git(['stash', 'push', '-u', '-m', marker], root)
+  if (output.includes('No local changes to save')) return null
+
+  const created = listStashes(root).find(
+    (stash) => !beforeRefs.has(stash.ref) && stash.message.includes(marker),
+  )
+
+  return created?.ref || null
+}
+
+function restoreStash(root, stashRef) {
+  if (!stashRef) return
+  git(['stash', 'apply', stashRef], root)
+  git(['stash', 'drop', stashRef], root)
 }
 
 function listChangedFiles(root) {
@@ -127,6 +166,18 @@ function formatTime() {
   })
 }
 
+export function isRetryablePushError(message) {
+  const normalized = String(message || '').toLowerCase()
+  return (
+    normalized.includes('failed to push some refs') ||
+    normalized.includes('non-fast-forward') ||
+    normalized.includes('updates were rejected') ||
+    normalized.includes('tip of your current branch is behind') ||
+    normalized.includes('fetch first') ||
+    normalized.includes('[rejected]')
+  )
+}
+
 // ── Sync cycle ──
 
 /** Run a single sync cycle. Returns true on success, false on failure. */
@@ -134,6 +185,8 @@ function runSyncCycle(root, scope = syncScope) {
   if (syncing) return false
   syncing = true
   lastError = null
+  let cycleSucceeded = false
+  let externalStashRef = null
 
   try {
     const scopedFiles = listScopedChangedFiles(root, scope)
@@ -145,21 +198,51 @@ function runSyncCycle(root, scope = syncScope) {
     }
 
     const branch = getCurrentBranch(root)
-    if (remoteBranchExists(root, branch)) {
-      git(['pull', '--rebase', 'origin', branch], root)
-    }
-    git(['push', 'origin', branch], root)
+    if (scopedFiles.length > 0) {
+      externalStashRef = stashWorkingChanges(root, 'pre-rebase')
 
-    lastSyncTime = new Date().toISOString()
-    return true
+      for (let attempt = 1; attempt <= PUSH_RETRY_LIMIT; attempt += 1) {
+        if (remoteBranchExists(root, branch)) {
+          git(['pull', '--rebase', 'origin', branch], root)
+        }
+
+        try {
+          git(['push', 'origin', branch], root)
+          cycleSucceeded = true
+          break
+        } catch (pushErr) {
+          if (!isRetryablePushError(pushErr?.message) || attempt === PUSH_RETRY_LIMIT) {
+            throw pushErr
+          }
+        }
+      }
+    } else {
+      cycleSucceeded = true
+    }
   } catch (err) {
     lastError = err.message || 'Sync failed'
     try { git(['rebase', '--abort'], root) } catch { /* not in rebase */ }
     stopWatcher()
-    return false
   } finally {
+    if (externalStashRef) {
+      try {
+        restoreStash(root, externalStashRef)
+      } catch (restoreErr) {
+        cycleSucceeded = false
+        lastError = `Autosync saved your external changes to stash ${externalStashRef}. ` +
+          `Re-apply failed: ${restoreErr.message}`
+        stopWatcher()
+      }
+    }
+
+    if (cycleSucceeded) {
+      lastSyncTime = new Date().toISOString()
+    }
+
     syncing = false
   }
+
+  return cycleSucceeded
 }
 
 function startWatcher(root) {

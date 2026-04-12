@@ -4,24 +4,27 @@ This directory replaces the single-file plan and splits work into feature-isolat
 
 ## Execution order for one implementation run
 
-1. `00-contracts-and-compatibility.md` (must start first)
-2. `01-paste-rules.md`, `02-sticky-markdown.md`, and `08-widget-mode-system.md` (can run in parallel)
-3. `03-github-embeds-and-sync.md` (depends on paste rules)
-4. `04-multi-page-canvas.md` and `05-story-widgets.md` (can run in parallel)
-5. `06-command-palette.md` (depends on multi-page + story indexing)
-6. `07-release-verification-and-signoff.md` (final gate)
+1. `00-worktree-port-bindings.md` (step 0 — prerequisite infrastructure)
+2. `01-contracts-and-compatibility.md` (must start before feature work)
+3. `02-paste-rules.md`, `03-sticky-markdown.md`, `08-viewfinder-react-migration.md`, and `10-widget-mode-system.md` (can run in parallel)
+4. `04-github-embeds-and-sync.md` (depends on paste rules)
+5. `05-multi-page-canvas.md` and `06-story-widgets.md` (can run in parallel)
+6. `07-command-palette.md` (depends on multi-page + story indexing)
+7. `09-release-verification-and-signoff.md` (final gate)
 
 ## File map
 
-- `00-contracts-and-compatibility.md` — schema, IDs, compatibility constraints
-- `01-paste-rules.md` — `t01` config-controlled paste routing
-- `02-sticky-markdown.md` — `t02` sticky markdown mode
-- `03-github-embeds-and-sync.md` — `t03` + `t04` GitHub embeds, local `gh` fetch, refresh, banner guard
-- `04-multi-page-canvas.md` — `t05` multipage canvas model
-- `05-story-widgets.md` — `t06` story-backed component widgets
-- `06-command-palette.md` — `t07` fuzzy command palette
-- `07-release-verification-and-signoff.md` — automated + agent-browser + manual gates
-- `08-widget-mode-system.md` — declarative widget mode API + Escape/read-only/prodMode enforcement
+- `00-worktree-port-bindings.md` — stable dev-server ports per worktree, hotel integration
+- `01-contracts-and-compatibility.md` — schema, IDs, compatibility constraints
+- `02-paste-rules.md` — `t01` config-controlled paste routing
+- `03-sticky-markdown.md` — `t02` sticky markdown mode
+- `04-github-embeds-and-sync.md` — `t03` + `t04` GitHub embeds, local `gh` fetch, refresh, banner guard
+- `05-multi-page-canvas.md` — `t05` multipage canvas model
+- `06-story-widgets.md` — `t06` story-backed component widgets
+- `07-command-palette.md` — `t07` fuzzy command palette
+- `08-viewfinder-react-migration.md` — migrate Viewfinder page from Svelte to React
+- `09-release-verification-and-signoff.md` — automated + agent-browser + manual gates
+- `10-widget-mode-system.md` — declarative widget mode API + Escape/read-only/prodMode enforcement
 
 ## Hard dependency edges
 

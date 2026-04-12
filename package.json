@@ -30,7 +30,7 @@
         "dev:ui": "npm run dev:ui -w @dfosco/storyboard-core",
         "link": "npm run build:ui && ./scripts/link.sh && npm run dev",
         "unlink": "./scripts/unlink.sh",
-        "setup": "node scripts/setup.js",
+        "setup": "./scripts/setup.sh",
         "hotel:add": "storyboard proxy"
     },
     "dependencies": {

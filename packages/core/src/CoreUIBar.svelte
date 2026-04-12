@@ -77,7 +77,7 @@
   // Roving tabindex: only one button in the toolbar is tabbable at a time
   let activeToolbarIndex = $state(-1)
 
-  const isLocalDev = typeof window !== 'undefined' && (window as any).__SB_LOCAL_DEV__ === true
+  const isLocalDev = typeof window !== 'undefined' && (window as any).__SB_LOCAL_DEV__ === true && !new URLSearchParams(window.location.search).has('prodMode')
 
   /**
    * Resolve a handler reference to a module loader function.

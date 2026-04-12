@@ -16,7 +16,7 @@ import { portsFilePath } from '../worktree/port.js'
 
 const DOMAIN = 'storyboard.localhost'
 
-export function generateCaddyfile() {
+export function generateCaddyfile(portOverrides = {}) {
   const portsFile = portsFilePath()
   const dir = dirname(portsFile)
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
@@ -29,6 +29,9 @@ export function generateCaddyfile() {
       // Corrupted — use defaults
     }
   }
+
+  // Apply runtime overrides (e.g. when assigned port was in use)
+  Object.assign(ports, portOverrides)
 
   const mainPort = ports.main || 1234
   const branches = Object.entries(ports).filter(([name]) => name !== 'main')

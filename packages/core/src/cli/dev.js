@@ -9,9 +9,11 @@
  */
 
 import { spawn, execSync } from 'child_process'
+import { createServer } from 'net'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { detectWorktreeName, getPort } from '../worktree/port.js'
+import { generateCaddyfile, isCaddyRunning, reloadCaddy } from './proxy.js'
 
 function readRepoName() {
   try {
@@ -23,56 +25,71 @@ function readRepoName() {
   }
 }
 
-const worktreeName = detectWorktreeName()
-const port = getPort(worktreeName)
-const repoName = readRepoName()
-const isMain = worktreeName === 'main'
-
-// Build VITE_BASE_PATH: main keeps default, branches prepend worktree name
-const basePath = isMain
-  ? `/${repoName}/`
-  : `/${worktreeName}/${repoName}/`
-
-const proxyUrl = `http://storyboard.localhost${basePath}`
-const directUrl = `http://localhost:${port}${basePath}`
-
-console.log(`[storyboard] worktree: ${worktreeName}, port: ${port}`)
-console.log(`[storyboard] base path: ${basePath}`)
-console.log(`[storyboard] proxy URL: ${proxyUrl}`)
-console.log(`[storyboard] direct URL: ${directUrl}`)
-console.log()
-
-// Try to reload Caddy proxy with updated routes
-try {
-  execSync('caddy reload --config .worktrees/Caddyfile 2>/dev/null', {
-    stdio: 'ignore',
-    timeout: 3000,
+/** Check if a port is available by trying to bind it briefly. */
+function isPortFree(port) {
+  return new Promise((resolve) => {
+    const server = createServer()
+    server.once('error', () => resolve(false))
+    server.once('listening', () => { server.close(); resolve(true) })
+    server.listen(port, '127.0.0.1')
   })
-  console.log('[storyboard] proxy reloaded ✓')
-} catch {
-  // Caddy not running or Caddyfile doesn't exist — that's fine
-  console.log('[storyboard] proxy not running — use `storyboard setup` for clean URLs')
 }
 
-// Parse --port override from argv (skip 'dev' subcommand)
-const args = process.argv.slice(3)
-const portFlagIdx = args.indexOf('--port')
-const overridePort = portFlagIdx >= 0 ? Number(args[portFlagIdx + 1]) : null
+async function main() {
+  const worktreeName = detectWorktreeName()
+  let port = getPort(worktreeName)
+  const repoName = readRepoName()
+  const isMain = worktreeName === 'main'
 
-const extraArgs = args.filter((arg, i, arr) => {
-  if (arg === '--port') return false
-  if (i > 0 && arr[i - 1] === '--port') return false
-  return true
-})
-
-const child = spawn('npx', ['vite', '--port', String(overridePort || port), ...extraArgs], {
-  stdio: 'inherit',
-  env: { ...process.env, VITE_BASE_PATH: basePath },
-})
-
-child.on('exit', (code) => {
-  if (code && code !== 0) {
-    console.error(`[storyboard] vite exited with code ${code}`)
+  // Ensure assigned port is actually free — if not, find next available
+  if (!(await isPortFree(port))) {
+    const originalPort = port
+    while (!(await isPortFree(port))) port++
+    console.log(`[storyboard] port ${originalPort} in use, using ${port}`)
   }
-  process.exit(code ?? 0)
-})
+
+  const basePath = isMain
+    ? `/${repoName}/`
+    : `/${worktreeName}/${repoName}/`
+
+  const proxyUrl = `http://storyboard.localhost${basePath}`
+
+  // Update Caddyfile with correct port and reload if running
+  try {
+    const caddyfilePath = generateCaddyfile({ [worktreeName]: port })
+    if (isCaddyRunning()) {
+      reloadCaddy(caddyfilePath)
+    }
+  } catch {
+    // Caddy not available — that's fine, direct URL still works
+  }
+
+  console.log()
+  console.log(`  ➜  ${proxyUrl}`)
+  console.log()
+
+  // Parse --port override from argv (skip 'dev' subcommand)
+  const args = process.argv.slice(3)
+  const portFlagIdx = args.indexOf('--port')
+  const overridePort = portFlagIdx >= 0 ? Number(args[portFlagIdx + 1]) : null
+
+  const extraArgs = args.filter((arg, i, arr) => {
+    if (arg === '--port') return false
+    if (i > 0 && arr[i - 1] === '--port') return false
+    return true
+  })
+
+  const child = spawn('npx', ['vite', '--port', String(overridePort || port), '--strictPort', ...extraArgs], {
+    stdio: 'inherit',
+    env: { ...process.env, VITE_BASE_PATH: basePath },
+  })
+
+  child.on('exit', (code) => {
+    if (code && code !== 0) {
+      console.error(`[storyboard] vite exited with code ${code}`)
+    }
+    process.exit(code ?? 0)
+  })
+}
+
+main()

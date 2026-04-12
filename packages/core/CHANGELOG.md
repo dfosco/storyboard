@@ -1,5 +1,14 @@
 # @dfosco/storyboard-core
 
+## 3.11.1
+
+### Patch Changes
+
+-   Fix create prototype template selection and add post-creation navigation links
+
+    -   Fixed template not being applied when creating a prototype (payload field mismatch + config directory typo)
+    -   All create forms (prototype, page, flow) now show a success notification with a link to the newly created asset
+
 ## 3.11.0
 
 ### Minor Changes

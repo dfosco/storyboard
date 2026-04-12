@@ -39,6 +39,15 @@ export default function MarkdownBlock({ props, onUpdate }) {
     onUpdate?.({ content: e.target.value })
   }, [onUpdate])
 
+  const handleReadOnlyCopy = useCallback((e) => {
+    if (canEdit) return
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.clipboardData?.setData) {
+      e.clipboardData.setData('text/plain', content || '')
+    }
+  }, [canEdit, content])
+
   useEffect(() => {
     if (editingActive) {
       // Capture the preview height before switching to editor
@@ -81,6 +90,8 @@ export default function MarkdownBlock({ props, onUpdate }) {
             className={styles.preview}
             style={!canEdit ? { cursor: 'default' } : undefined}
             data-canvas-allow-text-selection={!canEdit ? '' : undefined}
+            onClick={!canEdit ? (e) => e.stopPropagation() : undefined}
+            onCopy={!canEdit ? handleReadOnlyCopy : undefined}
             onDoubleClick={canEdit ? () => setEditing(true) : undefined}
             role={canEdit ? 'button' : undefined}
             tabIndex={canEdit ? 0 : undefined}

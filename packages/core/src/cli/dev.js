@@ -94,19 +94,21 @@ async function main() {
         p.log.warning('Proxy not running — run `npx storyboard setup` for clean URLs')
       }
       p.outro(`Ready${ms ? ` in ${ms}ms` : ''} — press h + enter for help`)
+
+      // After ready, pipe stdout directly so Vite keyboard shortcuts work
+      child.stdout.pipe(process.stdout)
+      child.stderr.pipe(process.stderr)
       return
     }
 
-    // Pass through HMR updates and errors
-    if (ready) {
-      const trimmed = text.trim()
-      if (trimmed) process.stdout.write(text)
-    }
+    // Before ready, pass through other output (shouldn't happen but just in case)
+    if (!ready) return
   })
 
   child.stderr.on('data', (data) => {
+    if (ready) return // piped directly after ready
     const text = data.toString()
-    // Suppress svelte config noise from stderr too
+    // Suppress svelte config noise from stderr during startup
     if (text.includes('[vite-plugin-svelte]') && text.includes('no Svelte config')) return
     if (text.includes('[generouted]')) return
     process.stderr.write(data)

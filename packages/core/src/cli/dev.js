@@ -60,14 +60,7 @@ async function main() {
   child.stdout.on('data', (data) => {
     const text = data.toString()
 
-    // Suppress noisy Vite lines
-    if (text.includes('[vite-plugin-svelte]') && text.includes('no Svelte config')) return
-    if (text.includes('Port') && text.includes('is in use')) return
-    if (text.includes('Forced re-optimization')) return
-    if (text.includes('➜  Local:') || text.includes('➜  Network:')) return
-    if (text.includes('press h + enter')) return
-
-    // Detect Vite ready and show clean URL
+    // Detect Vite's actual listening port BEFORE filtering
     const portMatch = text.match(/localhost:(\d+)/)
     if (portMatch && !caddyUpdated) {
       const actualPort = Number(portMatch[1])
@@ -81,6 +74,13 @@ async function main() {
         // Caddy not available
       }
     }
+
+    // Suppress noisy Vite lines
+    if (text.includes('[vite-plugin-svelte]') && text.includes('no Svelte config')) return
+    if (text.includes('Port') && text.includes('is in use')) return
+    if (text.includes('Forced re-optimization')) return
+    if (text.includes('➜  Local:') || text.includes('➜  Network:')) return
+    if (text.includes('press h + enter')) return
 
     if (text.includes('ready in') && !ready) {
       ready = true

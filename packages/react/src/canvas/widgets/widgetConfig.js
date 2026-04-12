@@ -37,6 +37,10 @@ function resolveFeature(feature) {
         for (const [k, v] of Object.entries(item)) r[k] = resolveVar(v)
         return r
       })
+    } else if (key === 'alt' && val && typeof val === 'object') {
+      const r = {}
+      for (const [k, v] of Object.entries(val)) r[k] = resolveVar(v)
+      resolved[key] = r
     } else {
       resolved[key] = resolveVar(val)
     }

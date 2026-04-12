@@ -5,7 +5,8 @@
   "license": "MIT",
   "bin": {
     "storyboard-scaffold": "./src/scaffold.js",
-    "storyboard-dev": "./src/worktree/dev-server.js"
+    "storyboard": "./src/cli/index.js",
+    "sb": "./src/cli/index.js"
   },
   "repository": {
     "type": "git",

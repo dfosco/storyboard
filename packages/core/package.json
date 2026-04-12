@@ -51,6 +51,7 @@
     "./worktree/port": "./src/worktree/port.js"
   },
   "dependencies": {
+    "@clack/prompts": "^1.2.0",
     "@primer/octicons": "^19.22.0",
     "feather-icons": "^4.29.2",
     "iconoir": "^7.11.0",

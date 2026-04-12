@@ -2,11 +2,11 @@ import { Children } from 'react';
 import Draggable from './Draggable';
 import { findDragId, generateDragId } from './utils';
 
-function readInitialPosition(child) {
+function readInitialPosition(child, pad = 0) {
   const x = Number(child?.props?.['data-tc-x']);
   const y = Number(child?.props?.['data-tc-y']);
   if (Number.isFinite(x) && Number.isFinite(y)) {
-    return { x: Math.max(0, x), y: Math.max(0, y) };
+    return { x: Math.max(pad, x), y: Math.max(pad, y) };
   }
   return null;
 }
@@ -24,12 +24,14 @@ function Canvas({
   snapGrid,
   colorMode = 'auto',
   locked = false,
+  boundaryPad,
   onDragStart,
   onDrag,
   onDragEnd,
 }) {
   const showDots = dotted || grid;
   const visualGridSize = gridSize;
+  const pad = boundaryPad ?? gridSize ?? 0;
   const dotRadius = visualGridSize && visualGridSize < 16 ? 1 : 2;
   const canvasStyle = visualGridSize
     ? {
@@ -48,7 +50,7 @@ function Canvas({
     >
       {Children.map(children, (child, index) => {
         const dragId = findDragId(child) ?? generateDragId(child, index);
-        const initialPosition = readInitialPosition(child);
+        const initialPosition = readInitialPosition(child, pad);
         const handle = readHandle(child);
         return (
           <Draggable
@@ -62,6 +64,7 @@ function Canvas({
             onDragEnd={onDragEnd}
             handle={handle}
             locked={locked}
+            boundaryPad={pad}
           >
             {child}
           </Draggable>

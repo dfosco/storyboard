@@ -5,7 +5,7 @@
 
 ## Storyboard System
 
-The storyboard system is the core engine of this prototyping app, split into two npm packages: `@dfosco/storyboard-core` (framework-agnostic JavaScript) and `@dfosco/storyboard-react` (React bindings). The core package has zero npm dependencies and can be used by any frontend framework.
+This monorepo currently publishes five npm packages: `@dfosco/storyboard-core`, `@dfosco/storyboard-react`, `@dfosco/storyboard-react-primer`, `@dfosco/storyboard-react-reshaped`, and `@dfosco/tiny-canvas`. The runtime architecture is centered on the core + React pair (`@dfosco/storyboard-core` provides framework-agnostic state/loader/runtime primitives, and `@dfosco/storyboard-react` provides React integration), while the Primer/Reshaped adapters and tiny-canvas package extend UI and canvas capabilities.
 
 Data flows through a pipeline: the Vite data plugin ([`data-plugin.js`](./packages/react/src/vite/data-plugin.js.md)) discovers `.flow.json`, `.object.json`, `.record.json`, `.canvas.jsonl`, and `.prototype.json` files at build time, pre-parses them, and generates a virtual module that seeds the data index via [`loader.js`](./packages/core/src/loader.js.md). The loader resolves `$ref` and `$global` references, supports prototype-scoped name resolution with folder awareness, and returns deep clones to prevent mutation. On the React side, [`StoryboardProvider`](./packages/react/src/context.jsx.md) loads flow data into React context, automatically matching flows to routes (including canvas routes) and supporting prototype scoping.
 
@@ -105,4 +105,3 @@ Build and project configuration files. The Vite config is notably complex due to
 ## Pages
 
 - [`src/pages/index.jsx`](./src/pages/index.jsx.md) — Home page
-

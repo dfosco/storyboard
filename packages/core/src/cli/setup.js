@@ -18,18 +18,16 @@ const bold = (s) => `\x1b[1m${s}\x1b[0m`
 const yellow = (s) => `\x1b[33m${s}\x1b[0m`
 
 function mascot() {
-  const dot = dim('·')
-  const face = magenta
-  const lines = [
-    `  ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}`,
-    `    ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}  `,
-    `  ${dot}   ${face('(')} ${face(')')}   ${dot}   ${face('(')} ${face(')')}   ${dot}   ${dot}`,
-    `    ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}  `,
-    `  ${dot}   ${dot} ${face('\\___/')} ${dot}   ${dot}   ${dot}   ${dot}`,
-    `    ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}  `,
-    `  ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}   ${dot}`,
-  ]
-  return lines.join('\n')
+  const d = dim('·')
+  const f = magenta
+  const border = dim
+  return [
+    `      ${border('╭───────────────────╮')}`,
+    `      ${border('│')} ${d} ${d} ${d} ${d} ${d} ${d} ${d} ${border('│')}`,
+    `      ${border('│')} ${d} ${f('◠')}  ${f('◡')}  ${f('◠')} ${d} ${border('│')}`,
+    `      ${border('│')} ${d} ${d} ${d} ${d} ${d} ${d} ${d} ${border('│')}`,
+    `      ${border('╰───────────────────╯')}`,
+  ].join('\n')
 }
 
 function run(cmd, opts = {}) {

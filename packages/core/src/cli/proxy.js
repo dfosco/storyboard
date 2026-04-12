@@ -91,29 +91,32 @@ export function startCaddy(caddyfilePath) {
   }
 }
 
-// When run as a command
-const caddyfilePath = generateCaddyfile()
-console.log(`[storyboard] Caddyfile written to ${caddyfilePath}`)
+// When run directly as `storyboard proxy` (not imported by setup.js)
+const isDirectRun = process.argv[2] === 'proxy'
+if (isDirectRun) {
+  const caddyfilePath = generateCaddyfile()
+  console.log(`[storyboard] Caddyfile written to ${caddyfilePath}`)
 
-if (!isCaddyInstalled()) {
-  console.error('[storyboard] Caddy is not installed. Run: brew install caddy')
-  process.exit(1)
-}
-
-if (isCaddyRunning()) {
-  console.log('[storyboard] Reloading Caddy...')
-  if (reloadCaddy(caddyfilePath)) {
-    console.log(`[storyboard] Proxy ready at http://${DOMAIN}/`)
-  } else {
-    console.error('[storyboard] Failed to reload Caddy')
+  if (!isCaddyInstalled()) {
+    console.error('[storyboard] Caddy is not installed. Run: brew install caddy')
     process.exit(1)
   }
-} else {
-  console.log('[storyboard] Starting Caddy (requires sudo for port 80)...')
-  if (startCaddy(caddyfilePath)) {
-    console.log(`[storyboard] Proxy ready at http://${DOMAIN}/`)
+
+  if (isCaddyRunning()) {
+    console.log('[storyboard] Reloading Caddy...')
+    if (reloadCaddy(caddyfilePath)) {
+      console.log(`[storyboard] Proxy ready at http://${DOMAIN}/`)
+    } else {
+      console.error('[storyboard] Failed to reload Caddy')
+      process.exit(1)
+    }
   } else {
-    console.error('[storyboard] Failed to start Caddy')
-    process.exit(1)
+    console.log('[storyboard] Starting Caddy (requires sudo for port 80)...')
+    if (startCaddy(caddyfilePath)) {
+      console.log(`[storyboard] Proxy ready at http://${DOMAIN}/`)
+    } else {
+      console.error('[storyboard] Failed to start Caddy')
+      process.exit(1)
+    }
   }
 }

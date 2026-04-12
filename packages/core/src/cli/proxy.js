@@ -97,29 +97,33 @@ export function startCaddy(caddyfilePath) {
 // When run directly as `storyboard proxy` (not imported by setup.js)
 const isDirectRun = process.argv[2] === 'proxy'
 if (isDirectRun) {
+  const { intro, outro, log, spinner } = await import('@clack/prompts')
+  intro('storyboard proxy')
+
   const caddyfilePath = generateCaddyfile()
-  console.log(`[storyboard] Caddyfile written to ${caddyfilePath}`)
 
   if (!isCaddyInstalled()) {
-    console.error('[storyboard] Caddy is not installed. Run: brew install caddy')
+    log.error('Caddy is not installed. Run: brew install caddy')
     process.exit(1)
   }
 
+  const s = spinner()
   if (isCaddyRunning()) {
-    console.log('[storyboard] Reloading Caddy...')
+    s.start('Reloading proxy...')
     if (reloadCaddy(caddyfilePath)) {
-      console.log(`[storyboard] Proxy ready at http://${DOMAIN}/`)
+      s.stop('Proxy reloaded')
     } else {
-      console.error('[storyboard] Failed to reload Caddy')
+      s.stop('Failed to reload')
       process.exit(1)
     }
   } else {
-    console.log('[storyboard] Starting Caddy (requires sudo for port 80)...')
+    s.start('Starting proxy (requires sudo for port 80)...')
     if (startCaddy(caddyfilePath)) {
-      console.log(`[storyboard] Proxy ready at http://${DOMAIN}/`)
+      s.stop('Proxy started')
     } else {
-      console.error('[storyboard] Failed to start Caddy')
+      s.stop('Failed to start')
       process.exit(1)
     }
   }
+  outro(`Proxy ready at http://${DOMAIN}/`)
 }

@@ -6,6 +6,7 @@
  *   storyboard update:flag debug-mode true
  */
 
+import * as p from '@clack/prompts'
 import { readFileSync, writeFileSync } from 'fs'
 import { resolve } from 'path'
 
@@ -13,8 +14,9 @@ const key = process.argv[3]
 const rawValue = process.argv[4]
 
 if (!key || rawValue === undefined) {
-  console.error('Usage: storyboard update:flag <key> <value>')
-  console.error('Example: storyboard update:flag show-banner false')
+  p.intro('storyboard update:flag')
+  p.log.error('Usage: storyboard update:flag <key> <value>')
+  p.outro('Example: npx storyboard update:flag show-banner false')
   process.exit(1)
 }
 
@@ -31,7 +33,7 @@ let config
 try {
   config = JSON.parse(readFileSync(configPath, 'utf8'))
 } catch (err) {
-  console.error(`Failed to read storyboard.config.json: ${err.message}`)
+  p.log.error(`Failed to read storyboard.config.json: ${err.message}`)
   process.exit(1)
 }
 
@@ -40,4 +42,4 @@ const prev = config.featureFlags[key]
 config.featureFlags[key] = value
 
 writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n')
-console.log(`[storyboard] featureFlags.${key}: ${JSON.stringify(prev)} → ${JSON.stringify(value)}`)
+p.log.success(`featureFlags.${key}: ${JSON.stringify(prev)} → ${JSON.stringify(value)}`)

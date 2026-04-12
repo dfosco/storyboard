@@ -15,7 +15,7 @@ const DRAG_DELAY_MS = 150;
  *  broken for positioned elements). */
 const DRAG_DISTANCE_PX = 8;
 
-function Draggable({ children, dragId, initialPosition, onDragStart: onDragStartProp, onDrag: onDragProp, onDragEnd, handle, snapGrid, locked = false }) {
+function Draggable({ children, dragId, initialPosition, onDragStart: onDragStartProp, onDrag: onDragProp, onDragEnd, handle, snapGrid, locked = false, boundaryPad = 0 }) {
   const draggableRef = useRef(null);
   const initialSavedPosition = initialPosition || { x: 0, y: 0 };
   const dragStartRef = useRef(initialSavedPosition);
@@ -172,8 +172,8 @@ function Draggable({ children, dragId, initialPosition, onDragStart: onDragStart
     // negative position — avoids the one-frame flicker that happens
     // when clamping only in onDrag (React re-render lag).
     transform: ({ offsetX, offsetY }) => {
-      const x = Math.max(0, offsetX)
-      const y = Math.max(0, offsetY)
+      const x = Math.max(boundaryPad, offsetX)
+      const y = Math.max(boundaryPad, offsetY)
       return `translate3d(${x}px, ${y}px, 0)`
     },
     onDragStart: () => {
@@ -188,13 +188,13 @@ function Draggable({ children, dragId, initialPosition, onDragStart: onDragStart
       if (!hasMovedRef.current && distance >= PERSIST_DEADZONE_PX) {
         hasMovedRef.current = true;
       }
-      const clamped = { x: Math.max(0, offsetX), y: Math.max(0, offsetY) };
+      const clamped = { x: Math.max(boundaryPad, offsetX), y: Math.max(boundaryPad, offsetY) };
       setPosition(clamped);
       onDragProp?.(dragId, clamped);
     },
     onDragEnd: (data) => {
-      const clampedX = Math.max(0, data.offsetX);
-      const clampedY = Math.max(0, data.offsetY);
+      const clampedX = Math.max(boundaryPad, data.offsetX);
+      const clampedY = Math.max(boundaryPad, data.offsetY);
       setPosition({ x: clampedX, y: clampedY });
       const dx = clampedX - dragStartRef.current.x;
       const dy = clampedY - dragStartRef.current.y;

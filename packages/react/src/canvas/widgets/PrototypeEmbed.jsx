@@ -64,6 +64,8 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
 
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''
+    // External URLs are embedded as-is — storyboard query params only apply to local prototypes
+    if (/^https?:\/\//.test(rawSrc)) return rawSrc
     const hashIdx = rawSrc.indexOf('#')
     const base = hashIdx >= 0 ? rawSrc.slice(0, hashIdx) : rawSrc
     const hash = hashIdx >= 0 ? rawSrc.slice(hashIdx) : ''

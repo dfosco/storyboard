@@ -10,27 +10,38 @@ Storyboard is a design tool for prototyping that runs entirely on GitHub. It bun
 3. An interactive canvas where you can add components, prototypes, Figma files, and more
 4. The *viewfinder*, a homepage for every prototype created by your team.
 
-Storyboard is free and open-source, and can be deployed internally for your team by forking the example repository and turning on GitHub Pages.
+Storyboard is free and open-source, and can be deployed by forking the example repository and enabling GitHub Pages.
 
 <!-- lots of medias -->
 
-### Getting Started
+## Getting Started
 
-Storyboard is a static Svelte + React application that only requires GitHub Pages to be deployed. It can also be easily deployed on other hosts like Vercel and Netlify, but GH Pages has the benefit of authentication being tied to your repository.
+Storyboard is a static React application that only requires GitHub Pages to be deployed. It can also be easily deployed on other hosts like Vercel and Netlify, but GH Pages has the benefit of authentication being tied to your repository.
 
-1. Fork the example repository inside your GitHub organization
+To get started:
+
+1. Fork the example repository
 2. Enable GitHub Pages deployment (or set your external host)
-3. Add your team as collaborators on the repository so they can see the GitHub Pages
+3. Add your team as collaborators on the repository so they can see the GitHub Pages deployment (in case you set it to private)
 
 That's it! You can now start creating and pushing prototypes.
 
-### Creating prototypes
+### Local setup
 
-Start by cloning the repository locally, when run `npm install` and `npm run dev` to start building. This will start your storyboard instance on `http://localhost:1234`
+Clone your fork of Storyboard, then:
 
-Every prototype is a folder in the `/src/prototypes` directory. To create a new prototype, you can do it in two different ways:
+```bash
+npm install
+npm run dev
+```
 
-- On the UI, go to the Create tool and choose `Create Prototype`. It will provide you with a set of options and create the right folder and files to start prototype.
+This will start your storyboard instance on `http://localhost:1234`. That's it! You can now start creating and pushing prototypes.
+
+## Creating prototypes
+
+Every prototype is a sub-folder in the `/src/prototypes` folder. To create a new prototype, you can do it in two different ways:
+
+- On the UI, click  the `Create tool` and choose `Create Prototype`. It will provide you with a set of options and create the right folder and files to start your prototype.
 
 <!-- media -->
 
@@ -38,7 +49,59 @@ Every prototype is a folder in the `/src/prototypes` directory. To create a new 
 
 <!-- media -->
 
+If you want to create one yourself by hand, try out this small example:
+
+
+```text
+src/prototypes/MyProfile/
+  my-profile.prototype.json
+  default.flow.json
+  index.jsx
+```
+
+```json
+// my-profile.prototype.json
+{
+  "meta": {
+    "title": "My Profile",
+    "description": "Simple profile prototype",
+    "author": ["your-name"]
+  }
+}
+```
+
+```json
+// default.flow.json
+{
+  "user": {
+    "name": "Jane Doe",
+    "bio": "Designer & developer",
+    "avatar": "https://avatars.githubusercontent.com/u/1?v=4"
+  }
+}
+```
+
+```jsx
+// index.jsx
+import { Avatar, Heading, Text } from '@primer/react'
+import { useFlowData } from '@dfosco/storyboard-react'
+
+export default function MyProfilePage() {
+  const user = useFlowData('user')
+
+  return (
+    <main>
+      <Avatar src={user?.avatar} size={64} />
+      <Heading as="h1">{user?.name ?? 'Unknown user'}</Heading>
+      <Text>{user?.bio ?? 'No bio yet'}</Text>
+    </main>
+  )
+}
+```
+
 Storyboard only runs React prototypes at the moment. Open a discussion if you'd like to see other frontend frameworks supported.
+
+
 
 #### Live editing 
 

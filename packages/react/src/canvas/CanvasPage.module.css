@@ -92,6 +92,12 @@
   background: var(--bgColor-default, #ffffff);
 }
 
+.canvasTitleStatic {
+  composes: canvasTitleInput;
+  cursor: default;
+  pointer-events: none;
+}
+
 /* Remove tiny-canvas wrapper clipping — widgets handle their own overflow/radius */
 :global(.tc-draggable-inner) {
   overflow: visible;

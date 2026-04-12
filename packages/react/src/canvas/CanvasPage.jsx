@@ -1423,7 +1423,7 @@ export default function CanvasPage({ name }) {
               aria-label="Canvas title"
             />
           ) : (
-            <h1 className={styles.canvasTitleInput}>{canvasTitle}</h1>
+            <h1 className={styles.canvasTitleStatic}>{canvasTitle}</h1>
           )}
         </div>
         {isLocalDev && (

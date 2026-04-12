@@ -20,7 +20,7 @@ Gate the 4.0.0 cut with automated, agent-browser, and manual verification before
 | Multi-page canvas (`t05`) | path IDs, basename collision prevention, selector deep-link persistence |
 | Story widgets (`t06`) | discovery/indexing, render selection, compatibility fallback |
 | Command palette (`t07`) | ranking determinism, keyboard navigation, provider filtering |
-| Widget escape modes (PR #83 carryover) | document-level Escape behavior, active/inactive lifecycle, cleanup, sticky/markdown/component/prototype mode exit behavior |
+| Widget mode system | document-level Escape behavior, active/inactive lifecycle, cleanup, sticky/markdown/component/prototype mode exit behavior |
 | Regression baseline | multiselect move/delete, comments auth/graphql, data-plugin watcher/HMR |
 
 ## Agent-browser scenarios

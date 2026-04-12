@@ -276,7 +276,7 @@ function ChromeWrappedWidget({
  */
 export default function CanvasPage({ name }) {
   const { canvas, jsxExports, loading } = useCanvas(name)
-  const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
+  const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true && !new URLSearchParams(window.location.search).has('prodMode')
 
   // Local mutable copy of widgets for instant UI updates
   const [localWidgets, setLocalWidgets] = useState(canvas?.widgets ?? null)

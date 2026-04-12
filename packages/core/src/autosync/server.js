@@ -2,7 +2,7 @@
  * Autosync Server — automatic commit + push watcher.
  *
  * Dev-server middleware that provides git automation:
-  * - List branches (excluding main/master)
+ * - List branches (excluding main/master)
  * - Enable/disable autosync with branch switching
  * - Push watcher: every 30s commits scoped changes, pulls --rebase, and pushes
  *

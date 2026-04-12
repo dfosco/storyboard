@@ -26,6 +26,11 @@
       "mode": "updateable"
     },
     {
+      "source": "scaffold/scripts/setup.js",
+      "target": "scripts/setup.js",
+      "mode": "updateable"
+    },
+    {
       "source": "scaffold/skills/",
       "target": ".github/skills/",
       "mode": "updateable",

@@ -8,8 +8,7 @@
  *         URL: http://storyboard.localhost/<branchname>/storyboard/
  */
 
-import { spawn, execSync } from 'child_process'
-import { createServer } from 'net'
+import { spawn } from 'child_process'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { detectWorktreeName, getPort } from '../worktree/port.js'
@@ -25,48 +24,17 @@ function readRepoName() {
   }
 }
 
-/** Check if a port is available by trying to bind it briefly. */
-function isPortFree(port) {
-  return new Promise((resolve) => {
-    const server = createServer()
-    server.once('error', () => resolve(false))
-    server.once('listening', () => { server.close(); resolve(true) })
-    server.listen(port, '127.0.0.1')
-  })
-}
-
 async function main() {
   const worktreeName = detectWorktreeName()
-  let port = getPort(worktreeName)
+  const port = getPort(worktreeName)
   const repoName = readRepoName()
   const isMain = worktreeName === 'main'
-
-  // Ensure assigned port is actually free — if not, find next available
-  if (!(await isPortFree(port))) {
-    const originalPort = port
-    while (!(await isPortFree(port))) port++
-    console.log(`[storyboard] port ${originalPort} in use, using ${port}`)
-  }
 
   const basePath = isMain
     ? `/${repoName}/`
     : `/${worktreeName}/${repoName}/`
 
   const proxyUrl = `http://storyboard.localhost${basePath}`
-
-  // Update Caddyfile with correct port and reload if running
-  try {
-    const caddyfilePath = generateCaddyfile({ [worktreeName]: port })
-    if (isCaddyRunning()) {
-      reloadCaddy(caddyfilePath)
-    }
-  } catch {
-    // Caddy not available — that's fine, direct URL still works
-  }
-
-  console.log()
-  console.log(`  ➜  ${proxyUrl}`)
-  console.log()
 
   // Parse --port override from argv (skip 'dev' subcommand)
   const args = process.argv.slice(3)
@@ -79,9 +47,44 @@ async function main() {
     return true
   })
 
-  const child = spawn('npx', ['vite', '--port', String(overridePort || port), '--strictPort', ...extraArgs], {
-    stdio: 'inherit',
+  // Start Vite — let it find a free port if assigned one is busy.
+  // We capture stdout to detect the actual port and update Caddy.
+  const child = spawn('npx', ['vite', '--port', String(overridePort || port), ...extraArgs], {
     env: { ...process.env, VITE_BASE_PATH: basePath },
+    stdio: ['inherit', 'pipe', 'inherit'],
+  })
+
+  let caddyUpdated = false
+
+  child.stdout.on('data', (data) => {
+    const line = data.toString()
+
+    // Suppress noisy Vite lines
+    if (line.includes('[vite-plugin-svelte]') && line.includes('no Svelte config')) return
+    if (line.includes('Port') && line.includes('is in use')) return
+    if (line.includes('Forced re-optimization')) return
+
+    // Detect Vite's actual listening port and update Caddy
+    const portMatch = line.match(/localhost:(\d+)/)
+    if (portMatch && !caddyUpdated) {
+      const actualPort = Number(portMatch[1])
+      caddyUpdated = true
+      try {
+        const caddyfilePath = generateCaddyfile({ [worktreeName]: actualPort })
+        if (isCaddyRunning()) {
+          reloadCaddy(caddyfilePath)
+        }
+      } catch {
+        // Caddy not available — direct URL still works
+      }
+      // Print the clean proxy URL instead of Vite's default
+      process.stdout.write(`\n  ➜  ${proxyUrl}\n`)
+    }
+
+    // Pass through other Vite output (HMR updates, errors, etc.)
+    // but skip the default Local/Network lines since we print our own URL
+    if (line.includes('➜  Local:') || line.includes('➜  Network:')) return
+    process.stdout.write(data)
   })
 
   child.on('exit', (code) => {

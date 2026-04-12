@@ -102,7 +102,7 @@ if (isCaddyInstalled()) {
     startCaddy(caddyfilePath)
   }
   console.log()
-  console.log('✅ Setup complete! Run `storyboard dev` to start developing.')
+  console.log('✅ Setup complete! Run `npx storyboard dev` to start developing.')
   console.log('   URL: http://storyboard.localhost/storyboard/')
 } else {
   console.log()

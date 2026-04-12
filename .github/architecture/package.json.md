@@ -15,13 +15,17 @@ Root package manifest for the storyboard monorepo. Defines the workspace structu
 ## Composition
 
 **Scripts:**
-- `dev` / `build` / `preview` — Vite commands
+- `dev` — Runs `storyboard dev` (CLI-based dev server with auto-port assignment and Caddy proxy)
+- `dev:vite` — Runs Vite directly (bypasses CLI)
+- `build` / `preview` — Vite build and preview
+- `setup` — One-time environment setup (deps, Caddy, gh CLI)
 - `lint` — ESLint + import checker (`check:imports` in storyboard-core)
 - `test` / `test:watch` / `test:core` / `test:react` / `test:svelte` — Vitest (per-package and Svelte UI)
 - `changeset` / `version` / `tag` — Changesets versioning
 - `release` / `release:beta` / `release:alpha` / `release:resume` / `release:resume:beta` / `release:resume:alpha` — Release scripts (stable, prerelease, and resume variants)
 - `build:ui` / `dev:ui` — Delegated to `@dfosco/storyboard-core` workspace for UI bundle builds
 - `link` / `unlink` — Build UI, link workspace packages, and start dev server (for consumer repo development)
+- `hotel:add` — Regenerate Caddy proxy config (`storyboard proxy`)
 - `prepare` — Sets git hooks path to `.githooks`
 
 **Key dependencies:**

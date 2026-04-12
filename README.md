@@ -31,11 +31,35 @@ That's it! You can now start creating and pushing prototypes.
 Clone your fork of Storyboard, then:
 
 ```bash
-npm install
-npm run dev
+npm run setup
 ```
 
-This will start your storyboard instance on `http://localhost:1234`. That's it! You can now start creating and pushing prototypes.
+This will install dependencies, set up the [Caddy](https://caddyserver.com/) reverse proxy, and check for the GitHub CLI. After setup, start the dev server:
+
+```bash
+npx storyboard dev
+```
+
+Your storyboard instance will be available at `http://storyboard.localhost/storyboard/`.
+
+When working in a [git worktree](https://git-scm.com/docs/git-worktree), each worktree gets its own URL:
+
+```bash
+cd .worktrees/my-feature
+npx storyboard dev
+# → http://storyboard.localhost/branch--my-feature/storyboard/
+```
+
+#### Storyboard CLI
+
+The `storyboard` CLI (alias: `sb`) wraps all dev tooling. Run via `npx`:
+
+| Command | Description |
+|---------|-------------|
+| `npx storyboard dev` | Start Vite dev server + update proxy |
+| `npx storyboard setup` | Install deps, Caddy, start proxy |
+| `npx storyboard proxy` | Regenerate proxy config + reload |
+| `npx storyboard update:flag <key> <value>` | Update a feature flag |
 
 ## Creating prototypes
 

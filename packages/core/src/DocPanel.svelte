@@ -24,6 +24,9 @@
     repoInfo ? `https://github.com/${repoInfo.owner}/${repoInfo.name}` : null
   )
 
+  const _basePath = (typeof window !== 'undefined' && window.__STORYBOARD_BASE_PATH__) || '/'
+  const _apiBase = _basePath.replace(/\/$/, '')
+
   // ── Effects ───────────────────────────────────────────────────
 
   onMount(() => {
@@ -37,7 +40,7 @@
     readmeLoading = true
     readmeError = ''
     try {
-      const res = await fetch('/_storyboard/docs/readme')
+      const res = await fetch(`${_apiBase}/_storyboard/docs/readme`)
       if (!res.ok) throw new Error(`${res.status}`)
       const data = await res.json()
       readmeHtml = marked.parse(data.content ?? '')
@@ -50,7 +53,7 @@
 
   async function fetchRepoInfo() {
     try {
-      const res = await fetch('/_storyboard/docs/repo')
+      const res = await fetch(`${_apiBase}/_storyboard/docs/repo`)
       if (res.ok) repoInfo = await res.json()
     } catch {}
   }

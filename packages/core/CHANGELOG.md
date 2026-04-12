@@ -1,5 +1,14 @@
 # @dfosco/storyboard-core
 
+## 3.11.2
+
+### Patch Changes
+
+-   Canvas: persist snap-to-grid & zoom-to-fit on load
+
+    -   Snap-to-grid setting now persists across refresh (was lost because server data sync missed snap state)
+    -   Canvas loads with zoom-to-fit when no `?widget=` deep link, so all objects are visible by default
+
 ## 3.11.1
 
 ### Patch Changes

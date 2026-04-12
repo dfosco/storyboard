@@ -509,8 +509,6 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
   }
   for (const [route, flows] of Object.entries(routeGroups)) {
     if (flows.length > 1) {
-      const labels = flows.map(f => `  - ${f.name}${f.isDefault ? ' (default)' : ''}`).join('\n')
-      console.log(`[storyboard-data] Route "${route}" has ${flows.length} flows:\n${labels}`)
       const defaults = flows.filter(f => f.isDefault)
       if (defaults.length > 1) {
         console.warn(

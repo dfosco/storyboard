@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Tooltip } from '@primer/react'
 import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed } from '@primer/octicons-react'
 import styles from './WidgetChrome.module.css'
@@ -131,11 +131,44 @@ const ICON_REGISTRY = {
 const DANGER_ACTIONS = new Set(['delete'])
 
 /**
+ * useAltKey — tracks whether the Alt/Option key is currently held.
+ * Uses useSyncExternalStore for tear-free reads across concurrent renders.
+ */
+let altKeyHeld = false
+const altKeyListeners = new Set()
+function notifyAltKeyListeners() {
+  for (const cb of altKeyListeners) cb()
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Alt' && !altKeyHeld) { altKeyHeld = true; notifyAltKeyListeners() }
+  })
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'Alt' && altKeyHeld) { altKeyHeld = false; notifyAltKeyListeners() }
+  })
+  window.addEventListener('blur', () => {
+    if (altKeyHeld) { altKeyHeld = false; notifyAltKeyListeners() }
+  })
+}
+
+function subscribeAltKey(cb) {
+  altKeyListeners.add(cb)
+  return () => altKeyListeners.delete(cb)
+}
+function getAltKeySnapshot() { return altKeyHeld }
+
+function useAltKey() {
+  return useSyncExternalStore(subscribeAltKey, getAltKeySnapshot, () => false)
+}
+
+/**
  * Overflow menu — `...` button that opens a dropdown with menu-only actions.
  */
 function WidgetOverflowMenu({ widgetId, menuFeatures, onAction }) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef(null)
+  const altHeld = useAltKey()
 
   useEffect(() => {
     if (!open) return
@@ -148,17 +181,21 @@ function WidgetOverflowMenu({ widgetId, menuFeatures, onAction }) {
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [open])
 
-  const handleItemClick = useCallback((action, e) => {
+  const handleItemClick = useCallback((feature, e) => {
     e.stopPropagation()
+    const action = (altHeld && feature.alt) ? feature.alt.action : feature.action
     if (action === 'copy-link') {
       const url = new URL(window.location.href)
       url.searchParams.set('widget', widgetId)
       navigator.clipboard.writeText(url.toString()).catch(() => {})
+    } else if (action === 'copy-widget-id') {
+      const canvasName = window.location.pathname.split('/').filter(Boolean).pop() || ''
+      navigator.clipboard.writeText(`${canvasName}/${widgetId}`).catch(() => {})
     } else {
       onAction?.(action)
     }
     setOpen(false)
-  }, [widgetId, onAction])
+  }, [widgetId, onAction, altHeld])
 
   return (
     <div ref={menuRef} className={styles.overflowWrapper}>
@@ -176,16 +213,20 @@ function WidgetOverflowMenu({ widgetId, menuFeatures, onAction }) {
         <div className={styles.overflowMenu}>
           {menuFeatures.map((feature) => {
             const Icon = ICON_REGISTRY[feature.icon]
-            const label = feature.label || feature.action
+            const hasAlt = !!feature.alt
+            const label = (altHeld && hasAlt) ? feature.alt.label : (feature.label || feature.action)
             const isDanger = DANGER_ACTIONS.has(feature.action)
             return (
               <button
                 key={feature.id}
                 className={`${styles.overflowItem} ${isDanger ? styles.overflowItemDanger : ''}`}
-                onClick={(e) => handleItemClick(feature.action, e)}
+                onClick={(e) => handleItemClick(feature, e)}
               >
                 {Icon && <Icon />}
                 <span>{label}</span>
+                {hasAlt && (
+                  <span className={`${styles.altHint} ${altHeld ? styles.altHintActive : ''}`}>⌥ alt</span>
+                )}
               </button>
             )
           })}
@@ -202,6 +243,7 @@ function WidgetOverflowMenu({ widgetId, menuFeatures, onAction }) {
 function DropdownFeature({ feature, onAction }) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef(null)
+  const altHeld = useAltKey()
 
   useEffect(() => {
     if (!open) return
@@ -232,18 +274,24 @@ function DropdownFeature({ feature, onAction }) {
         <div className={styles.overflowMenu}>
           {(feature.items || []).map((item) => {
             const Icon = ICON_REGISTRY[item.icon]
+            const hasAlt = !!item.alt
+            const label = (altHeld && hasAlt) ? item.alt.label : (item.label || item.action)
+            const action = (altHeld && hasAlt) ? item.alt.action : item.action
             return (
               <button
                 key={item.action}
                 className={styles.overflowItem}
                 onClick={(e) => {
                   e.stopPropagation()
-                  onAction?.(item.action)
+                  onAction?.(action)
                   setOpen(false)
                 }}
               >
                 {Icon && <Icon />}
-                <span>{item.label || item.action}</span>
+                <span>{label}</span>
+                {hasAlt && (
+                  <span className={`${styles.altHint} ${altHeld ? styles.altHintActive : ''}`}>⌥ alt</span>
+                )}
               </button>
             )
           })}

@@ -358,7 +358,7 @@ describe('flow route inference', () => {
     expect(code).not.toContain('"_route"')
   })
 
-  it('logs info when multiple flows share the same route', () => {
+  it('does not log info when multiple flows share the same route', () => {
     mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Dashboard'), { recursive: true })
     writeFileSync(
       path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'happy.flow.json'),
@@ -376,7 +376,7 @@ describe('flow route inference', () => {
     const routeLog = logSpy.mock.calls.find(call =>
       typeof call[0] === 'string' && call[0].includes('Route "/Dashboard" has 2 flows')
     )
-    expect(routeLog).toBeTruthy()
+    expect(routeLog).toBeUndefined()
     logSpy.mockRestore()
   })
 

@@ -1,90 +1,123 @@
-# 00 — Named Localhost Port Bindings for Worktrees
+# 00 — Storyboard CLI + Caddy Proxy for Worktree Dev Servers
 
 **Clips:** `#g087` (step 0 — prerequisite for all other 4.0 work)
 
-**Goal:** Each worktree gets a unique, stable dev-server port. Optionally map ports to friendly local domains via hotel.
+**Goal:** Clean, memorable dev URLs for every worktree — no port numbers. A `storyboard` CLI (`sb` alias) wraps dev tooling into a single entry point.
 
-**Constraint:** Fully optional — repos work without any local proxy setup.
+**Constraint:** Works without proxy (direct port URLs), but `storyboard setup` unlocks clean URLs via Caddy.
 
-**Status:** Implemented on `copilot/explore-localhost-port-bindings` — needs merge/cherry-pick into 4.0 branch.
+**Status:** Implemented on `4.0.0` branch.
+
+---
+
+## URL Scheme
+
+| Context | URL |
+|---------|-----|
+| Main | `http://storyboard.localhost/storyboard/` |
+| Branch `4.0.0` | `http://storyboard.localhost/4.0.0/storyboard/` |
+| Direct (no proxy) | `http://localhost:<port>/storyboard/` |
+
+`VITE_BASE_PATH` stays `/storyboard/` for main. For branches, the worktree name is prepended: `/<branchname>/storyboard/`.
+
+`storyboard.localhost` resolves to 127.0.0.1 natively per RFC 6761 — no `/etc/hosts` changes needed.
 
 ---
 
 ## What Gets Built
 
-### 1. Worktree Port Registry (`packages/core/src/worktree/port.js`)
+### 1. Storyboard CLI (`packages/core/src/cli/`)
 
-A Node.js module published in `@dfosco/storyboard-core` that manages `.worktrees/ports.json` — a gitignored file mapping worktree names to unique ports.
+Published as `storyboard` and `sb` bins in `@dfosco/storyboard-core`.
+
+| Command | Description |
+|---------|-------------|
+| `storyboard dev` | Start Vite with correct `VITE_BASE_PATH`, update proxy |
+| `storyboard setup` | Install deps, Caddy, `gh` check, start proxy |
+| `storyboard proxy` | Generate Caddyfile + start/reload Caddy |
+| `storyboard update:flag <key> <value>` | Update feature flag in `storyboard.config.json` |
+
+### 2. Worktree Port Registry (`packages/core/src/worktree/port.js`)
+
+Unchanged from initial implementation. Manages `.worktrees/ports.json` mapping worktree names to unique ports.
 
 ```json
 {
   "main": 1234,
-  "security-ux": 1235,
-  "v3-11-0": 1236
+  "4.0.0": 1235,
+  "fix-bug": 1236
 }
 ```
 
-**Exports:**
-
-| Function | Description |
-|----------|-------------|
-| `portsFilePath(cwd?)` | Resolves the path to `ports.json`, searching up from cwd |
-| `detectWorktreeName()` | Uses `git rev-parse --show-toplevel` + path analysis |
-| `getPort(worktreeName)` | Returns assigned port, creating assignment if needed (starts at 1235) |
-| `resolvePort(worktreeName)` | Read-only lookup — falls back to 1234 without creating assignments |
+**Exports:** `portsFilePath()`, `detectWorktreeName()`, `getPort()`, `resolvePort()`, `slugify()`
 
 **Published as:** `@dfosco/storyboard-core/worktree/port`
 
-### 2. Smart Dev Server (`packages/core/src/worktree/dev-server.js`)
+### 3. Caddy Reverse Proxy (auto-generated Caddyfile)
 
-A bin entry (`storyboard-dev`) that auto-detects the worktree context and starts Vite on the correct port.
+`storyboard proxy` generates `.worktrees/Caddyfile` from `ports.json`:
 
-```bash
-npx storyboard-dev              # auto-detect worktree, use assigned port
-npx storyboard-dev --port 3000  # override port
-npx storyboard-dev --host       # extra args forwarded to vite
+```
+http://storyboard.localhost {
+    handle /4.0.0/* {
+        reverse_proxy localhost:1235
+    }
+    handle {
+        reverse_proxy localhost:1234
+    }
+}
 ```
 
-### 3. Root Repo Wrappers (`scripts/`)
+Caddy listens on port 80 (requires `sudo` on macOS for first start).
+Reloads without sudo via Caddy's admin API on subsequent `storyboard dev` invocations.
+
+### 4. Root Repo Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/dev-server.js` | Root `npm run dev` — delegates to core port logic |
+| `scripts/setup.js` | Root `npm run setup` — delegates to CLI setup |
 | `scripts/worktree-port.js` | CLI: prints assigned port for a worktree name |
-| `scripts/hotel-register.js` | Reads `ports.json`, registers with hotel for `*.localhost` routing |
 
-### 4. Worktree Skill Updates
+### 5. Worktree Skill Updates
 
 Both source repo and scaffold skills updated with:
 - **Step 0 — Slugify branch names:** dots/spaces/underscores → hyphens, lowercase
 - **Step 2 — Register dev-server port** after creating worktree
 
-### 5. PrototypeEmbed External URL Support
+### 6. PrototypeEmbed External URL Support
 
-External `http://` and `https://` URLs embedded as-is in PrototypeEmbed widgets. Storyboard query params only appended to local paths. Enables embedding worktree dev servers on different ports.
+External `http://` and `https://` URLs embedded as-is in PrototypeEmbed widgets. Storyboard query params only appended to local paths.
 
 ---
 
 ## User Experience
 
-### Without proxy (default)
+### First-time setup
 ```bash
-npm run dev              # main → localhost:1234
+npm run setup
+# → installs deps, Caddy, starts proxy (sudo for port 80)
+```
+
+### Starting development
+```bash
+storyboard dev           # main → http://storyboard.localhost/storyboard/
 cd .worktrees/fix-bug
-npm run dev              # → localhost:1235 (auto-assigned, stable)
+storyboard dev           # → http://storyboard.localhost/fix-bug/storyboard/
+```
+
+### Without proxy (fallback)
+```bash
+storyboard dev           # → http://localhost:1234/storyboard/ (direct)
 ```
 
 ### Client repos
 ```json
-{ "dev": "storyboard-dev" }
+{ "dev": "storyboard dev" }
 ```
 
-### With hotel (opt-in)
+### Feature flags
 ```bash
-npm i -g hotel && hotel start
-npm run hotel:add
-# → http://storyboard-main.localhost
-# → http://storyboard-fix-bug.localhost
+storyboard update:flag show-banner false
 ```
 
 ---
@@ -93,11 +126,15 @@ npm run hotel:add
 
 | File | Published |
 |------|-----------|
+| `packages/core/src/cli/index.js` | ✅ npm (bin: `storyboard`, `sb`) |
+| `packages/core/src/cli/dev.js` | ✅ npm |
+| `packages/core/src/cli/proxy.js` | ✅ npm |
+| `packages/core/src/cli/setup.js` | ✅ npm |
+| `packages/core/src/cli/updateFlag.js` | ✅ npm |
 | `packages/core/src/worktree/port.js` | ✅ npm |
-| `packages/core/src/worktree/dev-server.js` | ✅ npm (bin) |
+| `packages/core/src/worktree/port.test.js` | ❌ local |
 | `packages/core/package.json` (bin + export) | ✅ npm |
 | `packages/core/scaffold/skills/worktree/SKILL.md` | ✅ scaffold |
-| `scripts/dev-server.js` | ❌ local |
+| `scripts/setup.js` | ❌ local |
 | `scripts/worktree-port.js` | ❌ local |
-| `scripts/hotel-register.js` | ❌ local |
 | `packages/react/src/canvas/widgets/PrototypeEmbed.jsx` | ✅ npm |

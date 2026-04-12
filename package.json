@@ -6,7 +6,7 @@
         "packages/*"
     ],
     "scripts": {
-        "dev": "node scripts/dev-server.js",
+        "dev": "storyboard dev",
         "dev:vite": "vite",
         "build": "vite build",
         "lint": "eslint . && npm run check:imports -w @dfosco/storyboard-core",
@@ -30,7 +30,8 @@
         "dev:ui": "npm run dev:ui -w @dfosco/storyboard-core",
         "link": "npm run build:ui && ./scripts/link.sh && npm run dev",
         "unlink": "./scripts/unlink.sh",
-        "hotel:add": "node scripts/hotel-register.js"
+        "setup": "node scripts/setup.js",
+        "hotel:add": "storyboard proxy"
     },
     "dependencies": {
         "@generouted/react-router": "^1.19.11",

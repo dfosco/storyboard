@@ -652,6 +652,7 @@ export function createFlowsHandler(ctx) {
       sendJson(res, 201, {
         success: true,
         path: relPath,
+        route,
         files,
         ...(createdPagePath ? { createdPagePath } : {}),
       })

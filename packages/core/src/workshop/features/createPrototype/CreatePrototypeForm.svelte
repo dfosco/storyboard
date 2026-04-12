@@ -26,6 +26,7 @@
   let createFlow = $state(false)
   let isExternal = $state(false)
   let externalUrl = $state('')
+  let createdRoute: string | null = $state(null)
 
   interface Partial {
     id: string
@@ -116,7 +117,7 @@
 
   async function submit() {
     if (!canSubmit) return
-    submitting = true; error = null; success = null
+    submitting = true; error = null; success = null; createdRoute = null
     try {
       const payload: Record<string, any> = { name: kebabName, title: displayTitle, folder: folder || undefined, author: author.trim() || undefined, description: description.trim() || undefined }
       if (isExternal) {
@@ -132,11 +133,8 @@
       const data = await res.json()
       if (!res.ok) { error = data.error || 'Failed to create prototype'; return }
       success = `Created ${data.path}`
-      if (data.isExternal) {
-        // External prototype — no local route to navigate to, just close after a moment
-        setTimeout(() => onClose?.(), 1500)
-      } else {
-        setTimeout(() => { const base = document.querySelector('base')?.href || '/'; window.location.href = base + data.route.slice(1) }, 1500)
+      if (!data.isExternal && data.route) {
+        createdRoute = data.route
       }
     } catch (err: any) { error = err.message || 'Network error' } finally { submitting = false }
   }
@@ -278,7 +276,7 @@
   {/if}
 
   {#if error}<Alert.Root variant="destructive"><Alert.Description>{error}</Alert.Description></Alert.Root>{/if}
-  {#if success}<Alert.Root><Alert.Description class="text-success">{success}</Alert.Description></Alert.Root>{/if}
+  {#if success}<Alert.Root><Alert.Description class="text-success">{success}{#if createdRoute} — <a href={createdRoute} class="underline font-medium">Go to prototype</a>{/if}</Alert.Description></Alert.Root>{/if}
 </div>
 
 <Panel.Footer>

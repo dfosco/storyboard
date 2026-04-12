@@ -287,6 +287,7 @@ export default function CanvasPage({ name }) {
   const zoomRef = useRef(initialViewport?.zoom ?? 100)
   const scrollRef = useRef(null)
   const pendingScrollRestore = useRef(initialViewport)
+  const initialWidgetParam = useRef(new URLSearchParams(window.location.search).has('widget'))
   const [canvasTitle, setCanvasTitle] = useState(canvas?.title || name)
   const titleInputRef = useRef(null)
   const [localSources, setLocalSources] = useState(canvas?.sources ?? [])
@@ -395,6 +396,8 @@ export default function CanvasPage({ name }) {
     setLocalWidgets(canvas?.widgets ?? null)
     setLocalSources(canvas?.sources ?? [])
     setCanvasTitle(canvas?.title || name)
+    setSnapEnabled(canvas?.snapToGrid ?? false)
+    setSnapGridSize(canvas?.gridSize || 40)
     undoRedo.reset()
   }
 
@@ -918,6 +921,13 @@ export default function CanvasPage({ name }) {
     document.addEventListener('storyboard:canvas:zoom-to-fit', handleZoomToFit)
     return () => document.removeEventListener('storyboard:canvas:zoom-to-fit', handleZoomToFit)
   }, [localWidgets, localSources, jsxExports])
+
+  // On initial load without a ?widget= deep link, zoom to fit all objects
+  useEffect(() => {
+    if (loading || initialWidgetParam.current) return
+    initialWidgetParam.current = true // only once
+    document.dispatchEvent(new CustomEvent('storyboard:canvas:zoom-to-fit'))
+  }, [loading])
 
   // Canvas background should follow toolbar theme target.
   useEffect(() => {

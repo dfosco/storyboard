@@ -33,6 +33,7 @@
   let currentBranch = $state('')
   let selectedBranch = $state('')
   let enabled = $state(false)
+  let scope = $state<'canvas' | 'prototype'>('canvas')
   let lastSyncTime: string | null = $state(null)
   let lastError: string | null = $state(null)
   let syncing = $state(false)
@@ -40,13 +41,20 @@
 
   let statusPollInterval: ReturnType<typeof setInterval> | null = null
 
+  function isProtectedBranch(name: string): boolean {
+    const normalized = String(name || '').toLowerCase()
+    return normalized === 'main' || normalized === 'master'
+  }
+
   async function fetchBranches() {
     try {
       const res = await fetch(`${API_BASE}/branches`)
       const data = await res.json()
       branches = data.branches || []
       currentBranch = data.current || ''
-      if (!selectedBranch) selectedBranch = currentBranch
+      if (!selectedBranch || isProtectedBranch(selectedBranch) || !branches.includes(selectedBranch)) {
+        selectedBranch = branches.includes(currentBranch) ? currentBranch : (branches[0] || '')
+      }
     } catch { /* ignore */ }
   }
 
@@ -61,6 +69,7 @@
       lastError = data.lastError
       syncing = data.syncing
       if (data.targetBranch) selectedBranch = data.targetBranch
+      if (data.scope === 'prototype' || data.scope === 'canvas') scope = data.scope
 
       // Manage polling based on enabled state
       if (enabled && !statusPollInterval) startPolling()
@@ -68,37 +77,54 @@
     } catch { /* ignore */ }
   }
 
-  async function toggleAutosync(e: Event) {
+  async function enableAutosync(nextScope: 'canvas' | 'prototype', e: Event) {
     e.preventDefault()
     loading = true
     lastError = null
 
     try {
-      if (!enabled) {
-        const res = await fetch(`${API_BASE}/enable`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ branch: selectedBranch }),
-        })
-        const data = await res.json()
-        if (!res.ok) {
-          lastError = data.error || 'Failed to enable'
-        } else {
-          enabled = data.enabled !== false
-          if (data.lastError) lastError = data.lastError
-          if (data.branch) currentBranch = data.branch
-          startPolling()
-        }
+      if (!selectedBranch) {
+        lastError = 'Select a non-main branch first'
+        return
+      }
+
+      const res = await fetch(`${API_BASE}/enable`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ branch: selectedBranch, scope: nextScope }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        lastError = data.error || 'Failed to enable'
       } else {
-        const res = await fetch(`${API_BASE}/disable`, {
-          method: 'POST',
-        })
-        const data = await res.json()
-        if (res.ok) {
-          enabled = false
-          if (data.branch) currentBranch = data.branch
-          if (!menuOpen) stopPolling()
-        }
+        enabled = data.enabled !== false
+        scope = data.scope === 'prototype' ? 'prototype' : 'canvas'
+        if (data.lastError) lastError = data.lastError
+        if (data.branch) currentBranch = data.branch
+        startPolling()
+      }
+    } catch (err: any) {
+      lastError = err.message || 'Request failed'
+    } finally {
+      loading = false
+    }
+  }
+
+  async function disableAutosync(e: Event) {
+    e.preventDefault()
+    loading = true
+    lastError = null
+
+    try {
+      const res = await fetch(`${API_BASE}/disable`, {
+        method: 'POST',
+      })
+      const data = await res.json()
+      if (res.ok) {
+        enabled = false
+        if (data.scope === 'prototype' || data.scope === 'canvas') scope = data.scope
+        if (data.branch) currentBranch = data.branch
+        if (!menuOpen) stopPolling()
       }
     } catch (err: any) {
       lastError = err.message || 'Request failed'
@@ -196,11 +222,8 @@
         onchange={handleBranchChange}
         disabled={enabled || loading}
       >
-        {#if !selectedBranch && branches.length === 0}
-          <option value="" disabled selected>Select branch</option>
-        {/if}
-        {#if currentBranch && !branches.includes(currentBranch)}
-          <option value={currentBranch}>{currentBranch}</option>
+        {#if branches.length === 0}
+          <option value="" disabled selected>No non-main branches available</option>
         {/if}
         {#each branches as branch (branch)}
           <option value={branch}>{branch}</option>
@@ -210,14 +233,32 @@
 
     <DropdownMenu.Separator />
 
-    <!-- Enable toggle -->
-    <DropdownMenu.CheckboxItem
-      checked={enabled}
-      onSelect={toggleAutosync}
-      disabled={loading}
-    >
-      {enabled ? 'Autosync enabled' : 'Enable autosync'}
-    </DropdownMenu.CheckboxItem>
+    <!-- Enable options -->
+    {#if enabled}
+      <DropdownMenu.CheckboxItem
+        checked={enabled}
+        onSelect={disableAutosync}
+        disabled={loading}
+      >
+        Disable autosync
+      </DropdownMenu.CheckboxItem>
+      <p class="scopeHint">Syncing <strong>{scope}</strong> changes</p>
+    {:else}
+      <DropdownMenu.CheckboxItem
+        checked={false}
+        onSelect={(e) => enableAutosync('canvas', e)}
+        disabled={loading || !selectedBranch}
+      >
+        Enable autosync for canvas changes
+      </DropdownMenu.CheckboxItem>
+      <DropdownMenu.CheckboxItem
+        checked={false}
+        onSelect={(e) => enableAutosync('prototype', e)}
+        disabled={loading || !selectedBranch}
+      >
+        Enable autosync for prototype changes
+      </DropdownMenu.CheckboxItem>
+    {/if}
 
     <!-- Status display -->
     {#if enabled || lastError || lastSyncTime}
@@ -300,6 +341,13 @@
 
   .statusRow {
     padding: 4px 6px 2px;
+  }
+
+  .scopeHint {
+    font-size: 11px;
+    color: var(--fgColor-muted, #848d97);
+    padding: 4px 6px 2px;
+    margin: 0;
   }
 
   .statusError {

@@ -371,13 +371,29 @@ function runSyncCycle(root, scope) {
   return cycleSucceeded
 }
 
-function runRelayCycle(root) {
-  if (syncing || !hasAnyScopeEnabled()) return
-  for (const scope of getEnabledScopesInOrder()) {
+function runRelayCycle(root, scopes = getEnabledScopesInOrder()) {
+  if (syncing || scopes.length === 0) return true
+
+  let ok = true
+  let firstRelaySyncTime = null
+
+  for (const scope of scopes) {
     if (!runSyncCycle(root, scope)) {
+      ok = false
       break
     }
+
+    if (!firstRelaySyncTime && lastSyncByScope[scope]) {
+      firstRelaySyncTime = lastSyncByScope[scope]
+    }
   }
+
+  // Keep a single "last sync" timestamp for relay cycles — the first synced scope.
+  if (firstRelaySyncTime) {
+    lastSyncTime = firstRelaySyncTime
+  }
+
+  return ok
 }
 
 function startScheduler(root) {
@@ -495,12 +511,7 @@ export function createAutosyncHandler({ root, sendJson }) {
           const scope = normalizeAutosyncScope(body.scope)
           ok = runSyncCycle(root, scope)
         } else {
-          for (const scope of getEnabledScopesInOrder()) {
-            if (!runSyncCycle(root, scope)) {
-              ok = false
-              break
-            }
-          }
+          ok = runRelayCycle(root)
         }
 
         sendJson(res, ok ? 200 : 500, {

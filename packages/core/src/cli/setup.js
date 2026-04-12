@@ -20,13 +20,12 @@ const yellow = (s) => `\x1b[33m${s}\x1b[0m`
 function mascot() {
   const d = dim('·')
   const f = magenta
-  const border = dim
+  const b = dim
   return [
-    `      ${border('╭───────────────────╮')}`,
-    `      ${border('│')} ${d} ${d} ${d} ${d} ${d} ${d} ${d} ${border('│')}`,
-    `      ${border('│')} ${d} ${f('◠')}  ${f('◡')}  ${f('◠')} ${d} ${border('│')}`,
-    `      ${border('│')} ${d} ${d} ${d} ${d} ${d} ${d} ${d} ${border('│')}`,
-    `      ${border('╰───────────────────╯')}`,
+    `        ${b('╭─────────────╮')}`,
+    `        ${b('│')} ${d} ${f('◠')} ${f('◡')} ${f('◠')} ${d} ${b('│')}`,
+    `        ${b('│')} ${d} ${d} ${d} ${d} ${d} ${b('│')}`,
+    `        ${b('╰─────────────╯')}`,
   ].join('\n')
 }
 
@@ -129,11 +128,6 @@ if (isCaddyInstalled()) {
   }
 }
 
-// 6. Welcome
-console.log()
-console.log(mascot())
-console.log()
-
 p.note(
   [
     `${bold('Welcome to Storyboard!')} Here's how to get started:`,
@@ -144,8 +138,13 @@ p.note(
     '',
     `  ${dim('Using an AI assistant? Ask it to')}`,
     `  ${dim('"create a prototype"')} ${dim('or')} ${dim('"create a canvas"')} ${dim('for you!')}`,
+    '',
+    `  ${dim('Docs:')} ${cyan('https://github.com/dfosco/storyboard/blob/main/README.md')}`,
   ].join('\n'),
   'Getting started'
 )
+
+console.log()
+console.log(mascot())
 
 p.outro('Happy prototyping! 🎨')

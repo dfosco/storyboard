@@ -1,13 +1,11 @@
 /**
  * storyboard dev — Start Vite with correct base path for the current worktree.
  *
- * Main:   VITE_BASE_PATH=/storyboard/  (default, unchanged)
- *         URL: http://storyboard.localhost/storyboard/
- *
- * Branch: VITE_BASE_PATH=/<branchname>/storyboard/
- *         URL: http://storyboard.localhost/<branchname>/storyboard/
+ * Main:   http://storyboard.localhost/
+ * Branch: http://storyboard.localhost/branch--<name>/
  */
 
+import * as p from '@clack/prompts'
 import { spawn } from 'child_process'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
@@ -27,7 +25,6 @@ function readRepoName() {
 async function main() {
   const worktreeName = detectWorktreeName()
   const port = getPort(worktreeName)
-  const repoName = readRepoName()
   const isMain = worktreeName === 'main'
 
   const basePath = isMain
@@ -35,6 +32,9 @@ async function main() {
     : `/branch--${worktreeName}/`
 
   const proxyUrl = `http://storyboard.localhost${basePath}`
+  const directUrl = `http://localhost:${port}${basePath}`
+
+  p.intro('storyboard dev')
 
   // Parse --port override from argv (skip 'dev' subcommand)
   const args = process.argv.slice(3)
@@ -48,24 +48,27 @@ async function main() {
   })
 
   // Start Vite — let it find a free port if assigned one is busy.
-  // We capture stdout to detect the actual port and update Caddy.
+  // Capture stdout to detect actual port and update Caddy.
   const child = spawn('npx', ['vite', '--port', String(overridePort || port), ...extraArgs], {
     env: { ...process.env, VITE_BASE_PATH: basePath },
-    stdio: ['inherit', 'pipe', 'inherit'],
+    stdio: ['inherit', 'pipe', 'pipe'],
   })
 
   let caddyUpdated = false
+  let ready = false
 
   child.stdout.on('data', (data) => {
-    const line = data.toString()
+    const text = data.toString()
 
     // Suppress noisy Vite lines
-    if (line.includes('[vite-plugin-svelte]') && line.includes('no Svelte config')) return
-    if (line.includes('Port') && line.includes('is in use')) return
-    if (line.includes('Forced re-optimization')) return
+    if (text.includes('[vite-plugin-svelte]') && text.includes('no Svelte config')) return
+    if (text.includes('Port') && text.includes('is in use')) return
+    if (text.includes('Forced re-optimization')) return
+    if (text.includes('➜  Local:') || text.includes('➜  Network:')) return
+    if (text.includes('press h + enter')) return
 
-    // Detect Vite's actual listening port and update Caddy
-    const portMatch = line.match(/localhost:(\d+)/)
+    // Detect Vite ready and show clean URL
+    const portMatch = text.match(/localhost:(\d+)/)
     if (portMatch && !caddyUpdated) {
       const actualPort = Number(portMatch[1])
       caddyUpdated = true
@@ -75,21 +78,43 @@ async function main() {
           reloadCaddy(caddyfilePath)
         }
       } catch {
-        // Caddy not available — direct URL still works
+        // Caddy not available
       }
-      // Print the clean proxy URL instead of Vite's default
-      process.stdout.write(`\n  ➜  ${proxyUrl}\n`)
     }
 
-    // Pass through other Vite output (HMR updates, errors, etc.)
-    // but skip the default Local/Network lines since we print our own URL
-    if (line.includes('➜  Local:') || line.includes('➜  Network:')) return
-    process.stdout.write(data)
+    if (text.includes('ready in') && !ready) {
+      ready = true
+      const timeMatch = text.match(/ready in (\d+)/i)
+      const ms = timeMatch ? timeMatch[1] : ''
+
+      if (isCaddyRunning()) {
+        p.log.success(proxyUrl)
+      } else {
+        p.log.success(directUrl)
+        p.log.warning('Proxy not running — run `npx storyboard setup` for clean URLs')
+      }
+      p.outro(`Ready${ms ? ` in ${ms}ms` : ''} — press h + enter for help`)
+      return
+    }
+
+    // Pass through HMR updates and errors
+    if (ready) {
+      const trimmed = text.trim()
+      if (trimmed) process.stdout.write(text)
+    }
+  })
+
+  child.stderr.on('data', (data) => {
+    const text = data.toString()
+    // Suppress svelte config noise from stderr too
+    if (text.includes('[vite-plugin-svelte]') && text.includes('no Svelte config')) return
+    if (text.includes('[generouted]')) return
+    process.stderr.write(data)
   })
 
   child.on('exit', (code) => {
-    if (code && code !== 0) {
-      console.error(`[storyboard] vite exited with code ${code}`)
+    if (code && code !== 0 && !ready) {
+      p.log.error(`Vite exited with code ${code}`)
     }
     process.exit(code ?? 0)
   })

@@ -21,7 +21,10 @@
       "createCanvas": true
     },
     "partials": [
-      { "directory": "template", "name": "Application" }
+      {
+        "directory": "template",
+        "name": "Application"
+      }
     ]
   }
 }

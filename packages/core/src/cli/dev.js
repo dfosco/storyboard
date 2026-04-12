@@ -32,7 +32,7 @@ async function main() {
 
   const basePath = isMain
     ? `/${repoName}/`
-    : `/${worktreeName}/${repoName}/`
+    : `/branch--${worktreeName}/${repoName}/`
 
   const proxyUrl = `http://storyboard.localhost${basePath}`
 

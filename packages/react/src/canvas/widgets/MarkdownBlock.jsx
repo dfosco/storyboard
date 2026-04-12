@@ -80,6 +80,7 @@ export default function MarkdownBlock({ props, onUpdate }) {
           <div
             className={styles.preview}
             style={!canEdit ? { cursor: 'default' } : undefined}
+            data-canvas-allow-text-selection={!canEdit ? '' : undefined}
             onDoubleClick={canEdit ? () => setEditing(true) : undefined}
             role={canEdit ? 'button' : undefined}
             tabIndex={canEdit ? 0 : undefined}

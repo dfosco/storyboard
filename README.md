@@ -1,8 +1,13 @@
 # Storyboard
 
-Storyboard is a framework for building **stateful prototypes**: real UI, structured local data, and shareable URL-based state in one workflow.
+Storyboard brings four concepts into one workflow:
 
-It is designed as a middle ground between static mockups and full app environments. You can model realistic scenarios, review interaction details, and deploy as a static site without wiring APIs or backend infrastructure.
+- **Stateful prototype framework**: build real UI backed by local structured data.
+- **Design tools in-context**: inspect, discuss, and iterate directly in the running prototype.
+- **Canvas workspace**: arrange notes, embeds, links, and prototype references on a free-form board.
+- **Viewfinder home**: navigate all prototypes and canvases from a single dashboard.
+
+It is designed as a middle ground between static mockups and full app environments. You can model realistic scenarios, inspect and discuss interactions, and deploy as a static site without wiring APIs or backend infrastructure.
 
 ## Why teams use it
 

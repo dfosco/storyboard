@@ -93,7 +93,7 @@
       "surface": "main-toolbar",
       "handler": "core:autosync",
       "modes": ["*"],
-      "menuWidth": "380px"
+      "menuWidth": "400px"
     },
     "canvas-add-widget": {
       "ariaLabel": "Add widget",

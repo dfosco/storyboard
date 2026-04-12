@@ -9,10 +9,8 @@
 -->
 
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte'
   import { buildPrototypeIndex } from '../../viewfinder.js'
   import { getLocal, setLocal } from '../../localStorage.js'
-  import { getParam, setParam, removeParam } from '../../session.js'
   import Icon from './Icon.svelte'
 
   interface Props {
@@ -84,26 +82,13 @@
   const ungroupedCanvases = $derived(prototypeIndex.canvases || [])
   const sortedCanvases = $derived(prototypeIndex.sorted?.[sortBy]?.canvases ?? ungroupedCanvases)
 
-  // View mode — top-level toggle between Prototypes and Canvases (hidden for now)
+  // View mode — top-level toggle between Prototypes and Canvases
   type ViewMode = 'prototypes' | 'canvases'
-  let viewMode: ViewMode = $state('prototypes')
-
-  function syncViewModeFromHash() {
-    viewMode = getParam('canvas') != null ? 'canvases' : 'prototypes'
-  }
-
-  onMount(() => {
-    syncViewModeFromHash()
-    window.addEventListener('hashchange', syncViewModeFromHash)
-  })
-
-  onDestroy(() => {
-    window.removeEventListener('hashchange', syncViewModeFromHash)
-  })
+  const VIEW_MODE_KEY = 'viewfinder.viewMode'
+  let viewMode: ViewMode = $state(getLocal(VIEW_MODE_KEY) === 'canvases' ? 'canvases' : 'prototypes')
 
   $effect(() => {
-    if (viewMode === 'canvases') setParam('canvas', '1')
-    else removeParam('canvas')
+    setLocal(VIEW_MODE_KEY, viewMode)
   })
 
   // Canvas folder data: extract folders that contain canvases for canvas view

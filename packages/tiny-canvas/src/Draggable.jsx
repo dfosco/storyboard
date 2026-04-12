@@ -4,8 +4,6 @@ import { saveDrag } from './utils';
 
 const TRANSLATION_MS = 250;
 const PERSIST_DEADZONE_PX = 4;
-const ROTATION_DEADZONE_PX = 20;
-const ROTATION_DEG = 1.5;
 
 /** Minimum hold time (ms) before drag can start.
  *  Quick clicks (release before this) never trigger drag. */
@@ -17,12 +15,11 @@ const DRAG_DELAY_MS = 150;
  *  broken for positioned elements). */
 const DRAG_DISTANCE_PX = 8;
 
-function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
+function Draggable({ children, dragId, initialPosition, onDragStart: onDragStartProp, onDrag: onDragProp, onDragEnd, handle, snapGrid, locked = false, boundaryPad = 0 }) {
   const draggableRef = useRef(null);
   const initialSavedPosition = initialPosition || { x: 0, y: 0 };
   const dragStartRef = useRef(initialSavedPosition);
   const hasMovedRef = useRef(false);
-  const [isRotating, setIsRotating] = useState(false);
 
   // Gate ref for our drag threshold
   const gateRef = useRef({
@@ -36,9 +33,14 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
   });
 
   const [position, setPosition] = useState(initialSavedPosition);
-  const [rotationVariation, setRotationVariation] = useState(
-    () => Math.random() < 0.5 ? -ROTATION_DEG : ROTATION_DEG
-  );
+  const [prevInitial, setPrevInitial] = useState(initialSavedPosition);
+
+  // Sync position from parent when it changes externally (undo/redo)
+  if (initialPosition &&
+      (initialPosition.x !== prevInitial.x || initialPosition.y !== prevInitial.y)) {
+    setPrevInitial(initialPosition);
+    setPosition(initialPosition);
+  }
 
   // Animate elements with saved positions on mount
   useEffect(() => {
@@ -73,14 +75,15 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
   // so React handlers (onPointerDown/onPointerUp) still fire normally.
   useEffect(() => {
     const el = draggableRef.current;
-    if (!el || !handle) return;
+    if (!el || !handle || locked) return;
 
     const g = gateRef.current;
     let synthEvent = null;
 
     function isHandleEvent(e) {
-      const handleEl = el.querySelector(handle);
-      return handleEl && handleEl.contains(e.target);
+      if (!(e.target instanceof Element)) return false;
+      const match = e.target.closest(handle);
+      return match != null && el.contains(match);
     }
 
     function onArticlePointerDownCapture(e) {
@@ -136,7 +139,7 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
       }
     }
 
-    function onDocPointerUp() {
+    function resetGate() {
       clearTimeout(g.timer);
       g.active = false;
       g.target = null;
@@ -144,28 +147,39 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
 
     el.addEventListener('pointerdown', onArticlePointerDownCapture, true);
     document.addEventListener('pointermove', onDocPointerMove);
-    document.addEventListener('pointerup', onDocPointerUp);
+    document.addEventListener('pointerup', resetGate);
+    document.addEventListener('pointercancel', resetGate);
     return () => {
       el.removeEventListener('pointerdown', onArticlePointerDownCapture, true);
       document.removeEventListener('pointermove', onDocPointerMove);
-      document.removeEventListener('pointerup', onDocPointerUp);
+      document.removeEventListener('pointerup', resetGate);
+      document.removeEventListener('pointercancel', resetGate);
       clearTimeout(g.timer);
     };
-  }, [handle]);
+  }, [handle, locked]);
 
   const { isDragging } = useDraggable(draggableRef, {
     axis: 'both',
-    bounds: 'parent',
+    grid: snapGrid,
     defaultClass: 'tc-drag',
     defaultClassDragging: 'tc-on',
     defaultClassDragged: 'tc-off',
     applyUserSelectHack: true,
+    disabled: locked,
     ...(handle ? { handle } : {}),
     position: { x: position.x, y: position.y },
+    // Clamp in the transform callback so neodrag never paints a
+    // negative position — avoids the one-frame flicker that happens
+    // when clamping only in onDrag (React re-render lag).
+    transform: ({ offsetX, offsetY }) => {
+      const x = Math.max(boundaryPad, offsetX)
+      const y = Math.max(boundaryPad, offsetY)
+      return `translate3d(${x}px, ${y}px, 0)`
+    },
     onDragStart: () => {
       dragStartRef.current = position;
       hasMovedRef.current = false;
-      setIsRotating(false);
+      onDragStartProp?.(dragId, position);
     },
     onDrag: ({ offsetX, offsetY }) => {
       const dx = offsetX - dragStartRef.current.x;
@@ -174,17 +188,14 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
       if (!hasMovedRef.current && distance >= PERSIST_DEADZONE_PX) {
         hasMovedRef.current = true;
       }
-      if (!isRotating && distance >= ROTATION_DEADZONE_PX) {
-        setIsRotating(true);
-      }
-      setPosition({ x: Math.max(0, offsetX), y: Math.max(0, offsetY) });
+      const clamped = { x: Math.max(boundaryPad, offsetX), y: Math.max(boundaryPad, offsetY) };
+      setPosition(clamped);
+      onDragProp?.(dragId, clamped);
     },
     onDragEnd: (data) => {
-      const clampedX = Math.max(0, data.offsetX);
-      const clampedY = Math.max(0, data.offsetY);
+      const clampedX = Math.max(boundaryPad, data.offsetX);
+      const clampedY = Math.max(boundaryPad, data.offsetY);
       setPosition({ x: clampedX, y: clampedY });
-      setRotationVariation(Math.random() < 0.5 ? -ROTATION_DEG : ROTATION_DEG);
-      setIsRotating(false);
       const dx = clampedX - dragStartRef.current.x;
       const dy = clampedY - dragStartRef.current.y;
       const movedEnough = hasMovedRef.current || Math.hypot(dx, dy) >= PERSIST_DEADZONE_PX;
@@ -197,26 +208,21 @@ function Draggable({ children, dragId, initialPosition, onDragEnd, handle }) {
     },
   });
 
-  const rotation = isDragging && isRotating ? `${rotationVariation}deg` : '0deg';
-
-  // When a handle is set, only the handle shows grab cursor (via its own CSS).
-  // Otherwise the whole article is the drag surface.
-  const articleCursor = handle
-    ? (isDragging ? 'grabbing' : undefined)
-    : (isDragging ? 'grabbing' : 'grab');
+  // When locked, no drag cursor. When a handle is set, only the handle
+  // shows grab cursor (via its own CSS). Otherwise the whole article is
+  // the drag surface.
+  const articleCursor = locked
+    ? undefined
+    : handle
+      ? (isDragging ? 'grabbing' : undefined)
+      : (isDragging ? 'grabbing' : 'grab');
 
   return (
     <article
       ref={draggableRef}
       style={{ cursor: articleCursor }}
     >
-      <div
-        className="tc-draggable-inner"
-        style={{
-          transform: isDragging ? `rotate(${rotation})` : undefined,
-          transition: 'transform ease-in-out 150ms',
-        }}
-      >
+      <div className="tc-draggable-inner">
         {children}
       </div>
     </article>

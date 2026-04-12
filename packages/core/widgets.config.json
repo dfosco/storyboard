@@ -1,67 +1,137 @@
 {
+  "variables": {
+    "label:duplicate":  "Duplicate",
+    "label:copy-link":  "Copy link to widget",
+    "label:delete":     "Delete",
+    "label:open-ext":   "Open in new tab",
+    "label:zoom-in":    "Zoom in",
+    "label:zoom-out":   "Zoom out",
+    "label:edit":       "Edit",
+    "label:download":   "Download image",
+    "label:copy-png":   "Copy as PNG",
+    "label:copy-path":  "Copy file path",
+    "label:expand":     "Expand"
+  },
   "widgets": {
     "sticky-note": {
       "label": "Sticky Note",
       "icon": "📝",
+      "resize": { "enabled": true, "prod": false },
       "props": {
         "text":   { "type": "text",   "label": "Text",    "category": "content",  "default": "" },
         "color":  { "type": "select", "label": "Color",   "category": "settings", "default": "yellow",
                     "options": ["yellow", "blue", "green", "pink", "purple", "orange"] },
-        "width":  { "type": "number", "label": "Width",   "category": "size", "min": 180 },
-        "height": { "type": "number", "label": "Height",  "category": "size", "min": 60 }
+        "width":  { "type": "number", "label": "Width",   "category": "size", "min": 180, "default": 270 },
+        "height": { "type": "number", "label": "Height",  "category": "size", "min": 60, "default": 170 }
       },
       "features": [
-        { "id": "color",  "type": "color-picker", "prop": "color" },
-        { "id": "delete", "type": "action",        "action": "delete" }
+        { "id": "color",     "type": "color-picker", "prop": "color" },
+        { "id": "copy",      "type": "action", "action": "copy",      "label": "$label:duplicate",  "icon": "copy" },
+        { "id": "copy-link", "type": "action", "action": "copy-link", "label": "$label:copy-link",  "icon": "link",  "menu": true, "prod": true },
+        { "id": "delete",    "type": "action", "action": "delete",    "label": "$label:delete",     "icon": "trash", "menu": true }
       ]
     },
     "markdown": {
       "label": "Markdown",
       "icon": "📄",
+      "resize": { "enabled": false, "prod": false },
       "props": {
         "content": { "type": "text",   "label": "Content", "category": "content", "default": "" },
-        "width":   { "type": "number", "label": "Width",   "category": "size",    "default": 360, "min": 200, "max": 1200 }
+        "width":   { "type": "number", "label": "Width",   "category": "size",    "default": 530, "min": 200, "max": 1200 }
       },
       "features": [
-        { "id": "delete", "type": "action", "action": "delete" }
+        { "id": "copy",      "type": "action", "action": "copy",      "label": "$label:duplicate",  "icon": "copy" },
+        { "id": "copy-link", "type": "action", "action": "copy-link", "label": "$label:copy-link",  "icon": "link",  "menu": true, "prod": true },
+        { "id": "delete",    "type": "action", "action": "delete",    "label": "$label:delete",     "icon": "trash", "menu": true }
       ]
     },
     "prototype": {
       "label": "Prototype",
       "icon": "🖥️",
+      "resize": { "enabled": true, "prod": false },
       "props": {
-        "src":    { "type": "url",    "label": "URL",    "category": "content",  "default": "" },
-        "label":  { "type": "text",   "label": "Label",  "category": "settings", "default": "" },
-        "zoom":   { "type": "number", "label": "Zoom",   "category": "settings", "default": 100, "min": 25, "max": 200 },
-        "width":  { "type": "number", "label": "Width",  "category": "size",     "default": 800, "min": 200, "max": 2000 },
-        "height": { "type": "number", "label": "Height", "category": "size",     "default": 600, "min": 200, "max": 1500 }
+        "src":         { "type": "url",    "label": "URL",          "category": "content",  "default": "" },
+        "originalSrc": { "type": "url",    "label": "Original URL", "category": "content",  "default": "" },
+        "label":       { "type": "text",   "label": "Label",        "category": "settings", "default": "" },
+        "zoom":        { "type": "number", "label": "Zoom",         "category": "settings", "default": 100, "min": 25, "max": 200 },
+        "width":       { "type": "number", "label": "Width",        "category": "size",     "default": 800, "min": 200, "max": 2000 },
+        "height":      { "type": "number", "label": "Height",       "category": "size",     "default": 600, "min": 200, "max": 1500 }
       },
       "features": [
-        { "id": "zoom-in",  "type": "action", "action": "zoom-in" },
-        { "id": "zoom-out", "type": "action", "action": "zoom-out" },
-        { "id": "edit-url", "type": "action", "action": "edit" },
-        { "id": "delete",   "type": "action", "action": "delete" }
+        { "id": "open-external", "type": "action", "action": "open-external", "label": "$label:open-ext",   "icon": "open-external", "prod": true },
+        { "id": "zoom-in",      "type": "action", "action": "zoom-in",       "label": "$label:zoom-in",    "icon": "zoom-in" },
+        { "id": "zoom-out",     "type": "action", "action": "zoom-out",      "label": "$label:zoom-out",   "icon": "zoom-out" },
+        { "id": "edit-url",     "type": "action", "action": "edit",          "label": "$label:edit",       "icon": "edit" },
+        { "id": "expand",       "type": "action", "action": "expand",        "label": "$label:expand",     "icon": "expand", "prod": true },
+        { "id": "copy",         "type": "action", "action": "copy",          "label": "$label:duplicate",  "icon": "copy" },
+        { "id": "copy-link",    "type": "action", "action": "copy-link",     "label": "$label:copy-link",  "icon": "link",  "menu": true, "prod": true },
+        { "id": "delete",       "type": "action", "action": "delete",        "label": "$label:delete",     "icon": "trash", "menu": true }
+      ]
+    },
+    "figma-embed": {
+      "label": "Figma Embed",
+      "icon": "🎨",
+      "resize": { "enabled": true, "prod": false },
+      "props": {
+        "url":    { "type": "url",    "label": "URL",    "category": "content", "default": "" },
+        "width":  { "type": "number", "label": "Width",  "category": "size",    "default": 800, "min": 200, "max": 2000 },
+        "height": { "type": "number", "label": "Height", "category": "size",    "default": 450, "min": 150, "max": 1500 }
+      },
+      "features": [
+        { "id": "open-external", "type": "action", "action": "open-external", "label": "$label:open-ext",   "icon": "open-external", "prod": true },
+        { "id": "expand",        "type": "action", "action": "expand",        "label": "$label:expand",     "icon": "expand", "prod": true },
+        { "id": "copy",          "type": "action", "action": "copy",          "label": "$label:duplicate",  "icon": "copy" },
+        { "id": "copy-link",     "type": "action", "action": "copy-link",     "label": "$label:copy-link",  "icon": "link",  "menu": true, "prod": true },
+        { "id": "delete",        "type": "action", "action": "delete",        "label": "$label:delete",     "icon": "trash", "menu": true }
       ]
     },
     "link-preview": {
       "label": "Link Preview",
       "icon": "🔗",
+      "resize": { "enabled": false, "prod": false },
       "props": {
         "url":   { "type": "url",  "label": "URL",   "category": "content", "default": "" },
         "title": { "type": "text", "label": "Title", "category": "content", "default": "" }
       },
       "features": [
-        { "id": "delete", "type": "action", "action": "delete" }
+        { "id": "copy",      "type": "action", "action": "copy",      "label": "$label:duplicate",  "icon": "copy" },
+        { "id": "copy-link", "type": "action", "action": "copy-link", "label": "$label:copy-link",  "icon": "link",  "menu": true, "prod": true },
+        { "id": "delete",    "type": "action", "action": "delete",    "label": "$label:delete",     "icon": "trash", "menu": true }
       ]
     },
     "component": {
       "label": "Component",
       "icon": "⚛️",
+      "resize": { "enabled": true, "prod": false },
       "props": {
         "width":  { "type": "number", "label": "Width",  "category": "size", "min": 100 },
         "height": { "type": "number", "label": "Height", "category": "size", "min": 60 }
       },
-      "features": []
+      "features": [
+        { "id": "copy-link", "type": "action", "action": "copy-link", "label": "$label:copy-link", "icon": "link", "menu": true, "prod": true }
+      ]
+    },
+    "image": {
+      "label": "Image",
+      "icon": "🖼️",
+      "resize": { "enabled": true, "prod": false },
+      "props": {
+        "src":     { "type": "text",    "label": "Source",  "category": "content", "default": "" },
+        "private": { "type": "boolean", "label": "Private", "category": "settings", "default": false },
+        "width":   { "type": "number",  "label": "Width",   "category": "size", "min": 100 },
+        "height":  { "type": "number",  "label": "Height",  "category": "size", "min": 60 }
+      },
+      "features": [
+        { "id": "toggle-private", "type": "action", "action": "toggle-private", "label": "Make private", "icon": "eye" },
+        { "id": "copy",           "type": "action", "action": "copy",           "label": "$label:duplicate",  "icon": "copy" },
+        { "id": "image-actions",  "type": "dropdown", "icon": "chevron-down", "label": "Image actions", "items": [
+          { "action": "download-image",  "label": "$label:download",  "icon": "download" },
+          { "action": "copy-as-png",     "label": "$label:copy-png",  "icon": "copy" },
+          { "action": "copy-file-path",  "label": "$label:copy-path", "icon": "link" }
+        ]},
+        { "id": "copy-link",      "type": "action", "action": "copy-link",      "label": "$label:copy-link",  "icon": "link",  "menu": true, "prod": true },
+        { "id": "delete",         "type": "action", "action": "delete",         "label": "$label:delete",     "icon": "trash", "menu": true }
+      ]
     }
   }
 }

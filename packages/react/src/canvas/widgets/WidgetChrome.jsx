@@ -1,4 +1,6 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { Tooltip } from '@primer/react'
+import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed } from '@primer/octicons-react'
 import styles from './WidgetChrome.module.css'
 
 const STICKY_NOTE_COLORS = {
@@ -42,18 +44,213 @@ function EditIcon() {
   )
 }
 
-const ACTION_ICONS = {
-  'delete': DeleteIcon,
+function OpenExternalIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2Zm6.854-1h4.146a.25.25 0 0 1 .25.25v4.146a.25.25 0 0 1-.427.177L13.03 4.03 9.28 7.78a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0 1 10.604 1Z" />
+    </svg>
+  )
+}
+
+function EyeIcon() {
+  return <OcticonEye size={12} />
+}
+
+function EyeClosedIcon() {
+  return <OcticonEyeClosed size={12} />
+}
+
+function CopyIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z" />
+      <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z" />
+    </svg>
+  )
+}
+
+function MoreIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M8 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM1.5 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm13 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
+    </svg>
+  )
+}
+
+function LinkIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z" />
+    </svg>
+  )
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z" />
+    </svg>
+  )
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Z" />
+      <path d="M7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06Z" />
+    </svg>
+  )
+}
+
+function ExpandIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M1.75 10a.75.75 0 0 1 .75.75v2.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 0 1.5h-2.5A1.75 1.75 0 0 1 1 13.25v-2.5a.75.75 0 0 1 .75-.75Zm12.5 0a.75.75 0 0 1 .75.75v2.5A1.75 1.75 0 0 1 13.25 15h-2.5a.75.75 0 0 1 0-1.5h2.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 .75-.75ZM2.75 1h2.5a.75.75 0 0 1 0 1.5h-2.5a.25.25 0 0 0-.25.25v2.5a.75.75 0 0 1-1.5 0v-2.5C1 1.784 1.784 1 2.75 1Zm10.5 0C14.216 1 15 1.784 15 2.75v2.5a.75.75 0 0 1-1.5 0v-2.5a.25.25 0 0 0-.25-.25h-2.5a.75.75 0 0 1 0-1.5Z" />
+    </svg>
+  )
+}
+
+/** Icon registry — maps icon name strings from config to React components. */
+const ICON_REGISTRY = {
+  'trash': DeleteIcon,
   'zoom-in': ZoomInIcon,
   'zoom-out': ZoomOutIcon,
   'edit': EditIcon,
+  'open-external': OpenExternalIcon,
+  'eye': EyeIcon,
+  'eye-closed': EyeClosedIcon,
+  'copy': CopyIcon,
+  'link': LinkIcon,
+  'more': MoreIcon,
+  'chevron-down': ChevronDownIcon,
+  'download': DownloadIcon,
+  'expand': ExpandIcon,
 }
 
-const ACTION_LABELS = {
-  'delete': 'Delete widget',
-  'zoom-in': 'Zoom in',
-  'zoom-out': 'Zoom out',
-  'edit': 'Edit',
+/** Danger-styled actions in the overflow menu. */
+const DANGER_ACTIONS = new Set(['delete'])
+
+/**
+ * Overflow menu — `...` button that opens a dropdown with menu-only actions.
+ */
+function WidgetOverflowMenu({ widgetId, menuFeatures, onAction }) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handlePointerDown(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [open])
+
+  const handleItemClick = useCallback((action, e) => {
+    e.stopPropagation()
+    if (action === 'copy-link') {
+      const url = new URL(window.location.href)
+      url.searchParams.set('widget', widgetId)
+      navigator.clipboard.writeText(url.toString()).catch(() => {})
+    } else {
+      onAction?.(action)
+    }
+    setOpen(false)
+  }, [widgetId, onAction])
+
+  return (
+    <div ref={menuRef} className={styles.overflowWrapper}>
+      <Tooltip text="More actions" direction="n">
+        <button
+          className={styles.featureBtn}
+          onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
+          aria-label="More actions"
+          aria-expanded={open}
+        >
+          <MoreIcon />
+        </button>
+      </Tooltip>
+      {open && (
+        <div className={styles.overflowMenu}>
+          {menuFeatures.map((feature) => {
+            const Icon = ICON_REGISTRY[feature.icon]
+            const label = feature.label || feature.action
+            const isDanger = DANGER_ACTIONS.has(feature.action)
+            return (
+              <button
+                key={feature.id}
+                className={`${styles.overflowItem} ${isDanger ? styles.overflowItemDanger : ''}`}
+                onClick={(e) => handleItemClick(feature.action, e)}
+              >
+                {Icon && <Icon />}
+                <span>{label}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Dropdown feature — a chevron button that opens a menu of actions.
+ * Items and their icons/labels come from config.
+ */
+function DropdownFeature({ feature, onAction }) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handlePointerDown(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [open])
+
+  const TriggerIcon = ICON_REGISTRY[feature.icon] || ChevronDownIcon
+
+  return (
+    <div ref={menuRef} className={styles.overflowWrapper}>
+      <Tooltip text={feature.label || 'Actions'} direction="n">
+        <button
+          className={styles.featureBtn}
+          onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
+          aria-label={feature.label || 'Actions'}
+          aria-expanded={open}
+        >
+          <TriggerIcon />
+        </button>
+      </Tooltip>
+      {open && (
+        <div className={styles.overflowMenu}>
+          {(feature.items || []).map((item) => {
+            const Icon = ICON_REGISTRY[item.icon]
+            return (
+              <button
+                key={item.action}
+                className={styles.overflowItem}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onAction?.(item.action)
+                  setOpen(false)
+                }}
+              >
+                {Icon && <Icon />}
+                <span>{item.label || item.action}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 /**
@@ -113,19 +310,21 @@ function ColorPickerFeature({ currentColor, options, onColorChange }) {
  * non-standard actions (anything other than 'delete').
  */
 export default function WidgetChrome({
+  widgetId,
   features = [],
   selected = false,
+  multiSelected = false,
   widgetProps,
   widgetRef,
   onSelect,
-  onDeselect,
+  onDeselect, // eslint-disable-line no-unused-vars
   onAction,
   onUpdate,
   children,
+  readOnly = false,
 }) {
   const [hovered, setHovered] = useState(false)
   const leaveTimer = useRef(null)
-  const pointerStartPos = useRef(null)
 
   const handleMouseEnter = useCallback(() => {
     clearTimeout(leaveTimer.current)
@@ -136,30 +335,18 @@ export default function WidgetChrome({
     leaveTimer.current = setTimeout(() => setHovered(false), 80)
   }, [])
 
-  // Track pointer position on the handle to distinguish click from drag.
-  const handleHandlePointerDown = useCallback((e) => {
-    pointerStartPos.current = { x: e.clientX, y: e.clientY }
-  }, [])
-
-  const handleHandlePointerUp = useCallback((e) => {
-    if (!pointerStartPos.current) return
-    const start = pointerStartPos.current
-    pointerStartPos.current = null
-    // Only toggle selection if the pointer stayed close (click, not drag)
-    const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y)
-    if (dist > 10) return
+  // Handle select via click — pointer events are intercepted by the drag
+  // gate in Draggable, so onPointerDown never reaches React on the handle.
+  // onClick fires reliably after pointer up.
+  const handleHandleClick = useCallback((e) => {
     e.stopPropagation()
-    if (selected) {
-      onDeselect?.()
-    } else {
-      onSelect?.()
-    }
-  }, [selected, onSelect, onDeselect])
+    onSelect?.(e.shiftKey)
+  }, [onSelect])
 
   const handleActionClick = useCallback((actionId, e) => {
     e.stopPropagation()
     // Standard actions go through onAction (handled by CanvasPage)
-    if (actionId === 'delete') {
+    if (actionId === 'delete' || actionId === 'copy') {
       onAction?.(actionId)
       return
     }
@@ -176,15 +363,16 @@ export default function WidgetChrome({
     onUpdate?.({ color })
   }, [onUpdate])
 
-  const showToolbar = hovered || selected
+  const showToolbar = !readOnly && (hovered || selected)
+  const showFeatures = showToolbar && !multiSelected
 
   return (
     <div
       className={styles.chromeContainer}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={readOnly ? undefined : handleMouseEnter}
+      onMouseLeave={readOnly ? undefined : handleMouseLeave}
     >
-      <div className={`${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''}`}>
+      <div className={`tc-drag-surface ${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''} ${multiSelected ? styles.widgetSlotMultiSelected : ''}`}>
         {children}
       </div>
       <div
@@ -197,8 +385,12 @@ export default function WidgetChrome({
 
         {/* Toolbar content — visible on hover */}
         <div className={`${styles.toolbarContent} ${showToolbar ? styles.toolbarContentVisible : ''}`}>
+          {showFeatures && (
           <div className={styles.featureButtons}>
             {features.map((feature) => {
+              // Menu features are rendered in WidgetOverflowMenu
+              if (feature.menu) return null
+
               if (feature.type === 'color-picker') {
                 return (
                   <ColorPickerFeature
@@ -211,32 +403,66 @@ export default function WidgetChrome({
               }
 
               if (feature.type === 'action') {
-                const Icon = ACTION_ICONS[feature.action]
+                let Icon = ICON_REGISTRY[feature.icon]
+                let label = feature.label || feature.action
+
+                // Toggle-private: swap icon/label based on current state
+                if (feature.action === 'toggle-private') {
+                  if (widgetProps?.private) {
+                    Icon = ICON_REGISTRY['eye-closed']
+                    label = 'Private image — only visible locally'
+                  } else {
+                    label = 'Published image — deployed with canvas'
+                  }
+                }
+
                 return (
-                  <button
+                  <Tooltip key={feature.id} text={label} direction="n">
+                    <button
+                      className={styles.featureBtn}
+                      onClick={(e) => handleActionClick(feature.action, e)}
+                      aria-label={label}
+                    >
+                      {Icon ? <Icon /> : feature.action}
+                    </button>
+                  </Tooltip>
+                )
+              }
+
+              if (feature.type === 'dropdown') {
+                return (
+                  <DropdownFeature
                     key={feature.id}
-                    className={styles.featureBtn}
-                    onClick={(e) => handleActionClick(feature.action, e)}
-                    title={ACTION_LABELS[feature.action] || feature.action}
-                    aria-label={ACTION_LABELS[feature.action] || feature.action}
-                  >
-                    {Icon ? <Icon /> : feature.action}
-                  </button>
+                    feature={feature}
+                    onAction={(actionId) => {
+                      if (widgetRef?.current?.handleAction) {
+                        widgetRef.current.handleAction(actionId)
+                      } else {
+                        onAction?.(actionId)
+                      }
+                    }}
+                  />
                 )
               }
 
               return null
             })}
+            <WidgetOverflowMenu
+              widgetId={widgetId}
+              menuFeatures={features.filter((f) => f.menu)}
+              onAction={onAction}
+            />
           </div>
+          )}
 
-          <button
-            className={`tc-drag-handle ${styles.selectHandle} ${selected ? styles.selectHandleActive : ''}`}
-            onPointerDown={handleHandlePointerDown}
-            onPointerUp={handleHandlePointerUp}
-            title={selected ? 'Deselect' : 'Select'}
-            aria-label={selected ? 'Deselect widget' : 'Select widget'}
-            aria-pressed={selected}
-          />
+          <Tooltip text={selected ? "Click and drag to move" : "Select"} direction="n">
+            <button
+              className={`tc-drag-handle ${styles.selectHandle} ${selected ? styles.selectHandleActive : ''}`}
+              onClick={handleHandleClick}
+              aria-label={selected ? "Drag to move widget" : "Select widget"}
+              aria-pressed={selected}
+            />
+          </Tooltip>
         </div>
       </div>
     </div>

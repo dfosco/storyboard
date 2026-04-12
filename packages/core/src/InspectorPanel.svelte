@@ -110,7 +110,7 @@
     return null
   }
 
-  const _isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
+  const _isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true && !new URLSearchParams(window.location.search).has('prodMode')
 
   /**
    * Fetch source file content — uses dev middleware in dev, static JSON in prod.

@@ -16,6 +16,7 @@ import { parse as parseJsonc } from 'jsonc-parser'
 import { serverFeatures as workshopFeatures } from '../workshop/features/registry-server.js'
 import { docsHandler, collectFiles } from './docs-handler.js'
 import { createCanvasHandler } from '../canvas/server.js'
+import { createAutosyncHandler } from '../autosync/server.js'
 
 const API_PREFIX = '/_storyboard/'
 
@@ -107,6 +108,13 @@ export default function storyboardServer() {
 
       // Wire canvas API routes (always enabled — CRUD for .canvas.jsonl files)
       routeHandlers.set('canvas', createCanvasHandler({ root, sendJson }))
+
+      // Ignore src/canvas/images/ so pasted image writes don't trigger reloads
+      const canvasImagesDir = path.join(root, 'src', 'canvas', 'images')
+      server.watcher.unwatch(canvasImagesDir)
+
+      // Wire autosync API routes (always enabled — git automation for dev)
+      routeHandlers.set('autosync', createAutosyncHandler({ root, sendJson }))
 
       // Watch toolbar.config.json for changes — trigger full reload so
       // CoreUIBar.svelte picks up menu/mode config changes during dev

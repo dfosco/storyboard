@@ -3,33 +3,43 @@
  *
  * Dev-server middleware that provides git automation:
  * - List branches (excluding main/master)
- * - Enable/disable autosync with branch switching
- * - Push watcher: every 30s commits scoped changes, pulls --rebase, and pushes
+ * - Enable/disable autosync per scope (canvas/prototype)
+ * - Keep an isolated autosync worktree per target branch
+ * - Push watcher: every 30s runs enabled scopes in relay sequence
  *
  * Routes (mounted at /_storyboard/autosync/):
  *   GET    /branches — list local git branches (excludes main/master)
- *   GET    /status   — current state (branch, enabled, scope, last sync, errors)
- *   POST   /enable   — enable autosync (stash → checkout → apply → start watcher)
- *   POST   /disable  — disable autosync (stop watcher, stay on branch)
- *   POST   /sync     — trigger a single sync cycle manually (using current scope)
+ *   GET    /status   — current state (branch, enabled scopes, last sync/errors)
+ *   POST   /enable   — enable autosync for a scope on a branch
+ *   POST   /disable  — disable autosync for a scope (or all scopes)
+ *   POST   /sync     — trigger a single sync cycle manually
  */
 
 import { execFileSync } from 'node:child_process'
+import { copyFileSync, existsSync, mkdirSync, rmSync } from 'node:fs'
+import { dirname, join, resolve, sep } from 'node:path'
 
 // ── Module-level watcher state (singleton, survives page reloads) ──
 
-let watcherInterval = null
-let autosyncEnabled = false
+let schedulerInterval = null
+let schedulerTimeout = null
 let targetBranch = null
 let originalBranch = null
+let autosyncWorktreeRoot = null
 let lastSyncTime = null
 let lastError = null
 let syncing = false
-let syncScope = 'canvas'
+let syncingScope = null
+
+let enabledScopes = { canvas: false, prototype: false }
+let lastSyncByScope = { canvas: null, prototype: null }
+let lastErrorByScope = { canvas: null, prototype: null }
 
 const SYNC_INTERVAL_MS = 30_000
 const PUSH_RETRY_LIMIT = 3
-const AUTOSYNC_SCOPES = new Set(['canvas', 'prototype'])
+const AUTOSYNC_WORKTREE_DIR = 'autosync-worktrees'
+const SCOPE_ORDER = ['canvas', 'prototype']
+const AUTOSYNC_SCOPES = new Set(SCOPE_ORDER)
 
 // Branch names must match git ref format — alphanumeric, hyphens, dots, slashes
 const BRANCH_NAME_RE = /^[\w][\w.\-/]*$/
@@ -56,51 +66,88 @@ function getBranches(root) {
   const raw = git(['branch', '--list', '--format=%(refname:short)'], root)
   return raw
     .split('\n')
-    .map(b => b.trim())
+    .map((b) => b.trim())
     .filter((b) => b && b.toLowerCase() !== 'main' && b.toLowerCase() !== 'master')
 }
 
-function hasUncommittedChanges(root) {
-  const status = git(['status', '--porcelain'], root)
-  return status.length > 0
+function getGitCommonDir(root) {
+  return resolve(root, git(['rev-parse', '--git-common-dir'], root))
 }
 
-function parseStashEntries(raw) {
-  if (!raw) return []
-  return raw
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [ref, ...messageParts] = line.split(' ')
-      return { ref, message: messageParts.join(' ') }
-    })
+export function getAutosyncWorktreeDirName(branch) {
+  const safe = String(branch || 'branch')
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '--')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+  return safe || 'branch'
 }
 
-function listStashes(root) {
-  const raw = git(['stash', 'list', '--format=%gd %s'], root)
-  return parseStashEntries(raw)
+function getAutosyncWorktreePath(root, branch) {
+  return join(getGitCommonDir(root), AUTOSYNC_WORKTREE_DIR, getAutosyncWorktreeDirName(branch))
 }
 
-function stashWorkingChanges(root, label) {
-  if (!hasUncommittedChanges(root)) return null
-
-  const marker = `autosync:${label}:${Date.now()}`
-  const beforeRefs = new Set(listStashes(root).map((stash) => stash.ref))
-  const output = git(['stash', 'push', '-u', '-m', marker], root)
-  if (output.includes('No local changes to save')) return null
-
-  const created = listStashes(root).find(
-    (stash) => !beforeRefs.has(stash.ref) && stash.message.includes(marker),
-  )
-
-  return created?.ref || null
+function removeAutosyncWorktree(root, worktreePath) {
+  if (!worktreePath) return
+  try {
+    git(['worktree', 'remove', '--force', worktreePath], root)
+  } catch {
+    // Path may not be a registered worktree.
+  }
+  rmSync(worktreePath, { recursive: true, force: true })
 }
 
-function restoreStash(root, stashRef) {
-  if (!stashRef) return
-  git(['stash', 'apply', stashRef], root)
-  git(['stash', 'drop', stashRef], root)
+function resetAutosyncWorktree(root, branch) {
+  const worktreePath = getAutosyncWorktreePath(root, branch)
+  removeAutosyncWorktree(root, worktreePath)
+
+  mkdirSync(dirname(worktreePath), { recursive: true })
+  const branchHead = git(['rev-parse', branch], root)
+  git(['worktree', 'add', '--detach', worktreePath, branchHead], root)
+
+  const worktreeHead = git(['rev-parse', 'HEAD'], worktreePath)
+  if (worktreeHead !== branchHead) {
+    throw new Error(`Autosync worktree init mismatch for ${branch}`)
+  }
+
+  autosyncWorktreeRoot = worktreePath
+  return worktreePath
+}
+
+function clearAutosyncWorktree(root) {
+  if (!autosyncWorktreeRoot) return
+  removeAutosyncWorktree(root, autosyncWorktreeRoot)
+  autosyncWorktreeRoot = null
+}
+
+function resolveScopedFilePath(root, file) {
+  const absoluteRoot = resolve(root)
+  const absoluteFile = resolve(absoluteRoot, file)
+  if (absoluteFile !== absoluteRoot && !absoluteFile.startsWith(`${absoluteRoot}${sep}`)) {
+    throw new Error(`Invalid scoped file path: ${file}`)
+  }
+  return absoluteFile
+}
+
+function syncScopedFilesToWorktree(sourceRoot, worktreeRoot, files) {
+  for (const file of files) {
+    const sourcePath = resolveScopedFilePath(sourceRoot, file)
+    const targetPath = resolveScopedFilePath(worktreeRoot, file)
+
+    if (!existsSync(sourcePath)) {
+      rmSync(targetPath, { force: true })
+      continue
+    }
+
+    mkdirSync(dirname(targetPath), { recursive: true })
+    copyFileSync(sourcePath, targetPath)
+  }
+}
+
+function hasScopedStagedChanges(root, files) {
+  if (!files || files.length === 0) return false
+  const changed = git(['diff', '--cached', '--name-only', '--', ...files], root)
+  return changed.length > 0
 }
 
 function listChangedFiles(root) {
@@ -178,91 +225,174 @@ export function isRetryablePushError(message) {
   )
 }
 
+function hasAnyScopeEnabled() {
+  return enabledScopes.canvas || enabledScopes.prototype
+}
+
+function getEnabledScopesInOrder() {
+  return SCOPE_ORDER.filter((scope) => enabledScopes[scope])
+}
+
+function stopScheduler() {
+  if (schedulerTimeout) {
+    clearTimeout(schedulerTimeout)
+    schedulerTimeout = null
+  }
+  if (schedulerInterval) {
+    clearInterval(schedulerInterval)
+    schedulerInterval = null
+  }
+}
+
+function getAlignedDelay() {
+  const remainder = Date.now() % SYNC_INTERVAL_MS
+  return remainder === 0 ? SYNC_INTERVAL_MS : SYNC_INTERVAL_MS - remainder
+}
+
+function resetRuntimeState({ clearBranch = true } = {}) {
+  enabledScopes = { canvas: false, prototype: false }
+  syncing = false
+  syncingScope = null
+  if (clearBranch) {
+    targetBranch = null
+    originalBranch = null
+  }
+}
+
+function buildStatusPayload(root) {
+  const singleScope = enabledScopes.canvas === enabledScopes.prototype
+    ? null
+    : (enabledScopes.canvas ? 'canvas' : 'prototype')
+
+  return {
+    enabled: hasAnyScopeEnabled(),
+    enabledScopes: { ...enabledScopes },
+    scope: singleScope, // legacy field for older clients
+    branch: getCurrentBranch(root),
+    targetBranch,
+    originalBranch,
+    availableScopes: [...AUTOSYNC_SCOPES],
+    lastSyncTime,
+    lastSyncByScope: { ...lastSyncByScope },
+    lastError,
+    lastErrorByScope: { ...lastErrorByScope },
+    syncing,
+    syncingScope,
+  }
+}
+
+function stopAutosync(root, { clearBranch = true, clearErrors = false } = {}) {
+  stopScheduler()
+  clearAutosyncWorktree(root)
+  resetRuntimeState({ clearBranch })
+  if (clearErrors) {
+    lastError = null
+    lastErrorByScope = { canvas: null, prototype: null }
+  }
+}
+
 // ── Sync cycle ──
 
-/** Run a single sync cycle. Returns true on success, false on failure. */
-function runSyncCycle(root, scope = syncScope) {
+/** Run one scoped sync against the isolated autosync worktree. */
+function runSyncCycle(root, scope) {
   if (syncing) return false
   syncing = true
-  lastError = null
+  syncingScope = scope
   let cycleSucceeded = false
-  let externalStashRef = null
 
   try {
-    const scopedFiles = listScopedChangedFiles(root, scope)
-    if (scopedFiles.length > 0) {
-      const username = getUsername(root)
-      const time = formatTime()
-      git(['add', '-A', '--', ...scopedFiles], root)
-      git(['commit', '-m', `[auto:${scope}] ${username} update at ${time}`, '--', ...scopedFiles], root)
+    if (!targetBranch) {
+      throw new Error('Autosync branch is not configured')
+    }
+    if (!autosyncWorktreeRoot) {
+      throw new Error('Autosync worktree is not initialized')
     }
 
-    const branch = getCurrentBranch(root)
-    if (scopedFiles.length > 0) {
-      externalStashRef = stashWorkingChanges(root, 'pre-rebase')
+    const scopedFiles = listScopedChangedFiles(root, scope)
+    if (scopedFiles.length === 0) {
+      cycleSucceeded = true
+      return true
+    }
 
-      for (let attempt = 1; attempt <= PUSH_RETRY_LIMIT; attempt += 1) {
-        if (remoteBranchExists(root, branch)) {
-          git(['pull', '--rebase', 'origin', branch], root)
-        }
+    syncScopedFilesToWorktree(root, autosyncWorktreeRoot, scopedFiles)
+    git(['add', '-A', '--', ...scopedFiles], autosyncWorktreeRoot)
 
-        try {
-          git(['push', 'origin', branch], root)
-          cycleSucceeded = true
-          break
-        } catch (pushErr) {
-          if (!isRetryablePushError(pushErr?.message) || attempt === PUSH_RETRY_LIMIT) {
-            throw pushErr
-          }
+    if (!hasScopedStagedChanges(autosyncWorktreeRoot, scopedFiles)) {
+      cycleSucceeded = true
+      return true
+    }
+
+    const username = getUsername(root)
+    const time = formatTime()
+    git(
+      ['commit', '-m', `[auto:${scope}] ${username} update at ${time}`, '--', ...scopedFiles],
+      autosyncWorktreeRoot,
+    )
+
+    for (let attempt = 1; attempt <= PUSH_RETRY_LIMIT; attempt += 1) {
+      if (remoteBranchExists(root, targetBranch)) {
+        git(['fetch', 'origin', targetBranch], autosyncWorktreeRoot)
+        git(['rebase', 'FETCH_HEAD'], autosyncWorktreeRoot)
+      }
+
+      try {
+        git(['push', 'origin', `HEAD:refs/heads/${targetBranch}`], autosyncWorktreeRoot)
+        cycleSucceeded = true
+        break
+      } catch (pushErr) {
+        if (!isRetryablePushError(pushErr?.message) || attempt === PUSH_RETRY_LIMIT) {
+          throw pushErr
         }
       }
-    } else {
-      cycleSucceeded = true
     }
   } catch (err) {
     lastError = err.message || 'Sync failed'
-    try { git(['rebase', '--abort'], root) } catch { /* not in rebase */ }
-    stopWatcher()
-  } finally {
-    if (externalStashRef) {
-      try {
-        restoreStash(root, externalStashRef)
-      } catch (restoreErr) {
-        cycleSucceeded = false
-        lastError = `Autosync saved your external changes to stash ${externalStashRef}. ` +
-          `Re-apply failed: ${restoreErr.message}`
-        stopWatcher()
+    lastErrorByScope[scope] = lastError
+    try {
+      if (autosyncWorktreeRoot) {
+        git(['rebase', '--abort'], autosyncWorktreeRoot)
       }
+    } catch {
+      // no rebase in progress
     }
-
+    stopAutosync(root, { clearBranch: false })
+  } finally {
     if (cycleSucceeded) {
-      lastSyncTime = new Date().toISOString()
+      const nowIso = new Date().toISOString()
+      lastSyncTime = nowIso
+      lastSyncByScope[scope] = nowIso
+      lastErrorByScope[scope] = null
+      lastError = null
     }
-
     syncing = false
+    syncingScope = null
   }
 
   return cycleSucceeded
 }
 
-function startWatcher(root) {
-  if (watcherInterval) return
-  watcherInterval = setInterval(() => runSyncCycle(root), SYNC_INTERVAL_MS)
+function runRelayCycle(root) {
+  if (syncing || !hasAnyScopeEnabled()) return
+  for (const scope of getEnabledScopesInOrder()) {
+    if (!runSyncCycle(root, scope)) {
+      break
+    }
+  }
 }
 
-function stopWatcher() {
-  if (watcherInterval) {
-    clearInterval(watcherInterval)
-    watcherInterval = null
-  }
-  autosyncEnabled = false
+function startScheduler(root) {
+  if (schedulerInterval || schedulerTimeout) return
+  schedulerTimeout = setTimeout(() => {
+    schedulerTimeout = null
+    runRelayCycle(root)
+    schedulerInterval = setInterval(() => runRelayCycle(root), SYNC_INTERVAL_MS)
+  }, getAlignedDelay())
 }
 
 // ── Route handler ──
 
 export function createAutosyncHandler({ root, sendJson }) {
   return async (req, res, { body, path: routePath, method }) => {
-
     // GET /branches — list local branches
     if (routePath === '/branches' && method === 'GET') {
       try {
@@ -278,25 +408,14 @@ export function createAutosyncHandler({ root, sendJson }) {
     // GET /status — current autosync state
     if (routePath === '/status' && method === 'GET') {
       try {
-        const current = getCurrentBranch(root)
-        sendJson(res, 200, {
-          enabled: autosyncEnabled,
-          branch: current,
-          targetBranch,
-          originalBranch,
-          scope: syncScope,
-          availableScopes: [...AUTOSYNC_SCOPES],
-          lastSyncTime,
-          lastError,
-          syncing,
-        })
+        sendJson(res, 200, buildStatusPayload(root))
       } catch (err) {
         sendJson(res, 500, { error: err.message })
       }
       return
     }
 
-    // POST /enable — enable autosync
+    // POST /enable — enable autosync for a scope
     if (routePath === '/enable' && method === 'POST') {
       try {
         const { branch, scope } = body || {}
@@ -304,95 +423,89 @@ export function createAutosyncHandler({ root, sendJson }) {
           sendJson(res, 400, { error: 'branch is required' })
           return
         }
-
         if (!isValidBranch(branch)) {
           sendJson(res, 400, { error: 'Invalid branch name' })
           return
         }
-
         if (branch.toLowerCase() === 'main' || branch.toLowerCase() === 'master') {
           sendJson(res, 400, { error: 'Cannot autosync to main/master' })
           return
         }
 
-        syncScope = normalizeAutosyncScope(scope)
-        const currentBranch = getCurrentBranch(root)
-        originalBranch = currentBranch
-        targetBranch = branch
+        const normalizedScope = normalizeAutosyncScope(scope)
+        const hadEnabledScopes = hasAnyScopeEnabled()
 
-        // Switch branch if needed
-        if (branch !== currentBranch) {
-          const hadChanges = hasUncommittedChanges(root)
-          if (hadChanges) {
-            git(['stash', 'push', '-u', '-m', 'autosync: pre-switch stash'], root)
-          }
-
-          try {
-            git(['checkout', branch], root)
-          } catch {
-            git(['checkout', '-b', branch], root)
-          }
-
-          if (hadChanges) {
-            try {
-              git(['stash', 'apply'], root)
-            } catch {
-              // Stash apply failed (conflicts) — abort: go back to original branch
-              try { git(['checkout', currentBranch], root) } catch { /* best effort */ }
-              stopWatcher()
-              sendJson(res, 409, { error: 'Stash apply failed — conflicts detected. Returned to original branch.' })
-              return
-            }
-          }
+        if (hadEnabledScopes && targetBranch !== branch) {
+          sendJson(res, 409, { error: `Autosync is active on ${targetBranch}. Disable all scopes before switching branch.` })
+          return
         }
 
-        autosyncEnabled = true
-        lastError = null
-
-        // Run an immediate sync — only start the interval watcher if it succeeds
-        const ok = runSyncCycle(root)
-        if (ok) {
-          startWatcher(root)
+        if (!hadEnabledScopes) {
+          originalBranch = getCurrentBranch(root)
+          targetBranch = branch
+          // Recreate from selected branch HEAD so autosync starts from current branch tip.
+          resetAutosyncWorktree(root, branch)
         }
 
-        sendJson(res, 200, {
-          enabled: autosyncEnabled,
-          branch: getCurrentBranch(root),
-          targetBranch,
-          originalBranch,
-          scope: syncScope,
-          lastError,
-        })
+        enabledScopes[normalizedScope] = true
+        lastErrorByScope[normalizedScope] = null
+        startScheduler(root)
+
+        // Immediate first sync for the enabled scope.
+        runSyncCycle(root, normalizedScope)
+        sendJson(res, 200, buildStatusPayload(root))
       } catch (err) {
         sendJson(res, 500, { error: err.message })
       }
       return
     }
 
-    // POST /disable — disable autosync
+    // POST /disable — disable one scope or all scopes
     if (routePath === '/disable' && method === 'POST') {
-      stopWatcher()
-      targetBranch = null
-      lastError = null
-      sendJson(res, 200, {
-        enabled: false,
-        branch: getCurrentBranch(root),
-        scope: syncScope,
-      })
+      try {
+        const requestedScope = body?.scope
+        if (requestedScope) {
+          const normalizedScope = normalizeAutosyncScope(requestedScope)
+          enabledScopes[normalizedScope] = false
+        } else {
+          enabledScopes = { canvas: false, prototype: false }
+        }
+
+        if (!hasAnyScopeEnabled()) {
+          stopAutosync(root, { clearBranch: true, clearErrors: true })
+        }
+
+        sendJson(res, 200, buildStatusPayload(root))
+      } catch (err) {
+        sendJson(res, 500, { error: err.message })
+      }
       return
     }
 
-    // POST /sync — manual single sync cycle
+    // POST /sync — manual single relay cycle
     if (routePath === '/sync' && method === 'POST') {
       try {
-        syncScope = normalizeAutosyncScope(body?.scope || syncScope)
-        const ok = runSyncCycle(root, syncScope)
+        if (syncing) {
+          sendJson(res, 409, { error: 'Autosync is already running' })
+          return
+        }
+
+        let ok = true
+        if (body?.scope) {
+          const scope = normalizeAutosyncScope(body.scope)
+          ok = runSyncCycle(root, scope)
+        } else {
+          for (const scope of getEnabledScopesInOrder()) {
+            if (!runSyncCycle(root, scope)) {
+              ok = false
+              break
+            }
+          }
+        }
+
         sendJson(res, ok ? 200 : 500, {
           ok,
-          scope: syncScope,
-          lastSyncTime,
-          lastError,
-          branch: getCurrentBranch(root),
+          ...buildStatusPayload(root),
         })
       } catch (err) {
         sendJson(res, 500, { error: err.message })

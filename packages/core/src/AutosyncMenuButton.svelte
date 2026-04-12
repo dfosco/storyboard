@@ -34,7 +34,6 @@
   let selectedBranch = $state('')
   let enabledScopes = $state<{ canvas: boolean; prototype: boolean }>({ canvas: false, prototype: false })
   let lastSyncTime: string | null = $state(null)
-  let lastSyncByScope = $state<{ canvas: string | null; prototype: string | null }>({ canvas: null, prototype: null })
   let lastError: string | null = $state(null)
   let lastErrorByScope = $state<{ canvas: string | null; prototype: string | null }>({ canvas: null, prototype: null })
   let syncing = $state(false)
@@ -92,14 +91,6 @@
       ? data.syncingScope
       : null
 
-    const incomingSyncByScope = data.lastSyncByScope
-    if (incomingSyncByScope && typeof incomingSyncByScope === 'object') {
-      lastSyncByScope = {
-        canvas: incomingSyncByScope.canvas || null,
-        prototype: incomingSyncByScope.prototype || null,
-      }
-    }
-
     const incomingErrorByScope = data.lastErrorByScope
     if (incomingErrorByScope && typeof incomingErrorByScope === 'object') {
       lastErrorByScope = {
@@ -146,7 +137,7 @@
       )
       const data = await res.json()
       if (!res.ok) {
-        lastError = data.error || 'Failed to enable'
+        lastError = data.error || (shouldEnable ? 'Failed to enable' : 'Failed to disable')
       } else {
         applyStatus(data)
       }
@@ -293,13 +284,7 @@
         {#if lastErrorByScope.prototype}
           <span class="statusError">⚠ Prototype: {lastErrorByScope.prototype}</span>
         {/if}
-        {#if !syncing && lastSyncByScope.canvas}
-          <span class="statusOk">Canvas last sync: {formatSyncTime(lastSyncByScope.canvas)}</span>
-        {/if}
-        {#if !syncing && lastSyncByScope.prototype}
-          <span class="statusOk">Prototype last sync: {formatSyncTime(lastSyncByScope.prototype)}</span>
-        {/if}
-        {#if !syncing && !lastSyncByScope.canvas && !lastSyncByScope.prototype && lastSyncTime}
+        {#if !syncing && lastSyncTime}
           <span class="statusOk">Last sync: {formatSyncTime(lastSyncTime)}</span>
         {/if}
       </div>

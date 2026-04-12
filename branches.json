@@ -24,6 +24,7 @@
   {"folder":"branch--comments-system","branch":"comments-system"},
   {"folder":"branch--create-widget-skill","branch":"create-widget-skill"},
   {"folder":"branch--design-modes","branch":"design-modes"},
+  {"folder":"branch--design-system-catalog-skill","branch":"design-system-catalog-skill"},
   {"folder":"branch--feat-widget-feature-prod-flag","branch":"feat-widget-feature-prod-flag"},
   {"folder":"branch--feat-widget-multi-select","branch":"feat-widget-multi-select"},
   {"folder":"branch--feature-flags","branch":"feature-flags"},

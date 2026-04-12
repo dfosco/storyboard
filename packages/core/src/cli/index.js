@@ -39,6 +39,9 @@ switch (command) {
   case 'update:flag':
     import('./updateFlag.js')
     break
+  case 'exit':
+    import('./exit.js')
+    break
   default: {
     const version = getVersion()
     p.intro(`storyboard v${version}`)
@@ -46,6 +49,7 @@ switch (command) {
   dev              Start Vite dev server + update proxy
   setup            Install deps, Caddy proxy, start proxy
   proxy            Generate Caddyfile + start/reload Caddy
+  exit             Stop all dev servers and proxy
   update:flag K V  Update a feature flag`)
 
     if (command) {

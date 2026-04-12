@@ -21,9 +21,10 @@ function mascot() {
   const d = dim('·')
   const f = magenta
   const b = dim
+  const msg = `  ${bold('Happy prototyping!')} 🎨`
   return [
     `        ${b('╭─────────────────╮')}`,
-    `        ${b('│')}  ${d}  ${f('◠')}  ${f('◡')}  ${f('◠')}  ${d}  ${b('│')}`,
+    `        ${b('│')}  ${d}  ${f('◠')}  ${f('◡')}  ${f('◠')}  ${d}  ${b('│')}${msg}`,
     `        ${b('│')}  ${d}  ${d}  ${d}  ${d}  ${d}  ${b('│')}`,
     `        ${b('╰─────────────────╯')}`,
   ].join('\n')
@@ -147,4 +148,4 @@ p.note(
 console.log()
 console.log(mascot())
 
-p.outro('Happy prototyping! 🎨')
+p.outro('')

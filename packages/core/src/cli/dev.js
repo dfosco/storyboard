@@ -108,8 +108,9 @@ async function main() {
   child.stderr.on('data', (data) => {
     if (ready) return // piped directly after ready
     const text = data.toString()
-    // Suppress svelte config noise from stderr during startup
-    if (text.includes('[vite-plugin-svelte]') && text.includes('no Svelte config')) return
+    // Suppress svelte warnings from stderr during startup
+    if (text.includes('[vite-plugin-svelte]')) return
+    if (text.includes('svelte.dev/e/')) return
     if (text.includes('[generouted]')) return
     process.stderr.write(data)
   })

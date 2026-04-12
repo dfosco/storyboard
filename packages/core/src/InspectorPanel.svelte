@@ -111,6 +111,7 @@
   }
 
   const _isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true && !new URLSearchParams(window.location.search).has('prodMode')
+  const _basePath = (typeof window !== 'undefined' && window.__STORYBOARD_BASE_PATH__) || '/'
 
   /**
    * Fetch source file content — uses dev middleware in dev, static JSON in prod.
@@ -119,7 +120,7 @@
     // In local dev, use the live middleware (reads from disk)
     if (_isLocalDev) {
       try {
-        const res = await fetch(`/_storyboard/docs/source?path=${encodeURIComponent(filePath)}`)
+        const res = await fetch(`${_basePath.replace(/\/$/, '')}/_storyboard/docs/source?path=${encodeURIComponent(filePath)}`)
         if (res.ok) {
           const json = await res.json()
           return json?.content || ''
@@ -454,8 +455,8 @@
     if (_isLocalDev) {
       try {
         const [filesRes, repoRes] = await Promise.all([
-          fetch('/_storyboard/docs/files'),
-          fetch('/_storyboard/docs/repo'),
+          fetch(`${_basePath.replace(/\/$/, '')}/_storyboard/docs/files`),
+          fetch(`${_basePath.replace(/\/$/, '')}/_storyboard/docs/repo`),
         ])
         if (filesRes.ok) {
           const data = await filesRes.json()

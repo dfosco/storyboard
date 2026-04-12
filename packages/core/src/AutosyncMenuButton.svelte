@@ -26,7 +26,7 @@
 
   let { config = {}, basePath = '/', tabindex = -1 }: Props = $props()
 
-  const API_BASE = '/_storyboard/autosync'
+  const API_BASE = (basePath === '/' ? '' : basePath.replace(/\/$/, '')) + '/_storyboard/autosync'
 
   let menuOpen = $state(false)
   let branches: string[] = $state([])

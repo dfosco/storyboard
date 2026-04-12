@@ -122,7 +122,7 @@
       if (isExternal) {
         payload.url = externalUrl.trim()
       } else {
-        payload.recipe = partial || undefined
+        payload.partial = partial || undefined
         payload.createFlow = createFlow
       }
       const res = await fetch(getApiUrl(), {

@@ -1415,9 +1415,10 @@ export default function CanvasPage({ name }) {
             className={styles.canvasTitleInput}
             value={canvasTitle}
             size={1}
-            onChange={handleTitleChange}
-            onKeyDown={handleTitleKeyDown}
+            onChange={isLocalDev ? handleTitleChange : undefined}
+            onKeyDown={isLocalDev ? handleTitleKeyDown : undefined}
             onMouseDown={(e) => e.stopPropagation()}
+            readOnly={!isLocalDev}
             spellCheck={false}
             aria-label="Canvas title"
           />

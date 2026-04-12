@@ -3,14 +3,14 @@
 > [!NOTE]  
 > This README is a work in progress 
 
-Storyboard is a complete design tool for prototyping that runs entirely on GitHub. It bundles four key capabilities in a single platform:
+Storyboard is a design tool for prototyping that runs entirely on GitHub. It bundles four key capabilities in a single platform:
 
-1. A framework for coding React prototypes with complex interactions based on states
-2. A set of design tools for inspecting, documenting and interacting with your prototypes
+1. A framework for building **stateful prototypes** in React
+2. An overlay of design tools for inspecting, documenting and interacting with your prototypes
 3. An interactive canvas where you can add components, prototypes, Figma files, and more
 4. The *viewfinder*, a homepage for every prototype created by your team.
 
-Storyboard is free and open-source, and can be deployed for your team just by forking the example repository and enabling deployment on GitHub Pages.
+Storyboard is free and open-source, and can be deployed internally for your team by forking the example repository and turning on GitHub Pages.
 
 <!-- lots of medias -->
 

@@ -87,7 +87,7 @@ export function reloadCaddy(caddyfilePath) {
 
 export function startCaddy(caddyfilePath) {
   try {
-    execSync(`sudo caddy start --config "${caddyfilePath}"`, { stdio: 'inherit' })
+    execSync(`sudo caddy start --config "${caddyfilePath}" >/dev/null 2>&1`, { stdio: ['inherit', 'pipe', 'pipe'] })
     return true
   } catch {
     return false

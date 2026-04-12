@@ -28,7 +28,9 @@ function renderMarkdown(text) {
 export default function MarkdownBlock({ props, onUpdate }) {
   const content = readProp(props, 'content', markdownSchema)
   const width = readProp(props, 'width', markdownSchema)
+  const canEdit = typeof onUpdate === 'function'
   const [editing, setEditing] = useState(false)
+  const editingActive = canEdit && editing
   const textareaRef = useRef(null)
   const blockRef = useRef(null)
   const [editHeight, setEditHeight] = useState(null)
@@ -38,7 +40,7 @@ export default function MarkdownBlock({ props, onUpdate }) {
   }, [onUpdate])
 
   useEffect(() => {
-    if (editing) {
+    if (editingActive) {
       // Capture the preview height before switching to editor
       if (blockRef.current && !editHeight) {
         setEditHeight(blockRef.current.offsetHeight)
@@ -49,7 +51,7 @@ export default function MarkdownBlock({ props, onUpdate }) {
     } else {
       setEditHeight(null)
     }
-  }, [editing, editHeight])
+  }, [editingActive, editHeight])
 
   return (
     <WidgetWrapper>
@@ -58,7 +60,7 @@ export default function MarkdownBlock({ props, onUpdate }) {
         className={styles.block}
         style={{ width, minHeight: editHeight || undefined }}
       >
-        {editing ? (
+        {editingActive ? (
           <textarea
             ref={textareaRef}
             className={styles.editor}
@@ -77,12 +79,15 @@ export default function MarkdownBlock({ props, onUpdate }) {
         ) : (
           <div
             className={styles.preview}
-            onDoubleClick={() => setEditing(true)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') setEditing(true) }}
+            style={!canEdit ? { cursor: 'default' } : undefined}
+            onDoubleClick={canEdit ? () => setEditing(true) : undefined}
+            role={canEdit ? 'button' : undefined}
+            tabIndex={canEdit ? 0 : undefined}
+            onKeyDown={canEdit ? (e) => { if (e.key === 'Enter') setEditing(true) } : undefined}
             dangerouslySetInnerHTML={{
-              __html: renderMarkdown(content) || '<p class="placeholder">Double-click to edit…</p>',
+              __html: renderMarkdown(content) || (canEdit
+                ? '<p class="placeholder">Double-click to edit…</p>'
+                : '<p class="placeholder">No content</p>'),
             }}
           />
         )}

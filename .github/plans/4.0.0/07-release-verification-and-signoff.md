@@ -20,6 +20,7 @@ Gate the 4.0.0 cut with automated, agent-browser, and manual verification before
 | Multi-page canvas (`t05`) | path IDs, basename collision prevention, selector deep-link persistence |
 | Story widgets (`t06`) | discovery/indexing, render selection, compatibility fallback |
 | Command palette (`t07`) | ranking determinism, keyboard navigation, provider filtering |
+| Widget escape modes (PR #83 carryover) | document-level Escape behavior, active/inactive lifecycle, cleanup, sticky/markdown/component/prototype mode exit behavior |
 | Regression baseline | multiselect move/delete, comments auth/graphql, data-plugin watcher/HMR |
 
 ## Agent-browser scenarios
@@ -31,7 +32,8 @@ Gate the 4.0.0 cut with automated, agent-browser, and manual verification before
 5. Multi-page selector page switch + deep-link restore.
 6. Story widget render stability in canvas.
 7. Command palette fuzzy search and keyboard navigation.
-8. Console and accessibility spot checks.
+8. Escape exits edit/interactive modes consistently across sticky, markdown, component, and prototype widgets.
+9. Console and accessibility spot checks.
 
 ## Manual release checklist
 
@@ -44,6 +46,7 @@ Gate the 4.0.0 cut with automated, agent-browser, and manual verification before
 - [ ] Multipage selector and deep links remain correct
 - [ ] Story widget fallback path is documented and verified
 - [ ] Command palette quality verified with mixed search targets
+- [ ] Escape exits widget modes consistently (and iframe widgets retain click-outside fallback behavior)
 - [ ] README/docs + changelog/release notes updated for 4.0 changes
 
 ## Go/No-Go

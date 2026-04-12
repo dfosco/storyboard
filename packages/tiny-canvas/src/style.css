@@ -111,4 +111,8 @@ body .tc-draggable-inner:not(:active) {
   outline: none;
 }
 
+.tc-canvas[data-locked] * {
+  cursor: default !important;
+}
+
 /* Allow text selection inside draggable items */

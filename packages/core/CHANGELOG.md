@@ -1,5 +1,14 @@
 # @dfosco/storyboard-core
 
+## 3.11.3
+
+### Patch Changes
+
+-   Fix canvas snap-to-grid persistence & zoom-to-fit with components
+
+    -   Fix snap-to-grid toggle not persisting — was sending `snapToGrid` as a top-level key instead of inside `settings`, so the server silently dropped it
+    -   Fix zoom-to-fit on load not including JSX components — now waits for `jsxExports` to load before triggering
+
 ## 3.11.2
 
 ### Patch Changes

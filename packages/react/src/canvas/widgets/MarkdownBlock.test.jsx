@@ -4,11 +4,12 @@ import MarkdownBlock from './MarkdownBlock.jsx'
 
 describe('MarkdownBlock', () => {
   it('does not enter edit mode when onUpdate is unavailable (read-only/prod)', () => {
-    render(<MarkdownBlock props={{ content: 'Hello', width: 420 }} />)
+    const { container } = render(<MarkdownBlock props={{ content: 'Hello', width: 420 }} />)
 
     fireEvent.doubleClick(screen.getByText('Hello'))
 
     expect(screen.queryByRole('textbox')).toBeNull()
+    expect(container.querySelector('[data-canvas-allow-text-selection]')).not.toBeNull()
   })
 
   it('enters edit mode when onUpdate is available', () => {

@@ -222,7 +222,7 @@
     <p class="menuTitle">{config.label || 'Autosync'}</p>
 
     <p class="description">
-      Automatically commit and push changes every 30 seconds
+      Automatically commit and push changes every 30s
     </p>
 
     <DropdownMenu.Separator />

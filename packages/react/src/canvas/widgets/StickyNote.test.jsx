@@ -99,4 +99,18 @@ describe('StickyNote', () => {
 
     expect(onUpdate).toHaveBeenCalledWith({ width: 180, height: 60 })
   })
+
+  it('does not enter edit mode without onUpdate (read-only/prod)', () => {
+    const { container } = render(<StickyNote props={{ text: 'Read me' }} />)
+    const text = container.querySelector('p')
+    fireEvent.doubleClick(text)
+    expect(container.querySelector('textarea')).toBeNull()
+    expect(container.querySelector('[data-canvas-allow-text-selection]')).not.toBeNull()
+  })
+
+  it('shows non-editable empty-state text in read-only mode', () => {
+    const { container } = render(<StickyNote props={{ text: '' }} />)
+    expect(container.textContent).toContain('No content')
+    expect(container.textContent).not.toContain('Double-click to edit…')
+  })
 })

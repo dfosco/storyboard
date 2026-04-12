@@ -45,6 +45,7 @@
   let submitting = $state(false)
   let error: string | null = $state(null)
   let success: string | null = $state(null)
+  let createdRoute: string | null = $state(null)
 
   const kebabName = $derived(
     name.replace(/[^a-zA-Z0-9\s_-]/g, '').trim().replace(/[\s_]+/g, '-').toLowerCase().replace(/-+/g, '-').replace(/^-|-$/g, '')
@@ -162,7 +163,7 @@
 
   async function submit() {
     if (!canSubmit) return
-    submitting = true; error = null; success = null
+    submitting = true; error = null; success = null; createdRoute = null
     try {
       const res = await fetch(getApiUrl(), {
         method: 'POST',
@@ -184,6 +185,7 @@
       const data = await res.json()
       if (!res.ok) { error = data.error || 'Failed to create flow'; return }
       success = `Created ${data.path}`
+      if (data.route) { createdRoute = data.route }
     } catch (err: any) { error = err.message || 'Network error' } finally { submitting = false }
   }
 
@@ -305,7 +307,7 @@
   </div>
 
   {#if error}<Alert.Root variant="destructive"><Alert.Description>{error}</Alert.Description></Alert.Root>{/if}
-  {#if success}<Alert.Root><Alert.Description class="text-success">{success}</Alert.Description></Alert.Root>{/if}
+  {#if success}<Alert.Root><Alert.Description class="text-success">{success}{#if createdRoute} — <a href={createdRoute} class="underline font-medium">Go to flow</a>{/if}</Alert.Description></Alert.Root>{/if}
 </div>
 
 <Panel.Footer>

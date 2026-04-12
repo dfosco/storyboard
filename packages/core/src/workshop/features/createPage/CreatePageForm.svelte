@@ -33,6 +33,7 @@
   let submitting = $state(false)
   let error: string | null = $state(null)
   let success: string | null = $state(null)
+  let createdRoute: string | null = $state(null)
   let templateMenuOpen = $state(false)
 
   const selectedProtoEntry = $derived(
@@ -102,7 +103,7 @@
 
   async function submit() {
     if (!canSubmit) return
-    submitting = true; error = null; success = null
+    submitting = true; error = null; success = null; createdRoute = null
     try {
       const res = await fetch(getApiUrl(), {
         method: 'POST',
@@ -117,6 +118,7 @@
       const data = await res.json()
       if (!res.ok) { error = data.error || 'Failed to create page'; return }
       success = `Created ${data.path}`
+      if (data.route) { createdRoute = data.route }
     } catch (err: any) {
       error = err.message || 'Network error'
     } finally {
@@ -240,7 +242,7 @@
   </div>
 
   {#if error}<Alert.Root variant="destructive"><Alert.Description>{error}</Alert.Description></Alert.Root>{/if}
-  {#if success}<Alert.Root><Alert.Description class="text-success">{success}</Alert.Description></Alert.Root>{/if}
+  {#if success}<Alert.Root><Alert.Description class="text-success">{success}{#if createdRoute} — <a href={createdRoute} class="underline font-medium">Go to page</a>{/if}</Alert.Description></Alert.Root>{/if}
 </div>
 
 <Panel.Footer>

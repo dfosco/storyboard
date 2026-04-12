@@ -863,7 +863,7 @@ export default function CanvasPage({ name }) {
     function handleSnapToggle() {
       setSnapEnabled((prev) => {
         const next = !prev
-        updateCanvas(name, { snapToGrid: next }).catch((err) =>
+        updateCanvas(name, { settings: { snapToGrid: next } }).catch((err) =>
           console.error('[canvas] Failed to persist snap setting:', err)
         )
         return next
@@ -922,12 +922,15 @@ export default function CanvasPage({ name }) {
     return () => document.removeEventListener('storyboard:canvas:zoom-to-fit', handleZoomToFit)
   }, [localWidgets, localSources, jsxExports])
 
-  // On initial load without a ?widget= deep link, zoom to fit all objects
+  // On initial load without a ?widget= deep link, zoom to fit all objects.
+  // Wait for jsxExports when the canvas has a JSX module so components are
+  // included in the bounding-box calculation.
   useEffect(() => {
     if (loading || initialWidgetParam.current) return
+    if (canvas?._jsxModule && !jsxExports) return
     initialWidgetParam.current = true // only once
     document.dispatchEvent(new CustomEvent('storyboard:canvas:zoom-to-fit'))
-  }, [loading])
+  }, [loading, jsxExports, canvas])
 
   // Canvas background should follow toolbar theme target.
   useEffect(() => {

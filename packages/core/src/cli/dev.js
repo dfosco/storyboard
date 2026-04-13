@@ -7,6 +7,8 @@
 
 import * as p from '@clack/prompts'
 import { spawn } from 'child_process'
+import { existsSync } from 'fs'
+import { resolve } from 'path'
 import { detectWorktreeName, getPort } from '../worktree/port.js'
 import { generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, reloadCaddy, readDevDomain } from './proxy.js'
 import { startRenameWatcher } from '../rename-watcher/watcher.js'
@@ -26,9 +28,6 @@ async function main() {
 
   p.intro('storyboard dev')
 
-  // Start rename watcher (detects file/dir renames and updates canvas embeds)
-  const renameWatcher = startRenameWatcher(process.cwd())
-
   // Parse --port override from argv (skip 'dev' subcommand)
   const args = process.argv.slice(3)
   const portFlagIdx = args.indexOf('--port')
@@ -40,15 +39,34 @@ async function main() {
     return true
   })
 
+  // Resolve Vite binary directly to skip npx overhead (~5s)
+  const localVite = resolve(process.cwd(), 'node_modules', '.bin', 'vite')
+  const useLocalVite = existsSync(localVite)
+
   // Start Vite — let it find a free port if assigned one is busy.
   // Capture stdout to detect actual port and update Caddy.
-  const child = spawn('npx', ['vite', '--port', String(overridePort || port), ...extraArgs], {
-    env: { ...process.env, VITE_BASE_PATH: basePath },
-    stdio: ['inherit', 'pipe', 'pipe'],
-  })
+  const viteArgs = ['--port', String(overridePort || port), ...extraArgs]
+  const child = useLocalVite
+    ? spawn(localVite, viteArgs, {
+        env: { ...process.env, VITE_BASE_PATH: basePath },
+        stdio: ['inherit', 'pipe', 'pipe'],
+      })
+    : spawn('npx', ['vite', ...viteArgs], {
+        env: { ...process.env, VITE_BASE_PATH: basePath },
+        stdio: ['inherit', 'pipe', 'pipe'],
+      })
+
+  // Start rename watcher after Vite spawn (no need to block startup)
+  const renameWatcher = startRenameWatcher(process.cwd())
 
   let caddyUpdated = false
   let ready = false
+  let caddyRunning = null // cached result of isCaddyRunning()
+
+  function getCaddyRunning() {
+    if (caddyRunning === null) caddyRunning = isCaddyRunning()
+    return caddyRunning
+  }
 
   child.stdout.on('data', (data) => {
     const text = data.toString()
@@ -61,13 +79,13 @@ async function main() {
       try {
         // Try admin API first (additive, doesn't wipe other repos' routes)
         const routeConfig = generateRouteConfig({ [worktreeName]: actualPort })
-        if (isCaddyRunning() && upsertCaddyRoute(routeConfig)) {
+        if (getCaddyRunning() && upsertCaddyRoute(routeConfig)) {
           // Also write Caddyfile for future cold starts
           generateCaddyfile({ [worktreeName]: actualPort })
         } else {
           // Fall back to full Caddyfile reload
           const caddyfilePath = generateCaddyfile({ [worktreeName]: actualPort })
-          if (isCaddyRunning()) {
+          if (getCaddyRunning()) {
             reloadCaddy(caddyfilePath)
           }
         }
@@ -88,7 +106,7 @@ async function main() {
       const timeMatch = text.match(/ready in (\d+)/i)
       const ms = timeMatch ? timeMatch[1] : ''
 
-      if (isCaddyRunning()) {
+      if (getCaddyRunning()) {
         p.log.success(proxyUrl)
       } else {
         p.log.success(directUrl)

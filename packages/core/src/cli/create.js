@@ -15,9 +15,9 @@
  */
 
 import * as p from '@clack/prompts'
-import { detectWorktreeName, getPort } from '../worktree/port.js'
 import { parseFlags, hasFlags, formatFlagHelp } from './flags.js'
 import { prototypeSchema, canvasSchema, flowSchema, pageSchema } from './schemas.js'
+import { getServerUrl } from './serverUrl.js'
 
 const dim = (s) => `\x1b[2m${s}\x1b[0m`
 const green = (s) => `\x1b[32m${s}\x1b[0m`
@@ -35,12 +35,6 @@ function showHelp(type, schema) {
   console.log(formatFlagHelp(schema))
   console.log('')
   process.exit(0)
-}
-
-function getServerUrl() {
-  const name = detectWorktreeName()
-  const port = getPort(name)
-  return `http://localhost:${port}`
 }
 
 async function serverGet(path) {

@@ -53,16 +53,12 @@ describe('storyboardDataPlugin', () => {
     expect(config.optimizeDeps.exclude).toContain('@dfosco/storyboard-react')
   })
 
-  it('config() includes debug in optimizeDeps for ESM/CJS interop', () => {
+  it('config() includes remark stack in optimizeDeps so Vite pre-bundles transitive CJS deps', () => {
     const plugin = storyboardDataPlugin()
     const config = plugin.config()
-    expect(config.optimizeDeps.include).toContain('debug')
-  })
-
-  it('config() includes extend in optimizeDeps for ESM/CJS interop', () => {
-    const plugin = storyboardDataPlugin()
-    const config = plugin.config()
-    expect(config.optimizeDeps.include).toContain('extend')
+    expect(config.optimizeDeps.include).toContain('remark')
+    expect(config.optimizeDeps.include).toContain('remark-gfm')
+    expect(config.optimizeDeps.include).toContain('remark-html')
   })
 
   it("resolveId returns resolved ID for 'virtual:storyboard-data-index'", () => {

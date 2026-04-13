@@ -1,14 +1,14 @@
 {
   "variables": {
     "label:duplicate": "Duplicate",
-    "label:copy-link": "Copy link to widget",
+    "label:copy-link": "Copy widget link",
     "label:delete": "Delete",
     "label:open-ext": "Open in new tab",
     "label:zoom-in": "Zoom in",
     "label:zoom-out": "Zoom out",
     "label:edit": "Edit",
     "label:download": "Download image",
-    "label:copy-png": "Copy as PNG",
+    "label:copy-png": "Copy as image",
     "label:copy-path": "Copy file path",
     "label:expand": "Expand",
     "label:copy-id": "Copy widget ID"

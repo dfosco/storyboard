@@ -411,14 +411,18 @@ export default function WidgetChrome({
     onUpdate?.({ color })
   }, [onUpdate])
 
-  const showToolbar = !readOnly && (hovered || selected)
+  // In readOnly mode, features are already filtered to prod-only by getFeatures.
+  // Show toolbar if there are prod features even when readOnly.
+  const hasFeatures = features.length > 0
+  const showToolbar = (hovered || selected) && (!readOnly || hasFeatures)
   const showFeatures = showToolbar && !multiSelected
+  const menuFeatures = features.filter((f) => f.menu)
 
   return (
     <div
       className={styles.chromeContainer}
-      onMouseEnter={readOnly ? undefined : handleMouseEnter}
-      onMouseLeave={readOnly ? undefined : handleMouseLeave}
+      onMouseEnter={(readOnly && !hasFeatures) ? undefined : handleMouseEnter}
+      onMouseLeave={(readOnly && !hasFeatures) ? undefined : handleMouseLeave}
     >
       <div className={`tc-drag-surface ${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''} ${multiSelected ? styles.widgetSlotMultiSelected : ''}`}>
         {children}
@@ -495,22 +499,26 @@ export default function WidgetChrome({
 
               return null
             })}
-            <WidgetOverflowMenu
-              widgetId={widgetId}
-              menuFeatures={features.filter((f) => f.menu)}
-              onAction={onAction}
-            />
+            {menuFeatures.length > 0 && (
+              <WidgetOverflowMenu
+                widgetId={widgetId}
+                menuFeatures={menuFeatures}
+                onAction={onAction}
+              />
+            )}
           </div>
           )}
 
-          <Tooltip text={selected ? "Click and drag to move" : "Select"} direction="n">
-            <button
-              className={`tc-drag-handle ${styles.selectHandle} ${selected ? styles.selectHandleActive : ''}`}
-              onClick={handleHandleClick}
-              aria-label={selected ? "Drag to move widget" : "Select widget"}
-              aria-pressed={selected}
-            />
-          </Tooltip>
+          {!readOnly && (
+            <Tooltip text={selected ? "Click and drag to move" : "Select"} direction="n">
+              <button
+                className={`tc-drag-handle ${styles.selectHandle} ${selected ? styles.selectHandleActive : ''}`}
+                onClick={handleHandleClick}
+                aria-label={selected ? "Drag to move widget" : "Select widget"}
+                aria-pressed={selected}
+              />
+            </Tooltip>
+          )}
         </div>
       </div>
     </div>

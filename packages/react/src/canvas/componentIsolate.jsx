@@ -12,6 +12,7 @@
  */
 import { createElement, Component as ReactComponent } from 'react'
 import { createRoot } from 'react-dom/client'
+import { ThemeProvider, BaseStyles } from '@primer/react'
 
 // ── Error Boundary ──────────────────────────────────────────────────
 class IsolateErrorBoundary extends ReactComponent {
@@ -62,6 +63,9 @@ const modulePath = params.get('module')
 const exportName = params.get('export')
 const theme = params.get('theme') || 'light'
 
+// Map theme to Primer colorMode
+const colorMode = theme.startsWith('dark') ? 'night' : 'day'
+
 // Apply theme to document for Primer / CSS-var inheritance
 document.documentElement.setAttribute('data-color-mode', theme.startsWith('dark') ? 'dark' : 'light')
 document.documentElement.setAttribute('data-dark-theme', theme.startsWith('dark') ? theme : '')
@@ -91,8 +95,12 @@ async function mount() {
     }
 
     root.render(
-      createElement(IsolateErrorBoundary, { name: exportName },
-        createElement(Component),
+      createElement(ThemeProvider, { colorMode },
+        createElement(BaseStyles, null,
+          createElement(IsolateErrorBoundary, { name: exportName },
+            createElement(Component),
+          ),
+        ),
       ),
     )
   } catch (err) {

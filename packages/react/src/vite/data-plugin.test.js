@@ -59,6 +59,12 @@ describe('storyboardDataPlugin', () => {
     expect(config.optimizeDeps.include).toContain('debug')
   })
 
+  it('config() includes extend in optimizeDeps for ESM/CJS interop', () => {
+    const plugin = storyboardDataPlugin()
+    const config = plugin.config()
+    expect(config.optimizeDeps.include).toContain('extend')
+  })
+
   it("resolveId returns resolved ID for 'virtual:storyboard-data-index'", () => {
     const plugin = createPlugin()
     expect(plugin.resolveId('virtual:storyboard-data-index')).toBe(RESOLVED_ID)

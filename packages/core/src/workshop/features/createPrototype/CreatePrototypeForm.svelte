@@ -88,7 +88,7 @@
   let templateMenuOpen = $state(false)
 
   function getApiUrl() {
-    const basePath = document.querySelector('base')?.getAttribute('href') || '/'
+    const basePath = window.__STORYBOARD_BASE_PATH__ || '/'
     return basePath.replace(/\/$/, '') + '/_storyboard/workshop/prototypes'
   }
 
@@ -136,7 +136,7 @@
         // External prototype — no local route to navigate to, just close after a moment
         setTimeout(() => onClose?.(), 1500)
       } else {
-        setTimeout(() => { const base = document.querySelector('base')?.href || '/'; window.location.href = base + data.route.slice(1) }, 1500)
+        setTimeout(() => { const base = (window.__STORYBOARD_BASE_PATH__ || '/').replace(/\/$/, ''); window.location.href = base + data.route }, 1500)
       }
     } catch (err: any) { error = err.message || 'Network error' } finally { submitting = false }
   }

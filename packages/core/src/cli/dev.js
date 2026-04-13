@@ -9,6 +9,7 @@ import * as p from '@clack/prompts'
 import { spawn } from 'child_process'
 import { detectWorktreeName, getPort } from '../worktree/port.js'
 import { generateCaddyfile, isCaddyRunning, reloadCaddy, readDevDomain } from './proxy.js'
+import { startRenameWatcher } from '../rename-watcher/watcher.js'
 
 async function main() {
   const worktreeName = detectWorktreeName()
@@ -24,6 +25,9 @@ async function main() {
   const directUrl = `http://localhost:${port}${basePath}`
 
   p.intro('storyboard dev')
+
+  // Start rename watcher (detects file/dir renames and updates canvas embeds)
+  const renameWatcher = startRenameWatcher(process.cwd())
 
   // Parse --port override from argv (skip 'dev' subcommand)
   const args = process.argv.slice(3)
@@ -105,6 +109,7 @@ async function main() {
   })
 
   child.on('exit', (code) => {
+    renameWatcher.close()
     if (code && code !== 0 && !ready) {
       p.log.error(`Vite exited with code ${code}`)
     }

@@ -50,4 +50,43 @@ describe('MarkdownBlock', () => {
 
     expect(setData).toHaveBeenCalledWith('text/plain', '**Hello**\n- item')
   })
+
+  describe('GitHub Flavored Markdown', () => {
+    it('renders tables', () => {
+      const markdown = `| Name | Age |
+| --- | --- |
+| Alice | 30 |`
+      const { container } = render(<MarkdownBlock props={{ content: markdown, width: 420 }} />)
+
+      expect(container.querySelector('table')).not.toBeNull()
+      expect(container.querySelector('th')).not.toBeNull()
+      expect(screen.getByText('Alice')).toBeTruthy()
+    })
+
+    it('renders task lists', () => {
+      const markdown = `- [x] Done
+- [ ] Todo`
+      const { container } = render(<MarkdownBlock props={{ content: markdown, width: 420 }} />)
+
+      const checkboxes = container.querySelectorAll('input[type="checkbox"]')
+      expect(checkboxes).toHaveLength(2)
+      expect(checkboxes[0].checked).toBe(true)
+      expect(checkboxes[1].checked).toBe(false)
+    })
+
+    it('renders strikethrough', () => {
+      const { container } = render(<MarkdownBlock props={{ content: '~~deleted~~', width: 420 }} />)
+
+      expect(container.querySelector('del')).not.toBeNull()
+      expect(screen.getByText('deleted')).toBeTruthy()
+    })
+
+    it('renders autolinks', () => {
+      const { container } = render(<MarkdownBlock props={{ content: 'https://github.com', width: 420 }} />)
+
+      const link = container.querySelector('a')
+      expect(link).not.toBeNull()
+      expect(link.href).toBe('https://github.com/')
+    })
+  })
 })

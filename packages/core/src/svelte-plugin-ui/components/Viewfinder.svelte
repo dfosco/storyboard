@@ -11,6 +11,7 @@
 <script lang="ts">
   import { buildPrototypeIndex } from '../../viewfinder.js'
   import { getLocal, setLocal } from '../../localStorage.js'
+  import { isLocalDev } from '../../prodMode.js'
   import Icon from './Icon.svelte'
 
   interface Props {
@@ -186,12 +187,6 @@
   // Branch switching
   interface Branch { branch: string; folder: string }
 
-  const MOCK_BRANCHES: Branch[] = [
-    { branch: 'main', folder: '' },
-    { branch: 'feat/comments-v2', folder: 'branch--feat-comments-v2' },
-    { branch: 'fix/nav-overflow', folder: 'branch--fix-nav-overflow' },
-  ]
-
   let branches: Branch[] | null = $state(null)
 
   const branchBasePath = $derived(
@@ -206,12 +201,13 @@
   )
 
   $effect(() => {
+    if (!isLocalDev()) return
     fetch(`${branchBasePath}branches.json`)
       .then(r => r.ok ? r.json() : null)
       .then((data: any) => {
-        branches = Array.isArray(data) && data.length > 0 ? data : MOCK_BRANCHES
+        branches = Array.isArray(data) && data.length > 0 ? data : null
       })
-      .catch(() => { branches = MOCK_BRANCHES })
+      .catch(() => { branches = null })
   })
 
   function handleBranchChange(e: Event) {

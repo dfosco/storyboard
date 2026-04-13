@@ -153,7 +153,7 @@ export function findStaleRouteIndices(routes, keepId, host) {
  * Remove stale routes that match the same host but lack an @id.
  * These are leftovers from Caddyfile reloads that shadow admin-API routes.
  * Deletes from highest index to lowest to preserve indices during removal.
- * Best-effort — failures are silently ignored.
+ * Best-effort — warns on failure but does not throw.
  */
 function cleanupDuplicateRoutes(keepId, host) {
   try {
@@ -169,9 +169,13 @@ function cleanupDuplicateRoutes(keepId, host) {
           `curl -sf -X DELETE '${CADDY_ADMIN}/config/apps/http/servers/srv0/routes/${idx}'`,
           { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] },
         )
-      } catch { /* best-effort */ }
+      } catch {
+        console.warn(`[storyboard] failed to remove stale proxy route at index ${idx}`)
+      }
     }
-  } catch { /* best-effort cleanup */ }
+  } catch {
+    console.warn('[storyboard] failed to clean up stale proxy routes — branch URLs may not work via proxy')
+  }
 }
 
 /**

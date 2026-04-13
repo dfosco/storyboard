@@ -779,12 +779,9 @@ export default function storyboardDataPlugin() {
               return
             }
 
+            // New canvas file — register the route via full-reload
             knownCanvasNames.add(name)
-            server.ws.send({
-              type: 'custom',
-              event: 'storyboard:canvas-file-changed',
-              data: { name },
-            })
+            triggerFullReload()
             return
           }
         }

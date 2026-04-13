@@ -59,7 +59,7 @@ The `storyboard` CLI (alias: `sb`) wraps all dev tooling. Run via `npx`:
 | `npx storyboard dev` | Start Vite dev server + update proxy |
 | `npx storyboard setup` | Install deps, Caddy, start proxy |
 | `npx storyboard proxy` | Regenerate proxy config + reload |
-| `npx storyboard update:flag <key> <value>` | Update a feature flag |
+| `npx storyboard update:version [version]` | Update storyboard packages to latest (or specific version) |
 
 ## Creating prototypes
 

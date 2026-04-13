@@ -19,7 +19,7 @@ Entry point for the `storyboard` CLI (alias: `sb`). Published as a bin in `@dfos
 | `dev` | `./dev.js` | Start Vite with worktree-aware base path + Caddy proxy update |
 | `setup` | `./setup.js` | Install brew, Caddy, gh; start proxy |
 | `proxy` | `./proxy.js` | Generate Caddyfile + start/reload Caddy |
-| `update:flag` | `./updateFlag.js` | Update feature flag in storyboard.config.json |
+| `update:version` | `./updateVersion.js` | Update @dfosco/storyboard-* packages to latest |
 
 ## Dependencies
 

@@ -14,6 +14,7 @@
   import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
   import * as Panel from './lib/components/ui/panel/index.js'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
+  import { isExcludedByRoute } from './commandActions.js'
   import type { Component } from 'svelte'
 
   interface CreateMenuFeature {
@@ -105,7 +106,9 @@
 
   <DropdownMenu.Content side="top" align="end" sideOffset={16} class="min-w-[180px]" style={menuWidth ? `width: ${menuWidth}` : ''}>
     {#each resolvedActions as action (action._key)}
-      {#if action.type === 'header'}
+      {#if isExcludedByRoute(action)}
+        <!-- hidden by route -->
+      {:else if action.type === 'header'}
         <DropdownMenu.Label>{action.label}</DropdownMenu.Label>
       {:else if action.type === 'separator'}
         <DropdownMenu.Separator />

@@ -197,7 +197,7 @@ describe('buildPrototypeIndex', () => {
     expect(proto.flows).toHaveLength(1)
   })
 
-  it('defaults hideFlows to false when not set', () => {
+  it('defaults hideFlows to true when not set', () => {
     init({
       flows: { 'Other/flow-a': { meta: { title: 'A' } } },
       objects: {},
@@ -208,7 +208,7 @@ describe('buildPrototypeIndex', () => {
     })
     const { prototypes } = buildPrototypeIndex([])
     const proto = prototypes.find(p => p.dirName === 'Other')
-    expect(proto.hideFlows).toBe(false)
+    expect(proto.hideFlows).toBe(true)
   })
 
   it('reads hideFlows from top-level prototype metadata (outside meta key)', () => {

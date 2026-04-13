@@ -19,54 +19,11 @@ import { detectWorktreeName, getPort, repoRoot, worktreeDir, listWorktrees } fro
 import { generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, reloadCaddy, readDevDomain } from './proxy.js'
 import { startRenameWatcher } from '../rename-watcher/watcher.js'
 import { parseFlags } from './flags.js'
+import { hasUncommittedChanges, localBranchExists, resolveDefaultBranch } from './dev-helpers.js'
 
 const flagSchema = {
   port: { type: 'number', description: 'Override dev server port' },
   create: { type: 'boolean', default: true, description: 'Allow creating worktrees/branches (disable with --no-create)' },
-}
-
-/**
- * Check if the working tree has uncommitted changes (staged or unstaged).
- */
-function hasUncommittedChanges(cwd) {
-  try {
-    const status = execFileSync('git', ['status', '--porcelain'], { cwd, encoding: 'utf8' }).trim()
-    return status.length > 0
-  } catch {
-    return false
-  }
-}
-
-/**
- * Resolve the default branch for the repo root (main, master, or origin/HEAD target).
- * Returns null if none can be determined.
- */
-function resolveDefaultBranch(cwd) {
-  for (const candidate of ['main', 'master']) {
-    if (localBranchExists(candidate, cwd)) return candidate
-  }
-  // Try origin/HEAD
-  try {
-    const ref = execFileSync('git', ['symbolic-ref', 'refs/remotes/origin/HEAD'], { cwd, encoding: 'utf8' }).trim()
-    const name = ref.replace('refs/remotes/origin/', '')
-    if (name && localBranchExists(name, cwd)) return name
-  } catch { /* no origin/HEAD */ }
-  return null
-}
-
-/**
- * Check if a local branch exists.
- * @param {string} name
- * @param {string} cwd
- * @returns {boolean}
- */
-function localBranchExists(name, cwd) {
-  try {
-    execFileSync('git', ['show-ref', '--verify', `refs/heads/${name}`], { cwd, stdio: 'ignore' })
-    return true
-  } catch {
-    return false
-  }
 }
 
 /**

@@ -7,6 +7,8 @@
  *   storyboard setup            Install deps, Caddy, start proxy
  *   storyboard proxy            Generate Caddyfile + start/reload Caddy
  *   storyboard update:version   Update @dfosco/storyboard-* packages to latest
+ *   storyboard update:beta      Update to latest beta
+ *   storyboard update:alpha     Update to latest alpha
  *
  * Aliases: `sb` is equivalent to `storyboard`.
  */
@@ -36,7 +38,10 @@ switch (command) {
   case 'proxy':
     import('./proxy.js')
     break
+  case 'update':
   case 'update:version':
+  case 'update:beta':
+  case 'update:alpha':
     import('./updateVersion.js')
     break
   case 'create':
@@ -54,7 +59,10 @@ switch (command) {
   setup            Install deps, Caddy proxy, start proxy
   proxy            Generate Caddyfile + start/reload Caddy
   exit             Stop all dev servers and proxy
-  update:version   Update storyboard packages to latest`)
+  update             Update storyboard packages to latest
+  update:version V   Update to specific version V
+  update:beta        Update to latest beta
+  update:alpha       Update to latest alpha`)
 
     if (command) {
       p.log.error(`Unknown command: ${command}`)

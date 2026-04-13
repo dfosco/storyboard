@@ -1,11 +1,11 @@
 /**
- * storyboard update:version — Update all @dfosco/storyboard-* packages to the latest version.
- *
- * Equivalent to `npm run update` in a client repo.
+ * storyboard update[:channel] — Update all @dfosco/storyboard-* packages.
  *
  * Usage:
- *   storyboard update:version          # update to latest
+ *   storyboard update                  # update to latest stable
  *   storyboard update:version 4.0.0    # update to specific version
+ *   storyboard update:beta             # update to latest beta
+ *   storyboard update:alpha            # update to latest alpha
  */
 
 import * as p from '@clack/prompts'
@@ -13,7 +13,10 @@ import { execSync } from 'child_process'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
-const targetVersion = process.argv[3]
+const command = process.argv[2]
+const channelMap = { 'update:beta': 'beta', 'update:alpha': 'alpha' }
+const channel = channelMap[command]
+const targetVersion = channel ? undefined : process.argv[3]
 
 const pkgPath = resolve(process.cwd(), 'package.json')
 let pkg
@@ -40,11 +43,13 @@ if (storyboardPkgs.size === 0) {
   process.exit(0)
 }
 
-const suffix = targetVersion ? `@${targetVersion}` : '@latest'
+const tag = channel || (targetVersion ? undefined : 'latest')
+const suffix = targetVersion ? `@${targetVersion}` : `@${tag}`
 const packages = [...storyboardPkgs].map(name => `${name}${suffix}`).join(' ')
 
-p.intro('storyboard update:version')
-p.log.info(`Updating ${storyboardPkgs.size} package(s)${targetVersion ? ` to ${targetVersion}` : ''}…`)
+const label = channel ? `to ${channel}` : targetVersion ? `to ${targetVersion}` : ''
+p.intro(`storyboard ${command}`)
+p.log.info(`Updating ${storyboardPkgs.size} package(s)${label ? ` ${label}` : ''}…`)
 for (const name of storyboardPkgs) {
   p.log.message(`  ${name}${suffix}`)
 }

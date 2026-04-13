@@ -65,6 +65,8 @@ function helpScreen(version) {
 
   const commands = [
     '',
+    `  ${bold('All commands:')}`,
+    '',
     `  ${bold(cyan('Development'))}`,
     cmd('dev', 'Start Vite dev server + update proxy'),
     cmd('create', 'Create a prototype or canvas'),

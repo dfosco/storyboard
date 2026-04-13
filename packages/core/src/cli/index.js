@@ -46,7 +46,7 @@ function helpScreen(version) {
     `  ${b('╰─────────────────╯')}`,
   ].join('\n')
 
-  const cmd = (name, desc) => `    ${green(name.padEnd(17))}${desc}`
+  const cmd = (name, desc) => `    ${green(name.padEnd(22))}${desc}`
 
   const gettingStarted = [
     '',
@@ -56,6 +56,7 @@ function helpScreen(version) {
     `    ${green('npx storyboard dev')}                Start developing locally`,
     `    ${green('npx storyboard create prototype')}   Create a prototype`,
     `    ${green('npx storyboard create canvas')}      Create a canvas`,
+    `    ${green('npx storyboard canvas add sticky-note')}  Add a widget to a canvas`,
     '',
     `    ${dim('Using an AI assistant? You can also ask it to')}`,
     `    ${dim('"create a prototype" or "create a canvas" for you!')}`,
@@ -69,8 +70,18 @@ function helpScreen(version) {
     '',
     `  ${bold(cyan('Development'))}`,
     cmd('dev', 'Start Vite dev server + update proxy'),
-    cmd('create', 'Create a prototype or canvas'),
     cmd('exit', 'Stop all dev servers and proxy'),
+    '',
+    `  ${bold(cyan('Create'))}`,
+    cmd('create', 'Interactive creation picker'),
+    cmd('create prototype', 'Create a prototype'),
+    cmd('create canvas', 'Create a canvas'),
+    cmd('create flow', 'Create a flow for a prototype'),
+    cmd('create page', 'Create a page in a prototype'),
+    '',
+    `  ${bold(cyan('Canvas'))}`,
+    cmd('canvas add <type>', 'Add widget to a canvas'),
+    `                              ${dim('types: sticky-note, markdown, prototype')}`,
     '',
     `  ${bold(cyan('Setup'))}`,
     cmd('setup', 'Install deps, Caddy proxy, start proxy'),
@@ -79,6 +90,9 @@ function helpScreen(version) {
     `  ${bold(cyan('Updates'))}`,
     cmd('update', 'Update storyboard packages to latest'),
     cmd('update:<tag>', 'Update to a specific tag ' + dim('(beta, alpha, ...)')),
+    '',
+    `  ${dim('All create commands accept --flags for non-interactive use.')}`,
+    `  ${dim('Run')} ${yellow('npx storyboard create <type> --help')} ${dim('for flag details.')}`,
     '',
     `  ${dim('Usage:')} ${yellow('npx storyboard')} ${dim('<command>')}`,
     `  ${dim('Alias:')} ${yellow('npx sb')} ${dim('<command>')}`,
@@ -101,6 +115,16 @@ switch (command) {
     break
   case 'create':
     import('./create.js')
+    break
+  case 'canvas':
+    if (process.argv[3] === 'add') {
+      import('./canvasAdd.js')
+    } else {
+      const version = getVersion()
+      console.log(helpScreen(version))
+      p.log.error(`Unknown canvas subcommand: ${bold(process.argv[3] || '(none)')}`)
+      process.exit(1)
+    }
     break
   case 'exit':
     import('./exit.js')

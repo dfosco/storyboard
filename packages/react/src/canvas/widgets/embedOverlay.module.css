@@ -1,0 +1,35 @@
+/**
+ * Shared styles for embed interaction overlays.
+ * Used by PrototypeEmbed, FigmaEmbed, and ComponentWidget.
+ */
+
+.interactOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 150ms ease;
+}
+
+.interactOverlay:hover {
+  background-color: rgba(0, 0, 0, 0.15);
+}
+
+.interactHint {
+  opacity: 0;
+  color: var(--fgColor-onInverse);
+  background-color: var(--bgColor-inverse);
+  padding: var(--base-size-12) var(--base-size-16);
+  border-radius: var(--base-size-6);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.interactOverlay:hover .interactHint {
+  opacity: 1;
+}

@@ -3,6 +3,7 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import ComponentErrorBoundary from '../ComponentErrorBoundary.jsx'
 import styles from './ComponentWidget.module.css'
+import overlayStyles from './embedOverlay.module.css'
 
 /**
  * Renders a live JSX export from a .canvas.jsx companion file.
@@ -88,9 +89,25 @@ export default function ComponentWidget({
         </div>
         {!interactive && (
           <div
-            className={styles.interactOverlay}
-            onDoubleClick={enterInteractive}
-          />
+            className={overlayStyles.interactOverlay}
+            onClick={(e) => {
+              // Don't enter interactive mode for modifier clicks (shift/meta/ctrl for multi-select)
+              if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+              enterInteractive()
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                e.stopPropagation()
+                enterInteractive()
+              }
+            }}
+            aria-label="Click to interact with component"
+          >
+            <span className={overlayStyles.interactHint}>Click to interact</span>
+          </div>
         )}
         {resizable && (
           <ResizeHandle

@@ -47,13 +47,6 @@
   display: block;
 }
 
-.dragOverlay {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  cursor: grab;
-}
-
 .resizeHandle {
   position: absolute;
   bottom: 0;

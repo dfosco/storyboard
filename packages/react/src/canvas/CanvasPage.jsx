@@ -48,6 +48,35 @@ function resolveCanvasThemeFromStorage() {
 }
 
 /**
+ * Get the copyable URL for a widget based on its type.
+ * Returns the most relevant URL/path for the widget content.
+ */
+function getWidgetCopyableUrl(widget) {
+  const { type, props = {} } = widget
+  const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
+  switch (type) {
+    case 'prototype':
+      // Prototype src is a path like "/MyPrototype" - make it a full URL
+      return props.src ? `${window.location.origin}${base.replace(/\/$/, '')}${props.src}` : ''
+    case 'figma-embed':
+      return props.url || ''
+    case 'link-preview':
+      return props.url || ''
+    case 'image':
+      // Return the served image URL
+      return props.src ? `${window.location.origin}${base.replace(/\/$/, '')}/_storyboard/canvas/images/${props.src}` : ''
+    case 'sticky-note':
+      // Sticky notes have text content, not a URL
+      return props.text || ''
+    case 'markdown':
+      // Markdown has content, not a URL
+      return props.content || ''
+    default:
+      return ''
+  }
+}
+
+/**
  * Debounce helper — returns a function that delays invocation.
  * Exposes `.cancel()` to abort pending calls (used by undo/redo).
  */
@@ -977,6 +1006,25 @@ export default function CanvasPage({ name }) {
         e.preventDefault()
         setSelectedWidgetIds(new Set())
       }
+      // Copy: cmd+c copies URL, alt+cmd+c copies ID (single widget only)
+      const mod = e.metaKey || e.ctrlKey
+      if (mod && e.key === 'c' && selectedWidgetIds.size === 1) {
+        const widgetId = [...selectedWidgetIds][0]
+        const widget = localWidgets?.find(w => w.id === widgetId)
+        if (widget) {
+          e.preventDefault()
+          if (e.altKey) {
+            // alt+cmd+c → copy widget ID
+            navigator.clipboard.writeText(widgetId).catch(() => {})
+          } else {
+            // cmd+c → copy widget URL/content
+            const url = getWidgetCopyableUrl(widget)
+            if (url) {
+              navigator.clipboard.writeText(url).catch(() => {})
+            }
+          }
+        }
+      }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault()
         if (selectedWidgetIds.size > 1) {
@@ -1002,7 +1050,7 @@ export default function CanvasPage({ name }) {
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [selectedWidgetIds, handleWidgetRemove, undoRedo, name, debouncedSave])
+  }, [selectedWidgetIds, localWidgets, handleWidgetRemove, undoRedo, name, debouncedSave])
 
   // Paste handler — images become image widgets, same-origin URLs become prototypes,
   // other URLs become link previews, text becomes markdown

@@ -103,6 +103,12 @@
   overflow: visible;
 }
 
+/* Elevate stacking context for hovered/selected widgets so their chrome
+   (toolbar, menus, selection outline) renders above sibling widgets. */
+:global(.tc-drag:has([data-tc-elevated])) {
+  z-index: 1;
+}
+
 .localEditingLabel {
   display: inline-flex;
   align-items: center;

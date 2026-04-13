@@ -6,7 +6,7 @@
  *   storyboard dev              Start Vite dev server + update proxy
  *   storyboard setup            Install deps, Caddy, start proxy
  *   storyboard proxy            Generate Caddyfile + start/reload Caddy
- *   storyboard update:flag K V  Update a feature flag in storyboard.config.json
+ *   storyboard update:version   Update @dfosco/storyboard-* packages to latest
  *
  * Aliases: `sb` is equivalent to `storyboard`.
  */
@@ -36,8 +36,8 @@ switch (command) {
   case 'proxy':
     import('./proxy.js')
     break
-  case 'update:flag':
-    import('./updateFlag.js')
+  case 'update:version':
+    import('./updateVersion.js')
     break
   case 'create':
     import('./create.js')
@@ -54,7 +54,7 @@ switch (command) {
   setup            Install deps, Caddy proxy, start proxy
   proxy            Generate Caddyfile + start/reload Caddy
   exit             Stop all dev servers and proxy
-  update:flag K V  Update a feature flag`)
+  update:version   Update storyboard packages to latest`)
 
     if (command) {
       p.log.error(`Unknown command: ${command}`)

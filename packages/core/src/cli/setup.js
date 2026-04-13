@@ -131,7 +131,8 @@ if (isCaddyInstalled()) {
 
 p.note(
   [
-    `${bold('Welcome to Storyboard!')} Here's how to get started:`,
+    `${bold('Welcome!')} Storyboard is a design tool to build and`,
+    `collaborate on prototypes. Here's how to get started:`,
     '',
     `  ${green('npx storyboard dev')}                Start developing locally`,
     `  ${green('npx storyboard create prototype')}   Create a prototype`,
@@ -141,6 +142,7 @@ p.note(
     `  ${dim('"create a prototype" or "create a canvas" for you!')}`,
     '',
     `  ${dim('Docs:')} ${cyan('https://github.com/dfosco/storyboard/blob/main/README.md')}`,
+    `  ${dim('PS: You can also use')} ${green('npx sb ...')} ${dim('for shorter commands')}`,
   ].join('\n'),
   'Getting started'
 )

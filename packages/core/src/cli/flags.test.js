@@ -37,6 +37,27 @@ describe('parseFlags', () => {
     expect(flags.verbose).toBe(false)
   })
 
+  it('parses --flag=false for booleans', () => {
+    const { flags } = parseFlags(['--verbose=false', '--name', 'x'], testSchema)
+    expect(flags.verbose).toBe(false)
+  })
+
+  it('parses --flag=true for booleans', () => {
+    const { flags } = parseFlags(['--verbose=true', '--name', 'x'], testSchema)
+    expect(flags.verbose).toBe(true)
+  })
+
+  it('parses --no-flag=false as double negation (true)', () => {
+    const { flags } = parseFlags(['--no-verbose=false', '--name', 'x'], testSchema)
+    expect(flags.verbose).toBe(true)
+  })
+
+  it('reports error for invalid boolean value', () => {
+    const { errors } = parseFlags(['--verbose=maybe', '--name', 'x'], testSchema)
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toContain('boolean')
+  })
+
   it('parses number flags', () => {
     const { flags } = parseFlags(['--name', 'x', '--count', '42'], testSchema)
     expect(flags.count).toBe(42)

@@ -13,16 +13,16 @@ describe('stickyNoteSchema', () => {
     )
   })
 
-  it('does not include default values for width/height so new widgets size naturally', () => {
+  it('includes default values for width/height from config', () => {
     const defaults = getDefaults(stickyNoteSchema)
-    expect(defaults).not.toHaveProperty('width')
-    expect(defaults).not.toHaveProperty('height')
+    expect(defaults).toHaveProperty('width', 270)
+    expect(defaults).toHaveProperty('height', 170)
   })
 
-  it('returns null when width/height are not saved in props', () => {
+  it('returns default value when width/height are not saved in props', () => {
     const props = { text: 'hello', color: 'yellow' }
-    expect(readProp(props, 'width', stickyNoteSchema)).toBeNull()
-    expect(readProp(props, 'height', stickyNoteSchema)).toBeNull()
+    expect(readProp(props, 'width', stickyNoteSchema)).toBe(270)
+    expect(readProp(props, 'height', stickyNoteSchema)).toBe(170)
   })
 
   it('returns saved width/height when present in props', () => {
@@ -33,11 +33,11 @@ describe('stickyNoteSchema', () => {
 })
 
 describe('StickyNote', () => {
-  it('renders without explicit dimensions when width/height are not saved', () => {
+  it('applies default dimensions as inline styles when not saved in props', () => {
     const { container } = render(<StickyNote props={{ text: 'Hi' }} onUpdate={vi.fn()} />)
     const sticky = container.querySelector('article')
-    expect(sticky.style.width).toBe('')
-    expect(sticky.style.height).toBe('')
+    expect(sticky.style.width).toBe('270px')
+    expect(sticky.style.height).toBe('170px')
   })
 
   it('applies saved dimensions as inline styles', () => {

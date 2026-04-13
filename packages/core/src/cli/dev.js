@@ -19,25 +19,11 @@ import { detectWorktreeName, getPort, repoRoot, worktreeDir, listWorktrees } fro
 import { generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, reloadCaddy, readDevDomain } from './proxy.js'
 import { startRenameWatcher } from '../rename-watcher/watcher.js'
 import { parseFlags } from './flags.js'
+import { hasUncommittedChanges, localBranchExists, resolveDefaultBranch } from './dev-helpers.js'
 
 const flagSchema = {
   port: { type: 'number', description: 'Override dev server port' },
   create: { type: 'boolean', default: true, description: 'Allow creating worktrees/branches (disable with --no-create)' },
-}
-
-/**
- * Check if a local branch exists.
- * @param {string} name
- * @param {string} cwd
- * @returns {boolean}
- */
-function localBranchExists(name, cwd) {
-  try {
-    execFileSync('git', ['show-ref', '--verify', `refs/heads/${name}`], { cwd, stdio: 'ignore' })
-    return true
-  } catch {
-    return false
-  }
 }
 
 /**
@@ -84,15 +70,84 @@ function createWorktree(name, root, { newBranch = false } = {}) {
 /**
  * Resolve the target worktree for `storyboard dev [branch]`.
  *
+ * When no argument is given and the repo root is on a non-main branch,
+ * prompts the user to convert it to a proper worktree.
+ *
  * @param {string|undefined} branchArg — positional branch argument
  * @param {object} opts
  * @param {boolean} opts.allowCreate — whether creation is allowed
  * @returns {Promise<{ worktreeName: string, targetCwd: string, created: boolean }>}
  */
 async function resolveDevTarget(branchArg, { allowCreate = true } = {}) {
-  // No argument — detect from cwd (current behavior)
+  // No argument — detect from cwd
   if (!branchArg) {
-    return { worktreeName: detectWorktreeName(), targetCwd: process.cwd(), created: false }
+    const detectedName = detectWorktreeName()
+
+    // Already in a worktree or on main — use cwd as-is
+    const root = repoRoot()
+    const realCwd = resolve(process.cwd())
+    const isAtRoot = realCwd === resolve(root)
+    if (detectedName === 'main' || !isAtRoot) {
+      return { worktreeName: detectedName, targetCwd: process.cwd(), created: false }
+    }
+
+    // Root is on a non-main branch — check for existing worktree first
+    const branch = detectedName
+    const existingDir = worktreeDir(branch)
+    if (existsSync(resolve(existingDir, '.git'))) {
+      p.log.info(`Root is on branch "${branch}" — using existing worktree`)
+      return { worktreeName: branch, targetCwd: existingDir, created: false }
+    }
+
+    // No worktree exists — prompt the user to convert
+    p.log.warning(`Root is on branch "${branch}" instead of main.`)
+    const shouldConvert = await p.confirm({
+      message: `Convert "${branch}" to a worktree? (moves branch to .worktrees/${branch}/)`,
+      initialValue: true,
+    })
+
+    if (p.isCancel(shouldConvert) || !shouldConvert) {
+      // User declined — proceed with root as-is (legacy behavior)
+      return { worktreeName: detectedName, targetCwd: process.cwd(), created: false }
+    }
+
+    // User accepted — validate and convert
+    if (!allowCreate) {
+      p.log.error('Cannot convert — --no-create flag is set.')
+      process.exit(1)
+    }
+
+    if (hasUncommittedChanges(root)) {
+      p.log.error('Cannot convert — uncommitted changes in working tree.')
+      p.log.info('Commit or stash your changes first, then run `sb dev` again.')
+      process.exit(1)
+    }
+
+    const defaultBranch = resolveDefaultBranch(root)
+    if (!defaultBranch) {
+      p.log.error('Cannot determine default branch (main/master). Switch root manually.')
+      process.exit(1)
+    }
+
+    p.log.step(`Switching root to "${defaultBranch}"`)
+    execFileSync('git', ['checkout', defaultBranch], { cwd: root, stdio: 'inherit' })
+
+    const targetDir = createWorktree(branch, root, { newBranch: false })
+
+    // Offer to open the new worktree in VS Code
+    const shouldOpen = await p.confirm({
+      message: 'Open this worktree in VS Code?',
+      initialValue: true,
+    })
+    if (shouldOpen && !p.isCancel(shouldOpen)) {
+      try {
+        execFileSync('code', [targetDir], { stdio: 'inherit' })
+      } catch {
+        p.log.warning(`Could not open VS Code. Run: code ${targetDir}`)
+      }
+    }
+
+    return { worktreeName: branch, targetCwd: targetDir, created: true }
   }
 
   const root = repoRoot()

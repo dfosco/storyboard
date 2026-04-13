@@ -26,7 +26,7 @@
 
   let { config = {}, basePath = '/', tabindex = -1 }: Props = $props()
 
-  const API_BASE = (basePath === '/' ? '' : basePath.replace(/\/$/, '')) + '/_storyboard/autosync'
+  const apiBase = $derived((basePath === '/' ? '' : basePath.replace(/\/$/, '')) + '/_storyboard/autosync')
 
   let menuOpen = $state(false)
   let branches: string[] = $state([])
@@ -49,7 +49,7 @@
 
   async function fetchBranches() {
     try {
-      const res = await fetch(`${API_BASE}/branches`)
+      const res = await fetch(`${apiBase}/branches`)
       const data = await res.json()
       branches = data.branches || []
       currentBranch = data.current || ''
@@ -106,7 +106,7 @@
 
   async function fetchStatus() {
     try {
-      const res = await fetch(`${API_BASE}/status`)
+      const res = await fetch(`${apiBase}/status`)
       const data = await res.json()
       applyStatus(data)
     } catch { /* ignore */ }
@@ -124,7 +124,7 @@
       }
 
       const res = await fetch(
-        shouldEnable ? `${API_BASE}/enable` : `${API_BASE}/disable`,
+        shouldEnable ? `${apiBase}/enable` : `${apiBase}/disable`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

@@ -66,8 +66,17 @@ for (const name of storyboardPkgs) {
 try {
   execSync(`npm install ${packages}`, { stdio: 'inherit', cwd: process.cwd() })
   p.log.success('All storyboard packages updated')
-  p.outro('Done')
 } catch {
   p.log.error('Failed to update packages — see npm output above')
   process.exit(1)
 }
+
+// Sync scaffold files (skills, scripts) from the updated package
+p.log.info('Syncing scaffold files…')
+try {
+  execSync('npx storyboard-scaffold', { stdio: 'inherit', cwd: process.cwd() })
+} catch {
+  p.log.warn('Scaffold sync failed — run `npx storyboard-scaffold` manually')
+}
+
+p.outro('Done')

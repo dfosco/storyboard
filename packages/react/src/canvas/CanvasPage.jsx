@@ -51,6 +51,7 @@ function resolveCanvasThemeFromStorage() {
  * Get the copyable URL for a widget based on its type.
  * Returns the most relevant URL/path for the widget content.
  */
+// eslint-disable-next-line no-unused-vars
 function getWidgetCopyableUrl(widget) {
   const { type, props = {} } = widget
   const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
@@ -403,13 +404,13 @@ export default function CanvasPage({ name }) {
   // Flag to suppress the click-based selection reset that fires after a drag
   const justDraggedRef = useRef(false)
 
-  const handleItemDragStart = useCallback((dragId, position) => {
+  const handleItemDragStart = useCallback((dragId) => {
     const ids = selectedIdsRef.current
     peerArticlesRef.current.clear()
     if (ids.size <= 1 || !ids.has(dragId)) return
 
     // Suppress selection changes for the duration of the drag
-    justDraggedRef.current = true
+    justDraggedRef.current = true // eslint-disable-line react-hooks/immutability
 
     // Collect peer article elements for transition on drag end
     for (const id of ids) {
@@ -575,7 +576,7 @@ export default function CanvasPage({ name }) {
     if (ids.size > 1 && ids.has(dragId)) {
       transitionPeers()
       // Suppress the click-based selection reset that fires after pointerup
-      justDraggedRef.current = true
+      justDraggedRef.current = true // eslint-disable-line react-hooks/immutability
       requestAnimationFrame(() => { justDraggedRef.current = false })
       undoRedo.snapshot(stateRef.current, 'multi-move')
 

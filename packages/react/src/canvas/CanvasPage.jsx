@@ -931,6 +931,17 @@ export default function CanvasPage({ name }) {
     snapEnabledRef.current = snapEnabled
   }, [snapEnabled])
 
+  // Respond to snap-state requests from Svelte toolbar (handles mount-order race)
+  useEffect(() => {
+    function handleRequest() {
+      document.dispatchEvent(new CustomEvent('storyboard:canvas:snap-state', {
+        detail: { snapEnabled: snapEnabledRef.current }
+      }))
+    }
+    document.addEventListener('storyboard:canvas:snap-state-request', handleRequest)
+    return () => document.removeEventListener('storyboard:canvas:snap-state-request', handleRequest)
+  }, [])
+
   // Listen for gridSize from Svelte toolbar config
   useEffect(() => {
     function handleGridSize(e) {

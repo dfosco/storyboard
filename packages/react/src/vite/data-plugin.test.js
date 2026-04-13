@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import storyboardDataPlugin, { resolveTemplateVars, computeTemplateVars } from './data-plugin.js'
@@ -827,5 +827,220 @@ describe('template variable integration', () => {
     )
     expect(warnCall).toBeTruthy()
     warnSpy.mockRestore()
+  })
+})
+
+// ── Canvas watcher / HMR tests ──────────────────────────────────────
+
+describe('canvas watcher behavior', () => {
+  /** Helper: create a mock Vite dev server for configureServer */
+  function createMockServer(root) {
+    const listeners = {}
+    const wsSent = []
+    const invalidatedModules = []
+
+    return {
+      wsSent,
+      invalidatedModules,
+      listeners,
+      config: { root, base: '/' },
+      watcher: {
+        add: vi.fn(),
+        on(event, fn) {
+          if (!listeners[event]) listeners[event] = []
+          listeners[event].push(fn)
+        },
+      },
+      moduleGraph: {
+        getModuleById(id) {
+          if (id === RESOLVED_ID) return { id: RESOLVED_ID }
+          return null
+        },
+        invalidateModule(mod) {
+          invalidatedModules.push(mod.id)
+        },
+      },
+      ws: {
+        send(msg) { wsSent.push(msg) },
+      },
+      middlewares: {
+        use: vi.fn(),
+      },
+    }
+  }
+
+  /** Emit a watcher event on the mock server */
+  function emit(server, event, filePath) {
+    for (const fn of (server.listeners[event] || [])) {
+      fn(filePath)
+    }
+  }
+
+  function writeCanvasFile(dir, name, title) {
+    const canvasDir = path.join(dir, 'src', 'canvas')
+    mkdirSync(canvasDir, { recursive: true })
+    const evt = { event: 'canvas_created', title: title || name, timestamp: Date.now() }
+    writeFileSync(path.join(canvasDir, `${name}.canvas.jsonl`), JSON.stringify(evt) + '\n')
+  }
+
+  it('soft-invalidates virtual module on canvas content change (no full-reload)', () => {
+    writeCanvasFile(tmpDir, 'test-canvas', 'Original Title')
+    const plugin = createPlugin()
+    // Force initial buildResult
+    plugin.load(RESOLVED_ID)
+
+    const server = createMockServer(tmpDir)
+    plugin.configureServer(server)
+
+    // Simulate a canvas file content change
+    const canvasPath = path.join(tmpDir, 'src', 'canvas', 'test-canvas.canvas.jsonl')
+    emit(server, 'change', canvasPath)
+
+    // Should have sent custom HMR event (not full-reload)
+    const customEvents = server.wsSent.filter(m => m.type === 'custom')
+    const fullReloads = server.wsSent.filter(m => m.type === 'full-reload')
+
+    expect(customEvents.length).toBe(1)
+    expect(customEvents[0].event).toBe('storyboard:canvas-file-changed')
+    expect(customEvents[0].data.name).toBe('test-canvas')
+    expect(fullReloads.length).toBe(0)
+
+    // Should have invalidated the virtual module
+    expect(server.invalidatedModules).toContain(RESOLVED_ID)
+  })
+
+  it('includes metadata in HMR event for canvas content changes', () => {
+    writeCanvasFile(tmpDir, 'meta-canvas', 'My Canvas Title')
+    const plugin = createPlugin()
+    plugin.load(RESOLVED_ID)
+
+    const server = createMockServer(tmpDir)
+    plugin.configureServer(server)
+
+    emit(server, 'change', path.join(tmpDir, 'src', 'canvas', 'meta-canvas.canvas.jsonl'))
+
+    const event = server.wsSent.find(m => m.type === 'custom')
+    expect(event.data.metadata).toBeDefined()
+    expect(event.data.metadata.title).toBe('My Canvas Title')
+  })
+
+  it('soft-invalidates on canvas file add (new canvas)', () => {
+    const plugin = createPlugin()
+    plugin.load(RESOLVED_ID)
+
+    const server = createMockServer(tmpDir)
+    plugin.configureServer(server)
+
+    // Create the file after the server is configured
+    writeCanvasFile(tmpDir, 'new-canvas', 'Brand New')
+    emit(server, 'add', path.join(tmpDir, 'src', 'canvas', 'new-canvas.canvas.jsonl'))
+
+    const customEvents = server.wsSent.filter(m => m.type === 'custom')
+    const fullReloads = server.wsSent.filter(m => m.type === 'full-reload')
+
+    expect(customEvents.length).toBe(1)
+    expect(customEvents[0].data.name).toBe('new-canvas')
+    expect(customEvents[0].data.metadata).toBeDefined()
+    expect(fullReloads.length).toBe(0)
+    expect(server.invalidatedModules).toContain(RESOLVED_ID)
+  })
+
+  it('soft-invalidates on canvas file unlink after timeout (true delete)', async () => {
+    writeCanvasFile(tmpDir, 'doomed-canvas', 'Gone Soon')
+    const plugin = createPlugin()
+    plugin.load(RESOLVED_ID)
+
+    const server = createMockServer(tmpDir)
+    plugin.configureServer(server)
+
+    emit(server, 'unlink', path.join(tmpDir, 'src', 'canvas', 'doomed-canvas.canvas.jsonl'))
+
+    // Immediately after unlink — no event yet (deferred by 1500ms)
+    expect(server.wsSent.length).toBe(0)
+
+    // Wait for deferred timer
+    await new Promise(resolve => setTimeout(resolve, 1600))
+
+    const customEvents = server.wsSent.filter(m => m.type === 'custom')
+    expect(customEvents.length).toBe(1)
+    expect(customEvents[0].data.name).toBe('doomed-canvas')
+    expect(customEvents[0].data.removed).toBe(true)
+    expect(server.invalidatedModules).toContain(RESOLVED_ID)
+  })
+
+  it('cancels deferred unlink on add (atomic write / in-place save)', async () => {
+    writeCanvasFile(tmpDir, 'saved-canvas', 'Saved')
+    const plugin = createPlugin()
+    plugin.load(RESOLVED_ID)
+
+    const server = createMockServer(tmpDir)
+    plugin.configureServer(server)
+
+    const canvasPath = path.join(tmpDir, 'src', 'canvas', 'saved-canvas.canvas.jsonl')
+
+    // Simulate atomic write: unlink then add within 1500ms
+    emit(server, 'unlink', canvasPath)
+    emit(server, 'add', canvasPath)
+
+    // Should have sent one event immediately (the add cancelling the unlink)
+    const customEvents = server.wsSent.filter(m => m.type === 'custom')
+    expect(customEvents.length).toBe(1)
+    expect(customEvents[0].data.name).toBe('saved-canvas')
+    expect(customEvents[0].data.removed).toBeUndefined()
+    expect(server.invalidatedModules).toContain(RESOLVED_ID)
+
+    // Wait past the unlink timer — should NOT get a second event
+    await new Promise(resolve => setTimeout(resolve, 1600))
+    const allCustom = server.wsSent.filter(m => m.type === 'custom')
+    expect(allCustom.length).toBe(1)
+  })
+
+  it('handleHotUpdate returns empty array for canvas files (suppresses full-reload)', () => {
+    const plugin = createPlugin()
+    const result = plugin.handleHotUpdate({
+      file: path.join(tmpDir, 'src', 'canvas', 'test.canvas.jsonl'),
+      server: createMockServer(tmpDir),
+      modules: [],
+    })
+    expect(result).toEqual([])
+  })
+
+  it('handleHotUpdate does not send duplicate HMR events', () => {
+    const plugin = createPlugin()
+    const server = createMockServer(tmpDir)
+    plugin.handleHotUpdate({
+      file: path.join(tmpDir, 'src', 'canvas', 'test.canvas.jsonl'),
+      server,
+      modules: [],
+    })
+    // handleHotUpdate should NOT send events (invalidate() handles it)
+    expect(server.wsSent.length).toBe(0)
+  })
+
+  it('generated virtual module includes HMR listener for canvas updates', () => {
+    writeCanvasFile(tmpDir, 'hmr-canvas', 'HMR Test')
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('import.meta.hot')
+    expect(code).toContain('storyboard:canvas-file-changed')
+    expect(code).toContain('data.removed')
+    expect(code).toContain('data.metadata')
+  })
+
+  it('page refresh after canvas add yields updated module with new canvas', () => {
+    const plugin = createPlugin()
+    // First load — no canvases
+    const code1 = plugin.load(RESOLVED_ID)
+    expect(code1).not.toContain('"refresh-canvas"')
+
+    // Simulate adding a canvas and clearing buildResult (what softInvalidate does)
+    writeCanvasFile(tmpDir, 'refresh-canvas', 'After Refresh')
+
+    // Manually clear buildResult by loading a fresh plugin instance with the same root
+    const plugin2 = createPlugin()
+    const code2 = plugin2.load(RESOLVED_ID)
+    expect(code2).toContain('"refresh-canvas"')
+    expect(code2).toContain('After Refresh')
   })
 })

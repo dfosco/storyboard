@@ -8,7 +8,7 @@
 import * as p from '@clack/prompts'
 import { spawn } from 'child_process'
 import { detectWorktreeName, getPort } from '../worktree/port.js'
-import { generateCaddyfile, isCaddyRunning, reloadCaddy, readDevDomain } from './proxy.js'
+import { generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, reloadCaddy, readDevDomain } from './proxy.js'
 
 async function main() {
   const worktreeName = detectWorktreeName()
@@ -55,9 +55,17 @@ async function main() {
       const actualPort = Number(portMatch[1])
       caddyUpdated = true
       try {
-        const caddyfilePath = generateCaddyfile({ [worktreeName]: actualPort })
-        if (isCaddyRunning()) {
-          reloadCaddy(caddyfilePath)
+        // Try admin API first (additive, doesn't wipe other repos' routes)
+        const routeConfig = generateRouteConfig({ [worktreeName]: actualPort })
+        if (isCaddyRunning() && upsertCaddyRoute(routeConfig)) {
+          // Also write Caddyfile for future cold starts
+          generateCaddyfile({ [worktreeName]: actualPort })
+        } else {
+          // Fall back to full Caddyfile reload
+          const caddyfilePath = generateCaddyfile({ [worktreeName]: actualPort })
+          if (isCaddyRunning()) {
+            reloadCaddy(caddyfilePath)
+          }
         }
       } catch {
         // Caddy not available

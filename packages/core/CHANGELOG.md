@@ -1,5 +1,13 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.9
+
+### Patch Changes
+
+-   Fix debug ESM/CJS interop error in dev mode.
+
+    -   fix: add `debug` to Vite `optimizeDeps.include` so micromark's development build resolves correctly
+
 ## 4.0.0-beta.8
 
 ### Minor Changes

@@ -217,7 +217,7 @@ export default defineConfig(() => {
         },
     },
     optimizeDeps: {
-        include: ['reshaped', '@primer/react', '@primer/octicons-react', 'debug'],
+        include: ['reshaped', '@primer/react', '@primer/octicons-react', 'debug', 'extend'],
     },
     esbuild: {
         // Preserve function names so the storyboard inspector shows

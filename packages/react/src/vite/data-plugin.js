@@ -675,6 +675,41 @@ export default function storyboardDataPlugin() {
     },
 
     configureServer(server) {
+      // ── Component isolate middleware ───────────────────────────────
+      // Serves a minimal HTML shell for iframe-isolated component widgets.
+      // The iframe loads componentIsolate.jsx which reads query params
+      // (module, export, theme) and renders a single canvas.jsx export.
+      const isolateEntryPath = new URL('../canvas/componentIsolate.jsx', import.meta.url).pathname
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url) return next()
+        let url = req.url
+        const baseNoTrail = (server.config.base || '/').replace(/\/$/, '')
+        if (baseNoTrail && url.startsWith(baseNoTrail)) {
+          url = url.slice(baseNoTrail.length) || '/'
+        }
+        if (!url.startsWith('/_storyboard/canvas/isolate')) return next()
+
+        const rawHtml = [
+          '<!DOCTYPE html>',
+          '<html><head>',
+          '<style>html,body{margin:0;padding:0;width:100%;height:100%}#root{width:100%;height:100%}</style>',
+          '</head><body>',
+          '<div id="root"></div>',
+          `<script type="module" src="/@fs${isolateEntryPath}"></script>`,
+          '</body></html>',
+        ].join('\n')
+
+        try {
+          const html = await server.transformIndexHtml(req.url, rawHtml)
+          res.writeHead(200, { 'Content-Type': 'text/html' })
+          res.end(html)
+        } catch (err) {
+          console.error('[storyboard] Component isolate HTML transform failed:', err)
+          res.writeHead(500, { 'Content-Type': 'text/plain' })
+          res.end('Component isolate failed')
+        }
+      })
+
       // Watch for data file changes in dev mode
       const watcher = server.watcher
       if (!buildResult) buildResult = buildIndex(root)

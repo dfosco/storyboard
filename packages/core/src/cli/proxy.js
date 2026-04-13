@@ -11,10 +11,20 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { execSync } from 'child_process'
-import { dirname } from 'path'
+import { dirname, resolve } from 'path'
 import { portsFilePath } from '../worktree/port.js'
 
-const DOMAIN = 'storyboard.localhost'
+export function readDevDomain() {
+  try {
+    const configPath = resolve(process.cwd(), 'storyboard.config.json')
+    const config = JSON.parse(readFileSync(configPath, 'utf8'))
+    return `${config.devDomain || 'storyboard'}.localhost`
+  } catch {
+    return 'storyboard.localhost'
+  }
+}
+
+const DOMAIN = readDevDomain()
 
 export function generateCaddyfile(portOverrides = {}) {
   const portsFile = portsFilePath()

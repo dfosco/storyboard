@@ -45,7 +45,7 @@
   const canSubmit = $derived(!!kebabName && !nameError && !submitting)
 
   function getApiUrl() {
-    const basePath = document.querySelector('base')?.getAttribute('href') || '/'
+    const basePath = window.__STORYBOARD_BASE_PATH__ || '/'
     return basePath.replace(/\/$/, '') + '/_storyboard/canvas'
   }
 

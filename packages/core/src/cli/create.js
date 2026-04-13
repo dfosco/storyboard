@@ -18,6 +18,7 @@ import * as p from '@clack/prompts'
 import { parseFlags, hasFlags, formatFlagHelp } from './flags.js'
 import { prototypeSchema, canvasSchema, flowSchema, pageSchema } from './schemas.js'
 import { getServerUrl } from './serverUrl.js'
+import { detectWorktreeName, getPort } from '../worktree/port.js'
 
 const dim = (s) => `\x1b[2m${s}\x1b[0m`
 const green = (s) => `\x1b[32m${s}\x1b[0m`

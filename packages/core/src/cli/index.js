@@ -38,12 +38,6 @@ switch (command) {
   case 'proxy':
     import('./proxy.js')
     break
-  case 'update':
-  case 'update:version':
-  case 'update:beta':
-  case 'update:alpha':
-    import('./updateVersion.js')
-    break
   case 'create':
     import('./create.js')
     break
@@ -51,6 +45,10 @@ switch (command) {
     import('./exit.js')
     break
   default: {
+    if (command === 'update' || (command && command.startsWith('update:'))) {
+      import('./updateVersion.js')
+      break
+    }
     const version = getVersion()
     p.intro(`storyboard v${version}`)
     p.log.message(`Commands:
@@ -59,10 +57,10 @@ switch (command) {
   setup            Install deps, Caddy proxy, start proxy
   proxy            Generate Caddyfile + start/reload Caddy
   exit             Stop all dev servers and proxy
-  update             Update storyboard packages to latest
-  update:version V   Update to specific version V
-  update:beta        Update to latest beta
-  update:alpha       Update to latest alpha`)
+  update               Update storyboard packages to latest
+  update:<version>     Update to specific version
+  update:beta          Update to latest beta
+  update:alpha         Update to latest alpha`)
 
     if (command) {
       p.log.error(`Unknown command: ${command}`)

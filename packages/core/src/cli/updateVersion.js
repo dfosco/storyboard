@@ -1,9 +1,10 @@
 /**
- * storyboard update[:channel] — Update all @dfosco/storyboard-* packages.
+ * storyboard update[:channel|:version] — Update all @dfosco/storyboard-* packages.
  *
  * Usage:
  *   storyboard update                  # update to latest stable
  *   storyboard update:version 4.0.0    # update to specific version
+ *   storyboard update:4.0.0-beta.1     # update to specific version (shorthand)
  *   storyboard update:beta             # update to latest beta
  *   storyboard update:alpha            # update to latest alpha
  */
@@ -14,9 +15,17 @@ import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
 const command = process.argv[2]
-const channelMap = { 'update:beta': 'beta', 'update:alpha': 'alpha' }
-const channel = channelMap[command]
-const targetVersion = channel ? undefined : process.argv[3]
+const channels = { 'update:beta': 'beta', 'update:alpha': 'alpha' }
+
+let channel, targetVersion
+if (channels[command]) {
+  channel = channels[command]
+} else if (command === 'update:version') {
+  targetVersion = process.argv[3]
+} else if (command && command.startsWith('update:')) {
+  // update:<version> shorthand, e.g. update:4.0.0-beta.1
+  targetVersion = command.slice('update:'.length)
+}
 
 const pkgPath = resolve(process.cwd(), 'package.json')
 let pkg

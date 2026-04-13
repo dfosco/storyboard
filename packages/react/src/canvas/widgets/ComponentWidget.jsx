@@ -89,8 +89,14 @@ export default function ComponentWidget({
         {!interactive && (
           <div
             className={styles.interactOverlay}
-            onDoubleClick={enterInteractive}
-          />
+            onClick={enterInteractive}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') enterInteractive() }}
+            aria-label="Click to interact with component"
+          >
+            <span className={styles.interactHint}>Click to interact</span>
+          </div>
         )}
         {resizable && (
           <ResizeHandle

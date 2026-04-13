@@ -17,10 +17,12 @@ import { subscribeToStorage, getStorageSnapshot } from '@dfosco/storyboard-core'
  *
  * @param {string} [path] - Dot-notation path (e.g. 'user.profile.name').
  *                          Omit to get the entire flow object.
+ * @param {{ optional?: boolean }} [opts] - Pass { optional: true } to suppress
+ *                          the "path not found" warning for optional data.
  * @returns {*} The resolved value. Returns {} if path is missing after loading.
  * @throws If used outside a StoryboardProvider.
  */
-export function useFlowData(path) {
+export function useFlowData(path, opts) {
   const context = useContext(StoryboardContext)
 
   if (context === null) {
@@ -73,7 +75,7 @@ export function useFlowData(path) {
     }
 
     if (sceneValue === undefined) {
-      if (data != null && Object.keys(data).length > 0) {
+      if (!opts?.optional && data != null && Object.keys(data).length > 0) {
         console.warn(`[useFlowData] Path "${path}" not found in flow data.`)
       }
       return {}

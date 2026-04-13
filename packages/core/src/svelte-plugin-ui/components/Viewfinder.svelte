@@ -11,7 +11,6 @@
 <script lang="ts">
   import { buildPrototypeIndex } from '../../viewfinder.js'
   import { getLocal, setLocal } from '../../localStorage.js'
-  import { isLocalDev } from '../../prodMode.js'
   import Icon from './Icon.svelte'
 
   interface Props {
@@ -184,10 +183,14 @@
     return `<svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="320" height="200" fill="var(--sb--placeholder-bg)" />${lines}${rects}</svg>`
   }
 
-  // Branch switching
+  // Branch switching — populated by Vite server plugin when available
   interface Branch { branch: string; folder: string }
 
-  let branches: Branch[] | null = $state(null)
+  let branches: Branch[] | null = $state(
+    (typeof window !== 'undefined' && Array.isArray((window as any).__SB_BRANCHES__))
+      ? (window as any).__SB_BRANCHES__
+      : null
+  )
 
   const branchBasePath = $derived(
     (basePath || '/storyboard-source/').replace(/\/branch--[^/]*\/$/, '/')
@@ -199,16 +202,6 @@
       return m ? m[1] : 'main'
     })()
   )
-
-  $effect(() => {
-    if (!isLocalDev()) return
-    fetch(`${branchBasePath}branches.json`)
-      .then(r => r.ok ? r.json() : null)
-      .then((data: any) => {
-        branches = Array.isArray(data) && data.length > 0 ? data : null
-      })
-      .catch(() => { branches = null })
-  })
 
   function handleBranchChange(e: Event) {
     const folder = (e.target as HTMLSelectElement).value

@@ -307,6 +307,18 @@ export default function storyboardServer() {
         fileName: '.nojekyll',
         source: '',
       })
+
+      // Emit CNAME for GitHub Pages custom domain if configured.
+      // Without this, deploy scripts that clean the gh-pages root will
+      // delete the CNAME on every push, causing intermittent 404s.
+      const customDomain = (config.customDomain || '').trim()
+      if (customDomain && !customDomain.includes('/') && !customDomain.includes(':') && !customDomain.includes(' ')) {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'CNAME',
+          source: customDomain + '\n',
+        })
+      }
     },
   }
 }

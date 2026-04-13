@@ -80,8 +80,8 @@
       "actions": [
         { "type": "header", "label": "Create" },
         { "id": "workshop/create-prototype", "label": "New prototype", "type": "default", "modes": ["*"], "feature": "createPrototype" },
-        { "id": "workshop/create-flow", "label": "New flow", "type": "default", "modes": ["*"], "feature": "createFlow" },
-        { "id": "workshop/create-page", "label": "New page",  "type": "default", "modes": ["*"], "feature": "createPage" },
+        { "id": "workshop/create-flow", "label": "New flow", "type": "default", "modes": ["*"], "feature": "createFlow", "excludeRoutes": ["/canvas/"] },
+        { "id": "workshop/create-page", "label": "New page",  "type": "default", "modes": ["*"], "feature": "createPage", "excludeRoutes": ["/canvas/"] },
         { "id": "workshop/create-canvas", "label": "New canvas", "type": "default", "modes": ["*"], "feature": "createCanvas" },
         { "type": "footer", "label": "Only available in dev environment" }
       ]

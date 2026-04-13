@@ -96,7 +96,15 @@ export function parseFlags(argv, schema) {
     const def = schema[canonical]
 
     if (def.type === 'boolean') {
-      flags[canonical] = !negated
+      if (value !== undefined) {
+        // Handle --flag=true / --flag=false
+        const lower = value.toLowerCase()
+        if (lower === 'true' || lower === '1') flags[canonical] = !negated
+        else if (lower === 'false' || lower === '0') flags[canonical] = negated
+        else errors.push(`Flag --${raw} is boolean; use --${raw}, --no-${raw}, or --${raw}=true|false`)
+      } else {
+        flags[canonical] = !negated
+      }
       i++
       continue
     }

@@ -48,6 +48,21 @@ function helpScreen(version) {
 
   const cmd = (name, desc) => `    ${green(name.padEnd(17))}${desc}`
 
+  const gettingStarted = [
+    '',
+    `  Welcome! Storyboard is a design tool to build and`,
+    `  collaborate on prototypes. Here's how to get started:`,
+    '',
+    `    ${green('npx storyboard dev')}                Start developing locally`,
+    `    ${green('npx storyboard create prototype')}   Create a prototype`,
+    `    ${green('npx storyboard create canvas')}      Create a canvas`,
+    '',
+    `    ${dim('Using an AI assistant? You can also ask it to')}`,
+    `    ${dim('"create a prototype" or "create a canvas" for you!')}`,
+    '',
+    `    ${dim('Docs:')} ${cyan('https://github.com/dfosco/storyboard/blob/main/README.md')}`,
+  ].join('\n')
+
   const commands = [
     '',
     `  ${bold(cyan('Development'))}`,
@@ -67,7 +82,7 @@ function helpScreen(version) {
     `  ${dim('Alias:')} ${yellow('npx sb')} ${dim('<command>')}`,
   ].join('\n')
 
-  return `\n${mascot}\n${commands}\n`
+  return `\n${mascot}\n${gettingStarted}\n${commands}\n`
 }
 
 const command = process.argv[2]

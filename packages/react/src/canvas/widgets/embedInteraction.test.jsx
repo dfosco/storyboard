@@ -57,20 +57,41 @@ describe('Embed interaction overlay', () => {
       expect(screen.queryByRole('button', { name: /click to interact/i })).not.toBeInTheDocument()
     })
 
-    it('supports keyboard interaction (Enter key)', () => {
+    it('does not enter interactive mode on shift+click (preserves multi-select)', () => {
       render(<PrototypeEmbed {...defaultProps} />)
       
       const overlay = screen.getByRole('button', { name: /click to interact/i })
-      fireEvent.keyDown(overlay, { key: 'Enter' })
+      fireEvent.click(overlay, { shiftKey: true })
+      
+      // Overlay should still exist (did not enter interactive mode)
+      expect(screen.getByRole('button', { name: /click to interact/i })).toBeInTheDocument()
+    })
+
+    it('does not enter interactive mode on meta+click (preserves multi-select)', () => {
+      render(<PrototypeEmbed {...defaultProps} />)
+      
+      const overlay = screen.getByRole('button', { name: /click to interact/i })
+      fireEvent.click(overlay, { metaKey: true })
+      
+      expect(screen.getByRole('button', { name: /click to interact/i })).toBeInTheDocument()
+    })
+
+    it('supports keyboard interaction (Enter key) with event prevention', () => {
+      render(<PrototypeEmbed {...defaultProps} />)
+      
+      const overlay = screen.getByRole('button', { name: /click to interact/i })
+      const event = { key: 'Enter', preventDefault: vi.fn(), stopPropagation: vi.fn() }
+      fireEvent.keyDown(overlay, event)
       
       expect(screen.queryByRole('button', { name: /click to interact/i })).not.toBeInTheDocument()
     })
 
-    it('supports keyboard interaction (Space key)', () => {
+    it('supports keyboard interaction (Space key) with event prevention', () => {
       render(<PrototypeEmbed {...defaultProps} />)
       
       const overlay = screen.getByRole('button', { name: /click to interact/i })
-      fireEvent.keyDown(overlay, { key: ' ' })
+      const event = { key: ' ', preventDefault: vi.fn(), stopPropagation: vi.fn() }
+      fireEvent.keyDown(overlay, event)
       
       expect(screen.queryByRole('button', { name: /click to interact/i })).not.toBeInTheDocument()
     })

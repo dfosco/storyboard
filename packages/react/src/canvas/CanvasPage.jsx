@@ -316,6 +316,9 @@ export default function CanvasPage({ name }) {
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
   const [snapEnabled, setSnapEnabled] = useState(canvas?.snapToGrid ?? false)
   const [snapGridSize, setSnapGridSize] = useState(canvas?.gridSize || 40)
+  // Refs for snap settings (used by drop handler inside effect closure)
+  const snapEnabledRef = useRef(snapEnabled)
+  const snapGridSizeRef = useRef(snapGridSize)
 
   // Centralized list of component export names.
   // When jsxExports is available, use it (discovers new exports not yet in sources).
@@ -923,6 +926,7 @@ export default function CanvasPage({ name }) {
     document.dispatchEvent(new CustomEvent('storyboard:canvas:snap-state', {
       detail: { snapEnabled }
     }))
+    snapEnabledRef.current = snapEnabled
   }, [snapEnabled])
 
   // Listen for gridSize from Svelte toolbar config
@@ -934,6 +938,11 @@ export default function CanvasPage({ name }) {
     document.addEventListener('storyboard:canvas:grid-size', handleGridSize)
     return () => document.removeEventListener('storyboard:canvas:grid-size', handleGridSize)
   }, [])
+
+  // Keep snapGridSize ref in sync for drop handler
+  useEffect(() => {
+    snapGridSizeRef.current = snapGridSize
+  }, [snapGridSize])
 
   // Listen for zoom-to-fit from CoreUIBar
   useEffect(() => {
@@ -1061,6 +1070,9 @@ export default function CanvasPage({ name }) {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [selectedWidgetIds, localWidgets, handleWidgetRemove, undoRedo, name, debouncedSave])
 
+  // Ref to store processImageFile for use by drop effect
+  const processImageFileRef = useRef(null)
+
   // Paste and drop handler — images become image widgets, same-origin URLs become prototypes,
   // other URLs become link previews, text becomes markdown
   useEffect(() => {
@@ -1172,6 +1184,9 @@ export default function CanvasPage({ name }) {
       }
     }
 
+    // Store in ref for use by drag/drop effect
+    processImageFileRef.current = processImageFile
+
     async function handleImagePaste(e) {
       const items = e.clipboardData?.items
       if (!items) return false
@@ -1239,7 +1254,17 @@ export default function CanvasPage({ name }) {
       }
     }
 
-    // --- Drag and drop handlers for images from Finder/file manager ---
+    document.addEventListener('paste', handlePaste)
+    return () => document.removeEventListener('paste', handlePaste)
+  }, [name, undoRedo])
+
+  // --- Drag and drop handlers for images from Finder/file manager ---
+  // Separate effect to ensure listeners attach after scroll container mounts (loading=false)
+  useEffect(() => {
+    if (loading) return // Don't attach until canvas is loaded and scroll container exists
+
+    const scrollEl = scrollRef.current
+    if (!scrollEl) return
 
     function handleDragOver(e) {
       // Only handle if dragging files (not internal widget drag)
@@ -1252,23 +1277,20 @@ export default function CanvasPage({ name }) {
       // Only handle file drops, not internal widget drags
       if (!e.dataTransfer?.types?.includes('Files')) return
 
-      const files = e.dataTransfer.files
-      if (!files || files.length === 0) return
-
-      // Filter to image files only
-      const imageFiles = Array.from(files).filter((f) => f.type.startsWith('image/'))
-      if (imageFiles.length === 0) return
-
+      // Prevent browser default (opening file) immediately for any file drop
       e.preventDefault()
       e.stopPropagation()
 
-      // Convert drop coordinates to canvas coordinates
-      const scrollEl = scrollRef.current
-      if (!scrollEl) return
+      const files = e.dataTransfer.files
+      if (!files || files.length === 0) return
 
+      // Filter to image files only — non-images are silently ignored (default already prevented)
+      const imageFiles = Array.from(files).filter((f) => f.type.startsWith('image/'))
+      if (imageFiles.length === 0) return
+
+      // Convert drop coordinates to canvas coordinates
       const rect = scrollEl.getBoundingClientRect()
       const scale = zoomRef.current / 100
-      const gridSize = 24
 
       // Mouse position relative to scroll container
       const mouseX = e.clientX - rect.left
@@ -1278,35 +1300,27 @@ export default function CanvasPage({ name }) {
       const canvasX = (scrollEl.scrollLeft + mouseX) / scale
       const canvasY = (scrollEl.scrollTop + mouseY) / scale
 
-      // Snap to grid
-      const snappedX = Math.round(canvasX / gridSize) * gridSize
-      const snappedY = Math.round(canvasY / gridSize) * gridSize
+      // Snap to grid if enabled, using current grid size
+      const gridSize = snapGridSizeRef.current
+      const shouldSnap = snapEnabledRef.current
+      const snappedX = shouldSnap ? Math.round(canvasX / gridSize) * gridSize : Math.round(canvasX)
+      const snappedY = shouldSnap ? Math.round(canvasY / gridSize) * gridSize : Math.round(canvasY)
 
       // Process each image file, offsetting subsequent images
       for (let i = 0; i < imageFiles.length; i++) {
-        const offsetX = i * 24 // Offset each subsequent image by 1 grid unit
-        const offsetY = i * 24
-        await processImageFile(imageFiles[i], { x: snappedX + offsetX, y: snappedY + offsetY })
+        const offset = shouldSnap ? i * gridSize : i * 24
+        await processImageFileRef.current?.(imageFiles[i], { x: snappedX + offset, y: snappedY + offset })
       }
     }
 
-    document.addEventListener('paste', handlePaste)
-
-    // Attach drag/drop handlers to the scroll container
-    const scrollEl = scrollRef.current
-    if (scrollEl) {
-      scrollEl.addEventListener('dragover', handleDragOver)
-      scrollEl.addEventListener('drop', handleDrop)
-    }
+    scrollEl.addEventListener('dragover', handleDragOver)
+    scrollEl.addEventListener('drop', handleDrop)
 
     return () => {
-      document.removeEventListener('paste', handlePaste)
-      if (scrollEl) {
-        scrollEl.removeEventListener('dragover', handleDragOver)
-        scrollEl.removeEventListener('drop', handleDrop)
-      }
+      scrollEl.removeEventListener('dragover', handleDragOver)
+      scrollEl.removeEventListener('drop', handleDrop)
     }
-  }, [name, undoRedo])
+  }, [loading])
 
   // --- Undo / Redo ---
   const handleUndo = useCallback(() => {

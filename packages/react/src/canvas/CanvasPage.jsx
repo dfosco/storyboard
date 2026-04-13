@@ -12,7 +12,7 @@ import { isFigmaUrl, sanitizeFigmaUrl } from './widgets/figmaUrl.js'
 import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import useUndoRedo from './useUndoRedo.js'
-import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi, uploadImage } from './canvasApi.js'
+import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi, uploadImage, getCanvas as getCanvasApi } from './canvasApi.js'
 import styles from './CanvasPage.module.css'
 
 const ZOOM_MIN = 25
@@ -51,6 +51,7 @@ function resolveCanvasThemeFromStorage() {
  * Get the copyable URL for a widget based on its type.
  * Returns the most relevant URL/path for the widget content.
  */
+// eslint-disable-next-line no-unused-vars
 function getWidgetCopyableUrl(widget) {
   const { type, props = {} } = widget
   const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
@@ -403,13 +404,13 @@ export default function CanvasPage({ name }) {
   // Flag to suppress the click-based selection reset that fires after a drag
   const justDraggedRef = useRef(false)
 
-  const handleItemDragStart = useCallback((dragId, position) => {
+  const handleItemDragStart = useCallback((dragId) => {
     const ids = selectedIdsRef.current
     peerArticlesRef.current.clear()
     if (ids.size <= 1 || !ids.has(dragId)) return
 
     // Suppress selection changes for the duration of the drag
-    justDraggedRef.current = true
+    justDraggedRef.current = true // eslint-disable-line react-hooks/immutability
 
     // Collect peer article elements for transition on drag end
     for (const id of ids) {
@@ -577,7 +578,7 @@ export default function CanvasPage({ name }) {
     if (ids.size > 1 && ids.has(dragId)) {
       transitionPeers()
       // Suppress the click-based selection reset that fires after pointerup
-      justDraggedRef.current = true
+      justDraggedRef.current = true // eslint-disable-line react-hooks/immutability
       requestAnimationFrame(() => { justDraggedRef.current = false })
       undoRedo.snapshot(stateRef.current, 'multi-move')
 
@@ -1028,33 +1029,13 @@ export default function CanvasPage({ name }) {
         e.preventDefault()
         setSelectedWidgetIds(new Set())
       }
-      // Copy shortcuts (single widget selected):
-      // - cmd+c → copy URL/content
-      // - Shift+C (no cmd) → copy widget ID (or file path for images)
+      // Copy shortcut (single widget selected):
+      // cmd+c → copy canvasName/widgetId (for cross-canvas paste-duplicate)
       const mod = e.metaKey || e.ctrlKey
       if (mod && e.key === 'c' && !e.shiftKey && selectedWidgetIds.size === 1) {
         const widgetId = [...selectedWidgetIds][0]
-        const widget = localWidgets?.find(w => w.id === widgetId)
-        if (widget) {
-          e.preventDefault()
-          const url = getWidgetCopyableUrl(widget)
-          if (url) {
-            navigator.clipboard.writeText(url).catch(() => {})
-          }
-        }
-      }
-      // Shift+C (uppercase C, no cmd) → copy ID or file path
-      if (e.key === 'C' && e.shiftKey && !mod && selectedWidgetIds.size === 1) {
-        const widgetId = [...selectedWidgetIds][0]
-        const widget = localWidgets?.find(w => w.id === widgetId)
-        if (widget) {
-          e.preventDefault()
-          if (widget.type === 'image' && widget.props?.src) {
-            navigator.clipboard.writeText(`src/canvas/images/${widget.props.src}`).catch(() => {})
-          } else {
-            navigator.clipboard.writeText(widgetId).catch(() => {})
-          }
-        }
+        e.preventDefault()
+        navigator.clipboard.writeText(`${name}/${widgetId}`).catch(() => {})
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault()
@@ -1230,6 +1211,40 @@ export default function CanvasPage({ name }) {
 
       e.preventDefault()
 
+      // Detect canvasName/widgetId format for widget duplication (cross-canvas copy-paste)
+      const widgetRefMatch = text.match(/^([^/]+)\/([^/]+)$/)
+      if (widgetRefMatch) {
+        const [, sourceCanvas, sourceWidgetId] = widgetRefMatch
+        // Component widgets are code, not duplicable data — silently consume the ref
+        if (sourceWidgetId.startsWith('jsx-')) return
+        try {
+          let sourceWidget = null
+          if (sourceCanvas === name) {
+            sourceWidget = (localWidgets ?? []).find(w => w.id === sourceWidgetId)
+          } else {
+            const canvasData = await getCanvasApi(sourceCanvas)
+            sourceWidget = (canvasData?.widgets ?? []).find(w => w.id === sourceWidgetId)
+          }
+          if (sourceWidget) {
+            const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
+            const pos = centerPositionForWidget(center, sourceWidget.type, sourceWidget.props)
+            undoRedo.snapshot(stateRef.current, 'add')
+            const result = await addWidgetApi(name, {
+              type: sourceWidget.type,
+              props: { ...sourceWidget.props },
+              position: pos,
+            })
+            if (result.success && result.widget) {
+              setLocalWidgets((prev) => [...(prev || []), result.widget])
+            }
+          }
+        } catch (err) {
+          console.error('[canvas] Failed to paste widget reference:', err)
+        }
+        // Always consume the ref — never fall through to markdown creation
+        return
+      }
+
       let type, props
       const url = looksLikeWebUrl(text)
       if (url) {
@@ -1269,7 +1284,7 @@ export default function CanvasPage({ name }) {
 
     document.addEventListener('paste', handlePaste)
     return () => document.removeEventListener('paste', handlePaste)
-  }, [name, undoRedo])
+  }, [name, undoRedo, localWidgets])
 
   // --- Drag and drop handlers for images from Finder/file manager ---
   // Separate effect to ensure listeners attach after scroll container mounts (loading=false)

@@ -18,6 +18,7 @@
   let name = $state('')
   let title = $state('')
   let titleTouched = $state(false)
+  let description = $state('')
   let folder = $state('')
   let includeJsx = $state(false)
   let grid = $state(true)
@@ -81,7 +82,7 @@
     try {
       const res = await fetch(getApiUrl() + '/create', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: kebabName, title: displayTitle, folder: folder || undefined, grid, includeJsx }),
+        body: JSON.stringify({ name: kebabName, title: displayTitle, description: description || undefined, folder: folder || undefined, grid, includeJsx }),
       })
       const data = await res.json()
       if (!res.ok) { error = data.error || 'Failed to create canvas'; return }
@@ -114,6 +115,11 @@
   <div class="space-y-1">
     <Label for="sb-canvas-title">Title</Label>
     <Input id="sb-canvas-title" placeholder={autoTitle || 'Auto-derived from name'} value={displayTitle} oninput={handleTitleInput} onblur={handleTitleBlur} />
+  </div>
+
+  <div class="space-y-1">
+    <Label for="sb-canvas-description">Description <span class="text-muted-foreground font-normal">(optional)</span></Label>
+    <Input id="sb-canvas-description" placeholder="A brief description of this canvas" bind:value={description} />
   </div>
 
   <div class="space-y-1">

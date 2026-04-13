@@ -1,4 +1,4 @@
-import { createElement, useCallback, useEffect, useRef, useState } from 'react'
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { Canvas } from '@dfosco/tiny-canvas'
 import '@dfosco/tiny-canvas/style.css'
@@ -158,7 +158,7 @@ const FIT_PADDING = 48
  * Compute the axis-aligned bounding box that contains every widget and source.
  * Returns { minX, minY, maxX, maxY } in canvas-space coordinates, or null if empty.
  */
-function computeCanvasBounds(widgets, sources, jsxExports) {
+function computeCanvasBounds(widgets, componentEntries) {
   let minX = Infinity
   let minY = Infinity
   let maxX = -Infinity
@@ -179,24 +179,18 @@ function computeCanvasBounds(widgets, sources, jsxExports) {
     hasItems = true
   }
 
-  // JSX sources
-  const sourceMap = Object.fromEntries(
-    (sources || []).filter((s) => s?.export).map((s) => [s.export, s])
-  )
-  if (jsxExports) {
-    for (const exportName of Object.keys(jsxExports)) {
-      const sourceData = sourceMap[exportName] || {}
-      const x = sourceData.position?.x ?? 0
-      const y = sourceData.position?.y ?? 0
-      const fallback = WIDGET_FALLBACK_SIZES['component']
-      const width = sourceData.width ?? fallback.width
-      const height = sourceData.height ?? fallback.height
-      minX = Math.min(minX, x)
-      minY = Math.min(minY, y)
-      maxX = Math.max(maxX, x + width)
-      maxY = Math.max(maxY, y + height)
-      hasItems = true
-    }
+  // Component widgets (from jsxExports or sources fallback)
+  for (const entry of componentEntries) {
+    const x = entry.sourceData?.position?.x ?? 0
+    const y = entry.sourceData?.position?.y ?? 0
+    const fallback = WIDGET_FALLBACK_SIZES['component']
+    const width = entry.sourceData?.width ?? fallback.width
+    const height = entry.sourceData?.height ?? fallback.height
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x + width)
+    maxY = Math.max(maxY, y + height)
+    hasItems = true
   }
 
   return hasItems ? { minX, minY, maxX, maxY } : null
@@ -275,7 +269,7 @@ function ChromeWrappedWidget({
  * @param {{ name: string }} props - Canvas name as indexed by the data plugin
  */
 export default function CanvasPage({ name }) {
-  const { canvas, jsxExports, loading } = useCanvas(name)
+  const { canvas, jsxExports, jsxError, loading } = useCanvas(name)
   const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true && !new URLSearchParams(window.location.search).has('prodMode')
 
   // Local mutable copy of widgets for instant UI updates
@@ -293,6 +287,34 @@ export default function CanvasPage({ name }) {
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
   const [snapEnabled, setSnapEnabled] = useState(canvas?.snapToGrid ?? false)
   const [snapGridSize, setSnapGridSize] = useState(canvas?.gridSize || 40)
+
+  // Centralized list of component export names.
+  // When jsxExports is available, use it (discovers new exports not yet in sources).
+  // When jsxExports is null (module import failed), fall back to sources so iframes
+  // still render — the error is contained inside each iframe.
+  const componentEntries = useMemo(() => {
+    const sourceMap = Object.fromEntries(
+      (localSources || []).filter((s) => s?.export).map((s) => [s.export, s]),
+    )
+    if (jsxExports) {
+      return Object.keys(jsxExports).map((exportName) => ({
+        exportName,
+        Component: jsxExports[exportName],
+        sourceData: sourceMap[exportName] || {},
+      }))
+    }
+    // Fallback: use sources when module import failed (iframe isolation still works)
+    if (jsxError && canvas?._jsxModule) {
+      return (localSources || [])
+        .filter((s) => s?.export)
+        .map((s) => ({
+          exportName: s.export,
+          Component: null,
+          sourceData: s,
+        }))
+    }
+    return []
+  }, [jsxExports, jsxError, localSources, canvas?._jsxModule])
 
   // Undo/redo history — tracks both widgets and sources as a combined snapshot
   const undoRedo = useUndoRedo()
@@ -673,16 +695,13 @@ export default function CanvasPage({ name }) {
     // Check JSX sources (jsx-ExportName)
     if (!widget && targetId.startsWith('jsx-')) {
       const exportName = targetId.slice(4)
-      const sourceMap = Object.fromEntries(
-        (localSources || []).filter((s) => s?.export).map((s) => [s.export, s])
-      )
-      const sourceData = sourceMap[exportName]
-      if (sourceData || (jsxExports && exportName in jsxExports)) {
+      const entry = componentEntries.find((e) => e.exportName === exportName)
+      if (entry) {
         const fallback = WIDGET_FALLBACK_SIZES['component']
-        x = sourceData?.position?.x ?? 0
-        y = sourceData?.position?.y ?? 0
-        w = sourceData?.width ?? fallback.width
-        h = sourceData?.height ?? fallback.height
+        x = entry.sourceData?.position?.x ?? 0
+        y = entry.sourceData?.position?.y ?? 0
+        w = entry.sourceData?.width ?? fallback.width
+        h = entry.sourceData?.height ?? fallback.height
       }
     }
 
@@ -696,7 +715,7 @@ export default function CanvasPage({ name }) {
     const url = new URL(window.location.href)
     url.searchParams.delete('widget')
     window.history.replaceState({}, '', url.toString())
-  }, [loading, localWidgets, localSources, jsxExports])
+  }, [loading, localWidgets, componentEntries])
 
   // Persist viewport state (zoom + scroll) to localStorage on changes
   useEffect(() => {
@@ -893,7 +912,7 @@ export default function CanvasPage({ name }) {
       const el = scrollRef.current
       if (!el) return
 
-      const bounds = computeCanvasBounds(localWidgets, localSources, jsxExports)
+      const bounds = computeCanvasBounds(localWidgets, componentEntries)
       if (!bounds) return
 
       const boxW = bounds.maxX - bounds.minX + FIT_PADDING * 2
@@ -917,7 +936,7 @@ export default function CanvasPage({ name }) {
     }
     document.addEventListener('storyboard:canvas:zoom-to-fit', handleZoomToFit)
     return () => document.removeEventListener('storyboard:canvas:zoom-to-fit', handleZoomToFit)
-  }, [localWidgets, localSources, jsxExports])
+  }, [localWidgets, componentEntries])
 
   // Canvas background should follow toolbar theme target.
   useEffect(() => {
@@ -1328,54 +1347,50 @@ export default function CanvasPage({ name }) {
   // Merge JSX-sourced widgets (from .canvas.jsx) and JSON widgets
   const allChildren = []
 
-  const sourceDataByExport = Object.fromEntries(
-    (localSources || [])
-      .filter((source) => source?.export)
-      .map((source) => [source.export, source])
-  )
-
-  // 1. JSX-sourced component widgets (wrapped in WidgetChrome, not deletable)
+  // 1. Component widgets (from jsxExports or sources fallback)
   const componentFeatures = getFeatures('component')
-  if (jsxExports) {
-    for (const [exportName, Component] of Object.entries(jsxExports)) {
-      const sourceData = sourceDataByExport[exportName] || {}
-      const sourcePosition = sourceData.position || { x: 0, y: 0 }
-      allChildren.push(
-        <div
-          key={`jsx-${exportName}`}
-          id={`jsx-${exportName}`}
-          data-tc-x={sourcePosition.x}
-          data-tc-y={sourcePosition.y}
-          {...(isLocalDev ? { 'data-tc-handle': '.tc-drag-handle, .tc-drag-surface' } : {})}
-          {...canvasPrimerAttrs}
-          style={canvasThemeVars}
-          onClick={isLocalDev ? (e) => {
-            e.stopPropagation()
-            if (!e.target.closest('.tc-drag-handle')) {
-              handleWidgetSelect(`jsx-${exportName}`, e.shiftKey)
-            }
-          } : undefined}
+  for (const entry of componentEntries) {
+    const { exportName, Component, sourceData } = entry
+    const sourcePosition = sourceData.position || { x: 0, y: 0 }
+    allChildren.push(
+      <div
+        key={`jsx-${exportName}`}
+        id={`jsx-${exportName}`}
+        data-tc-x={sourcePosition.x}
+        data-tc-y={sourcePosition.y}
+        {...(isLocalDev ? { 'data-tc-handle': '.tc-drag-handle, .tc-drag-surface' } : {})}
+        {...canvasPrimerAttrs}
+        style={canvasThemeVars}
+        onClick={isLocalDev ? (e) => {
+          e.stopPropagation()
+          if (!e.target.closest('.tc-drag-handle')) {
+            handleWidgetSelect(`jsx-${exportName}`, e.shiftKey)
+          }
+        } : undefined}
+      >
+        <WidgetChrome
+          widgetId={`jsx-${exportName}`}
+          features={componentFeatures}
+          selected={selectedWidgetIds.has(`jsx-${exportName}`)}
+          multiSelected={isMultiSelected && selectedWidgetIds.has(`jsx-${exportName}`)}
+          onSelect={(shiftKey) => handleWidgetSelect(`jsx-${exportName}`, shiftKey)}
+          onDeselect={() => setSelectedWidgetIds(new Set())}
+          readOnly={!isLocalDev}
         >
-          <WidgetChrome
-            widgetId={`jsx-${exportName}`}
-            features={componentFeatures}
-            selected={selectedWidgetIds.has(`jsx-${exportName}`)}
-            multiSelected={isMultiSelected && selectedWidgetIds.has(`jsx-${exportName}`)}
-            onSelect={(shiftKey) => handleWidgetSelect(`jsx-${exportName}`, shiftKey)}
-            onDeselect={() => setSelectedWidgetIds(new Set())}
-            readOnly={!isLocalDev}
-          >
-            <ComponentWidget
-              component={Component}
-              width={sourceData.width}
-              height={sourceData.height}
-              onUpdate={isLocalDev ? (updates) => handleSourceUpdate(exportName, updates) : undefined}
-              resizable={isResizable('component') && isLocalDev}
-            />
-          </WidgetChrome>
-        </div>
-      )
-    }
+          <ComponentWidget
+            component={Component}
+            jsxModule={canvas?._jsxModule}
+            exportName={exportName}
+            canvasTheme={canvasTheme}
+            isLocalDev={isLocalDev}
+            width={sourceData.width}
+            height={sourceData.height}
+            onUpdate={isLocalDev ? (updates) => handleSourceUpdate(exportName, updates) : undefined}
+            resizable={isResizable('component') && isLocalDev}
+          />
+        </WidgetChrome>
+      </div>
+    )
   }
 
   // 2. JSON-defined mutable widgets (selectable, wrapped in WidgetChrome)

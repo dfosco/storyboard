@@ -1,5 +1,14 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.4
+
+### Patch Changes
+
+-   Faster dev server startup (~14.5s → ~7s)
+
+    -   Batch git metadata calls into 1-2 subprocesses instead of per-file
+    -   Scope glob ignore to skip .worktrees/ and public/ during data file discovery
+
 ## 4.0.0-beta.3
 
 ### Minor Changes

@@ -402,8 +402,14 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
             {!interactive && !expanded && (
               <div
                 className={styles.dragOverlay}
-                onDoubleClick={enterInteractive}
-              />
+                onClick={enterInteractive}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') enterInteractive() }}
+                aria-label="Click to interact with prototype"
+              >
+                <span className={styles.interactHint}>Click to interact</span>
+              </div>
             )}
           </>
         ) : (

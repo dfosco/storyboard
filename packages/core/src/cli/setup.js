@@ -114,7 +114,47 @@ if (hasBrew) {
   }
 }
 
-// 5. Proxy
+// 5. VS Code CLI
+if (isInstalled('code')) {
+  p.log.success('VS Code CLI installed')
+} else {
+  // Try to install the `code` CLI from VS Code's known locations
+  const codePaths = [
+    '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code',
+    '/usr/local/bin/code',
+  ]
+  let installed = false
+  for (const codePath of codePaths) {
+    if (existsSync(codePath)) {
+      p.log.success('VS Code CLI available (symlink exists)')
+      installed = true
+      break
+    }
+  }
+  if (!installed) {
+    // Try the VS Code shell command installer
+    const vsCodeApp = '/Applications/Visual Studio Code.app'
+    if (existsSync(vsCodeApp)) {
+      const shellScript = `${vsCodeApp}/Contents/Resources/app/bin/code`
+      if (existsSync(shellScript)) {
+        try {
+          // Create symlink in /usr/local/bin
+          run(`ln -sf "${shellScript}" /usr/local/bin/code`)
+          p.log.success('VS Code CLI installed (symlinked to /usr/local/bin/code)')
+          installed = true
+        } catch {
+          // Fall through to manual instructions
+        }
+      }
+    }
+    if (!installed) {
+      p.log.warning('VS Code CLI not found. Open VS Code and run:')
+      p.log.info('  Cmd+Shift+P → "Shell Command: Install \'code\' command in PATH"')
+    }
+  }
+}
+
+// 6. Proxy
 if (isCaddyInstalled()) {
   const proxySpin = p.spinner()
   const caddyfilePath = generateCaddyfile()

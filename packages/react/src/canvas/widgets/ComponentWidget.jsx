@@ -1,17 +1,33 @@
-import { useRef, useCallback, useState, useEffect } from 'react'
+import { useRef, useCallback, useState, useEffect, useMemo } from 'react'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
+import ComponentErrorBoundary from '../ComponentErrorBoundary.jsx'
 import styles from './ComponentWidget.module.css'
 
 /**
  * Renders a live JSX export from a .canvas.jsx companion file.
- * Content is read-only (re-renders on HMR), only position and size are mutable.
- * Cannot be deleted from canvas — only removed from source code.
+ *
+ * In dev mode (isLocalDev), each component is rendered inside an iframe
+ * via the /_storyboard/canvas/isolate middleware. This isolates broken
+ * components so they cannot crash the entire canvas page.
+ *
+ * In production, the component is rendered directly with an ErrorBoundary
+ * as a fallback safety net.
  *
  * Double-click the overlay to enter interactive mode (dropdowns, buttons work).
  * Click outside to exit interactive mode.
  */
-export default function ComponentWidget({ component: Component, width, height, onUpdate, resizable }) {
+export default function ComponentWidget({
+  component: Component,
+  jsxModule,
+  exportName,
+  canvasTheme,
+  isLocalDev,
+  width,
+  height,
+  onUpdate,
+  resizable,
+}) {
   const containerRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
 
@@ -33,7 +49,21 @@ export default function ComponentWidget({ component: Component, width, height, o
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive])
 
-  if (!Component) return null
+  // Build iframe src for dev isolation
+  const iframeSrc = useMemo(() => {
+    if (!isLocalDev || !jsxModule || !exportName) return null
+    const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+    const params = new URLSearchParams({
+      module: jsxModule,
+      export: exportName,
+      theme: canvasTheme || 'light',
+    })
+    return `${basePath}/_storyboard/canvas/isolate?${params}`
+  }, [isLocalDev, jsxModule, exportName, canvasTheme])
+
+  const useIframe = isLocalDev && iframeSrc
+
+  if (!useIframe && !Component) return null
 
   const sizeStyle = {}
   if (typeof width === 'number') sizeStyle.width = `${width}px`
@@ -43,7 +73,18 @@ export default function ComponentWidget({ component: Component, width, height, o
     <WidgetWrapper>
       <div ref={containerRef} className={styles.container} style={sizeStyle}>
         <div className={styles.content}>
-          <Component />
+          {useIframe ? (
+            <iframe
+              src={iframeSrc}
+              className={styles.iframe}
+              title={exportName || 'Component widget'}
+              sandbox="allow-same-origin allow-scripts"
+            />
+          ) : Component ? (
+            <ComponentErrorBoundary name={exportName}>
+              <Component />
+            </ComponentErrorBoundary>
+          ) : null}
         </div>
         {!interactive && (
           <div

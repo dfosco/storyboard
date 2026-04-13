@@ -29,6 +29,8 @@
         detail: { gridSize }
       }))
     }
+    // Request current snap state from React (may have dispatched before we mounted)
+    document.dispatchEvent(new CustomEvent('storyboard:canvas:snap-state-request'))
   })
 
   onDestroy(() => {

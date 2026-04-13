@@ -1,5 +1,20 @@
 # @dfosco/tiny-canvas
 
+## 4.0.0-beta.6
+
+### Minor Changes
+
+-   [`2022d2f`](https://github.com/dfosco/storyboard/commit/2022d2f4cb154fa6263415f21b5bc4a0e5391cd5) Thanks [@dfosco](https://github.com/dfosco)! - ### Features
+
+    -   **cli**: Add optional branch argument to `storyboard dev` command
+
+    ### Fixes
+
+    -   **canvas**: Make "Copy file path" an alt of "Copy as PNG" on images
+    -   **canvas**: Prevent line breaks in widget overflow menu items
+    -   **dev**: Detect branch name for base path when not in a worktree
+    -   **autosync**: Fix string spread bug in `listChangedFiles`
+
 ## 4.0.0-beta.4
 
 ## 4.0.0-beta.3

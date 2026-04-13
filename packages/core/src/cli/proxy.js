@@ -131,20 +131,58 @@ export function generateRouteConfig(portOverrides = {}) {
 }
 
 /**
+ * Remove stale routes that match the same host but lack an @id.
+ * These are leftovers from Caddyfile reloads that shadow admin-API routes.
+ * Deletes from highest index to lowest to preserve indices during removal.
+ * Best-effort — failures are silently ignored.
+ */
+function cleanupDuplicateRoutes(keepId, host) {
+  try {
+    const config = execSync(
+      `curl -sf '${CADDY_ADMIN}/config/apps/http/servers/srv0/routes'`,
+      { encoding: 'utf-8', timeout: 5000 },
+    )
+    const routes = JSON.parse(config)
+    const duplicateIndices = []
+    for (let i = 0; i < routes.length; i++) {
+      const route = routes[i]
+      if (route['@id'] === keepId) continue
+      if (route['@id']) continue // different intentional route — leave it
+      const routeHosts = route.match?.[0]?.host || []
+      if (routeHosts.includes(host)) {
+        duplicateIndices.push(i)
+      }
+    }
+    for (const idx of duplicateIndices.reverse()) {
+      try {
+        execSync(
+          `curl -sf -X DELETE '${CADDY_ADMIN}/config/apps/http/servers/srv0/routes/${idx}'`,
+          { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] },
+        )
+      } catch { /* best-effort */ }
+    }
+  } catch { /* best-effort cleanup */ }
+}
+
+/**
  * Upsert this repo's route in the running Caddy instance via admin API.
  * Uses PATCH if the @id exists, POST if it doesn't.
+ * After a successful upsert, removes any stale non-@id routes for the
+ * same host (leftovers from prior Caddyfile reloads).
  * Returns true on success, false on failure.
  */
 export function upsertCaddyRoute(routeConfig) {
   const id = routeConfig['@id']
+  const host = routeConfig.match?.[0]?.host?.[0]
   const payload = JSON.stringify(routeConfig)
 
   // Try PATCH first (update existing route by @id)
   try {
-    const patchResult = execSync(
+    execSync(
       `curl -sf -X PATCH '${CADDY_ADMIN}/id/${id}' -H 'Content-Type: application/json' -d '${payload.replace(/'/g, "'\\''")}'`,
       { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] },
     )
+    if (host) cleanupDuplicateRoutes(id, host)
     return true
   } catch {
     // @id doesn't exist yet — POST a new route
@@ -153,6 +191,7 @@ export function upsertCaddyRoute(routeConfig) {
         `curl -sf -X POST '${CADDY_ADMIN}/config/apps/http/servers/srv0/routes' -H 'Content-Type: application/json' -d '${payload.replace(/'/g, "'\\''")}'`,
         { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] },
       )
+      if (host) cleanupDuplicateRoutes(id, host)
       return true
     } catch {
       return false

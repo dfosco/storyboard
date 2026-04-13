@@ -15,17 +15,11 @@
  */
 
 import * as p from '@clack/prompts'
-import { detectWorktreeName, getPort } from '../worktree/port.js'
+import { getServerUrl } from './serverUrl.js'
 
 const dim = (s) => `\x1b[2m${s}\x1b[0m`
 const bold = (s) => `\x1b[1m${s}\x1b[0m`
 const cyan = (s) => `\x1b[36m${s}\x1b[0m`
-
-function getServerUrl() {
-  const name = detectWorktreeName()
-  const port = getPort(name)
-  return `http://localhost:${port}`
-}
 
 async function checkServer() {
   try {

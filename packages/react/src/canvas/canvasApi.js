@@ -47,3 +47,7 @@ export function uploadImage(dataUrl, canvasName) {
 export function toggleImagePrivacy(filename) {
   return request('/image/toggle-private', 'POST', { filename })
 }
+
+export function getCanvas(name) {
+  return request(`/?name=${encodeURIComponent(name)}`, 'GET')
+}

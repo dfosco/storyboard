@@ -1,26 +1,14 @@
 /**
  * storyboard dev — Start Vite with correct base path for the current worktree.
  *
- * Main:   http://storyboard.localhost/
- * Branch: http://storyboard.localhost/branch--<name>/
+ * Main:   http://<devDomain>.localhost/
+ * Branch: http://<devDomain>.localhost/branch--<name>/
  */
 
 import * as p from '@clack/prompts'
 import { spawn } from 'child_process'
-import { readFileSync } from 'fs'
-import { resolve } from 'path'
 import { detectWorktreeName, getPort } from '../worktree/port.js'
-import { generateCaddyfile, isCaddyRunning, reloadCaddy } from './proxy.js'
-
-function readRepoName() {
-  try {
-    const configPath = resolve(process.cwd(), 'storyboard.config.json')
-    const config = JSON.parse(readFileSync(configPath, 'utf8'))
-    return config.repository?.name || 'storyboard'
-  } catch {
-    return 'storyboard'
-  }
-}
+import { generateCaddyfile, isCaddyRunning, reloadCaddy, readDevDomain } from './proxy.js'
 
 async function main() {
   const worktreeName = detectWorktreeName()
@@ -31,7 +19,8 @@ async function main() {
     ? '/'
     : `/branch--${worktreeName}/`
 
-  const proxyUrl = `http://storyboard.localhost${basePath}`
+  const domain = readDevDomain()
+  const proxyUrl = `http://${domain}${basePath}`
   const directUrl = `http://localhost:${port}${basePath}`
 
   p.intro('storyboard dev')

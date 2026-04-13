@@ -81,7 +81,7 @@ function hasScopedStagedChanges(root, files) {
 function listChangedFiles(root) {
   const tracked = git(['diff', '--name-only'], root)
   const untracked = git(['ls-files', '--others', '--exclude-standard'], root)
-  return [...tracked, ...untracked]
+  return [tracked, untracked]
     .flatMap((raw) => raw.split('\n'))
     .map((file) => file.trim())
     .filter(Boolean)

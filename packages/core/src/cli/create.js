@@ -350,6 +350,11 @@ async function createCanvas() {
     initialValue: false,
   })))
 
+  const description = flags.description || (flagMode ? '' : (await promptOrCancel(p.text({
+    message: 'Description (optional)',
+    placeholder: 'A brief description of this canvas',
+  }))) || '')
+
   // Submit
   const s = p.spinner()
   s.start('Creating canvas...')
@@ -361,6 +366,7 @@ async function createCanvas() {
       folder: folder || undefined,
       grid,
       includeJsx,
+      description: description || undefined,
     })
     s.stop('Canvas created!')
     if (result.path || result.name) {

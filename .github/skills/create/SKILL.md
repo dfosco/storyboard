@@ -86,6 +86,12 @@ Use `ask_user` to ask:
 
 > What's your GitHub username? (for the author field — comma-separate multiple authors)
 
+### Step P5b: Ask for description (optional)
+
+Use `ask_user` to ask:
+
+> Any description for this prototype? (optional — leave blank to skip)
+
 ### Step P6: Ask about flow file
 
 Use `ask_user` to ask:
@@ -101,12 +107,13 @@ A flow file is useful if the prototype will use flow data (navigation, user prof
 Build and execute the command with the gathered values:
 
 ```bash
-npm run create -- --name <name> --title "<title>" [--folder <folder>] [--recipe <recipe>] [--author <author>] [--flow]
+npm run create -- --name <name> --title "<title>" [--folder <folder>] [--recipe <recipe>] [--author <author>] [--description "<description>"] [--flow]
 ```
 
 Only include optional flags when the user provided values:
 - Omit `--folder` if standalone was chosen
 - Omit `--flow` if the user said no
+- Omit `--description` if not provided
 - Always include `--recipe` (default is `bare`)
 
 ### Step P8: Confirm and suggest next steps
@@ -172,6 +179,12 @@ Use `ask_user` to ask:
 
 > What's your GitHub username? (for the author field — comma-separate multiple authors, or leave blank)
 
+### Step E5b: Ask for description (optional)
+
+Use `ask_user` to ask:
+
+> Any description for this external prototype? (optional — leave blank to skip)
+
 ### Step E6: Create the external prototype
 
 Determine the target directory:
@@ -235,6 +248,12 @@ Use `ask_user` with a humanized default:
 
 > What's the human-readable title for this flow?
 
+### Step F3b: Ask for description (optional)
+
+Use `ask_user` to ask:
+
+> Any description for this flow? (optional — leave blank to skip)
+
 ### Step F4: Ask about copying from an existing flow (optional)
 
 From the same API response, filter `flows` to the selected prototype (+ same folder when present).
@@ -275,6 +294,7 @@ POST /_storyboard/workshop/flows
 {
   "name": "<kebab-name>",
   "title": "<title>",
+  "description": "<description-if-provided>",
   "prototype": "<prototype>",
   "folder": "<folder-if-any>",
   "copyFrom": "<relative-flow-path-if-selected>",
@@ -379,6 +399,12 @@ Use `ask_user` with a humanized default:
 
 > What's the human-readable title for this canvas?
 
+### Step C2b: Ask for description (optional)
+
+Use `ask_user` to ask:
+
+> Any description for this canvas? (optional — leave blank to skip)
+
 ### Step C3: Ask about folder placement
 
 Check existing canvas folders:
@@ -413,13 +439,13 @@ Use the canvas creation API via curl:
 ```bash
 curl -s -X POST "http://localhost:$(cat .port 2>/dev/null || echo 1234)/_storyboard/canvas/create" \
   -H "Content-Type: application/json" \
-  -d '{"name":"<name>","title":"<title>","folder":"<folder>","grid":true,"includeJsx":<bool>}'
+  -d '{"name":"<name>","title":"<title>","description":"<description-if-provided>","folder":"<folder>","grid":true,"includeJsx":<bool>}'
 ```
 
 Or if the dev server isn't running, create the file directly at `src/canvas/<name>.canvas.jsonl`:
 
 ```jsonl
-{"event":"canvas_created","timestamp":"<ISO date>","title":"<Title>","grid":true,"gridSize":24,"colorMode":"auto","widgets":[]}
+{"event":"canvas_created","timestamp":"<ISO date>","title":"<Title>","description":"<description-if-provided>","grid":true,"gridSize":24,"colorMode":"auto","widgets":[]}
 ```
 
 ### Step C6: Confirm and suggest next steps

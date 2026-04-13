@@ -1,5 +1,17 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.12
+
+### Patch Changes
+
+-   Canvas dark mode fixes, widget menu alignment, and HMR reliability improvements.
+
+    -   ComponentWidget now uses theme background color in dark mode
+    -   Overflow menu properly aligned to button edge
+    -   Fix nested $variable resolution in dropdown alt labels
+    -   Canvas file changes correctly invalidate for fresh page loads
+    -   Suppress noisy console errors (branches.json, smooth-corners)
+
 ## 4.0.0-beta.11
 
 ### Patch Changes

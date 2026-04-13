@@ -21,6 +21,7 @@
   {"folder":"branch--4.0.0-autosync-fix","branch":"4.0.0-autosync-fix"},
   {"folder":"branch--4.0.0-component-iframe-isolation","branch":"4.0.0-component-iframe-isolation"},
   {"folder":"branch--4.0.0-create-cli-expansion","branch":"4.0.0-create-cli-expansion"},
+  {"folder":"branch--4.0.0-extend-to-optimizeDeps","branch":"4.0.0-extend-to-optimizeDeps"},
   {"folder":"branch--4.0.0-faster-dev-startup","branch":"4.0.0-faster-dev-startup"},
   {"folder":"branch--4.0.0-fix-debug-esm","branch":"4.0.0-fix-debug-esm"},
   {"folder":"branch--4.0.0-fix-proxy-duplicate-routes","branch":"4.0.0-fix-proxy-duplicate-routes"},

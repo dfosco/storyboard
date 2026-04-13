@@ -633,6 +633,19 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
     `export { flows, scenes, objects, records, prototypes, folders, canvases }`,
     `export const index = { flows, scenes, objects, records, prototypes, folders, canvases }`,
     `export default index`,
+    '',
+    '// Live-patch canvas data on HMR events so SPA navigation shows fresh state',
+    'if (import.meta.hot) {',
+    '  import.meta.hot.on("storyboard:canvas-file-changed", (data) => {',
+    '    if (!data) return',
+    '    if (data.removed) {',
+    '      delete canvases[data.name]',
+    '    } else if (data.metadata) {',
+    '      canvases[data.name] = data.metadata',
+    '    }',
+    '    init({ flows, objects, records, prototypes, folders, canvases })',
+    '  })',
+    '}',
   ].join('\n')
 }
 
@@ -730,22 +743,50 @@ export default function storyboardDataPlugin() {
         }
       }
 
+      // Mark the virtual module as stale so the next page load rebuilds it,
+      // but do NOT trigger a full-reload (avoids losing canvas editing state).
+      const softInvalidate = () => {
+        buildResult = null
+        const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
+        if (mod) server.moduleGraph.invalidateModule(mod)
+      }
+
+      // Read a canvas file and build HMR metadata for the client-side listener.
+      const readCanvasMetadata = (filePath, parsed) => {
+        try {
+          const absPath = path.resolve(root, filePath)
+          const raw = fs.readFileSync(absPath, 'utf-8')
+          const materialized = materializeFromText(raw)
+          const result = { ...materialized }
+          // Inject _route and _folder the same way generateModule does
+          if (parsed.inferredRoute) result._route = parsed.inferredRoute
+          const folderDirMatch = path.relative(root, absPath).replace(/\\/g, '/').match(/(?:^|\/)src\/(?:prototypes|canvas)\/([^/]+)\.folder\//)
+          if (folderDirMatch) result._folder = folderDirMatch[1]
+          return result
+        } catch {
+          return null
+        }
+      }
+
       const invalidate = (filePath) => {
         const normalized = filePath.replace(/\\/g, '/')
-        // Skip .canvas.jsonl content changes entirely — these are mutated
-        // at runtime by the canvas server API. A full-reload would create
-        // a feedback loop (save → file change → reload → lose editing state).
-        // Instead, send a custom HMR event so the active canvas page can refetch
-        // file-backed data in place with no navigation or document reload.
+        // Canvas .jsonl content changes are mutated at runtime by the canvas
+        // server API. A full-reload would create a feedback loop (save →
+        // file change → reload → lose editing state). Instead, soft-invalidate
+        // the virtual module (so page refresh picks up changes) and send a
+        // custom HMR event with updated metadata so the canvas page and
+        // viewfinder can react in place.
         if (/\.canvas\.jsonl$/.test(normalized)) {
           const parsed = parseDataFile(filePath)
           if (parsed?.suffix === 'canvas' && parsed?.name) {
+            const metadata = readCanvasMetadata(filePath, parsed)
             server.ws.send({
               type: 'custom',
               event: 'storyboard:canvas-file-changed',
-              data: { name: parsed.name },
+              data: { name: parsed.name, ...(metadata ? { metadata } : {}) },
             })
           }
+          softInvalidate()
           return
         }
 
@@ -790,23 +831,27 @@ export default function storyboardDataPlugin() {
               server.ws.send({
                 type: 'custom',
                 event: 'storyboard:canvas-file-changed',
-                data: { name },
+                data: { name, removed: true },
               })
+              softInvalidate()
             }, 1500)
             pendingCanvasUnlinks.set(name, timer)
             return
           }
 
           if (eventType === 'add') {
+            const metadata = readCanvasMetadata(filePath, parsed)
             const pending = pendingCanvasUnlinks.get(name)
             if (pending) {
+              // unlink+add pair = in-place save (atomic write), not a real remove
               clearTimeout(pending)
               pendingCanvasUnlinks.delete(name)
               server.ws.send({
                 type: 'custom',
                 event: 'storyboard:canvas-file-changed',
-                data: { name },
+                data: { name, ...(metadata ? { metadata } : {}) },
               })
+              softInvalidate()
               return
             }
 
@@ -814,8 +859,9 @@ export default function storyboardDataPlugin() {
               server.ws.send({
                 type: 'custom',
                 event: 'storyboard:canvas-file-changed',
-                data: { name },
+                data: { name, ...(metadata ? { metadata } : {}) },
               })
+              softInvalidate()
               return
             }
 
@@ -823,8 +869,9 @@ export default function storyboardDataPlugin() {
             server.ws.send({
               type: 'custom',
               event: 'storyboard:canvas-file-changed',
-              data: { name },
+              data: { name, ...(metadata ? { metadata } : {}) },
             })
+            softInvalidate()
             return
           }
         }
@@ -859,18 +906,10 @@ export default function storyboardDataPlugin() {
       const normalized = ctx.file.replace(/\\/g, '/')
       if (!/\.canvas\.jsonl$/.test(normalized)) return
 
-      const parsed = parseDataFile(ctx.file)
-      if (parsed?.suffix === 'canvas' && parsed?.name) {
-        ctx.server.ws.send({
-          type: 'custom',
-          event: 'storyboard:canvas-file-changed',
-          data: { name: parsed.name },
-        })
-      }
-
       // Prevent Vite's default fallback behavior (full page reload) for
-      // non-module .canvas.jsonl edits. Canvas pages consume these updates
-      // through the custom WS event and in-page refetch.
+      // non-module .canvas.jsonl edits. The watcher 'change' handler
+      // (invalidate) already sends the custom HMR event and soft-invalidates
+      // the virtual module — no duplicate event needed here.
       return []
     },
 

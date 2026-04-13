@@ -1026,6 +1026,8 @@ describe('canvas watcher behavior', () => {
     expect(code).toContain('storyboard:canvas-file-changed')
     expect(code).toContain('data.removed')
     expect(code).toContain('data.metadata')
+    // Should merge into existing entries to preserve build-time fields
+    expect(code).toContain('Object.assign')
   })
 
   it('page refresh after canvas add yields updated module with new canvas', () => {

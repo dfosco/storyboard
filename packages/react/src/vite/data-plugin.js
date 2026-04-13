@@ -247,10 +247,9 @@ function batchGitMetadata(root, filePaths) {
  * Scan the repo for all data files, validate uniqueness, return the index.
  */
 function buildIndex(root) {
-  const ignore = ['node_modules/**', 'dist/**', '.git/**']
-  // Scope to src/ — all data files live there (avoids walking .worktrees/, public/, etc.)
-  const files = globSync(`src/${GLOB_PATTERN}`, { cwd: root, ignore, absolute: false })
-  const canvasFiles = globSync(`src/${CANVAS_GLOB_PATTERN}`, { cwd: root, ignore, absolute: false })
+  const ignore = ['node_modules/**', 'dist/**', '.git/**', '.worktrees/**', 'public/**']
+  const files = globSync(GLOB_PATTERN, { cwd: root, ignore, absolute: false })
+  const canvasFiles = globSync(CANVAS_GLOB_PATTERN, { cwd: root, ignore, absolute: false })
 
   // Detect nested .folder/ directories (not supported)
   // Scan directories directly since empty nested folders have no data files
@@ -428,6 +427,13 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
   const resolvedFlowRoutes = {} // flow name → resolved route (for multi-flow logging)
   let i = 0
 
+  // Batch-fetch git metadata for all prototype + canvas files in 1-2 subprocesses
+  const gitPaths = [
+    ...Object.values(index.prototype || {}),
+    ...Object.values(index.canvas || {}),
+  ]
+  const gitMeta = batchGitMetadata(root, gitPaths)
+
   for (const suffix of INDEX_KEYS) {
     for (const [name, absPath] of Object.entries(index[suffix])) {
       const varName = `_d${i++}`
@@ -438,18 +444,17 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
 
       // Auto-fill gitAuthor for prototype metadata from git history
       if (suffix === 'prototype' && parsed && !parsed.gitAuthor) {
-        const gitAuthor = getGitAuthor(root, absPath)
-        if (gitAuthor) {
-          parsed = { ...parsed, gitAuthor }
+        const meta = gitMeta.get(absPath)
+        if (meta?.gitAuthor) {
+          parsed = { ...parsed, gitAuthor: meta.gitAuthor }
         }
       }
 
       // Auto-fill lastModified from git history for prototypes
       if (suffix === 'prototype' && parsed) {
-        const protoDir = path.dirname(absPath)
-        const lastModified = getLastModified(root, protoDir)
-        if (lastModified) {
-          parsed = { ...parsed, lastModified }
+        const meta = gitMeta.get(absPath)
+        if (meta?.lastModified) {
+          parsed = { ...parsed, lastModified: meta.lastModified }
         }
       }
 
@@ -488,9 +493,9 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
 
       // Auto-fill gitAuthor for canvas metadata from git history
       if (suffix === 'canvas' && parsed && !parsed.gitAuthor) {
-        const gitAuthor = getGitAuthor(root, absPath)
-        if (gitAuthor) {
-          parsed = { ...parsed, gitAuthor }
+        const meta = gitMeta.get(absPath)
+        if (meta?.gitAuthor) {
+          parsed = { ...parsed, gitAuthor: meta.gitAuthor }
         }
       }
 

@@ -1,18 +1,41 @@
 /**
- * storyboard create — Interactive creation of prototypes, canvases, flows, and pages.
+ * storyboard create — Create prototypes, canvases, flows, and pages.
+ *
+ * Supports both interactive prompts and non-interactive flags.
+ * When all required flags are provided, skips prompts entirely.
+ * When some flags are provided, prompts only for missing fields.
  *
  * Usage:
- *   storyboard create                  Interactive picker
- *   storyboard create prototype        Create a prototype
- *   storyboard create canvas           Create a canvas
+ *   storyboard create                                 Interactive picker
+ *   storyboard create prototype                       Interactive prototype creation
+ *   storyboard create prototype --name my-proto       Non-interactive (or partial)
+ *   storyboard create canvas --name my-canvas         Non-interactive (or partial)
+ *   storyboard create flow --name default --prototype my-proto
+ *   storyboard create page --prototype my-proto --path settings
  */
 
 import * as p from '@clack/prompts'
 import { detectWorktreeName, getPort } from '../worktree/port.js'
+import { parseFlags, hasFlags, formatFlagHelp } from './flags.js'
+import { prototypeSchema, canvasSchema, flowSchema, pageSchema } from './schemas.js'
 
 const dim = (s) => `\x1b[2m${s}\x1b[0m`
 const green = (s) => `\x1b[32m${s}\x1b[0m`
 const cyan = (s) => `\x1b[36m${s}\x1b[0m`
+
+function promptOrCancel(promise) {
+  return promise.then((v) => {
+    if (p.isCancel(v)) process.exit(0)
+    return v
+  })
+}
+
+function showHelp(type, schema) {
+  console.log(`\n  ${type} flags:\n`)
+  console.log(formatFlagHelp(schema))
+  console.log('')
+  process.exit(0)
+}
 
 function getServerUrl() {
   const name = detectWorktreeName()
@@ -137,6 +160,16 @@ async function postCreateFlow(resultPath, type) {
 // ── Prototype creation ────────────────────────────────────────
 
 async function createPrototype() {
+  const argv = process.argv.slice(4)
+  if (argv.includes('--help') || argv.includes('-h')) return showHelp('create prototype', prototypeSchema)
+  const flagMode = hasFlags(argv)
+  const { flags, errors } = flagMode ? parseFlags(argv, prototypeSchema) : { flags: {}, errors: [] }
+
+  if (errors.length) {
+    for (const e of errors) p.log.error(e)
+    process.exit(1)
+  }
+
   p.intro('storyboard create prototype')
   await ensureDevServer()
 
@@ -151,58 +184,56 @@ async function createPrototype() {
     // Server may not support this endpoint — continue without options
   }
 
-  const isExternal = await p.confirm({
-    message: 'Is this an external prototype?',
-    initialValue: false,
-  })
-  if (p.isCancel(isExternal)) return process.exit(0)
+  // Resolve each field: use flag if provided, otherwise prompt
+  const isExternal = flags.url !== undefined
+    ? true
+    : flagMode
+      ? false
+      : await promptOrCancel(p.confirm({ message: 'Is this an external prototype?', initialValue: false }))
 
-  let url = ''
-  if (isExternal) {
-    url = await p.text({
+  let url = flags.url || ''
+  if (isExternal && !url) {
+    url = await promptOrCancel(p.text({
       message: 'External URL',
       placeholder: 'https://example.com/prototype',
       validate: (v) => {
         if (!v) return 'URL is required for external prototypes'
         if (!/^https?:\/\//.test(v)) return 'URL must start with http:// or https://'
       },
-    })
-    if (p.isCancel(url)) return process.exit(0)
+    }))
   }
 
-  const name = await p.text({
+  const name = flags.name || await promptOrCancel(p.text({
     message: 'Prototype name',
     placeholder: 'my-prototype',
     validate: (v) => {
       if (!v) return 'Name is required'
       if (/[A-Z\s]/.test(v)) return 'Use kebab-case (lowercase, hyphens)'
     },
-  })
-  if (p.isCancel(name)) return process.exit(0)
+  }))
 
-  const title = await p.text({
+  const defaultTitle = name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  const title = flags.title || (flagMode ? defaultTitle : await promptOrCancel(p.text({
     message: 'Display title',
-    placeholder: name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-    defaultValue: name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-  })
-  if (p.isCancel(title)) return process.exit(0)
+    placeholder: defaultTitle,
+    defaultValue: defaultTitle,
+  })))
 
   // Folder selection
-  let folder = ''
-  if (folders.length > 0) {
-    folder = await p.select({
+  let folder = flags.folder || ''
+  if (!folder && !flagMode && folders.length > 0) {
+    folder = await promptOrCancel(p.select({
       message: 'Folder',
       options: [
         { value: '', label: 'None (root)' },
         ...folders.map((f) => ({ value: f, label: f })),
       ],
-    })
-    if (p.isCancel(folder)) return process.exit(0)
+    }))
   }
 
   // Template selection
-  let partial = ''
-  if (!isExternal && partials.length > 0) {
+  let partial = flags.partial || ''
+  if (!partial && !isExternal && !flagMode && partials.length > 0) {
     const templateOptions = [
       { value: '', label: 'Blank (no template)' },
       ...partials.map((t) => ({
@@ -211,34 +242,24 @@ async function createPrototype() {
         hint: t.directory || undefined,
       })),
     ]
-    partial = await p.select({
-      message: 'Template',
-      options: templateOptions,
-    })
-    if (p.isCancel(partial)) return process.exit(0)
+    partial = await promptOrCancel(p.select({ message: 'Template', options: templateOptions }))
   }
 
-  const author = await p.text({
+  const author = flags.author || (flagMode ? '' : await promptOrCancel(p.text({
     message: 'Author',
     placeholder: 'your-name',
     defaultValue: '',
-  })
-  if (p.isCancel(author)) return process.exit(0)
+  })))
 
-  const description = await p.text({
+  const description = flags.description || (flagMode ? '' : await promptOrCancel(p.text({
     message: 'Description',
     placeholder: 'What is this prototype about?',
     defaultValue: '',
-  })
-  if (p.isCancel(description)) return process.exit(0)
+  })))
 
-  let createFlow = false
-  if (!isExternal) {
-    createFlow = await p.confirm({
-      message: 'Create a default flow file?',
-      initialValue: false,
-    })
-    if (p.isCancel(createFlow)) return process.exit(0)
+  let createFlow = flags.flow ?? false
+  if (!flagMode && !isExternal) {
+    createFlow = await promptOrCancel(p.confirm({ message: 'Create a default flow file?', initialValue: false }))
   }
 
   // Submit
@@ -275,6 +296,16 @@ async function createPrototype() {
 // ── Canvas creation ───────────────────────────────────────────
 
 async function createCanvas() {
+  const argv = process.argv.slice(4)
+  if (argv.includes('--help') || argv.includes('-h')) return showHelp('create canvas', canvasSchema)
+  const flagMode = hasFlags(argv)
+  const { flags, errors } = flagMode ? parseFlags(argv, canvasSchema) : { flags: {}, errors: [] }
+
+  if (errors.length) {
+    for (const e of errors) p.log.error(e)
+    process.exit(1)
+  }
+
   p.intro('storyboard create canvas')
   await ensureDevServer()
 
@@ -287,46 +318,42 @@ async function createCanvas() {
     // Continue without folders
   }
 
-  const name = await p.text({
+  const name = flags.name || await promptOrCancel(p.text({
     message: 'Canvas name',
     placeholder: 'my-canvas',
     validate: (v) => {
       if (!v) return 'Name is required'
       if (/[A-Z\s]/.test(v)) return 'Use kebab-case (lowercase, hyphens)'
     },
-  })
-  if (p.isCancel(name)) return process.exit(0)
+  }))
 
-  const title = await p.text({
+  const defaultTitle = name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  const title = flags.title || (flagMode ? defaultTitle : await promptOrCancel(p.text({
     message: 'Display title',
-    placeholder: name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-    defaultValue: name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-  })
-  if (p.isCancel(title)) return process.exit(0)
+    placeholder: defaultTitle,
+    defaultValue: defaultTitle,
+  })))
 
-  let folder = ''
-  if (Array.isArray(folders) && folders.length > 0) {
-    folder = await p.select({
+  let folder = flags.folder || ''
+  if (!folder && !flagMode && Array.isArray(folders) && folders.length > 0) {
+    folder = await promptOrCancel(p.select({
       message: 'Folder',
       options: [
         { value: '', label: 'None (root)' },
         ...folders.map((f) => ({ value: f, label: f })),
       ],
-    })
-    if (p.isCancel(folder)) return process.exit(0)
+    }))
   }
 
-  const grid = await p.confirm({
+  const grid = flags.grid ?? (flagMode ? true : await promptOrCancel(p.confirm({
     message: 'Show dot grid?',
     initialValue: true,
-  })
-  if (p.isCancel(grid)) return process.exit(0)
+  })))
 
-  const includeJsx = await p.confirm({
+  const includeJsx = flags.jsx ?? (flagMode ? false : await promptOrCancel(p.confirm({
     message: 'Include JSX companion file?',
     initialValue: false,
-  })
-  if (p.isCancel(includeJsx)) return process.exit(0)
+  })))
 
   // Submit
   const s = p.spinner()
@@ -354,13 +381,144 @@ async function createCanvas() {
   p.outro('')
 }
 
+// ── Flow creation ─────────────────────────────────────────────
+
+async function createFlow() {
+  const argv = process.argv.slice(4)
+  if (argv.includes('--help') || argv.includes('-h')) return showHelp('create flow', flowSchema)
+  const flagMode = hasFlags(argv)
+  const { flags, errors } = flagMode ? parseFlags(argv, flowSchema) : { flags: {}, errors: [] }
+
+  if (errors.length) {
+    for (const e of errors) p.log.error(e)
+    process.exit(1)
+  }
+
+  p.intro('storyboard create flow')
+  await ensureDevServer()
+
+  const prototype = flags.prototype || await promptOrCancel(p.text({
+    message: 'Prototype name',
+    placeholder: 'my-prototype',
+    validate: (v) => { if (!v) return 'Prototype is required' },
+  }))
+
+  const name = flags.name || await promptOrCancel(p.text({
+    message: 'Flow name',
+    placeholder: 'default',
+    validate: (v) => { if (!v) return 'Name is required' },
+  }))
+
+  const title = flags.title || (flagMode ? '' : await promptOrCancel(p.text({
+    message: 'Display title',
+    placeholder: name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    defaultValue: '',
+  })))
+
+  const folder = flags.folder || ''
+  const author = flags.author || ''
+  const description = flags.description || ''
+  const copyFrom = flags['copy-from'] || undefined
+  const startingPage = flags['starting-page'] || undefined
+  const globals = flags.globals || undefined
+
+  // Submit
+  const s = p.spinner()
+  s.start('Creating flow...')
+
+  try {
+    const body = {
+      name,
+      prototype,
+      title: title || undefined,
+      folder: folder || undefined,
+      author: author || undefined,
+      description: description || undefined,
+      copyFrom,
+      startingPage,
+      globals,
+    }
+
+    const result = await serverPost('/_storyboard/workshop/flows', body)
+    s.stop('Flow created!')
+    if (result.path) {
+      p.log.success(`  ${result.path}`)
+    }
+    p.outro('')
+  } catch (err) {
+    s.stop('Failed to create flow')
+    p.log.error(err.message)
+    p.outro('')
+  }
+}
+
+// ── Page creation ─────────────────────────────────────────────
+
+async function createPage() {
+  const argv = process.argv.slice(4)
+  if (argv.includes('--help') || argv.includes('-h')) return showHelp('create page', pageSchema)
+  const flagMode = hasFlags(argv)
+  const { flags, errors } = flagMode ? parseFlags(argv, pageSchema) : { flags: {}, errors: [] }
+
+  if (errors.length) {
+    for (const e of errors) p.log.error(e)
+    process.exit(1)
+  }
+
+  p.intro('storyboard create page')
+  await ensureDevServer()
+
+  const prototype = flags.prototype || await promptOrCancel(p.text({
+    message: 'Prototype name',
+    placeholder: 'my-prototype',
+    validate: (v) => { if (!v) return 'Prototype is required' },
+  }))
+
+  const pagePath = flags.path || await promptOrCancel(p.text({
+    message: 'Page path (e.g. settings/general)',
+    placeholder: 'settings',
+    validate: (v) => { if (!v) return 'Path is required' },
+  }))
+
+  const folder = flags.folder || ''
+  const template = flags.template || ''
+
+  // Submit
+  const s = p.spinner()
+  s.start('Creating page...')
+
+  try {
+    const body = {
+      prototype,
+      path: pagePath,
+      folder: folder || undefined,
+      template: template || undefined,
+    }
+
+    const result = await serverPost('/_storyboard/workshop/pages', body)
+    s.stop('Page created!')
+    if (result.path) {
+      p.log.success(`  ${result.path}`)
+    }
+    p.outro('')
+  } catch (err) {
+    s.stop('Failed to create page')
+    p.log.error(err.message)
+    p.outro('')
+  }
+}
+
 // ── Dispatcher ────────────────────────────────────────────────
+
+export { createFlow, createPage, ensureDevServer, serverPost, postCreateFlow, getServerUrl }
 
 async function main() {
   const subcommand = process.argv[3]
 
   if (subcommand === 'prototype') return createPrototype()
   if (subcommand === 'canvas') return createCanvas()
+  if (subcommand === 'flow') return createFlow()
+  if (subcommand === 'page') return createPage()
 
   // Interactive picker
   p.intro('storyboard create')
@@ -370,14 +528,19 @@ async function main() {
     options: [
       { value: 'prototype', label: 'Prototype', hint: 'React-based interactive prototype' },
       { value: 'canvas', label: 'Canvas', hint: 'Freeform canvas with widgets' },
+      { value: 'flow', label: 'Flow', hint: 'Data context for a prototype page' },
+      { value: 'page', label: 'Page', hint: 'New page in a prototype' },
     ],
   })
 
   if (p.isCancel(type)) return process.exit(0)
 
-  // Re-run with the selected subcommand
   if (type === 'prototype') return createPrototype()
   if (type === 'canvas') return createCanvas()
+  if (type === 'flow') return createFlow()
+  if (type === 'page') return createPage()
 }
 
-main()
+// Only run main() when this file is the entry point, not when imported
+const isDirectEntry = process.argv[2] === 'create'
+if (isDirectEntry) main()

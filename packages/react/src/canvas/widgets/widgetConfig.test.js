@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { isResizable, getFeatures, getWidgetMeta } from './widgetConfig.js'
 
 describe('isResizable', () => {
-  // Vitest runs with import.meta.env.PROD = true, so prod: false widgets
-  // correctly return false. This tests the production behavior.
-  it('returns false for resize-enabled widgets when prod is false (production env)', () => {
-    expect(isResizable('sticky-note')).toBe(false)
-    expect(isResizable('prototype')).toBe(false)
-    expect(isResizable('figma-embed')).toBe(false)
-    expect(isResizable('image')).toBe(false)
-    expect(isResizable('component')).toBe(false)
+  // Vitest runs in dev mode by default (import.meta.env.PROD = false)
+  // In dev mode, all resize-enabled widgets are resizable
+  it('returns true for resize-enabled widgets in dev mode', () => {
+    expect(isResizable('sticky-note')).toBe(true)
+    expect(isResizable('prototype')).toBe(true)
+    expect(isResizable('figma-embed')).toBe(true)
+    expect(isResizable('image')).toBe(true)
+    expect(isResizable('component')).toBe(true)
   })
 
   it('returns false for widget types with resize disabled', () => {

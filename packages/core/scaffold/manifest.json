@@ -30,6 +30,11 @@
       "target": ".github/skills/",
       "mode": "updateable",
       "directory": true
+    },
+    {
+      "source": "scaffold/deploy.yml",
+      "target": ".github/workflows/deploy.yml",
+      "mode": "scaffold"
     }
   ]
 }

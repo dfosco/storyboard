@@ -79,18 +79,28 @@ try {
   p.log.warn('Scaffold sync failed — run `npx storyboard-scaffold` manually')
 }
 
-// Auto-commit the version update
+// Auto-commit the version update (only if package.json or lock file changed)
 try {
   // Read the installed version from the core package
   const corePkg = JSON.parse(readFileSync(resolve(process.cwd(), 'node_modules', '@dfosco', 'storyboard-core', 'package.json'), 'utf8'))
   const installedVersion = corePkg.version || suffix.slice(1)
   const commitMsg = `[storyboard-update] Update storyboard to ${installedVersion}`
 
-  execSync('git add -A', { cwd: process.cwd(), stdio: 'pipe' })
+  // Only stage update-related files (package.json, lock files, scaffold outputs)
+  const filesToStage = [
+    'package.json',
+    'package-lock.json',
+    'yarn.lock',
+    'pnpm-lock.yaml',
+    '.github/skills',
+    'scripts',
+  ]
+  execSync(`git add ${filesToStage.join(' ')} 2>/dev/null || true`, { cwd: process.cwd(), stdio: 'pipe' })
+
   // Only commit if there are staged changes
   try {
     execSync('git diff --cached --quiet', { cwd: process.cwd(), stdio: 'pipe' })
-    p.log.message('No changes to commit')
+    p.log.message('No changes to commit — already up to date')
   } catch {
     execSync(`git commit -m "${commitMsg}"`, { cwd: process.cwd(), stdio: 'pipe' })
     p.log.success(`Committed: ${commitMsg}`)

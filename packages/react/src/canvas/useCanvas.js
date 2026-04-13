@@ -32,12 +32,13 @@ export function resolveCanvasModuleImport(modulePath, baseUrl = import.meta.env?
  * fresh widget data from the server to pick up persisted edits.
  *
  * @param {string} name - Canvas name as indexed by the data plugin
- * @returns {{ canvas: object|null, jsxExports: object|null, loading: boolean }}
+ * @returns {{ canvas: object|null, jsxExports: object|null, jsxError: boolean, loading: boolean }}
  */
 export function useCanvas(name) {
   const buildTimeCanvas = useMemo(() => getCanvasData(name), [name])
   const [canvas, setCanvas] = useState(buildTimeCanvas)
   const [jsxExports, setJsxExports] = useState(null)
+  const [jsxError, setJsxError] = useState(false)
   const [loading, setLoading] = useState(true)
 
   // Fetch fresh data from server on mount
@@ -66,6 +67,7 @@ export function useCanvas(name) {
   useEffect(() => {
     if (!jsxModule) {
       setJsxExports(null)
+      setJsxError(false)
       return
     }
 
@@ -82,10 +84,12 @@ export function useCanvas(name) {
           }
         }
         setJsxExports(exports)
+        setJsxError(false)
       })
       .catch((err) => {
         console.error(`[storyboard] Failed to load canvas JSX module: ${jsxModule}`, err)
         setJsxExports(null)
+        setJsxError(true)
       })
   }, [jsxModule, jsxImport])
 
@@ -109,5 +113,5 @@ export function useCanvas(name) {
     }
   }, [name, buildTimeCanvas])
 
-  return { canvas, jsxExports, loading }
+  return { canvas, jsxExports, jsxError, loading }
 }

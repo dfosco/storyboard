@@ -56,11 +56,21 @@ const tag = channel || (targetVersion ? undefined : 'latest')
 const suffix = targetVersion ? `@${targetVersion}` : `@${tag}`
 const packages = [...storyboardPkgs].map(name => `${name}${suffix}`).join(' ')
 
-const label = channel ? `to ${channel}` : targetVersion ? `to ${targetVersion}` : ''
+// Resolve actual version from the registry when using a tag (channel or latest)
+let resolvedVersion
+if (tag) {
+  try {
+    const probe = [...storyboardPkgs][0]
+    resolvedVersion = execSync(`npm view ${probe}@${tag} version`, { encoding: 'utf8' }).trim()
+  } catch { /* fall back to showing the tag */ }
+}
+
+const displayVersion = resolvedVersion || targetVersion || tag
+const label = resolvedVersion && channel ? `to ${resolvedVersion} (${channel})` : resolvedVersion ? `to ${resolvedVersion}` : channel ? `to ${channel}` : targetVersion ? `to ${targetVersion}` : ''
 p.intro(`storyboard ${command}`)
 p.log.info(`Updating ${storyboardPkgs.size} package(s)${label ? ` ${label}` : ''}…`)
 for (const name of storyboardPkgs) {
-  p.log.message(`  ${name}${suffix}`)
+  p.log.message(`  ${name}@${displayVersion}`)
 }
 
 try {

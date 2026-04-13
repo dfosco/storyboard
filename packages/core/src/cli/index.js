@@ -16,14 +16,7 @@
 import * as p from '@clack/prompts'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
-
-// ANSI helpers
-const dim = (s) => `\x1b[2m${s}\x1b[0m`
-const magenta = (s) => `\x1b[35m${s}\x1b[0m`
-const cyan = (s) => `\x1b[36m${s}\x1b[0m`
-const green = (s) => `\x1b[32m${s}\x1b[0m`
-const bold = (s) => `\x1b[1m${s}\x1b[0m`
-const yellow = (s) => `\x1b[33m${s}\x1b[0m`
+import { gettingStartedLines, dim, magenta, cyan, green, bold, yellow } from './intro.js'
 
 function getVersion() {
   try {
@@ -50,18 +43,7 @@ function helpScreen(version) {
 
   const gettingStarted = [
     '',
-    `  Welcome! Storyboard is a design tool to build and`,
-    `  collaborate on prototypes. Here's how to get started:`,
-    '',
-    `    ${green('npx storyboard dev')}                Start developing locally`,
-    `    ${green('npx storyboard create prototype')}   Create a prototype`,
-    `    ${green('npx storyboard create canvas')}      Create a canvas`,
-    `    ${green('npx storyboard canvas add sticky-note')}  Add a widget to a canvas`,
-    '',
-    `    ${dim('Using an AI assistant? You can also ask it to')}`,
-    `    ${dim('"create a prototype" or "create a canvas" for you!')}`,
-    '',
-    `    ${dim('Docs:')} ${cyan('https://github.com/dfosco/storyboard/blob/main/README.md')}`,
+    ...gettingStartedLines(),
   ].join('\n')
 
   const commands = [

@@ -69,7 +69,7 @@ The `storyboard` CLI (`sb` alias) wraps dev tooling:
 | `storyboard dev` | Start Vite with correct base path + update Caddy proxy |
 | `storyboard setup` | Install deps, Caddy, `gh` check, start proxy |
 | `storyboard proxy` | Generate Caddyfile + start/reload Caddy |
-| `storyboard update:flag <key> <value>` | Update feature flag in `storyboard.config.json` |
+| `storyboard update:version [version]` | Update `@dfosco/storyboard-*` packages to latest (or specific version) |
 
 ### Dev URLs
 

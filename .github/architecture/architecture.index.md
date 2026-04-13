@@ -15,7 +15,7 @@ The toolbar system is declarative and config-driven: [`toolbarConfigStore.js`](.
 
 Dev tooling is managed by the **Storyboard CLI** (`storyboard` / `sb`), published in `@dfosco/storyboard-core`. The CLI orchestrates Vite dev servers with worktree-aware base paths and a Caddy reverse proxy for clean URLs. The [`worktree/port.js`](./packages/core/src/worktree/port.js.md) module manages a port registry (`.worktrees/ports.json`) that assigns unique ports per worktree, while the [`cli/`](./packages/core/src/cli/index.js.md) modules handle dev server startup, proxy config generation, environment setup, and feature flag updates.
 
-- [`packages/core/src/cli/index.js`](./packages/core/src/cli/index.js.md) — Storyboard CLI entry point (`storyboard dev`, `setup`, `proxy`, `update:flag`)
+- [`packages/core/src/cli/index.js`](./packages/core/src/cli/index.js.md) — Storyboard CLI entry point (`storyboard dev`, `setup`, `proxy`, `update:version`)
 - [`packages/core/src/worktree/port.js`](./packages/core/src/worktree/port.js.md) — Worktree port registry (port assignment, detection, slugify)
 - [`packages/core/src/bodyClasses.js`](./packages/core/src/bodyClasses.js.md) — Mirrors overrides, flows, and feature flags as CSS classes on `<body>`
 - [`packages/core/src/bodyClasses.test.js`](./packages/core/src/bodyClasses.test.js.md) — Tests for body class sync

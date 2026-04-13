@@ -25,7 +25,7 @@ Step 0 of the 4.0.0 plan — a `storyboard` CLI with Caddy reverse proxy for cle
 | `storyboard dev` | Start Vite + update Caddy proxy |
 | `storyboard setup` | Install deps, Caddy, start proxy |
 | `storyboard proxy` | Generate Caddyfile + start/reload Caddy |
-| `storyboard update:flag K V` | Update feature flag in config |
+| `storyboard update:version [version]` | Update storyboard packages to latest |
 
 ### New Files
 

@@ -67,6 +67,7 @@ The `storyboard` CLI (`sb` alias) wraps dev tooling:
 | Command | Description |
 |---------|-------------|
 | `storyboard dev` | Start Vite with correct base path + update Caddy proxy |
+| `storyboard code [branch]` | Open current worktree (or specific branch) in VS Code |
 | `storyboard setup` | Install deps, Caddy, `gh` check, start proxy |
 | `storyboard proxy` | Generate Caddyfile + start/reload Caddy |
 | `storyboard update:version [version]` | Update `@dfosco/storyboard-*` packages to latest (or specific version) |

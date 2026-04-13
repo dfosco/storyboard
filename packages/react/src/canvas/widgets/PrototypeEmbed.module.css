@@ -18,13 +18,6 @@
   display: block;
 }
 
-.dragOverlay {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  cursor: grab;
-}
-
 .empty {
   display: flex;
   align-items: center;

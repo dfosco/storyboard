@@ -5,6 +5,7 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
 import styles from './PrototypeEmbed.module.css'
+import overlayStyles from './embedOverlay.module.css'
 
 function formatName(name) {
   return name
@@ -401,9 +402,25 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
             </div>
             {!interactive && !expanded && (
               <div
-                className={styles.dragOverlay}
-                onDoubleClick={enterInteractive}
-              />
+                className={overlayStyles.interactOverlay}
+                onClick={(e) => {
+                  // Don't enter interactive mode for modifier clicks (shift/meta/ctrl for multi-select)
+                  if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+                  enterInteractive()
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    enterInteractive()
+                  }
+                }}
+                aria-label="Click to interact with prototype"
+              >
+                <span className={overlayStyles.interactHint}>Click to interact</span>
+              </div>
             )}
           </>
         ) : (

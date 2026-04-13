@@ -39,6 +39,9 @@ switch (command) {
   case 'update:flag':
     import('./updateFlag.js')
     break
+  case 'create':
+    import('./create.js')
+    break
   case 'exit':
     import('./exit.js')
     break
@@ -47,6 +50,7 @@ switch (command) {
     p.intro(`storyboard v${version}`)
     p.log.message(`Commands:
   dev              Start Vite dev server + update proxy
+  create           Create a prototype or canvas
   setup            Install deps, Caddy proxy, start proxy
   proxy            Generate Caddyfile + start/reload Caddy
   exit             Stop all dev servers and proxy

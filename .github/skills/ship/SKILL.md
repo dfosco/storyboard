@@ -161,7 +161,7 @@ If clips was skipped in Step 3, skip this step too.
 Run the dev server in the worktree so the user can immediately preview changes:
 
 ```bash
-npm run dev
+npx storyboard dev
 ```
 
 This is the **only** place the dev server starts during a ship workflow — the worktree skill skips its own dev server step when called from ship.

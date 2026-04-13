@@ -592,6 +592,7 @@
                     data={toolData[menu.key]}
                     tabindex={getTabindex(i)}
                     localOnly={isToolbarToolLocalOnly(menu.key)}
+                    {basePath}
                   />
                 </span>
               {/if}

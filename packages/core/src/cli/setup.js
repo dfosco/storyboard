@@ -8,14 +8,7 @@ import * as p from '@clack/prompts'
 import { existsSync } from 'fs'
 import { execSync } from 'child_process'
 import { generateCaddyfile, isCaddyInstalled, isCaddyRunning, startCaddy, reloadCaddy } from './proxy.js'
-
-// ANSI colors
-const dim = (s) => `\x1b[2m${s}\x1b[0m`
-const magenta = (s) => `\x1b[35m${s}\x1b[0m`
-const cyan = (s) => `\x1b[36m${s}\x1b[0m`
-const green = (s) => `\x1b[32m${s}\x1b[0m`
-const bold = (s) => `\x1b[1m${s}\x1b[0m`
-const white = (s) => `\x1b[97m${s}\x1b[0m`
+import { gettingStartedLines, dim, magenta, bold, green, yellow } from './intro.js'
 
 function mascot() {
   const d = dim('·')
@@ -171,19 +164,9 @@ if (isCaddyInstalled()) {
 
 p.note(
   [
-    white(`Welcome! Storyboard is a design tool to build and`),
-    white(`collaborate on prototypes. Here's how to get started:`),
+    ...gettingStartedLines(),
     '',
-    `  ${green('npx storyboard dev')}                Start developing locally`,
-    `  ${green('npx storyboard create prototype')}   Create a prototype`,
-    `  ${green('npx storyboard create canvas')}      Create a canvas`,
-    '',
-    `  ${dim('Using an AI assistant? You can also ask it to')}`,
-    `  ${dim('"create a prototype" or "create a canvas" for you!')}`,
-    '',
-    `  ${dim('Docs:')} ${cyan('https://github.com/dfosco/storyboard/blob/main/README.md')}`,
-    '',
-    `  ${dim('PS: You can also use')} ${green('npx sb ...')} ${dim('for shorter commands')}`,
+    `  ${dim('Run')} ${yellow('npx storyboard')} ${dim('to see all commands')}`,
   ].join('\n'),
   'Getting started'
 )

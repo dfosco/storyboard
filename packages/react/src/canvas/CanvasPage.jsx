@@ -913,7 +913,7 @@ export default function CanvasPage({ name }) {
     function handleSnapToggle() {
       setSnapEnabled((prev) => {
         const next = !prev
-        updateCanvas(name, { snapToGrid: next }).catch((err) =>
+        updateCanvas(name, { settings: { snapToGrid: next } }).catch((err) =>
           console.error('[canvas] Failed to persist snap setting:', err)
         )
         return next

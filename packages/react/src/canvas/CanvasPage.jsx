@@ -1061,7 +1061,7 @@ export default function CanvasPage({ name }) {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [selectedWidgetIds, localWidgets, handleWidgetRemove, undoRedo, name, debouncedSave])
 
-  // Paste handler — images become image widgets, same-origin URLs become prototypes,
+  // Paste and drop handler — images become image widgets, same-origin URLs become prototypes,
   // other URLs become link previews, text becomes markdown
   useEffect(() => {
     const origin = window.location.origin
@@ -1122,6 +1122,56 @@ export default function CanvasPage({ name }) {
       })
     }
 
+    /**
+     * Process an image file (from paste or drop) and add it as a widget.
+     * @param {File|Blob} file - Image file to process
+     * @param {{ x: number, y: number }|null} position - Drop position, or null to use viewport center
+     */
+    async function processImageFile(file, position = null) {
+      try {
+        const dataUrl = await blobToDataUrl(file)
+        const { width: natW, height: natH } = await getImageDimensions(dataUrl)
+
+        // Display at 2x retina: halve natural dimensions, then cap at 600px
+        const maxWidth = 600
+        let displayW = Math.round(natW / 2)
+        let displayH = Math.round(natH / 2)
+        if (displayW > maxWidth) {
+          displayH = Math.round(displayH * (maxWidth / displayW))
+          displayW = maxWidth
+        }
+
+        const uploadResult = await uploadImage(dataUrl, name)
+        if (!uploadResult.success) {
+          console.error('[canvas] Image upload failed:', uploadResult.error)
+          return false
+        }
+
+        // Use provided position or fall back to viewport center
+        let pos
+        if (position) {
+          pos = { x: position.x, y: position.y }
+        } else {
+          const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
+          pos = centerPositionForWidget(center, 'image', { width: displayW, height: displayH })
+        }
+
+        const result = await addWidgetApi(name, {
+          type: 'image',
+          props: { src: uploadResult.filename, private: false, width: displayW, height: displayH },
+          position: pos,
+        })
+        if (result.success && result.widget) {
+          undoRedo.snapshot(stateRef.current, 'add')
+          setLocalWidgets((prev) => [...(prev || []), result.widget])
+        }
+        return true
+      } catch (err) {
+        console.error('[canvas] Failed to process image:', err)
+        return false
+      }
+    }
+
     async function handleImagePaste(e) {
       const items = e.clipboardData?.items
       if (!items) return false
@@ -1133,40 +1183,7 @@ export default function CanvasPage({ name }) {
         if (!blob) continue
 
         e.preventDefault()
-
-        try {
-          const dataUrl = await blobToDataUrl(blob)
-          const { width: natW, height: natH } = await getImageDimensions(dataUrl)
-
-          // Display at 2x retina: halve natural dimensions, then cap at 600px
-          const maxWidth = 600
-          let displayW = Math.round(natW / 2)
-          let displayH = Math.round(natH / 2)
-          if (displayW > maxWidth) {
-            displayH = Math.round(displayH * (maxWidth / displayW))
-            displayW = maxWidth
-          }
-
-          const uploadResult = await uploadImage(dataUrl, name)
-          if (!uploadResult.success) {
-            console.error('[canvas] Image upload failed:', uploadResult.error)
-            return true
-          }
-
-          const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
-          const pos = centerPositionForWidget(center, 'image', { width: displayW, height: displayH })
-          const result = await addWidgetApi(name, {
-            type: 'image',
-            props: { src: uploadResult.filename, private: false, width: displayW, height: displayH },
-            position: pos,
-          })
-          if (result.success && result.widget) {
-            undoRedo.snapshot(stateRef.current, 'add')
-            setLocalWidgets((prev) => [...(prev || []), result.widget])
-          }
-        } catch (err) {
-          console.error('[canvas] Failed to paste image:', err)
-        }
+        await processImageFile(blob, null)
         return true
       }
       return false
@@ -1221,8 +1238,74 @@ export default function CanvasPage({ name }) {
         console.error('[canvas] Failed to add widget from paste:', err)
       }
     }
+
+    // --- Drag and drop handlers for images from Finder/file manager ---
+
+    function handleDragOver(e) {
+      // Only handle if dragging files (not internal widget drag)
+      if (!e.dataTransfer?.types?.includes('Files')) return
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy'
+    }
+
+    async function handleDrop(e) {
+      // Only handle file drops, not internal widget drags
+      if (!e.dataTransfer?.types?.includes('Files')) return
+
+      const files = e.dataTransfer.files
+      if (!files || files.length === 0) return
+
+      // Filter to image files only
+      const imageFiles = Array.from(files).filter((f) => f.type.startsWith('image/'))
+      if (imageFiles.length === 0) return
+
+      e.preventDefault()
+      e.stopPropagation()
+
+      // Convert drop coordinates to canvas coordinates
+      const scrollEl = scrollRef.current
+      if (!scrollEl) return
+
+      const rect = scrollEl.getBoundingClientRect()
+      const scale = zoomRef.current / 100
+      const gridSize = 24
+
+      // Mouse position relative to scroll container
+      const mouseX = e.clientX - rect.left
+      const mouseY = e.clientY - rect.top
+
+      // Convert to canvas coordinates (account for scroll and zoom)
+      const canvasX = (scrollEl.scrollLeft + mouseX) / scale
+      const canvasY = (scrollEl.scrollTop + mouseY) / scale
+
+      // Snap to grid
+      const snappedX = Math.round(canvasX / gridSize) * gridSize
+      const snappedY = Math.round(canvasY / gridSize) * gridSize
+
+      // Process each image file, offsetting subsequent images
+      for (let i = 0; i < imageFiles.length; i++) {
+        const offsetX = i * 24 // Offset each subsequent image by 1 grid unit
+        const offsetY = i * 24
+        await processImageFile(imageFiles[i], { x: snappedX + offsetX, y: snappedY + offsetY })
+      }
+    }
+
     document.addEventListener('paste', handlePaste)
-    return () => document.removeEventListener('paste', handlePaste)
+
+    // Attach drag/drop handlers to the scroll container
+    const scrollEl = scrollRef.current
+    if (scrollEl) {
+      scrollEl.addEventListener('dragover', handleDragOver)
+      scrollEl.addEventListener('drop', handleDrop)
+    }
+
+    return () => {
+      document.removeEventListener('paste', handlePaste)
+      if (scrollEl) {
+        scrollEl.removeEventListener('dragover', handleDragOver)
+        scrollEl.removeEventListener('drop', handleDrop)
+      }
+    }
   }, [name, undoRedo])
 
   // --- Undo / Redo ---

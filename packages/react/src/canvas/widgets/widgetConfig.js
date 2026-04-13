@@ -103,14 +103,16 @@ export const widgetTypes = buildWidgetTypes()
 
 /**
  * Get the feature list for a widget type.
- * In production, only features with `prod: true` are returned.
+ * In production (or when isLocalDev is false, e.g. ?prodMode simulation),
+ * only features with `prod: true` are returned.
  * In dev, all features are returned.
  * @param {string} type — widget type string
+ * @param {{ isLocalDev?: boolean }} [options]
  * @returns {Array} features array from config (variables resolved), or empty array
  */
-export function getFeatures(type) {
+export function getFeatures(type, { isLocalDev = true } = {}) {
   const features = widgetTypes[type]?.features ?? []
-  if (import.meta.env?.PROD) {
+  if (import.meta.env?.PROD || !isLocalDev) {
     return features.filter(f => f.prod)
   }
   return features

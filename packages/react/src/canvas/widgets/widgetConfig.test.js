@@ -32,6 +32,25 @@ describe('getFeatures', () => {
   it('returns empty array for unknown widget types', () => {
     expect(getFeatures('nonexistent')).toEqual([])
   })
+
+  it('returns only prod features when isLocalDev is false', () => {
+    const features = getFeatures('figma-embed', { isLocalDev: false })
+    expect(features.length).toBeGreaterThan(0)
+    expect(features.every(f => f.prod === true)).toBe(true)
+  })
+
+  it('returns all features when isLocalDev is true (default)', () => {
+    const allFeatures = getFeatures('figma-embed')
+    const prodFeatures = getFeatures('figma-embed', { isLocalDev: false })
+    expect(allFeatures.length).toBeGreaterThan(prodFeatures.length)
+  })
+
+  it('includes menu-only prod features when isLocalDev is false', () => {
+    const features = getFeatures('figma-embed', { isLocalDev: false })
+    const menuFeature = features.find(f => f.menu)
+    expect(menuFeature).toBeDefined()
+    expect(menuFeature.prod).toBe(true)
+  })
 })
 
 describe('getWidgetMeta', () => {

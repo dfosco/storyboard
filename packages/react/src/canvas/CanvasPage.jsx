@@ -257,7 +257,7 @@ function ChromeWrappedWidget({
   readOnly,
 }) {
   const widgetRef = useRef(null)
-  const features = getFeatures(widget.type)
+  const features = getFeatures(widget.type, { isLocalDev: !readOnly })
 
   const handleAction = useCallback((actionId) => {
     if (actionId === 'delete') {
@@ -1502,7 +1502,7 @@ export default function CanvasPage({ name }) {
   const allChildren = []
 
   // 1. Component widgets (from jsxExports or sources fallback)
-  const componentFeatures = getFeatures('component')
+  const componentFeatures = getFeatures('component', { isLocalDev })
   for (const entry of componentEntries) {
     const { exportName, Component, sourceData } = entry
     const sourcePosition = sourceData.position || { x: 0, y: 0 }

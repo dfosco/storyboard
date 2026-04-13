@@ -89,10 +89,20 @@ export default function ComponentWidget({
         {!interactive && (
           <div
             className={styles.interactOverlay}
-            onClick={enterInteractive}
+            onClick={(e) => {
+              // Don't enter interactive mode for modifier clicks (shift/meta/ctrl for multi-select)
+              if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+              enterInteractive()
+            }}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') enterInteractive() }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                e.stopPropagation()
+                enterInteractive()
+              }
+            }}
             aria-label="Click to interact with component"
           >
             <span className={styles.interactHint}>Click to interact</span>

@@ -12,6 +12,25 @@
  */
 import { createElement, Component as ReactComponent } from 'react'
 import { createRoot } from 'react-dom/client'
+import { ThemeProvider, BaseStyles } from '@primer/react'
+
+// ── Primer Primitives CSS (required for CSS variables) ──────────────
+import '@primer/primitives/dist/css/base/size/size.css'
+import '@primer/primitives/dist/css/base/typography/typography.css'
+import '@primer/primitives/dist/css/base/motion/motion.css'
+import '@primer/primitives/dist/css/functional/size/border.css'
+import '@primer/primitives/dist/css/functional/size/breakpoints.css'
+import '@primer/primitives/dist/css/functional/size/size-coarse.css'
+import '@primer/primitives/dist/css/functional/size/size-fine.css'
+import '@primer/primitives/dist/css/functional/size/size.css'
+import '@primer/primitives/dist/css/functional/size/viewport.css'
+import '@primer/primitives/dist/css/functional/typography/typography.css'
+import '@primer/primitives/dist/css/functional/themes/light.css'
+import '@primer/primitives/dist/css/functional/themes/light-colorblind.css'
+import '@primer/primitives/dist/css/functional/themes/dark.css'
+import '@primer/primitives/dist/css/functional/themes/dark-colorblind.css'
+import '@primer/primitives/dist/css/functional/themes/dark-high-contrast.css'
+import '@primer/primitives/dist/css/functional/themes/dark-dimmed.css'
 
 // ── Error Boundary ──────────────────────────────────────────────────
 class IsolateErrorBoundary extends ReactComponent {
@@ -62,6 +81,9 @@ const modulePath = params.get('module')
 const exportName = params.get('export')
 const theme = params.get('theme') || 'light'
 
+// Map theme to Primer colorMode
+const colorMode = theme.startsWith('dark') ? 'night' : 'day'
+
 // Apply theme to document for Primer / CSS-var inheritance
 document.documentElement.setAttribute('data-color-mode', theme.startsWith('dark') ? 'dark' : 'light')
 document.documentElement.setAttribute('data-dark-theme', theme.startsWith('dark') ? theme : '')
@@ -91,8 +113,12 @@ async function mount() {
     }
 
     root.render(
-      createElement(IsolateErrorBoundary, { name: exportName },
-        createElement(Component),
+      createElement(ThemeProvider, { colorMode },
+        createElement(BaseStyles, null,
+          createElement(IsolateErrorBoundary, { name: exportName },
+            createElement(Component),
+          ),
+        ),
       ),
     )
   } catch (err) {

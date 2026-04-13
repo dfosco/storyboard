@@ -5,6 +5,7 @@ import { readProp } from './widgetProps.js'
 import { schemas } from './widgetConfig.js'
 import { toFigmaEmbedUrl, getFigmaTitle, getFigmaType, isFigmaUrl } from './figmaUrl.js'
 import styles from './FigmaEmbed.module.css'
+import overlayStyles from './embedOverlay.module.css'
 
 const figmaEmbedSchema = schemas['figma-embed']
 
@@ -126,9 +127,25 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate, resizable }, re
             </div>
             {!interactive && !expanded && (
               <div
-                className={styles.dragOverlay}
-                onDoubleClick={enterInteractive}
-              />
+                className={overlayStyles.interactOverlay}
+                onClick={(e) => {
+                  // Don't enter interactive mode for modifier clicks (shift/meta/ctrl for multi-select)
+                  if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+                  enterInteractive()
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    enterInteractive()
+                  }
+                }}
+                aria-label="Click to interact with Figma embed"
+              >
+                <span className={overlayStyles.interactHint}>Click to interact</span>
+              </div>
             )}
           </>
         ) : (

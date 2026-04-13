@@ -34,7 +34,16 @@ function resolveFeature(feature) {
     if (key === 'items' && Array.isArray(val)) {
       resolved[key] = val.map((item) => {
         const r = {}
-        for (const [k, v] of Object.entries(item)) r[k] = resolveVar(v)
+        for (const [k, v] of Object.entries(item)) {
+          // Resolve nested alt object inside items
+          if (k === 'alt' && v && typeof v === 'object') {
+            const altResolved = {}
+            for (const [ak, av] of Object.entries(v)) altResolved[ak] = resolveVar(av)
+            r[k] = altResolved
+          } else {
+            r[k] = resolveVar(v)
+          }
+        }
         return r
       })
     } else if (key === 'alt' && val && typeof val === 'object') {

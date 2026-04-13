@@ -70,6 +70,7 @@ function helpScreen(version) {
     '',
     `  ${bold(cyan('Development'))}`,
     cmd('dev', 'Start Vite dev server + update proxy'),
+    cmd('dev [branch]', 'Start dev for a specific worktree/branch'),
     cmd('exit', 'Stop all dev servers and proxy'),
     '',
     `  ${bold(cyan('Create'))}`,

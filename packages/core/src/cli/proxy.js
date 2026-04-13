@@ -14,9 +14,9 @@ import { execSync } from 'child_process'
 import { dirname, resolve } from 'path'
 import { portsFilePath } from '../worktree/port.js'
 
-export function readDevDomain() {
+export function readDevDomain(cwd) {
   try {
-    const configPath = resolve(process.cwd(), 'storyboard.config.json')
+    const configPath = resolve(cwd || process.cwd(), 'storyboard.config.json')
     const config = JSON.parse(readFileSync(configPath, 'utf8'))
     return `${config.devDomain || 'storyboard'}.localhost`
   } catch {

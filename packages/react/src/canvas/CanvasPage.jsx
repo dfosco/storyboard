@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom'
 import { Canvas } from '@dfosco/tiny-canvas'
 import '@dfosco/tiny-canvas/style.css'
 import { useCanvas } from './useCanvas.js'
+import { enableCanvasGuard, disableCanvasGuard } from './canvasReloadGuard.js'
 import { shouldPreventCanvasTextSelection } from './textSelection.js'
 import { getCanvasThemeVars, getCanvasPrimerAttrs } from './canvasTheme.js'
 import { getWidgetComponent } from './widgets/index.js'
@@ -275,7 +276,7 @@ function ChromeWrappedWidget({
  * @param {{ name: string }} props - Canvas name as indexed by the data plugin
  */
 export default function CanvasPage({ name }) {
-  const { canvas, jsxExports, loading } = useCanvas(name)
+  const { canvas, jsxExports, jsxError, loading } = useCanvas(name)
   const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true && !new URLSearchParams(window.location.search).has('prodMode')
 
   // Local mutable copy of widgets for instant UI updates
@@ -794,23 +795,41 @@ export default function CanvasPage({ name }) {
     }
   }, [name])
 
-  // Tell the Vite dev server to suppress full-reloads while this canvas is active.
-  // The ?canvas-hmr URL param opts out of the guard for canvas UI development.
-  // Sends a heartbeat every 3s so the guard auto-expires if the tab closes.
+  // Client-side reload guard — prevents full-reloads, HMR updates, and WS
+  // disconnect reloads from reaching this tab while a canvas is active.
+  // The guard module registers vite:beforeFullReload / vite:beforeUpdate /
+  // vite:ws:disconnect listeners at import time; we just toggle the flag.
+  // Also sends a server heartbeat so the server-side guard (defense-in-depth)
+  // can filter broadcasts for this client.
+  const guardRef = useRef(false)
+  if (!guardRef.current) {
+    enableCanvasGuard()
+    guardRef.current = true
+  }
   useEffect(() => {
-    if (!import.meta.hot) return
-    const hmrEnabled = new URLSearchParams(window.location.search).has('canvas-hmr')
-    if (hmrEnabled) return
+    enableCanvasGuard()
 
-    const msg = { active: true, hmrEnabled: false }
-    import.meta.hot.send('storyboard:canvas-hmr-guard', msg)
-    const interval = setInterval(() => {
-      import.meta.hot.send('storyboard:canvas-hmr-guard', msg)
-    }, 3000)
+    // Server-side heartbeat (defense-in-depth — server also filters reloads)
+    if (import.meta.hot) {
+      const hmrEnabled = new URLSearchParams(window.location.search).has('canvas-hmr')
+      if (!hmrEnabled) {
+        const msg = { active: true, hmrEnabled: false }
+        import.meta.hot.send('storyboard:canvas-hmr-guard', msg)
+        const interval = setInterval(() => {
+          import.meta.hot.send('storyboard:canvas-hmr-guard', msg)
+        }, 3000)
+        return () => {
+          clearInterval(interval)
+          disableCanvasGuard()
+          guardRef.current = false
+          import.meta.hot.send('storyboard:canvas-hmr-guard', { active: false, hmrEnabled: true })
+        }
+      }
+    }
 
     return () => {
-      clearInterval(interval)
-      import.meta.hot.send('storyboard:canvas-hmr-guard', { active: false, hmrEnabled: true })
+      disableCanvasGuard()
+      guardRef.current = false
     }
   }, [name])
 

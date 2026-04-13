@@ -18,6 +18,42 @@ Reads, manipulates, and arranges widgets on a Storyboard canvas. Supports absolu
 
 ---
 
+## Reference: Collision Detection
+
+**All positioning operations must use collision detection to prevent widget overlaps.**
+
+Use the collision module at `packages/core/src/canvas/collision.js`:
+
+```js
+import { resolvePosition, findFreePosition, DEFAULT_SIZES } from './collision.js'
+
+// For adding/moving widgets — resolves to a collision-free position
+const { x, y, adjusted } = resolvePosition({
+  x: targetX,
+  y: targetY,
+  type: 'sticky-note',
+  props: { width: 270, height: 170 },  // optional — uses defaults if omitted
+  widgets: existingWidgets,
+  excludeId: 'widget-to-move',  // optional — for move operations
+  gridSize: 24,
+})
+
+// Or use findFreePosition directly with explicit dimensions
+const { x, y, adjusted } = findFreePosition({
+  x: targetX,
+  y: targetY,
+  width: 270,
+  height: 170,
+  widgets: existingWidgets,
+  excludeId: null,
+  gridSize: 24,
+})
+```
+
+**Algorithm:** Tries the target position first. If collision, moves right. If still blocked, moves down. Returns the first free position, snapped to grid.
+
+---
+
 ## Reference: Widget Types and Default Sizes
 
 | Type | Default W×H | Content Prop | Other Props |

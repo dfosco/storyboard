@@ -4,7 +4,7 @@ import { join } from 'path'
 import { tmpdir } from 'os'
 
 // We test the pure functions by importing and overriding cwd
-import { portsFilePath, getPort, resolvePort, slugify } from './port.js'
+import { portsFilePath, getPort, resolvePort, slugify, repoRoot, worktreeDir, listWorktrees } from './port.js'
 
 describe('slugify', () => {
   it('lowercases and replaces dots with hyphens', () => {
@@ -128,5 +128,95 @@ describe('getPort / resolvePort', () => {
     // Should not throw — starts fresh
     const port = getPort('recovery')
     expect(port).toBe(1235)
+  })
+})
+
+describe('repoRoot', () => {
+  let tempRoot
+
+  beforeEach(() => {
+    tempRoot = realpathSync(mkdtempSync(join(tmpdir(), 'sb-root-test-')))
+    mkdirSync(join(tempRoot, '.worktrees', 'my-branch'), { recursive: true })
+  })
+
+  afterEach(() => {
+    rmSync(tempRoot, { recursive: true, force: true })
+  })
+
+  it('returns cwd when at repo root', () => {
+    expect(repoRoot(tempRoot)).toBe(tempRoot)
+  })
+
+  it('returns parent of .worktrees when inside a worktree', () => {
+    const wt = join(tempRoot, '.worktrees', 'my-branch')
+    expect(repoRoot(wt)).toBe(tempRoot)
+  })
+})
+
+describe('worktreeDir', () => {
+  let tempRoot
+
+  beforeEach(() => {
+    tempRoot = realpathSync(mkdtempSync(join(tmpdir(), 'sb-wtdir-test-')))
+    mkdirSync(join(tempRoot, '.worktrees'), { recursive: true })
+  })
+
+  afterEach(() => {
+    rmSync(tempRoot, { recursive: true, force: true })
+  })
+
+  it('returns repo root for main', () => {
+    expect(worktreeDir('main', tempRoot)).toBe(tempRoot)
+  })
+
+  it('returns .worktrees/<name> for branches', () => {
+    expect(worktreeDir('my-feature', tempRoot)).toBe(join(tempRoot, '.worktrees', 'my-feature'))
+  })
+})
+
+describe('listWorktrees', () => {
+  let tempRoot
+
+  beforeEach(() => {
+    tempRoot = realpathSync(mkdtempSync(join(tmpdir(), 'sb-list-test-')))
+  })
+
+  afterEach(() => {
+    rmSync(tempRoot, { recursive: true, force: true })
+  })
+
+  it('returns empty array when .worktrees does not exist', () => {
+    expect(listWorktrees(tempRoot)).toEqual([])
+  })
+
+  it('returns only directories with a .git file', () => {
+    const wtDir = join(tempRoot, '.worktrees')
+    mkdirSync(wtDir)
+
+    // Valid worktree — has .git file
+    mkdirSync(join(wtDir, 'valid'))
+    writeFileSync(join(wtDir, 'valid', '.git'), 'gitdir: /some/path')
+
+    // Not a worktree — no .git file
+    mkdirSync(join(wtDir, 'no-git'))
+
+    // Not a directory — file
+    writeFileSync(join(wtDir, 'ports.json'), '{}')
+
+    const result = listWorktrees(tempRoot)
+    expect(result).toEqual(['valid'])
+  })
+
+  it('returns multiple worktrees', () => {
+    const wtDir = join(tempRoot, '.worktrees')
+    mkdirSync(wtDir)
+
+    for (const name of ['alpha', 'beta', 'gamma']) {
+      mkdirSync(join(wtDir, name))
+      writeFileSync(join(wtDir, name, '.git'), 'gitdir: /some/path')
+    }
+
+    const result = listWorktrees(tempRoot)
+    expect(result.sort()).toEqual(['alpha', 'beta', 'gamma'])
   })
 })

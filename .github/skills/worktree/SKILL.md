@@ -104,3 +104,21 @@ The dev server automatically uses the port assigned in Step 2.
 - If the worktree already exists, inform the user and `cd` into it instead of recreating it.
 - Port assignments are stable — once a worktree gets a port, it keeps it across restarts.
 - To see all assigned ports, check `.worktrees/ports.json`.
+
+## Shortcut: `storyboard dev <branch>`
+
+Instead of the full manual workflow above, you can use `storyboard dev <branch>` from any directory. This will:
+
+1. Auto-create the worktree if the branch exists but has no worktree yet
+2. Create both the branch and worktree if the branch doesn't exist (prompts in interactive mode, auto-creates in non-interactive/programmatic mode)
+3. Install dependencies in the new worktree
+4. Start the dev server targeting that worktree
+
+```bash
+# From anywhere in the repo:
+npx storyboard dev my-feature       # creates worktree if needed, starts dev
+npx storyboard dev main             # start dev for repo root
+npx storyboard dev --no-create foo  # error if "foo" worktree doesn't exist
+```
+
+Use `--no-create` to disable auto-creation (strict mode — only targets existing worktrees).

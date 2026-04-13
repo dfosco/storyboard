@@ -1,5 +1,15 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.14
+
+### Minor Changes
+
+-   Workshop UX improvements and autocommit fix
+
+    -   feat: hide New Flow and New Page actions on canvas routes
+    -   feat: add optional description field to canvas creation
+    -   fix: autocommit in storyboard update stages files individually
+
 ## 4.0.0-beta.13
 
 ### Minor Changes

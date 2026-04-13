@@ -1006,15 +1006,15 @@ export default function CanvasPage({ name }) {
         e.preventDefault()
         setSelectedWidgetIds(new Set())
       }
-      // Copy: cmd+c copies URL/content, alt+cmd+c copies ID (or file path for images)
+      // Copy: cmd+c copies URL/content, shift+cmd+c copies ID (or file path for images)
       const mod = e.metaKey || e.ctrlKey
       if (mod && e.key === 'c' && selectedWidgetIds.size === 1) {
         const widgetId = [...selectedWidgetIds][0]
         const widget = localWidgets?.find(w => w.id === widgetId)
         if (widget) {
           e.preventDefault()
-          if (e.altKey) {
-            // alt+cmd+c → copy file path for images, widget ID for others
+          if (e.shiftKey) {
+            // shift+cmd+c → copy file path for images, widget ID for others
             if (widget.type === 'image' && widget.props?.src) {
               navigator.clipboard.writeText(`src/canvas/images/${widget.props.src}`).catch(() => {})
             } else {

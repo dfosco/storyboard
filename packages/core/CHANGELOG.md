@@ -1,5 +1,14 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.7
+
+### Patch Changes
+
+-   Canvas widget copy shortcuts
+
+    -   Add ⌘/Ctrl+C to copy selected widget's URL/content to clipboard
+    -   Add ⌥⌘/Alt+Ctrl+C to copy selected widget's ID to clipboard
+
 ## 4.0.0-beta.6
 
 ### Minor Changes

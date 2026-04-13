@@ -79,4 +79,24 @@ try {
   p.log.warn('Scaffold sync failed — run `npx storyboard-scaffold` manually')
 }
 
+// Auto-commit the version update
+try {
+  // Read the installed version from the core package
+  const corePkg = JSON.parse(readFileSync(resolve(process.cwd(), 'node_modules', '@dfosco', 'storyboard-core', 'package.json'), 'utf8'))
+  const installedVersion = corePkg.version || suffix.slice(1)
+  const commitMsg = `[storyboard-update] Update storyboard to ${installedVersion}`
+
+  execSync('git add -A', { cwd: process.cwd(), stdio: 'pipe' })
+  // Only commit if there are staged changes
+  try {
+    execSync('git diff --cached --quiet', { cwd: process.cwd(), stdio: 'pipe' })
+    p.log.message('No changes to commit')
+  } catch {
+    execSync(`git commit -m "${commitMsg}"`, { cwd: process.cwd(), stdio: 'pipe' })
+    p.log.success(`Committed: ${commitMsg}`)
+  }
+} catch (err) {
+  p.log.warn(`Auto-commit failed: ${err.message}`)
+}
+
 p.outro('Done')

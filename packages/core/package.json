@@ -48,7 +48,8 @@
     "./ui/viewfinder": "./src/ui/viewfinder.ts",
     "./svelte-plugin-ui/styles/base.css": "./dist/tailwind.css",
     "./styles/tailwind.css": "./dist/tailwind.css",
-    "./worktree/port": "./src/worktree/port.js"
+    "./worktree/port": "./src/worktree/port.js",
+    "./canvas/collision": "./src/canvas/collision.js"
   },
   "dependencies": {
     "@clack/prompts": "^1.2.0",

@@ -4,7 +4,7 @@
  * Dev-server middleware that provides git automation:
  * - List branches (excluding main/master)
  * - Enable/disable autosync per scope (canvas/prototype)
- * - Keep an isolated autosync worktree per target branch
+ * - Direct commit + push on the current branch (scoped files only)
  * - Push watcher: every 30s runs enabled scopes in relay sequence
  *
  * Routes (mounted at /_storyboard/autosync/):
@@ -16,8 +16,8 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, rmSync } from 'node:fs'
-import { dirname, join, resolve, sep } from 'node:path'
+import { existsSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 
 // ── Module-level watcher state (singleton, survives page reloads) ──
 
@@ -25,7 +25,6 @@ let schedulerInterval = null
 let schedulerTimeout = null
 let targetBranch = null
 let originalBranch = null
-let autosyncWorktreeRoot = null
 let lastSyncTime = null
 let lastError = null
 let syncing = false
@@ -37,7 +36,6 @@ let lastErrorByScope = { canvas: null, prototype: null }
 
 const SYNC_INTERVAL_MS = 30_000
 const PUSH_RETRY_LIMIT = 3
-const AUTOSYNC_WORKTREE_DIR = 'autosync-worktrees'
 const SCOPE_ORDER = ['canvas', 'prototype']
 const AUTOSYNC_SCOPES = new Set(SCOPE_ORDER)
 
@@ -70,78 +68,8 @@ function getBranches(root) {
     .filter((b) => b && b.toLowerCase() !== 'main' && b.toLowerCase() !== 'master')
 }
 
-function getGitCommonDir(root) {
-  return resolve(root, git(['rev-parse', '--git-common-dir'], root))
-}
-
-export function getAutosyncWorktreeDirName(branch) {
-  const safe = String(branch || 'branch')
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '--')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-  return safe || 'branch'
-}
-
-function getAutosyncWorktreePath(root, branch) {
-  return join(getGitCommonDir(root), AUTOSYNC_WORKTREE_DIR, getAutosyncWorktreeDirName(branch))
-}
-
-function removeAutosyncWorktree(root, worktreePath) {
-  if (!worktreePath) return
-  try {
-    git(['worktree', 'remove', '--force', worktreePath], root)
-  } catch {
-    // Path may not be a registered worktree.
-  }
-  rmSync(worktreePath, { recursive: true, force: true })
-}
-
-function resetAutosyncWorktree(root, branch) {
-  const worktreePath = getAutosyncWorktreePath(root, branch)
-  removeAutosyncWorktree(root, worktreePath)
-
-  mkdirSync(dirname(worktreePath), { recursive: true })
-  const branchHead = git(['rev-parse', branch], root)
-  git(['worktree', 'add', '--detach', worktreePath, branchHead], root)
-
-  const worktreeHead = git(['rev-parse', 'HEAD'], worktreePath)
-  if (worktreeHead !== branchHead) {
-    throw new Error(`Autosync worktree init mismatch for ${branch}`)
-  }
-
-  autosyncWorktreeRoot = worktreePath
-  return worktreePath
-}
-
-function clearAutosyncWorktree(root) {
-  if (!autosyncWorktreeRoot) return
-  removeAutosyncWorktree(root, autosyncWorktreeRoot)
-  autosyncWorktreeRoot = null
-}
-
-function resolveScopedFilePath(root, file) {
-  const absoluteRoot = resolve(root)
-  const absoluteFile = resolve(absoluteRoot, file)
-  if (absoluteFile !== absoluteRoot && !absoluteFile.startsWith(`${absoluteRoot}${sep}`)) {
-    throw new Error(`Invalid scoped file path: ${file}`)
-  }
-  return absoluteFile
-}
-
-function syncScopedFilesToWorktree(sourceRoot, worktreeRoot, files) {
-  for (const file of files) {
-    const sourcePath = resolveScopedFilePath(sourceRoot, file)
-    const targetPath = resolveScopedFilePath(worktreeRoot, file)
-
-    if (!existsSync(sourcePath)) {
-      rmSync(targetPath, { force: true })
-      continue
-    }
-
-    mkdirSync(dirname(targetPath), { recursive: true })
-    copyFileSync(sourcePath, targetPath)
-  }
+function getGitDir(root) {
+  return resolve(root, git(['rev-parse', '--git-dir'], root))
 }
 
 function hasScopedStagedChanges(root, files) {
@@ -152,13 +80,41 @@ function hasScopedStagedChanges(root, files) {
 
 function listChangedFiles(root) {
   const tracked = git(['diff', '--name-only'], root)
-  const staged = git(['diff', '--name-only', '--cached'], root)
   const untracked = git(['ls-files', '--others', '--exclude-standard'], root)
-  return [...tracked, ...staged, ...untracked]
+  return [...tracked, ...untracked]
     .flatMap((raw) => raw.split('\n'))
     .map((file) => file.trim())
     .filter(Boolean)
     .filter((file, idx, arr) => arr.indexOf(file) === idx)
+}
+
+// ── Repo-busy guards ──
+
+/**
+ * Check if the repo is in a state where autosync should defer.
+ * Returns { busy: true, reason } if unsafe, { busy: false } otherwise.
+ */
+export function isRepoBusy(root) {
+  const gitDir = getGitDir(root)
+
+  if (existsSync(join(gitDir, 'index.lock'))) {
+    return { busy: true, reason: 'index.lock exists — another git process is active' }
+  }
+  if (existsSync(join(gitDir, 'rebase-merge')) || existsSync(join(gitDir, 'rebase-apply'))) {
+    return { busy: true, reason: 'rebase in progress' }
+  }
+  if (existsSync(join(gitDir, 'MERGE_HEAD'))) {
+    return { busy: true, reason: 'merge in progress' }
+  }
+  if (existsSync(join(gitDir, 'CHERRY_PICK_HEAD'))) {
+    return { busy: true, reason: 'cherry-pick in progress' }
+  }
+
+  if (targetBranch && getCurrentBranch(root) !== targetBranch) {
+    return { busy: true, reason: `branch drift: expected ${targetBranch}, on ${getCurrentBranch(root)}` }
+  }
+
+  return { busy: false }
 }
 
 export function normalizeAutosyncScope(scope) {
@@ -188,15 +144,6 @@ export function filterFilesForAutosyncScope(scope, files) {
 
 function listScopedChangedFiles(root, scope) {
   return filterFilesForAutosyncScope(scope, listChangedFiles(root))
-}
-
-function remoteBranchExists(root, branch) {
-  try {
-    git(['ls-remote', '--exit-code', '--heads', 'origin', branch], root)
-    return true
-  } catch {
-    return false
-  }
 }
 
 function isValidBranch(name) {
@@ -259,6 +206,16 @@ function resetRuntimeState({ clearBranch = true } = {}) {
   }
 }
 
+/** Undo a commit that was never pushed, leaving files staged then unstaged. */
+function rollbackUnpushedCommit(root, scopedFiles) {
+  try {
+    git(['reset', '--soft', 'HEAD~1'], root)
+    git(['reset', '--', ...scopedFiles], root)
+  } catch {
+    // Best-effort rollback; if this fails the user's tree is still valid.
+  }
+}
+
 function buildStatusPayload(root) {
   const singleScope = enabledScopes.canvas === enabledScopes.prototype
     ? null
@@ -283,7 +240,6 @@ function buildStatusPayload(root) {
 
 function stopAutosync(root, { clearBranch = true, clearErrors = false } = {}) {
   stopScheduler()
-  clearAutosyncWorktree(root)
   resetRuntimeState({ clearBranch })
   if (clearErrors) {
     lastError = null
@@ -293,31 +249,42 @@ function stopAutosync(root, { clearBranch = true, clearErrors = false } = {}) {
 
 // ── Sync cycle ──
 
-/** Run one scoped sync against the isolated autosync worktree. */
+/** Run one scoped sync — stage, commit, and push scoped files directly. */
 function runSyncCycle(root, scope) {
   if (syncing) return false
   syncing = true
   syncingScope = scope
   let cycleSucceeded = false
+  let committed = false
+  let scopedFiles = []
 
   try {
     if (!targetBranch) {
       throw new Error('Autosync branch is not configured')
     }
-    if (!autosyncWorktreeRoot) {
-      throw new Error('Autosync worktree is not initialized')
+
+    // Guard: skip if repo is busy (index lock, rebase, merge, branch drift)
+    const busy = isRepoBusy(root)
+    if (busy.busy) {
+      cycleSucceeded = true // defer, not failure
+      return true
     }
 
-    const scopedFiles = listScopedChangedFiles(root, scope)
+    scopedFiles = listScopedChangedFiles(root, scope)
     if (scopedFiles.length === 0) {
       cycleSucceeded = true
       return true
     }
 
-    syncScopedFilesToWorktree(root, autosyncWorktreeRoot, scopedFiles)
-    git(['add', '-A', '--', ...scopedFiles], autosyncWorktreeRoot)
+    // Guard: skip if scoped files already have user-staged changes
+    if (hasScopedStagedChanges(root, scopedFiles)) {
+      cycleSucceeded = true // defer, not failure
+      return true
+    }
 
-    if (!hasScopedStagedChanges(autosyncWorktreeRoot, scopedFiles)) {
+    git(['add', '-A', '--', ...scopedFiles], root)
+
+    if (!hasScopedStagedChanges(root, scopedFiles)) {
       cycleSucceeded = true
       return true
     }
@@ -326,36 +293,51 @@ function runSyncCycle(root, scope) {
     const time = formatTime()
     git(
       ['commit', '-m', `[auto:${scope}] ${username} update at ${time}`, '--', ...scopedFiles],
-      autosyncWorktreeRoot,
+      root,
     )
+    committed = true
 
     for (let attempt = 1; attempt <= PUSH_RETRY_LIMIT; attempt += 1) {
-      if (remoteBranchExists(root, targetBranch)) {
-        git(['fetch', 'origin', targetBranch], autosyncWorktreeRoot)
-        git(['rebase', 'FETCH_HEAD'], autosyncWorktreeRoot)
+      // Re-check guards before push/rebase
+      const pushBusy = isRepoBusy(root)
+      if (pushBusy.busy) {
+        rollbackUnpushedCommit(root, scopedFiles)
+        committed = false
+        cycleSucceeded = true // defer
+        return true
       }
 
       try {
-        git(['push', 'origin', `HEAD:refs/heads/${targetBranch}`], autosyncWorktreeRoot)
+        git(['push', 'origin', `HEAD:refs/heads/${targetBranch}`], root)
         cycleSucceeded = true
         break
       } catch (pushErr) {
         if (!isRetryablePushError(pushErr?.message) || attempt === PUSH_RETRY_LIMIT) {
           throw pushErr
         }
+
+        // Fetch and rebase with autostash to handle non-fast-forward
+        try {
+          git(['fetch', 'origin', targetBranch], root)
+          git(['rebase', '--autostash', 'FETCH_HEAD'], root)
+        } catch {
+          // Rebase failed — abort and defer
+          try { git(['rebase', '--abort'], root) } catch { /* no rebase in progress */ }
+          rollbackUnpushedCommit(root, scopedFiles)
+          committed = false
+          cycleSucceeded = true // defer, try again next cycle
+          return true
+        }
       }
     }
   } catch (err) {
     lastError = err.message || 'Sync failed'
     lastErrorByScope[scope] = lastError
-    try {
-      if (autosyncWorktreeRoot) {
-        git(['rebase', '--abort'], autosyncWorktreeRoot)
-      }
-    } catch {
-      // no rebase in progress
+
+    // Rollback the commit if we made one but never pushed
+    if (committed) {
+      rollbackUnpushedCommit(root, scopedFiles)
     }
-    stopAutosync(root, { clearBranch: false })
   } finally {
     if (cycleSucceeded) {
       const nowIso = new Date().toISOString()
@@ -448,6 +430,14 @@ export function createAutosyncHandler({ root, sendJson }) {
           return
         }
 
+        const currentBranch = getCurrentBranch(root)
+        if (branch !== currentBranch) {
+          sendJson(res, 400, {
+            error: `Autosync requires you to be on the target branch. Current: ${currentBranch}, requested: ${branch}`,
+          })
+          return
+        }
+
         const normalizedScope = normalizeAutosyncScope(scope)
         const hadEnabledScopes = hasAnyScopeEnabled()
 
@@ -457,10 +447,8 @@ export function createAutosyncHandler({ root, sendJson }) {
         }
 
         if (!hadEnabledScopes) {
-          originalBranch = getCurrentBranch(root)
+          originalBranch = currentBranch
           targetBranch = branch
-          // Recreate from selected branch HEAD so autosync starts from current branch tip.
-          resetAutosyncWorktree(root, branch)
         }
 
         enabledScopes[normalizedScope] = true

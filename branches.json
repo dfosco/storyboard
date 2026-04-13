@@ -17,6 +17,7 @@
   {"folder":"branch--3.11.3","branch":"3.11.3"},
   {"folder":"branch--3.12.0","branch":"3.12.0"},
   {"folder":"branch--3.13.0","branch":"3.13.0"},
+  {"folder":"branch--4.0.0-auto-convert-root-worktree","branch":"4.0.0-auto-convert-root-worktree"},
   {"folder":"branch--4.0.0-autosync-fix","branch":"4.0.0-autosync-fix"},
   {"folder":"branch--4.0.0-component-iframe-isolation","branch":"4.0.0-component-iframe-isolation"},
   {"folder":"branch--4.0.0-create-cli-expansion","branch":"4.0.0-create-cli-expansion"},

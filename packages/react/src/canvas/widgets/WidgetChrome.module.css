@@ -229,7 +229,7 @@
 .overflowMenu {
   position: absolute;
   top: calc(100% + 10px);
-  right: 0;
+  left: 0;
   min-width: max-content;
   padding: 4px;
   background: var(--bgColor-default, #ffffff);

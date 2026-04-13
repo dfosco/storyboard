@@ -84,16 +84,10 @@ pwd && git branch --show-current
 
 ### Step 5: Start dev server
 
-Run the dev server in the worktree. If using the storyboard-dev launcher:
+Run the dev server in the worktree:
 
 ```bash
-npx storyboard-dev
-```
-
-Or if using a custom dev script:
-
-```bash
-npm run dev
+npx storyboard dev
 ```
 
 The dev server automatically uses the port assigned in Step 2.

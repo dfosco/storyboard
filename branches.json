@@ -35,6 +35,7 @@
   {"folder":"branch--feat-widget-feature-prod-flag","branch":"feat-widget-feature-prod-flag"},
   {"folder":"branch--feat-widget-multi-select","branch":"feat-widget-multi-select"},
   {"folder":"branch--feature-flags","branch":"feature-flags"},
+  {"folder":"branch--fix-autosync-listchangedfiles","branch":"fix-autosync-listchangedfiles"},
   {"folder":"branch--fix-prototype-embed-hash-params","branch":"fix-prototype-embed-hash-params"},
   {"folder":"branch--fix-widget-resize-persistence","branch":"fix-widget-resize-persistence"},
   {"folder":"branch--folders","branch":"folders"},

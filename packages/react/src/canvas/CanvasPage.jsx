@@ -449,6 +449,8 @@ export default function CanvasPage({ name }) {
     setLocalWidgets(canvas?.widgets ?? null)
     setLocalSources(canvas?.sources ?? [])
     setCanvasTitle(canvas?.title || name)
+    setSnapEnabled(canvas?.snapToGrid ?? false)
+    setSnapGridSize(canvas?.gridSize || 40)
     undoRedo.reset()
   }
 

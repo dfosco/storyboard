@@ -655,10 +655,10 @@ export default function storyboardDataPlugin() {
     config() {
       return {
         optimizeDeps: {
-          // debug is CJS-only but micromark's development export does
-          // `import createDebug from 'debug'`. Vite must pre-bundle it
-          // so the ESM default import resolves correctly.
-          include: ['debug'],
+          // debug and extend are CJS-only but unified/micromark import
+          // them as ESM defaults. Vite must pre-bundle them so the
+          // ESM default imports resolve correctly.
+          include: ['debug', 'extend'],
           exclude: ['@dfosco/storyboard-react'],
         },
       }

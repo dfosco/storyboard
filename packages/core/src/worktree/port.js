@@ -60,6 +60,10 @@ export function detectWorktreeName() {
     const worktreeMatch = realCwd.match(/\.worktrees[/\\]([^/\\]+)/)
     if (worktreeMatch) return worktreeMatch[1]
 
+    // Not a worktree — check the current branch name
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim()
+    if (branch && branch !== 'main' && branch !== 'master') return branch
+
     return 'main'
   } catch {
     return 'main'

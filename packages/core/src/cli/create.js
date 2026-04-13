@@ -11,6 +11,8 @@ import * as p from '@clack/prompts'
 import { detectWorktreeName, getPort } from '../worktree/port.js'
 
 const dim = (s) => `\x1b[2m${s}\x1b[0m`
+const green = (s) => `\x1b[32m${s}\x1b[0m`
+const cyan = (s) => `\x1b[36m${s}\x1b[0m`
 
 function getServerUrl() {
   const name = detectWorktreeName()
@@ -86,6 +88,50 @@ async function ensureDevServer() {
     }
   }
   s.stop('Dev server may still be starting...')
+}
+
+function getProxyUrl() {
+  const name = detectWorktreeName()
+  const isMain = name === 'main'
+  return isMain ? 'http://storyboard.localhost/' : `http://storyboard.localhost/branch--${name}/`
+}
+
+function getDirectUrl() {
+  const name = detectWorktreeName()
+  const port = getPort(name)
+  const isMain = name === 'main'
+  return isMain ? `http://localhost:${port}/` : `http://localhost:${port}/branch--${name}/`
+}
+
+/**
+ * After creation: show URL and open in browser.
+ * @param {string} resultPath — e.g. "src/canvas/test.canvas.jsonl" or "src/prototypes/MyProto"
+ * @param {'canvas'|'prototype'} type
+ */
+async function postCreateFlow(resultPath, type) {
+  const { isCaddyRunning } = await import('./proxy.js')
+  const proxyRunning = isCaddyRunning()
+  const baseUrl = proxyRunning ? getProxyUrl() : getDirectUrl()
+
+  // Build the view URL
+  let viewUrl = baseUrl
+  if (type === 'canvas' && resultPath) {
+    const canvasName = resultPath.replace(/^src\/canvas\//, '').replace(/\.canvas\.jsonl$/, '')
+    viewUrl = `${baseUrl}canvas/${canvasName}`
+  } else if (type === 'prototype' && resultPath) {
+    const protoName = resultPath.replace(/^src\/prototypes\//, '')
+    viewUrl = `${baseUrl}${protoName}`
+  }
+
+  p.log.info(`${cyan(viewUrl)}`)
+
+  // Open in browser
+  try {
+    const { execSync } = await import('child_process')
+    execSync(`open "${viewUrl}"`, { stdio: 'ignore' })
+  } catch {}
+
+  p.outro('')
 }
 
 // ── Prototype creation ────────────────────────────────────────
@@ -216,6 +262,8 @@ async function createPrototype() {
     if (result.path) {
       p.log.success(`  ${result.path}`)
     }
+    await postCreateFlow(result.path || `src/prototypes/${name}`, 'prototype')
+    return
   } catch (err) {
     s.stop('Failed to create prototype')
     p.log.error(err.message)
@@ -296,6 +344,8 @@ async function createCanvas() {
     if (result.path || result.name) {
       p.log.success(`  ${result.path || result.name}`)
     }
+    await postCreateFlow(result.path || `src/canvas/${name}.canvas.jsonl`, 'canvas')
+    return
   } catch (err) {
     s.stop('Failed to create canvas')
     p.log.error(err.message)

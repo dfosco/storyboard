@@ -15,7 +15,7 @@ const magenta = (s) => `\x1b[35m${s}\x1b[0m`
 const cyan = (s) => `\x1b[36m${s}\x1b[0m`
 const green = (s) => `\x1b[32m${s}\x1b[0m`
 const bold = (s) => `\x1b[1m${s}\x1b[0m`
-const yellow = (s) => `\x1b[33m${s}\x1b[0m`
+const white = (s) => `\x1b[97m${s}\x1b[0m`
 
 function mascot() {
   const d = dim('·')
@@ -131,8 +131,8 @@ if (isCaddyInstalled()) {
 
 p.note(
   [
-    `${bold('Welcome!')} Storyboard is a design tool to build and`,
-    `collaborate on prototypes. Here's how to get started:`,
+    white(`Welcome! Storyboard is a design tool to build and`),
+    white(`collaborate on prototypes. Here's how to get started:`),
     '',
     `  ${green('npx storyboard dev')}                Start developing locally`,
     `  ${green('npx storyboard create prototype')}   Create a prototype`,
@@ -142,6 +142,7 @@ p.note(
     `  ${dim('"create a prototype" or "create a canvas" for you!')}`,
     '',
     `  ${dim('Docs:')} ${cyan('https://github.com/dfosco/storyboard/blob/main/README.md')}`,
+    '',
     `  ${dim('PS: You can also use')} ${green('npx sb ...')} ${dim('for shorter commands')}`,
   ].join('\n'),
   'Getting started'

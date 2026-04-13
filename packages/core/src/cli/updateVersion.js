@@ -105,7 +105,9 @@ try {
     '.github/skills',
     'scripts',
   ]
-  execSync(`git add ${filesToStage.join(' ')} 2>/dev/null || true`, { cwd: process.cwd(), stdio: 'pipe' })
+  for (const f of filesToStage) {
+    try { execSync(`git add ${f}`, { cwd: process.cwd(), stdio: 'pipe' }) } catch {}
+  }
 
   // Only commit if there are staged changes
   try {

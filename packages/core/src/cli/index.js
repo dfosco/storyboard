@@ -84,6 +84,7 @@ function helpScreen(version) {
     `  ${bold(cyan('Canvas'))}`,
     cmd('canvas add <type>', 'Add widget to a canvas'),
     `                              ${dim('types: sticky-note, markdown, prototype')}`,
+    cmd('canvas read [name]', 'Read canvas state and list widgets'),
     '',
     `  ${bold(cyan('Setup'))}`,
     cmd('setup', 'Install deps, Caddy proxy, start proxy'),
@@ -121,6 +122,8 @@ switch (command) {
   case 'canvas':
     if (process.argv[3] === 'add') {
       import('./canvasAdd.js')
+    } else if (process.argv[3] === 'read' || !process.argv[3]) {
+      import('./canvasRead.js')
     } else {
       const version = getVersion()
       console.log(helpScreen(version))

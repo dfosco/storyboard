@@ -5,7 +5,7 @@ description: Work with Storyboard canvases — add, move, update, remove, and ar
 
 # Canvas
 
-> Triggered by: "add a sticky note", "add widget", "move widget", "delete widget", "rearrange", "update sticky", "change the text", "put a markdown", "to the right of", "below", "next to", "describe the canvas", "what's on the canvas", "list widgets", "remove widget"
+> Triggered by: "add a sticky note", "add widget", "move widget", "delete widget", "rearrange", "update sticky", "change the text", "put a markdown", "to the right of", "below", "next to", "describe the canvas", "what's on the canvas", "list widgets", "remove widget", "look at the canvas", "read the canvas", "look at this image", "what's in this image", "describe the image"
 
 ## What This Does
 
@@ -26,8 +26,23 @@ Reads, manipulates, and arranges widgets on a Storyboard canvas. Supports absolu
 | `markdown` | 530×240 | `content` (markdown) | `width` |
 | `prototype` | 800×600 | `src` (URL/path) | `label`, `zoom` (25–200), `width`, `height` |
 | `figma-embed` | 800×450 | `url` | `width`, `height` |
-| `image` | — | `src` (image path/URL) | `width`, `height`, `private` |
+| `image` | — | `src` (filename) | `width`, `height`, `private` |
 | `link-preview` | — | `url` | `title` |
+
+## Reference: Widget Content, URLs, and File Paths
+
+Each widget type stores content in a different prop. When querying widgets, use this mapping:
+
+| Type | Content Prop | URL | File Path |
+|------|-------------|-----|-----------|
+| `sticky-note` | `props.text` | — | — |
+| `markdown` | `props.content` | — | — |
+| `prototype` | `props.src` | `props.src` (prototype path) | — |
+| `figma-embed` | `props.url` | `props.url` | — |
+| `link-preview` | `props.url` | `props.url` | — |
+| `image` | `props.src` (filename) | `/_storyboard/canvas/images/{props.src}` | `src/canvas/images/{props.src}` |
+
+**Image widgets:** The `src` prop contains only the filename (e.g. `my-canvas--2026-04-13--10-30-00.png`). To view the actual image file, use the full path: `src/canvas/images/{props.src}`.
 
 ## Reference: Grid & Spacing
 
@@ -43,6 +58,20 @@ All endpoints are at `http://localhost:{PORT}/_storyboard/canvas/`. The port is 
 import { detectWorktreeName, getPort } from '@dfosco/storyboard-core/worktree/port'
 const port = getPort(detectWorktreeName())
 ```
+
+## Reference: CLI Commands
+
+### Read canvas state (CLI)
+```bash
+npx storyboard canvas read              # List all canvases
+npx storyboard canvas read my-canvas    # List all widgets with ID, content, URLs, file paths
+npx storyboard canvas read my-canvas --json   # Output as JSON (for parsing)
+npx storyboard canvas read my-canvas --id sticky-note-abc123  # Get specific widget
+```
+
+The CLI outputs widget ID, type, position, content, and file paths (for images). Use `--json` for machine-readable output that includes enriched `content`, `url`, and `filePath` fields.
+
+## Reference: Server API
 
 ### Read canvas state
 ```
@@ -232,8 +261,26 @@ npx storyboard canvas add sticky-note --canvas my-canvas --x 576 --y 0 --props '
 
 ### Describe canvas state
 User: "What's on my-canvas?"
-1. Read canvas state
+
+**Option 1 — CLI (recommended):**
+```bash
+npx storyboard canvas read my-canvas
+```
+This lists all widgets with their ID, type, position, content, URLs, and file paths.
+
+**Option 2 — API:**
+1. Read canvas state via API
 2. List all widgets with their type, position, key props, and ID
+
+### Query a specific widget
+User: "What's in widget sticky-note-abc123?"
+```bash
+npx storyboard canvas read my-canvas --id sticky-note-abc123
+```
+Or with JSON output for parsing:
+```bash
+npx storyboard canvas read my-canvas --id sticky-note-abc123 --json
+```
 
 ### Remove a widget
 User: "Delete the prototype embed on my-canvas"
@@ -244,3 +291,24 @@ curl -X DELETE http://localhost:{PORT}/_storyboard/canvas/widget \
   -H 'Content-Type: application/json' \
   -d '{"name":"my-canvas","widgetId":"prototype-xyz789"}'
 ```
+
+### View an image on the canvas
+User: "Look at the image on my-canvas" or "What's in this image?"
+
+**Step 1 — Find the image widget:**
+```bash
+npx storyboard canvas read my-canvas --json
+```
+Look for widgets with `"type": "image"`. The output includes the `filePath` field.
+
+**Step 2 — View the image file:**
+Use the `view` tool with the file path from the CLI output:
+```
+view src/canvas/images/my-canvas--2026-04-13--10-30-00.png
+```
+
+**Image file path formula:**
+- Widget prop: `props.src` (filename only)
+- Full path: `src/canvas/images/{props.src}`
+
+If multiple images exist, ask which one the user wants to view, or list them with their widget IDs.

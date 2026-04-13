@@ -49,5 +49,5 @@ export function toggleImagePrivacy(filename) {
 }
 
 export function getCanvas(name) {
-  return request(`/?name=${encodeURIComponent(name)}`, 'GET')
+  return request(`/read?name=${encodeURIComponent(name)}`, 'GET')
 }

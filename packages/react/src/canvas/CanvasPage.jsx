@@ -1208,37 +1208,34 @@ export default function CanvasPage({ name }) {
       const widgetRefMatch = text.match(/^([^/]+)\/([^/]+)$/)
       if (widgetRefMatch) {
         const [, sourceCanvas, sourceWidgetId] = widgetRefMatch
-        // Skip component widgets — they're code, not duplicable data
-        if (!sourceWidgetId.startsWith('jsx-')) {
-          try {
-            let sourceWidget = null
-            if (sourceCanvas === name) {
-              // Same canvas — find locally
-              sourceWidget = (localWidgets ?? []).find(w => w.id === sourceWidgetId)
-            } else {
-              // Cross-canvas — fetch via API
-              const canvasData = await getCanvasApi(sourceCanvas)
-              sourceWidget = (canvasData?.widgets ?? []).find(w => w.id === sourceWidgetId)
-            }
-            if (sourceWidget) {
-              const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
-              const pos = centerPositionForWidget(center, sourceWidget.type, sourceWidget.props)
-              undoRedo.snapshot(stateRef.current, 'add')
-              const result = await addWidgetApi(name, {
-                type: sourceWidget.type,
-                props: { ...sourceWidget.props },
-                position: pos,
-              })
-              if (result.success && result.widget) {
-                setLocalWidgets((prev) => [...(prev || []), result.widget])
-              }
-              return
-            }
-          } catch (err) {
-            console.error('[canvas] Failed to paste widget reference:', err)
+        // Component widgets are code, not duplicable data — silently consume the ref
+        if (sourceWidgetId.startsWith('jsx-')) return
+        try {
+          let sourceWidget = null
+          if (sourceCanvas === name) {
+            sourceWidget = (localWidgets ?? []).find(w => w.id === sourceWidgetId)
+          } else {
+            const canvasData = await getCanvasApi(sourceCanvas)
+            sourceWidget = (canvasData?.widgets ?? []).find(w => w.id === sourceWidgetId)
           }
-          // If widget not found, fall through to normal paste behavior
+          if (sourceWidget) {
+            const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
+            const pos = centerPositionForWidget(center, sourceWidget.type, sourceWidget.props)
+            undoRedo.snapshot(stateRef.current, 'add')
+            const result = await addWidgetApi(name, {
+              type: sourceWidget.type,
+              props: { ...sourceWidget.props },
+              position: pos,
+            })
+            if (result.success && result.widget) {
+              setLocalWidgets((prev) => [...(prev || []), result.widget])
+            }
+          }
+        } catch (err) {
+          console.error('[canvas] Failed to paste widget reference:', err)
         }
+        // Always consume the ref — never fall through to markdown creation
+        return
       }
 
       let type, props

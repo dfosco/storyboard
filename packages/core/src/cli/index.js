@@ -71,6 +71,7 @@ function helpScreen(version) {
     `  ${bold(cyan('Development'))}`,
     cmd('dev', 'Start Vite dev server + update proxy'),
     cmd('dev [branch]', 'Start dev for a specific worktree/branch'),
+    cmd('code [branch]', 'Open a worktree in VS Code'),
     cmd('exit', 'Stop all dev servers and proxy'),
     '',
     `  ${bold(cyan('Create'))}`,
@@ -129,6 +130,9 @@ switch (command) {
     break
   case 'exit':
     import('./exit.js')
+    break
+  case 'code':
+    import('./code.js')
     break
   default: {
     if (command === 'update' || (command && command.startsWith('update:'))) {

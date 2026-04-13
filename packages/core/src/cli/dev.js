@@ -71,8 +71,7 @@ function createWorktree(name, root, { newBranch = false } = {}) {
  * Resolve the target worktree for `storyboard dev [branch]`.
  *
  * When no argument is given and the repo root is on a non-main branch,
- * automatically converts it to a worktree: switches root to the default
- * branch, creates a worktree for the current branch, and targets that.
+ * prompts the user to convert it to a proper worktree.
  *
  * @param {string|undefined} branchArg — positional branch argument
  * @param {object} opts
@@ -92,45 +91,62 @@ async function resolveDevTarget(branchArg, { allowCreate = true } = {}) {
       return { worktreeName: detectedName, targetCwd: process.cwd(), created: false }
     }
 
-    // Root is on a non-main branch — convert to worktree
+    // Root is on a non-main branch — check for existing worktree first
     const branch = detectedName
-
-    // Check for existing worktree first
     const existingDir = worktreeDir(branch)
     if (existsSync(resolve(existingDir, '.git'))) {
       p.log.info(`Root is on branch "${branch}" — using existing worktree`)
       return { worktreeName: branch, targetCwd: existingDir, created: false }
     }
 
-    // Need to create — check if allowed
+    // No worktree exists — prompt the user to convert
+    p.log.warning(`Root is on branch "${branch}" instead of main.`)
+    const shouldConvert = await p.confirm({
+      message: `Convert "${branch}" to a worktree? (moves branch to .worktrees/${branch}/)`,
+      initialValue: true,
+    })
+
+    if (p.isCancel(shouldConvert) || !shouldConvert) {
+      // User declined — proceed with root as-is (legacy behavior)
+      return { worktreeName: detectedName, targetCwd: process.cwd(), created: false }
+    }
+
+    // User accepted — validate and convert
     if (!allowCreate) {
-      p.log.error(`Root is on branch "${branch}" but --no-create prevents worktree creation.`)
-      p.log.info('Switch to main manually, or run without --no-create.')
+      p.log.error('Cannot convert — --no-create flag is set.')
       process.exit(1)
     }
 
-    // Check for uncommitted changes
     if (hasUncommittedChanges(root)) {
-      p.log.error(`Root is on branch "${branch}" with uncommitted changes — cannot convert to worktree.`)
+      p.log.error('Cannot convert — uncommitted changes in working tree.')
       p.log.info('Commit or stash your changes first, then run `sb dev` again.')
       process.exit(1)
     }
 
-    // Resolve which branch root should switch to
     const defaultBranch = resolveDefaultBranch(root)
     if (!defaultBranch) {
       p.log.error('Cannot determine default branch (main/master). Switch root manually.')
       process.exit(1)
     }
 
-    p.log.step(`Root is on branch "${branch}" — converting to worktree`)
-
-    // Free the branch by switching root to default
     p.log.step(`Switching root to "${defaultBranch}"`)
     execFileSync('git', ['checkout', defaultBranch], { cwd: root, stdio: 'inherit' })
 
-    // Create worktree for the branch
     const targetDir = createWorktree(branch, root, { newBranch: false })
+
+    // Offer to open the new worktree in VS Code
+    const shouldOpen = await p.confirm({
+      message: 'Open this worktree in VS Code?',
+      initialValue: true,
+    })
+    if (shouldOpen && !p.isCancel(shouldOpen)) {
+      try {
+        execFileSync('code', [targetDir], { stdio: 'inherit' })
+      } catch {
+        p.log.warning(`Could not open VS Code. Run: code ${targetDir}`)
+      }
+    }
+
     return { worktreeName: branch, targetCwd: targetDir, created: true }
   }
 

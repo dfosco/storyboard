@@ -160,8 +160,9 @@ function getLastModified(root, dirPath) {
  */
 function buildIndex(root) {
   const ignore = ['node_modules/**', 'dist/**', '.git/**']
-  const files = globSync(GLOB_PATTERN, { cwd: root, ignore, absolute: false })
-  const canvasFiles = globSync(CANVAS_GLOB_PATTERN, { cwd: root, ignore, absolute: false })
+  // Scope to src/ — all data files live there (avoids walking .worktrees/, public/, etc.)
+  const files = globSync(`src/${GLOB_PATTERN}`, { cwd: root, ignore, absolute: false })
+  const canvasFiles = globSync(`src/${CANVAS_GLOB_PATTERN}`, { cwd: root, ignore, absolute: false })
 
   // Detect nested .folder/ directories (not supported)
   // Scan directories directly since empty nested folders have no data files

@@ -95,6 +95,71 @@ export function reloadCaddy(caddyfilePath) {
   }
 }
 
+// ── Caddy admin API (additive route upsert) ──
+
+const CADDY_ADMIN = 'http://localhost:2019'
+
+/**
+ * Build a Caddy JSON route object for this repo's devDomain.
+ * Tagged with @id so it can be upserted independently of other repos.
+ */
+export function generateRouteConfig(portOverrides = {}) {
+  const portsFile = portsFilePath()
+  let ports = { main: 1234 }
+  if (existsSync(portsFile)) {
+    try { ports = JSON.parse(readFileSync(portsFile, 'utf8')) } catch { /* use defaults */ }
+  }
+  Object.assign(ports, portOverrides)
+
+  const mainPort = ports.main || 1234
+  const branches = Object.entries(ports).filter(([name]) => name !== 'main')
+
+  // Branch subroutes first (more specific), then main fallback
+  const subroutes = branches.map(([name, port]) => ({
+    match: [{ path: [`/branch--${name}/*`] }],
+    handle: [{ handler: 'reverse_proxy', upstreams: [{ dial: `localhost:${port}` }] }],
+  }))
+  subroutes.push({
+    handle: [{ handler: 'reverse_proxy', upstreams: [{ dial: `localhost:${mainPort}` }] }],
+  })
+
+  return {
+    '@id': DOMAIN.replace('.localhost', ''),
+    match: [{ host: [DOMAIN] }],
+    handle: [{ handler: 'subroute', routes: subroutes }],
+  }
+}
+
+/**
+ * Upsert this repo's route in the running Caddy instance via admin API.
+ * Uses PATCH if the @id exists, POST if it doesn't.
+ * Returns true on success, false on failure.
+ */
+export function upsertCaddyRoute(routeConfig) {
+  const id = routeConfig['@id']
+  const payload = JSON.stringify(routeConfig)
+
+  // Try PATCH first (update existing route by @id)
+  try {
+    const patchResult = execSync(
+      `curl -sf -X PATCH '${CADDY_ADMIN}/id/${id}' -H 'Content-Type: application/json' -d '${payload.replace(/'/g, "'\\''")}'`,
+      { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] },
+    )
+    return true
+  } catch {
+    // @id doesn't exist yet — POST a new route
+    try {
+      execSync(
+        `curl -sf -X POST '${CADDY_ADMIN}/config/apps/http/servers/srv0/routes' -H 'Content-Type: application/json' -d '${payload.replace(/'/g, "'\\''")}'`,
+        { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] },
+      )
+      return true
+    } catch {
+      return false
+    }
+  }
+}
+
 export function startCaddy(caddyfilePath) {
   try {
     execSync(`sudo caddy start --config "${caddyfilePath}" >/dev/null 2>&1`, { stdio: ['inherit', 'pipe', 'pipe'] })
@@ -119,11 +184,14 @@ if (isDirectRun) {
 
   const s = spinner()
   if (isCaddyRunning()) {
-    s.start('Reloading proxy...')
-    if (reloadCaddy(caddyfilePath)) {
-      s.stop('Proxy reloaded')
+    s.start('Updating proxy routes...')
+    const routeConfig = generateRouteConfig()
+    if (upsertCaddyRoute(routeConfig)) {
+      s.stop('Proxy routes updated (admin API)')
+    } else if (reloadCaddy(caddyfilePath)) {
+      s.stop('Proxy reloaded (Caddyfile fallback)')
     } else {
-      s.stop('Failed to reload')
+      s.stop('Failed to update proxy')
       process.exit(1)
     }
   } else {

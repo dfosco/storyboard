@@ -1,28 +1,21 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { remark } from 'remark'
+import remarkGfm from 'remark-gfm'
+import remarkHtml from 'remark-html'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, markdownSchema } from './widgetProps.js'
 import styles from './MarkdownBlock.module.css'
 
 /**
- * Renders markdown as plain HTML using a minimal built-in converter.
+ * Renders markdown to HTML using remark with GitHub Flavored Markdown support.
  */
 function renderMarkdown(text) {
   if (!text) return ''
-  return text
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/\n/g, '<br>')
-    .replace(/^(.+)$/gm, (line) => {
-      if (line.startsWith('<')) return line
-      return `<p>${line}</p>`
-    })
+  const result = remark()
+    .use(remarkGfm)
+    .use(remarkHtml, { sanitize: false })
+    .processSync(text)
+  return String(result)
 }
 
 export default function MarkdownBlock({ props, onUpdate }) {

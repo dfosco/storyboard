@@ -713,7 +713,7 @@ export default function storyboardDataPlugin() {
         const rawHtml = [
           '<!DOCTYPE html>',
           '<html><head>',
-          '<style>html,body{margin:0;padding:0;width:100%;height:100%}#root{width:100%;height:100%}</style>',
+          '<style>html,body{margin:0;padding:0;width:100%;height:100%;background:var(--bgColor-default,transparent)}#root{width:100%;height:100%}</style>',
           '</head><body>',
           '<div id="root"></div>',
           `<script type="module" src="/@fs${isolateEntryPath}"></script>`,

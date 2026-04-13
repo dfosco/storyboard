@@ -305,10 +305,10 @@ function updateWidgetRefs(widgets, renames) {
 
 // ─── Auto-commit ─────────────────────────────────────────────────────
 
-// Lock file used to signal other git-aware tools (e.g. autosync) that
-// the rename watcher is mid-commit. Autosync runs in a separate worktree
-// so there's no index contention, but this prevents it from copying a
-// canvas file that's being written + committed in the same instant.
+// Lock file placed in .git/ during commit. Both the rename watcher and
+// autosync share the same working tree and git index, so this file
+// lets autosync's isRepoBusy() (or any future tool) detect that the
+// rename watcher is mid-commit and defer its own cycle.
 const LOCK_FILENAME = 'storyboard-autofix.lock'
 
 /**
@@ -330,7 +330,11 @@ function resolveGitDir(root) {
 
 /**
  * Check if the repo is in a busy state that would conflict with a commit.
- * Checks git's own locks as well as autosync worktree activity.
+ *
+ * Mirrors autosync's isRepoBusy() guards so both systems respect the same
+ * signals: index.lock, rebase, merge, cherry-pick, and the autofix lock file.
+ * Since both autosync and the rename watcher commit directly on the current
+ * branch (same working tree, same index), index.lock is the primary mutex.
  */
 function isRepoBusy(root) {
   const gitDir = resolveGitDir(root)
@@ -341,6 +345,10 @@ function isRepoBusy(root) {
   }
   if (fs.existsSync(path.join(gitDir, 'MERGE_HEAD'))) {
     logWarn('Auto-commit deferred: merge in progress')
+    return true
+  }
+  if (fs.existsSync(path.join(gitDir, 'CHERRY_PICK_HEAD'))) {
+    logWarn('Auto-commit deferred: cherry-pick in progress')
     return true
   }
   if (fs.existsSync(path.join(gitDir, 'rebase-merge')) || fs.existsSync(path.join(gitDir, 'rebase-apply'))) {
@@ -362,31 +370,6 @@ function isRepoBusy(root) {
     } catch { /* race — fine */ }
   }
 
-  // Check if autosync is actively syncing by looking for its worktree
-  // directory freshness. Autosync copies files from the working tree,
-  // so we avoid committing while a copy might be in flight.
-  try {
-    const gitCommonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], {
-      cwd: root, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'],
-    }).trim()
-    const autosyncDir = path.resolve(root, gitCommonDir, 'autosync-worktrees')
-    if (fs.existsSync(autosyncDir)) {
-      // Check if any autosync worktree was touched in the last 5 seconds
-      const entries = fs.readdirSync(autosyncDir, { withFileTypes: true })
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue
-        const wtDir = path.join(autosyncDir, entry.name)
-        try {
-          const stat = fs.statSync(wtDir)
-          if (Date.now() - stat.mtimeMs < 5_000) {
-            logWarn('Auto-commit deferred: autosync recently active')
-            return true
-          }
-        } catch { /* deleted between readdir and stat */ }
-      }
-    }
-  } catch { /* git-common-dir not available */ }
-
   return false
 }
 
@@ -394,10 +377,14 @@ function isRepoBusy(root) {
  * Auto-commit modified canvas files using git commit --only to isolate
  * from any other staged or unstaged user work.
  *
- * Coordinates with autosync via:
+ * Coordinates with autosync (which shares the same working tree + index) via:
  * - Lock file (.git/storyboard-autofix.lock) to signal mid-commit
- * - Autosync worktree freshness check to avoid copy races
- * - Standard git busy guards (index.lock, merge, rebase)
+ * - Same repo-busy guards autosync checks (index.lock, merge, rebase, cherry-pick)
+ * - git commit --only uses a temporary index, so it won't interfere with
+ *   files autosync may have staged independently
+ *
+ * If the commit is deferred (busy repo), the canvas JSONL update is still
+ * persisted on disk — autosync's next cycle will pick it up naturally.
  */
 function autocommit(root, modifiedFiles, renames, config) {
   if (!config.autocommit.enabled || modifiedFiles.length === 0) return

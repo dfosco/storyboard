@@ -305,30 +305,113 @@ function updateWidgetRefs(widgets, renames) {
 
 // ─── Auto-commit ─────────────────────────────────────────────────────
 
+// Lock file used to signal other git-aware tools (e.g. autosync) that
+// the rename watcher is mid-commit. Autosync runs in a separate worktree
+// so there's no index contention, but this prevents it from copying a
+// canvas file that's being written + committed in the same instant.
+const LOCK_FILENAME = 'storyboard-autofix.lock'
+
+/**
+ * Resolve the .git directory, handling both regular repos and worktrees.
+ * In a worktree, `.git` is a file pointing to the real git dir.
+ */
+function resolveGitDir(root) {
+  const dotGit = path.join(root, '.git')
+  try {
+    const stat = fs.statSync(dotGit)
+    if (stat.isDirectory()) return dotGit
+    // Worktree: .git is a file like "gitdir: /path/to/.git/worktrees/name"
+    const content = fs.readFileSync(dotGit, 'utf-8').trim()
+    const match = content.match(/^gitdir:\s*(.+)$/)
+    if (match) return path.resolve(root, match[1])
+  } catch { /* fallback */ }
+  return dotGit
+}
+
+/**
+ * Check if the repo is in a busy state that would conflict with a commit.
+ * Checks git's own locks as well as autosync worktree activity.
+ */
+function isRepoBusy(root) {
+  const gitDir = resolveGitDir(root)
+
+  if (fs.existsSync(path.join(gitDir, 'index.lock'))) {
+    logWarn('Auto-commit deferred: index.lock present')
+    return true
+  }
+  if (fs.existsSync(path.join(gitDir, 'MERGE_HEAD'))) {
+    logWarn('Auto-commit deferred: merge in progress')
+    return true
+  }
+  if (fs.existsSync(path.join(gitDir, 'rebase-merge')) || fs.existsSync(path.join(gitDir, 'rebase-apply'))) {
+    logWarn('Auto-commit deferred: rebase in progress')
+    return true
+  }
+
+  // Check for our own stale lock (crash recovery)
+  const lockPath = path.join(gitDir, LOCK_FILENAME)
+  if (fs.existsSync(lockPath)) {
+    try {
+      const lockAge = Date.now() - fs.statSync(lockPath).mtimeMs
+      if (lockAge < 10_000) {
+        logWarn('Auto-commit deferred: previous autofix still in progress')
+        return true
+      }
+      // Stale lock (>10s) — remove it
+      fs.unlinkSync(lockPath)
+    } catch { /* race — fine */ }
+  }
+
+  // Check if autosync is actively syncing by looking for its worktree
+  // directory freshness. Autosync copies files from the working tree,
+  // so we avoid committing while a copy might be in flight.
+  try {
+    const gitCommonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], {
+      cwd: root, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim()
+    const autosyncDir = path.resolve(root, gitCommonDir, 'autosync-worktrees')
+    if (fs.existsSync(autosyncDir)) {
+      // Check if any autosync worktree was touched in the last 5 seconds
+      const entries = fs.readdirSync(autosyncDir, { withFileTypes: true })
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue
+        const wtDir = path.join(autosyncDir, entry.name)
+        try {
+          const stat = fs.statSync(wtDir)
+          if (Date.now() - stat.mtimeMs < 5_000) {
+            logWarn('Auto-commit deferred: autosync recently active')
+            return true
+          }
+        } catch { /* deleted between readdir and stat */ }
+      }
+    }
+  } catch { /* git-common-dir not available */ }
+
+  return false
+}
+
 /**
  * Auto-commit modified canvas files using git commit --only to isolate
  * from any other staged or unstaged user work.
+ *
+ * Coordinates with autosync via:
+ * - Lock file (.git/storyboard-autofix.lock) to signal mid-commit
+ * - Autosync worktree freshness check to avoid copy races
+ * - Standard git busy guards (index.lock, merge, rebase)
  */
 function autocommit(root, modifiedFiles, renames, config) {
   if (!config.autocommit.enabled || modifiedFiles.length === 0) return
 
   const relPaths = modifiedFiles.map((f) => path.relative(root, f))
 
+  if (isRepoBusy(root)) return
+
+  const gitDir = resolveGitDir(root)
+  const lockPath = path.join(gitDir, LOCK_FILENAME)
+
   try {
-    // Check for repo-busy states that would break the commit
-    const gitDir = path.join(root, '.git')
-    if (fs.existsSync(path.join(gitDir, 'index.lock'))) {
-      logWarn('Auto-commit deferred: index.lock present')
-      return
-    }
-    if (fs.existsSync(path.join(gitDir, 'MERGE_HEAD'))) {
-      logWarn('Auto-commit deferred: merge in progress')
-      return
-    }
-    if (fs.existsSync(path.join(gitDir, 'rebase-merge')) || fs.existsSync(path.join(gitDir, 'rebase-apply'))) {
-      logWarn('Auto-commit deferred: rebase in progress')
-      return
-    }
+    // Acquire lock so autosync (or other tools) can defer
+    fs.writeFileSync(lockPath, `${process.pid}\n${Date.now()}\n`, 'utf-8')
 
     execFileSync('git', ['add', '--', ...relPaths], { cwd: root, stdio: 'pipe' })
 
@@ -348,6 +431,9 @@ function autocommit(root, modifiedFiles, renames, config) {
     logSuccess(`Auto-committed: ${summary}`)
   } catch (err) {
     logWarn(`Auto-commit skipped: ${(err.message || '').split('\n')[0]}`)
+  } finally {
+    // Release lock
+    try { fs.unlinkSync(lockPath) } catch { /* already gone */ }
   }
 }
 

@@ -131,6 +131,25 @@ export function generateRouteConfig(portOverrides = {}) {
 }
 
 /**
+ * Find indices of stale routes that match the same host but lack an @id.
+ * Returns indices sorted descending (highest first) for safe deletion.
+ * Exported for testing.
+ */
+export function findStaleRouteIndices(routes, keepId, host) {
+  const indices = []
+  for (let i = 0; i < routes.length; i++) {
+    const route = routes[i]
+    if (route['@id'] === keepId) continue
+    if (route['@id']) continue // different intentional route — leave it
+    const routeHosts = route.match?.[0]?.host || []
+    if (routeHosts.includes(host)) {
+      indices.push(i)
+    }
+  }
+  return indices.reverse()
+}
+
+/**
  * Remove stale routes that match the same host but lack an @id.
  * These are leftovers from Caddyfile reloads that shadow admin-API routes.
  * Deletes from highest index to lowest to preserve indices during removal.
@@ -143,17 +162,8 @@ function cleanupDuplicateRoutes(keepId, host) {
       { encoding: 'utf-8', timeout: 5000 },
     )
     const routes = JSON.parse(config)
-    const duplicateIndices = []
-    for (let i = 0; i < routes.length; i++) {
-      const route = routes[i]
-      if (route['@id'] === keepId) continue
-      if (route['@id']) continue // different intentional route — leave it
-      const routeHosts = route.match?.[0]?.host || []
-      if (routeHosts.includes(host)) {
-        duplicateIndices.push(i)
-      }
-    }
-    for (const idx of duplicateIndices.reverse()) {
+    const staleIndices = findStaleRouteIndices(routes, keepId, host)
+    for (const idx of staleIndices) {
       try {
         execSync(
           `curl -sf -X DELETE '${CADDY_ADMIN}/config/apps/http/servers/srv0/routes/${idx}'`,

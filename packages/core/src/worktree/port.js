@@ -11,7 +11,7 @@
  *   import { getPort, detectWorktreeName, resolvePort } from '@dfosco/storyboard-core/worktree/port'
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, realpathSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, realpathSync } from 'fs'
 import { join, dirname, basename } from 'path'
 import { execSync } from 'child_process'
 
@@ -141,4 +141,56 @@ export function slugify(name) {
     .split('/')
     .map((s) => s.replace(/^-+|-+$/g, ''))
     .join('/')
+}
+
+/**
+ * Resolve the repo root — the directory that contains `.worktrees/`.
+ *
+ * Works whether cwd is the repo root itself or inside `.worktrees/<name>/`.
+ *
+ * @param {string} [cwd]
+ * @returns {string} absolute path to repo root
+ */
+export function repoRoot(cwd = process.cwd()) {
+  const realCwd = realpathSync(cwd)
+
+  const worktreeMatch = realCwd.match(/^(.+)[/\\]\.worktrees[/\\][^/\\]+/)
+  if (worktreeMatch) return worktreeMatch[1]
+
+  return realCwd
+}
+
+/**
+ * Resolve the full path to a worktree directory.
+ *
+ * Returns repo root for 'main', `.worktrees/<name>` otherwise.
+ *
+ * @param {string} name — worktree name
+ * @param {string} [cwd]
+ * @returns {string} absolute path
+ */
+export function worktreeDir(name, cwd) {
+  const root = repoRoot(cwd)
+  if (name === 'main') return root
+  return join(root, '.worktrees', name)
+}
+
+/**
+ * List existing worktree directory names from `.worktrees/`.
+ *
+ * Only returns directories that look like real worktrees (contain a `.git` file).
+ * Does not include 'main'.
+ *
+ * @param {string} [cwd]
+ * @returns {string[]}
+ */
+export function listWorktrees(cwd) {
+  const root = repoRoot(cwd)
+  const worktreesDir = join(root, '.worktrees')
+
+  if (!existsSync(worktreesDir)) return []
+
+  return readdirSync(worktreesDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory() && existsSync(join(worktreesDir, d.name, '.git')))
+    .map((d) => d.name)
 }

@@ -26,6 +26,35 @@ const flagSchema = {
 }
 
 /**
+ * Check if the working tree has uncommitted changes (staged or unstaged).
+ */
+function hasUncommittedChanges(cwd) {
+  try {
+    const status = execFileSync('git', ['status', '--porcelain'], { cwd, encoding: 'utf8' }).trim()
+    return status.length > 0
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Resolve the default branch for the repo root (main, master, or origin/HEAD target).
+ * Returns null if none can be determined.
+ */
+function resolveDefaultBranch(cwd) {
+  for (const candidate of ['main', 'master']) {
+    if (localBranchExists(candidate, cwd)) return candidate
+  }
+  // Try origin/HEAD
+  try {
+    const ref = execFileSync('git', ['symbolic-ref', 'refs/remotes/origin/HEAD'], { cwd, encoding: 'utf8' }).trim()
+    const name = ref.replace('refs/remotes/origin/', '')
+    if (name && localBranchExists(name, cwd)) return name
+  } catch { /* no origin/HEAD */ }
+  return null
+}
+
+/**
  * Check if a local branch exists.
  * @param {string} name
  * @param {string} cwd
@@ -84,15 +113,68 @@ function createWorktree(name, root, { newBranch = false } = {}) {
 /**
  * Resolve the target worktree for `storyboard dev [branch]`.
  *
+ * When no argument is given and the repo root is on a non-main branch,
+ * automatically converts it to a worktree: switches root to the default
+ * branch, creates a worktree for the current branch, and targets that.
+ *
  * @param {string|undefined} branchArg — positional branch argument
  * @param {object} opts
  * @param {boolean} opts.allowCreate — whether creation is allowed
  * @returns {Promise<{ worktreeName: string, targetCwd: string, created: boolean }>}
  */
 async function resolveDevTarget(branchArg, { allowCreate = true } = {}) {
-  // No argument — detect from cwd (current behavior)
+  // No argument — detect from cwd
   if (!branchArg) {
-    return { worktreeName: detectWorktreeName(), targetCwd: process.cwd(), created: false }
+    const detectedName = detectWorktreeName()
+
+    // Already in a worktree or on main — use cwd as-is
+    const root = repoRoot()
+    const realCwd = resolve(process.cwd())
+    const isAtRoot = realCwd === resolve(root)
+    if (detectedName === 'main' || !isAtRoot) {
+      return { worktreeName: detectedName, targetCwd: process.cwd(), created: false }
+    }
+
+    // Root is on a non-main branch — convert to worktree
+    const branch = detectedName
+
+    // Check for existing worktree first
+    const existingDir = worktreeDir(branch)
+    if (existsSync(resolve(existingDir, '.git'))) {
+      p.log.info(`Root is on branch "${branch}" — using existing worktree`)
+      return { worktreeName: branch, targetCwd: existingDir, created: false }
+    }
+
+    // Need to create — check if allowed
+    if (!allowCreate) {
+      p.log.error(`Root is on branch "${branch}" but --no-create prevents worktree creation.`)
+      p.log.info('Switch to main manually, or run without --no-create.')
+      process.exit(1)
+    }
+
+    // Check for uncommitted changes
+    if (hasUncommittedChanges(root)) {
+      p.log.error(`Root is on branch "${branch}" with uncommitted changes — cannot convert to worktree.`)
+      p.log.info('Commit or stash your changes first, then run `sb dev` again.')
+      process.exit(1)
+    }
+
+    // Resolve which branch root should switch to
+    const defaultBranch = resolveDefaultBranch(root)
+    if (!defaultBranch) {
+      p.log.error('Cannot determine default branch (main/master). Switch root manually.')
+      process.exit(1)
+    }
+
+    p.log.step(`Root is on branch "${branch}" — converting to worktree`)
+
+    // Free the branch by switching root to default
+    p.log.step(`Switching root to "${defaultBranch}"`)
+    execFileSync('git', ['checkout', defaultBranch], { cwd: root, stdio: 'inherit' })
+
+    // Create worktree for the branch
+    const targetDir = createWorktree(branch, root, { newBranch: false })
+    return { worktreeName: branch, targetCwd: targetDir, created: true }
   }
 
   const root = repoRoot()

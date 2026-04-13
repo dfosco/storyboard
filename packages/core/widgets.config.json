@@ -495,12 +495,11 @@
             {
               "action": "copy-as-png",
               "label": "$label:copy-png",
-              "icon": "copy"
-            },
-            {
-              "action": "copy-file-path",
-              "label": "$label:copy-path",
-              "icon": "link"
+              "icon": "copy",
+              "alt": {
+                "label": "$label:copy-path",
+                "action": "copy-file-path"
+              }
             }
           ]
         },

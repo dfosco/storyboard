@@ -1,5 +1,15 @@
 # @dfosco/storyboard-react
 
+## 4.0.0-beta.10
+
+### Patch Changes
+
+-   Fix debug ESM/CJS interop: inject `debug` into Vite `optimizeDeps.include` via the storyboard-data plugin so consumer repos don't need manual vite.config.js changes.
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.0.0-beta.10
+    -   @dfosco/tiny-canvas@4.0.0-beta.10
+
 ## 4.0.0-beta.9
 
 ### Patch Changes

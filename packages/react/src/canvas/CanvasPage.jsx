@@ -1017,6 +1017,17 @@ export default function CanvasPage({ name }) {
       return pathname
     }
 
+    /** Parse text as a web URL (http/https only). Returns URL object or null. */
+    function looksLikeWebUrl(text) {
+      try {
+        const url = new URL(text)
+        if (url.protocol === 'http:' || url.protocol === 'https:') return url
+        return null
+      } catch {
+        return null
+      }
+    }
+
     function blobToDataUrl(blob) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader()
@@ -1099,13 +1110,13 @@ export default function CanvasPage({ name }) {
       e.preventDefault()
 
       let type, props
-      try {
-        const parsed = new URL(text)
+      const url = looksLikeWebUrl(text)
+      if (url) {
         if (isFigmaUrl(text)) {
           type = 'figma-embed'
           props = { url: sanitizeFigmaUrl(text), width: 800, height: 450 }
         } else if (isSameOriginPrototype(text)) {
-          const pathPortion = parsed.pathname + parsed.search + parsed.hash
+          const pathPortion = url.pathname + url.search + url.hash
           const src = extractPrototypeSrc(pathPortion)
           type = 'prototype'
           props = { src: src || '/', originalSrc: src || '/', label: '', width: 800, height: 600 }
@@ -1113,7 +1124,7 @@ export default function CanvasPage({ name }) {
           type = 'link-preview'
           props = { url: text, title: '' }
         }
-      } catch {
+      } else {
         type = 'markdown'
         props = { content: text }
       }

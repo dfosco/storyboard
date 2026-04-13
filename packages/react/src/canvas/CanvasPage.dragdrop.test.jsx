@@ -198,7 +198,7 @@ describe('CanvasPage image drag-and-drop', () => {
     )
   })
 
-  it('ignores non-image files on drop', async () => {
+  it('ignores non-image files but prevents browser default', async () => {
     render(<CanvasPage name="test-canvas" />)
     const scrollContainer = document.querySelector('[data-storyboard-canvas-scroll]')
 
@@ -208,6 +208,7 @@ describe('CanvasPage image drag-and-drop', () => {
     dropEvent.clientX = 200
     dropEvent.clientY = 150
     dropEvent.preventDefault = vi.fn()
+    dropEvent.stopPropagation = vi.fn()
 
     scrollContainer.getBoundingClientRect = () => ({ left: 0, top: 0 })
 
@@ -216,7 +217,9 @@ describe('CanvasPage image drag-and-drop', () => {
       await new Promise((r) => setTimeout(r, 50))
     })
 
-    // Should not call upload or add widget for non-image files
+    // Should prevent default (stops browser from opening the file)
+    expect(dropEvent.preventDefault).toHaveBeenCalled()
+    // But should not call upload or add widget for non-image files
     expect(uploadImage).not.toHaveBeenCalled()
     expect(addWidget).not.toHaveBeenCalled()
   })
@@ -265,7 +268,11 @@ describe('CanvasPage image drag-and-drop', () => {
     expect(uploadImage).not.toHaveBeenCalled()
   })
 
-  it('snaps drop position to grid', async () => {
+  it('snaps drop position to grid when snap is enabled', async () => {
+    // Enable snap in mock data
+    const originalSnapToGrid = mockCanvas.snapToGrid
+    mockCanvas.snapToGrid = true
+
     render(<CanvasPage name="test-canvas" />)
     const scrollContainer = document.querySelector('[data-storyboard-canvas-scroll]')
 
@@ -294,5 +301,46 @@ describe('CanvasPage image drag-and-drop', () => {
         position: { x: 144, y: 96 },
       })
     )
+
+    // Restore
+    mockCanvas.snapToGrid = originalSnapToGrid
+  })
+
+  it('does not snap drop position when snap is disabled', async () => {
+    // Ensure snap is disabled (default from mock)
+    const originalSnapToGrid = mockCanvas.snapToGrid
+    mockCanvas.snapToGrid = false
+
+    render(<CanvasPage name="test-canvas" />)
+    const scrollContainer = document.querySelector('[data-storyboard-canvas-scroll]')
+
+    const imageFile = createMockImageFile()
+    const dropEvent = new Event('drop', { bubbles: true, cancelable: true })
+    dropEvent.dataTransfer = createDataTransfer([imageFile], ['Files'])
+    // Position should round to nearest integer, not snap to grid
+    dropEvent.clientX = 137
+    dropEvent.clientY = 85
+
+    dropEvent.preventDefault = vi.fn()
+    dropEvent.stopPropagation = vi.fn()
+
+    scrollContainer.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1000, height: 800 })
+    scrollContainer.scrollLeft = 0
+    scrollContainer.scrollTop = 0
+
+    await act(async () => {
+      scrollContainer.dispatchEvent(dropEvent)
+      await new Promise((r) => setTimeout(r, 50))
+    })
+
+    expect(addWidget).toHaveBeenCalledWith(
+      'test-canvas',
+      expect.objectContaining({
+        position: { x: 137, y: 85 }, // No snapping, just rounded integers
+      })
+    )
+
+    // Restore
+    mockCanvas.snapToGrid = originalSnapToGrid
   })
 })

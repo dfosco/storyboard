@@ -1016,20 +1016,13 @@ export default function CanvasPage({ name }) {
         e.preventDefault()
         setSelectedWidgetIds(new Set())
       }
-      // Copy shortcuts (single widget selected):
-      // - cmd+c → copy canvasName/widgetId (for cross-canvas paste-duplicate)
-      // - Shift+C (no cmd) → copy widget ID
+      // Copy shortcut (single widget selected):
+      // cmd+c → copy canvasName/widgetId (for cross-canvas paste-duplicate)
       const mod = e.metaKey || e.ctrlKey
       if (mod && e.key === 'c' && !e.shiftKey && selectedWidgetIds.size === 1) {
         const widgetId = [...selectedWidgetIds][0]
         e.preventDefault()
         navigator.clipboard.writeText(`${name}/${widgetId}`).catch(() => {})
-      }
-      // Shift+C (uppercase C, no cmd) → copy bare widget ID
-      if (e.key === 'C' && e.shiftKey && !mod && selectedWidgetIds.size === 1) {
-        const widgetId = [...selectedWidgetIds][0]
-        e.preventDefault()
-        navigator.clipboard.writeText(widgetId).catch(() => {})
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault()

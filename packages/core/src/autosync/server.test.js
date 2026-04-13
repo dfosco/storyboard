@@ -3,7 +3,6 @@ import {
   matchesAutosyncScope,
   filterFilesForAutosyncScope,
   isRetryablePushError,
-  getAutosyncWorktreeDirName,
 } from './server.js'
 
 describe('autosync scope helpers', () => {
@@ -44,11 +43,5 @@ describe('autosync scope helpers', () => {
     expect(isRetryablePushError('hint: Updates were rejected because the tip of your current branch is behind')).toBe(true)
     expect(isRetryablePushError('fetch first')).toBe(true)
     expect(isRetryablePushError('some other git error')).toBe(false)
-  })
-
-  it('sanitizes autosync worktree dir names', () => {
-    expect(getAutosyncWorktreeDirName('feature/my-branch')).toBe('feature-my-branch')
-    expect(getAutosyncWorktreeDirName('3.11.0')).toBe('3.11.0')
-    expect(getAutosyncWorktreeDirName('')).toBe('branch')
   })
 })

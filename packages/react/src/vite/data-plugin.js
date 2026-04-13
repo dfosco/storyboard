@@ -156,6 +156,94 @@ function getLastModified(root, dirPath) {
 }
 
 /**
+ * Batch-fetch git metadata (author + lastModified) for multiple files in a
+ * single subprocess, avoiding per-file git overhead during startup.
+ *
+ * Returns a Map<absPath, { gitAuthor: string|null, lastModified: string|null }>
+ */
+function batchGitMetadata(root, filePaths) {
+  const result = new Map()
+  if (filePaths.length === 0) return result
+
+  // Initialize all entries
+  for (const fp of filePaths) {
+    result.set(fp, { gitAuthor: null, lastModified: null })
+  }
+
+  try {
+    // Batch lastModified: one git log call with all paths
+    // git log -1 gives the most recent commit touching any of these paths,
+    // but we need per-path data. Use --name-only to correlate.
+    // For efficiency, use a single git log with --format and --name-only
+    // that outputs one record per commit touching these files.
+    const allDirs = [...new Set(filePaths.map(fp => path.dirname(fp)))]
+    const dirsArg = allDirs.map(d => `"${d}"`).join(' ')
+
+    // Get lastModified per directory in one call using git log --format
+    // We output "MARKER<sep>dir<sep>date" per commit, then take the latest per dir.
+    const logResult = execSync(
+      `git log --format="%aI" --name-only -- ${dirsArg}`,
+      { cwd: root, encoding: 'utf-8', timeout: 10000, maxBuffer: 1024 * 1024 },
+    ).trim()
+
+    if (logResult) {
+      // Parse: alternating date lines and filename lines separated by blank lines
+      const blocks = logResult.split('\n\n')
+      const dirDates = new Map() // dir → most recent date
+      for (const block of blocks) {
+        const lines = block.split('\n').filter(Boolean)
+        if (lines.length < 2) continue
+        const date = lines[0]
+        for (let li = 1; li < lines.length; li++) {
+          const fileLine = lines[li].trim()
+          if (!fileLine) continue
+          const dir = path.dirname(path.resolve(root, fileLine))
+          if (!dirDates.has(dir)) {
+            dirDates.set(dir, date)
+          }
+        }
+      }
+      for (const fp of filePaths) {
+        const dir = path.dirname(fp)
+        const entry = result.get(fp)
+        if (dirDates.has(dir) && entry) {
+          entry.lastModified = dirDates.get(dir)
+        }
+      }
+    }
+  } catch { /* git not available or failed — leave nulls */ }
+
+  // Batch gitAuthor: use git log for each file's creation author.
+  // Unfortunately --follow --diff-filter=A doesn't combine well with multiple
+  // paths, so batch them in a single shell invocation using a for loop.
+  try {
+    const relPaths = filePaths.map(fp => path.relative(root, fp))
+    // Build a shell script that outputs "PATH<tab>AUTHOR" per file
+    const cmds = relPaths.map(rp =>
+      `echo -n "${rp}\\t"; git log --follow --diff-filter=A --format="%aN" -- "${rp}" | tail -1`
+    ).join('; ')
+    const authorResult = execSync(cmds, {
+      cwd: root, encoding: 'utf-8', timeout: 10000, shell: true, maxBuffer: 1024 * 1024,
+    }).trim()
+
+    if (authorResult) {
+      for (const line of authorResult.split('\n')) {
+        const tabIdx = line.indexOf('\t')
+        if (tabIdx < 0) continue
+        const relPath = line.slice(0, tabIdx)
+        const author = line.slice(tabIdx + 1).trim()
+        if (!author) continue
+        const absPath2 = path.resolve(root, relPath)
+        const entry = result.get(absPath2)
+        if (entry) entry.gitAuthor = author
+      }
+    }
+  } catch { /* git not available */ }
+
+  return result
+}
+
+/**
  * Scan the repo for all data files, validate uniqueness, return the index.
  */
 function buildIndex(root) {

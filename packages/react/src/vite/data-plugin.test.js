@@ -53,6 +53,12 @@ describe('storyboardDataPlugin', () => {
     expect(config.optimizeDeps.exclude).toContain('@dfosco/storyboard-react')
   })
 
+  it('config() includes debug in optimizeDeps for ESM/CJS interop', () => {
+    const plugin = storyboardDataPlugin()
+    const config = plugin.config()
+    expect(config.optimizeDeps.include).toContain('debug')
+  })
+
   it("resolveId returns resolved ID for 'virtual:storyboard-data-index'", () => {
     const plugin = createPlugin()
     expect(plugin.resolveId('virtual:storyboard-data-index')).toBe(RESOLVED_ID)

@@ -296,6 +296,7 @@ export function createCanvasHandler(ctx) {
         title,
         folder,
         author,
+        description,
         grid = true,
         gridSize = 24,
         colorMode = 'auto',
@@ -351,6 +352,10 @@ export function createCanvasHandler(ctx) {
 
       if (author) {
         creationEvent.author = author
+      }
+
+      if (description) {
+        creationEvent.description = description
       }
 
       if (includeJsx) {

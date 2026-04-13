@@ -79,6 +79,11 @@ export const canvasSchema = {
     default: false,
     description: 'Include JSX companion file',
   },
+  description: {
+    type: 'string',
+    description: 'Optional description',
+    aliases: ['d'],
+  },
 }
 
 /** @type {FlagSchema} */

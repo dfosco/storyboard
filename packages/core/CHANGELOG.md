@@ -1,5 +1,14 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.1
+
+### Major Changes
+
+-   Canvas paste and CLI update command
+
+    -   **Canvas paste** — pasting non-URL text on canvas creates a markdown widget
+    -   **CLI** — replaced `update:flag` with `update:version` to update storyboard packages in client repos
+
 ## 4.0.0-beta.0
 
 ### Major Changes

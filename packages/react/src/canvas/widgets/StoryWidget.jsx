@@ -94,22 +94,14 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
   }, [showCode, sourceCode, storyId])
 
   // Syntax-highlight source code using the inspector highlighter.
-  // Re-runs when source changes to pick up the current theme from getColors().
+  // Uses the current code-box theme (data-sb-code-theme) set by the theme store.
   useEffect(() => {
     if (!sourceCode) return
     let cancelled = false
     createInspectorHighlighter().then((hl) => {
       if (cancelled) return
       const lang = storyId.endsWith('.tsx') ? 'tsx' : 'jsx'
-      // Detect dark mode from the canvas wrapper's Primer attributes
-      const isDark = containerRef.current?.closest('[data-color-mode]')?.getAttribute('data-color-mode') === 'dark'
-        || window.matchMedia?.('(prefers-color-scheme: dark)').matches
-      // Temporarily set the code-theme attribute so the highlighter picks the right palette
-      const prev = document.documentElement.getAttribute('data-sb-code-theme')
-      document.documentElement.setAttribute('data-sb-code-theme', isDark ? 'dark' : 'light')
       const html = hl.codeToHtml(sourceCode, { lang })
-      if (prev != null) document.documentElement.setAttribute('data-sb-code-theme', prev)
-      else document.documentElement.removeAttribute('data-sb-code-theme')
       setHighlightedHtml(html)
     })
     return () => { cancelled = true }

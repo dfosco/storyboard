@@ -124,6 +124,10 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
   }, [sourceCode, storyId])
 
   useImperativeHandle(ref, () => ({
+    getState(key) {
+      if (key === 'showCode') return showCode
+      return undefined
+    },
     handleAction(actionId) {
       if (actionId === 'show-code') {
         setShowCode((v) => !v)
@@ -137,7 +141,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
         }
       }
     },
-  }), [storyId, copyCode])
+  }), [storyId, showCode, copyCode])
 
   const iframeSrc = useMemo(
     () => resolveStoryUrl(storyId, exportName),
@@ -190,6 +194,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
             data-canvas-allow-text-selection
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className={styles.codeHeader}>
               <span className={styles.codeLabel}>{storyId}.story.jsx</span>

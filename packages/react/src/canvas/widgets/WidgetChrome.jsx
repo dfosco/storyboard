@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Tooltip } from '@primer/react'
-import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode } from '@primer/octicons-react'
+import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode, UnwrapIcon as OcticonUnwrap } from '@primer/octicons-react'
 import styles from './WidgetChrome.module.css'
 
 const STICKY_NOTE_COLORS = {
@@ -64,6 +64,10 @@ function CodeIcon() {
   return <OcticonCode size={12} />
 }
 
+function UnwrapIcon() {
+  return <OcticonUnwrap size={12} />
+}
+
 function CopyIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -124,6 +128,7 @@ const ICON_REGISTRY = {
   'eye': EyeIcon,
   'eye-closed': EyeClosedIcon,
   'code': CodeIcon,
+  'unwrap': UnwrapIcon,
   'copy': CopyIcon,
   'link': LinkIcon,
   'more': MoreIcon,
@@ -472,6 +477,11 @@ export default function WidgetChrome({
                   } else {
                     label = 'Published image — deployed with canvas'
                   }
+                }
+
+                // Show-code toggle: swap label based on widget state
+                if (feature.action === 'show-code' && widgetRef?.current?.getState?.('showCode')) {
+                  label = 'Show component'
                 }
 
                 return (

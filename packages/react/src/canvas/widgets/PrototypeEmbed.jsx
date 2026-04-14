@@ -286,9 +286,10 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
         return
       }
 
-      // Snapshot-ready signal — trigger capture in dev
-      if (e.data?.type === 'storyboard:embed:snapshot-ready' && onUpdate && !isExternal) {
-        requestSnapshotCapture()
+      // Snapshot-ready signal — iframe content has fully rendered
+      if (e.data?.type === 'storyboard:embed:snapshot-ready') {
+        setIframeLoaded(true)
+        if (onUpdate && !isExternal) requestSnapshotCapture()
       }
     }
     window.addEventListener('message', handleMessage)
@@ -522,7 +523,6 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                   }}
                   title={label || 'Prototype embed'}
                   sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-                  onLoad={() => setIframeLoaded(true)}
                 />
               </div>
             )}

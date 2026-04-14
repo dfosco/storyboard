@@ -13,6 +13,7 @@
  */
 import { forwardRef, useImperativeHandle, useRef, useCallback, useState, useEffect, useMemo } from 'react'
 import { getStoryData } from '@dfosco/storyboard-core'
+import { createInspectorHighlighter } from '@dfosco/storyboard-core/inspector/highlighter'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './StoryWidget.module.css'
@@ -49,6 +50,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
   const [interactive, setInteractive] = useState(false)
   const [showCode, setShowCode] = useState(false)
   const [sourceCode, setSourceCode] = useState(null)
+  const [highlightedHtml, setHighlightedHtml] = useState(null)
   const [sourceLoading, setSourceLoading] = useState(false)
 
   const handleResize = useCallback((w, h) => {
@@ -97,6 +99,19 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
 
     return () => { cancelled = true }
   }, [showCode, sourceCode, storyId])
+
+  // Syntax-highlight source code using the inspector highlighter
+  useEffect(() => {
+    if (!sourceCode) return
+    let cancelled = false
+    createInspectorHighlighter().then((hl) => {
+      if (cancelled) return
+      const lang = storyId.endsWith('.tsx') ? 'tsx' : 'jsx'
+      const html = hl.codeToHtml(sourceCode, { lang })
+      setHighlightedHtml(html)
+    })
+    return () => { cancelled = true }
+  }, [sourceCode, storyId])
 
   const copyCode = useCallback(async () => {
     if (sourceCode) {
@@ -187,9 +202,18 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
                 aria-label="Close code view"
               >×</button>
             </div>
-            <pre className={styles.codeBlock}>
-              <code>{sourceLoading ? 'Loading…' : (sourceCode || '')}</code>
-            </pre>
+            {sourceLoading ? (
+              <div className={styles.codeLoading}>Loading…</div>
+            ) : highlightedHtml ? (
+              <div
+                className={styles.codeBlock}
+                dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+              />
+            ) : (
+              <pre className={styles.codeBlock}>
+                <code>{sourceCode || ''}</code>
+              </pre>
+            )}
           </div>
         ) : (
           <>

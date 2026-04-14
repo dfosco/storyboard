@@ -627,11 +627,26 @@ export function Default() {
 
     // ── Image routes ──────────────────────────────────────────────────
 
-    const imagesDir = path.join(root, 'src', 'canvas', 'images')
+    const imagesDir = path.join(root, 'assets', 'canvas', 'images')
+    const snapshotsDir = path.join(root, 'assets', 'canvas', 'snapshots')
 
     const MIME_TO_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' }
     const EXT_TO_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' }
     const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5 MB
+
+    // Resolve which directory to write to based on canvasName prefix
+    function resolveWriteDir(canvasName) {
+      return canvasName && canvasName.startsWith('snapshot-') ? snapshotsDir : imagesDir
+    }
+
+    // Resolve a filename to its on-disk path (check snapshots first, then images)
+    function resolveImagePath(filename) {
+      const snapshotPath = path.join(snapshotsDir, filename)
+      if (fs.existsSync(snapshotPath)) return snapshotPath
+      const imagePath = path.join(imagesDir, filename)
+      if (fs.existsSync(imagePath)) return imagePath
+      return null
+    }
 
     // POST /image — upload a pasted image (base64 data URL)
     if (routePath === '/image' && method === 'POST') {
@@ -668,10 +683,11 @@ export function Default() {
       const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}--${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
       const prefix = canvasName ? `${canvasName.replace(/[\/:]/g, '--')}--` : ''
       const filename = `${prefix}${dateStr}.${ext}`
+      const targetDir = resolveWriteDir(canvasName)
 
       try {
-        fs.mkdirSync(imagesDir, { recursive: true })
-        fs.writeFileSync(path.join(imagesDir, filename), buffer)
+        fs.mkdirSync(targetDir, { recursive: true })
+        fs.writeFileSync(path.join(targetDir, filename), buffer)
         sendJson(res, 201, { success: true, filename })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to save image: ${err.message}` })
@@ -689,8 +705,8 @@ export function Default() {
         return
       }
 
-      const filePath = path.join(imagesDir, filename)
-      if (!fs.existsSync(filePath)) {
+      const filePath = resolveImagePath(filename)
+      if (!filePath) {
         sendJson(res, 404, { error: 'Image not found' })
         return
       }
@@ -728,13 +744,13 @@ export function Default() {
 
       const isPrivate = filename.startsWith('_')
       const newFilename = isPrivate ? filename.slice(1) : `_${filename}`
-      const oldPath = path.join(imagesDir, filename)
-      const newPath = path.join(imagesDir, newFilename)
-
-      if (!fs.existsSync(oldPath)) {
+      const oldPath = resolveImagePath(filename)
+      if (!oldPath) {
         sendJson(res, 404, { error: 'Image not found' })
         return
       }
+      const parentDir = path.dirname(oldPath)
+      const newPath = path.join(parentDir, newFilename)
 
       try {
         fs.renameSync(oldPath, newPath)

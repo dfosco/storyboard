@@ -1175,12 +1175,12 @@ export default function CanvasPage({ name, siblingPages = [] }) {
       const text = e.clipboardData?.getData('text/plain')?.trim()
       if (!text) return
 
-      e.preventDefault()
-
       // Detect canvasName::widgetId format for widget duplication (cross-canvas copy-paste)
-      // Also supports legacy canvasName/widgetId for basenames without slashes
-      const widgetRefMatch = text.match(/^(.+)::([^:]+)$/) || (text.indexOf('::') === -1 && text.match(/^([^/]+)\/([^/]+)$/))
+      // Also supports legacy canvasName/widgetId for basenames without slashes,
+      // but only when the second segment looks like a widget ID (type-hash).
+      const widgetRefMatch = text.match(/^(.+)::([^:]+)$/) || (text.indexOf('::') === -1 && text.match(/^([^/]+)\/((?:sticky-note|markdown|prototype|link-preview|figma-embed|component|image)-[a-z0-9]+)$/))
       if (widgetRefMatch) {
+        e.preventDefault()
         const [, sourceCanvas, sourceWidgetId] = widgetRefMatch
         // Component widgets are code, not duplicable data — silently consume the ref
         if (sourceWidgetId.startsWith('jsx-')) return
@@ -1212,6 +1212,7 @@ export default function CanvasPage({ name, siblingPages = [] }) {
         return
       }
 
+      e.preventDefault()
       const resolved = resolvePaste(text, pasteCtx, getPasteRules())
       if (!resolved) return
       const { type, props } = resolved

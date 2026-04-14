@@ -1,5 +1,14 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.17
+
+### Patch Changes
+
+-   Fixes highlight.js bundling for Vite consumers
+
+    -   Use highlight.js ESM entry points for Vite compatibility
+    -   Add highlight.js and html-to-image to core package dependencies
+
 ## 4.0.0-beta.16
 
 ### Patch Changes

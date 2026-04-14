@@ -1,12 +1,17 @@
 /**
  * Renders a story at its route URL inside an iframe on canvas.
  *
- * Works like PrototypeEmbed: the story has its own route (e.g. /canvas/button-patterns)
+ * Works like PrototypeEmbed: the story has its own route (e.g. /components/button-patterns)
  * and this widget iframes that URL with ?export=ExportName&_sb_embed for single-export mode.
+ *
+ * Features:
+ * - Title bar showing story name + export (like Figma embed)
+ * - "Show code" action toggles between iframe and source view
+ * - "Copy code" action copies the story source to clipboard
  *
  * Props: { storyId, exportName, width, height }
  */
-import { useRef, useCallback, useState, useEffect, useMemo } from 'react'
+import { forwardRef, useImperativeHandle, useRef, useCallback, useState, useEffect, useMemo } from 'react'
 import { getStoryData } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
@@ -25,7 +30,16 @@ function resolveStoryUrl(storyId, exportName) {
   return `${base}${route}?${params}`
 }
 
-export default function StoryWidget({ props, onUpdate, resizable }) {
+function resolveStoryModuleUrl(storyId) {
+  const story = getStoryData(storyId)
+  if (!story?._storyModule) return null
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+  const mod = story._storyModule
+  // In dev, fetch the raw source via Vite's ?raw transform
+  return `${base}${mod}?raw`
+}
+
+export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, ref) {
   const storyId = props?.storyId || ''
   const exportName = props?.exportName || ''
   const width = props?.width
@@ -33,6 +47,9 @@ export default function StoryWidget({ props, onUpdate, resizable }) {
 
   const containerRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
+  const [showCode, setShowCode] = useState(false)
+  const [sourceCode, setSourceCode] = useState(null)
+  const [sourceLoading, setSourceLoading] = useState(false)
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -51,10 +68,76 @@ export default function StoryWidget({ props, onUpdate, resizable }) {
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive])
 
+  // Load source code when show-code is toggled on
+  useEffect(() => {
+    if (!showCode || sourceCode !== null) return
+    const moduleUrl = resolveStoryModuleUrl(storyId)
+    if (!moduleUrl) {
+      Promise.resolve().then(() => setSourceCode('// Source not available'))
+      return
+    }
+
+    let cancelled = false
+    Promise.resolve().then(() => { if (!cancelled) setSourceLoading(true) })
+    fetch(moduleUrl)
+      .then((res) => res.ok ? res.text() : Promise.reject(new Error(`${res.status}`)))
+      .then((text) => {
+        if (cancelled) return
+        // Vite ?raw returns the source as a JS module: export default "..."
+        // Strip the module wrapper to get raw source
+        const match = text.match(/export default "([\s\S]*)"/)
+        if (match) {
+          setSourceCode(JSON.parse(`"${match[1]}"`))
+        } else {
+          setSourceCode(text)
+        }
+      })
+      .catch(() => { if (!cancelled) setSourceCode('// Failed to load source') })
+      .finally(() => { if (!cancelled) setSourceLoading(false) })
+
+    return () => { cancelled = true }
+  }, [showCode, sourceCode, storyId])
+
+  const copyCode = useCallback(async () => {
+    if (sourceCode) {
+      await navigator.clipboard?.writeText(sourceCode)
+      return
+    }
+    // Load source on demand if not already loaded
+    const moduleUrl = resolveStoryModuleUrl(storyId)
+    if (!moduleUrl) return
+    try {
+      const res = await fetch(moduleUrl)
+      const text = await res.text()
+      const match = text.match(/export default "([\s\S]*)"/)
+      const code = match ? JSON.parse(`"${match[1]}"`) : text
+      setSourceCode(code)
+      await navigator.clipboard?.writeText(code)
+    } catch { /* ignore */ }
+  }, [sourceCode, storyId])
+
+  useImperativeHandle(ref, () => ({
+    handleAction(actionId) {
+      if (actionId === 'show-code') {
+        setShowCode((v) => !v)
+      } else if (actionId === 'copy-code') {
+        copyCode()
+      } else if (actionId === 'open-external') {
+        const story = getStoryData(storyId)
+        if (story?._route) {
+          const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+          window.open(`${base}${story._route}`, '_blank', 'noopener')
+        }
+      }
+    },
+  }), [storyId, copyCode])
+
   const iframeSrc = useMemo(
     () => resolveStoryUrl(storyId, exportName),
     [storyId, exportName],
   )
+
+  const displayName = exportName ? `${storyId} / ${exportName}` : storyId
 
   // Error state — missing story or no route
   if (!storyId) {
@@ -90,33 +173,55 @@ export default function StoryWidget({ props, onUpdate, resizable }) {
   return (
     <WidgetWrapper>
       <div ref={containerRef} className={styles.container} style={sizeStyle}>
-        <div className={styles.content}>
-          <iframe
-            src={iframeSrc}
-            className={styles.iframe}
-            title={exportName ? `${storyId}/${exportName}` : storyId}
-          />
+        <div className={styles.header}>
+          <span className={styles.headerIcon}>📖</span>
+          <span className={styles.headerTitle}>{displayName}</span>
         </div>
-        {!interactive && (
-          <div
-            className={overlayStyles.interactOverlay}
-            onClick={(e) => {
-              if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
-              enterInteractive()
-            }}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                e.stopPropagation()
-                enterInteractive()
-              }
-            }}
-            aria-label="Click to interact with story component"
-          >
-            <span className={overlayStyles.interactHint}>Click to interact</span>
+        {showCode ? (
+          <div className={styles.codeView}>
+            <div className={styles.codeHeader}>
+              <span className={styles.codeLabel}>{storyId}.story.jsx</span>
+              <button
+                className={styles.codeCloseBtn}
+                onClick={() => setShowCode(false)}
+                aria-label="Close code view"
+              >×</button>
+            </div>
+            <pre className={styles.codeBlock}>
+              <code>{sourceLoading ? 'Loading…' : (sourceCode || '')}</code>
+            </pre>
           </div>
+        ) : (
+          <>
+            <div className={styles.content}>
+              <iframe
+                src={iframeSrc}
+                className={styles.iframe}
+                title={displayName}
+              />
+            </div>
+            {!interactive && (
+              <div
+                className={overlayStyles.interactOverlay}
+                onClick={(e) => {
+                  if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+                  enterInteractive()
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    enterInteractive()
+                  }
+                }}
+                aria-label="Click to interact with story component"
+              >
+                <span className={overlayStyles.interactHint}>Click to interact</span>
+              </div>
+            )}
+          </>
         )}
         {resizable && (
           <ResizeHandle
@@ -129,4 +234,4 @@ export default function StoryWidget({ props, onUpdate, resizable }) {
       </div>
     </WidgetWrapper>
   )
-}
+})

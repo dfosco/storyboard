@@ -16,7 +16,7 @@
 
 import * as p from '@clack/prompts'
 import { parseFlags, hasFlags, formatFlagHelp } from './flags.js'
-import { prototypeSchema, canvasSchema, flowSchema, pageSchema } from './schemas.js'
+import { prototypeSchema, canvasSchema, flowSchema, pageSchema, componentSchema } from './schemas.js'
 import { getServerUrl } from './serverUrl.js'
 import { detectWorktreeName, getPort } from '../worktree/port.js'
 
@@ -509,9 +509,109 @@ async function createPage() {
   }
 }
 
+// ── Create Component ───────────────────────────────────────────
+
+async function createComponent() {
+  const rest = process.argv.slice(4)
+  if (rest.includes('--help') || rest.includes('-h')) showHelp('component', componentSchema)
+
+  const flagMode = hasFlags(rest)
+  const { flags, errors } = flagMode ? parseFlags(rest, componentSchema) : { flags: {}, errors: [] }
+  if (errors.length) {
+    for (const e of errors) p.log.error(e)
+    process.exit(1)
+  }
+
+  p.intro('storyboard create component')
+
+  const componentName = flags.name || await promptOrCancel(
+    p.text({
+      message: 'Component name',
+      placeholder: 'my-component',
+      validate: (v) => {
+        if (!v) return 'Name is required'
+        if (!/^[a-z][a-z0-9-]*$/.test(v)) return 'Use kebab-case (e.g. my-component)'
+      },
+    }),
+  )
+
+  // Directory picker — list existing subdirectories inside src/components/
+  const fs = await import('node:fs')
+  const path = await import('node:path')
+  const componentsRoot = path.resolve('src/components')
+
+  let directory = flags.directory || ''
+  if (!directory) {
+    const existingDirs = []
+    if (fs.existsSync(componentsRoot)) {
+      for (const entry of fs.readdirSync(componentsRoot, { withFileTypes: true })) {
+        if (entry.isDirectory() && !entry.name.startsWith('_') && !entry.name.startsWith('.')) {
+          existingDirs.push(entry.name)
+        }
+      }
+    }
+
+    if (existingDirs.length > 0) {
+      const dirChoice = await promptOrCancel(
+        p.select({
+          message: 'Directory',
+          options: [
+            { value: '', label: 'src/components/ (root)', hint: 'Top-level component' },
+            ...existingDirs.map((d) => ({ value: d, label: `src/components/${d}/` })),
+          ],
+        }),
+      )
+      directory = dirChoice
+    }
+  }
+
+  // Build file path
+  const targetDir = directory
+    ? path.join(componentsRoot, directory)
+    : componentsRoot
+  const storyFile = path.join(targetDir, `${componentName}.story.jsx`)
+
+  if (fs.existsSync(storyFile)) {
+    p.log.error(`File already exists: ${path.relative('.', storyFile)}`)
+    p.outro('')
+    return
+  }
+
+  // Scaffold the story file
+  const pascalName = componentName
+    .split('-')
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join('')
+
+  const content = `/**
+ * ${pascalName} component stories.
+ * Each named export renders as an embeddable component at /components/${directory ? directory + '/' : ''}${componentName}
+ */
+
+export function Default() {
+  return (
+    <div style={{ padding: '1.5rem', minWidth: 280 }}>
+      <p>${pascalName} component</p>
+    </div>
+  )
+}
+`
+
+  const s = p.spinner()
+  s.start('Creating component...')
+
+  fs.mkdirSync(targetDir, { recursive: true })
+  fs.writeFileSync(storyFile, content)
+
+  s.stop('Component created!')
+  p.log.success(`  ${green(path.relative('.', storyFile))}`)
+  p.log.info(`  ${dim('Route:')} /components/${directory ? directory + '/' : ''}${componentName}`)
+  p.outro('')
+}
+
 // ── Dispatcher ────────────────────────────────────────────────
 
-export { createFlow, createPage, ensureDevServer, serverPost, postCreateFlow, getServerUrl }
+export { createFlow, createPage, createComponent, ensureDevServer, serverPost, postCreateFlow, getServerUrl }
 
 async function main() {
   const subcommand = process.argv[3]
@@ -520,6 +620,7 @@ async function main() {
   if (subcommand === 'canvas') return createCanvas()
   if (subcommand === 'flow') return createFlow()
   if (subcommand === 'page') return createPage()
+  if (subcommand === 'component') return createComponent()
 
   // Interactive picker
   p.intro('storyboard create')
@@ -531,6 +632,7 @@ async function main() {
       { value: 'canvas', label: 'Canvas', hint: 'Freeform canvas with widgets' },
       { value: 'flow', label: 'Flow', hint: 'Data context for a prototype page' },
       { value: 'page', label: 'Page', hint: 'New page in a prototype' },
+      { value: 'component', label: 'Component', hint: 'Story-format component (.story.jsx)' },
     ],
   })
 
@@ -540,6 +642,7 @@ async function main() {
   if (type === 'canvas') return createCanvas()
   if (type === 'flow') return createFlow()
   if (type === 'page') return createPage()
+  if (type === 'component') return createComponent()
 }
 
 // Only run main() when this file is the entry point, not when imported

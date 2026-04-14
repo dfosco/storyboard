@@ -789,6 +789,29 @@ export default function storyboardDataPlugin() {
         }
       })
 
+      // ── Stories list API ──────────────────────────────────────────
+      // Serves the list of discovered stories for the CLI and UI story picker.
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url) return next()
+        let url = req.url
+        const baseNoTrail = (server.config.base || '/').replace(/\/$/, '')
+        if (baseNoTrail && url.startsWith(baseNoTrail)) {
+          url = url.slice(baseNoTrail.length) || '/'
+        }
+        if (!url.startsWith('/_storyboard/stories/list')) return next()
+
+        if (!buildResult) buildResult = buildIndex(root)
+        const storyEntries = Object.entries(buildResult.index.story || {})
+        const storyRoutes = buildResult.storyRoutes || {}
+        const stories = storyEntries.map(([name]) => ({
+          name,
+          route: storyRoutes[name] || null,
+        }))
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ stories }))
+      })
+
       // Watch for data file changes in dev mode
       const watcher = server.watcher
       if (!buildResult) buildResult = buildIndex(root)

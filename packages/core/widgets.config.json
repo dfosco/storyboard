@@ -4,8 +4,7 @@
     "label:copy-link": "Copy widget link",
     "label:delete": "Delete",
     "label:open-ext": "Open in new tab",
-    "label:zoom-in": "Zoom in",
-    "label:zoom-out": "Zoom out",
+
     "label:edit": "Edit",
     "label:download": "Download image",
     "label:copy-png": "Copy as image",
@@ -76,7 +75,8 @@
           "type": "action",
           "action": "copy-text",
           "label": "$label:copy-text",
-          "icon": "copy",
+          "icon": "unwrap",
+          "menu": true,
           "prod": true
         },
         {
@@ -144,7 +144,8 @@
           "type": "action",
           "action": "copy-text",
           "label": "$label:copy-text",
-          "icon": "copy",
+          "icon": "unwrap",
+          "menu": true,
           "prod": true
         },
         {
@@ -230,20 +231,7 @@
           "icon": "open-external",
           "prod": true
         },
-        {
-          "id": "zoom-in",
-          "type": "action",
-          "action": "zoom-in",
-          "label": "$label:zoom-in",
-          "icon": "zoom-in"
-        },
-        {
-          "id": "zoom-out",
-          "type": "action",
-          "action": "zoom-out",
-          "label": "$label:zoom-out",
-          "icon": "zoom-out"
-        },
+
         {
           "id": "edit-url",
           "type": "action",

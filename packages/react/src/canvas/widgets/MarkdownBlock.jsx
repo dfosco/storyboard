@@ -66,6 +66,7 @@ async function highlightCodeBlocks(html) {
 export default function MarkdownBlock({ props, onUpdate, resizable }) {
   const content = readProp(props, 'content', markdownSchema)
   const width = readProp(props, 'width', markdownSchema)
+  const height = props?.height
   const canEdit = typeof onUpdate === 'function'
   const [editing, setEditing] = useState(false)
   const editingActive = canEdit && editing
@@ -73,8 +74,8 @@ export default function MarkdownBlock({ props, onUpdate, resizable }) {
   const blockRef = useRef(null)
   const [editHeight, setEditHeight] = useState(null)
 
-  const handleResize = useCallback((w) => {
-    onUpdate?.({ width: w })
+  const handleResize = useCallback((w, h) => {
+    onUpdate?.({ width: w, height: h })
   }, [onUpdate])
 
   const rawHtml = useMemo(() => renderMarkdown(content), [content])
@@ -85,19 +86,7 @@ export default function MarkdownBlock({ props, onUpdate, resizable }) {
     setRenderedHtml(rawHtml)
     if (!rawHtml.includes('<code class="language-')) return
     let cancelled = false
-
-    // Detect dark mode from canvas wrapper or system preference
-    const isDark = blockRef.current?.closest('[data-color-mode]')?.getAttribute('data-color-mode') === 'dark'
-      || window.matchMedia?.('(prefers-color-scheme: dark)').matches
-
-    // Temporarily set code-theme so the highlighter uses the correct palette
-    const prev = document.documentElement.getAttribute('data-sb-code-theme')
-    document.documentElement.setAttribute('data-sb-code-theme', isDark ? 'dark' : 'light')
-
     highlightCodeBlocks(rawHtml).then((highlighted) => {
-      // Restore original attribute
-      if (prev != null) document.documentElement.setAttribute('data-sb-code-theme', prev)
-      else document.documentElement.removeAttribute('data-sb-code-theme')
       if (!cancelled) setRenderedHtml(highlighted)
     })
     return () => { cancelled = true }
@@ -135,7 +124,7 @@ export default function MarkdownBlock({ props, onUpdate, resizable }) {
       <div
         ref={blockRef}
         className={styles.block}
-        style={{ width, minHeight: editHeight || undefined }}
+        style={{ width, ...(height ? { height, overflow: 'auto' } : {}), minHeight: editHeight || undefined }}
       >
         {editingActive ? (
           <textarea

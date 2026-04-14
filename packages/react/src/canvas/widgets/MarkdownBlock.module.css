@@ -53,8 +53,9 @@
   background: var(--bgColor-neutral-muted, #afb8c133);
   padding: 2px 5px;
   border-radius: 4px;
-  font-size: 13px;
-  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  font-family: "Ioskeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
 .preview ul {
@@ -125,6 +126,7 @@
 .preview pre {
   padding: 12px 16px;
   border-radius: 6px;
+  border: 1px solid var(--borderColor-muted, #d8dee4);
   overflow-x: auto;
   margin: 8px 0;
   background: var(--bgColor-neutral-muted, #afb8c133);
@@ -133,6 +135,7 @@
 /* When inspector highlighter sets inline background, let it through */
 .preview pre[style] {
   border-radius: 6px;
+  border: 1px solid var(--borderColor-muted, #d8dee4);
   overflow-x: auto;
   margin: 8px 0;
 }
@@ -140,8 +143,10 @@
 .preview pre code {
   background: none;
   padding: 0;
-  font-size: 13px;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  font-family: "Ioskeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  line-height: 1.6;
 }
 
 /* Blockquotes */

@@ -123,6 +123,12 @@
           "default": 530,
           "min": 200,
           "max": 1200
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 60
         }
       },
       "features": [

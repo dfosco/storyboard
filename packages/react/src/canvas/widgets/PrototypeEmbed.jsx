@@ -316,6 +316,29 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
     }, 2000)
   }, [requestSnapshotCapture, isExternal, onUpdate])
 
+  // Re-capture when src changes (new prototype selected)
+  const prevSrcRef = useRef(src)
+  useEffect(() => {
+    if (src && src !== prevSrcRef.current && onUpdate && !isExternal && showIframe) {
+      prevSrcRef.current = src
+      // Wait for the new page to render
+      const timer = setTimeout(() => requestSnapshotCapture(), 4000)
+      return () => clearTimeout(timer)
+    }
+    prevSrcRef.current = src
+  }, [src, onUpdate, isExternal, showIframe, requestSnapshotCapture])
+
+  // Re-capture for the alternate theme variant when theme changes
+  const prevThemeRef = useRef(canvasTheme)
+  useEffect(() => {
+    if (canvasTheme !== prevThemeRef.current && onUpdate && !isExternal && showIframe) {
+      prevThemeRef.current = canvasTheme
+      const timer = setTimeout(() => requestSnapshotCapture(), 3000)
+      return () => clearTimeout(timer)
+    }
+    prevThemeRef.current = canvasTheme
+  }, [canvasTheme, onUpdate, isExternal, showIframe, requestSnapshotCapture])
+
   const chromeVars = useMemo(() => getEmbedChromeVars(canvasTheme), [canvasTheme])
 
   const enterInteractive = useCallback(() => setInteractive(true), [])
@@ -543,6 +566,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
             function onUp() {
               document.removeEventListener('mousemove', onMove)
               document.removeEventListener('mouseup', onUp)
+              triggerResizeCapture()
             }
             document.addEventListener('mousemove', onMove)
             document.addEventListener('mouseup', onUp)

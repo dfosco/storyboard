@@ -12,6 +12,7 @@ const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
 
 const GLOB_PATTERN = '**/*.{flow,scene,object,record,prototype,folder}.{json,jsonc}'
 const CANVAS_GLOB_PATTERN = '**/*.canvas.jsonl'
+const CANVAS_META_GLOB_PATTERN = '**/*.meta.json'
 
 /**
  * Extract the data name and type suffix from a file path.
@@ -77,6 +78,19 @@ function parseDataFile(filePath) {
     const slashIdx = name.lastIndexOf('/')
     const group = canvasFolderName || (slashIdx > 0 ? name.substring(0, slashIdx) : null)
     return { name, suffix: 'canvas', ext: 'jsonl', folder: canvasFolderName || folderName, inferredRoute, id: toCanvasId(filePath), group }
+  }
+
+  // Handle canvas .meta.json files
+  const metaMatch = base.match(/^(.+)\.meta\.json$/)
+  if (metaMatch) {
+    const normalized = filePath.replace(/\\/g, '/')
+    // Only handle meta files inside src/canvas/ directories
+    const canvasCheck = normalized.match(/(?:^|\/)src\/canvas\//)
+    if (!canvasCheck) return null
+    // Skip _-prefixed
+    if (metaMatch[1].startsWith('_')) return null
+    if (normalized.split('/').some(seg => seg.startsWith('_'))) return null
+    return { name: metaMatch[1], suffix: 'canvas-meta', ext: 'json', inferredRoute: null }
   }
 
   const match = base.match(/^(.+)\.(flow|scene|object|record|prototype|folder)\.(jsonc?)$/)
@@ -267,6 +281,7 @@ function buildIndex(root) {
   const ignore = ['node_modules/**', 'dist/**', '.git/**', '.worktrees/**', 'public/**']
   const files = globSync(GLOB_PATTERN, { cwd: root, ignore, absolute: false })
   const canvasFiles = globSync(CANVAS_GLOB_PATTERN, { cwd: root, ignore, absolute: false })
+  const canvasMetaFiles = globSync(CANVAS_META_GLOB_PATTERN, { cwd: root, ignore, absolute: false })
 
   // Detect nested .folder/ directories (not supported)
   // Scan directories directly since empty nested folders have no data files
@@ -283,7 +298,7 @@ function buildIndex(root) {
     }
   }
 
-  const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {}, canvas: {} }
+  const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {}, canvas: {}, 'canvas-meta': {} }
   const seen = {} // "name.suffix" or "id.suffix" → absolute path (for duplicate detection)
   const protoFolders = {} // prototype name → folder name (for injection)
   const flowRoutes = {} // flow name → inferred route (for _route injection)
@@ -292,7 +307,7 @@ function buildIndex(root) {
   const canvasNameCount = {} // canvas basename → count (for ambiguity detection)
   const canvasGroups = {} // canvas name → group name (shared folder prefix)
 
-  for (const relPath of [...files, ...canvasFiles]) {
+  for (const relPath of [...files, ...canvasFiles, ...canvasMetaFiles]) {
     const parsed = parseDataFile(relPath)
     if (!parsed) continue
 
@@ -479,6 +494,21 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasA
   ]
   const gitMeta = batchGitMetadata(root, gitPaths)
 
+  // Read canvas-meta files and build a directory-based lookup
+  const canvasMetaByDir = {}
+  for (const [, absPath] of Object.entries(index['canvas-meta'] || {})) {
+    try {
+      const raw = fs.readFileSync(absPath, 'utf-8')
+      const parsed = parseJsonc(raw)
+      if (parsed) {
+        // Key by the parent directory path relative to src/canvas/
+        const dirPath = path.dirname(absPath).replace(/\\/g, '/')
+        const canvasRelDir = dirPath.replace(/^.*?src\/canvas\//, '')
+        canvasMetaByDir[canvasRelDir] = parsed
+      }
+    } catch { /* skip invalid meta files */ }
+  }
+
   for (const suffix of INDEX_KEYS) {
     for (const [name, absPath] of Object.entries(index[suffix])) {
       const varName = `_d${i++}`
@@ -551,6 +581,10 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasA
         }
         if (canvasGroups[name]) {
           parsed = { ...parsed, _group: canvasGroups[name] }
+        }
+        // Inject canvas folder metadata from .meta.json
+        if (canvasGroups[name] && canvasMetaByDir[canvasGroups[name]]) {
+          parsed = { ...parsed, _canvasMeta: canvasMetaByDir[canvasGroups[name]] }
         }
         // Inject folder association
         const folderDirMatch = path.relative(root, absPath).replace(/\\/g, '/').match(/(?:^|\/)src\/(?:prototypes|canvas)\/([^/]+)\.folder\//)

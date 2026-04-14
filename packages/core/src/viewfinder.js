@@ -204,15 +204,17 @@ export function buildPrototypeIndex(knownRoutes = []) {
   for (const canvasName of listCanvases()) {
     const data = getCanvasData(canvasName)
     if (!data) continue
+    const meta = data._canvasMeta
     canvasEntries.push({
-      name: data.title || canvasName,
+      name: meta?.title || data.title || canvasName,
       dirName: canvasName,
-      description: data.description || null,
+      description: meta?.description || data.description || null,
       route: data._route || `/${canvasName}`,
       folder: data._folder || null,
       isCanvas: true,
-      author: data.author || null,
+      author: meta?.author || data.author || null,
       gitAuthor: data.gitAuthor || null,
+      _canvasMeta: meta || null,
     })
   }
 

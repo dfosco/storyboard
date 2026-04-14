@@ -468,11 +468,34 @@
       },
       "features": [
         {
-          "id": "copy",
+          "id": "show-code",
+          "type": "action",
+          "action": "show-code",
+          "label": "Show code",
+          "icon": "code"
+        },
+        {
+          "id": "copy-code",
+          "type": "action",
+          "action": "copy-code",
+          "label": "Copy code",
+          "icon": "copy"
+        },
+        {
+          "id": "open-external",
+          "type": "action",
+          "action": "open-external",
+          "label": "$label:open-ext",
+          "icon": "open-external",
+          "prod": true
+        },
+        {
+          "id": "duplicate",
           "type": "action",
           "action": "copy",
           "label": "$label:duplicate",
-          "icon": "copy"
+          "icon": "copy",
+          "menu": true
         },
         {
           "id": "copy-link",

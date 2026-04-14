@@ -51,6 +51,20 @@
   onMount(() => {
     window.addEventListener('keydown', handleKeydown)
     document.addEventListener('click', handleClickOutside)
+
+    // Allow external events to open a specific overlay (e.g. from CanvasCreateMenu)
+    function handleOpenOverlay(e: Event) {
+      const detail = (e as CustomEvent).detail
+      if (detail?.overlayId) {
+        showOverlay(detail.overlayId)
+        visible = true
+      }
+    }
+    document.addEventListener('storyboard:workshop:open-overlay', handleOpenOverlay)
+
+    return () => {
+      document.removeEventListener('storyboard:workshop:open-overlay', handleOpenOverlay)
+    }
   })
   onDestroy(() => {
     window.removeEventListener('keydown', handleKeydown)

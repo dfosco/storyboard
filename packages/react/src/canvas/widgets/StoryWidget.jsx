@@ -333,18 +333,43 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
           </div>
         ) : (
           <>
-            <div className={styles.content}>
-              <iframe
-                src={iframeSrc}
-                className={styles.iframe}
-                title={displayName}
-              />
-            </div>
+            {/* Snapshot image — shown when available and iframe not yet active */}
+            {hasSnapshot && !showIframe && (
+              <div className={styles.content}>
+                <img
+                  src={(import.meta.env.BASE_URL || '/').replace(/\/$/, '') + currentSnapshot}
+                  alt={displayName}
+                  className={styles.snapshotImage}
+                  draggable={false}
+                />
+              </div>
+            )}
+
+            {/* Iframe — preloaded on hover, shown on click */}
+            {(preloadIframe || showIframe) && (
+              <div
+                className={styles.content}
+                style={hasSnapshot && !showIframe ? { position: 'absolute', top: 31, left: 0, right: 0, bottom: 0, opacity: 0, pointerEvents: 'none' } : undefined}
+              >
+                <iframe
+                  ref={iframeRef}
+                  src={iframeSrc}
+                  className={styles.iframe}
+                  title={displayName}
+                />
+              </div>
+            )}
+
             {!interactive && (
               <div
                 className={overlayStyles.interactOverlay}
+                onPointerEnter={() => {
+                  if (!preloadIframe) setPreloadIframe(true)
+                }}
                 onClick={(e) => {
                   if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+                  setShowIframe(true)
+                  setPreloadIframe(true)
                   enterInteractive()
                 }}
                 role="button"
@@ -353,6 +378,8 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     e.stopPropagation()
+                    setShowIframe(true)
+                    setPreloadIframe(true)
                     enterInteractive()
                   }
                 }}

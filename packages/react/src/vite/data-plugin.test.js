@@ -1,7 +1,7 @@
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import storyboardDataPlugin, { resolveTemplateVars, computeTemplateVars } from './data-plugin.js'
+import storyboardDataPlugin, { resolveTemplateVars, computeTemplateVars, parseDataFile } from './data-plugin.js'
 
 const RESOLVED_ID = '\0virtual:storyboard-data-index'
 
@@ -1044,5 +1044,65 @@ describe('canvas watcher behavior', () => {
     const code2 = plugin2.load(RESOLVED_ID)
     expect(code2).toContain('"refresh-canvas"')
     expect(code2).toContain('After Refresh')
+  })
+})
+
+describe('parseDataFile — canvas path-based IDs', () => {
+  it('flat canvas in src/canvas/ gets basename-only ID', () => {
+    const result = parseDataFile('src/canvas/overview.canvas.jsonl')
+    expect(result.name).toBe('overview')
+    expect(result.inferredRoute).toBe('/canvas/overview')
+    expect(result.group).toBeNull()
+  })
+
+  it('canvas inside .folder/ gets path-based ID', () => {
+    const result = parseDataFile('src/canvas/research.folder/interviews.canvas.jsonl')
+    expect(result.name).toBe('research/interviews')
+    expect(result.inferredRoute).toBe('/canvas/research/interviews')
+    expect(result.group).toBe('research')
+  })
+
+  it('duplicate basenames in different folders get distinct IDs', () => {
+    const a = parseDataFile('src/canvas/alpha.folder/overview.canvas.jsonl')
+    const b = parseDataFile('src/canvas/beta.folder/overview.canvas.jsonl')
+    expect(a.name).toBe('alpha/overview')
+    expect(b.name).toBe('beta/overview')
+    expect(a.name).not.toBe(b.name)
+  })
+
+  it('prototype-scoped canvas gets path-based ID', () => {
+    const result = parseDataFile('src/prototypes/Dashboard/plan.canvas.jsonl')
+    expect(result.name).toBe('Dashboard/plan')
+    expect(result.inferredRoute).toBe('/canvas/Dashboard/plan')
+  })
+
+  it('prototype inside .folder/ strips folder from ID', () => {
+    const result = parseDataFile('src/prototypes/main.folder/Dashboard/plan.canvas.jsonl')
+    expect(result.name).toBe('Dashboard/plan')
+    expect(result.inferredRoute).toBe('/canvas/Dashboard/plan')
+  })
+
+  it('skips _-prefixed canvas files', () => {
+    expect(parseDataFile('src/canvas/_draft.canvas.jsonl')).toBeNull()
+  })
+
+  it('skips canvas files in _-prefixed directories', () => {
+    expect(parseDataFile('src/canvas/_hidden/public.canvas.jsonl')).toBeNull()
+  })
+
+  it('canvas outside known directories gets basename-only ID', () => {
+    const result = parseDataFile('random/path/notes.canvas.jsonl')
+    expect(result.name).toBe('notes')
+    expect(result.inferredRoute).toBeNull()
+  })
+
+  it('sets group for grouped canvases', () => {
+    const result = parseDataFile('src/canvas/ux.folder/onboarding.canvas.jsonl')
+    expect(result.group).toBe('ux')
+  })
+
+  it('sets group to null for ungrouped canvases', () => {
+    const result = parseDataFile('src/canvas/standalone.canvas.jsonl')
+    expect(result.group).toBeNull()
   })
 })

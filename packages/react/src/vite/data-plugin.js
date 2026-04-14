@@ -49,20 +49,27 @@ function parseDataFile(filePath) {
         .replace(/^.*?src\/canvas\//, '')
         .replace(/[^/]*\.folder\/?/g, '')
         .replace(/\/$/, '')
-      // Path-based ID: include folder path for uniqueness (e.g. "research/interviews")
-      name = routeBase ? `${routeBase}/${baseName}` : baseName
+      // Path-based ID: include folder context for uniqueness.
+      // .folder dirs contribute their name (sans .folder suffix) to the ID.
+      const idBase = (dirPath + '/')
+        .replace(/^.*?src\/canvas\//, '')
+        .replace(/\.folder\/?/g, '/')
+        .replace(/\/+/g, '/')
+        .replace(/\/$/, '')
+      name = idBase ? `${idBase}/${baseName}` : baseName
       inferredRoute = '/canvas/' + name
       inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
     }
     const protoCheck = normalized.match(/(?:^|\/)src\/prototypes\//)
     if (!canvasCheck && protoCheck) {
       const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
-      const routeBase = (dirPath + '/')
+      // For prototypes, .folder is purely organizational — strip entirely
+      const idBase = (dirPath + '/')
         .replace(/^.*?src\/prototypes\//, '')
         .replace(/[^/]*\.folder\/?/g, '')
+        .replace(/\/+/g, '/')
         .replace(/\/$/, '')
-      // Path-based ID for prototype-scoped canvases
-      name = routeBase ? `${routeBase}/${baseName}` : baseName
+      name = idBase ? `${idBase}/${baseName}` : baseName
       inferredRoute = '/canvas/' + name
       inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
     }
@@ -968,4 +975,4 @@ export default function storyboardDataPlugin() {
 }
 
 // Exported for testing
-export { resolveTemplateVars, computeTemplateVars }
+export { resolveTemplateVars, computeTemplateVars, parseDataFile }

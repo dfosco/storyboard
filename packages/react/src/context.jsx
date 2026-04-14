@@ -12,9 +12,20 @@ const CanvasPageLazy = lazy(() => import('./canvas/CanvasPage.jsx'))
 
 // Build a map from canvas route paths → canvas names at module load time
 const canvasRouteMap = new Map()
+// Build a map from group name → array of { name, route, title } for page selector
+const canvasGroupMap = new Map()
 for (const [name, data] of Object.entries(canvases || {})) {
-  const route = (data?._route || `/${name}`).replace(/\/+$/, '')
+  const route = (data?._route || `/canvas/${name}`).replace(/\/+$/, '')
   canvasRouteMap.set(route, name)
+  const group = data?._group
+  if (group) {
+    if (!canvasGroupMap.has(group)) canvasGroupMap.set(group, [])
+    canvasGroupMap.get(group).push({
+      name,
+      route,
+      title: data?.title || name.split('/').pop(),
+    })
+  }
 }
 
 function matchCanvasRoute(pathname) {
@@ -149,6 +160,9 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
 
   // Canvas pages get their own rendering path — no flow data needed
   if (canvasName) {
+    const canvasData = canvases?.[canvasName]
+    const group = canvasData?._group
+    const siblingPages = group ? canvasGroupMap.get(group) || [] : []
     const canvasValue = {
       data: null,
       error: null,
@@ -160,7 +174,7 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     return (
       <StoryboardContext.Provider value={canvasValue}>
         <Suspense fallback={null}>
-          <CanvasPageLazy name={canvasName} />
+          <CanvasPageLazy name={canvasName} siblingPages={siblingPages} />
         </Suspense>
       </StoryboardContext.Provider>
     )

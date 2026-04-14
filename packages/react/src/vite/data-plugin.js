@@ -34,7 +34,8 @@ function parseDataFile(filePath) {
     const normalized = filePath.replace(/\\/g, '/')
     if (normalized.split('/').some(seg => seg.startsWith('_'))) return null
 
-    const name = canvasJsonlMatch[1]
+    const baseName = canvasJsonlMatch[1]
+    let name = baseName
     let inferredRoute = null
     const canvasFolderMatch = normalized.match(/(?:^|\/)src\/canvas\/([^/]+)\.folder\//)
     const canvasFolderName = canvasFolderMatch ? canvasFolderMatch[1] : null
@@ -48,7 +49,9 @@ function parseDataFile(filePath) {
         .replace(/^.*?src\/canvas\//, '')
         .replace(/[^/]*\.folder\/?/g, '')
         .replace(/\/$/, '')
-      inferredRoute = '/canvas/' + (routeBase ? routeBase + '/' : '') + name
+      // Path-based ID: include folder path for uniqueness (e.g. "research/interviews")
+      name = routeBase ? `${routeBase}/${baseName}` : baseName
+      inferredRoute = '/canvas/' + name
       inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
     }
     const protoCheck = normalized.match(/(?:^|\/)src\/prototypes\//)
@@ -58,10 +61,15 @@ function parseDataFile(filePath) {
         .replace(/^.*?src\/prototypes\//, '')
         .replace(/[^/]*\.folder\/?/g, '')
         .replace(/\/$/, '')
-      inferredRoute = '/canvas/' + (routeBase ? routeBase + '/' : '') + name
+      // Path-based ID for prototype-scoped canvases
+      name = routeBase ? `${routeBase}/${baseName}` : baseName
+      inferredRoute = '/canvas/' + name
       inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
     }
-    return { name, suffix: 'canvas', ext: 'jsonl', folder: canvasFolderName || folderName, inferredRoute, id: toCanvasId(filePath) }
+    // Derive group: canvases sharing a directory form a group
+    const slashIdx = name.lastIndexOf('/')
+    const group = canvasFolderName || (slashIdx > 0 ? name.substring(0, slashIdx) : null)
+    return { name, suffix: 'canvas', ext: 'jsonl', folder: canvasFolderName || folderName, inferredRoute, id: toCanvasId(filePath), group }
   }
 
   const match = base.match(/^(.+)\.(flow|scene|object|record|prototype|folder)\.(jsonc?)$/)
@@ -275,6 +283,7 @@ function buildIndex(root) {
   const canvasRoutes = {} // canvas name → inferred route
   const canvasAliases = {} // basename → canonical ID (only when unique)
   const canvasNameCount = {} // canvas basename → count (for ambiguity detection)
+  const canvasGroups = {} // canvas name → group name (shared folder prefix)
 
   for (const relPath of [...files, ...canvasFiles]) {
     const parsed = parseDataFile(relPath)
@@ -334,9 +343,14 @@ function buildIndex(root) {
       const canvasKey = parsed.id || parsed.name
       canvasRoutes[canvasKey] = parsed.inferredRoute
     }
+
+    // Track canvas groups (canvases sharing a folder prefix)
+    if (parsed.suffix === 'canvas' && parsed.group) {
+      canvasGroups[parsed.name] = parsed.group
+    }
   }
 
-  return { index, protoFolders, flowRoutes, canvasRoutes, canvasAliases }
+  return { index, protoFolders, flowRoutes, canvasRoutes, canvasAliases, canvasGroups }
 }
 
 /**
@@ -444,7 +458,7 @@ function readModesConfig(root) {
   return fallback
 }
 
-function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasAliases }, root) {
+function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasAliases, canvasGroups }, root) {
   const declarations = []
   const INDEX_KEYS = ['flow', 'object', 'record', 'prototype', 'folder', 'canvas']
   const entries = { flow: [], object: [], record: [], prototype: [], folder: [], canvas: [] }
@@ -523,10 +537,13 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasA
         }
       }
 
-      // Inject inferred route and resolve JSX companion for canvases
+      // Inject inferred route, group, and resolve JSX companion for canvases
       if (suffix === 'canvas') {
         if (canvasRoutes[name]) {
           parsed = { ...parsed, _route: canvasRoutes[name] }
+        }
+        if (canvasGroups[name]) {
+          parsed = { ...parsed, _group: canvasGroups[name] }
         }
         // Inject folder association
         const folderDirMatch = path.relative(root, absPath).replace(/\\/g, '/').match(/(?:^|\/)src\/(?:prototypes|canvas)\/([^/]+)\.folder\//)

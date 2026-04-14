@@ -153,6 +153,11 @@
   display: block;
 }
 
+/* Suppress line numbers from inspector highlighter's .line spans */
+.preview :global(.line::before) {
+  display: none !important;
+}
+
 /* Blockquotes */
 .preview blockquote {
   border-left: 4px solid var(--borderColor-default, #d0d7de);

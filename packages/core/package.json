@@ -52,8 +52,12 @@
     "./styles/tailwind.css": "./dist/tailwind.css",
     "./worktree/port": "./src/worktree/port.js",
     "./canvas/collision": "./src/canvas/collision.js",
+<<<<<<< HEAD
     "./canvas/identity": "./src/canvas/identity.js",
     "./config": "./src/configSchema.js"
+=======
+    "./inspector/highlighter": "./src/inspector/highlighter.js"
+>>>>>>> origin/4.0.0--story-widgets
   },
   "dependencies": {
     "@clack/prompts": "^1.2.0",

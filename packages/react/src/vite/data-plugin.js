@@ -12,7 +12,11 @@ const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
 
 const GLOB_PATTERN = '**/*.{flow,scene,object,record,prototype,folder}.{json,jsonc}'
 const CANVAS_GLOB_PATTERN = '**/*.canvas.jsonl'
+<<<<<<< HEAD
 const CANVAS_META_GLOB_PATTERN = '**/*.meta.json'
+=======
+const STORY_GLOB_PATTERN = '**/*.story.{jsx,tsx}'
+>>>>>>> origin/4.0.0--story-widgets
 
 /**
  * Extract the data name and type suffix from a file path.
@@ -91,6 +95,40 @@ function parseDataFile(filePath) {
     if (metaMatch[1].startsWith('_')) return null
     if (normalized.split('/').some(seg => seg.startsWith('_'))) return null
     return { name: metaMatch[1], suffix: 'canvas-meta', ext: 'json', inferredRoute: null }
+  }
+
+  // Handle .story.jsx / .story.tsx files
+  const storyMatch = base.match(/^(.+)\.story\.(jsx|tsx)$/)
+  if (storyMatch) {
+    if (storyMatch[1].startsWith('_')) return null
+    const normalized = filePath.replace(/\\/g, '/')
+    if (normalized.split('/').some(seg => seg.startsWith('_'))) return null
+
+    const name = storyMatch[1]
+    let inferredRoute = null
+
+    // All stories route under /components/ regardless of directory location
+    const canvasCheck = normalized.match(/(?:^|\/)src\/canvas\//)
+    const componentsCheck = normalized.match(/(?:^|\/)src\/components\//)
+    if (canvasCheck) {
+      const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
+      const routeBase = (dirPath + '/')
+        .replace(/^.*?src\/canvas\//, '')
+        .replace(/[^/]*\.folder\/?/g, '')
+        .replace(/\/$/, '')
+      inferredRoute = '/components/' + (routeBase ? routeBase + '/' : '') + name
+      inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/components'
+    } else if (componentsCheck) {
+      const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
+      const routeBase = (dirPath + '/')
+        .replace(/^.*?src\/components\//, '')
+        .replace(/[^/]*\.folder\/?/g, '')
+        .replace(/\/$/, '')
+      inferredRoute = '/components/' + (routeBase ? routeBase + '/' : '') + name
+      inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/components'
+    }
+
+    return { name, suffix: 'story', ext: storyMatch[2], inferredRoute }
   }
 
   const match = base.match(/^(.+)\.(flow|scene|object|record|prototype|folder)\.(jsonc?)$/)
@@ -281,7 +319,11 @@ function buildIndex(root) {
   const ignore = ['node_modules/**', 'dist/**', '.git/**', '.worktrees/**', 'public/**']
   const files = globSync(GLOB_PATTERN, { cwd: root, ignore, absolute: false })
   const canvasFiles = globSync(CANVAS_GLOB_PATTERN, { cwd: root, ignore, absolute: false })
+<<<<<<< HEAD
   const canvasMetaFiles = globSync(CANVAS_META_GLOB_PATTERN, { cwd: root, ignore, absolute: false })
+=======
+  const storyFiles = globSync(STORY_GLOB_PATTERN, { cwd: root, ignore, absolute: false })
+>>>>>>> origin/4.0.0--story-widgets
 
   // Detect nested .folder/ directories (not supported)
   // Scan directories directly since empty nested folders have no data files
@@ -298,6 +340,7 @@ function buildIndex(root) {
     }
   }
 
+<<<<<<< HEAD
   const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {}, canvas: {}, 'canvas-meta': {} }
   const seen = {} // "name.suffix" or "id.suffix" → absolute path (for duplicate detection)
   const protoFolders = {} // prototype name → folder name (for injection)
@@ -308,6 +351,16 @@ function buildIndex(root) {
   const canvasGroups = {} // canvas name → group name (shared folder prefix)
 
   for (const relPath of [...files, ...canvasFiles, ...canvasMetaFiles]) {
+=======
+  const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {}, canvas: {}, story: {} }
+  const seen = {} // "name.suffix" → absolute path (for duplicate detection)
+  const protoFolders = {} // prototype name → folder name (for injection)
+  const flowRoutes = {} // flow name → inferred route (for _route injection)
+  const canvasRoutes = {} // canvas name → inferred route
+  const storyRoutes = {} // story name → inferred route
+
+  for (const relPath of [...files, ...canvasFiles, ...storyFiles]) {
+>>>>>>> origin/4.0.0--story-widgets
     const parsed = parseDataFile(relPath)
     if (!parsed) continue
 
@@ -370,9 +423,18 @@ function buildIndex(root) {
     if (parsed.suffix === 'canvas' && parsed.group) {
       canvasGroups[parsed.name] = parsed.group
     }
+
+    // Track inferred routes for stories
+    if (parsed.suffix === 'story' && parsed.inferredRoute) {
+      storyRoutes[parsed.name] = parsed.inferredRoute
+    }
   }
 
+<<<<<<< HEAD
   return { index, protoFolders, flowRoutes, canvasRoutes, canvasAliases, canvasGroups }
+=======
+  return { index, protoFolders, flowRoutes, canvasRoutes, storyRoutes }
+>>>>>>> origin/4.0.0--story-widgets
 }
 
 /**
@@ -480,10 +542,15 @@ function readModesConfig(root) {
   return fallback
 }
 
+<<<<<<< HEAD
 function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasAliases, canvasGroups }, root) {
+=======
+function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, storyRoutes }, root) {
+>>>>>>> origin/4.0.0--story-widgets
   const declarations = []
   const INDEX_KEYS = ['flow', 'object', 'record', 'prototype', 'folder', 'canvas']
   const entries = { flow: [], object: [], record: [], prototype: [], folder: [], canvas: [] }
+  const storyEntries = [] // handled separately (code modules, not JSON data)
   const resolvedFlowRoutes = {} // flow name → resolved route (for multi-flow logging)
   let i = 0
 
@@ -637,8 +704,22 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasA
     }
   }
 
+  // Generate story entries (code modules with dynamic imports, not JSON data)
+  for (const [name, absPath] of Object.entries(index.story || {})) {
+    const varName = `_d${i++}`
+    const relModule = '/' + path.relative(root, absPath).replace(/\\/g, '/')
+    const storyMeta = { _storyModule: relModule }
+    if (storyRoutes[name]) {
+      storyMeta._route = storyRoutes[name]
+    }
+    declarations.push(
+      `const ${varName} = Object.assign(${JSON.stringify(storyMeta)}, { _storyImport: () => import(${JSON.stringify(relModule)}) })`
+    )
+    storyEntries.push(`  ${JSON.stringify(name)}: ${varName}`)
+  }
+
   const imports = [`import { init } from '@dfosco/storyboard-core'`]
-  const initCalls = [`init({ flows, objects, records, prototypes, folders, canvases })`]
+  const initCalls = [`init({ flows, objects, records, prototypes, folders, canvases, stories })`]
 
   // Feature flags from storyboard.config.json
   const { config } = readConfig(root)
@@ -706,6 +787,7 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasA
     `const prototypes = {\n${entries.prototype.join(',\n')}\n}`,
     `const folders = {\n${entries.folder.join(',\n')}\n}`,
     `const canvases = {\n${entries.canvas.join(',\n')}\n}`,
+    `const stories = {\n${storyEntries.join(',\n')}\n}`,
     '',
     `// Legacy basename → canonical ID aliases (only unique basenames)`,
     `const canvasAliases = ${JSON.stringify(canvasAliases || {})}`,
@@ -715,8 +797,13 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasA
     '',
     initCalls.join('\n'),
     '',
+<<<<<<< HEAD
     `export { flows, scenes, objects, records, prototypes, folders, canvases, canvasAliases }`,
     `export const index = { flows, scenes, objects, records, prototypes, folders, canvases, canvasAliases }`,
+=======
+    `export { flows, scenes, objects, records, prototypes, folders, canvases, stories }`,
+    `export const index = { flows, scenes, objects, records, prototypes, folders, canvases, stories }`,
+>>>>>>> origin/4.0.0--story-widgets
     `export default index`,
     '',
     '// Live-patch canvas data on HMR events so SPA navigation shows fresh state',
@@ -731,7 +818,18 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasA
     '        ? Object.assign({}, canvases[data.name], data.metadata)',
     '        : data.metadata',
     '    }',
-    '    init({ flows, objects, records, prototypes, folders, canvases })',
+    '    init({ flows, objects, records, prototypes, folders, canvases, stories })',
+    '  })',
+    '  import.meta.hot.on("storyboard:story-file-changed", (data) => {',
+    '    if (!data) return',
+    '    if (data.removed) {',
+    '      delete stories[data.name]',
+    '    } else {',
+    '      stories[data.name] = { _storyModule: data._storyModule, _route: data._route,',
+    '        _storyImport: () => import(/* @vite-ignore */ data._storyModule) }',
+    '    }',
+    '    init({ flows, objects, records, prototypes, folders, canvases, stories })',
+    '    document.dispatchEvent(new CustomEvent("storyboard:story-index-changed"))',
     '  })',
     '}',
   ].join('\n')
@@ -740,7 +838,7 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasA
 /**
  * Vite plugin for storyboard data discovery.
  *
- * - Scans the repo for *.flow.json, *.scene.json (compat), *.object.json, *.record.json, *.canvas.jsonl
+ * - Scans the repo for *.flow.json, *.scene.json (compat), *.object.json, *.record.json, *.canvas.jsonl, *.story.{jsx,tsx}
  * - Validates no two files share the same name+suffix (hard build error)
  * - Generates a virtual module `virtual:storyboard-data-index`
  * - Watches for file additions/removals in dev mode
@@ -814,6 +912,29 @@ export default function storyboardDataPlugin() {
           res.writeHead(500, { 'Content-Type': 'text/plain' })
           res.end('Component isolate failed')
         }
+      })
+
+      // ── Stories list API ──────────────────────────────────────────
+      // Serves the list of discovered stories for the CLI and UI story picker.
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url) return next()
+        let url = req.url
+        const baseNoTrail = (server.config.base || '/').replace(/\/$/, '')
+        if (baseNoTrail && url.startsWith(baseNoTrail)) {
+          url = url.slice(baseNoTrail.length) || '/'
+        }
+        if (!url.startsWith('/_storyboard/stories/list')) return next()
+
+        if (!buildResult) buildResult = buildIndex(root)
+        const storyEntries = Object.entries(buildResult.index.story || {})
+        const storyRoutes = buildResult.storyRoutes || {}
+        const stories = storyEntries.map(([name]) => ({
+          name,
+          route: storyRoutes[name] || null,
+        }))
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ stories }))
       })
 
       // Watch for data file changes in dev mode
@@ -962,6 +1083,36 @@ export default function storyboardDataPlugin() {
             softInvalidate()
             return
           }
+        }
+
+        // Story add/remove: soft-invalidate + custom HMR event (full-reload
+        // is blocked by the canvas reload guard). The virtual module HMR
+        // handler live-patches `stories` and re-runs init().
+        if (parsed?.suffix === 'story') {
+          softInvalidate()
+          if (!buildResult) buildResult = buildIndex(root)
+          const storyRoutes = buildResult.storyRoutes || {}
+          const storyIndex = buildResult.index.story || {}
+          const name = parsed.name
+          if (eventType === 'unlink') {
+            server.ws.send({
+              type: 'custom',
+              event: 'storyboard:story-file-changed',
+              data: { name, removed: true },
+            })
+          } else if (eventType === 'add' && storyIndex[name]) {
+            const relModule = '/' + path.relative(root, storyIndex[name]).replace(/\\/g, '/')
+            server.ws.send({
+              type: 'custom',
+              event: 'storyboard:story-file-changed',
+              data: {
+                name,
+                _storyModule: relModule,
+                _route: storyRoutes[name] || null,
+              },
+            })
+          }
+          return
         }
 
         // Non-canvas additions/removals and folder changes update the route/data graph.

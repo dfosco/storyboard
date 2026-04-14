@@ -489,7 +489,8 @@
           "type": "action",
           "action": "show-code",
           "label": "Show code",
-          "icon": "code"
+          "icon": "code",
+          "prod": true
         },
         {
           "id": "copy",
@@ -512,7 +513,8 @@
           "action": "copy-code",
           "label": "Copy code",
           "icon": "code",
-          "menu": true
+          "menu": true,
+          "prod": true
         },
         {
           "id": "copy-link",

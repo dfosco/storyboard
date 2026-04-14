@@ -31,6 +31,13 @@ function resolveStoryUrl(storyId, exportName) {
   return `${base}${route}?${params}`
 }
 
+/** Resolve a module path with the app base URL for dynamic imports. */
+function resolveModulePath(modulePath) {
+  if (!modulePath || !modulePath.startsWith('/')) return modulePath
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+  return base ? `${base}${modulePath}` : modulePath
+}
+
 export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, ref) {
   const storyId = props?.storyId || ''
   const exportName = props?.exportName || ''
@@ -75,7 +82,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
 
     // Use dynamic import with ?raw to get the file contents as a string.
     // Vite's ?raw suffix returns a module whose default export is the raw text.
-    import(/* @vite-ignore */ `${story._storyModule}?raw`)
+    import(/* @vite-ignore */ `${resolveModulePath(story._storyModule)}?raw`)
       .then((mod) => {
         if (cancelled) return
         setSourceCode(mod.default || '// Empty file')
@@ -117,7 +124,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
     const story = getStoryData(storyId)
     if (!story?._storyModule) return
     try {
-      const mod = await import(/* @vite-ignore */ `${story._storyModule}?raw`)
+      const mod = await import(/* @vite-ignore */ `${resolveModulePath(story._storyModule)}?raw`)
       const code = mod.default || ''
       setSourceCode(code)
       await navigator.clipboard?.writeText(code)

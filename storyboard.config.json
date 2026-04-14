@@ -27,5 +27,7 @@
         "name": "Application"
       }
     ]
-  }
+  },
+  "canvas": {},
+  "commandPalette": {}
 }

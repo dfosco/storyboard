@@ -30,13 +30,13 @@ function deepMerge(target, source) {
  * Module-level data index, seeded by init().
  * Shape: { flows: {}, objects: {}, records: {} }
  */
-let dataIndex = { flows: {}, objects: {}, records: {}, prototypes: {}, folders: {}, canvases: {} }
+let dataIndex = { flows: {}, objects: {}, records: {}, prototypes: {}, folders: {}, canvases: {}, stories: {} }
 
 /**
  * Seed the data index. Call once at app startup before any load functions.
  * The Vite data plugin calls this automatically via the generated virtual module.
  *
- * @param {{ flows?: object, scenes?: object, objects: object, records: object, prototypes?: object, folders?: object, canvases?: object }} index
+ * @param {{ flows?: object, scenes?: object, objects: object, records: object, prototypes?: object, folders?: object, canvases?: object, stories?: object }} index
  */
 export function init(index) {
   if (!index || typeof index !== 'object') {
@@ -49,6 +49,7 @@ export function init(index) {
     prototypes: index.prototypes || {},
     folders: index.folders || {},
     canvases: index.canvases || {},
+    stories: index.stories || {},
   }
 }
 
@@ -378,6 +379,24 @@ export function listCanvases() {
  */
 export function getCanvasData(name) {
   return dataIndex.canvases[name] ?? null
+}
+
+/**
+ * Returns the names of all registered stories.
+ * @returns {string[]}
+ */
+export function listStories() {
+  return Object.keys(dataIndex.stories)
+}
+
+/**
+ * Returns story data by name.
+ * Story entries include `_storyModule` (path) and `_storyImport` (dynamic import function).
+ * @param {string} name - Story name (e.g. "button-patterns")
+ * @returns {object|null} Story data with import function, or null
+ */
+export function getStoryData(name) {
+  return dataIndex.stories[name] ?? null
 }
 
 export { deepMerge }

@@ -1117,4 +1117,47 @@ describe('canvas watcher behavior', () => {
     expect(code).toContain('init({ flows, objects, records, prototypes, folders, canvases, stories })')
     expect(code).toContain('export { flows, scenes, objects, records, prototypes, folders, canvases, stories }')
   })
+
+  it('infers /canvas/ route for stories in src/canvas/', () => {
+    writeDataFiles(tmpDir)
+    mkdirSync(path.join(tmpDir, 'src', 'canvas'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'canvas', 'button-patterns.story.jsx'),
+      'export function Primary() { return null }',
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"button-patterns"')
+    expect(code).toContain('"/canvas/button-patterns"')
+    expect(code).toContain('_route')
+  })
+
+  it('infers /components/ route for stories in src/components/', () => {
+    writeDataFiles(tmpDir)
+    mkdirSync(path.join(tmpDir, 'src', 'components'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'components', 'text-input.story.jsx'),
+      'export function Default() { return null }',
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"text-input"')
+    expect(code).toContain('"/components/text-input"')
+  })
+
+  it('stories outside src/canvas/ or src/components/ have no inferred route', () => {
+    writeDataFiles(tmpDir)
+    writeFileSync(
+      path.join(tmpDir, 'orphan.story.jsx'),
+      'export function Default() { return null }',
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"orphan"')
+    // Should not have _route since it's not in a recognized directory
+    expect(code).not.toContain('"/orphan"')
+  })
 })

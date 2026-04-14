@@ -113,8 +113,6 @@
   function showCreateForm() {
     resetCreateForm()
     view = 'create'
-    // Keep menu open — re-assert after dropdown tries to close
-    requestAnimationFrame(() => { menuOpen = true })
   }
 
   async function submitCreate() {
@@ -198,9 +196,13 @@
       <DropdownMenu.Sub>
         <DropdownMenu.SubTrigger>Component</DropdownMenu.SubTrigger>
         <DropdownMenu.SubContent class="min-w-[200px] max-h-[320px] overflow-y-auto">
-          <DropdownMenu.Item onclick={showCreateForm}>
+          <button
+            class="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground w-full text-left bg-transparent border-none"
+            onclick={(e) => { e.preventDefault(); e.stopPropagation(); showCreateForm() }}
+            onpointerdown={(e) => e.stopPropagation()}
+          >
             <span class="font-medium">Create new component…</span>
-          </DropdownMenu.Item>
+          </button>
           {#if stories.length > 0}
             <DropdownMenu.Separator />
             <DropdownMenu.Label>Existing stories</DropdownMenu.Label>

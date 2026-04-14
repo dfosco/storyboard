@@ -67,7 +67,17 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
   const [preloadIframe, setPreloadIframe] = useState(!hasSnapshot || isExternal)
   const [iframeLoaded, setIframeLoaded] = useState(false)
   const [showIframe, setShowIframe] = useState(!hasSnapshot || isExternal)
+  const [showSpinner, setShowSpinner] = useState(false)
   const capturingRef = useRef(false)
+
+  // Show spinner only after 500ms of loading
+  useEffect(() => {
+    if (showIframe && !iframeLoaded && hasSnapshot) {
+      const timer = setTimeout(() => setShowSpinner(true), 500)
+      return () => clearTimeout(timer)
+    }
+    setShowSpinner(false)
+  }, [showIframe, iframeLoaded, hasSnapshot])
 
   const inputRef = useRef(null)
   const filterRef = useRef(null)
@@ -467,8 +477,8 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
           </div>
         ) : iframeSrc ? (
           <>
-            {/* Snapshot image — shown when snapshot exists and iframe not yet active */}
-            {hasSnapshot && !showIframe && (
+            {/* Snapshot image — shown until iframe is fully loaded */}
+            {hasSnapshot && !(showIframe && iframeLoaded) && (
               <div className={styles.iframeContainer}>
                 <img
                   src={basePath + (canvasTheme?.startsWith('dark') ? snapshotDark : snapshotLight)}
@@ -477,17 +487,22 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
                   style={{ width, height }}
                   draggable={false}
                 />
+                {showIframe && !iframeLoaded && showSpinner && (
+                  <div className={styles.snapshotSpinner}>
+                    <div className={styles.spinner} />
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Iframe — preloaded on hover, shown on click */}
+            {/* Iframe — preloaded on hover, revealed after load */}
             {(preloadIframe || showIframe) && (
               <div
                 ref={inlineContainerRef}
                 className={styles.iframeContainer}
                 style={
                   expanded ? { visibility: 'hidden' }
-                  : (hasSnapshot && !showIframe) ? { position: 'absolute', top: 0, left: 0, opacity: 0, pointerEvents: 'none' }
+                  : (hasSnapshot && !(showIframe && iframeLoaded)) ? { position: 'absolute', top: 0, left: 0, opacity: 0, pointerEvents: 'none' }
                   : undefined
                 }
               >

@@ -80,8 +80,19 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
   const currentSnapshot = isDark ? snapshotDark : snapshotLight
   const hasSnapshot = !!currentSnapshot
   const [preloadIframe, setPreloadIframe] = useState(!hasSnapshot)
+  const [iframeLoaded, setIframeLoaded] = useState(false)
   const [showIframe, setShowIframe] = useState(!hasSnapshot)
+  const [showSpinner, setShowSpinner] = useState(false)
   const capturingRef = useRef(false)
+
+  // Show spinner only after 500ms of loading
+  useEffect(() => {
+    if (showIframe && !iframeLoaded && hasSnapshot) {
+      const timer = setTimeout(() => setShowSpinner(true), 500)
+      return () => clearTimeout(timer)
+    }
+    setShowSpinner(false)
+  }, [showIframe, iframeLoaded, hasSnapshot])
   const [storyIndexKey, setStoryIndexKey] = useState(0)
 
   // Re-resolve story URL when the story index is live-patched (new story added)
@@ -346,8 +357,8 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
           </div>
         ) : (
           <>
-            {/* Snapshot image — shown when available and iframe not yet active */}
-            {hasSnapshot && !showIframe && (
+            {/* Snapshot image — shown until iframe is fully loaded */}
+            {hasSnapshot && !(showIframe && iframeLoaded) && (
               <div className={styles.content}>
                 <img
                   src={(import.meta.env.BASE_URL || '/').replace(/\/$/, '') + currentSnapshot}
@@ -355,20 +366,26 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
                   className={styles.snapshotImage}
                   draggable={false}
                 />
+                {showIframe && !iframeLoaded && showSpinner && (
+                  <div className={styles.snapshotSpinner}>
+                    <div className={styles.spinner} />
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Iframe — preloaded on hover, shown on click */}
+            {/* Iframe — preloaded on hover, revealed after load */}
             {(preloadIframe || showIframe) && (
               <div
                 className={styles.content}
-                style={hasSnapshot && !showIframe ? { position: 'absolute', top: 31, left: 0, right: 0, bottom: 0, opacity: 0, pointerEvents: 'none' } : undefined}
+                style={hasSnapshot && !(showIframe && iframeLoaded) ? { position: 'absolute', top: 31, left: 0, right: 0, bottom: 0, opacity: 0, pointerEvents: 'none' } : undefined}
               >
                 <iframe
                   ref={iframeRef}
                   src={iframeSrc}
                   className={styles.iframe}
                   title={displayName}
+                  onLoad={() => setIframeLoaded(true)}
                 />
               </div>
             )}

@@ -17,6 +17,7 @@ import { initCommentsConfig, isCommentsEnabled } from './comments/config.js'
 import { initFeatureFlags } from './featureFlags.js'
 import { initPlugins } from './plugins.js'
 import { initUIConfig } from './uiConfig.js'
+import { initCanvasConfig } from './canvasConfig.js'
 import { initToolbarConfig } from './toolbarConfigStore.js'
 
 let _mounted = false
@@ -154,6 +155,10 @@ export async function mountStoryboardCore(config = {}, options = {}) {
 
   if (config.ui) {
     initUIConfig(config.ui)
+  }
+
+  if (config.canvas) {
+    initCanvasConfig(config.canvas)
   }
 
   // Initialize comments config (framework-agnostic)

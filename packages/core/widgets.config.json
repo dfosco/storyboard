@@ -582,7 +582,7 @@
         {
           "id": "image-actions",
           "type": "dropdown",
-          "icon": "chevron-down",
+          "icon": "image",
           "label": "Image actions",
           "items": [
             {

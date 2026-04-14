@@ -161,10 +161,25 @@ export function compileConfigRule(rule) {
   return {
     name: `config:${rule.pattern}`,
     match: (text) => re.test(text),
-    resolve: (text) => {
+    resolve: (text, ctx) => {
+      const parsed = ctx?.parseUrl(text)
+      const pathname = parsed?.pathname ?? ''
+      const src = ctx?.extractSrc(pathname) ?? pathname
+      const search = parsed?.search ?? ''
+      const hash = parsed?.hash ?? ''
+
       const props = {}
       for (const [k, v] of Object.entries(propsTemplate)) {
-        props[k] = typeof v === 'string' ? v.replace(/\$url/g, text) : v
+        if (typeof v === 'string') {
+          props[k] = v
+            .replace(/\$url/g, text)
+            .replace(/\$pathname/g, pathname)
+            .replace(/\$src/g, src)
+            .replace(/\$search/g, search)
+            .replace(/\$hash/g, hash)
+        } else {
+          props[k] = v
+        }
       }
       return { type: rule.type, props }
     },

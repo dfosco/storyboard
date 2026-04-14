@@ -168,19 +168,21 @@ export function createCanvasHandler(ctx) {
     if (routePath === '/list' && method === 'GET') {
       const files = findCanvasFiles(root)
       const canvases = files.map((file) => {
-        const base = path.basename(file)
-        const match = base.match(/^(.+)\.canvas\.jsonl$/)
-        if (!match) return null
+        const id = toCanvasId(file)
+        if (!id) return null
+        const { segments } = parseCanvasId(id)
+        const group = segments.length > 1 ? segments.slice(0, -1).join('/') : null
         try {
           const data = readCanvas(path.resolve(root, file))
           return {
-            name: match[1],
-            title: data.title || match[1],
+            name: id,
+            title: data.title || segments[segments.length - 1],
             path: file,
             widgetCount: (data.widgets || []).length + (data.sources || []).length,
+            group,
           }
         } catch {
-          return { name: match[1], title: match[1], path: file, widgetCount: 0 }
+          return { name: id, title: segments[segments.length - 1], path: file, widgetCount: 0, group }
         }
       }).filter(Boolean)
       sendJson(res, 200, { canvases })
@@ -382,11 +384,14 @@ export function createCanvasHandler(ctx) {
         fs.mkdirSync(targetDir, { recursive: true })
         writeNewCanvas(canvasPath, creationEvent)
 
+        const relPath = path.relative(root, canvasPath).replace(/\\/g, '/')
+        const canonicalName = toCanvasId(relPath) || kebab
+
         const result = {
           success: true,
-          name: kebab,
-          path: path.relative(root, canvasPath),
-          route: `/canvas/${kebab}`,
+          name: canonicalName,
+          path: relPath,
+          route: `/canvas/${canonicalName}`,
         }
 
         // Optionally create starter JSX file
@@ -459,7 +464,7 @@ export function ${componentName}Example() {
       const now = new Date()
       const pad = (n) => String(n).padStart(2, '0')
       const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}--${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
-      const prefix = canvasName ? `${canvasName}--` : ''
+      const prefix = canvasName ? `${canvasName.replace(/[\/:]/g, '--')}--` : ''
       const filename = `${prefix}${dateStr}.${ext}`
 
       try {

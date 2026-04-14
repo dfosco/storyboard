@@ -1483,6 +1483,55 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     return () => document.removeEventListener('wheel', handleWheel)
   }, [])
 
+  // Touch pinch-to-zoom for mobile — two-finger pinch zooms the canvas
+  const pinchState = useRef({ active: false, startDist: 0, startZoom: 0, centerX: 0, centerY: 0 })
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+
+    function getTouchDist(t1, t2) {
+      const dx = t1.clientX - t2.clientX
+      const dy = t1.clientY - t2.clientY
+      return Math.sqrt(dx * dx + dy * dy)
+    }
+
+    function handleTouchStart(e) {
+      if (e.touches.length !== 2) return
+      const dist = getTouchDist(e.touches[0], e.touches[1])
+      pinchState.current = {
+        active: true,
+        startDist: dist,
+        startZoom: zoomRef.current,
+        centerX: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        centerY: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+      }
+    }
+
+    function handleTouchMove(e) {
+      if (!pinchState.current.active || e.touches.length !== 2) return
+      e.preventDefault()
+      const dist = getTouchDist(e.touches[0], e.touches[1])
+      const ratio = dist / pinchState.current.startDist
+      const newZoom = Math.round(pinchState.current.startZoom * ratio)
+      applyZoom(newZoom, pinchState.current.centerX, pinchState.current.centerY)
+    }
+
+    function handleTouchEnd() {
+      pinchState.current.active = false
+    }
+
+    el.addEventListener('touchstart', handleTouchStart, { passive: true })
+    el.addEventListener('touchmove', handleTouchMove, { passive: false })
+    el.addEventListener('touchend', handleTouchEnd)
+    el.addEventListener('touchcancel', handleTouchEnd)
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart)
+      el.removeEventListener('touchmove', handleTouchMove)
+      el.removeEventListener('touchend', handleTouchEnd)
+      el.removeEventListener('touchcancel', handleTouchEnd)
+    }
+  }, [])
+
   // Space + drag to pan the canvas
   const [spaceHeld, setSpaceHeld] = useState(false)
   const isPanning = useRef(false)

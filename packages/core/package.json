@@ -18,7 +18,8 @@
     "dist",
     "scaffold",
     "toolbar.config.json",
-    "widgets.config.json"
+    "widgets.config.json",
+    "paste.config.json"
   ],
   "scripts": {
     "build:css": "tailwindcss -i src/styles/tailwind.css -o dist/tailwind.css --minify",
@@ -31,6 +32,7 @@
     ".": "./src/index.js",
     "./toolbar.config.json": "./toolbar.config.json",
     "./widgets.config.json": "./widgets.config.json",
+    "./paste.config.json": "./paste.config.json",
     "./ui-runtime": "./dist/storyboard-ui.js",
     "./ui-runtime/style.css": "./dist/storyboard-ui.css",
     "./canvas/materializer": "./src/canvas/materializer.js",

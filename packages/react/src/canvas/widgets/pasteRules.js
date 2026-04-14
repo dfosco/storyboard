@@ -1,16 +1,15 @@
 /**
  * Paste Rules — config-driven paste routing for canvas widgets.
  *
- * Extracts the URL/text → widget-type decision logic from CanvasPage.jsx into
- * a deterministic, ordered rule engine.  Built-in rules replicate current
- * behavior; config rules from storyboard.config.json are prepended so they
- * take priority.
+ * All paste routing is defined in paste.config.json (packages/core).
+ * Each rule declares a match condition and a widget type + prop template.
+ * Rules are evaluated in order — first match wins.
  *
  * Image paste and widget-ref paste remain in CanvasPage.jsx because they
  * require clipboard / canvas API access that doesn't belong here.
  */
 
-import { isFigmaUrl, sanitizeFigmaUrl } from './figmaUrl.js'
+import pasteConfig from '@dfosco/storyboard-core/paste.config.json'
 
 // ---------------------------------------------------------------------------
 // Branch-prefix pattern (matches /branch--<name> at start of pathname)
@@ -31,12 +30,11 @@ const BRANCH_PREFIX_RE = /^\/branch--[^/]+/
  */
 export function createPasteContext(origin, basePath) {
   const normalizedBase = basePath.replace(/\/$/, '')
-  const baseUrl = origin + normalizedBase
 
   return {
     origin,
     basePath: normalizedBase,
-    baseUrl,
+    baseUrl: origin + normalizedBase,
 
     /**
      * Check whether a raw URL string points at the same Storyboard origin,
@@ -47,11 +45,8 @@ export function createPasteContext(origin, basePath) {
       const parsed = this.parseUrl(text)
       if (!parsed || parsed.origin !== origin) return false
       const pathname = parsed.pathname
-      // Exact base path or sub-path under base
       if (normalizedBase && (pathname === normalizedBase || pathname.startsWith(normalizedBase + '/'))) return true
-      // Root base path — anything on the same origin qualifies
       if (!normalizedBase) return true
-      // Branch deploy: /branch--<name>/...
       return BRANCH_PREFIX_RE.test(pathname)
     },
 
@@ -69,7 +64,7 @@ export function createPasteContext(origin, basePath) {
     },
 
     /**
-     * Parse text as an http(s) URL.  Returns the URL object or null.
+     * Parse text as an http(s) URL. Returns the URL object or null.
      */
     parseUrl(text) {
       try {
@@ -83,108 +78,186 @@ export function createPasteContext(origin, basePath) {
 }
 
 // ---------------------------------------------------------------------------
-// Built-in rules (ordered — first match wins)
-// ---------------------------------------------------------------------------
-
-/** @type {PasteRule[]} */
-const BUILTIN_RULES = [
-  {
-    name: 'figma',
-    match: (text) => isFigmaUrl(text),
-    resolve: (text) => ({
-      type: 'figma-embed',
-      props: { url: sanitizeFigmaUrl(text), width: 800, height: 450 },
-    }),
-  },
-  {
-    name: 'same-origin',
-    match: (text, ctx) => ctx.isSameOrigin(text),
-    resolve: (text, ctx) => {
-      const url = ctx.parseUrl(text) // guaranteed non-null — match already verified
-      const pathPortion = url.pathname + url.search + url.hash
-      const src = ctx.extractSrc(pathPortion)
-      return {
-        type: 'prototype',
-        props: { src: src || '/', originalSrc: src || '/', label: '', width: 800, height: 600 },
-      }
-    },
-  },
-  {
-    name: 'link-preview',
-    match: (text, ctx) => ctx.parseUrl(text) !== null,
-    resolve: (text) => ({
-      type: 'link-preview',
-      props: { url: text, title: '' },
-    }),
-  },
-  {
-    name: 'markdown',
-    match: () => true,
-    resolve: (text) => ({
-      type: 'markdown',
-      props: { content: text },
-    }),
-  },
-]
-
-// ---------------------------------------------------------------------------
-// Config rule compiler
+// Template variable resolution
 // ---------------------------------------------------------------------------
 
 /**
- * Compile a config rule object (from storyboard.config.json `canvas.pasteRules`)
- * into the internal `{ name, match, resolve }` shape.
+ * Build the set of template variables available to prop templates.
  *
- * Config format:
- * ```json
- * { "pattern": "youtube\\.com/watch", "type": "link-preview", "props": { "url": "$url" } }
- * ```
- *
- * `$url` in props values is replaced with the pasted text at resolve time.
- *
- * @param {object} rule
- * @returns {PasteRule | null}  null if the rule is invalid
+ * @param {string} text           - raw pasted text
+ * @param {URL|null} parsed       - parsed URL (null for non-URL text)
+ * @param {PasteContext} ctx
+ * @returns {Record<string, string>}
  */
-export function compileConfigRule(rule) {
-  if (!rule || typeof rule.pattern !== 'string' || typeof rule.type !== 'string') return null
+export function buildTemplateVars(text, parsed, ctx) {
+  const pathname = parsed?.pathname ?? ''
+  return {
+    $url: text,
+    $text: text,
+    $pathname: pathname,
+    $src: ctx.extractSrc(pathname),
+    $search: parsed?.search ?? '',
+    $hash: parsed?.hash ?? '',
+    $hostname: parsed?.hostname ?? '',
+    $origin: parsed?.origin ?? '',
+  }
+}
 
-  let re
+/**
+ * Apply URL sanitization to a value per the sanitize spec.
+ *
+ * @param {string} value         - the resolved URL string
+ * @param {{ stripParams?: string[], normalizeHost?: string }} spec
+ * @returns {string}
+ */
+export function sanitizeUrl(value, spec) {
   try {
-    re = new RegExp(rule.pattern)
+    const url = new URL(value)
+    if (spec.normalizeHost) url.hostname = spec.normalizeHost
+    if (Array.isArray(spec.stripParams)) {
+      for (const p of spec.stripParams) url.searchParams.delete(p)
+    }
+    return url.toString()
   } catch {
-    console.warn(`[pasteRules] Invalid regex pattern: ${rule.pattern}`)
+    return value
+  }
+}
+
+/**
+ * Resolve a single prop value from config.
+ * - Plain values (string, number, boolean) are returned as-is.
+ * - Objects with `template` are resolved from template vars.
+ * - Objects with `sanitize` have URL sanitization applied after template resolution.
+ *
+ * @param {*} propDef             - the prop definition from config
+ * @param {Record<string, string>} vars - template variables
+ * @returns {*}
+ */
+export function resolvePropValue(propDef, vars) {
+  if (propDef == null) return propDef
+
+  // Object with template key → resolve template + optional sanitize
+  if (typeof propDef === 'object' && propDef.template) {
+    let value = propDef.template
+    for (const [varName, varValue] of Object.entries(vars)) {
+      value = value.replaceAll(varName, varValue)
+    }
+    if (propDef.sanitize) {
+      value = sanitizeUrl(value, propDef.sanitize)
+    }
+    return value
+  }
+
+  // Plain string — substitute template vars
+  if (typeof propDef === 'string') {
+    let value = propDef
+    for (const [varName, varValue] of Object.entries(vars)) {
+      value = value.replaceAll(varName, varValue)
+    }
+    return value
+  }
+
+  // Numbers, booleans, etc. — pass through
+  return propDef
+}
+
+// ---------------------------------------------------------------------------
+// Rule compilation
+// ---------------------------------------------------------------------------
+
+/**
+ * Compile a single rule from paste.config.json into a callable
+ * `{ name, match, resolve }` object.
+ *
+ * Match conditions (all must pass when combined):
+ *   - `hostname`    — regex tested against parsed URL hostname
+ *   - `pathname`    — regex tested against parsed URL pathname
+ *   - `pattern`     — regex tested against the full pasted text
+ *   - `sameOrigin`  — boolean; delegates to ctx.isSameOrigin()
+ *   - `isUrl`       — boolean; true if text is a valid http(s) URL
+ *   - `any`         — boolean; always matches (catch-all)
+ *
+ * @param {object} ruleDef
+ * @returns {{ name: string, match: Function, resolve: Function } | null}
+ */
+export function compileRule(ruleDef) {
+  if (!ruleDef || !ruleDef.match || !ruleDef.widget) return null
+
+  const { match: matchDef, widget, props: propsDef = {}, name = 'unnamed' } = ruleDef
+
+  // Pre-compile regexes
+  const matchers = []
+
+  if (matchDef.hostname) {
+    try {
+      const re = new RegExp(matchDef.hostname)
+      matchers.push((text, parsed) => parsed !== null && re.test(parsed.hostname))
+    } catch {
+      console.warn(`[pasteRules] Invalid hostname regex in rule "${name}": ${matchDef.hostname}`)
+      return null
+    }
+  }
+
+  if (matchDef.pathname) {
+    try {
+      const re = new RegExp(matchDef.pathname)
+      matchers.push((text, parsed) => parsed !== null && re.test(parsed.pathname))
+    } catch {
+      console.warn(`[pasteRules] Invalid pathname regex in rule "${name}": ${matchDef.pathname}`)
+      return null
+    }
+  }
+
+  if (matchDef.pattern) {
+    try {
+      const re = new RegExp(matchDef.pattern)
+      matchers.push((text) => re.test(text))
+    } catch {
+      console.warn(`[pasteRules] Invalid pattern regex in rule "${name}": ${matchDef.pattern}`)
+      return null
+    }
+  }
+
+  if (matchDef.sameOrigin) {
+    matchers.push((text, parsed, ctx) => ctx.isSameOrigin(text))
+  }
+
+  if (matchDef.isUrl) {
+    matchers.push((text, parsed) => parsed !== null)
+  }
+
+  if (matchDef.any) {
+    matchers.push(() => true)
+  }
+
+  if (matchers.length === 0) {
+    console.warn(`[pasteRules] Rule "${name}" has no valid match conditions`)
     return null
   }
 
-  const propsTemplate = rule.props || {}
-
   return {
-    name: `config:${rule.pattern}`,
-    match: (text) => re.test(text),
-    resolve: (text, ctx) => {
-      const parsed = ctx?.parseUrl(text)
-      const pathname = parsed?.pathname ?? ''
-      const src = ctx?.extractSrc(pathname) ?? pathname
-      const search = parsed?.search ?? ''
-      const hash = parsed?.hash ?? ''
-
-      const props = {}
-      for (const [k, v] of Object.entries(propsTemplate)) {
-        if (typeof v === 'string') {
-          props[k] = v
-            .replace(/\$url/g, text)
-            .replace(/\$pathname/g, pathname)
-            .replace(/\$src/g, src)
-            .replace(/\$search/g, search)
-            .replace(/\$hash/g, hash)
-        } else {
-          props[k] = v
-        }
+    name,
+    match(text, parsed, ctx) {
+      return matchers.every(fn => fn(text, parsed, ctx))
+    },
+    resolve(text, parsed, ctx) {
+      const vars = buildTemplateVars(text, parsed, ctx)
+      const resolvedProps = {}
+      for (const [key, def] of Object.entries(propsDef)) {
+        resolvedProps[key] = resolvePropValue(def, vars)
       }
-      return { type: rule.type, props }
+      return { type: widget, props: resolvedProps }
     },
   }
 }
+
+// ---------------------------------------------------------------------------
+// Compile rules from paste.config.json at import time
+// ---------------------------------------------------------------------------
+
+const COMPILED_RULES = (pasteConfig.rules || [])
+  .map(compileRule)
+  .filter(Boolean)
 
 // ---------------------------------------------------------------------------
 // Main resolver
@@ -192,27 +265,26 @@ export function compileConfigRule(rule) {
 
 /**
  * Resolve pasted text into a widget `{ type, props }` by running through
- * ordered rules.  Config rules (if any) run before built-in rules.
+ * ordered rules from paste.config.json. Override rules (if any) run first.
  *
- * @param {string} text            - trimmed clipboard text
- * @param {PasteContext} context    - from `createPasteContext()`
- * @param {object[]} [configRules] - raw rule objects from storyboard.config.json
+ * @param {string} text              - trimmed clipboard text
+ * @param {PasteContext} context      - from `createPasteContext()`
+ * @param {object[]} [overrideRules] - raw rule objects from storyboard.config.json canvas.pasteRules
  * @returns {{ type: string, props: object } | null}
  */
-export function resolvePaste(text, context, configRules = []) {
-  const compiled = configRules
-    .map(compileConfigRule)
-    .filter(Boolean)
+export function resolvePaste(text, context, overrideRules = []) {
+  const parsed = context.parseUrl(text)
 
-  const rules = [...compiled, ...BUILTIN_RULES]
+  // Compile any runtime override rules (from storyboard.config.json)
+  const overrides = overrideRules.map(compileRule).filter(Boolean)
+  const allRules = [...overrides, ...COMPILED_RULES]
 
-  for (const rule of rules) {
-    if (rule.match(text, context)) {
-      return rule.resolve(text, context)
+  for (const rule of allRules) {
+    if (rule.match(text, parsed, context)) {
+      return rule.resolve(text, parsed, context)
     }
   }
 
-  // Should never reach here — markdown catches everything
   return null
 }
 
@@ -220,4 +292,4 @@ export function resolvePaste(text, context, configRules = []) {
 // Exports for testing
 // ---------------------------------------------------------------------------
 
-export { BUILTIN_RULES, BRANCH_PREFIX_RE }
+export { COMPILED_RULES, BRANCH_PREFIX_RE }

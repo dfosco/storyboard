@@ -43,8 +43,9 @@
 }
 
 /* Also apply dotted background to html so it spans beyond the canvas
-   main element (which has a fixed 10000×10000 size). */
-html:has(.tc-canvas[data-dotted]) {
+   main element (which has a fixed 10000×10000 size). The Canvas
+   component mirrors the grid vars and data-tc-dotted to <html>. */
+html[data-tc-dotted] {
   background-image: radial-gradient(var(--tc-dot-color) var(--tc-dot-radius), transparent var(--tc-dot-radius));
   background-size: var(--tc-grid-size) var(--tc-grid-size);
   background-position: var(--tc-grid-offset) var(--tc-grid-offset);

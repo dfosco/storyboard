@@ -18,7 +18,6 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { createServer } from 'vite'
 import { materializeFromText, serializeEvent } from '../canvas/materializer.js'
 import * as p from '@clack/prompts'
 import { bold, dim, green, yellow, cyan } from './intro.js'
@@ -124,6 +123,7 @@ async function run() {
   serverSpin.start('Starting temporary Vite server')
   let server
   try {
+    const { createServer } = await import('vite')
     server = await createServer({
       root,
       server: { port: SNAPSHOT_PORT, strictPort: false },

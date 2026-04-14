@@ -13,6 +13,7 @@ import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import useUndoRedo from './useUndoRedo.js'
 import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi, uploadImage, getCanvas as getCanvasApi } from './canvasApi.js'
+import { stories as storyIndex } from 'virtual:storyboard-data-index'
 import styles from './CanvasPage.module.css'
 
 const ZOOM_MIN = 25
@@ -22,6 +23,14 @@ const CANVAS_BRIDGE_STATE_KEY = '__storyboardCanvasBridgeState'
 
 /** Matches branch-deploy base path prefixes like /branch--my-feature/ */
 const BRANCH_PREFIX_RE = /^\/branch--[^/]+/
+
+// Build a reverse map from story route paths → { storyId, route }
+const storyRouteIndex = new Map()
+for (const [storyId, data] of Object.entries(storyIndex || {})) {
+  if (data?._route) {
+    storyRouteIndex.set(data._route.replace(/\/+$/, ''), storyId)
+  }
+}
 
 function getToolbarColorMode(theme) {
   return String(theme || 'light').startsWith('dark') ? 'dark' : 'light'
@@ -1099,6 +1108,23 @@ export default function CanvasPage({ name }) {
       return pathname
     }
 
+    // Check if a same-origin URL points to a story route.
+    // Returns { storyId, exportName } or null.
+    function matchStoryUrl(text) {
+      if (!isSameOriginPrototype(text)) return null
+      try {
+        const url = new URL(text)
+        const src = extractPrototypeSrc(url.pathname)
+        const normalized = src.replace(/\/+$/, '') || '/'
+        const storyId = storyRouteIndex.get(normalized)
+        if (!storyId) return null
+        const exportName = url.searchParams.get('export') || ''
+        return { storyId, exportName }
+      } catch {
+        return null
+      }
+    }
+
     /** Parse text as a web URL (http/https only). Returns URL object or null. */
     function looksLikeWebUrl(text) {
       try {
@@ -1251,14 +1277,20 @@ export default function CanvasPage({ name }) {
         if (isFigmaUrl(text)) {
           type = 'figma-embed'
           props = { url: sanitizeFigmaUrl(text), width: 800, height: 450 }
-        } else if (isSameOriginPrototype(text)) {
-          const pathPortion = url.pathname + url.search + url.hash
-          const src = extractPrototypeSrc(pathPortion)
-          type = 'prototype'
-          props = { src: src || '/', originalSrc: src || '/', label: '', width: 800, height: 600 }
         } else {
-          type = 'link-preview'
-          props = { url: text, title: '' }
+          const storyMatch = matchStoryUrl(text)
+          if (storyMatch) {
+            type = 'story'
+            props = { storyId: storyMatch.storyId, exportName: storyMatch.exportName, width: 600, height: 400 }
+          } else if (isSameOriginPrototype(text)) {
+            const pathPortion = url.pathname + url.search + url.hash
+            const src = extractPrototypeSrc(pathPortion)
+            type = 'prototype'
+            props = { src: src || '/', originalSrc: src || '/', label: '', width: 800, height: 600 }
+          } else {
+            type = 'link-preview'
+            props = { url: text, title: '' }
+          }
         }
       } else {
         type = 'markdown'

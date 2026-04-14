@@ -253,9 +253,23 @@ describe('compileConfigRule', () => {
 
   it('substitutes $url in props', () => {
     const rule = compileConfigRule({ pattern: '.', type: 'test', props: { url: '$url', extra: 42 } })
-    const resolved = rule.resolve('https://example.com')
+    const resolved = rule.resolve('https://example.com', ctx())
     expect(resolved.props.url).toBe('https://example.com')
     expect(resolved.props.extra).toBe(42)
+  })
+
+  it('substitutes $pathname, $src, $search, $hash in props', () => {
+    const c = ctx()
+    const rule = compileConfigRule({
+      pattern: 'example\\.com',
+      type: 'prototype',
+      props: { src: '$src', path: '$pathname', q: '$search', h: '$hash' },
+    })
+    const resolved = rule.resolve(`${ORIGIN}/storyboard/MyProto?flow=alt#override`, c)
+    expect(resolved.props.src).toBe('/MyProto')
+    expect(resolved.props.path).toBe('/storyboard/MyProto')
+    expect(resolved.props.q).toBe('?flow=alt')
+    expect(resolved.props.h).toBe('#override')
   })
 
   it('returns null for missing pattern', () => {

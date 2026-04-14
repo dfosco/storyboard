@@ -34,6 +34,12 @@ export function localBranchExists(name, cwd) {
  * Returns null if none can be determined.
  */
 export function resolveDefaultBranch(cwd) {
+  // Verify we're actually inside a git repository
+  try {
+    execFileSync('git', ['rev-parse', '--git-dir'], { cwd, stdio: 'ignore' })
+  } catch {
+    return null
+  }
   for (const candidate of ['main', 'master']) {
     if (localBranchExists(candidate, cwd)) return candidate
   }

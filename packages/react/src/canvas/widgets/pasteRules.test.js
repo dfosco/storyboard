@@ -2,8 +2,11 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   createPasteContext,
   resolvePaste,
-  compileConfigRule,
-  BUILTIN_RULES,
+  compileRule,
+  buildTemplateVars,
+  sanitizeUrl,
+  resolvePropValue,
+  COMPILED_RULES,
   BRANCH_PREFIX_RE,
 } from './pasteRules.js'
 
@@ -52,7 +55,6 @@ describe('createPasteContext', () => {
     })
 
     it('rejects basePath prefix collision (/storyboard vs /storyboard-beta)', () => {
-      // /storyboard-beta does NOT start with /storyboard/
       expect(ctx().isSameOrigin(`${ORIGIN}/storyboard-beta/foo`)).toBe(false)
     })
 
@@ -128,7 +130,200 @@ describe('BRANCH_PREFIX_RE', () => {
 })
 
 // ---------------------------------------------------------------------------
-// resolvePaste — built-in rules
+// sanitizeUrl
+// ---------------------------------------------------------------------------
+
+describe('sanitizeUrl', () => {
+  it('strips specified params', () => {
+    const result = sanitizeUrl('https://figma.com/board/abc/Name?t=token&node-id=1', { stripParams: ['t'] })
+    expect(result).not.toContain('t=token')
+    expect(result).toContain('node-id=1')
+  })
+
+  it('normalizes hostname', () => {
+    const result = sanitizeUrl('https://figma.com/board/abc/Name', { normalizeHost: 'www.figma.com' })
+    expect(result).toContain('www.figma.com')
+  })
+
+  it('returns original on invalid URL', () => {
+    expect(sanitizeUrl('not-a-url', { stripParams: ['t'] })).toBe('not-a-url')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// buildTemplateVars
+// ---------------------------------------------------------------------------
+
+describe('buildTemplateVars', () => {
+  const c = ctx()
+
+  it('builds all vars from a parsed URL', () => {
+    const parsed = new URL(`${ORIGIN}/storyboard/MyProto?flow=alt#over`)
+    const vars = buildTemplateVars(parsed.toString(), parsed, c)
+    expect(vars.$url).toBe(parsed.toString())
+    expect(vars.$text).toBe(parsed.toString())
+    expect(vars.$pathname).toBe('/storyboard/MyProto')
+    expect(vars.$src).toBe('/MyProto')
+    expect(vars.$search).toBe('?flow=alt')
+    expect(vars.$hash).toBe('#over')
+    expect(vars.$hostname).toBe('storyboard.example.com')
+  })
+
+  it('handles null parsed URL (plain text)', () => {
+    const vars = buildTemplateVars('hello world', null, c)
+    expect(vars.$url).toBe('hello world')
+    expect(vars.$text).toBe('hello world')
+    expect(vars.$pathname).toBe('')
+    expect(vars.$src).toBe('')
+    expect(vars.$hostname).toBe('')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// resolvePropValue
+// ---------------------------------------------------------------------------
+
+describe('resolvePropValue', () => {
+  const vars = { $url: 'https://example.com', $text: 'https://example.com', $src: '/MyProto', $pathname: '/storyboard/MyProto', $search: '', $hash: '', $hostname: 'example.com', $origin: 'https://example.com' }
+
+  it('resolves template object', () => {
+    expect(resolvePropValue({ template: '$src' }, vars)).toBe('/MyProto')
+  })
+
+  it('resolves template with sanitize', () => {
+    const result = resolvePropValue(
+      { template: '$url', sanitize: { stripParams: ['t'], normalizeHost: 'www.figma.com' } },
+      { ...vars, $url: 'https://figma.com/board/abc?t=token' }
+    )
+    expect(result).toContain('www.figma.com')
+    expect(result).not.toContain('t=token')
+  })
+
+  it('resolves plain string with template vars', () => {
+    expect(resolvePropValue('path is $pathname', vars)).toBe('path is /storyboard/MyProto')
+  })
+
+  it('passes through numbers', () => {
+    expect(resolvePropValue(800, vars)).toBe(800)
+  })
+
+  it('passes through null', () => {
+    expect(resolvePropValue(null, vars)).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// compileRule
+// ---------------------------------------------------------------------------
+
+describe('compileRule', () => {
+  const c = ctx()
+
+  it('compiles hostname + pathname matcher', () => {
+    const rule = compileRule({
+      name: 'figma',
+      match: { hostname: '^(www\\.)?figma\\.com$', pathname: '^/(board|design|proto)/' },
+      widget: 'figma-embed',
+      props: { url: { template: '$url' }, width: 800 },
+    })
+    expect(rule).not.toBeNull()
+    const parsed = c.parseUrl('https://www.figma.com/board/abc/Name')
+    expect(rule.match('https://www.figma.com/board/abc/Name', parsed, c)).toBe(true)
+    const nonFigma = c.parseUrl('https://github.com/repo')
+    expect(rule.match('https://github.com/repo', nonFigma, c)).toBe(false)
+  })
+
+  it('compiles sameOrigin matcher', () => {
+    const rule = compileRule({
+      name: 'proto',
+      match: { sameOrigin: true },
+      widget: 'prototype',
+      props: { src: { template: '$src' } },
+    })
+    const parsed = c.parseUrl(`${ORIGIN}/storyboard/MyProto`)
+    expect(rule.match(`${ORIGIN}/storyboard/MyProto`, parsed, c)).toBe(true)
+    const ext = c.parseUrl('https://other.com/page')
+    expect(rule.match('https://other.com/page', ext, c)).toBe(false)
+  })
+
+  it('compiles isUrl matcher', () => {
+    const rule = compileRule({
+      name: 'link',
+      match: { isUrl: true },
+      widget: 'link-preview',
+      props: { url: { template: '$url' } },
+    })
+    const parsed = c.parseUrl('https://example.com')
+    expect(rule.match('https://example.com', parsed, c)).toBe(true)
+    expect(rule.match('plain text', null, c)).toBe(false)
+  })
+
+  it('compiles any matcher', () => {
+    const rule = compileRule({
+      name: 'fallback',
+      match: { any: true },
+      widget: 'markdown',
+      props: { content: { template: '$text' } },
+    })
+    expect(rule.match('anything', null, c)).toBe(true)
+  })
+
+  it('compiles pattern matcher', () => {
+    const rule = compileRule({
+      name: 'youtube',
+      match: { pattern: 'youtube\\.com/watch' },
+      widget: 'link-preview',
+      props: { url: { template: '$url' } },
+    })
+    expect(rule.match('https://youtube.com/watch?v=abc', null, c)).toBe(true)
+    expect(rule.match('https://vimeo.com/123', null, c)).toBe(false)
+  })
+
+  it('returns null for missing match', () => {
+    expect(compileRule({ widget: 'test' })).toBeNull()
+  })
+
+  it('returns null for missing widget', () => {
+    expect(compileRule({ match: { any: true } })).toBeNull()
+  })
+
+  it('returns null for invalid regex', () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect(compileRule({ name: 'bad', match: { hostname: '[invalid' }, widget: 'test' })).toBeNull()
+    spy.mockRestore()
+  })
+
+  it('resolves props with template vars', () => {
+    const rule = compileRule({
+      name: 'test',
+      match: { any: true },
+      widget: 'markdown',
+      props: { content: { template: '$text' }, width: 400 },
+    })
+    const result = rule.resolve('hello', null, c)
+    expect(result.type).toBe('markdown')
+    expect(result.props.content).toBe('hello')
+    expect(result.props.width).toBe(400)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// COMPILED_RULES (from paste.config.json)
+// ---------------------------------------------------------------------------
+
+describe('COMPILED_RULES', () => {
+  it('compiles all rules from paste.config.json', () => {
+    expect(COMPILED_RULES.length).toBeGreaterThanOrEqual(4)
+    const names = COMPILED_RULES.map(r => r.name)
+    expect(names).toContain('figma')
+    expect(names).toContain('same-origin')
+    expect(names).toContain('link-preview')
+    expect(names).toContain('markdown')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// resolvePaste — end-to-end with paste.config.json rules
 // ---------------------------------------------------------------------------
 
 describe('resolvePaste', () => {
@@ -149,6 +344,12 @@ describe('resolvePaste', () => {
       const result = resolvePaste(text, c)
       expect(result.type).toBe('figma-embed')
       expect(result.props.url).not.toContain('trackingToken')
+    })
+
+    it('normalizes figma hostname to www.figma.com', () => {
+      const text = 'https://figma.com/board/abc/Name'
+      const result = resolvePaste(text, c)
+      expect(result.props.url).toContain('www.figma.com')
     })
   })
 
@@ -229,96 +430,44 @@ describe('resolvePaste', () => {
       expect(result.props.content).toBe('')
     })
 
-    it('handles malformed URL-like text as markdown', () => {
+    it('handles malformed URL-like text without crashing', () => {
       const result = resolvePaste('http://', c)
-      // 'http://' is technically parseable by URL constructor — depends on browser
-      // but the important thing is it doesn't throw
       expect(result).not.toBeNull()
     })
   })
 })
 
 // ---------------------------------------------------------------------------
-// Config rules
+// Override rules (from storyboard.config.json canvas.pasteRules)
 // ---------------------------------------------------------------------------
 
-describe('compileConfigRule', () => {
-  it('compiles a valid rule', () => {
-    const rule = compileConfigRule({ pattern: 'youtube\\.com', type: 'link-preview', props: { url: '$url' } })
-    expect(rule).not.toBeNull()
-    expect(rule.name).toBe('config:youtube\\.com')
-    expect(rule.match('https://youtube.com/watch?v=abc')).toBe(true)
-    expect(rule.match('https://vimeo.com')).toBe(false)
-  })
-
-  it('substitutes $url in props', () => {
-    const rule = compileConfigRule({ pattern: '.', type: 'test', props: { url: '$url', extra: 42 } })
-    const resolved = rule.resolve('https://example.com', ctx())
-    expect(resolved.props.url).toBe('https://example.com')
-    expect(resolved.props.extra).toBe(42)
-  })
-
-  it('substitutes $pathname, $src, $search, $hash in props', () => {
-    const c = ctx()
-    const rule = compileConfigRule({
-      pattern: 'example\\.com',
-      type: 'prototype',
-      props: { src: '$src', path: '$pathname', q: '$search', h: '$hash' },
-    })
-    const resolved = rule.resolve(`${ORIGIN}/storyboard/MyProto?flow=alt#override`, c)
-    expect(resolved.props.src).toBe('/MyProto')
-    expect(resolved.props.path).toBe('/storyboard/MyProto')
-    expect(resolved.props.q).toBe('?flow=alt')
-    expect(resolved.props.h).toBe('#override')
-  })
-
-  it('returns null for missing pattern', () => {
-    expect(compileConfigRule({ type: 'test' })).toBeNull()
-  })
-
-  it('returns null for missing type', () => {
-    expect(compileConfigRule({ pattern: '.' })).toBeNull()
-  })
-
-  it('returns null for invalid regex', () => {
-    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    expect(compileConfigRule({ pattern: '[invalid', type: 'test' })).toBeNull()
-    spy.mockRestore()
-  })
-
-  it('returns null for null/undefined input', () => {
-    expect(compileConfigRule(null)).toBeNull()
-    expect(compileConfigRule(undefined)).toBeNull()
-  })
-})
-
-describe('resolvePaste with config rules', () => {
+describe('resolvePaste with override rules', () => {
   const c = ctx()
 
-  it('config rule takes priority over built-ins', () => {
-    const configRules = [
-      { pattern: 'github\\.com', type: 'markdown', props: { content: 'GitHub link: $url' } },
+  it('override rule takes priority over paste.config.json rules', () => {
+    const overrides = [
+      { name: 'custom-github', match: { pattern: 'github\\.com' }, widget: 'markdown', props: { content: 'GitHub link: $url' } },
     ]
-    const result = resolvePaste('https://github.com/repo', c, configRules)
+    const result = resolvePaste('https://github.com/repo', c, overrides)
     expect(result.type).toBe('markdown')
     expect(result.props.content).toBe('GitHub link: https://github.com/repo')
   })
 
-  it('falls through to built-ins when config rule does not match', () => {
-    const configRules = [
-      { pattern: 'youtube\\.com', type: 'video', props: {} },
+  it('falls through to paste.config.json rules when override does not match', () => {
+    const overrides = [
+      { name: 'youtube', match: { pattern: 'youtube\\.com' }, widget: 'video', props: {} },
     ]
-    const result = resolvePaste('https://github.com/repo', c, configRules)
+    const result = resolvePaste('https://github.com/repo', c, overrides)
     expect(result.type).toBe('link-preview')
   })
 
-  it('invalid config rules are silently skipped', () => {
+  it('invalid override rules are silently skipped', () => {
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const configRules = [
-      { pattern: '[bad', type: 'test' },
-      { pattern: 'github\\.com', type: 'custom', props: { url: '$url' } },
+    const overrides = [
+      { name: 'bad', match: { hostname: '[invalid' }, widget: 'test' },
+      { name: 'good', match: { pattern: 'github\\.com' }, widget: 'custom', props: { url: { template: '$url' } } },
     ]
-    const result = resolvePaste('https://github.com/repo', c, configRules)
+    const result = resolvePaste('https://github.com/repo', c, overrides)
     expect(result.type).toBe('custom')
     spy.mockRestore()
   })

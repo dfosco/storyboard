@@ -4,8 +4,8 @@ import { execSync } from 'node:child_process'
 import { globSync } from 'glob'
 import { parse as parseJsonc } from 'jsonc-parser'
 import { materializeFromText } from '@dfosco/storyboard-core/canvas/materializer'
-import { toCanvasId } from '../../../core/src/canvas/identity.js'
-import { getConfig } from '../../../core/src/configSchema.js'
+import { toCanvasId } from '@dfosco/storyboard-core/canvas/identity'
+import { getConfig } from '@dfosco/storyboard-core/config'
 
 const VIRTUAL_MODULE_ID = 'virtual:storyboard-data-index'
 const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID

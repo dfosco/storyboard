@@ -13,12 +13,14 @@
   import { onMount, onDestroy, untrack } from 'svelte'
   import './core-ui-colors.css'
   import CommandMenu from './CommandMenu.svelte'
+  import PwaInstallBanner from './PwaInstallBanner.svelte'
   import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
   import * as Tooltip from './lib/components/ui/tooltip/index.js'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
   import { sidePanelState, togglePanel } from './stores/sidePanelStore.js'
-  import { initCommandActions, registerCommandAction, getActionChildren, hasChildrenProvider, isExcludedByRoute, setRoutingBasePath } from './commandActions.js'
+  import { initCommandActions, registerCommandAction, getActionChildren, hasChildrenProvider, isExcludedByRoute, setRoutingBasePath, setDynamicActions, clearDynamicActions } from './commandActions.js'
+  import { isMobile, subscribeToMobile } from './mobileViewport.js'
   import { isMenuHidden } from './uiConfig.js'
   import { subscribeToToolbarConfig, getToolbarConfig } from './toolbarConfigStore.js'
   import { initToolbarToolStates, getToolbarToolState, isToolbarToolLocalOnly, subscribeToToolbarToolStates } from './toolStateStore.js'
@@ -73,6 +75,11 @@
   let activeCanvasName = $state('')
   let canvasZoom = $state(100)
   let toolStateVersion = $state(0)
+
+  // Mobile viewport state — on narrow screens, toolbar tools move into the command menu
+  let isMobileState = $state(isMobile())
+  let unsubMobile: (() => void) | null = null
+  let mobileActionsRegistered = false
 
   // Roving tabindex: only one button in the toolbar is tabbable at a time
   let activeToolbarIndex = $state(-1)
@@ -361,7 +368,7 @@
       }
     }
 
-    bumpNav = () => { navVersion++; syncPrototypeToolbar() }
+    bumpNav = () => { navVersion++; syncPrototypeToolbar(); syncMobileActions() }
     window.addEventListener('popstate', bumpNav)
     origPushState = history.pushState.bind(history)
     history.pushState = (...args: any[]) => { origPushState(...args); bumpNav() }
@@ -451,6 +458,13 @@
     document.addEventListener('storyboard:canvas:zoom-changed', handleZoomChanged)
     document.addEventListener('storyboard:canvas:status', handleCanvasMounted)
     syncCanvasBridgeState()
+
+    // Subscribe to mobile viewport changes and sync mobile command actions
+    syncMobileActions()
+    unsubMobile = subscribeToMobile((mobile: boolean) => {
+      isMobileState = mobile
+      syncMobileActions()
+    })
   })
 
   onDestroy(() => {
@@ -458,6 +472,8 @@
     if (bumpNav) window.removeEventListener('popstate', bumpNav)
     if (origPushState) history.pushState = origPushState
     if (origReplaceState) history.replaceState = origReplaceState
+    if (unsubMobile) unsubMobile()
+    clearDynamicActions('mobile-toolbar')
     document.removeEventListener('storyboard:canvas:mounted', handleCanvasMounted)
     document.removeEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
     document.removeEventListener('storyboard:canvas:zoom-changed', handleZoomChanged)
@@ -469,12 +485,14 @@
     const detail = (e as CustomEvent).detail
     activeCanvasName = detail?.name || ''
     canvasZoom = detail?.zoom ?? 100
+    syncMobileActions()
   }
 
   function handleCanvasUnmounted() {
     canvasActive = false
     activeCanvasName = ''
     canvasZoom = 100
+    syncMobileActions()
   }
 
   function handleZoomChanged(e: Event) {
@@ -495,6 +513,183 @@
     }
   }
 
+  /**
+   * Sync mobile command actions — when in mobile viewport, toolbar tools
+   * become dynamic command actions in the ⌘ menu.
+   */
+  async function syncMobileActions() {
+    if (!isMobileState) {
+      if (mobileActionsRegistered) {
+        clearDynamicActions('mobile-toolbar')
+        mobileActionsRegistered = false
+      }
+      return
+    }
+
+    const actions: any[] = []
+    const handlers: Record<string, any> = {}
+    const toolConfigs = config.tools || {}
+
+    // Main-toolbar tools → command actions
+    actions.push({ type: 'header', label: 'Tools', id: '_mobile_header' })
+
+    for (const [key, tool] of Object.entries(toolConfigs as Record<string, any>)) {
+      if (tool.surface !== 'main-toolbar') continue
+      if (tool.render === 'separator') continue
+      if (!tool.prod && !isLocalDev) continue
+      if (getToolbarToolState(key) === 'disabled') continue
+      if (isExcludedByRoute(tool)) continue
+
+      // Always use mobile:-prefixed ids to avoid clobbering shared desktop handlers
+      const mobileId = `mobile:${key}`
+      const desktopActionId = tool.handler || `core:${key}`
+
+      // Menu tools with getChildren → submenu (delegate to existing desktop handler)
+      if (tool.render === 'menu' && hasChildrenProvider(desktopActionId)) {
+        actions.push({
+          id: mobileId,
+          label: tool.label || tool.ariaLabel,
+          type: 'submenu',
+          modes: tool.modes || ['*'],
+          excludeRoutes: tool.excludeRoutes,
+          toolKey: key,
+          localOnly: !tool.prod,
+        })
+        handlers[mobileId] = {
+          getChildren: () => getActionChildren(desktopActionId),
+        }
+      }
+      // Sidepanel tools → default action (toggle panel)
+      else if (tool.render === 'sidepanel') {
+        actions.push({
+          id: mobileId,
+          label: tool.ariaLabel || tool.label || key,
+          type: 'default',
+          modes: tool.modes || ['*'],
+          excludeRoutes: tool.excludeRoutes,
+          toolKey: key,
+          localOnly: !tool.prod,
+        })
+        handlers[mobileId] = () => { togglePanel(tool.sidepanel) }
+      }
+      // Button tools (e.g. comments) — only if the desktop guard passed (component loaded)
+      else if (tool.render === 'button' && toolComponents[key]) {
+        try {
+          if (key === 'comments') {
+            const { toggleCommentMode, isCommentModeActive } = await import('./comments/commentMode.js')
+            const { isAuthenticated } = await import('./comments/auth.js')
+            const { openAuthModal } = await import('./comments/ui/authModal.js')
+            actions.push({
+              id: mobileId,
+              label: tool.ariaLabel || 'Comments',
+              type: 'toggle',
+              modes: tool.modes || ['*'],
+              excludeRoutes: tool.excludeRoutes,
+              toolKey: key,
+              localOnly: !tool.prod,
+            })
+            handlers[mobileId] = {
+              execute: async () => {
+                if (!isAuthenticated()) {
+                  const user = await openAuthModal()
+                  if (!user) return
+                }
+                toggleCommentMode()
+              },
+              getState: () => isCommentModeActive(),
+            }
+          }
+        } catch { /* comments module not available */ }
+      }
+    }
+
+    // Theme tool — special handling (component-only, no handler in registry)
+    if (toolConfigs.theme && toolComponents.theme) {
+      // Only add if not already handled above (theme has no getChildren in registry)
+      if (!actions.some(a => a.id === 'mobile:theme')) {
+        try {
+          const { themeState, setTheme, THEMES } = await import('./stores/themeStore.js')
+          actions.push({
+            id: 'mobile:theme',
+            label: 'Theme',
+            type: 'submenu',
+            modes: ['*'],
+            toolKey: 'theme',
+            localOnly: !toolConfigs.theme.prod,
+          })
+          handlers['mobile:theme'] = {
+            getChildren: () => {
+              const current = themeState.theme
+              return THEMES.map((t: any) => ({
+                id: `theme:${t.value}`,
+                label: t.label,
+                type: 'toggle' as const,
+                active: current === t.value,
+                execute: () => setTheme(t.value),
+              }))
+            },
+          }
+        } catch { /* theme store not available */ }
+      }
+    }
+
+    // Canvas tools → individual actions (only when canvas is active)
+    if (canvasActive) {
+      actions.push({ type: 'separator', id: '_mobile_canvas_sep' })
+      actions.push({ type: 'header', label: 'Canvas', id: '_mobile_canvas_header' })
+
+      const zoomData = toolData['canvas-zoom']
+      if (zoomData) {
+        actions.push({
+          id: 'mobile:zoom-in', label: 'Zoom in', type: 'default', modes: ['*'],
+        })
+        handlers['mobile:zoom-in'] = () => zoomData.zoomIn(canvasZoom)
+
+        actions.push({
+          id: 'mobile:zoom-out', label: 'Zoom out', type: 'default', modes: ['*'],
+        })
+        handlers['mobile:zoom-out'] = () => zoomData.zoomOut(canvasZoom)
+
+        actions.push({
+          id: 'mobile:zoom-reset', label: 'Reset zoom (100%)', type: 'default', modes: ['*'],
+        })
+        handlers['mobile:zoom-reset'] = () => zoomData.zoomReset()
+      }
+
+      if (toolData['canvas-zoom-to-fit'] || zoomData) {
+        const data = toolData['canvas-zoom-to-fit'] || zoomData
+        actions.push({
+          id: 'mobile:zoom-to-fit', label: 'Zoom to fit', type: 'default', modes: ['*'],
+        })
+        handlers['mobile:zoom-to-fit'] = () => data.zoomToFit()
+      }
+
+      if (toolData['canvas-snap'] || zoomData) {
+        const data = toolData['canvas-snap'] || zoomData
+        actions.push({
+          id: 'mobile:toggle-snap', label: 'Snap to grid', type: 'default', modes: ['*'],
+        })
+        handlers['mobile:toggle-snap'] = () => data.toggleSnap()
+      }
+
+      if (toolData['canvas-undo-redo'] || zoomData) {
+        const data = toolData['canvas-undo-redo'] || zoomData
+        actions.push({
+          id: 'mobile:undo', label: 'Undo', type: 'default', modes: ['*'],
+        })
+        handlers['mobile:undo'] = () => data.undo()
+
+        actions.push({
+          id: 'mobile:redo', label: 'Redo', type: 'default', modes: ['*'],
+        })
+        handlers['mobile:redo'] = () => data.redo()
+      }
+    }
+
+    setDynamicActions('mobile-toolbar', actions, handlers)
+    mobileActionsRegistered = true
+  }
+
   // Flow info dialog state — driven by core/show-flow-info action
   let flowDialogOpen = $state(false)
   let flowName = $state('default')
@@ -510,7 +705,7 @@
 </script>
 
 {#if !isEmbed}
-  {#if visible && canvasActive && canvasMenus.length > 0}
+  {#if visible && canvasActive && canvasMenus.length > 0 && !isMobileState}
     <div
       class="fixed bottom-6 left-6 z-[9999] font-sans flex items-center gap-3"
       role="toolbar"
@@ -557,7 +752,7 @@
     onkeydown={handleToolbarKeydown}
     bind:this={toolbarEl}
   >
-    {#if visible}
+    {#if visible && !isMobileState}
       {#each cleanedMenus as menu, i (menu.key)}
         {#if menu.render === 'separator'}
           <div class="toolbar-separator" aria-hidden="true"></div>
@@ -617,6 +812,10 @@
 
 {#if !isEmbed && SidePanel}
   <SidePanel onClose={() => focusToolbarItem(activeToolbarIndex < 0 ? toolbarItemCount - 1 : activeToolbarIndex)} />
+{/if}
+
+{#if !isEmbed}
+  <PwaInstallBanner />
 {/if}
 
 <style>

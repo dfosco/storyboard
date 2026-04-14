@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Storyboard Prototype</title>
 
@@ -55,6 +56,9 @@
           body:has(#initial-loader) {
             margin: 0;
             padding: 0;
+          }
+          html, body {
+            overscroll-behavior-y: contain;
           }
           @keyframes spin{to{transform:rotate(360deg)}}
           @keyframes fadeIn{from{opacity:0}to{opacity:1}}

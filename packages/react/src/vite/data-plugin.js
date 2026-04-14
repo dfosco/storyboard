@@ -273,7 +273,8 @@ function buildIndex(root) {
   const protoFolders = {} // prototype name → folder name (for injection)
   const flowRoutes = {} // flow name → inferred route (for _route injection)
   const canvasRoutes = {} // canvas name → inferred route
-  const canvasNameCount = {} // canvas basename → count (for ambiguity warnings)
+  const canvasAliases = {} // basename → canonical ID (only when unique)
+  const canvasNameCount = {} // canvas basename → count (for ambiguity detection)
 
   for (const relPath of [...files, ...canvasFiles]) {
     const parsed = parseDataFile(relPath)
@@ -303,16 +304,16 @@ function buildIndex(root) {
 
     seen[dedupKey] = absPath
 
-    // Canvas: index by path-based ID, also keep name-based entry for backward compat
+    // Canvas: index only by canonical ID. Basename aliases go in a separate map
+    // so listCanvases() and viewfinder don't show duplicates.
     if (parsed.suffix === 'canvas' && parsed.id) {
       index.canvas[parsed.id] = absPath
-      // Legacy name-based fallback — warn if ambiguous
+      // Track basename for alias resolution (only when unique)
       canvasNameCount[parsed.name] = (canvasNameCount[parsed.name] || 0) + 1
       if (canvasNameCount[parsed.name] === 1) {
-        index.canvas[parsed.name] = absPath
+        canvasAliases[parsed.name] = parsed.id
       } else {
-        // Ambiguous — remove the name-based entry so callers must use the ID
-        delete index.canvas[parsed.name]
+        delete canvasAliases[parsed.name]
       }
     } else {
       index[parsed.suffix][parsed.name] = absPath
@@ -328,18 +329,14 @@ function buildIndex(root) {
       flowRoutes[parsed.name] = parsed.inferredRoute
     }
 
-    // Track inferred routes for canvases (keyed by ID when available)
+    // Track inferred routes for canvases (keyed by canonical ID)
     if (parsed.suffix === 'canvas' && parsed.inferredRoute) {
       const canvasKey = parsed.id || parsed.name
       canvasRoutes[canvasKey] = parsed.inferredRoute
-      // Also keep name-based route for backward compat (unless ambiguous)
-      if (parsed.id && parsed.id !== parsed.name && canvasNameCount[parsed.name] === 1) {
-        canvasRoutes[parsed.name] = parsed.inferredRoute
-      }
     }
   }
 
-  return { index, protoFolders, flowRoutes, canvasRoutes }
+  return { index, protoFolders, flowRoutes, canvasRoutes, canvasAliases }
 }
 
 /**
@@ -447,7 +444,7 @@ function readModesConfig(root) {
   return fallback
 }
 
-function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root) {
+function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasAliases }, root) {
   const declarations = []
   const INDEX_KEYS = ['flow', 'object', 'record', 'prototype', 'folder', 'canvas']
   const entries = { flow: [], object: [], record: [], prototype: [], folder: [], canvas: [] }
@@ -652,13 +649,16 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
     `const folders = {\n${entries.folder.join(',\n')}\n}`,
     `const canvases = {\n${entries.canvas.join(',\n')}\n}`,
     '',
+    `// Legacy basename → canonical ID aliases (only unique basenames)`,
+    `const canvasAliases = ${JSON.stringify(canvasAliases || {})}`,
+    '',
     '// Backward-compatible alias',
     'const scenes = flows',
     '',
     initCalls.join('\n'),
     '',
-    `export { flows, scenes, objects, records, prototypes, folders, canvases }`,
-    `export const index = { flows, scenes, objects, records, prototypes, folders, canvases }`,
+    `export { flows, scenes, objects, records, prototypes, folders, canvases, canvasAliases }`,
+    `export const index = { flows, scenes, objects, records, prototypes, folders, canvases, canvasAliases }`,
     `export default index`,
     '',
     '// Live-patch canvas data on HMR events so SPA navigation shows fresh state',

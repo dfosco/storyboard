@@ -81,11 +81,10 @@
     if (menuOpen) loadStories()
   })
 
-  // Reset view when menu closes
+  // Reset view when menu closes (but not during view transitions)
   $effect(() => {
-    if (!menuOpen && view !== 'notification') {
+    if (!menuOpen && view === 'menu') {
       resetCreateForm()
-      view = 'menu'
     }
   })
 
@@ -114,6 +113,8 @@
   function showCreateForm() {
     resetCreateForm()
     view = 'create'
+    // Keep menu open — re-assert after dropdown tries to close
+    requestAnimationFrame(() => { menuOpen = true })
   }
 
   async function submitCreate() {
@@ -160,9 +161,11 @@
 </script>
 
 <DropdownMenu.Root bind:open={menuOpen} onOpenChange={(open) => {
-  if (!open && view === 'notification') {
+  if (!open && view !== 'menu') {
+    // User dismissed the panel — reset everything
     view = 'menu'
     notificationPath = null
+    resetCreateForm()
   }
 }}>
   <DropdownMenu.Trigger>

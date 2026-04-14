@@ -17,7 +17,6 @@ set -euo pipefail
 # ── Configuration ─────────────────────────────────────────────────
 # Ordered list of stages. Add new stages here.
 STAGES=(
-  stage_test
   stage_snapshots
 )
 

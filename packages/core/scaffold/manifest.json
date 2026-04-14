@@ -35,6 +35,12 @@
       "source": "scaffold/deploy.yml",
       "target": ".github/workflows/deploy.yml",
       "mode": "scaffold"
+    },
+    {
+      "source": "scaffold/githooks/",
+      "target": ".githooks/",
+      "mode": "updateable",
+      "directory": true
     }
   ]
 }

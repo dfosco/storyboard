@@ -69,7 +69,32 @@ function parseDataFile(filePath) {
     if (storyMatch[1].startsWith('_')) return null
     const normalized = filePath.replace(/\\/g, '/')
     if (normalized.split('/').some(seg => seg.startsWith('_'))) return null
-    return { name: storyMatch[1], suffix: 'story', ext: storyMatch[2] }
+
+    const name = storyMatch[1]
+    let inferredRoute = null
+
+    // Infer route from directory: src/canvas/ → /canvas/..., src/components/ → /components/...
+    const canvasCheck = normalized.match(/(?:^|\/)src\/canvas\//)
+    const componentsCheck = normalized.match(/(?:^|\/)src\/components\//)
+    if (canvasCheck) {
+      const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
+      const routeBase = (dirPath + '/')
+        .replace(/^.*?src\/canvas\//, '')
+        .replace(/[^/]*\.folder\/?/g, '')
+        .replace(/\/$/, '')
+      inferredRoute = '/canvas/' + (routeBase ? routeBase + '/' : '') + name
+      inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
+    } else if (componentsCheck) {
+      const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
+      const routeBase = (dirPath + '/')
+        .replace(/^.*?src\/components\//, '')
+        .replace(/[^/]*\.folder\/?/g, '')
+        .replace(/\/$/, '')
+      inferredRoute = '/components/' + (routeBase ? routeBase + '/' : '') + name
+      inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/components'
+    }
+
+    return { name, suffix: 'story', ext: storyMatch[2], inferredRoute }
   }
 
   const match = base.match(/^(.+)\.(flow|scene|object|record|prototype|folder)\.(jsonc?)$/)
@@ -282,6 +307,7 @@ function buildIndex(root) {
   const protoFolders = {} // prototype name → folder name (for injection)
   const flowRoutes = {} // flow name → inferred route (for _route injection)
   const canvasRoutes = {} // canvas name → inferred route
+  const storyRoutes = {} // story name → inferred route
 
   for (const relPath of [...files, ...canvasFiles, ...storyFiles]) {
     const parsed = parseDataFile(relPath)
@@ -321,9 +347,14 @@ function buildIndex(root) {
     if (parsed.suffix === 'canvas' && parsed.inferredRoute) {
       canvasRoutes[parsed.name] = parsed.inferredRoute
     }
+
+    // Track inferred routes for stories
+    if (parsed.suffix === 'story' && parsed.inferredRoute) {
+      storyRoutes[parsed.name] = parsed.inferredRoute
+    }
   }
 
-  return { index, protoFolders, flowRoutes, canvasRoutes }
+  return { index, protoFolders, flowRoutes, canvasRoutes, storyRoutes }
 }
 
 /**
@@ -431,7 +462,7 @@ function readModesConfig(root) {
   return fallback
 }
 
-function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root) {
+function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, storyRoutes }, root) {
   const declarations = []
   const INDEX_KEYS = ['flow', 'object', 'record', 'prototype', 'folder', 'canvas']
   const entries = { flow: [], object: [], record: [], prototype: [], folder: [], canvas: [] }
@@ -571,8 +602,12 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
   for (const [name, absPath] of Object.entries(index.story || {})) {
     const varName = `_d${i++}`
     const relModule = '/' + path.relative(root, absPath).replace(/\\/g, '/')
+    const storyMeta = { _storyModule: relModule }
+    if (storyRoutes[name]) {
+      storyMeta._route = storyRoutes[name]
+    }
     declarations.push(
-      `const ${varName} = Object.assign({ _storyModule: ${JSON.stringify(relModule)} }, { _storyImport: () => import(${JSON.stringify(relModule)}) })`
+      `const ${varName} = Object.assign(${JSON.stringify(storyMeta)}, { _storyImport: () => import(${JSON.stringify(relModule)}) })`
     )
     storyEntries.push(`  ${JSON.stringify(name)}: ${varName}`)
   }

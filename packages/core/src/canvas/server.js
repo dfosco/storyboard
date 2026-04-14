@@ -70,6 +70,10 @@ function deriveCanvasId(relPath) {
   if (!match) return null
   const baseName = match[1]
 
+  // Skip _-prefixed files and files inside _-prefixed directories
+  if (baseName.startsWith('_')) return null
+  if (normalized.split('/').some(seg => seg.startsWith('_'))) return null
+
   const canvasCheck = normalized.match(/(?:^|\/)src\/canvas\//)
   if (canvasCheck) {
     const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))

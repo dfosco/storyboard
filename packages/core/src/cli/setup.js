@@ -147,7 +147,64 @@ if (isInstalled('code')) {
   }
 }
 
-// 6. Proxy
+// 6. Git hooks
+{
+  const hooksPath = existsSync('.githooks') ? '.githooks' : null
+  if (hooksPath) {
+    try {
+      run('git config core.hooksPath .githooks')
+      // Ensure pre-push is executable
+      if (existsSync('.githooks/pre-push')) {
+        run('chmod +x .githooks/pre-push')
+      }
+      p.log.success('Git hooks activated (.githooks/)')
+    } catch {
+      p.log.warning('Failed to set git hooks path')
+    }
+  } else {
+    p.log.info(dim('No .githooks/ directory — run storyboard-scaffold first'))
+  }
+}
+
+// 7. Asset directories
+{
+  const dirs = ['assets/canvas/images', 'assets/canvas/snapshots']
+  for (const dir of dirs) {
+    if (!existsSync(dir)) {
+      try {
+        execSync(`mkdir -p ${dir}`, { stdio: 'pipe' })
+      } catch { /* ignore */ }
+    }
+  }
+  p.log.success('Canvas asset directories ready')
+}
+
+// 8. Playwright (for canvas snapshots)
+{
+  let hasPlaywright = false
+  try {
+    run('node -e "require(\'playwright\')"')
+    hasPlaywright = true
+  } catch { /* not installed */ }
+
+  if (hasPlaywright) {
+    p.log.success('Playwright installed')
+  } else {
+    const pwSpin = p.spinner()
+    pwSpin.start('Installing Playwright + Chromium...')
+    try {
+      run('npm install -g playwright')
+      run('npx playwright install chromium')
+      pwSpin.stop('Playwright installed')
+    } catch {
+      pwSpin.stop('Failed to install Playwright')
+      p.log.warning('Install manually: npm install -g playwright && npx playwright install chromium')
+      p.log.info(dim('Playwright is needed for `storyboard snapshots`'))
+    }
+  }
+}
+
+// 9. Proxy
 if (isCaddyInstalled()) {
   const proxySpin = p.spinner()
   const caddyfilePath = generateCaddyfile()

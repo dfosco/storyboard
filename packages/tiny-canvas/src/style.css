@@ -17,10 +17,10 @@
 /* Canvas */
 
 .tc-canvas {
-  min-width: 100vw;
-  min-height: 100vh;
-  width: 10000px;
-  height: 10000px;
+  min-width: max(100vw, 10000px);
+  min-height: max(100vh, 10000px);
+  width: 100%;
+  height: 100%;
   margin: 0;
   font-family: var(--tc-font-stack);
   position: relative;
@@ -40,17 +40,6 @@
   background-image: radial-gradient(var(--tc-dot-color) var(--tc-dot-radius), transparent var(--tc-dot-radius));
   background-size: var(--tc-grid-size) var(--tc-grid-size);
   background-position: var(--tc-grid-offset) var(--tc-grid-offset);
-}
-
-/* Also apply dotted background to the scroll ancestor so it spans
-   beyond the canvas main element (which has a fixed 10000×10000 size).
-   The Canvas component mirrors the grid vars and data-tc-dotted to
-   the nearest scroll container. */
-[data-tc-dotted] {
-  background-image: radial-gradient(var(--tc-dot-color) var(--tc-dot-radius), transparent var(--tc-dot-radius));
-  background-size: var(--tc-grid-size) var(--tc-grid-size);
-  background-position: var(--tc-grid-offset) var(--tc-grid-offset);
-  background-color: var(--tc-bg-muted);
 }
 
 /* Dark mode — system preference (auto) */

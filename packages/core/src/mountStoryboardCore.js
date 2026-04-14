@@ -243,7 +243,7 @@ export async function mountStoryboardCore(config = {}, options = {}) {
             quality: 0.85,
             width: document.documentElement.clientWidth,
             height: document.documentElement.clientHeight,
-            pixelRatio: 1,
+            pixelRatio: 2,
           })
           if (!blob) throw new Error('Capture returned empty blob')
           const reader = new FileReader()

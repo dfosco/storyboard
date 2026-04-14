@@ -54,11 +54,13 @@ function findCanvasFiles(root) {
 }
 
 /**
- * Recursively find all .story.{jsx,tsx} files and extract their named exports.
+ * Recursively find all .story.{jsx,tsx} files in routable directories
+ * (src/canvas/ and src/components/) and extract their named exports.
  */
 function findStoryFiles(root) {
   const results = []
   const ignore = new Set(['node_modules', 'dist', '.git', '.worktrees'])
+  const ROUTABLE_DIRS = ['src/canvas', 'src/components']
 
   function walk(dir, rel) {
     let entries
@@ -78,7 +80,12 @@ function findStoryFiles(root) {
     }
   }
 
-  walk(path.join(root, 'src'), 'src')
+  for (const dir of ROUTABLE_DIRS) {
+    const absDir = path.join(root, dir)
+    if (fs.existsSync(absDir)) {
+      walk(absDir, dir)
+    }
+  }
   return results
 }
 
@@ -498,6 +505,14 @@ export function ${componentName}Example() {
       const storyPath = path.join(targetDir, `${kebab}.story.${ext}`)
       if (fs.existsSync(storyPath)) {
         sendJson(res, 409, { error: `Story "${kebab}.story.${ext}" already exists at ${path.relative(root, targetDir)}` })
+        return
+      }
+
+      // Check for duplicate story name anywhere in the project (Vite data plugin
+      // enforces global uniqueness and would fail the build on duplicates)
+      const existing = findStoryFiles(root)
+      if (existing.some(s => s.name === kebab)) {
+        sendJson(res, 409, { error: `A story named "${kebab}" already exists in the project` })
         return
       }
 

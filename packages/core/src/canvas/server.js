@@ -52,14 +52,52 @@ function findCanvasFiles(root) {
 }
 
 /**
- * Find a canvas JSONL file by name.
+ * Derive a path-based canvas ID from a relative file path.
+ * Mirrors the logic in data-plugin.js parseDataFile() for consistency.
+ *
+ * Examples:
+ *   "src/canvas/foo.canvas.jsonl" → "foo"
+ *   "src/canvas/research.folder/interviews.canvas.jsonl" → "research/interviews"
+ *   "src/prototypes/Dashboard/overview.canvas.jsonl" → "Dashboard/overview"
+ */
+function deriveCanvasId(relPath) {
+  const normalized = relPath.replace(/\\/g, '/')
+  const base = path.basename(normalized)
+  const match = base.match(/^(.+)\.canvas\.jsonl$/)
+  if (!match) return null
+  const baseName = match[1]
+
+  const canvasCheck = normalized.match(/(?:^|\/)src\/canvas\//)
+  if (canvasCheck) {
+    const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
+    const routeBase = (dirPath + '/')
+      .replace(/^.*?src\/canvas\//, '')
+      .replace(/[^/]*\.folder\/?/g, '')
+      .replace(/\/$/, '')
+    return routeBase ? `${routeBase}/${baseName}` : baseName
+  }
+
+  const protoCheck = normalized.match(/(?:^|\/)src\/prototypes\//)
+  if (protoCheck) {
+    const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
+    const routeBase = (dirPath + '/')
+      .replace(/^.*?src\/prototypes\//, '')
+      .replace(/[^/]*\.folder\/?/g, '')
+      .replace(/\/$/, '')
+    return routeBase ? `${routeBase}/${baseName}` : baseName
+  }
+
+  return baseName
+}
+
+/**
+ * Find a canvas JSONL file by path-based ID.
  */
 function findCanvasPath(root, name) {
   const files = findCanvasFiles(root)
   for (const file of files) {
-    const base = path.basename(file)
-    const match = base.match(/^(.+)\.canvas\.jsonl$/)
-    if (match && match[1] === name) {
+    const id = deriveCanvasId(file)
+    if (id === name) {
       return path.resolve(root, file)
     }
   }
@@ -92,6 +130,7 @@ function generateWidgetId(type) {
 /**
  * Create the canvas API route handler.
  */
+export { deriveCanvasId }
 export function createCanvasHandler(ctx) {
   const { root, sendJson } = ctx
 
@@ -152,19 +191,19 @@ export function createCanvasHandler(ctx) {
     if (routePath === '/list' && method === 'GET') {
       const files = findCanvasFiles(root)
       const canvases = files.map((file) => {
-        const base = path.basename(file)
-        const match = base.match(/^(.+)\.canvas\.jsonl$/)
-        if (!match) return null
+        const id = deriveCanvasId(file)
+        if (!id) return null
         try {
           const data = readCanvas(path.resolve(root, file))
           return {
-            name: match[1],
-            title: data.title || match[1],
+            name: id,
+            title: data.title || id.split('/').pop(),
             path: file,
             widgetCount: (data.widgets || []).length + (data.sources || []).length,
+            group: id.includes('/') ? id.substring(0, id.lastIndexOf('/')) : null,
           }
         } catch {
-          return { name: match[1], title: match[1], path: file, widgetCount: 0 }
+          return { name: id, title: id.split('/').pop(), path: file, widgetCount: 0, group: null }
         }
       }).filter(Boolean)
       sendJson(res, 200, { canvases })
@@ -366,11 +405,15 @@ export function createCanvasHandler(ctx) {
         fs.mkdirSync(targetDir, { recursive: true })
         writeNewCanvas(canvasPath, creationEvent)
 
+        // Derive the canonical path-based ID from the created file
+        const relPath = path.relative(root, canvasPath).replace(/\\/g, '/')
+        const canonicalName = deriveCanvasId(relPath) || kebab
+
         const result = {
           success: true,
-          name: kebab,
-          path: path.relative(root, canvasPath),
-          route: `/canvas/${kebab}`,
+          name: canonicalName,
+          path: relPath,
+          route: `/canvas/${canonicalName}`,
         }
 
         // Optionally create starter JSX file
@@ -443,7 +486,7 @@ export function ${componentName}Example() {
       const now = new Date()
       const pad = (n) => String(n).padStart(2, '0')
       const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}--${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
-      const prefix = canvasName ? `${canvasName}--` : ''
+      const prefix = canvasName ? `${canvasName.replace(/\//g, '--')}--` : ''
       const filename = `${prefix}${dateStr}.${ext}`
 
       try {

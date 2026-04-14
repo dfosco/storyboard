@@ -13,6 +13,7 @@ import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import useUndoRedo from './useUndoRedo.js'
 import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi, uploadImage, getCanvas as getCanvasApi } from './canvasApi.js'
+import PageSelector from './PageSelector.jsx'
 import styles from './CanvasPage.module.css'
 
 const ZOOM_MIN = 25
@@ -298,7 +299,7 @@ function ChromeWrappedWidget({
  *
  * @param {{ name: string }} props - Canvas name as indexed by the data plugin
  */
-export default function CanvasPage({ name }) {
+export default function CanvasPage({ name, siblingPages = [] }) {
   const { canvas, jsxExports, jsxError, loading } = useCanvas(name)
   const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true && !new URLSearchParams(window.location.search).has('prodMode')
 
@@ -1030,12 +1031,12 @@ export default function CanvasPage({ name }) {
         setSelectedWidgetIds(new Set())
       }
       // Copy shortcut (single widget selected):
-      // cmd+c → copy canvasName/widgetId (for cross-canvas paste-duplicate)
+      // cmd+c → copy canvasName::widgetId (for cross-canvas paste-duplicate)
       const mod = e.metaKey || e.ctrlKey
       if (mod && e.key === 'c' && !e.shiftKey && selectedWidgetIds.size === 1) {
         const widgetId = [...selectedWidgetIds][0]
         e.preventDefault()
-        navigator.clipboard.writeText(`${name}/${widgetId}`).catch(() => {})
+        navigator.clipboard.writeText(`${name}::${widgetId}`).catch(() => {})
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault()
@@ -1211,8 +1212,9 @@ export default function CanvasPage({ name }) {
 
       e.preventDefault()
 
-      // Detect canvasName/widgetId format for widget duplication (cross-canvas copy-paste)
-      const widgetRefMatch = text.match(/^([^/]+)\/([^/]+)$/)
+      // Detect canvasName::widgetId format for widget duplication (cross-canvas copy-paste)
+      // Also supports legacy canvasName/widgetId for basenames without slashes
+      const widgetRefMatch = text.match(/^(.+)::([^:]+)$/) || (text.indexOf('::') === -1 && text.match(/^([^/]+)\/([^/]+)$/))
       if (widgetRefMatch) {
         const [, sourceCanvas, sourceWidgetId] = widgetRefMatch
         // Component widgets are code, not duplicable data — silently consume the ref
@@ -1638,6 +1640,7 @@ export default function CanvasPage({ name }) {
           <span className={styles.localEditingLabel}>Local editing</span>
         )}
       </div>
+      <PageSelector currentName={name} pages={siblingPages} />
       <div
         ref={scrollRef}
         data-storyboard-canvas-scroll

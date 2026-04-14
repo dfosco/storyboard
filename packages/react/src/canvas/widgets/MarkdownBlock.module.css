@@ -130,8 +130,7 @@
   overflow-x: auto;
   margin: 8px 0;
   background: var(--bgColor-neutral-muted, #afb8c133);
-  white-space: pre-wrap;
-  word-break: break-word;
+  line-height: 1.4;
 }
 
 /* When inspector highlighter sets inline background, let it through */
@@ -140,8 +139,6 @@
   border: 1px solid var(--borderColor-muted, #d8dee4);
   overflow-x: auto;
   margin: 8px 0;
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
 .preview pre code {
@@ -150,7 +147,10 @@
   font-size: 12px;
   font-weight: 400;
   font-family: "Ioskeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  line-height: 1.6;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+  display: block;
 }
 
 /* Blockquotes */

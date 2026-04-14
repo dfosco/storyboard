@@ -1,5 +1,13 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.18
+
+### Patch Changes
+
+-   Fix highlight.js build failure in CI
+
+    -   Use highlight.js/lib/_ export specifiers instead of ./es/_ internal paths
+
 ## 4.0.0-beta.17
 
 ### Patch Changes

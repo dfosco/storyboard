@@ -1,4 +1,4 @@
-import { init, loadFlow, listFlows, flowExists, loadScene, listScenes, sceneExists, loadRecord, findRecord, loadObject, deepMerge, resolveFlowName, resolveRecordName, resolveObjectName, listFolders, getFolderMetadata } from './loader.js'
+import { init, loadFlow, listFlows, flowExists, loadScene, listScenes, sceneExists, loadRecord, findRecord, loadObject, deepMerge, resolveFlowName, resolveRecordName, resolveObjectName, listFolders, getFolderMetadata, listStories, getStoryData } from './loader.js'
 
 const makeIndex = () => ({
   flows: {
@@ -533,5 +533,67 @@ describe('getFolderMetadata', () => {
     })
     const meta = getFolderMetadata('My Folder')
     expect(meta).toEqual({ meta: { title: 'My Folder', description: 'A folder' } })
+  })
+})
+
+describe('listStories', () => {
+  it('returns empty array when no stories are indexed', () => {
+    init(makeIndex())
+    expect(listStories()).toEqual([])
+  })
+
+  it('returns story names when stories are indexed', () => {
+    init({
+      ...makeIndex(),
+      stories: {
+        'button-patterns': { _storyModule: '/src/button-patterns.story.jsx' },
+        'card': { _storyModule: '/src/card.story.jsx' },
+      },
+    })
+    expect(listStories()).toEqual(['button-patterns', 'card'])
+  })
+})
+
+describe('getStoryData', () => {
+  it('returns null for unknown story', () => {
+    init(makeIndex())
+    expect(getStoryData('nonexistent')).toBeNull()
+  })
+
+  it('returns story data when story exists', () => {
+    const mockImport = vi.fn()
+    init({
+      ...makeIndex(),
+      stories: {
+        'button-patterns': {
+          _storyModule: '/src/button-patterns.story.jsx',
+          _storyImport: mockImport,
+        },
+      },
+    })
+    const story = getStoryData('button-patterns')
+    expect(story).toBeTruthy()
+    expect(story._storyModule).toBe('/src/button-patterns.story.jsx')
+    expect(story._storyImport).toBe(mockImport)
+  })
+})
+
+describe('init with stories', () => {
+  it('defaults stories to empty object when not provided', () => {
+    init({ flows: {}, objects: {}, records: {} })
+    expect(listStories()).toEqual([])
+  })
+
+  it('stores stories when provided', () => {
+    init({
+      flows: {},
+      objects: {},
+      records: {},
+      stories: {
+        test: { _storyModule: '/test.story.jsx' },
+      },
+    })
+    expect(listStories()).toEqual(['test'])
+    expect(getStoryData('test')).toBeTruthy()
   })
 })

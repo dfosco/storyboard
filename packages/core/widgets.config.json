@@ -475,10 +475,10 @@
           "icon": "code"
         },
         {
-          "id": "copy-code",
+          "id": "copy",
           "type": "action",
-          "action": "copy-code",
-          "label": "Copy code",
+          "action": "copy",
+          "label": "$label:duplicate",
           "icon": "copy"
         },
         {
@@ -490,11 +490,11 @@
           "prod": true
         },
         {
-          "id": "duplicate",
+          "id": "copy-code",
           "type": "action",
-          "action": "copy",
-          "label": "$label:duplicate",
-          "icon": "copy",
+          "action": "copy-code",
+          "label": "Copy code",
+          "icon": "code",
           "menu": true
         },
         {

@@ -51,6 +51,7 @@ export default defineConfig(() => {
             '@dfosco/storyboard-core/widgets.config.json': path.resolve(__dirname, 'packages/core/widgets.config.json'),
             '@dfosco/storyboard-core/canvas/materializer': path.resolve(__dirname, 'packages/core/src/canvas/materializer.js'),
             '@dfosco/storyboard-core/modes.css': path.resolve(__dirname, 'packages/core/src/modes.css'),
+            '@dfosco/storyboard-core/inspector/highlighter': path.resolve(__dirname, 'packages/core/src/inspector/highlighter.js'),
             '@dfosco/storyboard-core/comments': path.resolve(__dirname, 'packages/core/src/comments/index.js'),
             '@dfosco/storyboard-core': path.resolve(__dirname, 'packages/core/src/index.js'),
             '@dfosco/storyboard-react/vite': path.resolve(__dirname, 'packages/react/src/vite/data-plugin.js'),

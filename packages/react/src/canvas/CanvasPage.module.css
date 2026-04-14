@@ -44,58 +44,14 @@
   gap: 8px;
 }
 
-.canvasTitleWrap {
-  display: inline-grid;
-}
-
-.canvasTitleWrap > * {
-  grid-area: 1 / 1;
-}
-
-.canvasTitleMeasure {
-  visibility: hidden;
-  white-space: pre;
-  font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
-  font-size: 14px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border: 1px solid transparent;
-  min-width: 80px;
-  pointer-events: none;
-}
-
-.canvasTitleInput {
+.canvasTitleStatic {
   font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
   font-size: 14px;
   font-weight: 600;
   color: var(--fgColor-muted, #656d76);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  padding: 4px 8px;
   margin: 0;
-  outline: none;
-  width: 100%;
-  min-width: 0;
-  transition: border-color 150ms, background-color 150ms, color 150ms;
-}
-
-.canvasTitleInput:hover {
-  color: var(--fgColor-default, #1f2328);
-  border-color: var(--borderColor-default, #d1d9e0);
-  background: var(--bgColor-default, #ffffff);
-}
-
-.canvasTitleInput:focus {
-  color: var(--fgColor-default, #1f2328);
-  border-color: var(--bgColor-accent-emphasis, #2f81f7);
-  background: var(--bgColor-default, #ffffff);
-}
-
-.canvasTitleStatic {
-  composes: canvasTitleInput;
-  cursor: default;
-  pointer-events: none;
+  padding: 4px 8px;
+  white-space: nowrap;
 }
 
 /* Remove tiny-canvas wrapper clipping — widgets handle their own overflow/radius */

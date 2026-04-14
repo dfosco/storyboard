@@ -39,6 +39,35 @@ function resolveModulePath(modulePath) {
   return base ? `${base}${modulePath}` : modulePath
 }
 
+/** Cache for the static story sources JSON fetched in prod builds. */
+let _storySourcesCache = null
+
+/**
+ * Fetch story source code. In dev, uses Vite's ?raw dynamic import.
+ * In prod, fetches from the build-time _storyboard/stories/sources.json.
+ */
+async function fetchStorySource(modulePath) {
+  // Dev: use Vite's ?raw import for live source
+  if (import.meta.env.DEV) {
+    const mod = await import(/* @vite-ignore */ `${resolveModulePath(modulePath)}?raw`)
+    return mod.default || ''
+  }
+
+  // Prod: load from static JSON endpoint (same pattern as inspector.json)
+  if (!_storySourcesCache) {
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+    const res = await fetch(`${base}/_storyboard/stories/sources.json`)
+    if (!res.ok) throw new Error(`Story sources not available (${res.status})`)
+    _storySourcesCache = await res.json()
+  }
+
+  // _storyModule is like "/src/canvas/stories/foo.story.jsx" — strip leading /
+  const key = modulePath.startsWith('/') ? modulePath.slice(1) : modulePath
+  const source = _storySourcesCache[key]
+  if (source == null) throw new Error(`Source not found for ${key}`)
+  return source
+}
+
 export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, resizable }, ref) {
   const storyId = props?.storyId || ''
   const exportName = props?.exportName || ''
@@ -213,12 +242,10 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     let cancelled = false
     Promise.resolve().then(() => { if (!cancelled) setSourceLoading(true) })
 
-    // Use dynamic import with ?raw to get the file contents as a string.
-    // Vite's ?raw suffix returns a module whose default export is the raw text.
-    import(/* @vite-ignore */ `${resolveModulePath(story._storyModule)}?raw`)
-      .then((mod) => {
+    fetchStorySource(story._storyModule)
+      .then((code) => {
         if (cancelled) return
-        setSourceCode(mod.default || '// Empty file')
+        setSourceCode(code || '// Empty file')
       })
       .catch(() => { if (!cancelled) setSourceCode('// Failed to load source') })
       .finally(() => { if (!cancelled) setSourceLoading(false) })
@@ -259,8 +286,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     const story = getStoryData(storyId)
     if (!story?._storyModule) return
     try {
-      const mod = await import(/* @vite-ignore */ `${resolveModulePath(story._storyModule)}?raw`)
-      const code = mod.default || ''
+      const code = await fetchStorySource(story._storyModule)
       setSourceCode(code)
       await navigator.clipboard?.writeText(code)
     } catch { /* ignore */ }

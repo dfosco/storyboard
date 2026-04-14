@@ -509,7 +509,14 @@ export default function WidgetChrome({
               <WidgetOverflowMenu
                 widgetId={widgetId}
                 menuFeatures={menuFeatures}
-                onAction={onAction}
+                onAction={(actionId) => {
+                  // Route overflow menu actions through the widget ref first
+                  if (actionId !== 'delete' && actionId !== 'copy' && widgetRef?.current?.handleAction) {
+                    widgetRef.current.handleAction(actionId)
+                  } else {
+                    onAction?.(actionId)
+                  }
+                }}
               />
             )}
           </div>

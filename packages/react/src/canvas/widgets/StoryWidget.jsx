@@ -235,22 +235,29 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     if (!showCode || sourceCode !== null) return
     const story = getStoryData(storyId)
     if (!story?._storyModule) {
-      Promise.resolve().then(() => setSourceCode('// Source not available'))
+      setSourceCode('// Source not available')
       return
     }
 
     let cancelled = false
-    Promise.resolve().then(() => { if (!cancelled) setSourceLoading(true) })
+    setSourceLoading(true)
 
     fetchStorySource(story._storyModule)
       .then((code) => {
         if (cancelled) return
         setSourceCode(code || '// Empty file')
+        setSourceLoading(false)
       })
-      .catch(() => { if (!cancelled) setSourceCode('// Failed to load source') })
-      .finally(() => { if (!cancelled) setSourceLoading(false) })
+      .catch(() => {
+        if (cancelled) return
+        setSourceCode('// Failed to load source')
+        setSourceLoading(false)
+      })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      setSourceLoading(false)
+    }
   }, [showCode, sourceCode, storyId])
 
   // Re-highlight when the code-box theme changes (storyboard:theme:changed event).

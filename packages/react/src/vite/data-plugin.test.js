@@ -1115,7 +1115,7 @@ describe('canvas watcher behavior', () => {
 
     expect(code).toContain('const stories = {')
     expect(code).toContain('init({ flows, objects, records, prototypes, folders, canvases, stories })')
-    expect(code).toContain('export { flows, scenes, objects, records, prototypes, folders, canvases, stories }')
+    expect(code).toContain('export { flows, scenes, objects, records, prototypes, folders, canvases, canvasAliases, stories }')
   })
 
   it('infers /components/ route for stories in src/canvas/', () => {

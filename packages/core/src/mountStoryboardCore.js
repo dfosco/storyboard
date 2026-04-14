@@ -221,10 +221,13 @@ export async function mountStoryboardCore(config = {}, options = {}) {
       window.addEventListener('popstate', broadcastNavigation)
       window.addEventListener('hashchange', broadcastNavigation)
 
-      // Signal render-ready after fonts load and React settles
+      // Signal render-ready after app settles.
+      // Uses a 3s delay as a fallback — React components, data loading, and
+      // animations need time. Individual page types (StoryPage) may also
+      // send their own snapshot-ready after they finish rendering.
       Promise.all([
         document.fonts?.ready || Promise.resolve(),
-        new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))),
+        new Promise(r => setTimeout(r, 3000)),
       ]).then(() => {
         window.parent.postMessage({ type: 'storyboard:embed:snapshot-ready' }, '*')
       })

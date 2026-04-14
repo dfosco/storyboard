@@ -1,4 +1,4 @@
-import { Children } from 'react';
+import { Children, useEffect } from 'react';
 import Draggable from './Draggable';
 import { findDragId, generateDragId } from './utils';
 
@@ -40,6 +40,22 @@ function Canvas({
         '--tc-dot-radius': `${dotRadius}px`,
       }
     : undefined;
+
+  // Mirror dot-grid vars and attribute to <html> so the background
+  // extends beyond the 10000×10000 <main> boundary.
+  useEffect(() => {
+    const el = document.documentElement
+    if (showDots && canvasStyle) {
+      for (const [k, v] of Object.entries(canvasStyle)) el.style.setProperty(k, v)
+      el.setAttribute('data-tc-dotted', '')
+    }
+    return () => {
+      if (canvasStyle) {
+        for (const k of Object.keys(canvasStyle)) el.style.removeProperty(k)
+      }
+      el.removeAttribute('data-tc-dotted')
+    }
+  }, [showDots, visualGridSize, dotRadius])
 
   return (
     <main

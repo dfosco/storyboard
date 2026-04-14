@@ -31,15 +31,6 @@ function resolveStoryUrl(storyId, exportName) {
   return `${base}${route}?${params}`
 }
 
-function resolveStoryModuleUrl(storyId) {
-  const story = getStoryData(storyId)
-  if (!story?._storyModule) return null
-  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
-  const mod = story._storyModule
-  // In dev, fetch the raw source via Vite's ?raw transform
-  return `${base}${mod}?raw`
-}
-
 export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, ref) {
   const storyId = props?.storyId || ''
   const exportName = props?.exportName || ''
@@ -81,18 +72,19 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
 
     let cancelled = false
     Promise.resolve().then(() => { if (!cancelled) setSourceLoading(true) })
-    fetch(moduleUrl)
-      .then((res) => res.ok ? res.text() : Promise.reject(new Error(`${res.status}`)))
-      .then((text) => {
+
+    // Use dynamic import with ?raw to get the file contents as a string.
+    // Vite's ?raw suffix returns a module whose default export is the raw text.
+    const story = getStoryData(storyId)
+    if (!story?._storyModule) {
+      Promise.resolve().then(() => { if (!cancelled) setSourceCode('// Source not available') })
+      return () => { cancelled = true }
+    }
+
+    import(/* @vite-ignore */ `${story._storyModule}?raw`)
+      .then((mod) => {
         if (cancelled) return
-        // Vite ?raw returns the source as a JS module: export default "..."
-        // Strip the module wrapper to get raw source
-        const match = text.match(/export default "([\s\S]*)"/)
-        if (match) {
-          setSourceCode(JSON.parse(`"${match[1]}"`))
-        } else {
-          setSourceCode(text)
-        }
+        setSourceCode(mod.default || '// Empty file')
       })
       .catch(() => { if (!cancelled) setSourceCode('// Failed to load source') })
       .finally(() => { if (!cancelled) setSourceLoading(false) })
@@ -128,13 +120,11 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
       return
     }
     // Load source on demand if not already loaded
-    const moduleUrl = resolveStoryModuleUrl(storyId)
-    if (!moduleUrl) return
+    const story = getStoryData(storyId)
+    if (!story?._storyModule) return
     try {
-      const res = await fetch(moduleUrl)
-      const text = await res.text()
-      const match = text.match(/export default "([\s\S]*)"/)
-      const code = match ? JSON.parse(`"${match[1]}"`) : text
+      const mod = await import(/* @vite-ignore */ `${story._storyModule}?raw`)
+      const code = mod.default || ''
       setSourceCode(code)
       await navigator.clipboard?.writeText(code)
     } catch { /* ignore */ }

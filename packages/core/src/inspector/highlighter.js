@@ -261,7 +261,7 @@ export async function createInspectorHighlighter() {
         return `<span class="${classes.join(' ')}">${line}</span>`
       }).join('\n')
 
-      return `<pre style="background:${colors.bg};color:${colors.fg};margin:0;padding:0;overflow-x:auto"><code>${wrappedLines}</code></pre>`
+      return `<pre style="background:${colors.bg};color:${colors.fg};margin:0;overflow-x:auto"><code>${wrappedLines}</code></pre>`
     },
   }
 }

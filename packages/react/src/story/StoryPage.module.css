@@ -1,0 +1,73 @@
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--borderColor-muted, #d0d7de);
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--fgColor-default, #1f2328);
+}
+
+.exportBadge {
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--bgColor-accent-muted, #ddf4ff);
+  color: var(--fgColor-accent, #0969da);
+}
+
+.count {
+  font-size: 0.875rem;
+  color: var(--fgColor-muted, #656d76);
+}
+
+.storySection {
+  margin-bottom: 2rem;
+}
+
+.exportName {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0 0 0.75rem;
+  color: var(--fgColor-default, #1f2328);
+}
+
+.storyContent {
+  border: 1px solid var(--borderColor-muted, #d0d7de);
+  border-radius: 8px;
+  padding: 1.5rem;
+  background: var(--bgColor-default, #ffffff);
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--fgColor-muted, #656d76);
+  font-size: 0.875rem;
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 1rem;
+  color: var(--fgColor-danger, #cf222e);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}

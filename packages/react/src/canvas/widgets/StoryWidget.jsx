@@ -1,17 +1,29 @@
 /**
- * Renders a named export from a .story.jsx module as a canvas widget.
+ * Renders a story at its route URL inside an iframe on canvas.
  *
- * In dev, uses iframe isolation (same middleware as .canvas.jsx components)
- * so a broken story cannot crash the canvas. In production, renders
- * directly with an ErrorBoundary fallback.
+ * Works like PrototypeEmbed: the story has its own route (e.g. /canvas/button-patterns)
+ * and this widget iframes that URL with ?export=ExportName&_sb_embed for single-export mode.
+ *
+ * Props: { storyId, exportName, width, height }
  */
 import { useRef, useCallback, useState, useEffect, useMemo } from 'react'
 import { getStoryData } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
-import ComponentErrorBoundary from '../ComponentErrorBoundary.jsx'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
+
+function resolveStoryUrl(storyId, exportName) {
+  const story = getStoryData(storyId)
+  if (!story?._route) return null
+
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+  const route = story._route
+  const params = new URLSearchParams({ _sb_embed: '1' })
+  if (exportName) params.set('export', exportName)
+
+  return `${base}${route}?${params}`
+}
 
 export default function StoryWidget({ props, onUpdate, resizable }) {
   const storyId = props?.storyId || ''
@@ -21,68 +33,6 @@ export default function StoryWidget({ props, onUpdate, resizable }) {
 
   const containerRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
-  const [Component, setComponent] = useState(null)
-  const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  const isLocalDev = !import.meta.env?.PROD
-
-  // Load the story module and extract the named export
-  useEffect(() => {
-    let cancelled = false
-
-    if (!storyId || !exportName) {
-      // Defer to avoid synchronous setState in effect
-      Promise.resolve().then(() => {
-        if (cancelled) return
-        setComponent(null)
-        setError(storyId ? `Missing export name` : `Missing story ID`)
-        setLoading(false)
-      })
-      return () => { cancelled = true }
-    }
-
-    const story = getStoryData(storyId)
-    if (!story) {
-      Promise.resolve().then(() => {
-        if (cancelled) return
-        setComponent(null)
-        setError(`Story "${storyId}" not found`)
-        setLoading(false)
-      })
-      return () => { cancelled = true }
-    }
-
-    // Use a microtask to set loading state, then start the import
-    Promise.resolve().then(() => {
-      if (cancelled) return
-      setLoading(true)
-      setError(null)
-
-      return story._storyImport()
-    })
-      .then((mod) => {
-        if (cancelled || !mod) return
-        const exp = mod[exportName]
-        if (!exp || typeof exp !== 'function') {
-          setError(`Export "${exportName}" not found in story "${storyId}"`)
-          setComponent(null)
-        } else {
-          setComponent(() => exp)
-          setError(null)
-        }
-        setLoading(false)
-      })
-      .catch((err) => {
-        if (cancelled) return
-        console.error(`[storyboard] Failed to load story "${storyId}":`, err)
-        setError(`Failed to load story "${storyId}": ${err.message || err}`)
-        setComponent(null)
-        setLoading(false)
-      })
-
-    return () => { cancelled = true }
-  }, [storyId, exportName])
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -101,51 +51,37 @@ export default function StoryWidget({ props, onUpdate, resizable }) {
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive])
 
-  // Build iframe src for dev isolation
-  const storyModule = useMemo(() => {
-    if (!storyId) return null
-    const story = getStoryData(storyId)
-    return story?._storyModule || null
-  }, [storyId])
+  const iframeSrc = useMemo(
+    () => resolveStoryUrl(storyId, exportName),
+    [storyId, exportName],
+  )
 
-  const iframeSrc = useMemo(() => {
-    if (!isLocalDev || !storyModule || !exportName) return null
-    const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
-    const params = new URLSearchParams({
-      module: storyModule,
-      export: exportName,
-      theme: 'light',
-    })
-    return `${basePath}/_storyboard/canvas/isolate?${params}`
-  }, [isLocalDev, storyModule, exportName])
-
-  const useIframe = isLocalDev && iframeSrc
-
-  // Error / loading states
-  if (error) {
+  // Error state — missing story or no route
+  if (!storyId) {
     return (
       <WidgetWrapper>
         <div className={styles.container} ref={containerRef}>
           <div className={styles.error}>
             <span className={styles.errorIcon}>📖</span>
-            <span className={styles.errorText}>{error}</span>
+            <span className={styles.errorText}>Missing story ID</span>
           </div>
         </div>
       </WidgetWrapper>
     )
   }
 
-  if (loading) {
+  if (!iframeSrc) {
     return (
       <WidgetWrapper>
         <div className={styles.container} ref={containerRef}>
-          <div className={styles.loading}>Loading story…</div>
+          <div className={styles.error}>
+            <span className={styles.errorIcon}>📖</span>
+            <span className={styles.errorText}>Story &ldquo;{storyId}&rdquo; not found or has no route</span>
+          </div>
         </div>
       </WidgetWrapper>
     )
   }
-
-  if (!useIframe && !Component) return null
 
   const sizeStyle = {}
   if (typeof width === 'number') sizeStyle.width = `${width}px`
@@ -155,18 +91,11 @@ export default function StoryWidget({ props, onUpdate, resizable }) {
     <WidgetWrapper>
       <div ref={containerRef} className={styles.container} style={sizeStyle}>
         <div className={styles.content}>
-          {useIframe ? (
-            <iframe
-              src={iframeSrc}
-              className={styles.iframe}
-              title={`${storyId}/${exportName}`}
-              sandbox="allow-same-origin allow-scripts"
-            />
-          ) : Component ? (
-            <ComponentErrorBoundary name={`${storyId}/${exportName}`}>
-              <Component />
-            </ComponentErrorBoundary>
-          ) : null}
+          <iframe
+            src={iframeSrc}
+            className={styles.iframe}
+            title={exportName ? `${storyId}/${exportName}` : storyId}
+          />
         </div>
         {!interactive && (
           <div

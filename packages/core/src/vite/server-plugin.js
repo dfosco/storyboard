@@ -390,6 +390,24 @@ export default function storyboardServer() {
         })
       }
 
+      // Emit story sources JSON so the "show code" widget action works in
+      // deployed builds. In dev, StoryWidget uses Vite's ?raw import; in prod
+      // it fetches this static JSON instead.
+      const storySources = {}
+      const storyExts = ['.story.jsx', '.story.tsx', '.story.js', '.story.ts']
+      for (const relPath of allSrcFiles) {
+        if (storyExts.some(ext => relPath.endsWith(ext))) {
+          storySources[relPath] = sources[relPath] || ''
+        }
+      }
+      if (Object.keys(storySources).length > 0) {
+        this.emitFile({
+          type: 'asset',
+          fileName: '_storyboard/stories/sources.json',
+          source: JSON.stringify(storySources),
+        })
+      }
+
       // Emit canvas images so they're available in deployed (static) builds.
       // Dev server serves these dynamically; production needs the static files.
       // Private images (prefixed with _) are excluded from the build.

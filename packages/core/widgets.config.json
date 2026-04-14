@@ -97,7 +97,7 @@
       "label": "Markdown",
       "icon": "📄",
       "resize": {
-        "enabled": false,
+        "enabled": true,
         "prod": false
       },
       "props": {

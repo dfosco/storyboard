@@ -29,36 +29,34 @@ function renderMarkdown(text) {
 let hljsPromise = null
 function getHljs() {
   if (!hljsPromise) {
-    hljsPromise = import('highlight.js/lib/core').then(async (mod) => {
-      const hljs = mod.default
-      const [js, ts, xml] = await Promise.all([
-        import('highlight.js/lib/languages/javascript'),
-        import('highlight.js/lib/languages/typescript'),
-        import('highlight.js/lib/languages/xml'),
-      ])
-      hljs.registerLanguage('javascript', js.default)
-      hljs.registerLanguage('typescript', ts.default)
-      hljs.registerLanguage('xml', xml.default)
-      hljs.registerLanguage('jsx', js.default)
-      hljs.registerLanguage('tsx', ts.default)
-      return hljs
-    })
+    hljsPromise = import('@dfosco/storyboard-core/inspector/highlighter').then((mod) => mod)
   }
   return hljsPromise
 }
 
 async function highlightCodeBlocks(html) {
   if (!html.includes('<code class="language-')) return html
-  const hljs = await getHljs()
+  const { createInspectorHighlighter } = await getHljs()
+  const hl = await createInspectorHighlighter()
   return html.replace(
-    /<code class="language-(\w+)">([\s\S]*?)<\/code>/g,
-    (_, lang, code) => {
+    /<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/g,
+    (match, lang, code) => {
       try {
-        const decoded = code.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"')
-        const result = hljs.highlight(decoded, { language: lang, ignoreIllegals: true })
-        return `<code class="language-${lang} hljs">${result.value}</code>`
+        // Decode all HTML entities that remark-html may produce
+        const decoded = code
+          .replace(/&#x3C;/gi, '<')
+          .replace(/&#x3E;/gi, '>')
+          .replace(/&#x26;/gi, '&')
+          .replace(/&#x22;/gi, '"')
+          .replace(/&#x27;/gi, "'")
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&amp;/g, '&')
+        // codeToHtml returns a full <pre style="bg;fg"><code>...</code></pre>
+        return hl.codeToHtml(decoded, { lang })
       } catch {
-        return `<code class="language-${lang}">${code}</code>`
+        return match
       }
     }
   )

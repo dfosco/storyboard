@@ -706,6 +706,17 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, storyRo
     '    }',
     '    init({ flows, objects, records, prototypes, folders, canvases, stories })',
     '  })',
+    '  import.meta.hot.on("storyboard:story-file-changed", (data) => {',
+    '    if (!data) return',
+    '    if (data.removed) {',
+    '      delete stories[data.name]',
+    '    } else {',
+    '      stories[data.name] = { _storyModule: data._storyModule, _route: data._route,',
+    '        _storyImport: () => import(data._storyModule) }',
+    '    }',
+    '    init({ flows, objects, records, prototypes, folders, canvases, stories })',
+    '    document.dispatchEvent(new CustomEvent("storyboard:story-index-changed"))',
+    '  })',
     '}',
   ].join('\n')
 }
@@ -958,6 +969,36 @@ export default function storyboardDataPlugin() {
             softInvalidate()
             return
           }
+        }
+
+        // Story add/remove: soft-invalidate + custom HMR event (full-reload
+        // is blocked by the canvas reload guard). The virtual module HMR
+        // handler live-patches `stories` and re-runs init().
+        if (parsed?.suffix === 'story') {
+          softInvalidate()
+          if (!buildResult) buildResult = buildIndex(root)
+          const storyRoutes = buildResult.storyRoutes || {}
+          const storyIndex = buildResult.index.story || {}
+          const name = parsed.name
+          if (eventType === 'unlink') {
+            server.ws.send({
+              type: 'custom',
+              event: 'storyboard:story-file-changed',
+              data: { name, removed: true },
+            })
+          } else if (eventType === 'add' && storyIndex[name]) {
+            const relModule = '/' + path.relative(root, storyIndex[name]).replace(/\\/g, '/')
+            server.ws.send({
+              type: 'custom',
+              event: 'storyboard:story-file-changed',
+              data: {
+                name,
+                _storyModule: relModule,
+                _route: storyRoutes[name] || null,
+              },
+            })
+          }
+          return
         }
 
         // Non-canvas additions/removals and folder changes update the route/data graph.

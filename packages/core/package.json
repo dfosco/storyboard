@@ -49,7 +49,9 @@
     "./svelte-plugin-ui/styles/base.css": "./dist/tailwind.css",
     "./styles/tailwind.css": "./dist/tailwind.css",
     "./worktree/port": "./src/worktree/port.js",
-    "./canvas/collision": "./src/canvas/collision.js"
+    "./canvas/collision": "./src/canvas/collision.js",
+    "./canvas/identity": "./src/canvas/identity.js",
+    "./config": "./src/configSchema.js"
   },
   "dependencies": {
     "@clack/prompts": "^1.2.0",

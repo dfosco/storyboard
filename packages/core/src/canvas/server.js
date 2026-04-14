@@ -24,6 +24,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { Buffer } from 'node:buffer'
 import { materializeFromText, serializeEvent } from './materializer.js'
+import { toCanvasId, parseCanvasId } from './identity.js'
 
 /**
  * Recursively find all .canvas.jsonl files in the project.
@@ -52,17 +53,32 @@ function findCanvasFiles(root) {
 }
 
 /**
- * Find a canvas JSONL file by name.
+ * Find a canvas JSONL file by canonical ID or legacy basename.
+ * Path-based ID is tried first. Basename fallback only works when it
+ * resolves to exactly one file — ambiguous names return null.
  */
-function findCanvasPath(root, name) {
+function findCanvasPath(root, nameOrId) {
   const files = findCanvasFiles(root)
+
+  // Try matching by canonical ID first
   for (const file of files) {
-    const base = path.basename(file)
-    const match = base.match(/^(.+)\.canvas\.jsonl$/)
-    if (match && match[1] === name) {
+    const id = toCanvasId(file)
+    if (id === nameOrId) {
       return path.resolve(root, file)
     }
   }
+
+  // Fallback: match by basename (legacy). Only if unique.
+  const basenameMatches = []
+  for (const file of files) {
+    const base = path.basename(file)
+    const match = base.match(/^(.+)\.canvas\.jsonl$/)
+    if (match && match[1] === nameOrId) {
+      basenameMatches.push(path.resolve(root, file))
+    }
+  }
+
+  if (basenameMatches.length === 1) return basenameMatches[0]
   return null
 }
 

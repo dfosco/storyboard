@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Tooltip } from '@primer/react'
-import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode, UnwrapIcon as OcticonUnwrap } from '@primer/octicons-react'
+import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode, UnwrapIcon as OcticonUnwrap, ImageIcon as OcticonImage } from '@primer/octicons-react'
 import styles from './WidgetChrome.module.css'
 
 const STICKY_NOTE_COLORS = {
@@ -68,6 +68,10 @@ function UnwrapIcon() {
   return <OcticonUnwrap size={12} />
 }
 
+function ImageIcon() {
+  return <OcticonImage size={12} />
+}
+
 function CopyIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -129,6 +133,7 @@ const ICON_REGISTRY = {
   'eye-closed': EyeClosedIcon,
   'code': CodeIcon,
   'unwrap': UnwrapIcon,
+  'image': ImageIcon,
   'copy': CopyIcon,
   'link': LinkIcon,
   'more': MoreIcon,

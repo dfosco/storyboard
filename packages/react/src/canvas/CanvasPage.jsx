@@ -897,14 +897,41 @@ export default function CanvasPage({ name }) {
     }
   }, [name, undoRedo])
 
+  // Add a story widget by storyId — used by CanvasControls story picker
+  const addStoryWidget = useCallback(async (storyId) => {
+    const storyProps = { storyId, exportName: '', width: 600, height: 400 }
+    const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
+    const pos = centerPositionForWidget(center, 'story', storyProps)
+    try {
+      const result = await addWidgetApi(name, {
+        type: 'story',
+        props: storyProps,
+        position: pos,
+      })
+      if (result.success && result.widget) {
+        undoRedo.snapshot(stateRef.current, 'add')
+        setLocalWidgets((prev) => [...(prev || []), result.widget])
+      }
+    } catch (err) {
+      console.error('[canvas] Failed to add story widget:', err)
+    }
+  }, [name, undoRedo])
+
   // Listen for CoreUIBar add-widget events
   useEffect(() => {
     function handleAddWidget(e) {
       addWidget(e.detail.type)
     }
+    function handleAddStoryWidget(e) {
+      addStoryWidget(e.detail.storyId)
+    }
     document.addEventListener('storyboard:canvas:add-widget', handleAddWidget)
-    return () => document.removeEventListener('storyboard:canvas:add-widget', handleAddWidget)
-  }, [addWidget])
+    document.addEventListener('storyboard:canvas:add-story-widget', handleAddStoryWidget)
+    return () => {
+      document.removeEventListener('storyboard:canvas:add-widget', handleAddWidget)
+      document.removeEventListener('storyboard:canvas:add-story-widget', handleAddStoryWidget)
+    }
+  }, [addWidget, addStoryWidget])
 
   // Listen for zoom changes from CoreUIBar
   useEffect(() => {

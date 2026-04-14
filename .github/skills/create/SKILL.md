@@ -1,15 +1,15 @@
 ---
 name: create
-description: Walks users through creating any Storyboard asset — prototype, external prototype, flow, canvas, object, or record. Use when asked to "create", "new", or "scaffold" anything in storyboard.
+description: Walks users through creating any Storyboard asset — prototype, external prototype, flow, canvas, component, object, or record. Use when asked to "create", "new", or "scaffold" anything in storyboard.
 ---
 
 # Create
 
-> Triggered by: "create a new prototype", "scaffold a prototype", "new prototype", "create prototype", "new flow", "create flow", "new page", "create page", "new canvas", "create canvas", "new object", "create object", "new record", "create record", "create new", "scaffold", "add external prototype", "link external prototype"
+> Triggered by: "create a new prototype", "scaffold a prototype", "new prototype", "create prototype", "new flow", "create flow", "new page", "create page", "new canvas", "create canvas", "new component", "create component", "new object", "create object", "new record", "create record", "create new", "scaffold", "add external prototype", "link external prototype"
 
 ## What This Does
 
-Guides the user through creating a new Storyboard **prototype**, **external prototype**, **flow**, **page**, **canvas**, **object**, or **record** by collecting inputs interactively, then writing the files directly or calling the scaffolding API.
+Guides the user through creating a new Storyboard **prototype**, **external prototype**, **flow**, **page**, **canvas**, **component**, **object**, or **record** by collecting inputs interactively, then writing the files directly or calling the scaffolding API.
 
 ## Procedure
 
@@ -25,6 +25,7 @@ Provide choices:
 - "Flow" — A new prototype-scoped flow data file (.flow.json)
 - "Page" — A new page inside an existing prototype
 - "Canvas" — A new freeform canvas (.canvas.jsonl)
+- "Component" — A story-format component (.story.jsx) that renders at /components/name
 - "Object" — A reusable data fragment (.object.json)
 - "Record" — A parameterized collection (.record.json)
 
@@ -614,3 +615,45 @@ Create `<name>.record.json` with the generated entries. Always include at least 
 - **Data files must live inside the prototype folder.** Every prototype must contain its own copies of any `.record.json`, `.object.json`, or `.flow.json` files it needs — never reference or import data files from other prototypes. Each prototype is an independent sandbox.
 - **Records must be arrays** with each entry having a unique identifier field (default: `id`)
 - **Objects are plain JSON** — no special keys required, any shape works
+
+---
+
+## Component Path
+
+> Triggered when user selects "Component" or says "create a component", "new component", "create story"
+
+### Step C1: Ask for the component name
+
+Use `ask_user`:
+> What should the component be called?
+
+The name must be **kebab-case** (e.g., `button-patterns`, `user-card`).
+
+### Step C2: Ask for the directory
+
+List existing subdirectories inside `src/components/`. Use `ask_user` with options:
+
+- `src/components/` (root) — Top-level component
+- Any existing subdirectories (e.g., `src/components/forms/`, `src/components/layout/`)
+
+If the user wants a new subdirectory, create it.
+
+### Step C3: Create the story file
+
+Create `src/components/<directory?>/<name>.story.jsx` with a scaffold containing a `Default` named export that renders a placeholder component. Each named export becomes a renderable variant at the component's route URL.
+
+### Step C4: Confirm and suggest next steps
+
+1. Show the created file path and route URL (`/components/<name>`)
+2. Suggest next steps:
+   - Visit `/components/<name>` to see the rendered component
+   - Add more named exports for different variants
+   - Paste the component URL on any canvas to embed it as a widget
+   - Use the CLI: `storyboard canvas add story --canvas <name>` to add programmatically
+
+### CLI shortcut
+
+```bash
+storyboard create component --name my-component
+storyboard create component --name my-component --directory forms
+```

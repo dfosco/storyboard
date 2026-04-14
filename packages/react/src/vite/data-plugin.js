@@ -73,7 +73,7 @@ function parseDataFile(filePath) {
     const name = storyMatch[1]
     let inferredRoute = null
 
-    // Infer route from directory: src/canvas/ → /canvas/..., src/components/ → /components/...
+    // All stories route under /components/ regardless of directory location
     const canvasCheck = normalized.match(/(?:^|\/)src\/canvas\//)
     const componentsCheck = normalized.match(/(?:^|\/)src\/components\//)
     if (canvasCheck) {
@@ -82,8 +82,8 @@ function parseDataFile(filePath) {
         .replace(/^.*?src\/canvas\//, '')
         .replace(/[^/]*\.folder\/?/g, '')
         .replace(/\/$/, '')
-      inferredRoute = '/canvas/' + (routeBase ? routeBase + '/' : '') + name
-      inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
+      inferredRoute = '/components/' + (routeBase ? routeBase + '/' : '') + name
+      inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/components'
     } else if (componentsCheck) {
       const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
       const routeBase = (dirPath + '/')

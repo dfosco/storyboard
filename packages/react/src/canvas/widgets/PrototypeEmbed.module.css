@@ -18,6 +18,12 @@
   display: block;
 }
 
+.snapshotImage {
+  display: block;
+  object-fit: cover;
+  object-position: top left;
+}
+
 .empty {
   display: flex;
   align-items: center;

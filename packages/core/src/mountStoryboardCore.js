@@ -220,6 +220,46 @@ export async function mountStoryboardCore(config = {}, options = {}) {
       history.replaceState = (...args) => { origReplace(...args); broadcastNavigation() }
       window.addEventListener('popstate', broadcastNavigation)
       window.addEventListener('hashchange', broadcastNavigation)
+
+      // Signal render-ready after fonts load and React settles
+      Promise.all([
+        document.fonts?.ready || Promise.resolve(),
+        new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))),
+      ]).then(() => {
+        window.parent.postMessage({ type: 'storyboard:embed:snapshot-ready' }, '*')
+      })
+
+      // Listen for snapshot capture requests from the parent canvas
+      window.addEventListener('message', async (e) => {
+        if (e.data?.type !== 'storyboard:embed:capture') return
+        const { requestId } = e.data
+        try {
+          const { toBlob } = await import('html-to-image')
+          const blob = await toBlob(document.body, {
+            type: 'image/webp',
+            quality: 0.85,
+            width: document.documentElement.clientWidth,
+            height: document.documentElement.clientHeight,
+            pixelRatio: 1,
+          })
+          if (!blob) throw new Error('Capture returned empty blob')
+          const reader = new FileReader()
+          reader.onload = () => {
+            window.parent.postMessage({
+              type: 'storyboard:embed:snapshot',
+              requestId,
+              dataUrl: reader.result,
+            }, '*')
+          }
+          reader.readAsDataURL(blob)
+        } catch (err) {
+          window.parent.postMessage({
+            type: 'storyboard:embed:snapshot',
+            requestId,
+            error: err.message,
+          }, '*')
+        }
+      })
     }
     return
   }

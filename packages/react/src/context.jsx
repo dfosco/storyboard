@@ -164,6 +164,7 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     const canvasData = canvases?.[canvasName]
     const group = canvasData?._group
     const siblingPages = group ? canvasGroupMap.get(group) || [] : []
+    const canvasMeta = canvasData?._canvasMeta || null
     const canvasValue = {
       data: null,
       error: null,
@@ -175,7 +176,7 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     return (
       <StoryboardContext.Provider value={canvasValue}>
         <Suspense fallback={null}>
-          <CanvasPageLazy name={canvasName} siblingPages={siblingPages} />
+          <CanvasPageLazy name={canvasName} siblingPages={siblingPages} canvasMeta={canvasMeta} />
         </Suspense>
       </StoryboardContext.Provider>
     )

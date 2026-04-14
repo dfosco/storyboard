@@ -13,6 +13,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { parse as parseJsonc } from 'jsonc-parser'
+import { getConfig } from '../configSchema.js'
 import { serverFeatures as workshopFeatures } from '../workshop/features/registry-server.js'
 import { docsHandler, collectFiles } from './docs-handler.js'
 import { createCanvasHandler } from '../canvas/server.js'
@@ -45,16 +46,16 @@ function sendJson(res, status, data) {
 }
 
 /**
- * Read storyboard.config.json from the project root.
+ * Read storyboard.config.json from the project root and apply defaults.
  */
 function readConfig(root) {
   const configPath = path.join(root, 'storyboard.config.json')
-  if (!fs.existsSync(configPath)) return {}
+  if (!fs.existsSync(configPath)) return getConfig({})
   try {
     const raw = fs.readFileSync(configPath, 'utf-8')
-    return parseJsonc(raw) || {}
+    return getConfig(parseJsonc(raw) || {})
   } catch {
-    return {}
+    return getConfig({})
   }
 }
 

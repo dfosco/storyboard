@@ -50,13 +50,10 @@
   }
 
   onMount(() => {
-    // Read active canvas name from the bridge state
+    // Read active canvas name from the bridge state (window, not sessionStorage)
     try {
-      const raw = sessionStorage.getItem('__storyboardCanvasBridgeState')
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (parsed?.canvasName) canvasName = parsed.canvasName
-      }
+      const bridgeState = (window as any).__storyboardCanvasBridgeState
+      if (bridgeState?.name) canvasName = bridgeState.name
     } catch {}
 
     // Restore success state after Vite full-reload

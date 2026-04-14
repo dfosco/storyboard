@@ -31,7 +31,7 @@ function resolveCanvasThemeFromStorage() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }, ref) {
+export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdate, resizable }, ref) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
   const width = readProp(props, 'width', prototypeEmbedSchema)
   const height = readProp(props, 'height', prototypeEmbedSchema)
@@ -62,8 +62,12 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
   const [filter, setFilter] = useState('')
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
 
-  // Lazy loading state
-  const hasSnapshot = canvasTheme?.startsWith('dark') ? !!snapshotDark : !!snapshotLight
+  // Lazy loading state — only use snapshots that match this widget's ID
+  const snapshotMatchesWidget = (url) => url && widgetId && url.includes(widgetId)
+  const validSnapshotLight = snapshotMatchesWidget(snapshotLight) ? snapshotLight : null
+  const validSnapshotDark = snapshotMatchesWidget(snapshotDark) ? snapshotDark : null
+  const currentSnapshot = canvasTheme?.startsWith('dark') ? validSnapshotDark : validSnapshotLight
+  const hasSnapshot = !!currentSnapshot
   const [preloadIframe, setPreloadIframe] = useState(!hasSnapshot || isExternal)
   const [iframeLoaded, setIframeLoaded] = useState(false)
   const [showIframe, setShowIframe] = useState(!hasSnapshot || isExternal)
@@ -304,10 +308,10 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
 
   // Handle a completed snapshot — upload and persist as widget prop
   const handleSnapshotResult = useCallback(async (requestId, dataUrl) => {
-    if (!dataUrl || !onUpdate) return
+    if (!dataUrl || !onUpdate || !widgetId) return
     capturingRef.current = false
     try {
-      const result = await uploadImage(dataUrl, 'snapshot')
+      const result = await uploadImage(dataUrl, `snapshot-${widgetId}`)
       if (!result?.success || !result?.filename) return
       const imageUrl = `/_storyboard/canvas/images/${result.filename}`
       const themeKey = canvasTheme?.startsWith('dark') ? 'snapshotDark' : 'snapshotLight'
@@ -315,7 +319,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
     } catch (err) {
       console.warn('[canvas] Failed to upload snapshot:', err)
     }
-  }, [onUpdate, canvasTheme])
+  }, [onUpdate, canvasTheme, widgetId])
 
   // Re-capture snapshots after resize (debounced)
   const resizeCaptureTimer = useRef(null)
@@ -481,7 +485,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
             {hasSnapshot && !(showIframe && iframeLoaded) && (
               <div className={styles.iframeContainer}>
                 <img
-                  src={basePath + (canvasTheme?.startsWith('dark') ? snapshotDark : snapshotLight)}
+                  src={basePath + currentSnapshot}
                   alt={label || 'Prototype preview'}
                   className={styles.snapshotImage}
                   style={{ width, height }}

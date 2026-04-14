@@ -120,6 +120,27 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
   // Auto-install body class sync (sb-key--value classes on <body>)
   useEffect(() => installBodyClassSync(), [])
 
+  // Update document.title to reflect the current artifact
+  useEffect(() => {
+    const base = import.meta.env?.BASE_URL || '/'
+    const branchMatch = base.match(/\/branch--([^/]+)/)
+    const branchSuffix = branchMatch ? ` (${branchMatch[1]})` : ''
+
+    let title
+    if (canvasName) {
+      const canvasData = canvases?.[canvasName]
+      const meta = canvasData?._canvasMeta
+      const pageTitle = canvasData?.title || canvasName.split('/').pop()
+      title = (meta?.title || pageTitle) + ' · Storyboard'
+    } else if (prototypeName) {
+      title = prototypeName + ' · Storyboard'
+    } else {
+      title = 'Storyboard'
+    }
+
+    document.title = title + branchSuffix
+  }, [canvasName, prototypeName])
+
   // Mount design modes UI when enabled in storyboard.config.json
   useEffect(() => {
     if (!isModesEnabled()) return

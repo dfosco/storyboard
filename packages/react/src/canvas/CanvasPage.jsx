@@ -21,6 +21,9 @@ import styles from './CanvasPage.module.css'
 const ZOOM_MIN = 25
 const ZOOM_MAX = 200
 
+/** Saved viewport state older than this is considered stale — zoom-to-fit instead. */
+const VIEWPORT_TTL_MS = 15 * 60 * 1000
+
 const CANVAS_BRIDGE_STATE_KEY = '__storyboardCanvasBridgeState'
 
 /** Matches branch-deploy base path prefixes like /branch--my-feature/ */
@@ -112,6 +115,11 @@ function loadViewportState(canvasName) {
     const raw = localStorage.getItem(getViewportStorageKey(canvasName))
     if (!raw) return null
     const state = JSON.parse(raw)
+    const timestamp = typeof state.timestamp === 'number' ? state.timestamp : 0
+    if (Date.now() - timestamp > VIEWPORT_TTL_MS) {
+      localStorage.removeItem(getViewportStorageKey(canvasName))
+      return null
+    }
     return {
       zoom: typeof state.zoom === 'number' ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, state.zoom)) : null,
       scrollLeft: typeof state.scrollLeft === 'number' ? state.scrollLeft : null,
@@ -122,7 +130,10 @@ function loadViewportState(canvasName) {
 
 function saveViewportState(canvasName, state) {
   try {
-    localStorage.setItem(getViewportStorageKey(canvasName), JSON.stringify(state))
+    localStorage.setItem(getViewportStorageKey(canvasName), JSON.stringify({
+      ...state,
+      timestamp: Date.now(),
+    }))
   } catch { /* quota exceeded — non-critical */ }
 }
 
@@ -696,20 +707,35 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     zoomRef.current = zoom
   }, [zoom])
 
-  // Restore scroll position from localStorage after first render
+  // Restore scroll position from localStorage after first render.
+  // When saved state is fresh (< 15 min), restore it. Otherwise zoom-to-fit
+  // all objects so the user sees a useful overview instead of stale coordinates.
   useEffect(() => {
     const el = scrollRef.current
     if (!el || loading) return
     const saved = pendingScrollRestore.current
     if (saved) {
+      // Fresh saved viewport — restore exactly
       if (saved.scrollLeft != null) el.scrollLeft = saved.scrollLeft
       if (saved.scrollTop != null) el.scrollTop = saved.scrollTop
       pendingScrollRestore.current = null
     } else {
-      // No saved state — start at origin so save effects don't persist
-      // stale scroll values from a previously-displayed canvas.
-      el.scrollLeft = 0
-      el.scrollTop = 0
+      // No saved state or stale — zoom-to-fit all objects
+      const bounds = computeCanvasBounds(localWidgets, componentEntries)
+      if (bounds && el.clientWidth > 0 && el.clientHeight > 0) {
+        const boxW = bounds.maxX - bounds.minX + FIT_PADDING * 2
+        const boxH = bounds.maxY - bounds.minY + FIT_PADDING * 2
+        const fitScale = Math.min(el.clientWidth / boxW, el.clientHeight / boxH)
+        const fitZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(fitScale * 100)))
+        const newScale = fitZoom / 100
+        zoomRef.current = fitZoom
+        flushSync(() => setZoom(fitZoom))
+        el.scrollLeft = (bounds.minX - FIT_PADDING) * newScale
+        el.scrollTop = (bounds.minY - FIT_PADDING) * newScale
+      } else {
+        el.scrollLeft = 0
+        el.scrollTop = 0
+      }
     }
     // Allow save effects for this canvas now that positioning is settled.
     viewportInitName.current = name

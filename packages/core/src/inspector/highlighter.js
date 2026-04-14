@@ -265,7 +265,7 @@ export async function createInspectorHighlighter() {
         return `<span class="${classes.join(' ')}"><span class="line-number" style="color:${gutterColor};user-select:none;opacity:0.5;display:inline-block;width:${lineNumWidth}ch;text-align:right;margin-right:1.5ch">${num}</span>${line}</span>`
       }).join('\n')
 
-      return `<pre style="background:${colors.bg};color:${colors.fg};margin:0;overflow-x:auto"><code>${wrappedLines}</code></pre>`
+      return `<pre style="background:${colors.bg};color:${colors.fg};margin:0;padding:var(--base-size-8);overflow-x:auto"><code>${wrappedLines}</code></pre>`
     },
   }
 }

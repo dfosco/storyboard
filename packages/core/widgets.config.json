@@ -475,6 +475,12 @@
           "label": "Height",
           "category": "size",
           "min": 60
+        },
+        "showCode": {
+          "type": "boolean",
+          "label": "Show code",
+          "category": "settings",
+          "default": false
         }
       },
       "features": [

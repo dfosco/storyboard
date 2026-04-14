@@ -46,10 +46,19 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
 
   const containerRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
-  const [showCode, setShowCode] = useState(false)
+  const [showCode, setShowCode] = useState(!!props?.showCode)
   const [sourceCode, setSourceCode] = useState(null)
   const [highlightedHtml, setHighlightedHtml] = useState(null)
   const [sourceLoading, setSourceLoading] = useState(false)
+
+  const toggleShowCode = useCallback(() => {
+    setShowCode((v) => {
+      const next = !v
+      // Persist to canvas JSONL in dev so the view preference is shared
+      onUpdate?.({ showCode: next })
+      return next
+    })
+  }, [onUpdate])
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -140,7 +149,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
     },
     handleAction(actionId) {
       if (actionId === 'show-code') {
-        setShowCode((v) => !v)
+        toggleShowCode()
       } else if (actionId === 'copy-code') {
         copyCode()
       } else if (actionId === 'open-external') {
@@ -151,7 +160,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
         }
       }
     },
-  }), [storyId, showCode, copyCode])
+  }), [storyId, showCode, toggleShowCode, copyCode])
 
   const iframeSrc = useMemo(
     () => resolveStoryUrl(storyId, exportName),

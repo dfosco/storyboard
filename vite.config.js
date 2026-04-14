@@ -130,6 +130,7 @@ export default defineConfig(() => {
                 'packages/react/src/**/*.{js,jsx}',
                 'packages/react-primer/src/**/*.{js,jsx}',
                 'packages/core/src/**/*.js',
+                '!packages/core/src/cli/**',
             ],
         },
     },

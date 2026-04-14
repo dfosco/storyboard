@@ -84,16 +84,7 @@ export default function storyboardServer() {
             'highlight.js/lib/languages/typescript',
             'highlight.js/lib/languages/xml',
           ],
-          exclude: ['playwright'],
         },
-      }
-    },
-
-    // Prevent Vite from scanning CLI-only files (they import Node deps
-    // like playwright/vite that can't be bundled for the browser).
-    resolveId(source, importer) {
-      if (source.includes('/cli/snapshots') || (importer && importer.includes('/cli/') && source === 'playwright')) {
-        return { id: source, external: true }
       }
     },
 

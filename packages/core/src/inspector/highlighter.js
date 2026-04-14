@@ -10,10 +10,10 @@
  * as inline styles — no global CSS injection, no theme conflicts.
  */
 
-import hljs from 'highlight.js/es/core'
-import javascript from 'highlight.js/es/languages/javascript'
-import typescript from 'highlight.js/es/languages/typescript'
-import xml from 'highlight.js/es/languages/xml'
+import hljs from 'highlight.js/lib/core'
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import xml from 'highlight.js/lib/languages/xml'
 import { getToolbarConfig } from '../toolbarConfigStore.js'
 
 hljs.registerLanguage('javascript', javascript)

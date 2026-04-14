@@ -313,8 +313,7 @@ export default function CanvasPage({ name, siblingPages = [] }) {
   const zoomRef = useRef(initialViewport?.zoom ?? 100)
   const scrollRef = useRef(null)
   const pendingScrollRestore = useRef(initialViewport)
-  const [canvasTitle, setCanvasTitle] = useState(canvas?.title || name)
-  const titleInputRef = useRef(null)
+  
   const [localSources, setLocalSources] = useState(canvas?.sources ?? [])
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
   const [snapEnabled, setSnapEnabled] = useState(canvas?.snapToGrid ?? false)
@@ -451,7 +450,6 @@ export default function CanvasPage({ name, siblingPages = [] }) {
     setTrackedCanvas(canvas)
     setLocalWidgets(canvas?.widgets ?? null)
     setLocalSources(canvas?.sources ?? [])
-    setCanvasTitle(canvas?.title || name)
     setSnapEnabled(canvas?.snapToGrid ?? false)
     setSnapGridSize(canvas?.gridSize || 40)
     undoRedo.reset()
@@ -465,27 +463,6 @@ export default function CanvasPage({ name, siblingPages = [] }) {
       )
     }, 2000)
   ).current
-
-  const debouncedTitleSave = useRef(
-    debounce((canvasName, title) => {
-      updateCanvas(canvasName, { settings: { title } }).catch((err) =>
-        console.error('[canvas] Failed to save title:', err)
-      )
-    }, 1000)
-  ).current
-
-  const handleTitleChange = useCallback((e) => {
-    const newTitle = e.target.value
-    setCanvasTitle(newTitle)
-    debouncedTitleSave(name, newTitle)
-  }, [name, debouncedTitleSave])
-
-  const handleTitleKeyDown = useCallback((e) => {
-    if (e.key === 'Enter') {
-      e.target.blur()
-    }
-    e.stopPropagation()
-  }, [])
 
   const handleWidgetUpdate = useCallback((widgetId, updates) => {
     undoRedo.snapshot(stateRef.current, 'edit', widgetId)
@@ -1568,29 +1545,12 @@ export default function CanvasPage({ name, siblingPages = [] }) {
   return (
     <>
       <div className={styles.canvasTitle}>
-        <div className={styles.canvasTitleWrap}>
-          <span className={styles.canvasTitleMeasure} aria-hidden="true">{canvasTitle || ' '}</span>
-          {isLocalDev ? (
-            <input
-              ref={titleInputRef}
-              className={styles.canvasTitleInput}
-              value={canvasTitle}
-              size={1}
-              onChange={handleTitleChange}
-              onKeyDown={handleTitleKeyDown}
-              onMouseDown={(e) => e.stopPropagation()}
-              spellCheck={false}
-              aria-label="Canvas title"
-            />
-          ) : (
-            <h1 className={styles.canvasTitleStatic}>{canvasTitle}</h1>
-          )}
-        </div>
+        <h1 className={styles.canvasTitleStatic}>{canvas?.title || name.split('/').pop()}</h1>
+        <PageSelector currentName={name} pages={siblingPages} />
         {isLocalDev && (
           <span className={styles.localEditingLabel}>Local editing</span>
         )}
       </div>
-      <PageSelector currentName={name} pages={siblingPages} />
       <div
         ref={scrollRef}
         data-storyboard-canvas-scroll

@@ -202,7 +202,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
           <span className={styles.headerTitle}>{displayName}</span>
         </div>
         {showCode ? (
-          <div className={styles.codeView}>
+          <div className={styles.codeView} data-canvas-allow-text-selection>
             <div className={styles.codeHeader}>
               <span className={styles.codeLabel}>{storyId}.story.jsx</span>
               <button

@@ -433,6 +433,70 @@
         }
       ]
     },
+    "story": {
+      "label": "Story",
+      "icon": "📖",
+      "resize": {
+        "enabled": true,
+        "prod": false
+      },
+      "props": {
+        "storyId": {
+          "type": "text",
+          "label": "Story",
+          "category": "content",
+          "default": ""
+        },
+        "exportName": {
+          "type": "text",
+          "label": "Export",
+          "category": "content",
+          "default": ""
+        },
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "min": 100
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 60
+        }
+      },
+      "features": [
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy"
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "prod": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
+      ]
+    },
     "image": {
       "label": "Image",
       "icon": "🖼️",

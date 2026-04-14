@@ -325,10 +325,10 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
   const zoomRef = useRef(initialViewport?.zoom ?? 100)
   const scrollRef = useRef(null)
   const pendingScrollRestore = useRef(initialViewport)
-  // Gate viewport persistence until initial positioning is complete (restore,
-  // ?widget= deep-link, or first visit). Prevents early save effects from
-  // overwriting the saved scroll position with 0,0.
-  const viewportInitDone = useRef(false)
+  // Gate viewport persistence until initial positioning is complete.
+  // Tracks which canvas name was last initialized — save effects only
+  // write when this matches `name`, preventing cross-canvas corruption.
+  const viewportInitName = useRef(null)
   const [localSources, setLocalSources] = useState(canvas?.sources ?? [])
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
   const [snapEnabled, setSnapEnabled] = useState(canvas?.snapToGrid ?? false)
@@ -468,10 +468,14 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     setSnapEnabled(canvas?.snapToGrid ?? false)
     setSnapGridSize(canvas?.gridSize || 40)
     undoRedo.reset()
-    // Reset viewport init gate so save effects don't persist stale positions
-    // while the new canvas's viewport is being restored.
-    viewportInitDone.current = false
-    pendingScrollRestore.current = loadViewportState(name)
+    // Block saves until the new canvas's viewport is fully restored.
+    viewportInitName.current = null
+    const newViewport = loadViewportState(name)
+    pendingScrollRestore.current = newViewport
+    // Restore zoom from the new canvas's saved state
+    const newZoom = newViewport?.zoom ?? 100
+    zoomRef.current = newZoom
+    setZoom(newZoom)
   }
 
   // Debounced save to server
@@ -701,12 +705,14 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
       if (saved.scrollLeft != null) el.scrollLeft = saved.scrollLeft
       if (saved.scrollTop != null) el.scrollTop = saved.scrollTop
       pendingScrollRestore.current = null
+    } else {
+      // No saved state — start at origin so save effects don't persist
+      // stale scroll values from a previously-displayed canvas.
+      el.scrollLeft = 0
+      el.scrollTop = 0
     }
-    // Mark viewport init complete so save effects can start persisting.
-    // This covers: restored saved position, first visit (no saved state),
-    // and name changes. The ?widget= effect below may override position
-    // and that's fine — it runs after this in the same commit.
-    viewportInitDone.current = true
+    // Allow save effects for this canvas now that positioning is settled.
+    viewportInitName.current = name
   }, [name, loading])
 
   // Center on a specific widget if `?widget=<id>` is in the URL
@@ -756,10 +762,16 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     window.history.replaceState({}, '', url.toString())
   }, [loading, localWidgets, componentEntries])
 
-  // Persist viewport state (zoom + scroll) to localStorage on changes
+  // Persist viewport state (zoom only) to localStorage on zoom changes.
+  // Scroll position is persisted separately by the debounced scroll handler,
+  // cleanup handler, and beforeunload — never here, because imperative zoom
+  // operations (applyZoom, zoom-to-fit) adjust scroll AFTER setZoom, so the
+  // scroll values would be stale at this point.
   useEffect(() => {
-    if (!viewportInitDone.current) return
+    if (viewportInitName.current !== name) return
     const el = scrollRef.current
+    // Read current scroll so the zoom entry doesn't zero-out position,
+    // but the authoritative scroll save comes from the scroll handler.
     saveViewportState(name, {
       zoom,
       scrollLeft: el?.scrollLeft ?? 0,
@@ -770,30 +782,35 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    function handleScroll() {
-      if (!viewportInitDone.current) return
+    const saveNow = () => {
+      if (viewportInitName.current !== name) return
       saveViewportState(name, {
         zoom: zoomRef.current,
         scrollLeft: el.scrollLeft,
         scrollTop: el.scrollTop,
       })
+    }
+    const debouncedScrollSave = debounce(saveNow, 150)
+    function handleScroll() {
+      if (viewportInitName.current !== name) return
+      debouncedScrollSave()
     }
     el.addEventListener('scroll', handleScroll, { passive: true })
 
     // Flush viewport state on page unload so a refresh never misses it
     function handleBeforeUnload() {
-      if (!viewportInitDone.current) return
-      saveViewportState(name, {
-        zoom: zoomRef.current,
-        scrollLeft: el.scrollLeft,
-        scrollTop: el.scrollTop,
-      })
+      debouncedScrollSave.cancel()
+      saveNow()
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
 
     return () => {
+      debouncedScrollSave.cancel()
       el.removeEventListener('scroll', handleScroll)
       window.removeEventListener('beforeunload', handleBeforeUnload)
+      // Save final state on cleanup (covers SPA navigation where
+      // beforeunload doesn't fire).
+      saveNow()
     }
   }, [name, loading])
 
@@ -832,6 +849,17 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     // Scroll so the same canvas point stays under the anchor
     el.scrollLeft = canvasX * newScale - anchorX
     el.scrollTop = canvasY * newScale - anchorY
+
+    // Persist after both zoom and scroll are settled (the zoom effect
+    // fires inside flushSync before the scroll adjustment above, so it
+    // would capture stale scroll values).
+    if (viewportInitName.current === name) {
+      saveViewportState(name, {
+        zoom: clampedZoom,
+        scrollLeft: el.scrollLeft,
+        scrollTop: el.scrollTop,
+      })
+    }
   }
 
   // Signal canvas mount/unmount to CoreUIBar
@@ -1019,6 +1047,15 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
       // Scroll so the bounding box top-left (with padding) is at viewport top-left
       el.scrollLeft = (bounds.minX - FIT_PADDING) * newScale
       el.scrollTop = (bounds.minY - FIT_PADDING) * newScale
+
+      // Persist after both zoom and scroll are settled
+      if (viewportInitName.current === name) {
+        saveViewportState(name, {
+          zoom: fitZoom,
+          scrollLeft: el.scrollLeft,
+          scrollTop: el.scrollTop,
+        })
+      }
     }
     document.addEventListener('storyboard:canvas:zoom-to-fit', handleZoomToFit)
     return () => document.removeEventListener('storyboard:canvas:zoom-to-fit', handleZoomToFit)

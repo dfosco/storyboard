@@ -8,7 +8,7 @@ import { getCanvasThemeVars, getCanvasPrimerAttrs } from './canvasTheme.js'
 import { getWidgetComponent } from './widgets/index.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'
 import { getFeatures, isResizable } from './widgets/widgetConfig.js'
-import { isFigmaUrl, sanitizeFigmaUrl } from './widgets/figmaUrl.js'
+import { createPasteContext, resolvePaste } from './widgets/pasteRules.js'
 import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import useUndoRedo from './useUndoRedo.js'
@@ -1072,43 +1072,7 @@ export default function CanvasPage({ name }) {
   useEffect(() => {
     const origin = window.location.origin
     const basePath = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
-    const baseUrl = origin + basePath
-
-    // Check if a URL is same-origin, accounting for branch-deploy prefixes.
-    // e.g. https://site.com/branch--my-feature/Proto and https://site.com/storyboard/Proto
-    // are both same-origin prototype URLs.
-    function isSameOriginPrototype(url) {
-      if (!url.startsWith(origin)) return false
-      if (url.startsWith(baseUrl)) return true
-      // Match branch deploy URLs: origin + /branch--*/...
-      const pathAfterOrigin = url.slice(origin.length)
-      return BRANCH_PREFIX_RE.test(pathAfterOrigin)
-    }
-
-    // Strip the base path (or any branch prefix) from a pathname to get a portable src.
-    function extractPrototypeSrc(pathname) {
-      // Strip current base path
-      if (basePath && pathname.startsWith(basePath)) {
-        return pathname.slice(basePath.length) || '/'
-      }
-      // Strip branch prefix: /branch--name/rest → /rest
-      const branchMatch = pathname.match(BRANCH_PREFIX_RE)
-      if (branchMatch) {
-        return pathname.slice(branchMatch[0].length) || '/'
-      }
-      return pathname
-    }
-
-    /** Parse text as a web URL (http/https only). Returns URL object or null. */
-    function looksLikeWebUrl(text) {
-      try {
-        const url = new URL(text)
-        if (url.protocol === 'http:' || url.protocol === 'https:') return url
-        return null
-      } catch {
-        return null
-      }
-    }
+    const pasteCtx = createPasteContext(origin, basePath)
 
     function blobToDataUrl(blob) {
       return new Promise((resolve, reject) => {
@@ -1245,25 +1209,9 @@ export default function CanvasPage({ name }) {
         return
       }
 
-      let type, props
-      const url = looksLikeWebUrl(text)
-      if (url) {
-        if (isFigmaUrl(text)) {
-          type = 'figma-embed'
-          props = { url: sanitizeFigmaUrl(text), width: 800, height: 450 }
-        } else if (isSameOriginPrototype(text)) {
-          const pathPortion = url.pathname + url.search + url.hash
-          const src = extractPrototypeSrc(pathPortion)
-          type = 'prototype'
-          props = { src: src || '/', originalSrc: src || '/', label: '', width: 800, height: 600 }
-        } else {
-          type = 'link-preview'
-          props = { url: text, title: '' }
-        }
-      } else {
-        type = 'markdown'
-        props = { content: text }
-      }
+      const resolved = resolvePaste(text, pasteCtx)
+      if (!resolved) return
+      const { type, props } = resolved
 
       const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
       const pos = centerPositionForWidget(center, type, props)

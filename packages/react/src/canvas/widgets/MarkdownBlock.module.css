@@ -130,6 +130,8 @@
   overflow-x: auto;
   margin: 8px 0;
   background: var(--bgColor-neutral-muted, #afb8c133);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* When inspector highlighter sets inline background, let it through */
@@ -138,6 +140,8 @@
   border: 1px solid var(--borderColor-muted, #d8dee4);
   overflow-x: auto;
   margin: 8px 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .preview pre code {

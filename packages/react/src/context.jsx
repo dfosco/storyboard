@@ -24,6 +24,7 @@ for (const [name, data] of Object.entries(canvases || {})) {
       name,
       route,
       title: data?.title || name.split('/').pop(),
+      _canvasMeta: data?._canvasMeta || null,
     })
   }
 }

@@ -300,7 +300,7 @@ function ChromeWrappedWidget({
  *
  * @param {{ name: string }} props - Canvas name as indexed by the data plugin
  */
-export default function CanvasPage({ name, siblingPages = [] }) {
+export default function CanvasPage({ name, siblingPages = [], canvasMeta = null }) {
   const { canvas, jsxExports, jsxError, loading } = useCanvas(name)
   const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true && !new URLSearchParams(window.location.search).has('prodMode')
 
@@ -1545,7 +1545,7 @@ export default function CanvasPage({ name, siblingPages = [] }) {
   return (
     <>
       <div className={styles.canvasTitle}>
-        <h1 className={styles.canvasTitleStatic}>{canvas?.title || name.split('/').pop()}</h1>
+        <h1 className={styles.canvasTitleStatic}>{canvasMeta?.title || canvas?.title || name.split('/').pop()}</h1>
         <PageSelector currentName={name} pages={siblingPages} />
         {isLocalDev && (
           <span className={styles.localEditingLabel}>Local editing</span>

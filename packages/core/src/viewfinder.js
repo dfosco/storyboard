@@ -199,23 +199,33 @@ export function buildPrototypeIndex(knownRoutes = []) {
   const folders = Object.values(folderMap)
   const prototypes = ungrouped
 
-  // Build canvas entries
+  // Build canvas entries — collapse grouped pages into a single entry per group
   const canvasEntries = []
+  const seenGroups = new Map() // group name → index in canvasEntries
   for (const canvasName of listCanvases()) {
     const data = getCanvasData(canvasName)
     if (!data) continue
     const meta = data._canvasMeta
-    canvasEntries.push({
+    const group = data._group || null
+
+    // If this canvas belongs to a group we've already seen, skip it
+    // (the first page in the group represents the whole canvas)
+    if (group && seenGroups.has(group)) continue
+
+    const entry = {
       name: meta?.title || data.title || canvasName,
       dirName: canvasName,
       description: meta?.description || data.description || null,
-      route: data._route || `/${canvasName}`,
+      route: data._route || `/canvas/${canvasName}`,
       folder: data._folder || null,
       isCanvas: true,
       author: meta?.author || data.author || null,
       gitAuthor: data.gitAuthor || null,
       _canvasMeta: meta || null,
-    })
+      _group: group,
+    }
+    if (group) seenGroups.set(group, canvasEntries.length)
+    canvasEntries.push(entry)
   }
 
   // Add canvases to their folders or to ungrouped

@@ -15,7 +15,7 @@ import { parseFlags, hasFlags, formatFlagHelp } from './flags.js'
 import { widgetSchema } from './schemas.js'
 import { ensureDevServer, serverPost, getServerUrl } from './create.js'
 
-const KNOWN_TYPES = ['sticky-note', 'markdown', 'prototype']
+const KNOWN_TYPES = ['sticky-note', 'markdown', 'prototype', 'story']
 
 async function canvasAdd() {
   // argv: storyboard canvas add [type] [--flags]
@@ -103,6 +103,58 @@ async function canvasAdd() {
       p.log.error('--props must be valid JSON')
       process.exit(1)
     }
+  }
+
+  // Story-specific: prompt for storyId and exportName if not in --props
+  if (widgetType === 'story' && !props.storyId) {
+    // Try to fetch available stories from the dev server
+    let stories = []
+    try {
+      const base = getServerUrl()
+      const res = await fetch(`${base}/_storyboard/stories/list`)
+      if (res.ok) {
+        const data = await res.json()
+        stories = data.stories || []
+      }
+    } catch {}
+
+    if (stories.length > 0) {
+      const storyId = await (async () => {
+        const choice = await p.select({
+          message: 'Story',
+          options: stories.map((s) => ({ value: s.name, label: s.name, hint: s.route || '' })),
+        })
+        if (p.isCancel(choice)) process.exit(0)
+        return choice
+      })()
+      props.storyId = storyId
+    } else {
+      const storyId = await (async () => {
+        const v = await p.text({
+          message: 'Story ID',
+          placeholder: 'button-patterns',
+          validate: (v) => { if (!v) return 'Story ID is required' },
+        })
+        if (p.isCancel(v)) process.exit(0)
+        return v
+      })()
+      props.storyId = storyId
+    }
+
+    if (!props.exportName) {
+      const exportName = await (async () => {
+        const v = await p.text({
+          message: 'Export name (leave empty for all)',
+          placeholder: 'Default',
+        })
+        if (p.isCancel(v)) process.exit(0)
+        return v
+      })()
+      if (exportName) props.exportName = exportName
+    }
+
+    if (!props.width) props.width = 600
+    if (!props.height) props.height = 400
   }
 
   // Submit

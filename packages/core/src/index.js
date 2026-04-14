@@ -18,6 +18,8 @@ export { listPrototypes, getPrototypeMetadata } from './loader.js'
 export { listFolders, getFolderMetadata } from './loader.js'
 // Canvas data
 export { listCanvases, getCanvasData } from './loader.js'
+// Story data
+export { listStories, getStoryData } from './loader.js'
 // Deprecated scene aliases
 export { loadScene, listScenes, sceneExists } from './loader.js'
 

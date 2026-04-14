@@ -183,3 +183,18 @@ export const widgetSchema = {
     description: 'Widget props as JSON string',
   },
 }
+
+/** @type {FlagSchema} */
+export const componentSchema = {
+  name: {
+    type: 'string',
+    required: true,
+    description: 'Component name (kebab-case)',
+    aliases: ['n'],
+  },
+  directory: {
+    type: 'string',
+    description: 'Subdirectory inside src/components/',
+    aliases: ['d'],
+  },
+}

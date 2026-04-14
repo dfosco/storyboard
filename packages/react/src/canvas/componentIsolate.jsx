@@ -97,9 +97,9 @@ async function mount() {
     return
   }
 
-  // Validate: only allow .canvas.jsx modules
-  if (!modulePath.endsWith('.canvas.jsx')) {
-    root.render(createElement('div', { style: errorStyle }, 'Invalid module path — only .canvas.jsx files are allowed'))
+  // Validate: only allow .canvas.jsx and .story.{jsx,tsx} modules
+  if (!modulePath.endsWith('.canvas.jsx') && !modulePath.match(/\.story\.(jsx|tsx)$/)) {
+    root.render(createElement('div', { style: errorStyle }, 'Invalid module path — only .canvas.jsx and .story.jsx/.tsx files are allowed'))
     return
   }
 

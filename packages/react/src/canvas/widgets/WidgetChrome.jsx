@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Tooltip } from '@primer/react'
-import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed } from '@primer/octicons-react'
+import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode, UnwrapIcon as OcticonUnwrap, ImageIcon as OcticonImage } from '@primer/octicons-react'
 import styles from './WidgetChrome.module.css'
 
 const STICKY_NOTE_COLORS = {
@@ -58,6 +58,18 @@ function EyeIcon() {
 
 function EyeClosedIcon() {
   return <OcticonEyeClosed size={12} />
+}
+
+function CodeIcon() {
+  return <OcticonCode size={12} />
+}
+
+function UnwrapIcon() {
+  return <OcticonUnwrap size={12} />
+}
+
+function ImageIcon() {
+  return <OcticonImage size={12} />
 }
 
 function CopyIcon() {
@@ -119,6 +131,9 @@ const ICON_REGISTRY = {
   'open-external': OpenExternalIcon,
   'eye': EyeIcon,
   'eye-closed': EyeClosedIcon,
+  'code': CodeIcon,
+  'unwrap': UnwrapIcon,
+  'image': ImageIcon,
   'copy': CopyIcon,
   'link': LinkIcon,
   'more': MoreIcon,
@@ -425,7 +440,7 @@ export default function WidgetChrome({
       onMouseEnter={(readOnly && !hasFeatures) ? undefined : handleMouseEnter}
       onMouseLeave={(readOnly && !hasFeatures) ? undefined : handleMouseLeave}
     >
-      <div className={`tc-drag-surface ${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''} ${multiSelected ? styles.widgetSlotMultiSelected : ''}`}>
+      <div className={`tc-drag-surface ${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''} ${multiSelected ? styles.widgetSlotMultiSelected : ''}`} data-widget-selected={selected || undefined}>
         {children}
       </div>
       <div
@@ -469,6 +484,11 @@ export default function WidgetChrome({
                   }
                 }
 
+                // Show-code toggle: swap label based on widget state
+                if (feature.action === 'show-code' && widgetRef?.current?.getState?.('showCode')) {
+                  label = 'Show component'
+                }
+
                 return (
                   <Tooltip key={feature.id} text={label} direction="n">
                     <button
@@ -504,7 +524,14 @@ export default function WidgetChrome({
               <WidgetOverflowMenu
                 widgetId={widgetId}
                 menuFeatures={menuFeatures}
-                onAction={onAction}
+                onAction={(actionId) => {
+                  // Route overflow menu actions through the widget ref first
+                  if (actionId !== 'delete' && actionId !== 'copy' && widgetRef?.current?.handleAction) {
+                    widgetRef.current.handleAction(actionId)
+                  } else {
+                    onAction?.(actionId)
+                  }
+                }}
               />
             )}
           </div>

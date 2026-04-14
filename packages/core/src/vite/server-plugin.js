@@ -75,6 +75,19 @@ export default function storyboardServer() {
   return {
     name: 'storyboard-server',
 
+    config() {
+      return {
+        optimizeDeps: {
+          include: [
+            'highlight.js/lib/core',
+            'highlight.js/lib/languages/javascript',
+            'highlight.js/lib/languages/typescript',
+            'highlight.js/lib/languages/xml',
+          ],
+        },
+      }
+    },
+
     configResolved(viteConfig) {
       root = viteConfig.root
       base = viteConfig.base || '/'

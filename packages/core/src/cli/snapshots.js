@@ -1,12 +1,14 @@
 /**
  * storyboard snapshots — batch-generate preview snapshots for canvas widgets.
  *
- * Opens each prototype/story embed URL in a headless browser at the widget's
- * dimensions, captures a screenshot for both light and dark themes, uploads
- * each image via the dev server API, and persists the snapshot paths in the
- * canvas JSONL.
+ * Fully standalone: reads JSONL from disk, spins up a temporary Vite server
+ * on an ephemeral port, uses Playwright to capture each embed at the widget's
+ * dimensions (both light and dark themes), writes images to src/canvas/images/,
+ * and appends a widgets_replaced event to the JSONL.
  *
- * Requires: dev server running, playwright installed.
+ * Does NOT touch the user's running dev server or browser.
+ *
+ * Requires: playwright installed (globally or locally).
  *
  * Usage:
  *   storyboard snapshots              # all canvases
@@ -14,11 +16,69 @@
  *   storyboard snapshots --force      # regenerate even if snapshots exist
  */
 
-import { getServerUrl } from './serverUrl.js'
+import fs from 'node:fs'
+import path from 'node:path'
+import { createServer } from 'vite'
+import { materializeFromText, serializeEvent } from '../canvas/materializer.js'
 import * as p from '@clack/prompts'
 import { bold, dim, green, yellow, cyan } from './intro.js'
 
 const THEMES = ['light', 'dark']
+const SNAPSHOT_PORT = 19876
+
+// ── Disk I/O helpers ──
+
+function findCanvasFiles(root) {
+  const results = []
+  const ignore = new Set(['node_modules', 'dist', '.git', '.worktrees'])
+  function walk(dir, rel = '') {
+    const entries = fs.readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (ignore.has(entry.name)) continue
+      const fullPath = path.join(dir, entry.name)
+      const relPath = rel ? `${rel}/${entry.name}` : entry.name
+      if (entry.isDirectory()) {
+        walk(fullPath, relPath)
+      } else if (entry.name.endsWith('.canvas.jsonl')) {
+        results.push({ relPath, absPath: fullPath })
+      }
+    }
+  }
+  walk(root)
+  return results
+}
+
+function toCanvasId(relPath) {
+  return relPath
+    .replace(/\.canvas\.jsonl$/, '')
+    .replace(/\\/g, '/')
+}
+
+function readCanvasState(absPath) {
+  const raw = fs.readFileSync(absPath, 'utf-8')
+  return materializeFromText(raw)
+}
+
+function writeImage(imagesDir, widgetId, theme, buffer) {
+  fs.mkdirSync(imagesDir, { recursive: true })
+  const now = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}--${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
+  const filename = `snapshot-${widgetId}--${theme}--${dateStr}.webp`
+  fs.writeFileSync(path.join(imagesDir, filename), buffer)
+  return filename
+}
+
+function appendWidgetsReplaced(jsonlPath, widgets) {
+  const event = {
+    event: 'widgets_replaced',
+    timestamp: new Date().toISOString(),
+    widgets,
+  }
+  fs.appendFileSync(jsonlPath, serializeEvent(event) + '\n', 'utf-8')
+}
+
+// ── Main ──
 
 async function run() {
   const args = process.argv.slice(3)
@@ -27,34 +87,17 @@ async function run() {
 
   p.intro(bold('storyboard snapshots'))
 
-  // Resolve dev server
-  let serverUrl
-  try {
-    serverUrl = getServerUrl()
-  } catch {
-    p.log.error('Could not resolve dev server URL. Is the dev server running?')
-    process.exit(1)
-  }
+  const root = process.cwd()
+  const imagesDir = path.join(root, 'src', 'canvas', 'images')
 
-  const apiBase = `${serverUrl}/_storyboard/canvas`
-
-  // Verify server is reachable
-  try {
-    const res = await fetch(`${apiBase}/list`)
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  } catch (err) {
-    p.log.error(`Dev server not reachable at ${serverUrl}: ${err.message}`)
-    p.log.info('Start the dev server first: ' + yellow('storyboard dev'))
-    process.exit(1)
-  }
-
-  // List canvases
-  const listRes = await fetch(`${apiBase}/list`)
-  const { canvases } = await listRes.json()
-
+  // Discover canvases from disk
+  const allFiles = findCanvasFiles(root)
   const targets = canvasFilter
-    ? canvases.filter(c => c.name === canvasFilter || c.name.includes(canvasFilter))
-    : canvases
+    ? allFiles.filter(f => {
+        const id = toCanvasId(f.relPath)
+        return id === canvasFilter || id.includes(canvasFilter)
+      })
+    : allFiles
 
   if (targets.length === 0) {
     p.log.warn(canvasFilter
@@ -63,7 +106,7 @@ async function run() {
     process.exit(0)
   }
 
-  p.log.info(`Found ${bold(targets.length)} canvas${targets.length > 1 ? 'es' : ''} to process`)
+  p.log.info(`Found ${bold(targets.length)} canvas${targets.length > 1 ? 'es' : ''}`)
 
   // Import playwright
   let chromium
@@ -72,160 +115,160 @@ async function run() {
     chromium = pw.chromium
   } catch {
     p.log.error('Playwright is required for snapshot generation.')
-    p.log.info('Install it: ' + yellow('npm install -g playwright && npx playwright install chromium'))
+    p.log.info('Install: ' + yellow('npm install -g playwright && npx playwright install chromium'))
     process.exit(1)
   }
 
-  const browser = await chromium.launch({ headless: true })
+  // Start a temporary Vite server on an ephemeral port
+  const serverSpin = p.spinner()
+  serverSpin.start('Starting temporary Vite server')
+  let server
+  try {
+    server = await createServer({
+      root,
+      server: { port: SNAPSHOT_PORT, strictPort: false },
+      logLevel: 'silent',
+    })
+    await server.listen()
+    const address = server.httpServer.address()
+    const serverUrl = `http://localhost:${address.port}`
+    serverSpin.stop(`Vite server ready at ${dim(serverUrl)}`)
 
-  let totalWidgets = 0
-  let totalSnapshots = 0
-  let totalSkipped = 0
+    const browser = await chromium.launch({ headless: true })
 
-  for (const canvas of targets) {
-    const spin = p.spinner()
-    spin.start(`Reading ${cyan(canvas.name)}`)
+    let totalWidgets = 0
+    let totalSnapshots = 0
+    let totalSkipped = 0
 
-    // Read materialized canvas state
-    const readRes = await fetch(`${apiBase}/read?name=${encodeURIComponent(canvas.name)}`)
-    if (!readRes.ok) {
-      spin.stop(`${canvas.name}: failed to read`)
-      continue
-    }
-    const state = await readRes.json()
+    for (const { relPath, absPath } of targets) {
+      const canvasId = toCanvasId(relPath)
+      const spin = p.spinner()
+      spin.start(`Reading ${cyan(canvasId)}`)
 
-    // Collect embeddable widgets (prototype + story)
-    const widgets = (state.widgets || []).filter(w =>
-      w.type === 'prototype' || w.type === 'story'
-    )
-
-    if (widgets.length === 0) {
-      spin.stop(`${canvas.name}: no embeddable widgets`)
-      continue
-    }
-
-    spin.stop(`${canvas.name}: ${widgets.length} widget${widgets.length > 1 ? 's' : ''}`)
-    totalWidgets += widgets.length
-    let canvasDirty = false
-
-    for (const widget of widgets) {
-      const widgetLabel = widget.props?.label || widget.props?.exportName || widget.id
-      const w = widget.props?.width || 800
-      const h = widget.props?.height || 600
-
-      // Check if snapshots already exist
-      const hasLight = !!widget.props?.snapshotLight
-      const hasDark = !!widget.props?.snapshotDark
-      if (hasLight && hasDark && !force) {
-        totalSkipped++
-        p.log.step(dim(`  ${widgetLabel} — snapshots exist, skipping`))
+      let state
+      try {
+        state = readCanvasState(absPath)
+      } catch (err) {
+        spin.stop(`${canvasId}: failed to read — ${err.message}`)
         continue
       }
 
-      const themesToCapture = force
-        ? THEMES
-        : THEMES.filter(t => t === 'light' ? !hasLight : !hasDark)
+      // Collect embeddable widgets (prototype + story)
+      const widgets = (state.widgets || []).filter(w =>
+        w.type === 'prototype' || w.type === 'story'
+      )
 
-      // Resolve the embed URL for this widget
-      const embedUrl = resolveEmbedUrl(serverUrl, widget)
-      if (!embedUrl) {
-        p.log.warn(`  ${widgetLabel} — could not resolve embed URL, skipping`)
+      if (widgets.length === 0) {
+        spin.stop(`${canvasId}: no embeddable widgets`)
         continue
       }
 
-      const updates = {}
+      spin.stop(`${canvasId}: ${widgets.length} widget${widgets.length > 1 ? 's' : ''}`)
+      totalWidgets += widgets.length
+      let canvasDirty = false
 
-      for (const theme of themesToCapture) {
-        const themeUrl = appendThemeParam(embedUrl, theme)
-        const wspin = p.spinner()
-        wspin.start(`  ${widgetLabel} (${theme}) ${dim(`${w}×${h}`)}`)
+      for (const widget of widgets) {
+        const widgetLabel = widget.props?.label || widget.props?.exportName || widget.id
+        const rawW = widget.props?.width || 800
+        const rawH = widget.props?.height || 600
 
-        try {
-          const context = await browser.newContext({
-            viewport: { width: w, height: h },
-            deviceScaleFactor: 2,
-            colorScheme: theme === 'dark' ? 'dark' : 'light',
-          })
-          const page = await context.newPage()
+        // Compute capture dimensions:
+        // - Story widgets have a 31px header above iframe content
+        // - Prototype widgets may have a zoom factor
+        const isStory = widget.type === 'story'
+        const zoom = widget.props?.zoom || 100
+        const scale = zoom / 100
+        const captureW = isStory ? rawW : Math.round(rawW / scale)
+        const captureH = isStory ? Math.max(rawH - 31, 100) : Math.round(rawH / scale)
 
-          await page.goto(themeUrl, { waitUntil: 'networkidle', timeout: 30000 })
-          // Extra settle time for React renders + animations
-          await page.waitForTimeout(2000)
+        // Check existing snapshots
+        const hasLight = !!widget.props?.snapshotLight
+        const hasDark = !!widget.props?.snapshotDark
+        if (hasLight && hasDark && !force) {
+          totalSkipped++
+          p.log.step(dim(`  ${widgetLabel} — snapshots exist, skipping`))
+          continue
+        }
 
-          const buffer = await page.screenshot({
-            type: 'webp',
-            quality: 85,
-          })
+        const themesToCapture = force
+          ? THEMES
+          : THEMES.filter(t => t === 'light' ? !hasLight : !hasDark)
 
-          await context.close()
+        const embedUrl = resolveEmbedUrl(serverUrl, widget)
+        if (!embedUrl) {
+          p.log.warn(`  ${widgetLabel} — could not resolve embed URL, skipping`)
+          continue
+        }
 
-          // Upload via dev server API
-          const base64 = buffer.toString('base64')
-          const dataUrl = `data:image/webp;base64,${base64}`
-          const uploadRes = await fetch(`${apiBase}/image`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              dataUrl,
-              canvasName: `snapshot-${widget.id}`,
-            }),
-          })
-          const uploadData = await uploadRes.json()
+        const updates = {}
 
-          if (uploadData.success && uploadData.filename) {
-            const imageUrl = `/_storyboard/canvas/images/${uploadData.filename}`
+        for (const theme of themesToCapture) {
+          const themeUrl = appendThemeParam(embedUrl, theme)
+          const wspin = p.spinner()
+          wspin.start(`  ${widgetLabel} (${theme}) ${dim(`${captureW}×${captureH}`)}`)
+
+          try {
+            const context = await browser.newContext({
+              viewport: { width: captureW, height: captureH },
+              deviceScaleFactor: 2,
+              colorScheme: theme === 'dark' ? 'dark' : 'light',
+            })
+            const page = await context.newPage()
+
+            await page.goto(themeUrl, { waitUntil: 'networkidle', timeout: 30000 })
+            await page.waitForTimeout(2000)
+
+            const buffer = await page.screenshot({ type: 'webp', quality: 85 })
+            await context.close()
+
+            const filename = writeImage(imagesDir, widget.id, theme, buffer)
+            const imageUrl = `/_storyboard/canvas/images/${filename}`
             const themeKey = theme === 'dark' ? 'snapshotDark' : 'snapshotLight'
             updates[themeKey] = imageUrl
             totalSnapshots++
             wspin.stop(green(`  ${widgetLabel} (${theme}) ✓`))
-          } else {
-            wspin.stop(`  ${widgetLabel} (${theme}) — upload failed`)
+          } catch (err) {
+            wspin.stop(`  ${widgetLabel} (${theme}) — ${err.message}`)
           }
-        } catch (err) {
-          wspin.stop(`  ${widgetLabel} (${theme}) — ${err.message}`)
+        }
+
+        if (Object.keys(updates).length > 0) {
+          widget.props = { ...widget.props, ...updates }
+          canvasDirty = true
         }
       }
 
-      // Accumulate updates into the widget props (applied to JSONL after all widgets)
-      if (Object.keys(updates).length > 0) {
-        widget.props = { ...widget.props, ...updates }
-        canvasDirty = true
+      // Persist all snapshot updates in a single widgets_replaced event
+      if (canvasDirty) {
+        try {
+          appendWidgetsReplaced(absPath, state.widgets)
+        } catch (err) {
+          p.log.warn(`  ${canvasId}: failed to write JSONL — ${err.message}`)
+        }
       }
     }
 
-    // Persist all snapshot updates for this canvas in a single widgets_replaced event
-    if (canvasDirty) {
-      await fetch(`${apiBase}/update`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: canvas.name,
-          widgets: state.widgets,
-        }),
-      })
-    }
+    await browser.close()
+
+    p.outro([
+      green('Done!'),
+      `${bold(totalSnapshots)} snapshot${totalSnapshots !== 1 ? 's' : ''} generated`,
+      totalSkipped > 0 ? dim(`${totalSkipped} skipped (already exist)`) : '',
+      `across ${bold(totalWidgets)} widget${totalWidgets !== 1 ? 's' : ''}`,
+    ].filter(Boolean).join('  ·  '))
+  } finally {
+    if (server) await server.close()
   }
-
-  await browser.close()
-
-  p.outro([
-    green(`Done!`),
-    `${bold(totalSnapshots)} snapshot${totalSnapshots !== 1 ? 's' : ''} generated`,
-    totalSkipped > 0 ? dim(`${totalSkipped} skipped (already exist)`) : '',
-    `across ${bold(totalWidgets)} widget${totalWidgets !== 1 ? 's' : ''}`,
-  ].filter(Boolean).join('  ·  '))
 }
 
-/**
- * Build the embed URL for a widget based on its type.
- */
+// ── URL helpers ──
+
 function resolveEmbedUrl(serverUrl, widget) {
   const { type, props } = widget
   if (type === 'prototype') {
     const src = props?.src
     if (!src) return null
-    if (/^https?:\/\//.test(src)) return null // skip external
-
+    if (/^https?:\/\//.test(src)) return null
     const cleaned = src.replace(/^\/branch--[^/]+/, '')
     const hashIdx = cleaned.indexOf('#')
     const base = hashIdx >= 0 ? cleaned.slice(0, hashIdx) : cleaned
@@ -244,9 +287,6 @@ function resolveEmbedUrl(serverUrl, widget) {
   return null
 }
 
-/**
- * Append theme parameter to the embed URL.
- */
 function appendThemeParam(url, theme) {
   const sep = url.includes('?') ? '&' : '?'
   return `${url}${sep}_sb_theme_target=prototype&_sb_canvas_theme=${theme}`

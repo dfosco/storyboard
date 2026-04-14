@@ -633,58 +633,7 @@
       }
     }
 
-    // Canvas tools → individual actions (only when canvas is active)
-    if (canvasActive) {
-      actions.push({ type: 'separator', id: '_mobile_canvas_sep' })
-      actions.push({ type: 'header', label: 'Canvas', id: '_mobile_canvas_header' })
-
-      const zoomData = toolData['canvas-zoom']
-      if (zoomData) {
-        actions.push({
-          id: 'mobile:zoom-in', label: 'Zoom in', type: 'default', modes: ['*'],
-        })
-        handlers['mobile:zoom-in'] = () => zoomData.zoomIn(canvasZoom)
-
-        actions.push({
-          id: 'mobile:zoom-out', label: 'Zoom out', type: 'default', modes: ['*'],
-        })
-        handlers['mobile:zoom-out'] = () => zoomData.zoomOut(canvasZoom)
-
-        actions.push({
-          id: 'mobile:zoom-reset', label: 'Reset zoom (100%)', type: 'default', modes: ['*'],
-        })
-        handlers['mobile:zoom-reset'] = () => zoomData.zoomReset()
-      }
-
-      if (toolData['canvas-zoom-to-fit'] || zoomData) {
-        const data = toolData['canvas-zoom-to-fit'] || zoomData
-        actions.push({
-          id: 'mobile:zoom-to-fit', label: 'Zoom to fit', type: 'default', modes: ['*'],
-        })
-        handlers['mobile:zoom-to-fit'] = () => data.zoomToFit()
-      }
-
-      if (toolData['canvas-snap'] || zoomData) {
-        const data = toolData['canvas-snap'] || zoomData
-        actions.push({
-          id: 'mobile:toggle-snap', label: 'Snap to grid', type: 'default', modes: ['*'],
-        })
-        handlers['mobile:toggle-snap'] = () => data.toggleSnap()
-      }
-
-      if (toolData['canvas-undo-redo'] || zoomData) {
-        const data = toolData['canvas-undo-redo'] || zoomData
-        actions.push({
-          id: 'mobile:undo', label: 'Undo', type: 'default', modes: ['*'],
-        })
-        handlers['mobile:undo'] = () => data.undo()
-
-        actions.push({
-          id: 'mobile:redo', label: 'Redo', type: 'default', modes: ['*'],
-        })
-        handlers['mobile:redo'] = () => data.redo()
-      }
-    }
+    // Canvas toolbar stays visible on mobile — no need to duplicate canvas tools here
 
     setDynamicActions('mobile-toolbar', actions, handlers)
     mobileActionsRegistered = true
@@ -705,7 +654,7 @@
 </script>
 
 {#if !isEmbed}
-  {#if visible && canvasActive && canvasMenus.length > 0 && !isMobileState}
+  {#if visible && canvasActive && canvasMenus.length > 0}
     <div
       class="fixed bottom-6 left-6 z-[9999] font-sans flex items-center gap-3"
       role="toolbar"

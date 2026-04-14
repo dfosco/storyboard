@@ -100,10 +100,11 @@
   cursor: text;
 }
 
-/* Style the highlighted pre from the inspector highlighter */
+/* Style the highlighted pre from the inspector highlighter.
+   padding uses !important to override the inline padding:0 from codeToHtml. */
 .codeBlock pre {
   margin: 0;
-  padding: 12px;
+  padding: var(--base-size-8, 8px) !important;
   font-family: "Ioskeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 12px;
   font-weight: 400;

@@ -1,12 +1,7 @@
 import { useEffect, useMemo, Suspense, lazy } from 'react'
 import { useParams, useLocation } from 'react-router-dom'
-<<<<<<< HEAD
-// Named import seeds the core data index via init() AND provides canvas route data
-import { canvases, canvasAliases } from 'virtual:storyboard-data-index'
-=======
 // Named import seeds the core data index via init() AND provides canvas/story route data
-import { canvases, stories } from 'virtual:storyboard-data-index'
->>>>>>> origin/4.0.0--story-widgets
+import { canvases, canvasAliases, stories } from 'virtual:storyboard-data-index'
 import { loadFlow, flowExists, findRecord, deepMerge, setFlowClass, installBodyClassSync, resolveFlowName, resolveRecordName, isModesEnabled } from '@dfosco/storyboard-core'
 import { StoryboardContext } from './StoryboardContext.js'
 import styles from './FlowError.module.css'

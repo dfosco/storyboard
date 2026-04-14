@@ -14,11 +14,8 @@ import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import useUndoRedo from './useUndoRedo.js'
 import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi, uploadImage, getCanvas as getCanvasApi } from './canvasApi.js'
-<<<<<<< HEAD
 import PageSelector from './PageSelector.jsx'
-=======
 import { stories as storyIndex } from 'virtual:storyboard-data-index'
->>>>>>> origin/4.0.0--story-widgets
 import styles from './CanvasPage.module.css'
 
 const ZOOM_MIN = 25
@@ -1109,64 +1106,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
   useEffect(() => {
     const origin = window.location.origin
     const basePath = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
-<<<<<<< HEAD
     const pasteCtx = createPasteContext(origin, basePath)
-=======
-    const baseUrl = origin + basePath
-
-    // Check if a URL is same-origin, accounting for branch-deploy prefixes.
-    // e.g. https://site.com/branch--my-feature/Proto and https://site.com/storyboard/Proto
-    // are both same-origin prototype URLs.
-    function isSameOriginPrototype(url) {
-      if (!url.startsWith(origin)) return false
-      if (url.startsWith(baseUrl)) return true
-      // Match branch deploy URLs: origin + /branch--*/...
-      const pathAfterOrigin = url.slice(origin.length)
-      return BRANCH_PREFIX_RE.test(pathAfterOrigin)
-    }
-
-    // Strip the base path (or any branch prefix) from a pathname to get a portable src.
-    function extractPrototypeSrc(pathname) {
-      // Strip current base path
-      if (basePath && pathname.startsWith(basePath)) {
-        return pathname.slice(basePath.length) || '/'
-      }
-      // Strip branch prefix: /branch--name/rest → /rest
-      const branchMatch = pathname.match(BRANCH_PREFIX_RE)
-      if (branchMatch) {
-        return pathname.slice(branchMatch[0].length) || '/'
-      }
-      return pathname
-    }
-
-    // Check if a same-origin URL points to a story route.
-    // Returns { storyId, exportName } or null.
-    function matchStoryUrl(text) {
-      if (!isSameOriginPrototype(text)) return null
-      try {
-        const url = new URL(text)
-        const src = extractPrototypeSrc(url.pathname)
-        const normalized = src.replace(/\/+$/, '') || '/'
-        const storyId = storyRouteIndex.get(normalized)
-        if (!storyId) return null
-        const exportName = url.searchParams.get('export') || ''
-        return { storyId, exportName }
-      } catch {
-        return null
-      }
-    }
-
-    /** Parse text as a web URL (http/https only). Returns URL object or null. */
-    function looksLikeWebUrl(text) {
-      try {
-        const url = new URL(text)
-        if (url.protocol === 'http:' || url.protocol === 'https:') return url
-        return null
-      } catch {
-        return null
-      }
-    }
->>>>>>> origin/4.0.0--story-widgets
 
     function blobToDataUrl(blob) {
       return new Promise((resolve, reject) => {
@@ -1304,38 +1244,10 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
         return
       }
 
-<<<<<<< HEAD
       e.preventDefault()
       const resolved = resolvePaste(text, pasteCtx, getPasteRules())
       if (!resolved) return
       const { type, props } = resolved
-=======
-      let type, props
-      const url = looksLikeWebUrl(text)
-      if (url) {
-        if (isFigmaUrl(text)) {
-          type = 'figma-embed'
-          props = { url: sanitizeFigmaUrl(text), width: 800, height: 450 }
-        } else {
-          const storyMatch = matchStoryUrl(text)
-          if (storyMatch) {
-            type = 'story'
-            props = { storyId: storyMatch.storyId, exportName: storyMatch.exportName, width: 600, height: 400 }
-          } else if (isSameOriginPrototype(text)) {
-            const pathPortion = url.pathname + url.search + url.hash
-            const src = extractPrototypeSrc(pathPortion)
-            type = 'prototype'
-            props = { src: src || '/', originalSrc: src || '/', label: '', width: 800, height: 600 }
-          } else {
-            type = 'link-preview'
-            props = { url: text, title: '' }
-          }
-        }
-      } else {
-        type = 'markdown'
-        props = { content: text }
-      }
->>>>>>> origin/4.0.0--story-widgets
 
       const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
       const pos = centerPositionForWidget(center, type, props)

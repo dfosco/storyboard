@@ -4,13 +4,42 @@
   min-width: 100px;
   min-height: 60px;
   background: var(--bgColor-default, #ffffff);
+  border: 3px solid var(--borderColor-default, #d0d7de);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   width: 100%;
   height: 100%;
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fgColor-muted, #656d76);
+  background: var(--bgColor-muted, #f6f8fa);
+  border-bottom: 1px solid var(--borderColor-muted, #d8dee4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.headerIcon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.headerTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .content {
   width: 100%;
-  height: 100%;
+  height: calc(100% - 31px);
 }
 
 .iframe {
@@ -18,6 +47,65 @@
   width: 100%;
   height: 100%;
   border: none;
+}
+
+.codeView {
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 31px);
+  overflow: hidden;
+}
+
+.codeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--fgColor-muted, #656d76);
+  background: var(--bgColor-inset, #eff2f5);
+  border-bottom: 1px solid var(--borderColor-muted, #d8dee4);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.codeLabel {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+.codeCloseBtn {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--fgColor-muted, #656d76);
+}
+
+.codeCloseBtn:hover {
+  background: var(--bgColor-neutral-muted, #eaeef2);
+  color: var(--fgColor-default, #1f2328);
+}
+
+.codeBlock {
+  flex: 1;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fgColor-default, #1f2328);
+  background: var(--bgColor-default, #ffffff);
+  white-space: pre;
+  tab-size: 2;
+  user-select: text;
+  cursor: text;
 }
 
 .error {

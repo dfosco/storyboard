@@ -41,10 +41,20 @@ function Canvas({
       }
     : undefined;
 
-  // Mirror dot-grid vars and attribute to <html> so the background
-  // extends beyond the 10000×10000 <main> boundary.
+  // Mirror dot-grid vars and attribute to the scroll ancestor so
+  // the dotted background extends beyond the 10000×10000 <main>.
   useEffect(() => {
-    const el = document.documentElement
+    const main = document.querySelector('.tc-canvas')
+    if (!main) return
+    // Walk up to find the nearest scrollable ancestor
+    let el = main.parentElement
+    while (el && el !== document.documentElement) {
+      const { overflow, overflowX, overflowY } = getComputedStyle(el)
+      if ([overflow, overflowX, overflowY].some(v => v === 'auto' || v === 'scroll')) break
+      el = el.parentElement
+    }
+    // Fall back to documentElement if no scroll container found
+    if (!el || el === document.documentElement) el = document.documentElement
     if (showDots && canvasStyle) {
       for (const [k, v] of Object.entries(canvasStyle)) el.style.setProperty(k, v)
       el.setAttribute('data-tc-dotted', '')

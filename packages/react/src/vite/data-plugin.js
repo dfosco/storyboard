@@ -47,26 +47,35 @@ function parseDataFile(filePath) {
         .replace(/^.*?src\/canvas\//, '')
         .replace(/[^/]*\.folder\/?/g, '')
         .replace(/\/$/, '')
-      // Path-based ID: include folder path for uniqueness (e.g. "research/interviews")
-      name = routeBase ? `${routeBase}/${baseName}` : baseName
+      // Path-based ID: include folder context for uniqueness.
+      // .folder dirs contribute their name (sans .folder suffix) to the ID.
+      const idBase = (dirPath + '/')
+        .replace(/^.*?src\/canvas\//, '')
+        .replace(/\.folder\/?/g, '/')
+        .replace(/\/+/g, '/')
+        .replace(/\/$/, '')
+      name = idBase ? `${idBase}/${baseName}` : baseName
       inferredRoute = '/canvas/' + name
       inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
     }
     const protoCheck = normalized.match(/(?:^|\/)src\/prototypes\//)
     if (!canvasCheck && protoCheck) {
       const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
-      const routeBase = (dirPath + '/')
+      // For prototypes, .folder is purely organizational — strip entirely
+      const idBase = (dirPath + '/')
         .replace(/^.*?src\/prototypes\//, '')
         .replace(/[^/]*\.folder\/?/g, '')
+        .replace(/\/+/g, '/')
         .replace(/\/$/, '')
-      // Path-based ID for prototype-scoped canvases
-      name = routeBase ? `${routeBase}/${baseName}` : baseName
+      name = idBase ? `${idBase}/${baseName}` : baseName
       inferredRoute = '/canvas/' + name
       inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
     }
-    // Derive group from the path prefix (everything before the last segment)
+    // Derive group: canvases sharing a physical directory form a group.
+    // For .folder dirs, the folder name is the group.
+    // For non-.folder subdirectories, derive from the path prefix.
     const slashIdx = name.lastIndexOf('/')
-    const group = slashIdx > 0 ? name.substring(0, slashIdx) : null
+    const group = canvasFolderName || (slashIdx > 0 ? name.substring(0, slashIdx) : null)
     return { name, suffix: 'canvas', ext: 'jsonl', folder: canvasFolderName || folderName, inferredRoute, group }
   }
 
@@ -941,4 +950,4 @@ export default function storyboardDataPlugin() {
 }
 
 // Exported for testing
-export { resolveTemplateVars, computeTemplateVars }
+export { resolveTemplateVars, computeTemplateVars, parseDataFile }

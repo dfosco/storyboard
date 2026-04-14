@@ -55,6 +55,9 @@ function findCanvasFiles(root) {
  * Derive a path-based canvas ID from a relative file path.
  * Mirrors the logic in data-plugin.js parseDataFile() for consistency.
  *
+ * .folder directories contribute their name (sans .folder suffix) to the ID,
+ * ensuring canvases in different folders never collide.
+ *
  * Examples:
  *   "src/canvas/foo.canvas.jsonl" → "foo"
  *   "src/canvas/research.folder/interviews.canvas.jsonl" → "research/interviews"
@@ -70,21 +73,24 @@ function deriveCanvasId(relPath) {
   const canvasCheck = normalized.match(/(?:^|\/)src\/canvas\//)
   if (canvasCheck) {
     const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
-    const routeBase = (dirPath + '/')
+    const idBase = (dirPath + '/')
       .replace(/^.*?src\/canvas\//, '')
-      .replace(/[^/]*\.folder\/?/g, '')
+      .replace(/\.folder\/?/g, '/')
+      .replace(/\/+/g, '/')
       .replace(/\/$/, '')
-    return routeBase ? `${routeBase}/${baseName}` : baseName
+    return idBase ? `${idBase}/${baseName}` : baseName
   }
 
   const protoCheck = normalized.match(/(?:^|\/)src\/prototypes\//)
   if (protoCheck) {
     const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
-    const routeBase = (dirPath + '/')
+    // For prototypes, .folder is purely organizational — strip entirely
+    const idBase = (dirPath + '/')
       .replace(/^.*?src\/prototypes\//, '')
       .replace(/[^/]*\.folder\/?/g, '')
+      .replace(/\/+/g, '/')
       .replace(/\/$/, '')
-    return routeBase ? `${routeBase}/${baseName}` : baseName
+    return idBase ? `${idBase}/${baseName}` : baseName
   }
 
   return baseName

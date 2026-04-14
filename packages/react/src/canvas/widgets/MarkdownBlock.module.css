@@ -59,15 +59,18 @@
 .preview ul {
   margin: 0 0 8px;
   padding-left: 20px;
+  list-style-type: disc;
 }
 
 .preview li {
   margin: 0 0 2px;
+  display: list-item;
 }
 
 .preview ol {
   margin: 0 0 8px;
   padding-left: 20px;
+  list-style-type: decimal;
 }
 
 /* GFM: Task lists */
@@ -131,6 +134,28 @@
   padding: 0;
   font-size: 13px;
 }
+
+/* highlight.js token colors (GitHub-light palette) */
+.preview :global(.hljs-keyword) { color: #cf222e; }
+.preview :global(.hljs-string) { color: #0a3069; }
+.preview :global(.hljs-number) { color: #0550ae; }
+.preview :global(.hljs-comment) { color: #6e7781; }
+.preview :global(.hljs-function),
+.preview :global(.hljs-title) { color: #8250df; }
+.preview :global(.hljs-built_in) { color: #0550ae; }
+.preview :global(.hljs-literal) { color: #0550ae; }
+.preview :global(.hljs-type) { color: #0550ae; }
+.preview :global(.hljs-attr) { color: #0550ae; }
+.preview :global(.hljs-tag) { color: #116329; }
+.preview :global(.hljs-name) { color: #116329; }
+.preview :global(.hljs-attribute) { color: #0550ae; }
+.preview :global(.hljs-variable) { color: #953800; }
+.preview :global(.hljs-params) { color: inherit; }
+.preview :global(.hljs-meta) { color: #6e7781; }
+.preview :global(.hljs-regexp) { color: #0a3069; }
+.preview :global(.hljs-symbol) { color: #0550ae; }
+.preview :global(.hljs-operator) { color: inherit; }
+.preview :global(.hljs-punctuation) { color: inherit; }
 
 /* Blockquotes */
 .preview blockquote {

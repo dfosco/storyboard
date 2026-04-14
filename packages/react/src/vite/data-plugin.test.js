@@ -1045,4 +1045,76 @@ describe('canvas watcher behavior', () => {
     expect(code2).toContain('"refresh-canvas"')
     expect(code2).toContain('After Refresh')
   })
+
+  // ── Story file discovery ──────────────────────────────────────────
+
+  it('discovers .story.jsx files and generates _storyImport', () => {
+    writeDataFiles(tmpDir)
+    writeFileSync(
+      path.join(tmpDir, 'button-patterns.story.jsx'),
+      'export function Primary() { return null }',
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"button-patterns"')
+    expect(code).toContain('_storyModule')
+    expect(code).toContain('_storyImport')
+    expect(code).toContain('.story.jsx')
+  })
+
+  it('discovers .story.tsx files', () => {
+    writeDataFiles(tmpDir)
+    writeFileSync(
+      path.join(tmpDir, 'card.story.tsx'),
+      'export function Default() { return null }',
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"card"')
+    expect(code).toContain('card.story.tsx')
+  })
+
+  it('skips _-prefixed story files', () => {
+    writeDataFiles(tmpDir)
+    writeFileSync(
+      path.join(tmpDir, '_draft.story.jsx'),
+      'export function Draft() { return null }',
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).not.toContain('"_draft"')
+  })
+
+  it('throws on duplicate story names', () => {
+    writeDataFiles(tmpDir)
+    mkdirSync(path.join(tmpDir, 'a'), { recursive: true })
+    mkdirSync(path.join(tmpDir, 'b'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'a', 'dupe.story.jsx'),
+      'export function A() { return null }',
+    )
+    writeFileSync(
+      path.join(tmpDir, 'b', 'dupe.story.jsx'),
+      'export function B() { return null }',
+    )
+    const plugin = createPlugin()
+    expect(() => plugin.load(RESOLVED_ID)).toThrow(/Duplicate story "dupe"/)
+  })
+
+  it('includes stories in the init() call and exports', () => {
+    writeDataFiles(tmpDir)
+    writeFileSync(
+      path.join(tmpDir, 'test.story.jsx'),
+      'export function Test() { return null }',
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('const stories = {')
+    expect(code).toContain('init({ flows, objects, records, prototypes, folders, canvases, stories })')
+    expect(code).toContain('export { flows, scenes, objects, records, prototypes, folders, canvases, stories }')
+  })
 })

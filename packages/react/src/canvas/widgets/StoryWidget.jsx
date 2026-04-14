@@ -93,6 +93,16 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
     return () => { cancelled = true }
   }, [showCode, sourceCode, storyId])
 
+  // Re-highlight when the code-box theme changes (storyboard:theme:changed event).
+  const [codeThemeKey, setCodeThemeKey] = useState(0)
+  useEffect(() => {
+    function onThemeChanged() {
+      setCodeThemeKey((k) => k + 1)
+    }
+    document.addEventListener('storyboard:theme:changed', onThemeChanged)
+    return () => document.removeEventListener('storyboard:theme:changed', onThemeChanged)
+  }, [])
+
   // Syntax-highlight source code using the inspector highlighter.
   // Uses the current code-box theme (data-sb-code-theme) set by the theme store.
   useEffect(() => {
@@ -105,7 +115,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
       setHighlightedHtml(html)
     })
     return () => { cancelled = true }
-  }, [sourceCode, storyId])
+  }, [sourceCode, storyId, codeThemeKey])
 
   const copyCode = useCallback(async () => {
     if (sourceCode) {

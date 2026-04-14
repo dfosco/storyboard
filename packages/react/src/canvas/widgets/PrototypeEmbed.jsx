@@ -261,15 +261,9 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
         setExpanded(true)
       } else if (actionId === 'open-external') {
         if (rawSrc) window.open(rawSrc, '_blank', 'noopener')
-      } else if (actionId === 'zoom-in') {
-        const step = zoom < 75 ? 5 : 25
-        onUpdate?.({ zoom: Math.min(200, zoom + step) })
-      } else if (actionId === 'zoom-out') {
-        const step = zoom <= 75 ? 5 : 25
-        onUpdate?.({ zoom: Math.max(25, zoom - step) })
       }
     },
-  }), [rawSrc, zoom, onUpdate])
+  }), [rawSrc])
 
   function handlePickRoute(route) {
     onUpdate?.({ src: route })

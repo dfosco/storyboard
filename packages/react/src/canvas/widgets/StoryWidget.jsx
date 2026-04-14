@@ -104,7 +104,8 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
-  }, [onUpdate])
+    triggerResizeCapture()
+  }, [onUpdate, triggerResizeCapture])
 
   const enterInteractive = useCallback(() => setInteractive(true), [])
 
@@ -171,6 +172,17 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
     clearTimeout(resizeCaptureTimer.current)
     resizeCaptureTimer.current = setTimeout(() => requestSnapshotCapture(), 2000)
   }, [requestSnapshotCapture, onUpdate])
+
+  // Re-capture for alternate theme variant when theme changes
+  const prevThemeRef = useRef(canvasTheme)
+  useEffect(() => {
+    if (canvasTheme !== prevThemeRef.current && onUpdate && showIframe) {
+      prevThemeRef.current = canvasTheme
+      const timer = setTimeout(() => requestSnapshotCapture(), 3000)
+      return () => clearTimeout(timer)
+    }
+    prevThemeRef.current = canvasTheme
+  }, [canvasTheme, onUpdate, showIframe, requestSnapshotCapture])
 
   // Load source code when show-code is toggled on
   useEffect(() => {

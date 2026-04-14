@@ -6,9 +6,28 @@
 
 import * as p from '@clack/prompts'
 import { existsSync } from 'fs'
+import path from 'path'
 import { execSync } from 'child_process'
 import { generateCaddyfile, isCaddyInstalled, isCaddyRunning, startCaddy, reloadCaddy } from './proxy.js'
 import { gettingStartedLines, dim, magenta, bold, green, yellow } from './intro.js'
+
+/**
+ * Run a potentially slow task with a spinner that only appears after 500ms.
+ * If the task completes quickly, shows the done message immediately.
+ */
+async function withSpin(label, doneMsg, fn) {
+  const spin = p.spinner()
+  const timer = setTimeout(() => spin.start(label), 500)
+  try {
+    await fn()
+    clearTimeout(timer)
+    spin.stop(doneMsg)
+  } catch (err) {
+    clearTimeout(timer)
+    spin.stop(`Failed: ${label}`)
+    throw err
+  }
+}
 
 function mascot() {
   const d = dim('·')
@@ -199,14 +218,16 @@ if (isInstalled('code')) {
   if (hasPlaywright) {
     p.log.success('Playwright installed')
   } else {
-    const pwSpin = p.spinner()
-    pwSpin.start('Installing Playwright + Chromium...')
     try {
-      run('npm install -g playwright')
-      run('npx playwright install chromium')
-      pwSpin.stop('Playwright installed')
+      await withSpin(
+        'Installing Playwright + Chromium...',
+        'Playwright installed',
+        () => {
+          run('npm install -g playwright')
+          run('npx playwright install chromium')
+        }
+      )
     } catch {
-      pwSpin.stop('Failed to install Playwright')
       p.log.warning('Install manually: npm install -g playwright && npx playwright install chromium')
       p.log.info(dim('Playwright is needed for `storyboard snapshots`'))
     }

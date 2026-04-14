@@ -153,9 +153,9 @@ async function run() {
         continue
       }
 
-      // Collect embeddable widgets (prototype + story)
+      // Collect embeddable widgets (prototype + story + figma-embed)
       const widgets = (state.widgets || []).filter(w =>
-        w.type === 'prototype' || w.type === 'story'
+        w.type === 'prototype' || w.type === 'story' || w.type === 'figma-embed'
       )
 
       if (widgets.length === 0) {
@@ -171,28 +171,34 @@ async function run() {
         const widgetLabel = widget.props?.label || widget.props?.exportName || widget.id
         const rawW = widget.props?.width || 800
         const rawH = widget.props?.height || 600
+        const isFigma = widget.type === 'figma-embed'
 
         // Compute capture dimensions:
         // - Story widgets have a 31px header above iframe content
         // - Prototype widgets may have a zoom factor
+        // - Figma embeds use raw dimensions
         const isStory = widget.type === 'story'
         const zoom = widget.props?.zoom || 100
         const scale = zoom / 100
-        const captureW = isStory ? rawW : Math.round(rawW / scale)
-        const captureH = isStory ? Math.max(rawH - 31, 100) : Math.round(rawH / scale)
+        const captureW = isStory ? rawW : isFigma ? rawW : Math.round(rawW / scale)
+        const captureH = isStory ? Math.max(rawH - 31, 100) : isFigma ? rawH : Math.round(rawH / scale)
+
+        // Figma embeds only need a single snapshot (no theme variants)
+        const themesNeeded = isFigma ? ['light'] : THEMES
 
         // Check existing snapshots
         const hasLight = !!widget.props?.snapshotLight
         const hasDark = !!widget.props?.snapshotDark
-        if (hasLight && hasDark && !force) {
+        const allExist = isFigma ? hasLight : (hasLight && hasDark)
+        if (allExist && !force) {
           totalSkipped++
           p.log.step(dim(`  ${widgetLabel} — snapshots exist, skipping`))
           continue
         }
 
         const themesToCapture = force
-          ? THEMES
-          : THEMES.filter(t => t === 'light' ? !hasLight : !hasDark)
+          ? themesNeeded
+          : themesNeeded.filter(t => t === 'light' ? !hasLight : !hasDark)
 
         const embedUrl = resolveEmbedUrl(serverUrl, widget)
         if (!embedUrl) {
@@ -203,9 +209,9 @@ async function run() {
         const updates = {}
 
         for (const theme of themesToCapture) {
-          const themeUrl = appendThemeParam(embedUrl, theme)
+          const themeUrl = isFigma ? embedUrl : appendThemeParam(embedUrl, theme)
           const wspin = p.spinner()
-          wspin.start(`  ${widgetLabel} (${theme}) ${dim(`${captureW}×${captureH}`)}`)
+          wspin.start(`  ${widgetLabel}${isFigma ? '' : ` (${theme})`} ${dim(`${captureW}×${captureH}`)}`)
 
           try {
             const context = await browser.newContext({
@@ -216,7 +222,7 @@ async function run() {
             const page = await context.newPage()
 
             await page.goto(themeUrl, { waitUntil: 'networkidle', timeout: 30000 })
-            await page.waitForTimeout(2000)
+            await page.waitForTimeout(isFigma ? 4000 : 2000)
 
             const buffer = await page.screenshot({ type: 'webp', quality: 85 })
             await context.close()
@@ -283,6 +289,21 @@ function resolveEmbedUrl(serverUrl, widget) {
     const params = new URLSearchParams({ _sb_embed: '1' })
     if (exportName) params.set('export', exportName)
     return `${serverUrl}/components/${storyId}?${params}`
+  }
+  if (type === 'figma-embed') {
+    const url = props?.url
+    if (!url) return null
+    // Convert figma.com URL to embed.figma.com URL
+    try {
+      const parsed = new URL(url)
+      if (!/^(www\.)?figma\.com$/.test(parsed.hostname)) return null
+      parsed.hostname = 'embed.figma.com'
+      parsed.searchParams.delete('t')
+      parsed.searchParams.set('embed-host', 'share')
+      return parsed.toString()
+    } catch {
+      return null
+    }
   }
   return null
 }

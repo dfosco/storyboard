@@ -29,6 +29,7 @@
   {"folder":"branch--4.0.0-fix-debug-esm","branch":"4.0.0-fix-debug-esm"},
   {"folder":"branch--4.0.0-fix-prod-features","branch":"4.0.0-fix-prod-features"},
   {"folder":"branch--4.0.0-fix-proxy-duplicate-routes","branch":"4.0.0-fix-proxy-duplicate-routes"},
+  {"folder":"branch--4.0.0-flows-cmd-click","branch":"4.0.0-flows-cmd-click"},
   {"folder":"branch--4.0.0-interact-plus","branch":"4.0.0-interact-plus"},
   {"folder":"branch--4.0.0-markdown-gfm","branch":"4.0.0-markdown-gfm"},
   {"folder":"branch--4.0.0-multi-dev","branch":"4.0.0-multi-dev"},

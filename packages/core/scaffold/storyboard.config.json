@@ -23,5 +23,7 @@
       "createCanvas": true
     }
   },
-  "featureFlags": {}
+  "featureFlags": {},
+  "canvas": {},
+  "commandPalette": {}
 }

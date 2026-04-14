@@ -4,6 +4,8 @@ import { execSync } from 'node:child_process'
 import { globSync } from 'glob'
 import { parse as parseJsonc } from 'jsonc-parser'
 import { materializeFromText } from '@dfosco/storyboard-core/canvas/materializer'
+import { toCanvasId } from '../../../core/src/canvas/identity.js'
+import { getConfig } from '../../../core/src/configSchema.js'
 
 const VIRTUAL_MODULE_ID = 'virtual:storyboard-data-index'
 const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
@@ -59,7 +61,7 @@ function parseDataFile(filePath) {
       inferredRoute = '/canvas/' + (routeBase ? routeBase + '/' : '') + name
       inferredRoute = inferredRoute.replace(/\/+/g, '/').replace(/\/$/, '') || '/canvas'
     }
-    return { name, suffix: 'canvas', ext: 'jsonl', folder: canvasFolderName || folderName, inferredRoute }
+    return { name, suffix: 'canvas', ext: 'jsonl', folder: canvasFolderName || folderName, inferredRoute, id: toCanvasId(filePath) }
   }
 
   const match = base.match(/^(.+)\.(flow|scene|object|record|prototype|folder)\.(jsonc?)$/)
@@ -267,34 +269,55 @@ function buildIndex(root) {
   }
 
   const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {}, canvas: {} }
-  const seen = {} // "name.suffix" → absolute path (for duplicate detection)
+  const seen = {} // "name.suffix" or "id.suffix" → absolute path (for duplicate detection)
   const protoFolders = {} // prototype name → folder name (for injection)
   const flowRoutes = {} // flow name → inferred route (for _route injection)
   const canvasRoutes = {} // canvas name → inferred route
+  const canvasAliases = {} // basename → canonical ID (only when unique)
+  const canvasNameCount = {} // canvas basename → count (for ambiguity detection)
 
   for (const relPath of [...files, ...canvasFiles]) {
     const parsed = parseDataFile(relPath)
     if (!parsed) continue
 
-    const key = `${parsed.name}.${parsed.suffix}`
+    // Canvas files use path-based IDs for dedup; others use basename
+    const dedupKey = parsed.suffix === 'canvas' && parsed.id
+      ? `${parsed.id}.${parsed.suffix}`
+      : `${parsed.name}.${parsed.suffix}`
     const absPath = path.resolve(root, relPath)
 
-    if (seen[key]) {
+    if (seen[dedupKey]) {
       const hint = parsed.suffix === 'folder'
           ? '  Folder names must be unique across the project.'
+          : parsed.suffix === 'canvas'
+          ? '  Canvas IDs must be unique. Move or rename one file to resolve the collision.'
           : '  Flows, records, and objects are scoped to their prototype directory.\n' +
             '  If both files are global (outside src/prototypes/), rename one to avoid the collision.'
 
       throw new Error(
-        `[storyboard-data] Duplicate ${parsed.suffix} "${parsed.name}"\n` +
-        `  Found at: ${seen[key]}\n` +
+        `[storyboard-data] Duplicate ${parsed.suffix} "${parsed.id || parsed.name}"\n` +
+        `  Found at: ${seen[dedupKey]}\n` +
         `  And at:   ${absPath}\n` +
         hint
       )
     }
 
-    seen[key] = absPath
-    index[parsed.suffix][parsed.name] = absPath
+    seen[dedupKey] = absPath
+
+    // Canvas: index only by canonical ID. Basename aliases go in a separate map
+    // so listCanvases() and viewfinder don't show duplicates.
+    if (parsed.suffix === 'canvas' && parsed.id) {
+      index.canvas[parsed.id] = absPath
+      // Track basename for alias resolution (only when unique)
+      canvasNameCount[parsed.name] = (canvasNameCount[parsed.name] || 0) + 1
+      if (canvasNameCount[parsed.name] === 1) {
+        canvasAliases[parsed.name] = parsed.id
+      } else {
+        delete canvasAliases[parsed.name]
+      }
+    } else {
+      index[parsed.suffix][parsed.name] = absPath
+    }
 
     // Track which folder a prototype belongs to
     if (parsed.suffix === 'prototype' && parsed.folder) {
@@ -306,13 +329,14 @@ function buildIndex(root) {
       flowRoutes[parsed.name] = parsed.inferredRoute
     }
 
-    // Track inferred routes for canvases
+    // Track inferred routes for canvases (keyed by canonical ID)
     if (parsed.suffix === 'canvas' && parsed.inferredRoute) {
-      canvasRoutes[parsed.name] = parsed.inferredRoute
+      const canvasKey = parsed.id || parsed.name
+      canvasRoutes[canvasKey] = parsed.inferredRoute
     }
   }
 
-  return { index, protoFolders, flowRoutes, canvasRoutes }
+  return { index, protoFolders, flowRoutes, canvasRoutes, canvasAliases }
 }
 
 /**
@@ -366,7 +390,7 @@ function computeTemplateVars(absPath, root) {
  */
 /**
  * Read storyboard.config.json from the project root (if it exists).
- * Returns the parsed config object, or null if not found.
+ * Returns the parsed and defaulted config object, or null if not found.
  */
 function readConfig(root) {
   const configPath = path.resolve(root, 'storyboard.config.json')
@@ -376,7 +400,7 @@ function readConfig(root) {
     const config = parseJsonc(raw, errors)
     // Treat malformed JSON (e.g. mid-edit partial saves) as missing config
     if (errors.length > 0) return { config: null, configPath }
-    return { config, configPath }
+    return { config: getConfig(config), configPath }
   } catch {
     return { config: null, configPath }
   }
@@ -420,7 +444,7 @@ function readModesConfig(root) {
   return fallback
 }
 
-function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root) {
+function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasAliases }, root) {
   const declarations = []
   const INDEX_KEYS = ['flow', 'object', 'record', 'prototype', 'folder', 'canvas']
   const entries = { flow: [], object: [], record: [], prototype: [], folder: [], canvas: [] }
@@ -625,13 +649,16 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes }, root)
     `const folders = {\n${entries.folder.join(',\n')}\n}`,
     `const canvases = {\n${entries.canvas.join(',\n')}\n}`,
     '',
+    `// Legacy basename → canonical ID aliases (only unique basenames)`,
+    `const canvasAliases = ${JSON.stringify(canvasAliases || {})}`,
+    '',
     '// Backward-compatible alias',
     'const scenes = flows',
     '',
     initCalls.join('\n'),
     '',
-    `export { flows, scenes, objects, records, prototypes, folders, canvases }`,
-    `export const index = { flows, scenes, objects, records, prototypes, folders, canvases }`,
+    `export { flows, scenes, objects, records, prototypes, folders, canvases, canvasAliases }`,
+    `export const index = { flows, scenes, objects, records, prototypes, folders, canvases, canvasAliases }`,
     `export default index`,
     '',
     '// Live-patch canvas data on HMR events so SPA navigation shows fresh state',

@@ -83,6 +83,82 @@ export default function storyboardServer() {
     },
 
     configureServer(server) {
+      // --- Canvas reload guard ---------------------------------------------------
+      // Suppress full-reloads and HMR updates for clients on canvas routes.
+      // Canvas pages send heartbeats via import.meta.hot; the guard auto-expires
+      // 5s after the last heartbeat so closed tabs never leave it stuck.
+      // Opt out with ?canvas-hmr in the URL when developing canvas UI code.
+      {
+        let recentCanvasMutationAt = 0
+        const CANVAS_WINDOW_MS = 1500
+        const GUARD_TTL_MS = 5000
+        const isCanvasFile = (file = '') => /\.canvas\.jsonl$/i.test(file.replace(/\\/g, '/'))
+
+        const markCanvasMutation = (file = '') => {
+          if (isCanvasFile(file)) recentCanvasMutationAt = Date.now()
+        }
+
+        server.watcher.on('change', markCanvasMutation)
+        server.watcher.on('add', markCanvasMutation)
+        server.watcher.on('unlink', markCanvasMutation)
+
+        const guardedClients = new Map()
+
+        server.hot.on('storyboard:canvas-hmr-guard', (data, client) => {
+          if (data.active && !data.hmrEnabled) {
+            guardedClients.set(client, Date.now() + GUARD_TTL_MS)
+          } else {
+            guardedClients.delete(client)
+          }
+        })
+
+        const cleanup = setInterval(() => {
+          const now = Date.now()
+          for (const [client, until] of guardedClients) {
+            if (now > until || !server.ws.clients.has(client)) {
+              guardedClients.delete(client)
+            }
+          }
+        }, 10000)
+        server.httpServer?.on('close', () => clearInterval(cleanup))
+
+        function isClientGuarded(client) {
+          const until = guardedClients.get(client)
+          return until != null && Date.now() < until
+        }
+
+        const originalSend = server.ws.send.bind(server.ws)
+        server.ws.send = (payload, ...rest) => {
+          // Suppress broadcast reloads within the canvas mutation window
+          if (
+            payload &&
+            payload.type === 'full-reload' &&
+            Date.now() - recentCanvasMutationAt < CANVAS_WINDOW_MS
+          ) {
+            return
+          }
+
+          // No guarded clients → broadcast normally
+          if (guardedClients.size === 0) {
+            return originalSend(payload, ...rest)
+          }
+
+          // For reload/update payloads, send only to unguarded clients
+          if (payload && (payload.type === 'full-reload' || payload.type === 'update')) {
+            for (const client of server.ws.clients) {
+              if (!isClientGuarded(client)) {
+                client.send(payload)
+              }
+            }
+            return
+          }
+
+          // Everything else (custom events, errors) broadcasts normally
+          return originalSend(payload, ...rest)
+        }
+      }
+      // --- End canvas reload guard -----------------------------------------------
+
       const workshopConfig = config.workshop || {}
       const enabledFeatures = workshopConfig.features || {}
 

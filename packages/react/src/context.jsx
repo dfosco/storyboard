@@ -28,23 +28,43 @@ for (const [name, data] of Object.entries(stories || {})) {
 }
 
 function matchCanvasRoute(pathname) {
-  const normalized = pathname.replace(/\/+$/, '') || '/'
+  const normalized = stripBasePath(pathname)
   return canvasRouteMap.get(normalized) || null
 }
 
 function matchStoryRoute(pathname) {
-  // Strip ?export=... from pathname matching (export is in search params, not pathname)
-  const normalized = pathname.replace(/\/+$/, '') || '/'
+  const normalized = stripBasePath(pathname)
   return storyRouteMap.get(normalized) || null
 }
 
+/**
+ * Strip the app's sub-path prefix (e.g. /storyboard) from the pathname.
+ * React Router's basename strips the branch prefix but not the app name prefix
+ * when the app runs under a nested base path.
+ */
+function stripBasePath(pathname) {
+  let p = pathname.replace(/\/+$/, '') || '/'
+  // BASE_URL includes branch prefix + app path (e.g. /branch--name/storyboard/)
+  // React Router strips the branch prefix but may leave the app sub-path
+  const base = (import.meta.env?.BASE_URL || '/').replace(/\/+$/, '')
+  if (base && base !== '/') {
+    // Extract just the last segment(s) after the branch prefix
+    const withoutBranch = base.replace(/^\/branch--[^/]+/, '')
+    const subPath = withoutBranch.replace(/\/+$/, '')
+    if (subPath && p.startsWith(subPath)) {
+      p = p.slice(subPath.length) || '/'
+    }
+  }
+  return p
+}
+
 function isCanvasPath(pathname) {
-  const normalized = pathname.replace(/\/+$/, '') || '/'
+  const normalized = stripBasePath(pathname)
   return normalized === '/canvas' || normalized.startsWith('/canvas/')
 }
 
 function isStoryPath(pathname) {
-  const normalized = pathname.replace(/\/+$/, '') || '/'
+  const normalized = stripBasePath(pathname)
   return normalized === '/components' || normalized.startsWith('/components/')
 }
 

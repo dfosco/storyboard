@@ -249,7 +249,8 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
   // Listen for messages from the embedded prototype iframe
   useEffect(() => {
     function handleMessage(e) {
-      if (e.source !== iframeRef.current?.contentWindow) return
+      if (!iframeRef.current?.contentWindow) return
+      if (e.source !== iframeRef.current.contentWindow) return
 
       // Navigation events
       if (e.data?.type === 'storyboard:embed:navigate') {

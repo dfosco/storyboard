@@ -118,7 +118,8 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
   // Listen for snapshot messages from the iframe
   useEffect(() => {
     function handleMessage(e) {
-      if (e.source !== iframeRef.current?.contentWindow) return
+      if (!iframeRef.current?.contentWindow) return
+      if (e.source !== iframeRef.current.contentWindow) return
 
       if (e.data?.type === 'storyboard:embed:snapshot') {
         if (e.data.error) {

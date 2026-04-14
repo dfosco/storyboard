@@ -106,7 +106,7 @@
 /* Style the highlighted pre from the inspector highlighter */
 .codeBlock pre {
   margin: 0;
-  padding: 12px;
+  padding: var(--base-size-16, 16px);
   font-family: "Ioskeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 12px;
   font-weight: 400;

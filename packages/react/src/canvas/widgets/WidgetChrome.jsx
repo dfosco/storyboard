@@ -440,7 +440,7 @@ export default function WidgetChrome({
       onMouseEnter={(readOnly && !hasFeatures) ? undefined : handleMouseEnter}
       onMouseLeave={(readOnly && !hasFeatures) ? undefined : handleMouseLeave}
     >
-      <div className={`tc-drag-surface ${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''} ${multiSelected ? styles.widgetSlotMultiSelected : ''}`}>
+      <div className={`tc-drag-surface ${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''} ${multiSelected ? styles.widgetSlotMultiSelected : ''}`} data-widget-selected={selected || undefined}>
         {children}
       </div>
       <div

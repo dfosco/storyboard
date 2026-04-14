@@ -1,5 +1,13 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.16
+
+### Patch Changes
+
+-   Fix broken monorepo-relative imports
+
+    -   Replace monorepo-relative imports with proper package imports for correct resolution in published packages
+
 ## 4.0.0-beta.15
 
 ### Minor Changes

@@ -144,8 +144,10 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
         return
       }
 
-      if (e.data?.type === 'storyboard:embed:snapshot-ready' && onUpdate) {
-        requestSnapshotCapture()
+      // snapshot-ready means the iframe content has fully rendered
+      if (e.data?.type === 'storyboard:embed:snapshot-ready') {
+        setIframeLoaded(true)
+        if (onUpdate) requestSnapshotCapture()
       }
     }
     window.addEventListener('message', handleMessage)
@@ -388,7 +390,6 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
                   src={iframeSrc}
                   className={styles.iframe}
                   title={displayName}
-                  onLoad={() => setIframeLoaded(true)}
                 />
               </div>
             )}

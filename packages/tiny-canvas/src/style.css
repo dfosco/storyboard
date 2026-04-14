@@ -37,9 +37,16 @@
 }
 
 .tc-canvas[data-dotted] {
+  background-image: none;
+}
+
+/* Apply dotted background to html so it spans the entire viewport,
+   not just the canvas main element which may end before the edge. */
+html:has(.tc-canvas[data-dotted]) {
   background-image: radial-gradient(var(--tc-dot-color) var(--tc-dot-radius), transparent var(--tc-dot-radius));
   background-size: var(--tc-grid-size) var(--tc-grid-size);
   background-position: var(--tc-grid-offset) var(--tc-grid-offset);
+  background-color: var(--tc-bg-muted);
 }
 
 /* Dark mode — system preference (auto) */

@@ -1118,7 +1118,7 @@ describe('canvas watcher behavior', () => {
     expect(code).toContain('export { flows, scenes, objects, records, prototypes, folders, canvases, stories }')
   })
 
-  it('infers /canvas/ route for stories in src/canvas/', () => {
+  it('infers /components/ route for stories in src/canvas/', () => {
     writeDataFiles(tmpDir)
     mkdirSync(path.join(tmpDir, 'src', 'canvas'), { recursive: true })
     writeFileSync(
@@ -1129,7 +1129,7 @@ describe('canvas watcher behavior', () => {
     const code = plugin.load(RESOLVED_ID)
 
     expect(code).toContain('"button-patterns"')
-    expect(code).toContain('"/canvas/button-patterns"')
+    expect(code).toContain('"/components/button-patterns"')
     expect(code).toContain('_route')
   })
 

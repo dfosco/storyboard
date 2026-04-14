@@ -712,7 +712,7 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, storyRo
     '      delete stories[data.name]',
     '    } else {',
     '      stories[data.name] = { _storyModule: data._storyModule, _route: data._route,',
-    '        _storyImport: () => import(data._storyModule) }',
+    '        _storyImport: () => import(/* @vite-ignore */ data._storyModule) }',
     '    }',
     '    init({ flows, objects, records, prototypes, folders, canvases, stories })',
     '    document.dispatchEvent(new CustomEvent("storyboard:story-index-changed"))',

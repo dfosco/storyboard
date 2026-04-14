@@ -313,7 +313,10 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
   const zoomRef = useRef(initialViewport?.zoom ?? 100)
   const scrollRef = useRef(null)
   const pendingScrollRestore = useRef(initialViewport)
-  
+  // Gate viewport persistence until initial positioning is complete (restore,
+  // ?widget= deep-link, or first visit). Prevents early save effects from
+  // overwriting the saved scroll position with 0,0.
+  const viewportInitDone = useRef(false)
   const [localSources, setLocalSources] = useState(canvas?.sources ?? [])
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
   const [snapEnabled, setSnapEnabled] = useState(canvas?.snapToGrid ?? false)
@@ -453,6 +456,10 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     setSnapEnabled(canvas?.snapToGrid ?? false)
     setSnapGridSize(canvas?.gridSize || 40)
     undoRedo.reset()
+    // Reset viewport init gate so save effects don't persist stale positions
+    // while the new canvas's viewport is being restored.
+    viewportInitDone.current = false
+    pendingScrollRestore.current = loadViewportState(name)
   }
 
   // Debounced save to server
@@ -676,12 +683,18 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
   // Restore scroll position from localStorage after first render
   useEffect(() => {
     const el = scrollRef.current
+    if (!el || loading) return
     const saved = pendingScrollRestore.current
-    if (el && saved) {
+    if (saved) {
       if (saved.scrollLeft != null) el.scrollLeft = saved.scrollLeft
       if (saved.scrollTop != null) el.scrollTop = saved.scrollTop
       pendingScrollRestore.current = null
     }
+    // Mark viewport init complete so save effects can start persisting.
+    // This covers: restored saved position, first visit (no saved state),
+    // and name changes. The ?widget= effect below may override position
+    // and that's fine — it runs after this in the same commit.
+    viewportInitDone.current = true
   }, [name, loading])
 
   // Center on a specific widget if `?widget=<id>` is in the URL
@@ -733,6 +746,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
 
   // Persist viewport state (zoom + scroll) to localStorage on changes
   useEffect(() => {
+    if (!viewportInitDone.current) return
     const el = scrollRef.current
     saveViewportState(name, {
       zoom,
@@ -745,6 +759,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     const el = scrollRef.current
     if (!el) return
     function handleScroll() {
+      if (!viewportInitDone.current) return
       saveViewportState(name, {
         zoom: zoomRef.current,
         scrollLeft: el.scrollLeft,
@@ -755,6 +770,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
 
     // Flush viewport state on page unload so a refresh never misses it
     function handleBeforeUnload() {
+      if (!viewportInitDone.current) return
       saveViewportState(name, {
         zoom: zoomRef.current,
         scrollLeft: el.scrollLeft,

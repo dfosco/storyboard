@@ -199,9 +199,9 @@ export default function storyboardServer() {
       // Wire canvas API routes (always enabled — CRUD for .canvas.jsonl files)
       routeHandlers.set('canvas', createCanvasHandler({ root, sendJson }))
 
-      // Ignore src/canvas/images/ so pasted image writes don't trigger reloads
-      const canvasImagesDir = path.join(root, 'src', 'canvas', 'images')
-      server.watcher.unwatch(canvasImagesDir)
+      // Ignore assets/canvas/ so image/snapshot writes don't trigger reloads
+      server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'images'))
+      server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'snapshots'))
 
       // Wire autosync API routes (always enabled — git automation for dev)
       routeHandlers.set('autosync', createAutosyncHandler({ root, sendJson }))
@@ -408,24 +408,28 @@ export default function storyboardServer() {
         })
       }
 
-      // Emit canvas images so they're available in deployed (static) builds.
+      // Emit canvas images and snapshots so they're available in deployed (static) builds.
       // Dev server serves these dynamically; production needs the static files.
       // Private images (prefixed with _) are excluded from the build.
-      const canvasImagesDir = path.join(root, 'src', 'canvas', 'images')
-      try {
-        const imageFiles = await fs.promises.readdir(canvasImagesDir)
-        for (const file of imageFiles) {
-          if (file.startsWith('_') || file.startsWith('.')) continue
-          try {
-            const data = await fs.promises.readFile(path.join(canvasImagesDir, file))
-            this.emitFile({
-              type: 'asset',
-              fileName: `_storyboard/canvas/images/${file}`,
-              source: data,
-            })
-          } catch { /* skip unreadable files */ }
-        }
-      } catch { /* no canvas images directory */ }
+      for (const dir of [
+        path.join(root, 'assets', 'canvas', 'images'),
+        path.join(root, 'assets', 'canvas', 'snapshots'),
+      ]) {
+        try {
+          const imageFiles = await fs.promises.readdir(dir)
+          for (const file of imageFiles) {
+            if (file.startsWith('_') || file.startsWith('.')) continue
+            try {
+              const data = await fs.promises.readFile(path.join(dir, file))
+              this.emitFile({
+                type: 'asset',
+                fileName: `_storyboard/canvas/images/${file}`,
+                source: data,
+              })
+            } catch { /* skip unreadable files */ }
+          }
+        } catch { /* directory doesn't exist */ }
+      }
 
       // GitHub Pages uses Jekyll which ignores _-prefixed directories.
       // Emit .nojekyll to ensure _storyboard/ is served.

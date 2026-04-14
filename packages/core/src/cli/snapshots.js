@@ -87,7 +87,7 @@ async function run() {
   p.intro(bold('storyboard snapshots'))
 
   const root = process.cwd()
-  const imagesDir = path.join(root, 'src', 'canvas', 'images')
+  const imagesDir = path.join(root, 'assets', 'canvas', 'snapshots')
 
   // Discover canvases from disk
   const allFiles = findCanvasFiles(root)
@@ -255,6 +255,21 @@ async function run() {
     }
 
     await browser.close()
+
+    // Auto-commit snapshot files so they don't clutter git status
+    if (totalSnapshots > 0) {
+      try {
+        const { execSync } = await import(/* @vite-ignore */ 'node:child_process')
+        execSync('git add assets/canvas/snapshots/ src/canvas/', { cwd: root, stdio: 'pipe' })
+        execSync(
+          `git commit -m "chore: update canvas snapshots" --no-verify --allow-empty`,
+          { cwd: root, stdio: 'pipe' }
+        )
+        p.log.step(dim('Snapshots committed'))
+      } catch {
+        // Not in a git repo or nothing to commit — that's fine
+      }
+    }
 
     p.outro([
       green('Done!'),

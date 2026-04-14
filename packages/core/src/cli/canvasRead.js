@@ -51,7 +51,7 @@ function getWidgetContent(widget) {
         content: props.src || '',
         contentType: 'image',
         url: props.src ? `/_storyboard/canvas/images/${props.src}` : '',
-        filePath: props.src ? `src/canvas/images/${props.src}` : '',
+        filePath: props.src ? `assets/canvas/images/${props.src}` : '',
       }
     default:
       return { content: JSON.stringify(props), contentType: 'props' }

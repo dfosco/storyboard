@@ -27,6 +27,30 @@ import { materializeFromText, serializeEvent } from './materializer.js'
 import { toCanvasId, parseCanvasId } from './identity.js'
 
 /**
+ * Scan src/canvas/ for directories containing .meta.json files.
+ * Returns an object keyed by directory name (without .folder suffix).
+ */
+function findCanvasMeta(root) {
+  const canvasDir = path.join(root, 'src', 'canvas')
+  const groups = {}
+  if (!fs.existsSync(canvasDir)) return groups
+
+  const entries = fs.readdirSync(canvasDir, { withFileTypes: true })
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue
+    const dirName = entry.name.replace(/\.folder$/, '')
+    const metaPath = path.join(canvasDir, entry.name, `${dirName}.meta.json`)
+    if (fs.existsSync(metaPath)) {
+      try {
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
+        groups[dirName] = meta
+      } catch { /* skip invalid meta */ }
+    }
+  }
+  return groups
+}
+
+/**
  * Recursively find all .canvas.jsonl files in the project.
  */
 function findCanvasFiles(root) {
@@ -133,9 +157,20 @@ export function createCanvasHandler(ctx) {
       let folders = []
       try {
         if (fs.existsSync(canvasDir)) {
-          folders = fs.readdirSync(canvasDir, { withFileTypes: true })
+          const entries = fs.readdirSync(canvasDir, { withFileTypes: true })
+          // .folder directories (existing behavior)
+          const folderDirs = entries
             .filter((d) => d.isDirectory() && d.name.endsWith('.folder'))
             .map((d) => d.name.replace('.folder', ''))
+          // Plain directories containing .canvas.jsonl files
+          const plainDirs = entries
+            .filter((d) => {
+              if (!d.isDirectory() || d.name.endsWith('.folder') || d.name.startsWith('_')) return false
+              const files = fs.readdirSync(path.join(canvasDir, d.name))
+              return files.some((f) => f.endsWith('.canvas.jsonl'))
+            })
+            .map((d) => d.name)
+          folders = [...folderDirs, ...plainDirs]
         }
       } catch { /* empty */ }
       sendJson(res, 200, { folders })
@@ -185,7 +220,8 @@ export function createCanvasHandler(ctx) {
           return { name: id, title: segments[segments.length - 1], path: file, widgetCount: 0, group }
         }
       }).filter(Boolean)
-      sendJson(res, 200, { canvases })
+      const groups = findCanvasMeta(root)
+      sendJson(res, 200, { canvases, groups })
       return
     }
 
@@ -315,6 +351,7 @@ export function createCanvasHandler(ctx) {
         folder,
         author,
         description,
+        meta,
         grid = true,
         gridSize = 24,
         colorMode = 'auto',
@@ -344,12 +381,30 @@ export function createCanvasHandler(ctx) {
       let targetDir = canvasDir
 
       if (folder) {
-        const folderDir = path.join(canvasDir, `${folder}.folder`)
-        if (!fs.existsSync(folderDir)) {
-          sendJson(res, 400, { error: `Folder "${folder}" does not exist` })
-          return
+        const dotFolderDir = path.join(canvasDir, `${folder}.folder`)
+        const plainDir = path.join(canvasDir, folder)
+
+        if (fs.existsSync(dotFolderDir)) {
+          // Existing .folder/ directory
+          targetDir = dotFolderDir
+        } else if (fs.existsSync(plainDir) && fs.statSync(plainDir).isDirectory()) {
+          // Existing plain directory
+          targetDir = plainDir
+        } else {
+          // Create new plain directory
+          try {
+            fs.mkdirSync(plainDir, { recursive: true })
+            // Write .meta.json if meta was provided
+            if (meta && typeof meta === 'object') {
+              const metaPath = path.join(plainDir, `${folder}.meta.json`)
+              fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+            }
+          } catch (err) {
+            sendJson(res, 500, { error: `Failed to create directory: ${err.message}` })
+            return
+          }
+          targetDir = plainDir
         }
-        targetDir = folderDir
       }
 
       const canvasPath = path.join(targetDir, `${kebab}.canvas.jsonl`)

@@ -13,8 +13,11 @@ describe('isResizable', () => {
   })
 
   it('returns false for widget types with resize disabled', () => {
-    expect(isResizable('markdown')).toBe(false)
     expect(isResizable('link-preview')).toBe(false)
+  })
+
+  it('returns true for markdown (resize enabled, dev only)', () => {
+    expect(isResizable('markdown')).toBe(true)
   })
 
   it('returns false for unknown widget types', () => {

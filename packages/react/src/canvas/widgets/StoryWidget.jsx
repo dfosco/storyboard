@@ -54,8 +54,10 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
   const toggleShowCode = useCallback(() => {
     setShowCode((v) => {
       const next = !v
-      // Persist to canvas JSONL in dev so the view preference is shared
-      onUpdate?.({ showCode: next })
+      // Persist to canvas JSONL in dev
+      if (onUpdate) {
+        onUpdate({ showCode: next })
+      }
       return next
     })
   }, [onUpdate])

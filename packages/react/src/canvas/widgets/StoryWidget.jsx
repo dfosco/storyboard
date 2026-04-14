@@ -39,7 +39,7 @@ function resolveModulePath(modulePath) {
   return base ? `${base}${modulePath}` : modulePath
 }
 
-export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, ref) {
+export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, resizable }, ref) {
   const storyId = props?.storyId || ''
   const exportName = props?.exportName || ''
   const width = props?.width
@@ -75,9 +75,12 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
     return () => document.removeEventListener('storyboard:theme:changed', onThemeChanged)
   }, [])
 
-  // Lazy loading state
+  // Lazy loading state — only use snapshots that match this widget's ID
   const isDark = canvasTheme?.startsWith('dark')
-  const currentSnapshot = isDark ? snapshotDark : snapshotLight
+  const snapshotMatchesWidget = (url) => url && widgetId && url.includes(widgetId)
+  const validSnapshotLight = snapshotMatchesWidget(snapshotLight) ? snapshotLight : null
+  const validSnapshotDark = snapshotMatchesWidget(snapshotDark) ? snapshotDark : null
+  const currentSnapshot = isDark ? validSnapshotDark : validSnapshotLight
   const hasSnapshot = !!currentSnapshot
   const [preloadIframe, setPreloadIframe] = useState(!hasSnapshot)
   const [iframeLoaded, setIframeLoaded] = useState(false)
@@ -159,10 +162,10 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
   }, [])
 
   const handleSnapshotResult = useCallback(async (dataUrl) => {
-    if (!dataUrl || !onUpdate) return
+    if (!dataUrl || !onUpdate || !widgetId) return
     capturingRef.current = false
     try {
-      const result = await uploadImage(dataUrl, 'snapshot')
+      const result = await uploadImage(dataUrl, `snapshot-${widgetId}`)
       if (!result?.success || !result?.filename) return
       const imageUrl = `/_storyboard/canvas/images/${result.filename}`
       const themeKey = isDark ? 'snapshotDark' : 'snapshotLight'
@@ -170,7 +173,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
     } catch (err) {
       console.warn('[canvas] Failed to upload story snapshot:', err)
     }
-  }, [onUpdate, isDark])
+  }, [onUpdate, isDark, widgetId])
 
   // Re-capture after resize
   const resizeCaptureTimer = useRef(null)

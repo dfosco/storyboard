@@ -223,12 +223,12 @@ if (isInstalled('code')) {
         'Installing Playwright + Chromium...',
         'Playwright installed',
         () => {
-          run('npm install -g playwright')
+          run('npm install --save-dev playwright')
           run('npx playwright install chromium')
         }
       )
     } catch {
-      p.log.warning('Install manually: npm install -g playwright && npx playwright install chromium')
+      p.log.warning('Install manually: npm install --save-dev playwright && npx playwright install chromium')
       p.log.info(dim('Playwright is needed for `storyboard snapshots`'))
     }
   }

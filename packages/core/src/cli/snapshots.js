@@ -114,7 +114,8 @@ async function run() {
     chromium = pw.chromium
   } catch {
     p.log.error('Playwright is required for snapshot generation.')
-    p.log.info('Install: ' + yellow('npm install -g playwright && npx playwright install chromium'))
+    p.log.info('Install: ' + yellow('npx storyboard setup'))
+    p.log.info('Or manually: ' + yellow('npm install --save-dev playwright && npx playwright install chromium'))
     process.exit(1)
   }
 

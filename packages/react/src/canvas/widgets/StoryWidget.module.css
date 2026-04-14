@@ -54,6 +54,8 @@
   flex-direction: column;
   height: calc(100% - 31px);
   overflow: hidden;
+  padding: var(--base-size-8, 8px);
+  padding-top: 0;
 }
 
 .codeHeader {
@@ -98,6 +100,7 @@
   overflow: auto;
   user-select: text;
   cursor: text;
+  border-radius: var(--base-size-8, 8px);
 }
 
 /* Style the highlighted pre from the inspector highlighter */
@@ -111,6 +114,7 @@
   tab-size: 2;
   min-height: 100%;
   box-sizing: border-box;
+  border-radius: inherit;
 }
 
 /* Fallback when no highlighted HTML (plain pre/code) */

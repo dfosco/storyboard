@@ -83,7 +83,7 @@ describe('storyboardDataPlugin', () => {
     expect(code).toContain('"First"')
     // Backward-compat alias
     expect(code).toContain('const scenes = flows')
-    expect(code).toContain('export { flows, scenes, objects, records, prototypes, folders, canvases }')
+    expect(code).toContain('export { flows, scenes, objects, records, prototypes, folders, canvases, canvasAliases }')
   })
 
   it('load returns null for other IDs', () => {

@@ -269,6 +269,7 @@
       highlightedHtml = hl.codeToHtml(sourceCode, {
         lang: getLang(sourcePath),
         theme: 'github-dark',
+        lineNumbers: false,
         decorations: matchedLine > 0
           ? [{ start: { line: matchedLine - 1, character: 0 }, end: { line: matchedLine - 1, character: Infinity }, properties: { class: 'highlighted-line' } }]
           : [],
@@ -364,6 +365,7 @@
               highlightedHtml = hl.codeToHtml(sourceCode, {
                 lang: getLang(path),
                 theme: 'github-dark',
+                lineNumbers: false,
                 decorations: matchedLine > 0
                   ? [{ start: { line: matchedLine - 1, character: 0 }, end: { line: matchedLine - 1, character: Infinity }, properties: { class: 'highlighted-line' } }]
                   : [],

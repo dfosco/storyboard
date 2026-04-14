@@ -64,8 +64,8 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
   // Load source code when show-code is toggled on
   useEffect(() => {
     if (!showCode || sourceCode !== null) return
-    const moduleUrl = resolveStoryModuleUrl(storyId)
-    if (!moduleUrl) {
+    const story = getStoryData(storyId)
+    if (!story?._storyModule) {
       Promise.resolve().then(() => setSourceCode('// Source not available'))
       return
     }
@@ -75,12 +75,6 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
 
     // Use dynamic import with ?raw to get the file contents as a string.
     // Vite's ?raw suffix returns a module whose default export is the raw text.
-    const story = getStoryData(storyId)
-    if (!story?._storyModule) {
-      Promise.resolve().then(() => { if (!cancelled) setSourceCode('// Source not available') })
-      return () => { cancelled = true }
-    }
-
     import(/* @vite-ignore */ `${story._storyModule}?raw`)
       .then((mod) => {
         if (cancelled) return

@@ -81,7 +81,15 @@ export default function MarkdownBlock({ props, onUpdate, resizable }) {
   const rawHtml = useMemo(() => renderMarkdown(content), [content])
   const [renderedHtml, setRenderedHtml] = useState(rawHtml)
 
-  // Async-highlight code blocks after initial render
+  // Re-highlight when theme changes
+  const [themeKey, setThemeKey] = useState(0)
+  useEffect(() => {
+    function onThemeChanged() { setThemeKey((k) => k + 1) }
+    document.addEventListener('storyboard:theme:changed', onThemeChanged)
+    return () => document.removeEventListener('storyboard:theme:changed', onThemeChanged)
+  }, [])
+
+  // Async-highlight code blocks after initial render or theme change
   useEffect(() => {
     setRenderedHtml(rawHtml)
     if (!rawHtml.includes('<code class="language-')) return
@@ -90,7 +98,7 @@ export default function MarkdownBlock({ props, onUpdate, resizable }) {
       if (!cancelled) setRenderedHtml(highlighted)
     })
     return () => { cancelled = true }
-  }, [rawHtml])
+  }, [rawHtml, themeKey])
 
   const handleContentChange = useCallback((e) => {
     onUpdate?.({ content: e.target.value })

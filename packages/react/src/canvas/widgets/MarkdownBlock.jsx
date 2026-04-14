@@ -3,6 +3,7 @@ import { remark } from 'remark'
 import remarkGfm from 'remark-gfm'
 import remarkHtml from 'remark-html'
 import WidgetWrapper from './WidgetWrapper.jsx'
+import ResizeHandle from './ResizeHandle.jsx'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetConfig.js'
 import styles from './MarkdownBlock.module.css'
@@ -62,7 +63,7 @@ async function highlightCodeBlocks(html) {
   )
 }
 
-export default function MarkdownBlock({ props, onUpdate }) {
+export default function MarkdownBlock({ props, onUpdate, resizable }) {
   const content = readProp(props, 'content', markdownSchema)
   const width = readProp(props, 'width', markdownSchema)
   const canEdit = typeof onUpdate === 'function'
@@ -72,6 +73,10 @@ export default function MarkdownBlock({ props, onUpdate }) {
   const blockRef = useRef(null)
   const [editHeight, setEditHeight] = useState(null)
 
+  const handleResize = useCallback((w) => {
+    onUpdate?.({ width: w })
+  }, [onUpdate])
+
   const rawHtml = useMemo(() => renderMarkdown(content), [content])
   const [renderedHtml, setRenderedHtml] = useState(rawHtml)
 
@@ -80,7 +85,19 @@ export default function MarkdownBlock({ props, onUpdate }) {
     setRenderedHtml(rawHtml)
     if (!rawHtml.includes('<code class="language-')) return
     let cancelled = false
+
+    // Detect dark mode from canvas wrapper or system preference
+    const isDark = blockRef.current?.closest('[data-color-mode]')?.getAttribute('data-color-mode') === 'dark'
+      || window.matchMedia?.('(prefers-color-scheme: dark)').matches
+
+    // Temporarily set code-theme so the highlighter uses the correct palette
+    const prev = document.documentElement.getAttribute('data-sb-code-theme')
+    document.documentElement.setAttribute('data-sb-code-theme', isDark ? 'dark' : 'light')
+
     highlightCodeBlocks(rawHtml).then((highlighted) => {
+      // Restore original attribute
+      if (prev != null) document.documentElement.setAttribute('data-sb-code-theme', prev)
+      else document.documentElement.removeAttribute('data-sb-code-theme')
       if (!cancelled) setRenderedHtml(highlighted)
     })
     return () => { cancelled = true }
@@ -152,6 +169,14 @@ export default function MarkdownBlock({ props, onUpdate }) {
                 ? '<p class="placeholder">Double-click to edit…</p>'
                 : '<p class="placeholder">No content</p>'),
             }}
+          />
+        )}
+        {resizable && (
+          <ResizeHandle
+            targetRef={blockRef}
+            minWidth={200}
+            minHeight={60}
+            onResize={handleResize}
           />
         )}
       </div>

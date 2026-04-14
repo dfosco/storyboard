@@ -1,4 +1,5 @@
 .block {
+  position: relative;
   min-height: 80px;
   --sb--markdown-bg: var(--bgColor-default, #ffffff);
   --sb--markdown-fg: var(--fgColor-default, #1f2328);

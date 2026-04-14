@@ -122,8 +122,15 @@
 
 /* Code blocks */
 .preview pre {
-  background: var(--bgColor-neutral-muted, #afb8c133);
   padding: 12px 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 8px 0;
+  background: var(--bgColor-neutral-muted, #afb8c133);
+}
+
+/* When inspector highlighter sets inline background, let it through */
+.preview pre[style] {
   border-radius: 6px;
   overflow-x: auto;
   margin: 8px 0;
@@ -133,29 +140,8 @@
   background: none;
   padding: 0;
   font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
-
-/* highlight.js token colors (GitHub-light palette) */
-.preview :global(.hljs-keyword) { color: #cf222e; }
-.preview :global(.hljs-string) { color: #0a3069; }
-.preview :global(.hljs-number) { color: #0550ae; }
-.preview :global(.hljs-comment) { color: #6e7781; }
-.preview :global(.hljs-function),
-.preview :global(.hljs-title) { color: #8250df; }
-.preview :global(.hljs-built_in) { color: #0550ae; }
-.preview :global(.hljs-literal) { color: #0550ae; }
-.preview :global(.hljs-type) { color: #0550ae; }
-.preview :global(.hljs-attr) { color: #0550ae; }
-.preview :global(.hljs-tag) { color: #116329; }
-.preview :global(.hljs-name) { color: #116329; }
-.preview :global(.hljs-attribute) { color: #0550ae; }
-.preview :global(.hljs-variable) { color: #953800; }
-.preview :global(.hljs-params) { color: inherit; }
-.preview :global(.hljs-meta) { color: #6e7781; }
-.preview :global(.hljs-regexp) { color: #0a3069; }
-.preview :global(.hljs-symbol) { color: #0550ae; }
-.preview :global(.hljs-operator) { color: inherit; }
-.preview :global(.hljs-punctuation) { color: inherit; }
 
 /* Blockquotes */
 .preview blockquote {

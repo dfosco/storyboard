@@ -47,3 +47,5 @@ agent-browser.json
 
 # Private canvas images (underscore prefix = not committed)
 src/canvas/images/_*
+assets/canvas/images/_*
+assets/canvas/snapshots/_*

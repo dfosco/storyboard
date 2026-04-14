@@ -9,6 +9,7 @@ import { getWidgetComponent } from './widgets/index.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'
 import { getFeatures, isResizable } from './widgets/widgetConfig.js'
 import { createPasteContext, resolvePaste } from './widgets/pasteRules.js'
+import { getPasteRules } from '@dfosco/storyboard-core'
 import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import useUndoRedo from './useUndoRedo.js'
@@ -1209,7 +1210,7 @@ export default function CanvasPage({ name }) {
         return
       }
 
-      const resolved = resolvePaste(text, pasteCtx)
+      const resolved = resolvePaste(text, pasteCtx, getPasteRules())
       if (!resolved) return
       const { type, props } = resolved
 

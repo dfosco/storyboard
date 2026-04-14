@@ -11,7 +11,8 @@
     "label:copy-png": "Copy as image",
     "label:copy-path": "Copy file path",
     "label:expand": "Expand",
-    "label:copy-id": "Copy widget ID"
+    "label:copy-id": "Copy widget ID",
+    "label:copy-text": "Copy text"
   },
   "widgets": {
     "sticky-note": {
@@ -71,6 +72,14 @@
           "icon": "copy"
         },
         {
+          "id": "copy-text",
+          "type": "action",
+          "action": "copy-text",
+          "label": "$label:copy-text",
+          "icon": "copy",
+          "prod": true
+        },
+        {
           "id": "copy-link",
           "type": "action",
           "action": "copy-link",
@@ -123,6 +132,14 @@
           "action": "copy",
           "label": "$label:duplicate",
           "icon": "copy"
+        },
+        {
+          "id": "copy-text",
+          "type": "action",
+          "action": "copy-text",
+          "label": "$label:copy-text",
+          "icon": "copy",
+          "prod": true
         },
         {
           "id": "copy-link",

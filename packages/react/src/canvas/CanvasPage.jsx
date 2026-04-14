@@ -274,6 +274,9 @@ function ChromeWrappedWidget({
       onRemove?.(widget.id)
     } else if (actionId === 'copy') {
       onCopy?.(widget)
+    } else if (actionId === 'copy-text') {
+      const text = widget.props?.text || widget.props?.content || ''
+      navigator.clipboard?.writeText(text).catch(() => {})
     }
   }, [widget, onRemove, onCopy])
 

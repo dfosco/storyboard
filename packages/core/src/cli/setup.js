@@ -149,11 +149,20 @@ if (isInstalled('code')) {
 
 // 6. Git hooks
 {
-  const hooksPath = existsSync('.githooks') ? '.githooks' : null
-  if (hooksPath) {
+  // Create .githooks/ if it doesn't exist — copy from scaffold template
+  if (!existsSync('.githooks')) {
+    const scaffoldHooks = path.resolve(import.meta.dirname, '..', '..', 'scaffold', 'githooks')
+    if (existsSync(scaffoldHooks)) {
+      try {
+        run(`cp -r "${scaffoldHooks}" .githooks`)
+        run('chmod +x .githooks/*')
+      } catch { /* fall through */ }
+    }
+  }
+
+  if (existsSync('.githooks')) {
     try {
       run('git config core.hooksPath .githooks')
-      // Ensure pre-push is executable
       if (existsSync('.githooks/pre-push')) {
         run('chmod +x .githooks/pre-push')
       }

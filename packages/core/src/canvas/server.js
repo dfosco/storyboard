@@ -79,11 +79,6 @@ function findCanvasFiles(root) {
 }
 
 /**
-<<<<<<< HEAD
- * Find a canvas JSONL file by canonical ID or legacy basename.
- * Path-based ID is tried first. Basename fallback only works when it
- * resolves to exactly one file — ambiguous names return null.
-=======
  * Recursively find all .story.{jsx,tsx} files in routable directories
  * (src/canvas/ and src/components/) and extract their named exports.
  */
@@ -134,8 +129,9 @@ function parseExportNames(filePath) {
 }
 
 /**
- * Find a canvas JSONL file by name.
->>>>>>> origin/4.0.0--story-widgets
+ * Find a canvas JSONL file by canonical ID or legacy basename.
+ * Path-based ID is tried first. Basename fallback only works when it
+ * resolves to exactly one file — ambiguous names return null.
  */
 function findCanvasPath(root, nameOrId) {
   const files = findCanvasFiles(root)

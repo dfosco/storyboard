@@ -12,11 +12,8 @@ const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
 
 const GLOB_PATTERN = '**/*.{flow,scene,object,record,prototype,folder}.{json,jsonc}'
 const CANVAS_GLOB_PATTERN = '**/*.canvas.jsonl'
-<<<<<<< HEAD
 const CANVAS_META_GLOB_PATTERN = '**/*.meta.json'
-=======
 const STORY_GLOB_PATTERN = '**/*.story.{jsx,tsx}'
->>>>>>> origin/4.0.0--story-widgets
 
 /**
  * Extract the data name and type suffix from a file path.
@@ -319,11 +316,8 @@ function buildIndex(root) {
   const ignore = ['node_modules/**', 'dist/**', '.git/**', '.worktrees/**', 'public/**']
   const files = globSync(GLOB_PATTERN, { cwd: root, ignore, absolute: false })
   const canvasFiles = globSync(CANVAS_GLOB_PATTERN, { cwd: root, ignore, absolute: false })
-<<<<<<< HEAD
   const canvasMetaFiles = globSync(CANVAS_META_GLOB_PATTERN, { cwd: root, ignore, absolute: false })
-=======
   const storyFiles = globSync(STORY_GLOB_PATTERN, { cwd: root, ignore, absolute: false })
->>>>>>> origin/4.0.0--story-widgets
 
   // Detect nested .folder/ directories (not supported)
   // Scan directories directly since empty nested folders have no data files
@@ -340,8 +334,7 @@ function buildIndex(root) {
     }
   }
 
-<<<<<<< HEAD
-  const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {}, canvas: {}, 'canvas-meta': {} }
+  const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {}, canvas: {}, 'canvas-meta': {}, story: {} }
   const seen = {} // "name.suffix" or "id.suffix" → absolute path (for duplicate detection)
   const protoFolders = {} // prototype name → folder name (for injection)
   const flowRoutes = {} // flow name → inferred route (for _route injection)
@@ -349,18 +342,9 @@ function buildIndex(root) {
   const canvasAliases = {} // basename → canonical ID (only when unique)
   const canvasNameCount = {} // canvas basename → count (for ambiguity detection)
   const canvasGroups = {} // canvas name → group name (shared folder prefix)
-
-  for (const relPath of [...files, ...canvasFiles, ...canvasMetaFiles]) {
-=======
-  const index = { flow: {}, object: {}, record: {}, prototype: {}, folder: {}, canvas: {}, story: {} }
-  const seen = {} // "name.suffix" → absolute path (for duplicate detection)
-  const protoFolders = {} // prototype name → folder name (for injection)
-  const flowRoutes = {} // flow name → inferred route (for _route injection)
-  const canvasRoutes = {} // canvas name → inferred route
   const storyRoutes = {} // story name → inferred route
 
-  for (const relPath of [...files, ...canvasFiles, ...storyFiles]) {
->>>>>>> origin/4.0.0--story-widgets
+  for (const relPath of [...files, ...canvasFiles, ...canvasMetaFiles, ...storyFiles]) {
     const parsed = parseDataFile(relPath)
     if (!parsed) continue
 
@@ -430,11 +414,7 @@ function buildIndex(root) {
     }
   }
 
-<<<<<<< HEAD
-  return { index, protoFolders, flowRoutes, canvasRoutes, canvasAliases, canvasGroups }
-=======
-  return { index, protoFolders, flowRoutes, canvasRoutes, storyRoutes }
->>>>>>> origin/4.0.0--story-widgets
+  return { index, protoFolders, flowRoutes, canvasRoutes, canvasAliases, canvasGroups, storyRoutes }
 }
 
 /**
@@ -542,11 +522,7 @@ function readModesConfig(root) {
   return fallback
 }
 
-<<<<<<< HEAD
-function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasAliases, canvasGroups }, root) {
-=======
-function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, storyRoutes }, root) {
->>>>>>> origin/4.0.0--story-widgets
+function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasAliases, canvasGroups, storyRoutes }, root) {
   const declarations = []
   const INDEX_KEYS = ['flow', 'object', 'record', 'prototype', 'folder', 'canvas']
   const entries = { flow: [], object: [], record: [], prototype: [], folder: [], canvas: [] }
@@ -797,13 +773,8 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, storyRo
     '',
     initCalls.join('\n'),
     '',
-<<<<<<< HEAD
-    `export { flows, scenes, objects, records, prototypes, folders, canvases, canvasAliases }`,
-    `export const index = { flows, scenes, objects, records, prototypes, folders, canvases, canvasAliases }`,
-=======
-    `export { flows, scenes, objects, records, prototypes, folders, canvases, stories }`,
-    `export const index = { flows, scenes, objects, records, prototypes, folders, canvases, stories }`,
->>>>>>> origin/4.0.0--story-widgets
+    `export { flows, scenes, objects, records, prototypes, folders, canvases, canvasAliases, stories }`,
+    `export const index = { flows, scenes, objects, records, prototypes, folders, canvases, canvasAliases, stories }`,
     `export default index`,
     '',
     '// Live-patch canvas data on HMR events so SPA navigation shows fresh state',

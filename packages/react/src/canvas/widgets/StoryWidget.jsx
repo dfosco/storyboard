@@ -16,6 +16,7 @@ import { getStoryData } from '@dfosco/storyboard-core'
 import { createInspectorHighlighter } from '@dfosco/storyboard-core/inspector/highlighter'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
+import { uploadImage } from '../canvasApi.js'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -44,12 +45,51 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
   const width = props?.width
   const height = props?.height
 
+  // Snapshot props for lazy loading
+  const snapshotLight = props?.snapshotLight || null
+  const snapshotDark = props?.snapshotDark || null
+
   const containerRef = useRef(null)
+  const iframeRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
   const [showCode, setShowCode] = useState(!!props?.showCode)
   const [sourceCode, setSourceCode] = useState(null)
   const [highlightedHtml, setHighlightedHtml] = useState(null)
   const [sourceLoading, setSourceLoading] = useState(false)
+
+  // Theme tracking for snapshot selection
+  const [canvasTheme, setCanvasTheme] = useState(() => {
+    if (typeof localStorage === 'undefined') return 'light'
+    const stored = localStorage.getItem('sb-color-scheme') || 'system'
+    if (stored !== 'system') return stored
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  })
+
+  useEffect(() => {
+    function onThemeChanged() {
+      const stored = localStorage.getItem('sb-color-scheme') || 'system'
+      if (stored !== 'system') { setCanvasTheme(stored); return }
+      setCanvasTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    }
+    document.addEventListener('storyboard:theme:changed', onThemeChanged)
+    return () => document.removeEventListener('storyboard:theme:changed', onThemeChanged)
+  }, [])
+
+  // Lazy loading state
+  const isDark = canvasTheme?.startsWith('dark')
+  const currentSnapshot = isDark ? snapshotDark : snapshotLight
+  const hasSnapshot = !!currentSnapshot
+  const [preloadIframe, setPreloadIframe] = useState(!hasSnapshot)
+  const [showIframe, setShowIframe] = useState(!hasSnapshot)
+  const capturingRef = useRef(false)
+  const [storyIndexKey, setStoryIndexKey] = useState(0)
+
+  // Re-resolve story URL when the story index is live-patched (new story added)
+  useEffect(() => {
+    const handler = () => setStoryIndexKey((k) => k + 1)
+    document.addEventListener('storyboard:story-index-changed', handler)
+    return () => document.removeEventListener('storyboard:story-index-changed', handler)
+  }, [])
 
   const toggleShowCode = useCallback(() => {
     setShowCode((v) => {
@@ -78,6 +118,59 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive])
+
+  // Listen for snapshot messages from the iframe
+  useEffect(() => {
+    function handleMessage(e) {
+      if (e.source !== iframeRef.current?.contentWindow) return
+
+      if (e.data?.type === 'storyboard:embed:snapshot') {
+        if (e.data.error) {
+          console.warn('[canvas] Story snapshot capture failed:', e.data.error)
+          return
+        }
+        handleSnapshotResult(e.data.dataUrl)
+        return
+      }
+
+      if (e.data?.type === 'storyboard:embed:snapshot-ready' && onUpdate) {
+        requestSnapshotCapture()
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [onUpdate, canvasTheme])
+
+  const requestSnapshotCapture = useCallback(() => {
+    if (!iframeRef.current?.contentWindow || capturingRef.current) return
+    capturingRef.current = true
+    iframeRef.current.contentWindow.postMessage({
+      type: 'storyboard:embed:capture',
+      requestId: `story-snap-${Date.now()}`,
+    }, '*')
+  }, [])
+
+  const handleSnapshotResult = useCallback(async (dataUrl) => {
+    if (!dataUrl || !onUpdate) return
+    capturingRef.current = false
+    try {
+      const result = await uploadImage(dataUrl, 'snapshot')
+      if (!result?.success || !result?.filename) return
+      const imageUrl = `/_storyboard/canvas/images/${result.filename}`
+      const themeKey = isDark ? 'snapshotDark' : 'snapshotLight'
+      onUpdate?.({ [themeKey]: imageUrl })
+    } catch (err) {
+      console.warn('[canvas] Failed to upload story snapshot:', err)
+    }
+  }, [onUpdate, isDark])
+
+  // Re-capture after resize
+  const resizeCaptureTimer = useRef(null)
+  const triggerResizeCapture = useCallback(() => {
+    if (!onUpdate) return
+    clearTimeout(resizeCaptureTimer.current)
+    resizeCaptureTimer.current = setTimeout(() => requestSnapshotCapture(), 2000)
+  }, [requestSnapshotCapture, onUpdate])
 
   // Load source code when show-code is toggled on
   useEffect(() => {
@@ -166,7 +259,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
 
   const iframeSrc = useMemo(
     () => resolveStoryUrl(storyId, exportName),
-    [storyId, exportName],
+    [storyId, exportName, storyIndexKey],
   )
 
   const displayName = exportName ? `${storyId} / ${exportName}` : storyId

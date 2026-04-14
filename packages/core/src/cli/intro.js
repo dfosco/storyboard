@@ -26,6 +26,7 @@ export function gettingStartedLines({ indent = '  ' } = {}) {
     `${i}  ${green('npx storyboard dev')}                Start developing locally`,
     `${i}  ${green('npx storyboard create prototype')}   Create a prototype`,
     `${i}  ${green('npx storyboard create canvas')}      Create a canvas`,
+    `${i}  ${green('npx storyboard create component')}   Create a component (.story.jsx)`,
     `${i}  ${green('npx storyboard canvas add sticky-note')}  Add a widget to a canvas`,
     '',
     `${i}  ${dim('Using an AI assistant? You can also ask it to')}`,

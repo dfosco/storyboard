@@ -17,10 +17,10 @@
 /* Canvas */
 
 .tc-canvas {
-  min-width: 100vw;
-  min-height: 100vh;
-  width: 10000px;
-  height: 10000px;
+  min-width: max(100vw, 10000px);
+  min-height: max(100vh, 10000px);
+  width: 100%;
+  height: 100%;
   margin: 0;
   font-family: var(--tc-font-stack);
   position: relative;

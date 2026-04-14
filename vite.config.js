@@ -55,6 +55,7 @@ export default defineConfig(() => {
             '@dfosco/storyboard-core/canvas/collision': path.resolve(__dirname, 'packages/core/src/canvas/collision.js'),
             '@dfosco/storyboard-core/config': path.resolve(__dirname, 'packages/core/src/configSchema.js'),
             '@dfosco/storyboard-core/modes.css': path.resolve(__dirname, 'packages/core/src/modes.css'),
+            '@dfosco/storyboard-core/inspector/highlighter': path.resolve(__dirname, 'packages/core/src/inspector/highlighter.js'),
             '@dfosco/storyboard-core/comments': path.resolve(__dirname, 'packages/core/src/comments/index.js'),
             '@dfosco/storyboard-core': path.resolve(__dirname, 'packages/core/src/index.js'),
             '@dfosco/storyboard-react/vite': path.resolve(__dirname, 'packages/react/src/vite/data-plugin.js'),

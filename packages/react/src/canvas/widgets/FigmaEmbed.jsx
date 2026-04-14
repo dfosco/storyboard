@@ -188,8 +188,13 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate, resizable }, re
         style={expanded && embedUrl ? undefined : { display: 'none' }}
         onClick={() => setExpanded(false)}
         onPointerDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          e.stopPropagation()
+          if (e.key === 'Escape') setExpanded(false)
+        }}
         onWheel={(e) => e.stopPropagation()}
+        tabIndex={-1}
+        ref={(el) => { if (el && expanded) el.focus() }}
       >
         <div
           ref={modalContainerRef}

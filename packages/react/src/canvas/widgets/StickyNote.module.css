@@ -20,6 +20,11 @@
   box-shadow: 2px 3px 10px rgba(0, 0, 0, 0.35);
 }
 
+/* Hide own border when parent widget slot is selected (avoid double focus ring) */
+:global([data-widget-selected]) .sticky {
+  border-color: transparent;
+}
+
 .text {
   padding: 16px 20px;
   margin: 0;

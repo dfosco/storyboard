@@ -225,6 +225,49 @@ export async function mountStoryboardCore(config = {}, options = {}) {
       history.replaceState = (...args) => { origReplace(...args); broadcastNavigation() }
       window.addEventListener('popstate', broadcastNavigation)
       window.addEventListener('hashchange', broadcastNavigation)
+
+      // Signal render-ready after app settles.
+      // Uses a 3s delay as a fallback — React components, data loading, and
+      // animations need time. Individual page types (StoryPage) may also
+      // send their own snapshot-ready after they finish rendering.
+      Promise.all([
+        document.fonts?.ready || Promise.resolve(),
+        new Promise(r => setTimeout(r, 3000)),
+      ]).then(() => {
+        window.parent.postMessage({ type: 'storyboard:embed:snapshot-ready' }, '*')
+      })
+
+      // Listen for snapshot capture requests from the parent canvas
+      window.addEventListener('message', async (e) => {
+        if (e.data?.type !== 'storyboard:embed:capture') return
+        const { requestId } = e.data
+        try {
+          const { toBlob } = await import('html-to-image')
+          const blob = await toBlob(document.body, {
+            type: 'image/webp',
+            quality: 0.85,
+            width: document.documentElement.clientWidth,
+            height: document.documentElement.clientHeight,
+            pixelRatio: 2,
+          })
+          if (!blob) throw new Error('Capture returned empty blob')
+          const reader = new FileReader()
+          reader.onload = () => {
+            window.parent.postMessage({
+              type: 'storyboard:embed:snapshot',
+              requestId,
+              dataUrl: reader.result,
+            }, '*')
+          }
+          reader.readAsDataURL(blob)
+        } catch (err) {
+          window.parent.postMessage({
+            type: 'storyboard:embed:snapshot',
+            requestId,
+            error: err.message,
+          }, '*')
+        }
+      })
     }
     return
   }
@@ -258,21 +301,21 @@ export async function mountStoryboardCore(config = {}, options = {}) {
  * success message is lost. This shows a temporary toast with the link.
  */
 function showPendingNotification(basePath) {
-  const KEYS = ['sb-canvas-created', 'sb-prototype-created', 'sb-flow-created']
+  const KEYS = ['sb-canvas-created', 'sb-prototype-created', 'sb-flow-created', 'sb-story-created']
   for (const key of KEYS) {
     try {
       const raw = sessionStorage.getItem(key)
       if (!raw) continue
       sessionStorage.removeItem(key)
-      const { success: message, route } = JSON.parse(raw)
+      const { success: message, route, path: filePath } = JSON.parse(raw)
       if (!message) continue
-      showToast(message, route, basePath)
+      showToast(message, route, basePath, filePath)
       return
     } catch { /* ignore malformed session entry */ }
   }
 }
 
-function showToast(message, route, basePath) {
+function showToast(message, route, basePath, filePath) {
   const toast = document.createElement('div')
   Object.assign(toast.style, {
     position: 'fixed',
@@ -292,12 +335,18 @@ function showToast(message, route, basePath) {
     gap: '0.25rem',
     opacity: '0',
     transition: 'opacity 0.15s ease',
-    maxWidth: '280px',
+    maxWidth: '320px',
   })
 
   const href = route?.startsWith('/') ? (basePath.replace(/\/$/, '') + route) : route
-  toast.innerHTML = `<span style="font-weight:500">✓ ${message.replace(/</g, '&lt;')}</span>`
-    + (href ? `<a href="${href}" style="color:var(--sb--color-primary, #0969da);text-decoration:underline;font-size:0.8125rem">Open canvas</a>` : '')
+  let html = `<span style="font-weight:500">✓ ${message.replace(/</g, '&lt;')}</span>`
+  if (href) {
+    html += `<a href="${href}" style="color:var(--sb--color-primary, #0969da);text-decoration:underline;font-size:0.8125rem">Open canvas</a>`
+  }
+  if (filePath) {
+    html += `<span style="font-size:0.75rem;color:var(--sb--color-muted, #64748b)">To edit your component, go to <code style="background:var(--sb--color-muted-bg, #f1f5f9);padding:1px 4px;border-radius:3px;font-size:0.75rem">${filePath.replace(/</g, '&lt;')}</code></span>`
+  }
+  toast.innerHTML = html
 
   document.body.appendChild(toast)
   requestAnimationFrame(() => { toast.style.opacity = '1' })

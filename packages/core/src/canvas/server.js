@@ -15,6 +15,8 @@
  *   POST   /widget   — append a widget_added event
  *   DELETE /widget   — append a widget_removed event
  *   POST   /create   — create a new .canvas.jsonl file
+ *   GET    /stories  — list all .story.{jsx,tsx} files with exports
+ *   POST   /create-story — scaffold a new .story.{jsx,tsx} file
  *   POST   /image    — upload a pasted image to src/canvas/images/
  *   GET    /images/* — serve an image file from src/canvas/images/
  *   POST   /image/toggle-private — toggle _prefix on image filename
@@ -77,9 +79,63 @@ function findCanvasFiles(root) {
 }
 
 /**
+<<<<<<< HEAD
  * Find a canvas JSONL file by canonical ID or legacy basename.
  * Path-based ID is tried first. Basename fallback only works when it
  * resolves to exactly one file — ambiguous names return null.
+=======
+ * Recursively find all .story.{jsx,tsx} files in routable directories
+ * (src/canvas/ and src/components/) and extract their named exports.
+ */
+function findStoryFiles(root) {
+  const results = []
+  const ignore = new Set(['node_modules', 'dist', '.git', '.worktrees'])
+  const ROUTABLE_DIRS = ['src/canvas', 'src/components']
+
+  function walk(dir, rel) {
+    let entries
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch { return }
+    for (const entry of entries) {
+      if (ignore.has(entry.name)) continue
+      if (entry.name.startsWith('_')) continue
+      const fullPath = path.join(dir, entry.name)
+      const relPath = rel ? `${rel}/${entry.name}` : entry.name
+      if (entry.isDirectory()) {
+        walk(fullPath, relPath)
+      } else if (/\.story\.(jsx|tsx)$/.test(entry.name)) {
+        const name = entry.name.replace(/\.story\.(jsx|tsx)$/, '')
+        const exports = parseExportNames(fullPath)
+        results.push({ name, path: relPath, exports })
+      }
+    }
+  }
+
+  for (const dir of ROUTABLE_DIRS) {
+    const absDir = path.join(root, dir)
+    if (fs.existsSync(absDir)) {
+      walk(absDir, dir)
+    }
+  }
+  return results
+}
+
+/**
+ * Parse named function/const exports from a JSX/TSX file.
+ */
+function parseExportNames(filePath) {
+  try {
+    const src = fs.readFileSync(filePath, 'utf-8')
+    const names = []
+    const re = /export\s+(?:function|const|class)\s+([A-Z]\w*)/g
+    let m
+    while ((m = re.exec(src)) !== null) names.push(m[1])
+    return names
+  } catch { return [] }
+}
+
+/**
+ * Find a canvas JSONL file by name.
+>>>>>>> origin/4.0.0--story-widgets
  */
 function findCanvasPath(root, nameOrId) {
   const files = findCanvasFiles(root)
@@ -474,6 +530,101 @@ export function ${componentName}Example() {
         sendJson(res, 201, result)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to create canvas: ${err.message}` })
+      }
+      return
+    }
+
+    // ── Story routes ──────────────────────────────────────────────────
+
+    // GET /stories — list all .story.{jsx,tsx} files with their exports
+    if (routePath === '/stories' && method === 'GET') {
+      try {
+        const storyFiles = findStoryFiles(root)
+        sendJson(res, 200, { stories: storyFiles })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to list stories: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /create-story — scaffold a new .story.jsx/.tsx file
+    if (routePath === '/create-story' && method === 'POST') {
+      const { name, location, format = 'jsx', canvasName: storyCanvasName } = body
+
+      if (!name || typeof name !== 'string') {
+        sendJson(res, 400, { error: 'Component name is required' })
+        return
+      }
+
+      const kebab = name
+        .replace(/[^a-zA-Z0-9\s_-]/g, '')
+        .trim()
+        .replace(/[\s_]+/g, '-')
+        .toLowerCase()
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+
+      if (!kebab) {
+        sendJson(res, 400, { error: 'Name must contain at least one alphanumeric character' })
+        return
+      }
+
+      const ext = format === 'tsx' ? 'tsx' : 'jsx'
+
+      // Resolve target directory from location + canvas name
+      let targetDir
+      if (location === 'components') {
+        targetDir = path.join(root, 'src', 'components')
+      } else if (storyCanvasName) {
+        const canvasPath = findCanvasPath(root, storyCanvasName)
+        targetDir = canvasPath ? path.dirname(canvasPath) : path.join(root, 'src', 'canvas')
+      } else {
+        targetDir = path.join(root, 'src', 'canvas')
+      }
+
+      const storyPath = path.join(targetDir, `${kebab}.story.${ext}`)
+      if (fs.existsSync(storyPath)) {
+        sendJson(res, 409, { error: `Story "${kebab}.story.${ext}" already exists at ${path.relative(root, targetDir)}` })
+        return
+      }
+
+      // Check for duplicate story name anywhere in the project (Vite data plugin
+      // enforces global uniqueness and would fail the build on duplicates)
+      const existing = findStoryFiles(root)
+      if (existing.some(s => s.name === kebab)) {
+        sendJson(res, 409, { error: `A story named "${kebab}" already exists in the project` })
+        return
+      }
+
+      const componentName = kebab.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')
+      const content = `/**
+ * ${componentName} component stories.
+ * Each named export becomes a draggable widget on the canvas.
+ */
+
+export function Default() {
+  return (
+    <div style={{ padding: '1.5rem', minWidth: 200 }}>
+      <h3>${componentName}</h3>
+      <p>Edit this file to build your component.</p>
+    </div>
+  )
+}
+`
+
+      try {
+        fs.mkdirSync(targetDir, { recursive: true })
+        fs.writeFileSync(storyPath, content, 'utf-8')
+
+        const relPath = path.relative(root, storyPath)
+        sendJson(res, 201, {
+          success: true,
+          name: kebab,
+          path: relPath,
+          storyId: kebab,
+        })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to create story: ${err.message}` })
       }
       return
     }

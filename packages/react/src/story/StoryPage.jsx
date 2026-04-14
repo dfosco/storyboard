@@ -59,6 +59,18 @@ export default function StoryPage({ name }) {
     return () => { cancelled = true }
   }, [name, story])
 
+  // Signal snapshot-ready after story renders in embed mode
+  useEffect(() => {
+    if (!isEmbed || !exports || window.parent === window) return
+    // Wait for fonts + paint to settle before signaling ready
+    Promise.all([
+      document.fonts?.ready || Promise.resolve(),
+      new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))),
+    ]).then(() => {
+      window.parent.postMessage({ type: 'storyboard:embed:snapshot-ready' }, '*')
+    })
+  }, [isEmbed, exports])
+
   if (error) {
     return (
       <div className={styles.page}>

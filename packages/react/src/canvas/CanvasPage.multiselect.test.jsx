@@ -123,7 +123,7 @@ describe('CanvasPage multi-select', () => {
   })
 
   it('shift+click on select handle adds widget to selection', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
 
     // Select first widget
     fireEvent.click(screen.getByTestId('select-w1'))
@@ -138,7 +138,7 @@ describe('CanvasPage multi-select', () => {
   })
 
   it('shift+click on already selected widget removes it from selection', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
 
     // Select both
     fireEvent.click(screen.getByTestId('select-w1'))
@@ -155,7 +155,7 @@ describe('CanvasPage multi-select', () => {
   })
 
   it('normal click replaces multi-selection with single', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
 
     // Multi-select
     fireEvent.click(screen.getByTestId('select-w1'))
@@ -172,7 +172,7 @@ describe('CanvasPage multi-select', () => {
   })
 
   it('sets multiSelected on all selected widgets when multiple are selected', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
 
     fireEvent.click(screen.getByTestId('select-w1'))
     fireEvent.click(screen.getByTestId('shift-select-w2'))
@@ -185,7 +185,7 @@ describe('CanvasPage multi-select', () => {
   })
 
   it('Escape clears all selection', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
 
     fireEvent.click(screen.getByTestId('select-w1'))
     fireEvent.click(screen.getByTestId('shift-select-w2'))
@@ -199,7 +199,7 @@ describe('CanvasPage multi-select', () => {
   })
 
   it('Delete removes all selected widgets and calls updateCanvas', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
 
     // Multi-select w1 and w2
     fireEvent.click(screen.getByTestId('select-w1'))
@@ -224,7 +224,7 @@ describe('CanvasPage multi-select', () => {
   })
 
   it('single-select Delete uses removeWidget API', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
 
     fireEvent.click(screen.getByTestId('select-w1'))
     fireEvent.keyDown(document, { key: 'Backspace' })
@@ -234,7 +234,7 @@ describe('CanvasPage multi-select', () => {
   })
 
   it('multi-select move applies delta to all selected widgets', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
 
     // Multi-select w1 (100,100) and w2 (300,100)
     fireEvent.click(screen.getByTestId('select-w1'))
@@ -265,7 +265,7 @@ describe('CanvasPage multi-select', () => {
   })
 
   it('multi-select drag captures peer articles on drag start', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
 
     // Multi-select w1 and w2
     fireEvent.click(screen.getByTestId('select-w1'))
@@ -288,7 +288,7 @@ describe('CanvasPage multi-select', () => {
   })
 
   it('multi-select drag preserves selection after drag end', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
 
     // Multi-select w1 and w2
     fireEvent.click(screen.getByTestId('select-w1'))
@@ -313,7 +313,7 @@ describe('CanvasPage multi-select', () => {
   })
 
   it('any selected widget can serve as drag handler for the group', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
 
     // Multi-select w1 (100,100), w2 (300,100), w3 (500,200)
     fireEvent.click(screen.getByTestId('select-w1'))

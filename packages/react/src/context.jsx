@@ -119,10 +119,10 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
   const params = useParams()
 
   // Canvas route detection — matches current URL against registered canvas routes
-  const canvasName = useMemo(() => matchCanvasRoute(location.pathname), [location.pathname])
+  const canvasId = useMemo(() => matchCanvasRoute(location.pathname), [location.pathname])
   const isMissingCanvasRoute = useMemo(
-    () => isCanvasPath(location.pathname) && !canvasName && !matchStoryRoute(location.pathname),
-    [location.pathname, canvasName],
+    () => isCanvasPath(location.pathname) && !canvasId && !matchStoryRoute(location.pathname),
+    [location.pathname, canvasId],
   )
 
   // Story route detection — matches current URL against registered story routes
@@ -139,7 +139,7 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
 
   // Resolve flow name with prototype scoping (skip for canvas/story pages)
   const activeFlowName = useMemo(() => {
-    if (canvasName || isMissingCanvasRoute || storyName || isMissingStoryRoute) return null
+    if (canvasId || isMissingCanvasRoute || storyName || isMissingStoryRoute) return null
     const requested = sceneParam || flowName || sceneName
     if (requested) {
       // Allow fully-scoped flow names from URLs/widgets without re-prefixing
@@ -163,7 +163,7 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     // 4. Global default — or null if no flow exists at all
     if (flowExists('default')) return 'default'
     return null
-  }, [canvasName, isMissingCanvasRoute, storyName, isMissingStoryRoute, sceneParam, flowName, sceneName, prototypeName, pageFlow])
+  }, [canvasId, isMissingCanvasRoute, storyName, isMissingStoryRoute, sceneParam, flowName, sceneName, prototypeName, pageFlow])
 
   // Auto-install body class sync (sb-key--value classes on <body>)
   useEffect(() => installBodyClassSync(), [])
@@ -175,10 +175,10 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     const branchSuffix = branchMatch ? ` (${branchMatch[1]})` : ''
 
     let title
-    if (canvasName) {
-      const canvasData = canvases?.[canvasName]
+    if (canvasId) {
+      const canvasData = canvases?.[canvasId]
       const meta = canvasData?._canvasMeta
-      const pageTitle = canvasData?.title || canvasName.split('/').pop()
+      const pageTitle = canvasData?.title || canvasId.split('/').pop()
       title = (meta?.title || pageTitle) + ' · Storyboard'
     } else if (prototypeName) {
       title = prototypeName + ' · Storyboard'
@@ -187,7 +187,7 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     }
 
     document.title = title + branchSuffix
-  }, [canvasName, prototypeName])
+  }, [canvasId, prototypeName])
 
   // Mount design modes UI when enabled in storyboard.config.json
   useEffect(() => {
@@ -207,7 +207,7 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
 
   // Skip flow loading for canvas/story pages and flow-less pages
   const { data, error } = useMemo(() => {
-    if (canvasName || isMissingCanvasRoute || storyName || isMissingStoryRoute) return { data: null, error: null }
+    if (canvasId || isMissingCanvasRoute || storyName || isMissingStoryRoute) return { data: null, error: null }
     if (!activeFlowName) return { data: {}, error: null }
     try {
       let flowData = loadFlow(activeFlowName)
@@ -226,11 +226,11 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     } catch (err) {
       return { data: null, error: err.message }
     }
-  }, [canvasName, isMissingCanvasRoute, storyName, isMissingStoryRoute, activeFlowName, recordName, recordParam, params, prototypeName])
+  }, [canvasId, isMissingCanvasRoute, storyName, isMissingStoryRoute, activeFlowName, recordName, recordParam, params, prototypeName])
 
   // Canvas pages get their own rendering path — no flow data needed
-  if (canvasName) {
-    const canvasData = canvases?.[canvasName]
+  if (canvasId) {
+    const canvasData = canvases?.[canvasId]
     const group = canvasData?._group
     const siblingPages = group ? canvasGroupMap.get(group) || [] : []
     const canvasMeta = canvasData?._canvasMeta || null
@@ -245,7 +245,7 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     return (
       <StoryboardContext.Provider value={canvasValue}>
         <Suspense fallback={null}>
-          <CanvasPageLazy name={canvasName} siblingPages={siblingPages} canvasMeta={canvasMeta} />
+          <CanvasPageLazy canvasId={canvasId} siblingPages={siblingPages} canvasMeta={canvasMeta} />
         </Suspense>
       </StoryboardContext.Provider>
     )

@@ -72,7 +72,7 @@
   let SidePanel: any = $state(null)
   let toolbarEl: HTMLElement | null = $state(null)
   let canvasActive = $state(false)
-  let activeCanvasName = $state('')
+  let activeCanvasId = $state('')
   let canvasZoom = $state(100)
   let toolStateVersion = $state(0)
 
@@ -483,14 +483,14 @@
   function handleCanvasMounted(e: Event) {
     canvasActive = true
     const detail = (e as CustomEvent).detail
-    activeCanvasName = detail?.name || ''
+    activeCanvasId = detail?.canvasId || detail?.name || ''
     canvasZoom = detail?.zoom ?? 100
     syncMobileActions()
   }
 
   function handleCanvasUnmounted() {
     canvasActive = false
-    activeCanvasName = ''
+    activeCanvasId = ''
     canvasZoom = 100
     syncMobileActions()
   }
@@ -505,7 +505,7 @@
     const state = (window as any).__storyboardCanvasBridgeState
     if (state && typeof state === 'object') {
       canvasActive = state.active === true
-      activeCanvasName = state.name || ''
+      activeCanvasId = state.canvasId || state.name || ''
       canvasZoom = typeof state.zoom === 'number' ? state.zoom : 100
     }
     if (!canvasActive) {
@@ -670,7 +670,7 @@
                   <CanvasToolComponent
                     config={canvasTool}
                     data={toolData[canvasTool.key]}
-                    canvasName={activeCanvasName}
+                    canvasName={activeCanvasId}
                     zoom={canvasZoom}
                     tabindex={0}
                   />
@@ -682,7 +682,7 @@
             <CanvasToolComponent
               config={canvasTool}
               data={toolData[canvasTool.key]}
-              canvasName={activeCanvasName}
+              canvasName={activeCanvasId}
               zoom={canvasZoom}
               tabindex={0}
             />

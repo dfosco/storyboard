@@ -78,7 +78,9 @@ function parseDataFile(filePath) {
     // Derive group: canvases sharing a directory form a group
     const slashIdx = name.lastIndexOf('/')
     const group = canvasFolderName || (slashIdx > 0 ? name.substring(0, slashIdx) : null)
-    return { name, suffix: 'canvas', ext: 'jsonl', folder: canvasFolderName || folderName, inferredRoute, id: toCanvasId(filePath), group }
+    // Extract a relative path for toCanvasId (it expects src/canvas/... or src/prototypes/...)
+    const canvasIdInput = normalized.replace(/^.*?(src\/(?:canvas|prototypes)\/)/, '$1')
+    return { name, suffix: 'canvas', ext: 'jsonl', folder: canvasFolderName || folderName, inferredRoute, id: toCanvasId(canvasIdInput), group }
   }
 
   // Handle canvas .meta.json files
@@ -404,8 +406,10 @@ function buildIndex(root) {
     }
 
     // Track canvas groups (canvases sharing a folder prefix)
+    // Use canonical ID as key to match the canvas index
     if (parsed.suffix === 'canvas' && parsed.group) {
-      canvasGroups[parsed.name] = parsed.group
+      const groupKey = parsed.id || parsed.name
+      canvasGroups[groupKey] = parsed.group
     }
 
     // Track inferred routes for stories
@@ -781,12 +785,13 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasA
     'if (import.meta.hot) {',
     '  import.meta.hot.on("storyboard:canvas-file-changed", (data) => {',
     '    if (!data) return',
+    '    const id = data.canvasId || data.name',
     '    if (data.removed) {',
-    '      delete canvases[data.name]',
+    '      delete canvases[id]',
     '    } else if (data.metadata) {',
     '      // Merge into existing entry to preserve build-time fields (_jsxModule, _jsxImport, etc.)',
-    '      canvases[data.name] = canvases[data.name]',
-    '        ? Object.assign({}, canvases[data.name], data.metadata)',
+    '      canvases[id] = canvases[id]',
+    '        ? Object.assign({}, canvases[id], data.metadata)',
     '        : data.metadata',
     '    }',
     '    init({ flows, objects, records, prototypes, folders, canvases, stories })',
@@ -911,7 +916,7 @@ export default function storyboardDataPlugin() {
       // Watch for data file changes in dev mode
       const watcher = server.watcher
       if (!buildResult) buildResult = buildIndex(root)
-      const knownCanvasNames = new Set(Object.keys(buildResult.index.canvas || {}))
+      const knownCanvasIds = new Set(Object.keys(buildResult.index.canvas || {}))
       const pendingCanvasUnlinks = new Map()
 
       const triggerFullReload = () => {
@@ -958,12 +963,12 @@ export default function storyboardDataPlugin() {
         // viewfinder can react in place.
         if (/\.canvas\.jsonl$/.test(normalized)) {
           const parsed = parseDataFile(filePath)
-          if (parsed?.suffix === 'canvas' && parsed?.name) {
+          if (parsed?.suffix === 'canvas' && parsed?.id) {
             const metadata = readCanvasMetadata(filePath, parsed)
             server.ws.send({
               type: 'custom',
               event: 'storyboard:canvas-file-changed',
-              data: { name: parsed.name, ...(metadata ? { metadata } : {}) },
+              data: { canvasId: parsed.id, name: parsed.id, ...(metadata ? { metadata } : {}) },
             })
           }
           softInvalidate()
@@ -1003,53 +1008,53 @@ export default function storyboardDataPlugin() {
         // Treat canvas add/unlink as runtime data updates and never full-reload
         // from watcher events. Canvas pages sync from disk via custom WS events.
         if (parsed?.suffix === 'canvas') {
-          const name = parsed.name
+          const canvasId = parsed.id || parsed.name
           if (eventType === 'unlink') {
             const timer = setTimeout(() => {
-              pendingCanvasUnlinks.delete(name)
-              knownCanvasNames.delete(name)
+              pendingCanvasUnlinks.delete(canvasId)
+              knownCanvasIds.delete(canvasId)
               server.ws.send({
                 type: 'custom',
                 event: 'storyboard:canvas-file-changed',
-                data: { name, removed: true },
+                data: { canvasId, name: canvasId, removed: true },
               })
               softInvalidate()
             }, 1500)
-            pendingCanvasUnlinks.set(name, timer)
+            pendingCanvasUnlinks.set(canvasId, timer)
             return
           }
 
           if (eventType === 'add') {
             const metadata = readCanvasMetadata(filePath, parsed)
-            const pending = pendingCanvasUnlinks.get(name)
+            const pending = pendingCanvasUnlinks.get(canvasId)
             if (pending) {
               // unlink+add pair = in-place save (atomic write), not a real remove
               clearTimeout(pending)
-              pendingCanvasUnlinks.delete(name)
+              pendingCanvasUnlinks.delete(canvasId)
               server.ws.send({
                 type: 'custom',
                 event: 'storyboard:canvas-file-changed',
-                data: { name, ...(metadata ? { metadata } : {}) },
+                data: { canvasId, name: canvasId, ...(metadata ? { metadata } : {}) },
               })
               softInvalidate()
               return
             }
 
-            if (knownCanvasNames.has(name)) {
+            if (knownCanvasIds.has(canvasId)) {
               server.ws.send({
                 type: 'custom',
                 event: 'storyboard:canvas-file-changed',
-                data: { name, ...(metadata ? { metadata } : {}) },
+                data: { canvasId, name: canvasId, ...(metadata ? { metadata } : {}) },
               })
               softInvalidate()
               return
             }
 
-            knownCanvasNames.add(name)
+            knownCanvasIds.add(canvasId)
             server.ws.send({
               type: 'custom',
               event: 'storyboard:canvas-file-changed',
-              data: { name, ...(metadata ? { metadata } : {}) },
+              data: { canvasId, name: canvasId, ...(metadata ? { metadata } : {}) },
             })
             softInvalidate()
             return

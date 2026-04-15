@@ -28,26 +28,26 @@ export function createCanvas(data) {
   return request('/create', 'POST', data)
 }
 
-export function updateCanvas(name, { widgets, sources, settings }) {
-  return request('/update', 'PUT', { name, widgets, sources, settings })
+export function updateCanvas(canvasId, { widgets, sources, settings }) {
+  return request('/update', 'PUT', { name: canvasId, widgets, sources, settings })
 }
 
-export function addWidget(name, { type, props, position }) {
-  return request('/widget', 'POST', { name, type, props, position })
+export function addWidget(canvasId, { type, props, position }) {
+  return request('/widget', 'POST', { name: canvasId, type, props, position })
 }
 
-export function removeWidget(name, widgetId) {
-  return request('/widget', 'DELETE', { name, widgetId })
+export function removeWidget(canvasId, widgetId) {
+  return request('/widget', 'DELETE', { name: canvasId, widgetId })
 }
 
-export function uploadImage(dataUrl, canvasName) {
-  return request('/image', 'POST', { dataUrl, canvasName })
+export function uploadImage(dataUrl, canvasId) {
+  return request('/image', 'POST', { dataUrl, canvasName: canvasId })
 }
 
 export function toggleImagePrivacy(filename) {
   return request('/image/toggle-private', 'POST', { filename })
 }
 
-export function getCanvas(name) {
-  return request(`/read?name=${encodeURIComponent(name)}`, 'GET')
+export function getCanvas(canvasId) {
+  return request(`/read?name=${encodeURIComponent(canvasId)}`, 'GET')
 }

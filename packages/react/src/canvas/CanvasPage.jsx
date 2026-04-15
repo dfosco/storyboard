@@ -106,18 +106,18 @@ function debounce(fn, ms) {
 }
 
 /** Per-canvas viewport state persistence (zoom + scroll position). */
-function getViewportStorageKey(canvasName) {
-  return `sb-canvas-viewport:${canvasName}`
+function getViewportStorageKey(canvasId) {
+  return `sb-canvas-viewport:${canvasId}`
 }
 
-function loadViewportState(canvasName) {
+function loadViewportState(canvasId) {
   try {
-    const raw = localStorage.getItem(getViewportStorageKey(canvasName))
+    const raw = localStorage.getItem(getViewportStorageKey(canvasId))
     if (!raw) return null
     const state = JSON.parse(raw)
     const timestamp = typeof state.timestamp === 'number' ? state.timestamp : 0
     if (Date.now() - timestamp > VIEWPORT_TTL_MS) {
-      localStorage.removeItem(getViewportStorageKey(canvasName))
+      localStorage.removeItem(getViewportStorageKey(canvasId))
       return null
     }
     return {
@@ -128,9 +128,9 @@ function loadViewportState(canvasName) {
   } catch { return null }
 }
 
-function saveViewportState(canvasName, state) {
+function saveViewportState(canvasId, state) {
   try {
-    localStorage.setItem(getViewportStorageKey(canvasName), JSON.stringify({
+    localStorage.setItem(getViewportStorageKey(canvasId), JSON.stringify({
       ...state,
       timestamp: Date.now(),
     }))
@@ -321,24 +321,24 @@ function ChromeWrappedWidget({
  * Generic canvas page component.
  * Reads canvas data from the index and renders all widgets on a draggable surface.
  *
- * @param {{ name: string }} props - Canvas name as indexed by the data plugin
+ * @param {{ canvasId: string }} props - Canvas name as indexed by the data plugin
  */
-export default function CanvasPage({ name, siblingPages = [], canvasMeta = null }) {
-  const { canvas, jsxExports, jsxError, loading } = useCanvas(name)
+export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = null }) {
+  const { canvas, jsxExports, jsxError, loading } = useCanvas(canvasId)
   const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true && !new URLSearchParams(window.location.search).has('prodMode')
 
   // Local mutable copy of widgets for instant UI updates
   const [localWidgets, setLocalWidgets] = useState(canvas?.widgets ?? null)
   const [trackedCanvas, setTrackedCanvas] = useState(canvas)
   const [selectedWidgetIds, setSelectedWidgetIds] = useState(() => new Set())
-  const initialViewport = loadViewportState(name)
+  const initialViewport = loadViewportState(canvasId)
   const [zoom, setZoom] = useState(initialViewport?.zoom ?? 100)
   const zoomRef = useRef(initialViewport?.zoom ?? 100)
   const scrollRef = useRef(null)
   const pendingScrollRestore = useRef(initialViewport)
   // Gate viewport persistence until initial positioning is complete.
-  // Tracks which canvas name was last initialized — save effects only
-  // write when this matches `name`, preventing cross-canvas corruption.
+  // Tracks which canvasId was last initialized — save effects only
+  // write when this matches `canvasId`, preventing cross-canvas corruption.
   const viewportInitName = useRef(null)
   const [localSources, setLocalSources] = useState(canvas?.sources ?? [])
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
@@ -482,7 +482,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     undoRedo.reset()
     // Block saves until the new canvas's viewport is fully restored.
     viewportInitName.current = null
-    const newViewport = loadViewportState(name)
+    const newViewport = loadViewportState(canvasId)
     pendingScrollRestore.current = newViewport
     // Restore zoom from the new canvas's saved state
     const newZoom = newViewport?.zoom ?? 100
@@ -492,8 +492,8 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
 
   // Debounced save to server
   const debouncedSave = useRef(
-    debounce((canvasName, widgets) => {
-      updateCanvas(canvasName, { widgets }).catch((err) =>
+    debounce((canvasId, widgets) => {
+      updateCanvas(canvasId, { widgets }).catch((err) =>
         console.error('[canvas] Failed to save:', err)
       )
     }, 2000)
@@ -512,20 +512,20 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
       const next = prev.map((w) =>
         w.id === widgetId ? { ...w, props: { ...w.props, ...snapped } } : w
       )
-      debouncedSave(name, next)
+      debouncedSave(canvasId, next)
       return next
     })
-  }, [name, debouncedSave, undoRedo, snapEnabled, snapGridSize])
+  }, [canvasId, debouncedSave, undoRedo, snapEnabled, snapGridSize])
 
   const handleWidgetRemove = useCallback((widgetId) => {
     undoRedo.snapshot(stateRef.current, 'remove', widgetId)
     setLocalWidgets((prev) => prev ? prev.filter((w) => w.id !== widgetId) : prev)
     queueWrite(() =>
-      removeWidgetApi(name, widgetId).catch((err) =>
+      removeWidgetApi(canvasId, widgetId).catch((err) =>
         console.error('[canvas] Failed to remove widget:', err)
       )
     )
-  }, [name, undoRedo])
+  }, [canvasId, undoRedo])
 
   const handleWidgetCopy = useCallback(async (widget) => {
     // Find the next free offset — check how many copies already exist at +n*40
@@ -541,7 +541,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     const position = { x: baseX + n * 40, y: baseY + n * 40 }
     try {
       undoRedo.snapshot(stateRef.current, 'add')
-      const result = await addWidgetApi(name, {
+      const result = await addWidgetApi(canvasId, {
         type: widget.type,
         props: { ...widget.props },
         position,
@@ -552,11 +552,11 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     } catch (err) {
       console.error('[canvas] Failed to copy widget:', err)
     }
-  }, [name, localWidgets, undoRedo])
+  }, [canvasId, localWidgets, undoRedo])
 
   const debouncedSourceSave = useRef(
-    debounce((canvasName, sources) => {
-      updateCanvas(canvasName, { sources }).catch((err) =>
+    debounce((canvasId, sources) => {
+      updateCanvas(canvasId, { sources }).catch((err) =>
         console.error('[canvas] Failed to save sources:', err)
       )
     }, 2000)
@@ -574,10 +574,10 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
       const next = current.some((s) => s?.export === exportName)
         ? current.map((s) => (s?.export === exportName ? { ...s, ...snapped } : s))
         : [...current, { export: exportName, ...snapped }]
-      debouncedSourceSave(name, next)
+      debouncedSourceSave(canvasId, next)
       return next
     })
-  }, [name, debouncedSourceSave, undoRedo, snapEnabled, snapGridSize])
+  }, [canvasId, debouncedSourceSave, undoRedo, snapEnabled, snapGridSize])
 
   const handleItemDragEnd = useCallback((dragId, position) => {
     if (!dragId || !position) {
@@ -629,7 +629,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
           return w
         })
         queueWrite(() =>
-          updateCanvas(name, { widgets: next }).catch((err) =>
+          updateCanvas(canvasId, { widgets: next }).catch((err) =>
             console.error('[canvas] Failed to save multi-move:', err)
           )
         )
@@ -661,7 +661,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
         })
         if (changed) {
           queueWrite(() =>
-            updateCanvas(name, { sources: next }).catch((err) =>
+            updateCanvas(canvasId, { sources: next }).catch((err) =>
               console.error('[canvas] Failed to save multi-move sources:', err)
             )
           )
@@ -680,7 +680,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
           ? current.map((s) => (s?.export === sourceExport ? { ...s, position: rounded } : s))
           : [...current, { export: sourceExport, position: rounded }]
         queueWrite(() =>
-          updateCanvas(name, { sources: next }).catch((err) =>
+          updateCanvas(canvasId, { sources: next }).catch((err) =>
             console.error('[canvas] Failed to save source position:', err)
           )
         )
@@ -696,13 +696,13 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
         w.id === dragId ? { ...w, position: rounded } : w
       )
       queueWrite(() =>
-        updateCanvas(name, { widgets: next }).catch((err) =>
+        updateCanvas(canvasId, { widgets: next }).catch((err) =>
           console.error('[canvas] Failed to save widget position:', err)
         )
       )
       return next
     })
-  }, [name, undoRedo, debouncedSave, transitionPeers, clearDragPreview])
+  }, [canvasId, undoRedo, debouncedSave, transitionPeers, clearDragPreview])
 
   useEffect(() => {
     zoomRef.current = zoom
@@ -739,8 +739,8 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
       }
     }
     // Allow save effects for this canvas now that positioning is settled.
-    viewportInitName.current = name
-  }, [name, loading])
+    viewportInitName.current = canvasId
+  }, [canvasId, loading])
 
   // Center on a specific widget if `?widget=<id>` is in the URL
   useEffect(() => {
@@ -795,23 +795,23 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
   // operations (applyZoom, zoom-to-fit) adjust scroll AFTER setZoom, so the
   // scroll values would be stale at this point.
   useEffect(() => {
-    if (viewportInitName.current !== name) return
+    if (viewportInitName.current !== canvasId) return
     const el = scrollRef.current
     // Read current scroll so the zoom entry doesn't zero-out position,
     // but the authoritative scroll save comes from the scroll handler.
-    saveViewportState(name, {
+    saveViewportState(canvasId, {
       zoom,
       scrollLeft: el?.scrollLeft ?? 0,
       scrollTop: el?.scrollTop ?? 0,
     })
-  }, [name, zoom])
+  }, [canvasId, zoom])
 
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
     const saveNow = () => {
-      if (viewportInitName.current !== name) return
-      saveViewportState(name, {
+      if (viewportInitName.current !== canvasId) return
+      saveViewportState(canvasId, {
         zoom: zoomRef.current,
         scrollLeft: el.scrollLeft,
         scrollTop: el.scrollTop,
@@ -819,7 +819,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     }
     const debouncedScrollSave = debounce(saveNow, 150)
     function handleScroll() {
-      if (viewportInitName.current !== name) return
+      if (viewportInitName.current !== canvasId) return
       debouncedScrollSave()
     }
     el.addEventListener('scroll', handleScroll, { passive: true })
@@ -839,7 +839,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
       // beforeunload doesn't fire).
       saveNow()
     }
-  }, [name, loading])
+  }, [canvasId, loading])
 
   /**
    * Zoom to a new level, anchoring on an optional client-space point.
@@ -880,8 +880,8 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     // Persist after both zoom and scroll are settled (the zoom effect
     // fires inside flushSync before the scroll adjustment above, so it
     // would capture stale scroll values).
-    if (viewportInitName.current === name) {
-      saveViewportState(name, {
+    if (viewportInitName.current === canvasId) {
+      saveViewportState(canvasId, {
         zoom: clampedZoom,
         scrollLeft: el.scrollLeft,
         scrollTop: el.scrollTop,
@@ -891,13 +891,13 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
 
   // Signal canvas mount/unmount to CoreUIBar
   useEffect(() => {
-    window[CANVAS_BRIDGE_STATE_KEY] = { active: true, name, zoom: zoomRef.current }
+    window[CANVAS_BRIDGE_STATE_KEY] = { active: true, canvasId, zoom: zoomRef.current }
     document.dispatchEvent(new CustomEvent('storyboard:canvas:mounted', {
-      detail: { name, zoom: zoomRef.current }
+      detail: { canvasId, zoom: zoomRef.current }
     }))
 
     function handleStatusRequest() {
-      const state = window[CANVAS_BRIDGE_STATE_KEY] || { active: true, name, zoom: zoomRef.current }
+      const state = window[CANVAS_BRIDGE_STATE_KEY] || { active: true, canvasId, zoom: zoomRef.current }
       document.dispatchEvent(new CustomEvent('storyboard:canvas:status', { detail: state }))
     }
 
@@ -905,10 +905,10 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
 
     return () => {
       document.removeEventListener('storyboard:canvas:status-request', handleStatusRequest)
-      window[CANVAS_BRIDGE_STATE_KEY] = { active: false, name: '', zoom: 100 }
+      window[CANVAS_BRIDGE_STATE_KEY] = { active: false, canvasId: '', zoom: 100 }
       document.dispatchEvent(new CustomEvent('storyboard:canvas:unmounted'))
     }
-  }, [name])
+  }, [canvasId])
 
   // Tell the Vite dev server to suppress full-reloads while this canvas is active.
   // The ?canvas-hmr URL param opts out of the guard for canvas UI development.
@@ -928,7 +928,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
       clearInterval(interval)
       import.meta.hot.send('storyboard:canvas-hmr-guard', { active: false, hmrEnabled: true })
     }
-  }, [name])
+  }, [canvasId])
 
   // Add a widget by type — used by CanvasControls and CoreUIBar event
   const addWidget = useCallback(async (type) => {
@@ -936,7 +936,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
     const pos = centerPositionForWidget(center, type, defaultProps)
     try {
-      const result = await addWidgetApi(name, {
+      const result = await addWidgetApi(canvasId, {
         type,
         props: defaultProps,
         position: pos,
@@ -948,7 +948,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     } catch (err) {
       console.error('[canvas] Failed to add widget:', err)
     }
-  }, [name, undoRedo])
+  }, [canvasId, undoRedo])
 
   // Add a story widget by storyId — used by CanvasControls story picker
   const addStoryWidget = useCallback(async (storyId) => {
@@ -956,7 +956,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
     const pos = centerPositionForWidget(center, 'story', storyProps)
     try {
-      const result = await addWidgetApi(name, {
+      const result = await addWidgetApi(canvasId, {
         type: 'story',
         props: storyProps,
         position: pos,
@@ -968,7 +968,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     } catch (err) {
       console.error('[canvas] Failed to add story widget:', err)
     }
-  }, [name, undoRedo])
+  }, [canvasId, undoRedo])
 
   // Listen for CoreUIBar add-widget events
   useEffect(() => {
@@ -1003,7 +1003,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     function handleSnapToggle() {
       setSnapEnabled((prev) => {
         const next = !prev
-        updateCanvas(name, { settings: { snapToGrid: next } }).catch((err) =>
+        updateCanvas(canvasId, { settings: { snapToGrid: next } }).catch((err) =>
           console.error('[canvas] Failed to persist snap setting:', err)
         )
         return next
@@ -1011,7 +1011,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     }
     document.addEventListener('storyboard:canvas:toggle-snap', handleSnapToggle)
     return () => document.removeEventListener('storyboard:canvas:toggle-snap', handleSnapToggle)
-  }, [name])
+  }, [canvasId])
 
   // Broadcast snap state to Svelte toolbar
   useEffect(() => {
@@ -1076,8 +1076,8 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
       el.scrollTop = (bounds.minY - FIT_PADDING) * newScale
 
       // Persist after both zoom and scroll are settled
-      if (viewportInitName.current === name) {
-        saveViewportState(name, {
+      if (viewportInitName.current === canvasId) {
+        saveViewportState(canvasId, {
           zoom: fitZoom,
           scrollLeft: el.scrollLeft,
           scrollTop: el.scrollTop,
@@ -1101,11 +1101,11 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
 
   // Broadcast zoom level to CoreUIBar whenever it changes
   useEffect(() => {
-    window[CANVAS_BRIDGE_STATE_KEY] = { active: true, name, zoom }
+    window[CANVAS_BRIDGE_STATE_KEY] = { active: true, canvasId, zoom }
     document.dispatchEvent(new CustomEvent('storyboard:canvas:zoom-changed', {
       detail: { zoom }
     }))
-  }, [name, zoom])
+  }, [canvasId, zoom])
 
   // Delete selected widget on Delete/Backspace key
   useEffect(() => {
@@ -1128,12 +1128,12 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
         setSelectedWidgetIds(new Set())
       }
       // Copy shortcut (single widget selected):
-      // cmd+c → copy canvasName::widgetId (for cross-canvas paste-duplicate)
+      // cmd+c → copy canvasId::widgetId (for cross-canvas paste-duplicate)
       const mod = e.metaKey || e.ctrlKey
       if (mod && e.key === 'c' && !e.shiftKey && selectedWidgetIds.size === 1) {
         const widgetId = [...selectedWidgetIds][0]
         e.preventDefault()
-        navigator.clipboard.writeText(`${name}::${widgetId}`).catch(() => {})
+        navigator.clipboard.writeText(`${canvasId}::${widgetId}`).catch(() => {})
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault()
@@ -1145,7 +1145,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
             if (!prev) return prev
             const next = prev.filter(w => !selectedWidgetIds.has(w.id))
             queueWrite(() =>
-              updateCanvas(name, { widgets: next }).catch(err =>
+              updateCanvas(canvasId, { widgets: next }).catch(err =>
                 console.error('[canvas] Failed to save multi-delete:', err)
               )
             )
@@ -1160,7 +1160,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [selectedWidgetIds, localWidgets, handleWidgetRemove, undoRedo, name, debouncedSave])
+  }, [selectedWidgetIds, localWidgets, handleWidgetRemove, undoRedo, canvasId, debouncedSave])
 
   // Ref to store processImageFile for use by drop effect
   const processImageFileRef = useRef(null)
@@ -1209,7 +1209,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
           displayW = maxWidth
         }
 
-        const uploadResult = await uploadImage(dataUrl, name)
+        const uploadResult = await uploadImage(dataUrl, canvasId)
         if (!uploadResult.success) {
           console.error('[canvas] Image upload failed:', uploadResult.error)
           return false
@@ -1224,7 +1224,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
           pos = centerPositionForWidget(center, 'image', { width: displayW, height: displayH })
         }
 
-        const result = await addWidgetApi(name, {
+        const result = await addWidgetApi(canvasId, {
           type: 'image',
           props: { src: uploadResult.filename, private: false, width: displayW, height: displayH },
           position: pos,
@@ -1271,8 +1271,8 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
       const text = e.clipboardData?.getData('text/plain')?.trim()
       if (!text) return
 
-      // Detect canvasName::widgetId format for widget duplication (cross-canvas copy-paste)
-      // Also supports legacy canvasName/widgetId for basenames without slashes,
+      // Detect canvasId::widgetId format for widget duplication (cross-canvas copy-paste)
+      // Also supports legacy canvasId/widgetId for basenames without slashes,
       // but only when the second segment looks like a widget ID (type-hash).
       const widgetRefMatch = text.match(/^(.+)::([^:]+)$/) || (text.indexOf('::') === -1 && text.match(/^([^/]+)\/((?:sticky-note|markdown|prototype|link-preview|figma-embed|component|image)-[a-z0-9]+)$/))
       if (widgetRefMatch) {
@@ -1282,7 +1282,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
         if (sourceWidgetId.startsWith('jsx-')) return
         try {
           let sourceWidget = null
-          if (sourceCanvas === name) {
+          if (sourceCanvas === canvasId) {
             sourceWidget = (localWidgets ?? []).find(w => w.id === sourceWidgetId)
           } else {
             const canvasData = await getCanvasApi(sourceCanvas)
@@ -1292,7 +1292,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
             const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
             const pos = centerPositionForWidget(center, sourceWidget.type, sourceWidget.props)
             undoRedo.snapshot(stateRef.current, 'add')
-            const result = await addWidgetApi(name, {
+            const result = await addWidgetApi(canvasId, {
               type: sourceWidget.type,
               props: { ...sourceWidget.props },
               position: pos,
@@ -1316,7 +1316,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
       const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
       const pos = centerPositionForWidget(center, type, props)
       try {
-        const result = await addWidgetApi(name, {
+        const result = await addWidgetApi(canvasId, {
           type,
           props,
           position: pos,
@@ -1332,7 +1332,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
 
     document.addEventListener('paste', handlePaste)
     return () => document.removeEventListener('paste', handlePaste)
-  }, [name, undoRedo, localWidgets])
+  }, [canvasId, undoRedo, localWidgets])
 
   // --- Drag and drop handlers for images from Finder/file manager ---
   // Separate effect to ensure listeners attach after scroll container mounts (loading=false)
@@ -1407,11 +1407,11 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     setLocalWidgets(previous.widgets)
     setLocalSources(previous.sources)
     queueWrite(() =>
-      updateCanvas(name, { widgets: previous.widgets, sources: previous.sources }).catch((err) =>
+      updateCanvas(canvasId, { widgets: previous.widgets, sources: previous.sources }).catch((err) =>
         console.error('[canvas] Failed to persist undo:', err)
       )
     )
-  }, [name, debouncedSave, debouncedSourceSave, undoRedo])
+  }, [canvasId, debouncedSave, debouncedSourceSave, undoRedo])
 
   const handleRedo = useCallback(() => {
     const next = undoRedo.redo(stateRef.current)
@@ -1421,11 +1421,11 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
     setLocalWidgets(next.widgets)
     setLocalSources(next.sources)
     queueWrite(() =>
-      updateCanvas(name, { widgets: next.widgets, sources: next.sources }).catch((err) =>
+      updateCanvas(canvasId, { widgets: next.widgets, sources: next.sources }).catch((err) =>
         console.error('[canvas] Failed to persist redo:', err)
       )
     )
-  }, [name, debouncedSave, debouncedSourceSave, undoRedo])
+  }, [canvasId, debouncedSave, debouncedSourceSave, undoRedo])
 
   // Keyboard shortcuts — dev-only (Cmd+Z / Cmd+Shift+Z)
   useEffect(() => {
@@ -1595,7 +1595,7 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
   if (!canvas) {
     return (
       <div className={styles.empty}>
-        <p>Canvas &ldquo;{name}&rdquo; not found</p>
+        <p>Canvas &ldquo;{canvasId}&rdquo; not found</p>
       </div>
     )
   }
@@ -1713,8 +1713,8 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
   return (
     <>
       <div className={styles.canvasTitle}>
-        <h1 className={styles.canvasTitleStatic}>{canvasMeta?.title || canvas?.title || name.split('/').pop()}</h1>
-        <PageSelector currentName={name} pages={siblingPages} />
+        <h1 className={styles.canvasTitleStatic}>{canvasMeta?.title || canvas?.title || canvasId.split('/').pop()}</h1>
+        <PageSelector currentName={canvasId} pages={siblingPages} />
         {isLocalDev && (
           <span className={styles.localEditingLabel}>Local editing</span>
         )}

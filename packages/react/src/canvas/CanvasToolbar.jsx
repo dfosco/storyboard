@@ -9,7 +9,7 @@ const WIDGET_TYPES = getMenuWidgetTypes()
 /**
  * Floating toolbar for adding widgets to a canvas.
  */
-export default function CanvasToolbar({ canvasName, onWidgetAdded }) {
+export default function CanvasToolbar({ canvasId, onWidgetAdded }) {
   const [open, setOpen] = useState(false)
   const [adding, setAdding] = useState(false)
 
@@ -18,7 +18,7 @@ export default function CanvasToolbar({ canvasName, onWidgetAdded }) {
     setAdding(true)
     try {
       const defaultProps = schemas[type] ? getDefaults(schemas[type]) : {}
-      const result = await addWidgetApi(canvasName, {
+      const result = await addWidgetApi(canvasId, {
         type,
         props: defaultProps,
         position: { x: 0, y: 0 },

@@ -123,7 +123,7 @@ describe('CanvasPage image drag-and-drop', () => {
   })
 
   it('allows drop by preventing default on dragover with Files', () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
     const scrollContainer = document.querySelector('[data-storyboard-canvas-scroll]')
 
     const dragOverEvent = new Event('dragover', { bubbles: true, cancelable: true })
@@ -137,7 +137,7 @@ describe('CanvasPage image drag-and-drop', () => {
   })
 
   it('ignores dragover without Files type (internal widget drag)', () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
     const scrollContainer = document.querySelector('[data-storyboard-canvas-scroll]')
 
     const dragOverEvent = new Event('dragover', { bubbles: true, cancelable: true })
@@ -150,7 +150,7 @@ describe('CanvasPage image drag-and-drop', () => {
   })
 
   it('uploads image and creates widget on drop', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
     const scrollContainer = document.querySelector('[data-storyboard-canvas-scroll]')
 
     const imageFile = createMockImageFile('photo.png', 'image/png')
@@ -199,7 +199,7 @@ describe('CanvasPage image drag-and-drop', () => {
   })
 
   it('ignores non-image files but prevents browser default', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
     const scrollContainer = document.querySelector('[data-storyboard-canvas-scroll]')
 
     const textFile = new File(['text content'], 'readme.txt', { type: 'text/plain' })
@@ -225,7 +225,7 @@ describe('CanvasPage image drag-and-drop', () => {
   })
 
   it('processes multiple image files on drop', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
     const scrollContainer = document.querySelector('[data-storyboard-canvas-scroll]')
 
     const image1 = createMockImageFile('photo1.png', 'image/png')
@@ -253,7 +253,7 @@ describe('CanvasPage image drag-and-drop', () => {
   })
 
   it('ignores drop without Files type', async () => {
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
     const scrollContainer = document.querySelector('[data-storyboard-canvas-scroll]')
 
     const dropEvent = new Event('drop', { bubbles: true, cancelable: true })
@@ -273,7 +273,7 @@ describe('CanvasPage image drag-and-drop', () => {
     const originalSnapToGrid = mockCanvas.snapToGrid
     mockCanvas.snapToGrid = true
 
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
     const scrollContainer = document.querySelector('[data-storyboard-canvas-scroll]')
 
     const imageFile = createMockImageFile()
@@ -311,7 +311,7 @@ describe('CanvasPage image drag-and-drop', () => {
     const originalSnapToGrid = mockCanvas.snapToGrid
     mockCanvas.snapToGrid = false
 
-    render(<CanvasPage name="test-canvas" />)
+    render(<CanvasPage canvasId="test-canvas" />)
     const scrollContainer = document.querySelector('[data-storyboard-canvas-scroll]')
 
     const imageFile = createMockImageFile()

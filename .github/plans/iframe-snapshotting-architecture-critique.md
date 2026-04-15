@@ -1,201 +1,68 @@
-# Critical Review: Iframe Snapshotting Architecture (4.0.0)
+# Updated critique (post `4-0-0--no-snapshots`)
 
-## Executive Summary
+## Executive summary
 
-The current system is solving a hard snapshot-fidelity problem, but it is only partially solving the original performance problem (too many iframes loading at once). The intended goal was to defer iframe loading until interaction, yet widgets with existing snapshots still mount iframes immediately, and Figma/component widgets mount iframe content immediately regardless of snapshot flow.[^1][^2][^3][^4][^5] The architecture has also grown into three separate snapshot pipelines (in-browser capture, CLI Playwright capture, CI replay), which increases operational and consistency risk.[^6][^7][^8][^9]  
+The latest merge removed snapshotting infrastructure end-to-end (runtime capture, CLI snapshot command, and snapshot workflow), which is the right reset away from a fragile multi-pipeline system. The remaining architectural issue is simpler and more direct: iframe widgets still mount heavy iframe content immediately, while the click overlay only gates interaction, not load. That means startup pressure from many iframes can still seize the page under dense canvases.
 
-My core critique: **the system is over-optimized for “perfect snapshot lifecycle” and under-optimized for “strict iframe admission control.”** The most direct fix is to enforce iframe budgeting and activation policy first, then reintroduce snapshotting only as optional acceleration.
+Given this new baseline, the priority should be **strict interaction-first loading** (load on explicit user activation only), and **not** a global iframe admission controller in this ship. Future snapshots can return only as optional CI-produced posters that never influence loading or interaction semantics.
 
-## Architecture/System Overview (Current vs. Needed)
+## What improved after `4-0-0--no-snapshots`
 
-```
-Current
--------
-Many widget-level state machines + timers + postMessage + CI commits
-      │
-      ├─ Prototype/Story: snapshot overlay + hidden iframe preload paths
-      ├─ Figma/Component: iframe mounts immediately
-      ├─ Dev capture: html-to-image + upload + prop write
-      ├─ CLI capture: Playwright + JSONL rewrite + auto-commit
-      └─ CI capture: workflow_run + branch push-back
+1. Snapshot complexity is gone from runtime widget code.
+2. `storyboard snapshots` command and snapshot workflow coupling were removed.
+3. Behavior is easier to reason about because there is one less async subsystem.
 
-Needed
-------
-Canvas-level iframe admission controller (global budget + viewport policy)
-      │
-      ├─ Widgets request activation (not self-start by default)
-      ├─ Strict cap on concurrent live iframes
-      └─ Snapshotting (if kept) is secondary, not load-control primary
-```
+## What is still problematic
 
-## Critical Problems With the Current Approach
+## 1) Overlay still does not control load
 
-### 1. Root-cause mismatch: eager iframe mounts still happen
+Prototype, Story, Figma, and dev Component widgets render iframes directly, then overlay “Click to interact” on top. This blocks pointer access, but iframe documents still boot, fetch, and render at page load.
 
-The original design intent was explicit: avoid loading many full React apps in iframes simultaneously.[^1] But in current PrototypeEmbed and StoryWidget code, when a snapshot exists, both `preloadIframe` and `showIframe` are initialized to `true`, which causes iframe nodes to mount immediately.[^2][^3] Because render condition is `(preloadIframe || showIframe)`, these “lazy” widgets still load iframe documents at startup in the common case where snapshots are present.[^4][^5]
+**Consequence:** original page-seizing risk remains in large canvases.
 
-Separately, FigmaEmbed and ComponentWidget mount iframes immediately whenever they have a valid src/useIframe path; their interaction overlays are UX guards, not load guards.[^7][^8][^9][^10]
+## 2) No common load policy across iframe widgets
 
-**Impact:** the dominant page-seizing vector (too many iframes created concurrently) remains structurally possible even after snapshotting work.
+Each widget has bespoke interaction logic, but none enforced a shared “do not mount until activated” contract. This makes regressions easy and hard to catch without explicit tests.
 
-### 2. Complexity is split across three producers of truth
+## 3) Strategy B (global budget scheduler) is high edge-case surface right now
 
-Your own deep-dive doc describes three snapshot production paths: runtime client capture, CLI Playwright capture, and CI automation.[^6] Each path has different semantics and failure modes:
+You’re right to flag this. A global iframe budget introduces policy questions and racey boundaries:
 
-1. Runtime embed capture (`html-to-image`) from inside `_sb_embed` mode.[^11]
-2. CLI screenshot capture (Playwright) with JSONL rewrite and auto-commit behavior.[^12][^13][^14]
-3. CI workflow that reruns CLI and pushes back to the feature branch.[^9]
+- “How many iframes is safe?” per machine/page/widget mix.
+- Viewport edge handling (partially visible, expanded modal, keyboard focus).
+- Eviction semantics (state retention vs teardown).
+- Complex integration with canvas drag/select/edit flows.
 
-This introduces consistency drift risks and operational surprise (local command mutates git history; CI mutates branch tip).
+This is valuable later if needed, but it is a bigger state machine than the immediate problem requires.
 
-### 3. Dev/prod behavior split makes recovery brittle
+## Updated recommendation
 
-Snapshot write-backs on widget events are gated by `onUpdate`, and CanvasPage only passes `onUpdate` in local dev mode (`__SB_LOCAL_DEV__` and not `prodMode`).[^15][^16][^17][^18]  
-So missing or stale snapshots in non-local environments cannot self-heal via runtime capture; they depend on CLI/CI jobs to repair state.
+## Strategy A (ship now): strict interaction-first loading
 
-**Impact:** correctness depends on external pipeline health, not only runtime behavior.
+1. Do not mount iframe content until explicit activation (click / Enter / Space).
+2. Keep layout stable with placeholders.
+3. Keep overlay behavior for selection ergonomics.
+4. Ensure explicit toolbar actions (e.g., expand) can force-load iframe first.
 
-### 4. Timer-heavy orchestration is race-prone
+This directly targets startup iframe pressure with minimal new state.
 
-Capture scheduling relies on multiple independent timeouts: hover dwell (500ms), spinner delay (500ms), resize recapture (2s), theme recapture (3s), src-change recapture (4s), plus embed-ready fallback delay (3s).[^19][^20][^21][^22][^23][^24][^25][^26]  
-Story embeds also have two independent “ready” emitters (StoryPage and mount fallback), increasing duplicate-capture timing variance.[^24][^25]
+## Strategy C (future, progressive): CI-only optional snapshots
 
-**Impact:** timing behavior is environment-sensitive and hard to reason about under load.
+If snapshots return:
 
-### 5. Artifact model is inconsistent across pathways
+1. Single producer: CI only (no runtime capture, no local auto-commit loop).
+2. Optional posters only.
+3. Poster presence/absence never changes mounting policy.
 
-Runtime capture uses `image/webp` uploads with timestamp-based filenames generated by `/image` route logic.[^11][^27][^28]  
-CLI capture writes deterministic `--latest.png` filenames directly to snapshots directory.[^29][^13]
+That keeps snapshots as a visual enhancement, not a control plane.
 
-So snapshot identity, format, and cache behavior differ by producer. This can create churn in widget props and harder debugging when artifacts differ by environment.
+## Strategy B (defer): canvas-level global iframe admission controller
 
-### 6. Git side effects are too aggressive for a rendering optimization
+Defer until strict interaction-first loading is shipped and measured. Only add a global budget if measured startup/interaction still regresses after deterministic gating.
 
-`storyboard snapshots` stages and commits snapshot changes itself.[^14]  
-The CI workflow also commits and pushes snapshot updates back to branch heads after deploy completion.[^9]
+## Success criteria for this ship
 
-For a performance optimization subsystem, this is high operational coupling: it changes commit history, branch pointers, and review diffs.
-
-### 7. “Queue” exists for writes, not for iframe concurrency
-
-CanvasPage does have a queue, but it serializes JSONL write operations (`queueWrite`), not iframe admission/concurrency.[^30]  
-Iframes remain managed per-widget through local state/timers rather than a shared scheduler.
-
-**Impact:** persistence ordering is controlled, but render load admission is not.
-
-### 8. Message channel hardening is partial
-
-Widgets validate `e.source === iframe.contentWindow`, which is good.[^31][^32]  
-But message sends still use wildcard `"*"` targets for capture/navigation/ready messages.[^33][^34][^35][^36]
-
-This is not the main performance issue, but it adds another fragility surface while the system is already complex.
-
-### 9. Snapshot-widget matching heuristic is weak
-
-Snapshot ownership validation is `url.includes(widgetId)` in both PrototypeEmbed and StoryWidget.[^37][^38]  
-This is convenient but not a strong identity guarantee.
-
----
-
-## Different Strategies (Simpler, More Robust)
-
-## Strategy A: Strict interaction-first loading (no snapshot dependency)
-
-Make load control primary:
-
-1. Initialize all iframe widgets with `preloadIframe=false`, `showIframe=false` regardless of snapshot presence.
-2. Mount iframe only on explicit activation (click/keyboard) or controlled viewport rule.
-3. Keep snapshot as purely visual poster (if available), not a trigger to start hidden iframe.
-
-Why this fits your original problem: it directly caps startup iframe count to near zero and removes the expensive “hidden-but-loading iframe” pattern currently used in snapshot-present states.[^2][^3][^4][^5]
-
-## Strategy B: Canvas-level iframe admission controller (global budget)
-
-Introduce one scheduler in CanvasPage:
-
-1. Widgets request activation token.
-2. Canvas grants only `N` live iframes (e.g., 1–3).
-3. LRU eviction or explicit deactivate for offscreen/non-interactive widgets.
-
-This addresses the root issue globally across Prototype, Story, Figma, and Component widgets (not only snapshot-aware types).[^7][^8]
-
-## Strategy C: CI-only snapshot generation (single producer)
-
-If snapshots are still desired:
-
-1. Remove runtime in-iframe capture and upload path.
-2. Keep only CLI/CI producer (prefer CI).
-3. Keep deterministic naming only (single artifact convention).
-
-This removes postMessage capture protocol and most timer recapture complexity from runtime.[^11][^19][^20][^24]
-
-## Strategy D: Remove per-widget snapshotting entirely for now
-
-Use lightweight placeholders/skeletons and activate iframes on demand. Revisit snapshotting only after load control and responsiveness are consistently good.
-
-Given current complexity and branch-mutating automation, this may be the lowest-risk stabilization path.[^6][^9][^14]
-
----
-
-## Recommended Reset Plan (Pragmatic)
-
-1. **Stop-the-bleeding patch**: enforce no-initial-mount defaults for Prototype/Story snapshot paths; keep overlays but do not create iframe until activation.[^2][^3][^4][^5]  
-2. **Parity patch**: apply same admission policy to Figma and Component widgets so all iframe types follow one load contract.[^7][^8]  
-3. **Centralize**: move iframe admission to a Canvas-level budget manager; keep widget code dumb.  
-4. **Simplify snapshots**: pick one producer (prefer CI), eliminate dual format/naming drift.  
-5. **Operational cleanup**: consider removing local auto-commit behavior from CLI snapshot command to avoid implicit history edits.[^14]
-
----
-
-## Confidence Assessment
-
-**High confidence**
-- The core criticism (root-cause mismatch) is directly evidenced by state initialization and render conditions in PrototypeEmbed/StoryWidget.
-- The multi-pipeline and operational-coupling critique is directly evidenced by runtime capture code, CLI command behavior, and workflow push-back behavior.
-
-**Medium confidence**
-- Exact production cache behavior implications of mixed filename strategies depend on deployment headers/CDN policy not fully analyzed here.
-- A precise “best” iframe budget (`N`) needs profiling on representative canvases.
-
----
-
-## Footnotes
-
-[^1]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/.github/plans/4.0.0/DONE-06c--prototype-embed-snapshots.md:5-6`
-[^2]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/PrototypeEmbed.jsx:77-79`
-[^3]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/StoryWidget.jsx:120-122`
-[^4]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/PrototypeEmbed.jsx:545-555`
-[^5]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/StoryWidget.jsx:454-463`
-[^6]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/.github/plans/iframe-snapshotting-deep-dive.md:5`
-[^7]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/FigmaEmbed.jsx:113-127`
-[^8]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/ComponentWidget.jsx:65-83`
-[^9]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/.github/workflows/snapshots.yml:4-6,39-51`
-[^10]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/FigmaEmbed.jsx:128-149`
-[^11]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/core/src/mountStoryboardCore.js:242-252`
-[^12]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/core/src/cli/snapshots.js:174-176,374-381`
-[^13]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/core/src/cli/snapshots.js:62-67`
-[^14]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/core/src/cli/snapshots.js:420-424`
-[^15]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/CanvasPage.jsx:328`
-[^16]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/CanvasPage.jsx:1699`
-[^17]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/PrototypeEmbed.jsx:330`
-[^18]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/StoryWidget.jsx:217`
-[^19]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/PrototypeEmbed.jsx:98-102`
-[^20]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/StoryWidget.jsx:141-145`
-[^21]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/PrototypeEmbed.jsx:368-371`
-[^22]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/StoryWidget.jsx:252-253`
-[^23]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/PrototypeEmbed.jsx:379-390`
-[^24]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/core/src/mountStoryboardCore.js:233-237`
-[^25]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/story/StoryPage.jsx:66-70`
-[^26]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/StoryWidget.jsx:265-266`
-[^27]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/PrototypeEmbed.jsx:353-356`
-[^28]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/core/src/canvas/server.js:680-683`
-[^29]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/core/src/cli/snapshots.js:377`
-[^30]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/CanvasPage.jsx:387-393`
-[^31]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/PrototypeEmbed.jsx:304-305`
-[^32]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/StoryWidget.jsx:202-203`
-[^33]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/PrototypeEmbed.jsx:342-345`
-[^34]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/StoryWidget.jsx:227-230`
-[^35]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/core/src/mountStoryboardCore.js:218,237,260,268`
-[^36]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/story/StoryPage.jsx:70`
-[^37]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/PrototypeEmbed.jsx:70-72`
-[^38]: `/Users/dfosco/workspace/storyboard-core/.worktrees/4.0.0/packages/react/src/canvas/widgets/StoryWidget.jsx:113-115`
+1. No iframe widget mounts iframe content before explicit activation.
+2. Existing interaction affordances (overlay, modifier-click behavior, expand flows) remain intact.
+3. Tests assert “no iframe before activation / iframe after activation.”
+4. Docs/plans reflect snapshot-free baseline + future CI-only optional snapshot direction.

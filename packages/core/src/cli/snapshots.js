@@ -63,7 +63,7 @@ function writeImage(imagesDir, widgetId, theme, buffer) {
   const now = new Date()
   const pad = (n) => String(n).padStart(2, '0')
   const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}--${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
-  const filename = `snapshot-${widgetId}--${theme}--${dateStr}.webp`
+  const filename = `snapshot-${widgetId}--${theme}--${dateStr}.png`
   fs.writeFileSync(path.join(imagesDir, filename), buffer)
   return filename
 }
@@ -225,7 +225,7 @@ async function run() {
             await page.goto(themeUrl, { waitUntil: 'networkidle', timeout: 30000 })
             await page.waitForTimeout(isFigma ? 4000 : 2000)
 
-            const buffer = await page.screenshot({ type: 'webp', quality: 85 })
+            const buffer = await page.screenshot({ type: 'png' })
             await context.close()
 
             const filename = writeImage(imagesDir, widget.id, theme, buffer)

@@ -5,6 +5,7 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
 import { uploadImage } from '../canvasApi.js'
+import { useViewportEntry } from './useViewportEntry.js'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -68,20 +69,8 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const validSnapshotDark = snapshotMatchesWidget(snapshotDark) ? snapshotDark : null
   const currentSnapshot = canvasTheme?.startsWith('dark') ? validSnapshotDark : validSnapshotLight
   const hasSnapshot = !!currentSnapshot
-  const [preloadIframe, setPreloadIframe] = useState(!hasSnapshot || isExternal)
-  const [iframeLoaded, setIframeLoaded] = useState(false)
-  const [showIframe, setShowIframe] = useState(!hasSnapshot || isExternal)
-  const [showSpinner, setShowSpinner] = useState(false)
-  const capturingRef = useRef(false)
-
-  // Show spinner only after 500ms of loading
-  useEffect(() => {
-    if (showIframe && !iframeLoaded && hasSnapshot) {
-      const timer = setTimeout(() => setShowSpinner(true), 500)
-      return () => clearTimeout(timer)
-    }
-    setShowSpinner(false)
-  }, [showIframe, iframeLoaded, hasSnapshot])
+  const [snapshotFailed, setSnapshotFailed] = useState(false)
+  const effectiveHasSnapshot = hasSnapshot && !snapshotFailed
 
   const inputRef = useRef(null)
   const filterRef = useRef(null)
@@ -89,6 +78,32 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const iframeRef = useRef(null)
   const inlineContainerRef = useRef(null)
   const modalContainerRef = useRef(null)
+
+  // Defer iframe loading until widget is near the viewport (prevents stampede)
+  const nearViewport = useViewportEntry(embedRef)
+  const shouldLoadIframe = isExternal || (nearViewport && !effectiveHasSnapshot)
+  const [preloadIframe, setPreloadIframe] = useState(false)
+  const [iframeLoaded, setIframeLoaded] = useState(false)
+  const [showIframe, setShowIframe] = useState(false)
+  const [showSpinner, setShowSpinner] = useState(false)
+  const capturingRef = useRef(false)
+
+  // Auto-load iframe when near viewport and no usable snapshot
+  useEffect(() => {
+    if (shouldLoadIframe) {
+      setPreloadIframe(true)
+      setShowIframe(true)
+    }
+  }, [shouldLoadIframe])
+
+  // Show spinner only after 500ms of loading
+  useEffect(() => {
+    if (showIframe && !iframeLoaded && effectiveHasSnapshot) {
+      const timer = setTimeout(() => setShowSpinner(true), 500)
+      return () => clearTimeout(timer)
+    }
+    setShowSpinner(false)
+  }, [showIframe, iframeLoaded, effectiveHasSnapshot])
 
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''
@@ -483,7 +498,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
         ) : iframeSrc ? (
           <>
             {/* Snapshot image — shown until iframe is fully loaded */}
-            {hasSnapshot && !(showIframe && iframeLoaded) && (
+            {effectiveHasSnapshot && !(showIframe && iframeLoaded) && (
               <div className={styles.iframeContainer}>
                 <img
                   src={basePath + currentSnapshot}
@@ -491,6 +506,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                   className={styles.snapshotImage}
                   style={{ width, height }}
                   draggable={false}
+                  onError={() => setSnapshotFailed(true)}
                 />
                 {showIframe && !iframeLoaded && showSpinner && (
                   <div className={styles.snapshotSpinner}>
@@ -507,7 +523,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                 className={styles.iframeContainer}
                 style={
                   expanded ? { visibility: 'hidden' }
-                  : (hasSnapshot && !(showIframe && iframeLoaded)) ? { position: 'absolute', top: 0, left: 0, opacity: 0, pointerEvents: 'none' }
+                  : (effectiveHasSnapshot && !(showIframe && iframeLoaded)) ? { position: 'absolute', top: 0, left: 0, opacity: 0, pointerEvents: 'none' }
                   : undefined
                 }
               >

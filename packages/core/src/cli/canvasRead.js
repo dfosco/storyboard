@@ -154,7 +154,9 @@ async function canvasRead() {
 
   // Read canvas state
   try {
-    const res = await fetch(`${base}/_storyboard/canvas/read?name=${encodeURIComponent(canvasName)}`)
+    let url = `${base}/_storyboard/canvas/read?name=${encodeURIComponent(canvasName)}`
+    if (widgetId) url += `&widget=${encodeURIComponent(widgetId)}`
+    const res = await fetch(url)
     if (!res.ok) {
       const text = await res.text().catch(() => '')
       throw new Error(`${res.status} ${res.statusText}${text ? ': ' + text : ''}`)
@@ -164,7 +166,7 @@ async function canvasRead() {
 
     // If filtering by widget ID
     if (widgetId) {
-      const widget = widgets.find((w) => w.id === widgetId)
+      const widget = widgets[0]
       if (!widget) {
         p.log.error(`Widget "${widgetId}" not found in canvas "${canvasName}"`)
         process.exit(1)

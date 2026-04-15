@@ -17,11 +17,11 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout source branch
+      - name: Checkout source branch at triggering SHA
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_branch }}
-          fetch-depth: 2
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -46,5 +46,6 @@ jobs:
           git add assets/canvas/snapshots/ src/canvas/ || true
           git diff --cached --quiet && echo "No snapshot changes" && exit 0
 
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
           git commit -m "chore: update canvas snapshots [skip ci]" --no-verify
-          git push
+          git push origin HEAD:"refs/heads/${BRANCH}"

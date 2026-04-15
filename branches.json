@@ -35,6 +35,7 @@
   {"folder":"branch--4.0.0-markdown-gfm","branch":"4.0.0-markdown-gfm"},
   {"folder":"branch--4.0.0-multi-dev","branch":"4.0.0-multi-dev"},
   {"folder":"branch--4.0.0-multi-page-canvas","branch":"4.0.0-multi-page-canvas"},
+  {"folder":"branch--4.0.0-on-demand-snapshots","branch":"4.0.0-on-demand-snapshots"},
   {"folder":"branch--4.0.0-paste-rules","branch":"4.0.0-paste-rules"},
   {"folder":"branch--4.0.0-plan-mode-system-cleanup","branch":"4.0.0-plan-mode-system-cleanup"},
   {"folder":"branch--4.0.0-story-widgets","branch":"4.0.0-story-widgets"},

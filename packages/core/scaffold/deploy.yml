@@ -17,16 +17,15 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
-
-      - name: Configure git for HTTPS deps
-        run: git config --global url."https://github.com/".insteadOf ssh://git@github.com/
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
       - name: Build project
         run: npm run build
@@ -55,6 +54,9 @@ jobs:
 
           # Copy new build output (includes CNAME if customDomain is set)
           cp -r "$GITHUB_WORKSPACE/dist/." .
+
+          # Ensure .nojekyll exists at root (GitHub Pages ignores _-prefixed dirs without it)
+          touch .nojekyll
 
           # Commit and push
           git add -A

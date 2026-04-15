@@ -8,10 +8,25 @@
 
 | Library | Role | Link |
 |---------|------|------|
-| **wry** | Cross-platform webview rendering (WKWebView on macOS, WebView2 on Windows). The engine underneath Tauri — can also be used standalone for lower-level control. | [tauri-apps/wry](https://github.com/tauri-apps/wry) |
-| **gpui-ghostty** | Embeds Ghostty's VT terminal emulation core (`libghostty-vt`) inside Zed's GPUI framework. Reference for how to build a native GPU-rendered terminal in Rust. | [Xuanwo/gpui-ghostty](https://github.com/Xuanwo/gpui-ghostty) |
-| **GPUI** | GPU-accelerated UI framework from Zed. Renders via Metal/Vulkan, supports webview overlays. Potential alternative to Tauri for the app shell. | [zed-industries/zed/crates/gpui](https://github.com/zed-industries/zed) |
-| **Ghostty / libghostty-vt** | The terminal emulation core (VT parser, screen state, scrollback). Written in Zig with C FFI, usable from Rust. Best-in-class terminal emulation. | [ghostty-org/ghostty](https://github.com/ghostty-org/ghostty) |
+| **Tauri v2** | Desktop app framework. Rust backend + system webview (wry). Mature IPC, sidecar management, auto-updater, bundling. | [tauri-apps/tauri](https://github.com/tauri-apps/tauri) |
+| **wry** | Cross-platform webview rendering (WKWebView on macOS, WebView2 on Windows). The engine underneath Tauri. | [tauri-apps/wry](https://github.com/tauri-apps/wry) |
+| **ghostty-web** | Ghostty's native VT terminal compiled to WASM. xterm.js-compatible API, ~400KB bundle, zero dependencies. Drop-in replacement for xterm.js with native Ghostty quality. | [coder/ghostty-web](https://github.com/coder/ghostty-web) |
+| **gpui-ghostty** | Reference: embeds libghostty-vt in GPUI. Kept as future reference for native terminal rendering if needed. | [Xuanwo/gpui-ghostty](https://github.com/Xuanwo/gpui-ghostty) |
+
+### Architecture Revision: ghostty-web simplifies everything
+
+The discovery of `ghostty-web` (Ghostty's VT core compiled to WASM with xterm.js API compatibility) changes the architecture significantly:
+
+- **Before**: GPUI native shell + wry webview overlay + libghostty-vt native terminal (Zig build required)
+- **After**: **Tauri v2** + **ghostty-web** in the webview (WASM, no native build complexity)
+
+This means:
+- **Single rendering surface** — everything in the system webview (React UI + ghostty-web terminal)
+- **No GPUI** — Tauri's webview handles the entire UI. Simpler, more mature, better documented.
+- **No Zig toolchain** — ghostty-web ships as a pre-built WASM + JS npm package
+- **Same Ghostty quality** — the WASM module IS the native Ghostty VT core, just compiled to WebAssembly instead of native code
+- **PTY stays in Rust** — Tauri backend manages PTY allocation, I/O streams to/from webview via Tauri events
+- **Drastically simpler build** — standard `cargo` + `npm` toolchain, no Zig, no GPUI submodules
 
 ---
 

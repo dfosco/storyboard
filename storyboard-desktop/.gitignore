@@ -1,0 +1,18 @@
+# Generated
+node_modules/
+dist/
+target/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Tauri
+src-tauri/target/
+
+# Logs
+*.log

@@ -16,6 +16,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { materializeFromText } from '../canvas/materializer.js'
+import { toCanvasId } from '../canvas/identity.js'
 
 // ─── Logging ─────────────────────────────────────────────────────────
 
@@ -91,18 +92,12 @@ function prototypeRoute(relPath) {
 
 /**
  * Compute the route path for a canvas file (relative to src/canvas/).
- * Mirrors the data-plugin.js route inference.
+ * Uses toCanvasId() for proper folder handling.
  */
 function canvasRoute(relPath) {
-  const name = path.basename(relPath).replace(/\.canvas\.jsonl$/, '')
-  const dirPath = path.dirname(relPath)
-  const routeBase = (dirPath === '.' ? '' : dirPath + '/')
-    .replace(/[^/]*\.folder\/?/g, '')
-    .replace(/\/$/, '')
-
-  let route = '/canvas/' + (routeBase ? routeBase + '/' : '') + name
-  route = route.replace(/\/+/g, '/').replace(/\/$/, '')
-  return route || '/canvas'
+  // relPath is relative to src/canvas/, prepend prefix for toCanvasId()
+  const canvasId = toCanvasId('src/canvas/' + relPath)
+  return '/canvas/' + canvasId
 }
 
 function computeRoute(relPath, watchType) {

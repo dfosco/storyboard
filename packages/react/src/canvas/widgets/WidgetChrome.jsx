@@ -204,8 +204,8 @@ function WidgetOverflowMenu({ widgetId, menuFeatures, onAction }) {
       url.searchParams.set('widget', widgetId)
       navigator.clipboard.writeText(url.toString()).catch(() => {})
     } else if (action === 'copy-widget-id') {
-      const canvasName = window.location.pathname.split('/').filter(Boolean).pop() || ''
-      navigator.clipboard.writeText(`${canvasName}/${widgetId}`).catch(() => {})
+      const canvasId = window.__storyboardCanvasBridgeState?.canvasId || ''
+      navigator.clipboard.writeText(`${canvasId}::${widgetId}`).catch(() => {})
     } else {
       onAction?.(action)
     }

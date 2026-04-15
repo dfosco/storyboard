@@ -115,9 +115,6 @@ switch (command) {
       process.exit(1)
     }
     break
-  case 'snapshots':
-    import('./snapshots.js')
-    break
   case 'exit':
     import('./exit.js')
     break

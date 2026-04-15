@@ -12,17 +12,12 @@
  * Props: { storyId, exportName, width, height }
  */
 import { forwardRef, useImperativeHandle, useRef, useCallback, useState, useEffect, useMemo } from 'react'
-import { getStoryData, getFlag } from '@dfosco/storyboard-core'
+import { getStoryData } from '@dfosco/storyboard-core'
 import { createInspectorHighlighter } from '@dfosco/storyboard-core/inspector/highlighter'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
-import { uploadImage } from '../canvasApi.js'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
-
-function devLog(...args) {
-  try { if (getFlag('dev-logs')) console.log('[canvas:story-widget]', ...args) } catch { /* */ }
-}
 
 function resolveStoryUrl(storyId, exportName) {
   const story = getStoryData(storyId)
@@ -78,10 +73,6 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const width = props?.width
   const height = props?.height
 
-  // Snapshot props for lazy loading
-  const snapshotLight = props?.snapshotLight || null
-  const snapshotDark = props?.snapshotDark || null
-
   const containerRef = useRef(null)
   const iframeRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
@@ -89,80 +80,6 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const [sourceCode, setSourceCode] = useState(null)
   const [highlightedHtml, setHighlightedHtml] = useState(null)
   const [sourceLoading, setSourceLoading] = useState(false)
-
-  // Theme tracking for snapshot selection
-  const [canvasTheme, setCanvasTheme] = useState(() => {
-    if (typeof localStorage === 'undefined') return 'light'
-    const stored = localStorage.getItem('sb-color-scheme') || 'system'
-    if (stored !== 'system') return stored
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  })
-
-  useEffect(() => {
-    function onThemeChanged() {
-      const stored = localStorage.getItem('sb-color-scheme') || 'system'
-      if (stored !== 'system') { setCanvasTheme(stored); return }
-      setCanvasTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    }
-    document.addEventListener('storyboard:theme:changed', onThemeChanged)
-    return () => document.removeEventListener('storyboard:theme:changed', onThemeChanged)
-  }, [])
-
-  // Lazy loading state — only use snapshots that match this widget's ID
-  const isDark = canvasTheme?.startsWith('dark')
-  const snapshotMatchesWidget = (url) => url && widgetId && url.includes(widgetId)
-  const validSnapshotLight = snapshotMatchesWidget(snapshotLight) ? snapshotLight : null
-  const validSnapshotDark = snapshotMatchesWidget(snapshotDark) ? snapshotDark : null
-  const currentSnapshot = isDark ? validSnapshotDark : validSnapshotLight
-  const hasSnapshot = !!currentSnapshot
-
-  // Lazy loading — iframe starts on 0.5s hover or click
-  const [preloadIframe, setPreloadIframe] = useState(hasSnapshot)
-  const [iframeLoaded, setIframeLoaded] = useState(false)
-  const [showIframe, setShowIframe] = useState(hasSnapshot)
-  const [showSpinner, setShowSpinner] = useState(false)
-  const capturingRef = useRef(false)
-  const hoverTimerRef = useRef(null)
-
-  devLog(widgetId, { hasSnapshot, preloadIframe, showIframe, iframeLoaded, storyId })
-
-  // Click-to-interact: immediately start iframe
-  const activateIframe = useCallback(() => {
-    devLog(widgetId, 'user activated → loading iframe')
-    clearTimeout(hoverTimerRef.current)
-    setShowIframe(true)
-    setPreloadIframe(true)
-  }, [widgetId])
-
-  // Hover handlers — 0.5s dwell triggers iframe load
-  const onHoverEnter = useCallback(() => {
-    if (preloadIframe && showIframe) return
-    devLog(widgetId, 'hover enter (starting 500ms timer)')
-    hoverTimerRef.current = setTimeout(() => {
-      devLog(widgetId, 'hover 500ms → loading iframe')
-      setPreloadIframe(true)
-      setShowIframe(true)
-    }, 500)
-  }, [preloadIframe, showIframe, widgetId])
-
-  const onHoverLeave = useCallback(() => {
-    if (hoverTimerRef.current) {
-      devLog(widgetId, 'hover leave (short hover, cancelled)')
-      clearTimeout(hoverTimerRef.current)
-      hoverTimerRef.current = null
-    }
-  }, [widgetId])
-
-  useEffect(() => () => clearTimeout(hoverTimerRef.current), [])
-
-  // Show spinner only after 500ms of loading
-  useEffect(() => {
-    if (showIframe && !iframeLoaded && hasSnapshot) {
-      const timer = setTimeout(() => setShowSpinner(true), 500)
-      return () => clearTimeout(timer)
-    }
-    setShowSpinner(false)
-  }, [showIframe, iframeLoaded, hasSnapshot])
   const [storyIndexKey, setStoryIndexKey] = useState(0)
 
   // Re-resolve story URL when the story index is live-patched (new story added)
@@ -196,77 +113,9 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive])
 
-  // Listen for snapshot messages from the iframe
-  useEffect(() => {
-    function handleMessage(e) {
-      if (!iframeRef.current?.contentWindow) return
-      if (e.source !== iframeRef.current.contentWindow) return
-
-      if (e.data?.type === 'storyboard:embed:snapshot') {
-        if (e.data.error) {
-          console.warn('[canvas] Story snapshot capture failed:', e.data.error)
-          return
-        }
-        handleSnapshotResult(e.data.dataUrl)
-        return
-      }
-
-      // snapshot-ready means the iframe content has fully rendered
-      if (e.data?.type === 'storyboard:embed:snapshot-ready') {
-        setIframeLoaded(true)
-        if (onUpdate) requestSnapshotCapture()
-      }
-    }
-    window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, [onUpdate, canvasTheme])
-
-  const requestSnapshotCapture = useCallback(() => {
-    if (!iframeRef.current?.contentWindow || capturingRef.current) return
-    capturingRef.current = true
-    iframeRef.current.contentWindow.postMessage({
-      type: 'storyboard:embed:capture',
-      requestId: `story-snap-${Date.now()}`,
-    }, '*')
-  }, [])
-
-  const handleSnapshotResult = useCallback(async (dataUrl) => {
-    if (!dataUrl || !onUpdate || !widgetId) return
-    capturingRef.current = false
-    try {
-      const result = await uploadImage(dataUrl, `snapshot-${widgetId}`)
-      if (!result?.success || !result?.filename) return
-      const imageUrl = `/_storyboard/canvas/images/${result.filename}`
-      const themeKey = isDark ? 'snapshotDark' : 'snapshotLight'
-      onUpdate?.({ [themeKey]: imageUrl })
-    } catch (err) {
-      console.warn('[canvas] Failed to upload story snapshot:', err)
-    }
-  }, [onUpdate, isDark, widgetId])
-
-  // Re-capture after resize
-  const resizeCaptureTimer = useRef(null)
-  const triggerResizeCapture = useCallback(() => {
-    if (!onUpdate) return
-    clearTimeout(resizeCaptureTimer.current)
-    resizeCaptureTimer.current = setTimeout(() => requestSnapshotCapture(), 2000)
-  }, [requestSnapshotCapture, onUpdate])
-
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
-    triggerResizeCapture()
-  }, [onUpdate, triggerResizeCapture])
-
-  // Re-capture for alternate theme variant when theme changes
-  const prevThemeRef = useRef(canvasTheme)
-  useEffect(() => {
-    if (canvasTheme !== prevThemeRef.current && onUpdate && showIframe) {
-      prevThemeRef.current = canvasTheme
-      const timer = setTimeout(() => requestSnapshotCapture(), 3000)
-      return () => clearTimeout(timer)
-    }
-    prevThemeRef.current = canvasTheme
-  }, [canvasTheme, onUpdate, showIframe, requestSnapshotCapture])
+  }, [onUpdate])
 
   // Load source code when show-code is toggled on
   useEffect(() => {
@@ -433,46 +282,20 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
           </div>
         ) : (
           <>
-            {/* Snapshot image — shown until iframe is fully loaded */}
-            {hasSnapshot && !(showIframe && iframeLoaded) && (
-              <div className={styles.content}>
-                <img
-                  src={(import.meta.env.BASE_URL || '/').replace(/\/$/, '') + currentSnapshot}
-                  alt={displayName}
-                  className={styles.snapshotImage}
-                  draggable={false}
-                />
-                {showIframe && !iframeLoaded && showSpinner && (
-                  <div className={styles.snapshotSpinner}>
-                    <div className={styles.spinner} />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Iframe — preloaded on hover, revealed after load */}
-            {(preloadIframe || showIframe) && (
-              <div
-                className={styles.content}
-                style={hasSnapshot && !(showIframe && iframeLoaded) ? { position: 'absolute', top: 31, left: 0, right: 0, bottom: 0, opacity: 0, pointerEvents: 'none' } : undefined}
-              >
-                <iframe
-                  ref={iframeRef}
-                  src={iframeSrc}
-                  className={styles.iframe}
-                  title={displayName}
-                />
-              </div>
-            )}
+            <div className={styles.content}>
+              <iframe
+                ref={iframeRef}
+                src={iframeSrc}
+                className={styles.iframe}
+                title={displayName}
+              />
+            </div>
 
             {!interactive && (
               <div
                 className={overlayStyles.interactOverlay}
-                onPointerEnter={onHoverEnter}
-                onPointerLeave={onHoverLeave}
                 onClick={(e) => {
                   if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
-                  activateIframe()
                   enterInteractive()
                 }}
                 role="button"
@@ -481,7 +304,6 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     e.stopPropagation()
-                    activateIframe()
                     enterInteractive()
                   }
                 }}

@@ -202,21 +202,21 @@ describe('useUndoRedo', () => {
     expect(restored[0].props.text).toBe('original')
   })
 
-  it('caps history at 100 entries', () => {
+  it('caps history at 250 entries', () => {
     const { result } = renderHook(() => useUndoRedo())
 
-    for (let i = 0; i < 110; i++) {
+    for (let i = 0; i < 260; i++) {
       act(() => result.current.snapshot([{ id: String(i) }], 'add'))
     }
 
-    // Should be capped at 100 — undo 100 times, then can't undo further
+    // Should be capped at 250 — undo 250 times, then can't undo further
     let count = 0
     let r = true
     while (r !== null) {
       act(() => { r = result.current.undo([]) })
       if (r !== null) count++
     }
-    expect(count).toBe(100)
+    expect(count).toBe(250)
   })
 
   it('snapshots null widgets as empty array (first widget on new canvas)', () => {

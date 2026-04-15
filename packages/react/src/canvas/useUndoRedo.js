@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from 'react'
 
-const MAX_HISTORY = 100
+const MAX_HISTORY = 250
 const COALESCE_MS = 2000
 
 /**

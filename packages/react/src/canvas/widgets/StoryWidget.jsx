@@ -69,7 +69,7 @@ async function fetchStorySource(modulePath) {
   return source
 }
 
-export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, resizable }, ref) {
+export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, resizable, embedThrottled, onSnapshotMissing }, ref) {
   const storyId = props?.storyId || ''
   const exportName = props?.exportName || ''
   const width = props?.width
@@ -115,22 +115,38 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const [snapshotFailed, setSnapshotFailed] = useState(false)
   const effectiveHasSnapshot = hasSnapshot && !snapshotFailed
 
-  // Defer iframe loading until widget is near the viewport (prevents stampede)
+  // Reset snapshotFailed when the snapshot URL changes
+  const prevSnapshot = useRef(currentSnapshot)
+  useEffect(() => {
+    if (currentSnapshot !== prevSnapshot.current) {
+      prevSnapshot.current = currentSnapshot
+      setSnapshotFailed(false)
+    }
+  }, [currentSnapshot])
+
+  // Report snapshot status to parent for throttle calculation
+  useEffect(() => {
+    onSnapshotMissing?.(widgetId, !effectiveHasSnapshot)
+  }, [widgetId, effectiveHasSnapshot, onSnapshotMissing])
+
+  // Defer iframe loading until widget is near the viewport (prevents stampede).
+  // When throttled (>5 embeds missing snapshots), block all auto-loading — wait for click.
   const nearViewport = useViewportEntry(containerRef)
-  const shouldLoadIframe = nearViewport && !effectiveHasSnapshot
+  const [userActivated, setUserActivated] = useState(false)
+  const shouldAutoLoad = !embedThrottled && nearViewport && !effectiveHasSnapshot
   const [preloadIframe, setPreloadIframe] = useState(false)
   const [iframeLoaded, setIframeLoaded] = useState(false)
   const [showIframe, setShowIframe] = useState(false)
   const [showSpinner, setShowSpinner] = useState(false)
   const capturingRef = useRef(false)
 
-  // Auto-load iframe when near viewport and no usable snapshot
+  // Auto-load iframe when near viewport and not throttled
   useEffect(() => {
-    if (shouldLoadIframe) {
+    if (shouldAutoLoad || userActivated) {
       setPreloadIframe(true)
       setShowIframe(true)
     }
-  }, [shouldLoadIframe])
+  }, [shouldAutoLoad, userActivated])
 
   // Show spinner only after 500ms of loading
   useEffect(() => {
@@ -447,10 +463,11 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
               <div
                 className={overlayStyles.interactOverlay}
                 onPointerEnter={() => {
-                  if (!preloadIframe) setPreloadIframe(true)
+                  if (!embedThrottled && !preloadIframe) setPreloadIframe(true)
                 }}
                 onClick={(e) => {
                   if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+                  setUserActivated(true)
                   setShowIframe(true)
                   setPreloadIframe(true)
                   enterInteractive()
@@ -461,6 +478,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     e.stopPropagation()
+                    setUserActivated(true)
                     setShowIframe(true)
                     setPreloadIframe(true)
                     enterInteractive()

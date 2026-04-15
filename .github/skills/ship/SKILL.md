@@ -1,9 +1,9 @@
 ---
 name: ship
-description: End-to-end feature shipping workflow — worktree, plan, implement, adversarial review, and push to a remote branch.
+description: End-to-end feature shipping workflow — worktree, plan, implement, simplification review, adversarial review, and push to a remote branch.
 metadata:
   author: Daniel Fosco
-  version: "2026.4.12"
+  version: "2026.4.15"
 ---
 
 # Ship Skill
@@ -14,7 +14,7 @@ metadata:
 
 ## What This Does
 
-Runs an end-to-end feature shipping workflow: creates a worktree, plans the feature, implements it, validates with an adversarial rubber-duck review, and pushes to a remote branch. All work happens in an isolated worktree — never on `main`.
+Runs an end-to-end feature shipping workflow: creates a worktree, plans the feature, implements it, validates with a simplification review and an adversarial rubber-duck review, and pushes to a remote branch. All work happens in an isolated worktree — never on `main`.
 
 ---
 
@@ -41,15 +41,17 @@ After the worktree is created, all subsequent work happens inside `.worktrees/<b
 Generate an implementation plan for the requested feature:
 
 1. Explore the codebase to understand the relevant areas.
-2. Write a structured plan to `.github/plans/<branch-name>.md` (inside the worktree).
-3. The plan must include:
+2. **Define clear goals** — extract 1–3 concrete, measurable goals from the user's request. Each goal should be a single sentence stating what the change achieves from the user's perspective. These goals are the contract — everything in the plan must serve at least one goal.
+3. Write a structured plan to `.github/plans/<branch-name>.md` (inside the worktree).
+4. The plan must include:
+   - **Goals** — the clear goals defined in step 2 above, numbered
    - **Problem statement** — what the feature does and why
    - **Approach** — high-level strategy
    - **Files to change** — list of files to create, modify, or delete
    - **Steps** — ordered implementation steps with enough detail to execute without referring back to the user's prompt
    - **Edge cases & risks** — anything that could go wrong
-4. Present a summary of the plan to the user.
-5. Use `ask_user` to confirm:
+5. Present a summary of the plan to the user.
+6. Use `ask_user` to confirm:
    > Does this plan look good? Should I proceed with implementation?
 
 Do NOT proceed to Step 3 until the user confirms.
@@ -61,7 +63,7 @@ Do NOT proceed to Step 3 until the user confirms.
 1. Run `clips view` to check for a relevant existing goal.
 2. If a matching goal exists, create tasks under it for the planned work.
 3. If no matching goal exists, create a new goal with tasks derived from the plan.
-4. Save the goal ID and issue number for closure tracking in Step 8.
+4. Save the goal ID and issue number for closure tracking in Step 9.
 
 If clips is not available, skip this step silently.
 
@@ -104,7 +106,43 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 **Skip this step only if** the change is purely documentation, configuration, or markup with no testable logic.
 
-### Step 6: Adversarial rubber-duck review
+### Step 6: Adversarial simplification review
+
+Launch a `rubber-duck` agent focused on **simplification**, not bugs. Include the goals from Step 2, the plan, and the full diff. The prompt must include:
+
+> You are an adversarial simplification reviewer. Your job is to challenge the architecture and push for less code. You have the goals this implementation must achieve — use them as the yardstick.
+>
+> For every file, function, abstraction, and code path, ask:
+>
+> 1. **Is this necessary to achieve the stated goals?** If not, it should be removed.
+> 2. **Can this be done with less code?** Fewer files, fewer abstractions, fewer indirections. Inline what doesn't need to be separate.
+> 3. **Can this reuse something that already exists?** Check for existing utilities, patterns, or framework features that eliminate the need for new code.
+> 4. **Is this over-engineered for the actual use case?** Flag generic solutions to specific problems, premature abstractions, and configurability nobody asked for.
+> 5. **Can the same goal be achieved with a simpler architecture?** Fewer moving parts, fewer state transitions, fewer coordination points.
+>
+> For each finding, suggest a concrete simplification with estimated lines saved.
+> Rate as SIGNIFICANT (real architectural simplification) or MINOR (small cleanup).
+> Only report SIGNIFICANT findings.
+
+#### Process findings
+
+1. For each SIGNIFICANT finding, evaluate whether the simplification still achieves all stated goals.
+2. Apply simplifications that clearly reduce complexity without sacrificing goals.
+3. Discard suggestions that would compromise a goal or introduce fragility.
+4. If any changes were made, run lint/build/test again and commit:
+
+```bash
+git add -A
+git commit -m "refactor: simplify <area>
+
+<summary of what was simplified>
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
+
+5. If no findings required changes, skip the commit.
+
+### Step 7: Adversarial rubber-duck review
 
 Launch a single `rubber-duck` agent with an adversarial framing. Include the plan from Step 2, the diff of all changes (`git diff HEAD~1`), and the feature requirements from the user's original prompt. The prompt must include:
 
@@ -137,7 +175,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 5. If no findings required changes, skip the commit.
 
-### Step 7: Push to remote
+### Step 8: Push to remote
 
 ```bash
 git push -u origin <branch-name>
@@ -147,7 +185,7 @@ If the push fails due to permissions or remote issues, inform the user and sugge
 
 After pushing, inform the user: "Branch pushed to `origin/<branch-name>`."
 
-### Step 8: Close clips tasks
+### Step 9: Close clips tasks
 
 After the branch is pushed, mark clips tasks as closed:
 
@@ -156,7 +194,7 @@ After the branch is pushed, mark clips tasks as closed:
 
 If clips was skipped in Step 3, skip this step too.
 
-### Step 9: Start dev server
+### Step 10: Start dev server
 
 Run the dev server in the worktree so the user can immediately preview changes:
 
@@ -171,7 +209,7 @@ This is the **only** place the dev server starts during a ship workflow — the 
 ## Rules
 
 - **Always create a worktree first** — invoke the worktree skill as Step 1, before any exploration or implementation. Never commit to `main`. Never create a branch from `main` after the fact. The worktree IS the branch.
-- **Never skip the adversarial review** — this is the quality gate. The adversarial rubber-duck pass is mandatory.
+- **Never skip the reviews** — both the simplification review and the adversarial rubber-duck review are mandatory quality gates.
 - **Always run lint/build/test** before committing — at minimum `npm run lint && npm run build && npm run test`.
 - **Always use `ask_user`** for confirmations — branch name and plan approval.
 - **Conventional commits** — use `feat:`, `fix:`, `refactor:`, `docs:`, `chore:` prefixes.
@@ -186,11 +224,12 @@ This is the **only** place the dev server starts during a ship workflow — the 
 User says: "ship a feature to add a dark mode toggle to the settings page"
 
 1. Creates worktree `add-dark-mode-toggle`
-2. Plans the implementation (explores codebase, writes plan)
+2. Plans the implementation with clear goals (explores codebase, writes plan)
 3. Creates clips goal + tasks for the work
 4. Implements dark mode toggle, commits
 5. Writes tests using vitest skill, commits
-6. Runs adversarial rubber-duck review, fixes findings, commits
-7. Pushes `add-dark-mode-toggle` to origin
-8. Marks clips tasks as closed
-9. Starts dev server (`npm run dev`) in the worktree
+6. Runs adversarial simplification review, simplifies if needed, commits
+7. Runs adversarial rubber-duck review, fixes findings, commits
+8. Pushes `add-dark-mode-toggle` to origin
+9. Marks clips tasks as closed
+10. Starts dev server (`npm run dev`) in the worktree

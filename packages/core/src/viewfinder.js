@@ -202,8 +202,8 @@ export function buildPrototypeIndex(knownRoutes = []) {
   // Build canvas entries — collapse grouped pages into a single entry per group
   const canvasEntries = []
   const seenGroups = new Map() // group name → index in canvasEntries
-  for (const canvasName of listCanvases()) {
-    const data = getCanvasData(canvasName)
+  for (const canvasId of listCanvases()) {
+    const data = getCanvasData(canvasId)
     if (!data) continue
     const meta = data._canvasMeta
     const group = data._group || null
@@ -213,10 +213,10 @@ export function buildPrototypeIndex(knownRoutes = []) {
     if (group && seenGroups.has(group)) continue
 
     const entry = {
-      name: meta?.title || data.title || canvasName,
-      dirName: canvasName,
+      name: meta?.title || data.title || canvasId,
+      dirName: canvasId,
       description: meta?.description || data.description || null,
-      route: data._route || `/canvas/${canvasName}`,
+      route: data._route || `/canvas/${canvasId}`,
       folder: data._folder || null,
       isCanvas: true,
       author: meta?.author || data.author || null,

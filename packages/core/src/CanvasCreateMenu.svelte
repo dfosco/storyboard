@@ -120,7 +120,7 @@
     submitting = true; createError = null
     try {
       const bridgeState = (window as any).__storyboardCanvasBridgeState
-      const activeCanvasName = bridgeState?.name || canvasName
+      const activeCanvasId = bridgeState?.canvasId || bridgeState?.name || canvasName
 
       const res = await fetch(getApiUrl() + '/create-story', {
         method: 'POST',
@@ -129,7 +129,7 @@
           name: kebabName,
           location: createLocation,
           format: createFormat,
-          canvasName: createLocation === 'canvas' ? activeCanvasName : undefined,
+          canvasName: createLocation === 'canvas' ? activeCanvasId : undefined,
         }),
       })
       const data = await res.json()

@@ -23,8 +23,8 @@
   let success: string | null = $state(null)
   let createdPath: string | null = $state(null)
 
-  // Pre-fill canvasName from the active canvas (set by CanvasPage bridge)
-  let canvasName = $state('')
+  // Pre-fill canvasId from the active canvas (set by CanvasPage bridge)
+  let canvasId = $state('')
 
   const kebabName = $derived(
     name.replace(/[^a-zA-Z0-9\s_-]/g, '').trim().replace(/[\s_]+/g, '-').toLowerCase().replace(/-+/g, '-').replace(/^-|-$/g, '')
@@ -50,10 +50,11 @@
   }
 
   onMount(() => {
-    // Read active canvas name from the bridge state (window, not sessionStorage)
+    // Read active canvas ID from the bridge state (window, not sessionStorage)
     try {
       const bridgeState = (window as any).__storyboardCanvasBridgeState
-      if (bridgeState?.name) canvasName = bridgeState.name
+      if (bridgeState?.canvasId) canvasId = bridgeState.canvasId
+      else if (bridgeState?.name) canvasId = bridgeState.name
     } catch {}
 
     // Restore success state after Vite full-reload
@@ -79,7 +80,7 @@
           name: kebabName,
           location,
           format,
-          canvasName: location === 'canvas' ? canvasName : undefined,
+          canvasName: location === 'canvas' ? canvasId : undefined,
         }),
       })
       const data = await res.json()

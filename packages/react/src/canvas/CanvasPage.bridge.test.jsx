@@ -105,11 +105,11 @@ describe('CanvasPage canvas bridge', () => {
     document.addEventListener('storyboard:canvas:mounted', mountedHandler)
     document.addEventListener('storyboard:canvas:status', statusHandler)
 
-    const { unmount } = render(<CanvasPage name="design-overview" />)
+    const { unmount } = render(<CanvasPage canvasId="design-overview" />)
 
     expect(window.__storyboardCanvasBridgeState).toEqual({
       active: true,
-      name: 'design-overview',
+      canvasId: 'design-overview',
       zoom: 100,
     })
     expect(mountedHandler).toHaveBeenCalled()
@@ -118,7 +118,7 @@ describe('CanvasPage canvas bridge', () => {
     expect(statusHandler).toHaveBeenCalled()
     expect(statusHandler.mock.calls.at(-1)?.[0]?.detail).toEqual({
       active: true,
-      name: 'design-overview',
+      canvasId: 'design-overview',
       zoom: 100,
     })
 
@@ -132,13 +132,13 @@ describe('CanvasPage canvas bridge', () => {
     const unmountedHandler = vi.fn()
     document.addEventListener('storyboard:canvas:unmounted', unmountedHandler)
 
-    const { unmount } = render(<CanvasPage name="design-overview" />)
+    const { unmount } = render(<CanvasPage canvasId="design-overview" />)
     unmount()
 
     expect(unmountedHandler).toHaveBeenCalled()
     expect(window.__storyboardCanvasBridgeState).toEqual({
       active: false,
-      name: '',
+      canvasId: '',
       zoom: 100,
     })
 
@@ -146,7 +146,7 @@ describe('CanvasPage canvas bridge', () => {
   })
 
   it.skip('persists dragged JSON widgets and JSX sources to canvas JSONL via update API', async () => {
-    render(<CanvasPage name="design-overview" />)
+    render(<CanvasPage canvasId="design-overview" />)
 
     fireEvent.click(screen.getByTestId('drag-widget'))
     // Flush the promise-based write queue
@@ -179,7 +179,7 @@ describe('CanvasPage canvas bridge', () => {
   })
 
   it.skip('clamps negative drag positions to zero', async () => {
-    render(<CanvasPage name="design-overview" />)
+    render(<CanvasPage canvasId="design-overview" />)
 
     fireEvent.click(screen.getByTestId('drag-widget-negative'))
     await act(async () => { await new Promise((r) => setTimeout(r, 0)) })
@@ -243,7 +243,7 @@ describe('canvas target fallback', () => {
     localStorage.setItem('sb-color-scheme', 'dark')
     document.documentElement.setAttribute('data-sb-canvas-theme', 'dark')
 
-    render(<CanvasPage name="design-overview" />)
+    render(<CanvasPage canvasId="design-overview" />)
 
     const scroll = document.querySelector('[data-storyboard-canvas-scroll]')
     const jsxWidget = document.getElementById('jsx-PrimaryButtons')

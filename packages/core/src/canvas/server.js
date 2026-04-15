@@ -129,32 +129,19 @@ function parseExportNames(filePath) {
 }
 
 /**
- * Find a canvas JSONL file by canonical ID or legacy basename.
- * Path-based ID is tried first. Basename fallback only works when it
- * resolves to exactly one file — ambiguous names return null.
+ * Find a canvas JSONL file by canonical ID.
+ * Only matches canonical path-based IDs from toCanvasId().
  */
-function findCanvasPath(root, nameOrId) {
+function findCanvasPath(root, canvasId) {
   const files = findCanvasFiles(root)
 
-  // Try matching by canonical ID first
   for (const file of files) {
     const id = toCanvasId(file)
-    if (id === nameOrId) {
+    if (id === canvasId) {
       return path.resolve(root, file)
     }
   }
 
-  // Fallback: match by basename (legacy). Only if unique.
-  const basenameMatches = []
-  for (const file of files) {
-    const base = path.basename(file)
-    const match = base.match(/^(.+)\.canvas\.jsonl$/)
-    if (match && match[1] === nameOrId) {
-      basenameMatches.push(path.resolve(root, file))
-    }
-  }
-
-  if (basenameMatches.length === 1) return basenameMatches[0]
   return null
 }
 

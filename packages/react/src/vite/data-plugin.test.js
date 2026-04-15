@@ -902,7 +902,7 @@ describe('canvas watcher behavior', () => {
 
     expect(customEvents.length).toBe(1)
     expect(customEvents[0].event).toBe('storyboard:canvas-file-changed')
-    expect(customEvents[0].data.name).toBe('test-canvas')
+    expect(customEvents[0].data.canvasId).toBe('test-canvas')
     expect(fullReloads.length).toBe(0)
 
     // Should have invalidated the virtual module
@@ -939,7 +939,7 @@ describe('canvas watcher behavior', () => {
     const fullReloads = server.wsSent.filter(m => m.type === 'full-reload')
 
     expect(customEvents.length).toBe(1)
-    expect(customEvents[0].data.name).toBe('new-canvas')
+    expect(customEvents[0].data.canvasId).toBe('new-canvas')
     expect(customEvents[0].data.metadata).toBeDefined()
     expect(fullReloads.length).toBe(0)
     expect(server.invalidatedModules).toContain(RESOLVED_ID)
@@ -963,7 +963,7 @@ describe('canvas watcher behavior', () => {
 
     const customEvents = server.wsSent.filter(m => m.type === 'custom')
     expect(customEvents.length).toBe(1)
-    expect(customEvents[0].data.name).toBe('doomed-canvas')
+    expect(customEvents[0].data.canvasId).toBe('doomed-canvas')
     expect(customEvents[0].data.removed).toBe(true)
     expect(server.invalidatedModules).toContain(RESOLVED_ID)
   })
@@ -985,7 +985,7 @@ describe('canvas watcher behavior', () => {
     // Should have sent one event immediately (the add cancelling the unlink)
     const customEvents = server.wsSent.filter(m => m.type === 'custom')
     expect(customEvents.length).toBe(1)
-    expect(customEvents[0].data.name).toBe('saved-canvas')
+    expect(customEvents[0].data.canvasId).toBe('saved-canvas')
     expect(customEvents[0].data.removed).toBeUndefined()
     expect(server.invalidatedModules).toContain(RESOLVED_ID)
 

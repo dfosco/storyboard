@@ -221,15 +221,15 @@ This is the **only** place the dev server starts during a ship workflow — the 
 
 ## Example Usage
 
-User says: "ship a feature to add a dark mode toggle to the settings page"
+User says: "ship a feature to add canvas grid snapping"
 
-1. Creates worktree `add-dark-mode-toggle`
+1. Creates worktree `canvas-grid-snapping`
 2. Plans the implementation with clear goals (explores codebase, writes plan)
 3. Creates clips goal + tasks for the work
-4. Implements dark mode toggle, commits
+4. Implements grid snapping, commits
 5. Writes tests using vitest skill, commits
 6. Runs adversarial simplification review, simplifies if needed, commits
 7. Runs adversarial rubber-duck review, fixes findings, commits
-8. Pushes `add-dark-mode-toggle` to origin
+8. Pushes `canvas-grid-snapping` to origin
 9. Marks clips tasks as closed
-10. Starts dev server (`npm run dev`) in the worktree
+10. Starts dev server (`npx storyboard dev`) in the worktree

@@ -78,7 +78,9 @@ async function ensureBrowser() {
 
   _browserPromise = (async () => {
     try {
-      const pw = await import('playwright')
+      // Dynamic import hidden from Vite's client-side analysis
+      const mod = 'playwright'
+      const pw = await import(/* @vite-ignore */ mod)
       _browser = await pw.chromium.launch({ headless: true })
       _available = true
       return _browser

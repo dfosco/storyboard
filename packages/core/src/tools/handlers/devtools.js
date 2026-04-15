@@ -18,10 +18,12 @@ export async function handler(ctx) {
   let hm = null
   let commentsAuth = null
   let prodMode = null
+  let ff = null
   try { loader = await import('../../loader.js') } catch { /* optional */ }
   try { hm = await import('../../hideMode.js') } catch { /* optional */ }
   try { commentsAuth = await import('../../comments/auth.js') } catch { /* optional */ }
   try { prodMode = await import('../../prodMode.js') } catch { /* optional */ }
+  try { ff = await import('../../featureFlags.js') } catch { /* optional */ }
 
   return {
     getChildren: () => {
@@ -87,6 +89,15 @@ export async function handler(ctx) {
             commentsAuth.clearToken()
             console.log('[storyboard] Token removed')
           },
+        })
+      }
+      if (ff) {
+        children.push({
+          id: 'core/dev-logs',
+          label: 'Dev logs',
+          type: 'toggle',
+          active: ff.getFlag('dev-logs'),
+          execute: () => { ff.toggleFlag('dev-logs') },
         })
       }
       return children

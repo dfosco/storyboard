@@ -67,8 +67,6 @@ function helpScreen(version) {
     cmd('canvas add <type>', 'Add widget to a canvas'),
     `                              ${dim('types: sticky-note, markdown, prototype')}`,
     cmd('canvas read [name]', 'Read canvas state and list widgets'),
-    cmd('snapshots [name]', 'Generate preview snapshots for canvas widgets'),
-    `                              ${dim('--force to regenerate existing snapshots')}`,
     '',
     `  ${bold(cyan('Setup'))}`,
     cmd('setup', 'Install deps, Caddy proxy, start proxy'),

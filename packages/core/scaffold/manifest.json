@@ -42,11 +42,6 @@
       "mode": "scaffold"
     },
     {
-      "source": "scaffold/snapshots.yml",
-      "target": ".github/workflows/snapshots.yml",
-      "mode": "scaffold"
-    },
-    {
       "source": "scaffold/githooks/",
       "target": ".githooks/",
       "mode": "updateable",

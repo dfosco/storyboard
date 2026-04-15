@@ -242,24 +242,38 @@ export async function mountStoryboardCore(config = {}, options = {}) {
         if (e.data?.type !== 'storyboard:embed:capture') return
         const { requestId } = e.data
         try {
-          const { toBlob } = await import('html-to-image')
-          const blob = await toBlob(document.body, {
-            type: 'image/webp',
-            quality: 0.85,
-            width: document.documentElement.clientWidth,
-            height: document.documentElement.clientHeight,
-            pixelRatio: 2,
-          })
-          if (!blob) throw new Error('Capture returned empty blob')
-          const reader = new FileReader()
-          reader.onload = () => {
+          const canvas = document.createElement('canvas')
+          const w = document.documentElement.clientWidth
+          const h = document.documentElement.clientHeight
+          canvas.width = w * 2
+          canvas.height = h * 2
+          const ctx = canvas.getContext('2d')
+          ctx.scale(2, 2)
+
+          // foreignObject SVG approach — renders the DOM into a canvas
+          const svgData = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+            <foreignObject width="100%" height="100%">
+              ${new XMLSerializer().serializeToString(document.documentElement)}
+            </foreignObject>
+          </svg>`
+          const img = new Image()
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0)
+            const dataUrl = canvas.toDataURL('image/png')
             window.parent.postMessage({
               type: 'storyboard:embed:snapshot',
               requestId,
-              dataUrl: reader.result,
+              dataUrl,
             }, '*')
           }
-          reader.readAsDataURL(blob)
+          img.onerror = () => {
+            window.parent.postMessage({
+              type: 'storyboard:embed:snapshot',
+              requestId,
+              error: 'SVG-to-canvas render failed',
+            }, '*')
+          }
+          img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgData)}`
         } catch (err) {
           window.parent.postMessage({
             type: 'storyboard:embed:snapshot',

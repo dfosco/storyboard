@@ -85,7 +85,19 @@ storyboard canvas compact --dry-run    # Show which files would be compacted
 ### Considerations
 
 - **Data loss**: History is lost. This is intentional — the JSONL history is operational, not archival. Git history preserves the actual audit trail.
-- **Undo/redo**: The in-memory undo stack is unaffected (it's a React state array). Compaction only affects the on-disk file.
+- **Undo/redo**: Hard cap of **250 undo operations** in the in-memory undo stack. Compaction only affects the on-disk file, not the live undo buffer. The 250-operation limit should be enforced in CanvasPage.jsx regardless of compaction.
 - **Autosync**: If autosync is running, compaction should be coordinated to avoid conflicts. The `isRepoBusy()` guard already exists.
-- **Threshold tuning**: 5,000 lines is a starting point. Could expose via `storyboard.config.json` → `canvas.compactThreshold`.
+- **Threshold tuning**: Configurable via `storyboard.config.json` → `canvas.compactThreshold`.
+
+### Compaction rules
+
+Compaction uses a two-tier trigger system:
+
+1. **Age gate**: Never compact entries less than **1 week old**. This preserves recent history for debugging and auditing, even if the file is moderately large.
+2. **Hard override**: If the file exceeds **5,000 lines** or **500 KB**, compact regardless of age. At this size the performance cost outweighs the history value.
+
+In practice:
+- A canvas edited daily stays uncompacted until it's a week old or hits the hard limit.
+- A heavily-edited canvas that blows past 5k lines gets compacted immediately, even if all edits happened today.
+- After compaction, the file is 2 lines. The 1-week age gate only applies to the _next_ compaction cycle.
 

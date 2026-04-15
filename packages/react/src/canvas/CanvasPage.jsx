@@ -249,7 +249,7 @@ function computeCanvasBounds(widgets, componentEntries) {
 }
 
 /** Renders a single JSON-defined widget by type lookup. */
-function WidgetRenderer({ widget, onUpdate, widgetRef, embedThrottled, onSnapshotMissing }) {
+function WidgetRenderer({ widget, onUpdate, widgetRef }) {
   const Component = getWidgetComponent(widget.type)
   if (!Component) {
     console.warn(`[canvas] Unknown widget type: ${widget.type}`)
@@ -258,11 +258,6 @@ function WidgetRenderer({ widget, onUpdate, widgetRef, embedThrottled, onSnapsho
   const resizable = isResizable(widget.type) && !!onUpdate
   // Only pass ref to forwardRef-wrapped components (e.g. PrototypeEmbed)
   const elementProps = { id: widget.id, props: widget.props, onUpdate, resizable }
-  // Thread throttle props to embed widgets (prototype, story)
-  if (widget.type === 'prototype' || widget.type === 'story') {
-    elementProps.embedThrottled = embedThrottled
-    elementProps.onSnapshotMissing = onSnapshotMissing
-  }
   if (Component.$$typeof === Symbol.for('react.forward_ref')) {
     elementProps.ref = widgetRef
   }
@@ -283,8 +278,6 @@ function ChromeWrappedWidget({
   onRemove,
   onCopy,
   readOnly,
-  embedThrottled,
-  onSnapshotMissing,
 }) {
   const widgetRef = useRef(null)
   const features = getFeatures(widget.type, { isLocalDev: !readOnly })
@@ -319,8 +312,6 @@ function ChromeWrappedWidget({
         widget={widget}
         onUpdate={onUpdate ? (updates) => onUpdate(widget.id, updates) : undefined}
         widgetRef={widgetRef}
-        embedThrottled={embedThrottled}
-        onSnapshotMissing={onSnapshotMissing}
       />
     </WidgetChrome>
   )
@@ -354,47 +345,6 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
   const [snapEnabled, setSnapEnabled] = useState(canvas?.snapToGrid ?? false)
   const [snapGridSize, setSnapGridSize] = useState(canvas?.gridSize || 40)
 
-  // ── Embed throttle: prevent iframe stampede when many snapshots are missing ──
-  // Count embed widgets (prototype/story) that lack a usable snapshot for the
-  // current theme.  When more than EMBED_THROTTLE_LIMIT are missing, all
-  // snapshot-less embeds are blocked until the user explicitly clicks them.
-  const EMBED_THROTTLE_LIMIT = 5
-  const [runtimeMissingIds, setRuntimeMissingIds] = useState(() => new Set())
-
-  const reportSnapshotMissing = useCallback((widgetId, isMissing) => {
-    setRuntimeMissingIds(prev => {
-      if (isMissing && !prev.has(widgetId)) {
-        const next = new Set(prev)
-        next.add(widgetId)
-        return next
-      }
-      if (!isMissing && prev.has(widgetId)) {
-        const next = new Set(prev)
-        next.delete(widgetId)
-        return next
-      }
-      return prev
-    })
-  }, [])
-
-  const embedThrottled = useMemo(() => {
-    const isDark = canvasTheme?.startsWith('dark')
-    const embedTypes = new Set(['prototype', 'story'])
-    const widgets = localWidgets || []
-
-    // Statically-known missing: no snapshot props, or snapshot doesn't match widget ID
-    const staticMissing = new Set()
-    for (const w of widgets) {
-      if (!embedTypes.has(w.type)) continue
-      const snapshot = isDark ? w.props?.snapshotDark : w.props?.snapshotLight
-      const usable = snapshot && w.id && snapshot.includes(w.id)
-      if (!usable) staticMissing.add(w.id)
-    }
-
-    // Union static + runtime (404) missing
-    const allMissing = new Set([...staticMissing, ...runtimeMissingIds])
-    return allMissing.size > EMBED_THROTTLE_LIMIT
-  }, [localWidgets, canvasTheme, runtimeMissingIds])
   // Refs for snap settings (used by drop handler inside effect closure)
   const snapEnabledRef = useRef(snapEnabled)
   const snapGridSizeRef = useRef(snapGridSize)
@@ -1753,8 +1703,6 @@ export default function CanvasPage({ name, siblingPages = [], canvasMeta = null 
             setSelectedWidgetIds(new Set())
           } : undefined}
           readOnly={!isLocalDev}
-          embedThrottled={embedThrottled}
-          onSnapshotMissing={reportSnapshotMissing}
         />
       </div>
     )

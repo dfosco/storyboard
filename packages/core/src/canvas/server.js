@@ -244,7 +244,17 @@ export function createCanvasHandler(ctx) {
       }
       try {
         const data = readCanvas(filePath)
-        sendJson(res, 200, data)
+        const widgetFilter = url.searchParams.get('widget')
+        if (widgetFilter) {
+          const widget = (data.widgets || []).find((w) => w.id === widgetFilter)
+          if (!widget) {
+            sendJson(res, 404, { error: `Widget "${widgetFilter}" not found in canvas "${name}"` })
+            return
+          }
+          sendJson(res, 200, { ...data, widgets: [widget] })
+        } else {
+          sendJson(res, 200, data)
+        }
       } catch (err) {
         sendJson(res, 500, { error: `Failed to read canvas: ${err.message}` })
       }

@@ -94,6 +94,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   // Hover handlers — 0.5s dwell triggers iframe load
   const onHoverEnter = useCallback(() => {
     if (preloadIframe && showIframe) return
+    clearTimeout(hoverTimerRef.current)
     devLog(widgetId, 'hover enter (starting 500ms timer)')
     hoverTimerRef.current = setTimeout(() => {
       devLog(widgetId, 'hover 500ms → loading iframe')

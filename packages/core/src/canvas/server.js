@@ -192,6 +192,19 @@ export function createCanvasHandler(ctx) {
   // Props written by snapshot systems — ignore these to avoid re-triggering
   const SNAPSHOT_OUTPUT_PROPS = new Set(['snapshotLight', 'snapshotDark', '_snapshotHash'])
 
+  /**
+   * Check if a widget needs a new snapshot by comparing old → new props.
+   * Returns true only when snapshot-relevant props changed (not snapshot outputs).
+   */
+  function needsSnapshotRecapture(oldWidget, newWidget) {
+    if (!oldWidget) return true // new widget
+    const changedKeys = Object.keys(newWidget.props || {}).filter(k =>
+      newWidget.props?.[k] !== oldWidget.props?.[k]
+    )
+    if (changedKeys.length > 0 && changedKeys.every(k => SNAPSHOT_OUTPUT_PROPS.has(k))) return false
+    return changedKeys.some(k => SNAPSHOT_TRIGGER_PROPS.has(k))
+  }
+
   // Append an event to an existing canvas file.
   // The data plugin already skips .canvas.jsonl `change` events to avoid
   // a save → reload → lost-editing-state feedback loop, so we just write
@@ -327,24 +340,7 @@ export function createCanvasHandler(ctx) {
             const canvasId = toCanvasId(path.relative(root, filePath))
             for (const w of widgets) {
               if (w.type !== 'prototype' && w.type !== 'story') continue
-              const old = oldWidgetMap.get(w.id)
-              if (!old) {
-                // New widget in the array — enqueue
-                snapshotWorker.enqueue(w, canvasId, filePath)
-                continue
-              }
-              // Check if only snapshot output props changed (skip those)
-              const changedKeys = Object.keys(w.props || {}).filter(k => {
-                const oldVal = old.props?.[k]
-                const newVal = w.props?.[k]
-                return oldVal !== newVal
-              })
-              const onlySnapshotChanges = changedKeys.length > 0 &&
-                changedKeys.every(k => SNAPSHOT_OUTPUT_PROPS.has(k))
-              if (onlySnapshotChanges) continue
-              // Check if any snapshot-relevant prop changed
-              const hasRelevantChange = changedKeys.some(k => SNAPSHOT_TRIGGER_PROPS.has(k))
-              if (hasRelevantChange) {
+              if (needsSnapshotRecapture(oldWidgetMap.get(w.id), w)) {
                 snapshotWorker.enqueue(w, canvasId, filePath)
               }
             }

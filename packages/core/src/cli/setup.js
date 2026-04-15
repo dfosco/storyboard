@@ -196,7 +196,7 @@ if (isInstalled('code')) {
 
 // 7. Asset directories
 {
-  const dirs = ['assets/canvas/images', 'assets/canvas/snapshots']
+  const dirs = ['assets/canvas/images']
   for (const dir of dirs) {
     if (!existsSync(dir)) {
       try {
@@ -207,34 +207,7 @@ if (isInstalled('code')) {
   p.log.success('Canvas asset directories ready')
 }
 
-// 8. Playwright (for canvas snapshots)
-{
-  let hasPlaywright = false
-  try {
-    run('node -e "require(\'playwright\')"')
-    hasPlaywright = true
-  } catch { /* not installed */ }
-
-  if (hasPlaywright) {
-    p.log.success('Playwright installed')
-  } else {
-    try {
-      await withSpin(
-        'Installing Playwright + Chromium...',
-        'Playwright installed',
-        () => {
-          run('npm install --save-dev playwright')
-          run('npx playwright install chromium')
-        }
-      )
-    } catch {
-      p.log.warning('Install manually: npm install --save-dev playwright && npx playwright install chromium')
-      p.log.info(dim('Playwright is needed for `storyboard snapshots`'))
-    }
-  }
-}
-
-// 9. Proxy
+// 8. Proxy
 if (isCaddyInstalled()) {
   const proxySpin = p.spinner()
   const caddyfilePath = generateCaddyfile()

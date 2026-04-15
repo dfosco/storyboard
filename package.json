@@ -73,7 +73,6 @@
         "glob": "^13.0.5",
         "globals": "^17.0.0",
         "highlight.js": "^11.11.1",
-        "html-to-image": "^1.11.13",
         "jsdom": "^28.1.0",
         "marked": "^17.0.5",
         "postcss-preset-env": "^10.6.0",

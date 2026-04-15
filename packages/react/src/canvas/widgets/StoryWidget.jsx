@@ -16,7 +16,6 @@ import { getStoryData, getFlag } from '@dfosco/storyboard-core'
 import { createInspectorHighlighter } from '@dfosco/storyboard-core/inspector/highlighter'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
-import { uploadImage } from '../canvasApi.js'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -121,7 +120,6 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const [iframeLoaded, setIframeLoaded] = useState(false)
   const [showIframe, setShowIframe] = useState(hasSnapshot)
   const [showSpinner, setShowSpinner] = useState(false)
-  const capturingRef = useRef(false)
   const hoverTimerRef = useRef(null)
 
   devLog(widgetId, { hasSnapshot, preloadIframe, showIframe, iframeLoaded, storyId })
@@ -197,77 +195,23 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive])
 
-  // Listen for snapshot messages from the iframe
+  // Listen for snapshot-ready signal from the iframe
   useEffect(() => {
     function handleMessage(e) {
       if (!iframeRef.current?.contentWindow) return
       if (e.source !== iframeRef.current.contentWindow) return
 
-      if (e.data?.type === 'storyboard:embed:snapshot') {
-        if (e.data.error) {
-          console.warn('[canvas] Story snapshot capture failed:', e.data.error)
-          return
-        }
-        handleSnapshotResult(e.data.dataUrl)
-        return
-      }
-
-      // snapshot-ready means the iframe content has fully rendered
       if (e.data?.type === 'storyboard:embed:snapshot-ready') {
         setIframeLoaded(true)
-        if (onUpdate) requestSnapshotCapture()
       }
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [onUpdate, canvasTheme])
-
-  const requestSnapshotCapture = useCallback(() => {
-    if (!iframeRef.current?.contentWindow || capturingRef.current) return
-    capturingRef.current = true
-    iframeRef.current.contentWindow.postMessage({
-      type: 'storyboard:embed:capture',
-      requestId: `story-snap-${Date.now()}`,
-    }, '*')
   }, [])
-
-  const handleSnapshotResult = useCallback(async (dataUrl) => {
-    if (!dataUrl || !onUpdate || !widgetId) return
-    capturingRef.current = false
-    try {
-      const result = await uploadImage(dataUrl, `snapshot-${widgetId}`)
-      if (!result?.success || !result?.filename) return
-      const imageUrl = `/_storyboard/canvas/images/${result.filename}`
-      const themeKey = isDark ? 'snapshotDark' : 'snapshotLight'
-      onUpdate?.({ [themeKey]: imageUrl })
-    } catch (err) {
-      console.warn('[canvas] Failed to upload story snapshot:', err)
-    }
-  }, [onUpdate, isDark, widgetId])
-
-  // Re-capture after resize
-  const resizeCaptureTimer = useRef(null)
-  const triggerResizeCapture = useCallback(() => {
-    if (!onUpdate) return
-    clearTimeout(resizeCaptureTimer.current)
-    resizeCaptureTimer.current = setTimeout(() => requestSnapshotCapture(), 2000)
-  }, [requestSnapshotCapture, onUpdate])
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
-    triggerResizeCapture()
-  }, [onUpdate, triggerResizeCapture])
-
-  // Re-capture for alternate theme variant when theme changes
-  const prevThemeRef = useRef(canvasTheme)
-  useEffect(() => {
-    if (canvasTheme !== prevThemeRef.current && onUpdate && showIframe) {
-      prevThemeRef.current = canvasTheme
-      const timer = setTimeout(() => requestSnapshotCapture(), 3000)
-      return () => clearTimeout(timer)
-    }
-    prevThemeRef.current = canvasTheme
-  }, [canvasTheme, onUpdate, showIframe, requestSnapshotCapture])
+  }, [onUpdate])
 
   // Load source code when show-code is toggled on
   useEffect(() => {

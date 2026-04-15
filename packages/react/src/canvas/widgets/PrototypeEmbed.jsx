@@ -4,7 +4,6 @@ import { buildPrototypeIndex, getFlag } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
-import { uploadImage } from '../canvasApi.js'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -78,7 +77,6 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const [iframeLoaded, setIframeLoaded] = useState(false)
   const [showIframe, setShowIframe] = useState(hasSnapshot || isExternal)
   const [showSpinner, setShowSpinner] = useState(false)
-  const capturingRef = useRef(false)
   const hoverTimerRef = useRef(null)
 
   devLog(widgetId, { hasSnapshot, isExternal, preloadIframe, showIframe, iframeLoaded, src })
@@ -315,84 +313,14 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
         return
       }
 
-      // Snapshot capture responses
-      if (e.data?.type === 'storyboard:embed:snapshot') {
-        if (e.data.error) {
-          console.warn('[canvas] Snapshot capture failed:', e.data.error)
-          return
-        }
-        handleSnapshotResult(e.data.requestId, e.data.dataUrl)
-        return
-      }
-
       // Snapshot-ready signal — iframe content has fully rendered
       if (e.data?.type === 'storyboard:embed:snapshot-ready') {
         setIframeLoaded(true)
-        if (onUpdate && !isExternal) requestSnapshotCapture()
       }
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [src, props, onUpdate, isExternal])
-
-  // Request a snapshot capture from the iframe
-  const requestSnapshotCapture = useCallback(() => {
-    if (!iframeRef.current?.contentWindow || capturingRef.current || isExternal) return
-    capturingRef.current = true
-    const requestId = `snap-${Date.now()}`
-    iframeRef.current.contentWindow.postMessage({
-      type: 'storyboard:embed:capture',
-      requestId,
-    }, '*')
-  }, [isExternal])
-
-  // Handle a completed snapshot — upload and persist as widget prop
-  const handleSnapshotResult = useCallback(async (requestId, dataUrl) => {
-    if (!dataUrl || !onUpdate || !widgetId) return
-    capturingRef.current = false
-    try {
-      const result = await uploadImage(dataUrl, `snapshot-${widgetId}`)
-      if (!result?.success || !result?.filename) return
-      const imageUrl = `/_storyboard/canvas/images/${result.filename}`
-      const themeKey = canvasTheme?.startsWith('dark') ? 'snapshotDark' : 'snapshotLight'
-      onUpdate?.({ [themeKey]: imageUrl })
-    } catch (err) {
-      console.warn('[canvas] Failed to upload snapshot:', err)
-    }
-  }, [onUpdate, canvasTheme, widgetId])
-
-  // Re-capture snapshots after resize (debounced)
-  const resizeCaptureTimer = useRef(null)
-  const triggerResizeCapture = useCallback(() => {
-    if (!onUpdate || isExternal) return
-    clearTimeout(resizeCaptureTimer.current)
-    resizeCaptureTimer.current = setTimeout(() => {
-      requestSnapshotCapture()
-    }, 2000)
-  }, [requestSnapshotCapture, isExternal, onUpdate])
-
-  // Re-capture when src changes (new prototype selected)
-  const prevSrcRef = useRef(src)
-  useEffect(() => {
-    if (src && src !== prevSrcRef.current && onUpdate && !isExternal && showIframe) {
-      prevSrcRef.current = src
-      // Wait for the new page to render
-      const timer = setTimeout(() => requestSnapshotCapture(), 4000)
-      return () => clearTimeout(timer)
-    }
-    prevSrcRef.current = src
-  }, [src, onUpdate, isExternal, showIframe, requestSnapshotCapture])
-
-  // Re-capture for the alternate theme variant when theme changes
-  const prevThemeRef = useRef(canvasTheme)
-  useEffect(() => {
-    if (canvasTheme !== prevThemeRef.current && onUpdate && !isExternal && showIframe) {
-      prevThemeRef.current = canvasTheme
-      const timer = setTimeout(() => requestSnapshotCapture(), 3000)
-      return () => clearTimeout(timer)
-    }
-    prevThemeRef.current = canvasTheme
-  }, [canvasTheme, onUpdate, isExternal, showIframe, requestSnapshotCapture])
+  }, [src, props])
 
   const chromeVars = useMemo(() => getEmbedChromeVars(canvasTheme), [canvasTheme])
 
@@ -625,7 +553,6 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
             function onUp() {
               document.removeEventListener('mousemove', onMove)
               document.removeEventListener('mouseup', onUp)
-              triggerResizeCapture()
             }
             document.addEventListener('mousemove', onMove)
             document.addEventListener('mouseup', onUp)

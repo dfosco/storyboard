@@ -237,51 +237,8 @@ export async function mountStoryboardCore(config = {}, options = {}) {
         window.parent.postMessage({ type: 'storyboard:embed:snapshot-ready' }, '*')
       })
 
-      // Listen for snapshot capture requests from the parent canvas
-      window.addEventListener('message', async (e) => {
-        if (e.data?.type !== 'storyboard:embed:capture') return
-        const { requestId } = e.data
-        try {
-          const canvas = document.createElement('canvas')
-          const w = document.documentElement.clientWidth
-          const h = document.documentElement.clientHeight
-          canvas.width = w * 2
-          canvas.height = h * 2
-          const ctx = canvas.getContext('2d')
-          ctx.scale(2, 2)
-
-          // foreignObject SVG approach — renders the DOM into a canvas
-          const svgData = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
-            <foreignObject width="100%" height="100%">
-              ${new XMLSerializer().serializeToString(document.documentElement)}
-            </foreignObject>
-          </svg>`
-          const img = new Image()
-          img.onload = () => {
-            ctx.drawImage(img, 0, 0)
-            const dataUrl = canvas.toDataURL('image/png')
-            window.parent.postMessage({
-              type: 'storyboard:embed:snapshot',
-              requestId,
-              dataUrl,
-            }, '*')
-          }
-          img.onerror = () => {
-            window.parent.postMessage({
-              type: 'storyboard:embed:snapshot',
-              requestId,
-              error: 'SVG-to-canvas render failed',
-            }, '*')
-          }
-          img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgData)}`
-        } catch (err) {
-          window.parent.postMessage({
-            type: 'storyboard:embed:snapshot',
-            requestId,
-            error: err.message,
-          }, '*')
-        }
-      })
+      // Snapshot capture is handled server-side by the Playwright snapshot worker.
+      // The embed only signals readiness — no browser-side capture needed.
     }
     return
   }

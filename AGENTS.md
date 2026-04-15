@@ -5,7 +5,7 @@
 - Before running any other instruction, evaluate if the user prompt contains a trigger for one or more skills in `.github/skills`.
   - **"Ship", "ship this", "ship a change", "ship a feature"** → always invoke the **ship** skill. This is a hard rule — never implement changes directly on `main`. The ship skill creates a worktree, implements there, and pushes to a remote branch.
 - If the user asks `how to use this repo`, `how to run this project` etc, give them an outline of `AGENTS.md` and point them to this file, the `README.md` and the `.github/architecture` docs
-- **After completing any change**, always:
+- **After completing any change**, and NOT USING THE SHIP SKILL:
   1. Create a feature branch and push it. Never leave committed work on `main`.
   2. Create a clips task for the work done and mark it as closed. Use the relevant goal if one exists, or create a new one.
   - Never skip either step.
@@ -21,6 +21,8 @@ The default location is in `.github/plans`, but the user may ask for a specific 
 ---
 
 ## Skills
+
+- **canvas** (`.github/skills/canvas/SKILL.md`) - Work with Storyboard canvases to add, move, update, remove, arrange widgets, and describe canvas state.
 
 - **create** (`.github/skills/create/SKILL.md`) — Walks through creating Storyboard assets: prototype, external prototype, flow, page, canvas, object, or record.
 

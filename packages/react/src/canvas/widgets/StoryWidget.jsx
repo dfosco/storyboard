@@ -67,7 +67,7 @@ async function fetchStorySource(modulePath) {
   return source
 }
 
-export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, resizable }, ref) {
+export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, ref) {
   const storyId = props?.storyId || ''
   const exportName = props?.exportName || ''
   const width = props?.width
@@ -76,6 +76,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const containerRef = useRef(null)
   const iframeRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
+  const [showIframe, setShowIframe] = useState(false)
   const [showCode, setShowCode] = useState(!!props?.showCode)
   const [sourceCode, setSourceCode] = useState(null)
   const [highlightedHtml, setHighlightedHtml] = useState(null)
@@ -100,7 +101,10 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     })
   }, [onUpdate])
 
-  const enterInteractive = useCallback(() => setInteractive(true), [])
+  const enterInteractive = useCallback(() => {
+    setShowIframe(true)
+    setInteractive(true)
+  }, [])
 
   useEffect(() => {
     if (!interactive) return
@@ -282,14 +286,18 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
           </div>
         ) : (
           <>
-            <div className={styles.content}>
-              <iframe
-                ref={iframeRef}
-                src={iframeSrc}
-                className={styles.iframe}
-                title={displayName}
-              />
-            </div>
+            {showIframe ? (
+              <div className={styles.content}>
+                <iframe
+                  ref={iframeRef}
+                  src={iframeSrc}
+                  className={styles.iframe}
+                  title={displayName}
+                />
+              </div>
+            ) : (
+              <div className={styles.content} />
+            )}
 
             {!interactive && (
               <div

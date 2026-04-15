@@ -17,6 +17,7 @@ import { createInspectorHighlighter } from '@dfosco/storyboard-core/inspector/hi
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { uploadImage } from '../canvasApi.js'
+import { useViewportEntry } from './useViewportEntry.js'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -111,20 +112,34 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const validSnapshotDark = snapshotMatchesWidget(snapshotDark) ? snapshotDark : null
   const currentSnapshot = isDark ? validSnapshotDark : validSnapshotLight
   const hasSnapshot = !!currentSnapshot
-  const [preloadIframe, setPreloadIframe] = useState(!hasSnapshot)
+  const [snapshotFailed, setSnapshotFailed] = useState(false)
+  const effectiveHasSnapshot = hasSnapshot && !snapshotFailed
+
+  // Defer iframe loading until widget is near the viewport (prevents stampede)
+  const nearViewport = useViewportEntry(containerRef)
+  const shouldLoadIframe = nearViewport && !effectiveHasSnapshot
+  const [preloadIframe, setPreloadIframe] = useState(false)
   const [iframeLoaded, setIframeLoaded] = useState(false)
-  const [showIframe, setShowIframe] = useState(!hasSnapshot)
+  const [showIframe, setShowIframe] = useState(false)
   const [showSpinner, setShowSpinner] = useState(false)
   const capturingRef = useRef(false)
 
+  // Auto-load iframe when near viewport and no usable snapshot
+  useEffect(() => {
+    if (shouldLoadIframe) {
+      setPreloadIframe(true)
+      setShowIframe(true)
+    }
+  }, [shouldLoadIframe])
+
   // Show spinner only after 500ms of loading
   useEffect(() => {
-    if (showIframe && !iframeLoaded && hasSnapshot) {
+    if (showIframe && !iframeLoaded && effectiveHasSnapshot) {
       const timer = setTimeout(() => setShowSpinner(true), 500)
       return () => clearTimeout(timer)
     }
     setShowSpinner(false)
-  }, [showIframe, iframeLoaded, hasSnapshot])
+  }, [showIframe, iframeLoaded, effectiveHasSnapshot])
   const [storyIndexKey, setStoryIndexKey] = useState(0)
 
   // Re-resolve story URL when the story index is live-patched (new story added)
@@ -396,13 +411,14 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
         ) : (
           <>
             {/* Snapshot image — shown until iframe is fully loaded */}
-            {hasSnapshot && !(showIframe && iframeLoaded) && (
+            {effectiveHasSnapshot && !(showIframe && iframeLoaded) && (
               <div className={styles.content}>
                 <img
                   src={(import.meta.env.BASE_URL || '/').replace(/\/$/, '') + currentSnapshot}
                   alt={displayName}
                   className={styles.snapshotImage}
                   draggable={false}
+                  onError={() => setSnapshotFailed(true)}
                 />
                 {showIframe && !iframeLoaded && showSpinner && (
                   <div className={styles.snapshotSpinner}>
@@ -416,7 +432,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
             {(preloadIframe || showIframe) && (
               <div
                 className={styles.content}
-                style={hasSnapshot && !(showIframe && iframeLoaded) ? { position: 'absolute', top: 31, left: 0, right: 0, bottom: 0, opacity: 0, pointerEvents: 'none' } : undefined}
+                style={effectiveHasSnapshot && !(showIframe && iframeLoaded) ? { position: 'absolute', top: 31, left: 0, right: 0, bottom: 0, opacity: 0, pointerEvents: 'none' } : undefined}
               >
                 <iframe
                   ref={iframeRef}

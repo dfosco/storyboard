@@ -185,7 +185,12 @@ function generateWidgetId(type) {
  * Create the canvas API route handler.
  */
 export function createCanvasHandler(ctx) {
-  const { root, sendJson } = ctx
+  const { root, sendJson, snapshotWorker } = ctx
+
+  // Props that, when changed, require a new snapshot
+  const SNAPSHOT_TRIGGER_PROPS = new Set(['src', 'storyId', 'exportName', 'width', 'height', 'zoom'])
+  // Props written by snapshot systems — ignore these to avoid re-triggering
+  const SNAPSHOT_OUTPUT_PROPS = new Set(['snapshotLight', 'snapshotDark', '_snapshotHash'])
 
   // Append an event to an existing canvas file.
   // The data plugin already skips .canvas.jsonl `change` events to avoid
@@ -305,8 +310,45 @@ export function createCanvasHandler(ctx) {
       try {
         const ts = new Date().toISOString()
 
+        // Read old state before writing, so we can diff for snapshot triggers
+        let oldWidgetMap
+        if (widgets && snapshotWorker) {
+          try {
+            const oldState = readCanvas(filePath)
+            oldWidgetMap = new Map((oldState.widgets || []).map(w => [w.id, w]))
+          } catch { /* fresh canvas or read error — skip diffing */ }
+        }
+
         if (widgets) {
           appendEvent(filePath, { event: 'widgets_replaced', timestamp: ts, widgets })
+
+          // Enqueue snapshots for widgets with changed snapshot-relevant props
+          if (snapshotWorker && oldWidgetMap) {
+            const canvasId = toCanvasId(path.relative(root, filePath))
+            for (const w of widgets) {
+              if (w.type !== 'prototype' && w.type !== 'story') continue
+              const old = oldWidgetMap.get(w.id)
+              if (!old) {
+                // New widget in the array — enqueue
+                snapshotWorker.enqueue(w, canvasId, filePath)
+                continue
+              }
+              // Check if only snapshot output props changed (skip those)
+              const changedKeys = Object.keys(w.props || {}).filter(k => {
+                const oldVal = old.props?.[k]
+                const newVal = w.props?.[k]
+                return oldVal !== newVal
+              })
+              const onlySnapshotChanges = changedKeys.length > 0 &&
+                changedKeys.every(k => SNAPSHOT_OUTPUT_PROPS.has(k))
+              if (onlySnapshotChanges) continue
+              // Check if any snapshot-relevant prop changed
+              const hasRelevantChange = changedKeys.some(k => SNAPSHOT_TRIGGER_PROPS.has(k))
+              if (hasRelevantChange) {
+                snapshotWorker.enqueue(w, canvasId, filePath)
+              }
+            }
+          }
         }
 
         if (sources) {
@@ -362,6 +404,12 @@ export function createCanvasHandler(ctx) {
         })
 
         sendJson(res, 201, { success: true, widget })
+
+        // Enqueue background snapshot for new embeddable widgets
+        if (snapshotWorker) {
+          const canvasId = toCanvasId(path.relative(root, filePath))
+          snapshotWorker.enqueue(widget, canvasId, filePath)
+        }
       } catch (err) {
         sendJson(res, 500, { error: `Failed to add widget: ${err.message}` })
       }

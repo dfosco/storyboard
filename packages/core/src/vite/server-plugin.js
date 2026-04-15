@@ -18,6 +18,7 @@ import { serverFeatures as workshopFeatures } from '../workshop/features/registr
 import { docsHandler, collectFiles } from './docs-handler.js'
 import { createCanvasHandler } from '../canvas/server.js'
 import { createAutosyncHandler } from '../autosync/server.js'
+import * as snapshotWorker from '../canvas/snapshotWorker.js'
 
 const API_PREFIX = '/_storyboard/'
 
@@ -197,7 +198,17 @@ export default function storyboardServer() {
       routeHandlers.set('docs', docsHandler({ root, sendJson }))
 
       // Wire canvas API routes (always enabled — CRUD for .canvas.jsonl files)
-      routeHandlers.set('canvas', createCanvasHandler({ root, sendJson }))
+      // Snapshot worker generates previews in a background Playwright process.
+      const getServerUrl = () => {
+        const addr = server.httpServer?.address()
+        if (!addr) return null
+        const port = typeof addr === 'object' ? addr.port : addr
+        const serverBase = (base || '/').replace(/\/$/, '')
+        return `http://localhost:${port}${serverBase}`
+      }
+      snapshotWorker.init(getServerUrl, root)
+      server.httpServer?.on('close', () => snapshotWorker.shutdown())
+      routeHandlers.set('canvas', createCanvasHandler({ root, sendJson, snapshotWorker }))
 
       // Ignore assets/canvas/ so image/snapshot writes don't trigger reloads
       server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'images'))

@@ -16,8 +16,8 @@ set -euo pipefail
 
 # ── Configuration ─────────────────────────────────────────────────
 # Ordered list of stages. Add new stages here.
+# Note: snapshot generation moved to CI (snapshots.yml workflow).
 STAGES=(
-  stage_snapshots
 )
 
 # ── Helpers ───────────────────────────────────────────────────────

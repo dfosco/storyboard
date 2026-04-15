@@ -108,7 +108,11 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 ### Step 6: Adversarial rubber-duck review
 
-Launch a single `rubber-duck` agent with an adversarial framing. Include the plan from Step 2, the diff of all changes (`git diff HEAD~1`), and the feature requirements from the user's original prompt. The prompt must include:
+Launch a single `rubber-duck` agent with an adversarial framing. Include the plan from Step 2, the diff of all changes (`git diff HEAD~1`), and the feature requirements from the user's original prompt.
+
+**For each changed file**, check if architecture documentation exists at `.github/architecture/path/to/file/filename.ext.md` and include it as context in the review prompt. This gives the reviewer the documented intent, invariants, and patterns for that file.
+
+The prompt must include:
 
 > You are an adversarial code reviewer. Your job is to BREAK this implementation. Assume nothing works correctly until proven otherwise. Specifically:
 >
@@ -141,7 +145,11 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 ### Step 7: Adversarial simplification review
 
-Launch a `rubber-duck` agent focused on **simplification**, not bugs. Include the goals from Step 2, the plan, and the full diff. The prompt must include:
+Launch a `rubber-duck` agent focused on **simplification**, not bugs. Include the goals from Step 2, the plan, and the full diff.
+
+**For each changed file**, check if architecture documentation exists at `.github/architecture/path/to/file/filename.ext.md` and include it as context. This helps the reviewer understand what already exists and what patterns to preserve vs. simplify.
+
+The prompt must include:
 
 > You are an adversarial simplification reviewer. Your job is to challenge the architecture and push for less code. You have the goals this implementation must achieve — use them as the yardstick.
 >

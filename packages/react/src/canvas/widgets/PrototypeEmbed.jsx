@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { createPortal } from 'react-dom'
-import { buildPrototypeIndex } from '@dfosco/storyboard-core'
+import { buildPrototypeIndex, getFlag } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
@@ -8,6 +8,10 @@ import { uploadImage } from '../canvasApi.js'
 import { useIframeQueue } from './useViewportEntry.js'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
+
+function devLog(...args) {
+  try { if (getFlag('dev-logs')) console.log('[canvas:prototype-embed]', ...args) } catch { /* */ }
+}
 
 function formatName(name) {
   return name
@@ -72,25 +76,39 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
   // Sequential iframe queue — prevents stampede when many embeds lack snapshots.
   // Widgets with snapshots skip the queue entirely; others load one at a time.
-  const { ready: queueReady, releaseSlot } = useIframeQueue(hasSnapshot || isExternal)
+  const { ready: queueReady, releaseSlot } = useIframeQueue(hasSnapshot || isExternal, widgetId)
   const [preloadIframe, setPreloadIframe] = useState(hasSnapshot || isExternal)
   const [iframeLoaded, setIframeLoaded] = useState(false)
   const [showIframe, setShowIframe] = useState(hasSnapshot || isExternal)
   const [showSpinner, setShowSpinner] = useState(false)
   const capturingRef = useRef(false)
 
+  devLog(widgetId, { hasSnapshot, isExternal, queueReady, preloadIframe, showIframe, iframeLoaded, src })
+
   // Start loading when the queue grants this widget a slot
   useEffect(() => {
     if (queueReady && !preloadIframe) {
+      devLog(widgetId, 'queue ready → loading iframe')
       setPreloadIframe(true)
       setShowIframe(true)
     }
   }, [queueReady, preloadIframe])
 
-  // Release the queue slot once the iframe has loaded
+  // Release the queue slot once the iframe has loaded or user clicked to interact
   useEffect(() => {
-    if (iframeLoaded) releaseSlot()
+    if (iframeLoaded) {
+      devLog(widgetId, 'iframe loaded')
+      releaseSlot()
+    }
   }, [iframeLoaded, releaseSlot])
+
+  // Click-to-interact: immediately start iframe and release queue slot for others
+  const activateIframe = useCallback(() => {
+    devLog(widgetId, 'user activated → jumping queue')
+    setShowIframe(true)
+    setPreloadIframe(true)
+    releaseSlot()
+  }, [releaseSlot])
 
   // Show spinner only after 500ms of loading
   useEffect(() => {
@@ -553,8 +571,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                 }}
                 onClick={(e) => {
                   if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
-                  setShowIframe(true)
-                  setPreloadIframe(true)
+                  activateIframe()
                   enterInteractive()
                 }}
                 role="button"
@@ -563,8 +580,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     e.stopPropagation()
-                    setShowIframe(true)
-                    setPreloadIframe(true)
+                    activateIframe()
                     enterInteractive()
                   }
                 }}

@@ -1,4 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { getFlag } from '@dfosco/storyboard-core'
+
+function devLog(...args) {
+  try { if (getFlag('dev-logs')) console.log('[canvas:iframe-queue]', ...args) } catch { /* flag system not initialized */ }
+}
 
 /**
  * Sequential iframe loading queue.
@@ -19,13 +24,15 @@ let _active = false
 function processQueue() {
   if (_active || _queue.length === 0) return
   _active = true
-  const { resolve } = _queue.shift()
+  const { resolve, label } = _queue.shift()
+  devLog(`slot granted → ${label} (${_queue.length} queued)`)
 
   let released = false
   const release = () => {
     if (released) return
     released = true
     _active = false
+    devLog(`slot released ← ${label}`)
     processQueue()
   }
 
@@ -34,9 +41,10 @@ function processQueue() {
   resolve(release)
 }
 
-function requestSlot() {
+function requestSlot(label = '?') {
   return new Promise((resolve) => {
-    _queue.push({ resolve })
+    _queue.push({ resolve, label })
+    devLog(`queued ${label} (position ${_queue.length})`)
     processQueue()
   })
 }
@@ -49,9 +57,10 @@ function requestSlot() {
  * it's this widget's turn.
  *
  * @param {boolean} hasUsableSnapshot - whether the widget has a working snapshot
- * @returns {{ ready: boolean }}
+ * @param {string} [label] - debug label for dev logs
+ * @returns {{ ready: boolean, releaseSlot: Function }}
  */
-export function useIframeQueue(hasUsableSnapshot) {
+export function useIframeQueue(hasUsableSnapshot, label = '?') {
   const [ready, setReady] = useState(hasUsableSnapshot)
   const releaseRef = useRef(null)
 
@@ -59,7 +68,7 @@ export function useIframeQueue(hasUsableSnapshot) {
     if (hasUsableSnapshot || ready) return
 
     let cancelled = false
-    requestSlot().then((release) => {
+    requestSlot(label).then((release) => {
       if (cancelled) {
         release()
         return

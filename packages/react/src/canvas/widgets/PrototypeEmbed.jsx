@@ -32,7 +32,7 @@ function resolveCanvasThemeFromStorage() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdate, resizable }, ref) {
+export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdate, resizable, embedThrottled, onSnapshotMissing }, ref) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
   const width = readProp(props, 'width', prototypeEmbedSchema)
   const height = readProp(props, 'height', prototypeEmbedSchema)
@@ -72,6 +72,20 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const [snapshotFailed, setSnapshotFailed] = useState(false)
   const effectiveHasSnapshot = hasSnapshot && !snapshotFailed
 
+  // Reset snapshotFailed when the snapshot URL changes (e.g. CI generates a new one)
+  const prevSnapshot = useRef(currentSnapshot)
+  useEffect(() => {
+    if (currentSnapshot !== prevSnapshot.current) {
+      prevSnapshot.current = currentSnapshot
+      setSnapshotFailed(false)
+    }
+  }, [currentSnapshot])
+
+  // Report snapshot status to parent for throttle calculation
+  useEffect(() => {
+    onSnapshotMissing?.(widgetId, !effectiveHasSnapshot)
+  }, [widgetId, effectiveHasSnapshot, onSnapshotMissing])
+
   const inputRef = useRef(null)
   const filterRef = useRef(null)
   const embedRef = useRef(null)
@@ -79,22 +93,24 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const inlineContainerRef = useRef(null)
   const modalContainerRef = useRef(null)
 
-  // Defer iframe loading until widget is near the viewport (prevents stampede)
+  // Defer iframe loading until widget is near the viewport (prevents stampede).
+  // When throttled (>5 embeds missing snapshots), block all auto-loading — wait for click.
   const nearViewport = useViewportEntry(embedRef)
-  const shouldLoadIframe = isExternal || (nearViewport && !effectiveHasSnapshot)
+  const [userActivated, setUserActivated] = useState(false)
+  const shouldAutoLoad = !embedThrottled && (isExternal || (nearViewport && !effectiveHasSnapshot))
   const [preloadIframe, setPreloadIframe] = useState(false)
   const [iframeLoaded, setIframeLoaded] = useState(false)
   const [showIframe, setShowIframe] = useState(false)
   const [showSpinner, setShowSpinner] = useState(false)
   const capturingRef = useRef(false)
 
-  // Auto-load iframe when near viewport and no usable snapshot
+  // Auto-load iframe when near viewport and not throttled
   useEffect(() => {
-    if (shouldLoadIframe) {
+    if (shouldAutoLoad || userActivated) {
       setPreloadIframe(true)
       setShowIframe(true)
     }
-  }, [shouldLoadIframe])
+  }, [shouldAutoLoad, userActivated])
 
   // Show spinner only after 500ms of loading
   useEffect(() => {
@@ -547,10 +563,11 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
               <div
                 className={overlayStyles.interactOverlay}
                 onPointerEnter={() => {
-                  if (!preloadIframe) setPreloadIframe(true)
+                  if (!embedThrottled && !preloadIframe) setPreloadIframe(true)
                 }}
                 onClick={(e) => {
                   if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+                  setUserActivated(true)
                   setShowIframe(true)
                   setPreloadIframe(true)
                   enterInteractive()
@@ -561,6 +578,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     e.stopPropagation()
+                    setUserActivated(true)
                     setShowIframe(true)
                     setPreloadIframe(true)
                     enterInteractive()

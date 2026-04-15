@@ -1,5 +1,14 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.24
+
+### Patch Changes
+
+-   Remove local snapshot generation from scaffold pre-push hook
+
+    -   Scaffold pre-push hook still had stage_snapshots in STAGES array, causing client repos to run local snapshot generation on push
+    -   Snapshot generation is now CI-only via snapshots.yml workflow
+
 ## 4.0.0-beta.23
 
 ### Patch Changes

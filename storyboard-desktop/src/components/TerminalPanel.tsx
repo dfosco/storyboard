@@ -42,27 +42,25 @@ export default function TerminalPanel({ project }: TerminalPanelProps) {
         const next = prev.filter((t) => t.id !== tabId);
         if (next.length === 0) {
           // Always keep at least one tab
-          return [
-            {
-              id: crypto.randomUUID(),
-              label: "Terminal",
-              params: { cwd: project.path },
-            },
-          ];
+          const newTab = {
+            id: crypto.randomUUID(),
+            label: "Terminal",
+            params: { cwd: project.path },
+          };
+          setActiveTabId(newTab.id);
+          return [newTab];
         }
+        // If closing the active tab, switch to the last remaining
+        setActiveTabId((current) => {
+          if (current === tabId) {
+            return next[next.length - 1]?.id ?? "";
+          }
+          return current;
+        });
         return next;
       });
-
-      // If closing the active tab, switch to the last remaining
-      setActiveTabId((current) => {
-        if (current === tabId) {
-          const remaining = tabs.filter((t) => t.id !== tabId);
-          return remaining[remaining.length - 1]?.id ?? "";
-        }
-        return current;
-      });
     },
-    [tabs, project.path],
+    [project.path],
   );
 
   const handleReady = useCallback((tabId: string, session: PtySessionInfo) => {

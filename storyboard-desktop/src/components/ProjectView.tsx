@@ -19,6 +19,7 @@ export default function ProjectView({ project }: ProjectViewProps) {
   // Start the dev server when the project opens
   useEffect(() => {
     let cancelled = false;
+    let sidecarId: string | null = null;
 
     async function startServer() {
       try {
@@ -32,7 +33,11 @@ export default function ProjectView({ project }: ProjectViewProps) {
 
         if (!cancelled) {
           setSidecar(info);
+          sidecarId = info.id;
           setLoading(false);
+        } else {
+          // Component unmounted before we finished — stop the sidecar
+          sidecarStop(info.id);
         }
       } catch (err) {
         if (!cancelled) {
@@ -46,7 +51,9 @@ export default function ProjectView({ project }: ProjectViewProps) {
 
     return () => {
       cancelled = true;
-      // TODO: stop the sidecar when the component unmounts
+      if (sidecarId) {
+        sidecarStop(sidecarId);
+      }
     };
   }, [project.path, project.branch]);
 

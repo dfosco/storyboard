@@ -2,7 +2,7 @@
 ///
 /// Wraps project detection, opening, and sidecar management.
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   projectOpen,
   projectDetect,
@@ -57,13 +57,16 @@ export default function useProject(): UseProjectReturn {
     }
   }, []);
 
+  const sidecarRef = useRef<SidecarInfo | null>(null);
+  sidecarRef.current = sidecar;
+
   const close = useCallback(async () => {
-    if (sidecar) {
-      await sidecarStop(sidecar.id);
+    if (sidecarRef.current) {
+      await sidecarStop(sidecarRef.current.id);
     }
     setProject(null);
     setSidecar(null);
-  }, [sidecar]);
+  }, []);
 
   const devUrl = sidecar?.port ? `http://localhost:${sidecar.port}/` : null;
 

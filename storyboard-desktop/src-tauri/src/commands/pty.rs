@@ -34,6 +34,8 @@ pub struct PtySessionInfo {
 struct PtySession {
     info: PtySessionInfo,
     writer: Box<dyn Write + Send>,
+    /// Master PTY handle — kept for resize operations
+    master: Box<dyn portable_pty::MasterPty + Send>,
     /// Handle to the child process (kept alive so the process doesn't get dropped)
     _child: Box<dyn portable_pty::Child + Send + Sync>,
     /// Signal to stop the reader thread
@@ -177,6 +179,7 @@ pub async fn pty_create(
     let session = PtySession {
         info: info.clone(),
         writer,
+        master: pair.master,
         _child: child,
         alive,
     };
@@ -293,11 +296,15 @@ pub async fn pty_resize(
     session.info.cols = cols;
     session.info.rows = rows;
 
-    // Note: portable-pty doesn't expose resize on the writer directly.
-    // The master PTY handle would need to be kept for resize. For now,
-    // we store the new size — the resize will be handled when we refine
-    // the PTY lifecycle to keep the master handle.
-    // TODO: implement actual PTY resize via master handle
+    session
+        .master
+        .resize(PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .map_err(|e| format!("Failed to resize PTY: {e}"))?;
 
     Ok(())
 }

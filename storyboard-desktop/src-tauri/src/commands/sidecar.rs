@@ -101,27 +101,60 @@ pub async fn sidecar_start_dev(
         .spawn()
         .map_err(|e| format!("Failed to start dev server: {e}"))?;
 
-    // Try to detect the port from stdout
+    // Try to detect the port from initial stdout lines.
+    // After detection (or timeout), spawn a background task to drain
+    // stdout so the child process doesn't block on a full buffer.
     let mut detected_port: Option<u16> = params.port;
 
-    if let Some(stdout) = child.stdout.take() {
+    let stdout = child.stdout.take();
+    if let Some(stdout) = stdout {
         let reader = BufReader::new(stdout);
         let mut lines = reader.lines();
 
         // Read a few lines to try to detect the port
         // Vite outputs something like: "Local: http://localhost:1234/"
         let mut line_count = 0;
-        while let Ok(Some(line)) = lines.next_line().await {
-            line_count += 1;
-            if let Some(port) = detect_port_from_output(&line) {
-                detected_port = Some(port);
-                break;
-            }
-            // Don't wait forever — give up after 50 lines
-            if line_count > 50 {
-                break;
+        loop {
+            // Use a timeout so we don't block forever waiting for output
+            let line_result = tokio::time::timeout(
+                std::time::Duration::from_secs(30),
+                lines.next_line(),
+            )
+            .await;
+
+            match line_result {
+                Ok(Ok(Some(line))) => {
+                    line_count += 1;
+                    if let Some(port) = detect_port_from_output(&line) {
+                        detected_port = Some(port);
+                        break;
+                    }
+                    if line_count > 50 {
+                        break;
+                    }
+                }
+                _ => break, // Timeout, error, or EOF
             }
         }
+
+        // Spawn a background task to continuously drain remaining stdout
+        // so the child process doesn't block on a full pipe buffer.
+        tokio::spawn(async move {
+            while let Ok(Some(_)) = lines.next_line().await {
+                // Discard — we only needed the port
+            }
+        });
+    }
+
+    // Also drain stderr in the background
+    if let Some(stderr) = child.stderr.take() {
+        let reader = BufReader::new(stderr);
+        let mut lines = reader.lines();
+        tokio::spawn(async move {
+            while let Ok(Some(_)) = lines.next_line().await {
+                // Discard stderr output
+            }
+        });
     }
 
     let info = SidecarInfo {

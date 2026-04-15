@@ -106,7 +106,40 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 **Skip this step only if** the change is purely documentation, configuration, or markup with no testable logic.
 
-### Step 6: Adversarial simplification review
+### Step 6: Adversarial rubber-duck review
+
+Launch a single `rubber-duck` agent with an adversarial framing. Include the plan from Step 2, the diff of all changes (`git diff HEAD~1`), and the feature requirements from the user's original prompt. The prompt must include:
+
+> You are an adversarial code reviewer. Your job is to BREAK this implementation. Assume nothing works correctly until proven otherwise. Specifically:
+>
+> 1. **Find bugs** — race conditions, off-by-one errors, null/undefined access, missing error handling
+> 2. **Find security issues** — injection, XSS, data leaks, unsafe defaults
+> 3. **Find logic errors** — incorrect assumptions, missing edge cases, broken invariants
+> 4. **Find integration issues** — does this break existing behavior? Are imports/exports correct? Are types consistent?
+> 5. **Find missing tests** — what scenarios are NOT covered?
+>
+> For each finding, rate severity as CRITICAL (must fix), HIGH (should fix), or LOW (nice to fix).
+> Only report CRITICAL and HIGH findings. Ignore style, formatting, and naming.
+
+#### Process findings
+
+1. Apply all CRITICAL fixes immediately.
+2. Apply HIGH fixes unless they significantly complicate the implementation without clear benefit.
+3. Discard LOW findings.
+4. If any changes were made, run lint/build/test again and commit:
+
+```bash
+git add -A
+git commit -m "fix: address review findings
+
+<summary of what was fixed>
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
+
+5. If no findings required changes, skip the commit.
+
+### Step 7: Adversarial simplification review
 
 Launch a `rubber-duck` agent focused on **simplification**, not bugs. Include the goals from Step 2, the plan, and the full diff. The prompt must include:
 
@@ -136,39 +169,6 @@ git add -A
 git commit -m "refactor: simplify <area>
 
 <summary of what was simplified>
-
-Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
-```
-
-5. If no findings required changes, skip the commit.
-
-### Step 7: Adversarial rubber-duck review
-
-Launch a single `rubber-duck` agent with an adversarial framing. Include the plan from Step 2, the diff of all changes (`git diff HEAD~1`), and the feature requirements from the user's original prompt. The prompt must include:
-
-> You are an adversarial code reviewer. Your job is to BREAK this implementation. Assume nothing works correctly until proven otherwise. Specifically:
->
-> 1. **Find bugs** — race conditions, off-by-one errors, null/undefined access, missing error handling
-> 2. **Find security issues** — injection, XSS, data leaks, unsafe defaults
-> 3. **Find logic errors** — incorrect assumptions, missing edge cases, broken invariants
-> 4. **Find integration issues** — does this break existing behavior? Are imports/exports correct? Are types consistent?
-> 5. **Find missing tests** — what scenarios are NOT covered?
->
-> For each finding, rate severity as CRITICAL (must fix), HIGH (should fix), or LOW (nice to fix).
-> Only report CRITICAL and HIGH findings. Ignore style, formatting, and naming.
-
-#### Process findings
-
-1. Apply all CRITICAL fixes immediately.
-2. Apply HIGH fixes unless they significantly complicate the implementation without clear benefit.
-3. Discard LOW findings.
-4. If any changes were made, run lint/build/test again and commit:
-
-```bash
-git add -A
-git commit -m "fix: address review findings
-
-<summary of what was fixed>
 
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 ```
@@ -228,8 +228,8 @@ User says: "ship a feature to add canvas grid snapping"
 3. Creates clips goal + tasks for the work
 4. Implements grid snapping, commits
 5. Writes tests using vitest skill, commits
-6. Runs adversarial simplification review, simplifies if needed, commits
-7. Runs adversarial rubber-duck review, fixes findings, commits
+6. Runs adversarial rubber-duck review, fixes findings, commits
+7. Runs adversarial simplification review, simplifies if needed, commits
 8. Pushes `canvas-grid-snapping` to origin
 9. Marks clips tasks as closed
 10. Starts dev server (`npx storyboard dev`) in the worktree

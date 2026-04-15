@@ -30,6 +30,7 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate, resizable }, re
   const height = readProp(props, 'height', figmaEmbedSchema)
 
   const [interactive, setInteractive] = useState(false)
+  const [showIframe, setShowIframe] = useState(false)
   const [expanded, setExpanded] = useState(false)
 
   const iframeRef = useRef(null)
@@ -43,7 +44,10 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate, resizable }, re
   const figmaType = useMemo(() => getFigmaType(url), [url])
   const typeLabel = figmaType ? TYPE_LABELS[figmaType] : 'Figma'
 
-  const enterInteractive = useCallback(() => setInteractive(true), [])
+  const enterInteractive = useCallback(() => {
+    setShowIframe(true)
+    setInteractive(true)
+  }, [])
 
   // Close expanded modal on Escape
   useEffect(() => {
@@ -97,6 +101,7 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate, resizable }, re
       if (actionId === 'open-external') {
         if (url) window.open(url, '_blank', 'noopener')
       } else if (actionId === 'expand') {
+        setShowIframe(true)
         setExpanded(true)
       }
     },
@@ -112,19 +117,23 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate, resizable }, re
         </div>
         {embedUrl ? (
           <>
-            <div
-              ref={inlineContainerRef}
-              className={styles.iframeContainer}
-              style={expanded ? { visibility: 'hidden' } : undefined}
-            >
-              <iframe
-                ref={iframeRef}
-                src={embedUrl}
-                className={styles.iframe}
-                title={`Figma ${typeLabel}: ${title}`}
-                allowFullScreen
-              />
-            </div>
+            {showIframe ? (
+              <div
+                ref={inlineContainerRef}
+                className={styles.iframeContainer}
+                style={expanded ? { visibility: 'hidden' } : undefined}
+              >
+                <iframe
+                  ref={iframeRef}
+                  src={embedUrl}
+                  className={styles.iframe}
+                  title={`Figma ${typeLabel}: ${title}`}
+                  allowFullScreen
+                />
+              </div>
+            ) : (
+              <div className={styles.iframeContainer} />
+            )}
             {!interactive && !expanded && (
               <div
                 className={overlayStyles.interactOverlay}

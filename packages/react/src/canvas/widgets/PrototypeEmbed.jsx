@@ -5,7 +5,6 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
 import { uploadImage } from '../canvasApi.js'
-import { useIframeQueue } from './useViewportEntry.js'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -74,41 +73,44 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const currentSnapshot = canvasTheme?.startsWith('dark') ? validSnapshotDark : validSnapshotLight
   const hasSnapshot = !!currentSnapshot
 
-  // Sequential iframe queue — prevents stampede when many embeds lack snapshots.
-  // Widgets with snapshots skip the queue entirely; others load one at a time.
-  const { ready: queueReady, releaseSlot } = useIframeQueue(hasSnapshot || isExternal, widgetId)
+  // Lazy loading — iframe starts on 0.5s hover or click
   const [preloadIframe, setPreloadIframe] = useState(hasSnapshot || isExternal)
   const [iframeLoaded, setIframeLoaded] = useState(false)
   const [showIframe, setShowIframe] = useState(hasSnapshot || isExternal)
   const [showSpinner, setShowSpinner] = useState(false)
   const capturingRef = useRef(false)
+  const hoverTimerRef = useRef(null)
 
-  devLog(widgetId, { hasSnapshot, isExternal, queueReady, preloadIframe, showIframe, iframeLoaded, src })
+  devLog(widgetId, { hasSnapshot, isExternal, preloadIframe, showIframe, iframeLoaded, src })
 
-  // Start loading when the queue grants this widget a slot
-  useEffect(() => {
-    if (queueReady && !preloadIframe) {
-      devLog(widgetId, 'queue ready → loading iframe')
-      setPreloadIframe(true)
-      setShowIframe(true)
-    }
-  }, [queueReady, preloadIframe])
-
-  // Release the queue slot once the iframe has loaded or user clicked to interact
-  useEffect(() => {
-    if (iframeLoaded) {
-      devLog(widgetId, 'iframe loaded')
-      releaseSlot()
-    }
-  }, [iframeLoaded, releaseSlot])
-
-  // Click-to-interact: immediately start iframe and release queue slot for others
+  // Click-to-interact: immediately start iframe
   const activateIframe = useCallback(() => {
-    devLog(widgetId, 'user activated → jumping queue')
+    devLog(widgetId, 'user activated → loading iframe')
+    clearTimeout(hoverTimerRef.current)
     setShowIframe(true)
     setPreloadIframe(true)
-    releaseSlot()
-  }, [releaseSlot])
+  }, [widgetId])
+
+  // Hover handlers — 0.5s dwell triggers iframe load
+  const onHoverEnter = useCallback(() => {
+    if (preloadIframe && showIframe) return
+    devLog(widgetId, 'hover enter (starting 500ms timer)')
+    hoverTimerRef.current = setTimeout(() => {
+      devLog(widgetId, 'hover 500ms → loading iframe')
+      setPreloadIframe(true)
+      setShowIframe(true)
+    }, 500)
+  }, [preloadIframe, showIframe, widgetId])
+
+  const onHoverLeave = useCallback(() => {
+    if (hoverTimerRef.current) {
+      devLog(widgetId, 'hover leave (short hover, cancelled)')
+      clearTimeout(hoverTimerRef.current)
+      hoverTimerRef.current = null
+    }
+  }, [widgetId])
+
+  useEffect(() => () => clearTimeout(hoverTimerRef.current), [])
 
   // Show spinner only after 500ms of loading
   useEffect(() => {
@@ -435,6 +437,9 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
         className={styles.embed}
         style={{ width, height, ...chromeVars }}
       >
+        <div className={styles.header}>
+          <span className={styles.headerTitle}>{label || 'Prototype'}</span>
+        </div>
         {editing ? (
           <div
             className={styles.pickerPanel}
@@ -566,9 +571,8 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
             {!interactive && !expanded && (
               <div
                 className={overlayStyles.interactOverlay}
-                onPointerEnter={() => {
-                  if (!preloadIframe) setPreloadIframe(true)
-                }}
+                onPointerEnter={onHoverEnter}
+                onPointerLeave={onHoverLeave}
                 onClick={(e) => {
                   if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
                   activateIframe()

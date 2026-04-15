@@ -7,9 +7,30 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fgColor-muted, #656d76);
+  background: var(--bgColor-muted, #f6f8fa);
+  border-bottom: 1px solid var(--borderColor-muted, #d8dee4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.headerTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .iframeContainer {
   width: 100%;
-  height: 100%;
+  height: calc(100% - 31px);
   overflow: hidden;
 }
 

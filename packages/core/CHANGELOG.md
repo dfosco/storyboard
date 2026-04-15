@@ -1,5 +1,14 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.21
+
+### Patch Changes
+
+-   Fix snapshot generation and add server-side widget filtering
+
+    -   Fix snapshot screenshots using unsupported webp format — now uses png
+    -   Add server-side widget filtering for canvas read API
+
 ## 4.0.0-beta.20
 
 ### Patch Changes

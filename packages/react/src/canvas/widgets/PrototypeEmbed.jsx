@@ -30,7 +30,7 @@ function resolveCanvasThemeFromStorage() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdate, resizable }, ref) {
+export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }, ref) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
   const width = readProp(props, 'width', prototypeEmbedSchema)
   const height = readProp(props, 'height', prototypeEmbedSchema)
@@ -48,11 +48,11 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     return `${basePath}${cleaned}`
   }, [src, basePath, baseSegment])
 
-  const isExternal = /^https?:\/\//.test(rawSrc)
   const scale = zoom / 100
 
   const [editing, setEditing] = useState(false)
   const [interactive, setInteractive] = useState(false)
+  const [showIframe, setShowIframe] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [filter, setFilter] = useState('')
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
@@ -256,7 +256,10 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
   const chromeVars = useMemo(() => getEmbedChromeVars(canvasTheme), [canvasTheme])
 
-  const enterInteractive = useCallback(() => setInteractive(true), [])
+  const enterInteractive = useCallback(() => {
+    setShowIframe(true)
+    setInteractive(true)
+  }, [])
 
   // Expose imperative action handlers for WidgetChrome
   useImperativeHandle(ref, () => ({
@@ -264,6 +267,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
       if (actionId === 'edit') {
         setEditing(true)
       } else if (actionId === 'expand') {
+        setShowIframe(true)
         setExpanded(true)
       } else if (actionId === 'open-external') {
         if (rawSrc) window.open(rawSrc, '_blank', 'noopener')
@@ -384,25 +388,29 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
           </div>
         ) : iframeSrc ? (
           <>
-            <div
-              ref={inlineContainerRef}
-              className={styles.iframeContainer}
-              style={expanded ? { visibility: 'hidden' } : undefined}
-            >
-              <iframe
-                ref={iframeRef}
-                src={iframeSrc}
-                className={styles.iframe}
-                style={{
-                  width: width / scale,
-                  height: height / scale,
-                  transform: `scale(${scale})`,
-                  transformOrigin: '0 0',
-                }}
-                title={label || 'Prototype embed'}
-                sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-              />
-            </div>
+            {showIframe ? (
+              <div
+                ref={inlineContainerRef}
+                className={styles.iframeContainer}
+                style={expanded ? { visibility: 'hidden' } : undefined}
+              >
+                <iframe
+                  ref={iframeRef}
+                  src={iframeSrc}
+                  className={styles.iframe}
+                  style={{
+                    width: width / scale,
+                    height: height / scale,
+                    transform: `scale(${scale})`,
+                    transformOrigin: '0 0',
+                  }}
+                  title={label || 'Prototype embed'}
+                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                />
+              </div>
+            ) : (
+              <div className={styles.iframeContainer} />
+            )}
 
             {!interactive && !expanded && (
               <div

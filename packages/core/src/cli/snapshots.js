@@ -18,7 +18,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { execSync } from 'node:child_process'
+import { execSync, execFileSync } from 'node:child_process'
 import { materializeFromText, serializeEvent } from '../canvas/materializer.js'
 import * as p from '@clack/prompts'
 import { bold, dim, green, yellow, cyan } from './intro.js'
@@ -59,9 +59,11 @@ function readCanvasState(absPath) {
   return materializeFromText(raw)
 }
 
-function writeImage(imagesDir, widgetId, theme, buffer) {
+function writeImage(imagesDir, canvasId, widgetId, theme, buffer) {
   fs.mkdirSync(imagesDir, { recursive: true })
-  const filename = `snapshot-${widgetId}--${theme}--latest.png`
+  // Include canvas ID (slashes → dashes) to prevent cross-canvas collisions
+  const safeCanvasId = canvasId.replace(/\//g, '-')
+  const filename = `snapshot-${safeCanvasId}-${widgetId}--${theme}--latest.png`
   fs.writeFileSync(path.join(imagesDir, filename), buffer)
   return filename
 }
@@ -83,7 +85,7 @@ function appendWidgetsReplaced(jsonlPath, widgets) {
  */
 function gitHashFile(filePath, root) {
   try {
-    return execSync(`git hash-object ${JSON.stringify(filePath)}`, {
+    return execFileSync('git', ['hash-object', '--', filePath], {
       cwd: root, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'],
     }).trim()
   } catch { return null }
@@ -181,19 +183,53 @@ async function run() {
   // Discover canvases from disk
   let allFiles = findCanvasFiles(root)
 
-  // --changed-only: restrict to canvases with JSONL changes since last commit
+  // --changed-only: restrict to canvases whose JSONL changed OR whose
+  // referenced story source files changed since the previous commit.
   if (changedOnly && !force) {
     try {
-      const changed = execSync('git diff HEAD~1 --name-only -- "*.canvas.jsonl"', {
+      const allChanged = execSync('git diff HEAD~1 --name-only', {
         cwd: root, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'],
-      }).trim().split('\n').filter(Boolean)
-      if (changed.length === 0) {
-        p.log.info('No canvas changes detected')
+      }).trim().split('\n').filter(Boolean).map(f => f.replace(/\\/g, '/'))
+
+      const changedJsonl = new Set(allChanged.filter(f => f.endsWith('.canvas.jsonl')))
+      const changedSources = new Set(allChanged.filter(f =>
+        f.endsWith('.story.jsx') || f.endsWith('.story.tsx') ||
+        f.endsWith('.story.js') || f.endsWith('.story.ts')
+      ))
+
+      if (changedJsonl.size === 0 && changedSources.size === 0) {
+        p.log.info('No canvas or story changes detected')
         p.outro(dim('Nothing to do'))
         process.exit(0)
       }
-      const changedSet = new Set(changed.map(f => f.replace(/\\/g, '/')))
-      allFiles = allFiles.filter(f => changedSet.has(f.relPath.replace(/\\/g, '/')))
+
+      // Include canvases with direct JSONL changes
+      const targetSet = new Set()
+      for (const f of allFiles) {
+        if (changedJsonl.has(f.relPath.replace(/\\/g, '/'))) targetSet.add(f)
+      }
+
+      // Also include canvases that reference changed story source files.
+      // We need to read each canvas to check widget storyIds, but only
+      // if there are changed sources to match against.
+      if (changedSources.size > 0) {
+        for (const f of allFiles) {
+          if (targetSet.has(f)) continue
+          try {
+            const state = readCanvasState(f.absPath)
+            const widgets = (state.widgets || []).filter(w => w.type === 'story')
+            for (const w of widgets) {
+              const sourceFile = resolveSourceFile(w, root)
+              if (sourceFile) {
+                const rel = path.relative(root, sourceFile).replace(/\\/g, '/')
+                if (changedSources.has(rel)) { targetSet.add(f); break }
+              }
+            }
+          } catch { /* skip unreadable canvases */ }
+        }
+      }
+
+      allFiles = [...targetSet]
     } catch {
       // git diff failed (maybe no previous commit) — fall through to full scan
     }
@@ -341,7 +377,7 @@ async function run() {
             const buffer = await page.screenshot({ type: 'png' })
             await context.close()
 
-            const filename = writeImage(imagesDir, widget.id, theme, buffer)
+            const filename = writeImage(imagesDir, canvasId, widget.id, theme, buffer)
             const imageUrl = `/_storyboard/canvas/images/${filename}`
             const themeKey = theme === 'dark' ? 'snapshotDark' : 'snapshotLight'
             updates[themeKey] = imageUrl

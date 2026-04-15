@@ -17,6 +17,7 @@
   {"folder":"branch--3.11.3","branch":"3.11.3"},
   {"folder":"branch--3.12.0","branch":"3.12.0"},
   {"folder":"branch--3.13.0","branch":"3.13.0"},
+  {"folder":"branch--4.0.0-actions-widget-snapshots","branch":"4.0.0-actions-widget-snapshots"},
   {"folder":"branch--4.0.0-advanced-copy","branch":"4.0.0-advanced-copy"},
   {"folder":"branch--4.0.0-auto-convert-root-worktree","branch":"4.0.0-auto-convert-root-worktree"},
   {"folder":"branch--4.0.0-autosync-fix","branch":"4.0.0-autosync-fix"},

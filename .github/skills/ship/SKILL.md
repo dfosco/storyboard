@@ -63,7 +63,7 @@ Do NOT proceed to Step 3 until the user confirms.
 1. Run `clips view` to check for a relevant existing goal.
 2. If a matching goal exists, create tasks under it for the planned work.
 3. If no matching goal exists, create a new goal with tasks derived from the plan.
-4. Save the goal ID and issue number for closure tracking in Step 9.
+4. Save the goal ID and issue number for closure tracking in Step 10.
 
 If clips is not available, skip this step silently.
 
@@ -175,7 +175,22 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 
 5. If no findings required changes, skip the commit.
 
-### Step 8: Push to remote
+### Step 8: Update documentation
+
+1. **Invoke the `architecture-scanner` skill** to scan and update architecture docs for any files changed in this feature.
+2. Review and update `README.md`, `DOCS.md`, and any other relevant documentation files to reflect the changes made.
+3. If any docs were updated, stage and commit:
+
+```bash
+git add -A
+git commit -m "docs: update documentation for <feature>
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
+
+**Skip this step only if** the change is trivial (typo fix, config tweak) with no user-facing or architectural impact.
+
+### Step 9: Push to remote
 
 ```bash
 git push -u origin <branch-name>
@@ -185,7 +200,7 @@ If the push fails due to permissions or remote issues, inform the user and sugge
 
 After pushing, inform the user: "Branch pushed to `origin/<branch-name>`."
 
-### Step 9: Close clips tasks
+### Step 10: Close clips tasks
 
 After the branch is pushed, mark clips tasks as closed:
 
@@ -194,7 +209,7 @@ After the branch is pushed, mark clips tasks as closed:
 
 If clips was skipped in Step 3, skip this step too.
 
-### Step 10: Start dev server
+### Step 11: Start dev server
 
 Run the dev server in the worktree so the user can immediately preview changes:
 
@@ -230,6 +245,7 @@ User says: "ship a feature to add canvas grid snapping"
 5. Writes tests using vitest skill, commits
 6. Runs adversarial rubber-duck review, fixes findings, commits
 7. Runs adversarial simplification review, simplifies if needed, commits
-8. Pushes `canvas-grid-snapping` to origin
-9. Marks clips tasks as closed
-10. Starts dev server (`npx storyboard dev`) in the worktree
+8. Updates architecture docs, README, DOCS as needed, commits
+9. Pushes `canvas-grid-snapping` to origin
+10. Marks clips tasks as closed
+11. Starts dev server (`npx storyboard dev`) in the worktree

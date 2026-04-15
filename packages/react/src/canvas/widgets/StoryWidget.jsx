@@ -17,7 +17,7 @@ import { createInspectorHighlighter } from '@dfosco/storyboard-core/inspector/hi
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { uploadImage } from '../canvasApi.js'
-import { useViewportEntry } from './useViewportEntry.js'
+import { useIframeQueue } from './useViewportEntry.js'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -69,7 +69,7 @@ async function fetchStorySource(modulePath) {
   return source
 }
 
-export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, resizable, embedThrottled, onSnapshotMissing }, ref) {
+export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, resizable }, ref) {
   const storyId = props?.storyId || ''
   const exportName = props?.exportName || ''
   const width = props?.width
@@ -112,50 +112,36 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const validSnapshotDark = snapshotMatchesWidget(snapshotDark) ? snapshotDark : null
   const currentSnapshot = isDark ? validSnapshotDark : validSnapshotLight
   const hasSnapshot = !!currentSnapshot
-  const [snapshotFailed, setSnapshotFailed] = useState(false)
-  const effectiveHasSnapshot = hasSnapshot && !snapshotFailed
 
-  // Reset snapshotFailed when the snapshot URL changes
-  const prevSnapshot = useRef(currentSnapshot)
-  useEffect(() => {
-    if (currentSnapshot !== prevSnapshot.current) {
-      prevSnapshot.current = currentSnapshot
-      setSnapshotFailed(false)
-    }
-  }, [currentSnapshot])
-
-  // Report snapshot status to parent for throttle calculation
-  useEffect(() => {
-    onSnapshotMissing?.(widgetId, !effectiveHasSnapshot)
-  }, [widgetId, effectiveHasSnapshot, onSnapshotMissing])
-
-  // Defer iframe loading until widget is near the viewport (prevents stampede).
-  // When throttled (>5 embeds missing snapshots), block all auto-loading — wait for click.
-  const nearViewport = useViewportEntry(containerRef)
-  const [userActivated, setUserActivated] = useState(false)
-  const shouldAutoLoad = !embedThrottled && nearViewport && !effectiveHasSnapshot
-  const [preloadIframe, setPreloadIframe] = useState(false)
+  // Sequential iframe queue — prevents stampede when many embeds lack snapshots.
+  const { ready: queueReady, releaseSlot } = useIframeQueue(hasSnapshot)
+  const [preloadIframe, setPreloadIframe] = useState(hasSnapshot)
   const [iframeLoaded, setIframeLoaded] = useState(false)
-  const [showIframe, setShowIframe] = useState(false)
+  const [showIframe, setShowIframe] = useState(hasSnapshot)
   const [showSpinner, setShowSpinner] = useState(false)
   const capturingRef = useRef(false)
 
-  // Auto-load iframe when near viewport and not throttled
+  // Start loading when the queue grants this widget a slot
   useEffect(() => {
-    if (shouldAutoLoad || userActivated) {
+    if (queueReady && !preloadIframe) {
       setPreloadIframe(true)
       setShowIframe(true)
     }
-  }, [shouldAutoLoad, userActivated])
+  }, [queueReady, preloadIframe])
+
+  // Release the queue slot once the iframe has loaded
+  useEffect(() => {
+    if (iframeLoaded) releaseSlot()
+  }, [iframeLoaded, releaseSlot])
 
   // Show spinner only after 500ms of loading
   useEffect(() => {
-    if (showIframe && !iframeLoaded && effectiveHasSnapshot) {
+    if (showIframe && !iframeLoaded && hasSnapshot) {
       const timer = setTimeout(() => setShowSpinner(true), 500)
       return () => clearTimeout(timer)
     }
     setShowSpinner(false)
-  }, [showIframe, iframeLoaded, effectiveHasSnapshot])
+  }, [showIframe, iframeLoaded, hasSnapshot])
   const [storyIndexKey, setStoryIndexKey] = useState(0)
 
   // Re-resolve story URL when the story index is live-patched (new story added)
@@ -427,14 +413,13 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
         ) : (
           <>
             {/* Snapshot image — shown until iframe is fully loaded */}
-            {effectiveHasSnapshot && !(showIframe && iframeLoaded) && (
+            {hasSnapshot && !(showIframe && iframeLoaded) && (
               <div className={styles.content}>
                 <img
                   src={(import.meta.env.BASE_URL || '/').replace(/\/$/, '') + currentSnapshot}
                   alt={displayName}
                   className={styles.snapshotImage}
                   draggable={false}
-                  onError={() => setSnapshotFailed(true)}
                 />
                 {showIframe && !iframeLoaded && showSpinner && (
                   <div className={styles.snapshotSpinner}>
@@ -448,7 +433,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
             {(preloadIframe || showIframe) && (
               <div
                 className={styles.content}
-                style={effectiveHasSnapshot && !(showIframe && iframeLoaded) ? { position: 'absolute', top: 31, left: 0, right: 0, bottom: 0, opacity: 0, pointerEvents: 'none' } : undefined}
+                style={hasSnapshot && !(showIframe && iframeLoaded) ? { position: 'absolute', top: 31, left: 0, right: 0, bottom: 0, opacity: 0, pointerEvents: 'none' } : undefined}
               >
                 <iframe
                   ref={iframeRef}
@@ -463,11 +448,10 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
               <div
                 className={overlayStyles.interactOverlay}
                 onPointerEnter={() => {
-                  if (!embedThrottled && !preloadIframe) setPreloadIframe(true)
+                  if (!preloadIframe) setPreloadIframe(true)
                 }}
                 onClick={(e) => {
                   if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
-                  setUserActivated(true)
                   setShowIframe(true)
                   setPreloadIframe(true)
                   enterInteractive()
@@ -478,7 +462,6 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     e.stopPropagation()
-                    setUserActivated(true)
                     setShowIframe(true)
                     setPreloadIframe(true)
                     enterInteractive()

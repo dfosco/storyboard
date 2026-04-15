@@ -199,9 +199,8 @@ export default function storyboardServer() {
       // Wire canvas API routes (always enabled — CRUD for .canvas.jsonl files)
       routeHandlers.set('canvas', createCanvasHandler({ root, sendJson }))
 
-      // Ignore assets/canvas/ so image/snapshot writes don't trigger reloads
+      // Ignore assets/canvas/ so image writes don't trigger reloads
       server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'images'))
-      server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'snapshots'))
 
       // Wire autosync API routes (always enabled — git automation for dev)
       routeHandlers.set('autosync', createAutosyncHandler({ root, sendJson }))
@@ -408,12 +407,11 @@ export default function storyboardServer() {
         })
       }
 
-      // Emit canvas images and snapshots so they're available in deployed (static) builds.
+      // Emit canvas images so they're available in deployed (static) builds.
       // Dev server serves these dynamically; production needs the static files.
       // Private images (prefixed with _) are excluded from the build.
       for (const dir of [
         path.join(root, 'assets', 'canvas', 'images'),
-        path.join(root, 'assets', 'canvas', 'snapshots'),
       ]) {
         try {
           const imageFiles = await fs.promises.readdir(dir)

@@ -1,16 +1,11 @@
 import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { createPortal } from 'react-dom'
-import { buildPrototypeIndex, getFlag } from '@dfosco/storyboard-core'
+import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
-import { uploadImage } from '../canvasApi.js'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
-
-function devLog(...args) {
-  try { if (getFlag('dev-logs')) console.log('[canvas:prototype-embed]', ...args) } catch { /* */ }
-}
 
 function formatName(name) {
   return name
@@ -42,10 +37,6 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const zoom = readProp(props, 'zoom', prototypeEmbedSchema)
   const label = readProp(props, 'label', prototypeEmbedSchema) || src
 
-  // Snapshot props for lazy loading
-  const snapshotLight = props?.snapshotLight || null
-  const snapshotDark = props?.snapshotDark || null
-
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
   const baseSegment = basePath.replace(/^\//, '')
   const rawSrc = useMemo(() => {
@@ -65,61 +56,6 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const [expanded, setExpanded] = useState(false)
   const [filter, setFilter] = useState('')
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
-
-  // Lazy loading state — only use snapshots that match this widget's ID
-  const snapshotMatchesWidget = (url) => url && widgetId && url.includes(widgetId)
-  const validSnapshotLight = snapshotMatchesWidget(snapshotLight) ? snapshotLight : null
-  const validSnapshotDark = snapshotMatchesWidget(snapshotDark) ? snapshotDark : null
-  const currentSnapshot = canvasTheme?.startsWith('dark') ? validSnapshotDark : validSnapshotLight
-  const hasSnapshot = !!currentSnapshot
-
-  // Lazy loading — iframe starts on 0.5s hover or click
-  const [preloadIframe, setPreloadIframe] = useState(hasSnapshot || isExternal)
-  const [iframeLoaded, setIframeLoaded] = useState(false)
-  const [showIframe, setShowIframe] = useState(hasSnapshot || isExternal)
-  const [showSpinner, setShowSpinner] = useState(false)
-  const capturingRef = useRef(false)
-  const hoverTimerRef = useRef(null)
-
-  devLog(widgetId, { hasSnapshot, isExternal, preloadIframe, showIframe, iframeLoaded, src })
-
-  // Click-to-interact: immediately start iframe
-  const activateIframe = useCallback(() => {
-    devLog(widgetId, 'user activated → loading iframe')
-    clearTimeout(hoverTimerRef.current)
-    setShowIframe(true)
-    setPreloadIframe(true)
-  }, [widgetId])
-
-  // Hover handlers — 0.5s dwell triggers iframe load
-  const onHoverEnter = useCallback(() => {
-    if (preloadIframe && showIframe) return
-    devLog(widgetId, 'hover enter (starting 500ms timer)')
-    hoverTimerRef.current = setTimeout(() => {
-      devLog(widgetId, 'hover 500ms → loading iframe')
-      setPreloadIframe(true)
-      setShowIframe(true)
-    }, 500)
-  }, [preloadIframe, showIframe, widgetId])
-
-  const onHoverLeave = useCallback(() => {
-    if (hoverTimerRef.current) {
-      devLog(widgetId, 'hover leave (short hover, cancelled)')
-      clearTimeout(hoverTimerRef.current)
-      hoverTimerRef.current = null
-    }
-  }, [widgetId])
-
-  useEffect(() => () => clearTimeout(hoverTimerRef.current), [])
-
-  // Show spinner only after 500ms of loading
-  useEffect(() => {
-    if (showIframe && !iframeLoaded && hasSnapshot) {
-      const timer = setTimeout(() => setShowSpinner(true), 500)
-      return () => clearTimeout(timer)
-    }
-    setShowSpinner(false)
-  }, [showIframe, iframeLoaded, hasSnapshot])
 
   const inputRef = useRef(null)
   const filterRef = useRef(null)
@@ -313,85 +249,10 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
         }
         return
       }
-
-      // Snapshot capture responses
-      if (e.data?.type === 'storyboard:embed:snapshot') {
-        if (e.data.error) {
-          console.warn('[canvas] Snapshot capture failed:', e.data.error)
-          return
-        }
-        handleSnapshotResult(e.data.requestId, e.data.dataUrl)
-        return
-      }
-
-      // Snapshot-ready signal — iframe content has fully rendered
-      if (e.data?.type === 'storyboard:embed:snapshot-ready') {
-        setIframeLoaded(true)
-        if (onUpdate && !isExternal) requestSnapshotCapture()
-      }
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [src, props, onUpdate, isExternal])
-
-  // Request a snapshot capture from the iframe
-  const requestSnapshotCapture = useCallback(() => {
-    if (!iframeRef.current?.contentWindow || capturingRef.current || isExternal) return
-    capturingRef.current = true
-    const requestId = `snap-${Date.now()}`
-    iframeRef.current.contentWindow.postMessage({
-      type: 'storyboard:embed:capture',
-      requestId,
-    }, '*')
-  }, [isExternal])
-
-  // Handle a completed snapshot — upload and persist as widget prop
-  const handleSnapshotResult = useCallback(async (requestId, dataUrl) => {
-    if (!dataUrl || !onUpdate || !widgetId) return
-    capturingRef.current = false
-    try {
-      const result = await uploadImage(dataUrl, `snapshot-${widgetId}`)
-      if (!result?.success || !result?.filename) return
-      const imageUrl = `/_storyboard/canvas/images/${result.filename}`
-      const themeKey = canvasTheme?.startsWith('dark') ? 'snapshotDark' : 'snapshotLight'
-      onUpdate?.({ [themeKey]: imageUrl })
-    } catch (err) {
-      console.warn('[canvas] Failed to upload snapshot:', err)
-    }
-  }, [onUpdate, canvasTheme, widgetId])
-
-  // Re-capture snapshots after resize (debounced)
-  const resizeCaptureTimer = useRef(null)
-  const triggerResizeCapture = useCallback(() => {
-    if (!onUpdate || isExternal) return
-    clearTimeout(resizeCaptureTimer.current)
-    resizeCaptureTimer.current = setTimeout(() => {
-      requestSnapshotCapture()
-    }, 2000)
-  }, [requestSnapshotCapture, isExternal, onUpdate])
-
-  // Re-capture when src changes (new prototype selected)
-  const prevSrcRef = useRef(src)
-  useEffect(() => {
-    if (src && src !== prevSrcRef.current && onUpdate && !isExternal && showIframe) {
-      prevSrcRef.current = src
-      // Wait for the new page to render
-      const timer = setTimeout(() => requestSnapshotCapture(), 4000)
-      return () => clearTimeout(timer)
-    }
-    prevSrcRef.current = src
-  }, [src, onUpdate, isExternal, showIframe, requestSnapshotCapture])
-
-  // Re-capture for the alternate theme variant when theme changes
-  const prevThemeRef = useRef(canvasTheme)
-  useEffect(() => {
-    if (canvasTheme !== prevThemeRef.current && onUpdate && !isExternal && showIframe) {
-      prevThemeRef.current = canvasTheme
-      const timer = setTimeout(() => requestSnapshotCapture(), 3000)
-      return () => clearTimeout(timer)
-    }
-    prevThemeRef.current = canvasTheme
-  }, [canvasTheme, onUpdate, isExternal, showIframe, requestSnapshotCapture])
+  }, [src, props, onUpdate])
 
   const chromeVars = useMemo(() => getEmbedChromeVars(canvasTheme), [canvasTheme])
 
@@ -523,59 +384,31 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
           </div>
         ) : iframeSrc ? (
           <>
-            {/* Snapshot image — shown until iframe is fully loaded */}
-            {hasSnapshot && !(showIframe && iframeLoaded) && (
-              <div className={styles.iframeContainer}>
-                <img
-                  src={basePath + currentSnapshot}
-                  alt={label || 'Prototype preview'}
-                  className={styles.snapshotImage}
-                  style={{ width, height }}
-                  draggable={false}
-                />
-                {showIframe && !iframeLoaded && showSpinner && (
-                  <div className={styles.snapshotSpinner}>
-                    <div className={styles.spinner} />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Iframe — preloaded on hover, revealed after load */}
-            {(preloadIframe || showIframe) && (
-              <div
-                ref={inlineContainerRef}
-                className={styles.iframeContainer}
-                style={
-                  expanded ? { visibility: 'hidden' }
-                  : (hasSnapshot && !(showIframe && iframeLoaded)) ? { position: 'absolute', top: 0, left: 0, opacity: 0, pointerEvents: 'none' }
-                  : undefined
-                }
-              >
-                <iframe
-                  ref={iframeRef}
-                  src={iframeSrc}
-                  className={styles.iframe}
-                  style={{
-                    width: width / scale,
-                    height: height / scale,
-                    transform: `scale(${scale})`,
-                    transformOrigin: '0 0',
-                  }}
-                  title={label || 'Prototype embed'}
-                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-                />
-              </div>
-            )}
+            <div
+              ref={inlineContainerRef}
+              className={styles.iframeContainer}
+              style={expanded ? { visibility: 'hidden' } : undefined}
+            >
+              <iframe
+                ref={iframeRef}
+                src={iframeSrc}
+                className={styles.iframe}
+                style={{
+                  width: width / scale,
+                  height: height / scale,
+                  transform: `scale(${scale})`,
+                  transformOrigin: '0 0',
+                }}
+                title={label || 'Prototype embed'}
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+              />
+            </div>
 
             {!interactive && !expanded && (
               <div
                 className={overlayStyles.interactOverlay}
-                onPointerEnter={onHoverEnter}
-                onPointerLeave={onHoverLeave}
                 onClick={(e) => {
                   if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
-                  activateIframe()
                   enterInteractive()
                 }}
                 role="button"
@@ -584,7 +417,6 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     e.stopPropagation()
-                    activateIframe()
                     enterInteractive()
                   }
                 }}
@@ -624,7 +456,6 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
             function onUp() {
               document.removeEventListener('mousemove', onMove)
               document.removeEventListener('mouseup', onUp)
-              triggerResizeCapture()
             }
             document.addEventListener('mousemove', onMove)
             document.addEventListener('mouseup', onUp)

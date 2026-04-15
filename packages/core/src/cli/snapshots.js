@@ -18,6 +18,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { execSync } from 'node:child_process'
 import { materializeFromText, serializeEvent } from '../canvas/materializer.js'
 import * as p from '@clack/prompts'
 import { bold, dim, green, yellow, cyan } from './intro.js'
@@ -60,10 +61,7 @@ function readCanvasState(absPath) {
 
 function writeImage(imagesDir, widgetId, theme, buffer) {
   fs.mkdirSync(imagesDir, { recursive: true })
-  const now = new Date()
-  const pad = (n) => String(n).padStart(2, '0')
-  const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}--${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
-  const filename = `snapshot-${widgetId}--${theme}--${dateStr}.png`
+  const filename = `snapshot-${widgetId}--${theme}--latest.png`
   fs.writeFileSync(path.join(imagesDir, filename), buffer)
   return filename
 }
@@ -77,11 +75,102 @@ function appendWidgetsReplaced(jsonlPath, widgets) {
   fs.appendFileSync(jsonlPath, serializeEvent(event) + '\n', 'utf-8')
 }
 
+// ── Dirty detection helpers ──
+
+/**
+ * Compute a content hash for a file on disk using git hash-object.
+ * Returns null if the file doesn't exist or git isn't available.
+ */
+function gitHashFile(filePath, root) {
+  try {
+    return execSync(`git hash-object ${JSON.stringify(filePath)}`, {
+      cwd: root, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim()
+  } catch { return null }
+}
+
+/**
+ * Resolve the source file path for a widget (story or prototype) so we
+ * can track content hashes. Returns an absolute path or null.
+ */
+function resolveSourceFile(widget, root) {
+  if (widget.type === 'story') {
+    const storyId = widget.props?.storyId
+    if (!storyId) return null
+    // Story files live under src/ with a .story.jsx/.story.tsx extension
+    for (const ext of ['.story.jsx', '.story.tsx', '.story.js', '.story.ts']) {
+      const candidates = [
+        path.join(root, 'src', 'canvas', storyId + ext),
+        path.join(root, 'src', 'canvas', 'examples', storyId + ext),
+        path.join(root, 'src', 'components', storyId + ext),
+      ]
+      for (const p of candidates) {
+        if (fs.existsSync(p)) return p
+      }
+    }
+    // Fallback: glob for it
+    return findFileRecursive(root, storyId + '.story.')
+  }
+  return null
+}
+
+/**
+ * Recursively find a file whose name starts with the given prefix.
+ * Returns the absolute path or null.
+ */
+function findFileRecursive(dir, prefix) {
+  const ignore = new Set(['node_modules', 'dist', '.git', '.worktrees'])
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (ignore.has(entry.name)) continue
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        const result = findFileRecursive(full, prefix)
+        if (result) return result
+      } else if (entry.name.startsWith(prefix)) {
+        return full
+      }
+    }
+  } catch { /* permission errors, etc. */ }
+  return null
+}
+
+/**
+ * Determine whether a widget needs snapshot regeneration.
+ * A widget is "dirty" if:
+ *   - It has no snapshots at all (missing snapshotLight/Dark)
+ *   - Its snapshot-relevant props changed (compared to what was captured)
+ *   - The source file's git hash changed (for story/prototype widgets)
+ */
+function isWidgetDirty(widget, root) {
+  const isFigma = widget.type === 'figma-embed'
+  const hasLight = !!widget.props?.snapshotLight
+  const hasDark = !!widget.props?.snapshotDark
+  const allExist = isFigma ? hasLight : (hasLight && hasDark)
+
+  // No snapshots at all — always dirty
+  if (!allExist) return true
+
+  // Check source file hash for story widgets
+  if (widget.type === 'story') {
+    const sourceFile = resolveSourceFile(widget, root)
+    if (sourceFile) {
+      const currentHash = gitHashFile(sourceFile, root)
+      const savedHash = widget.props?._snapshotHash
+      if (currentHash && currentHash !== savedHash) return true
+    }
+  }
+
+  return false
+}
+
 // ── Main ──
 
 async function run() {
   const args = process.argv.slice(3)
   const force = args.includes('--force')
+  const changedOnly = args.includes('--changed-only')
   const canvasFilter = args.find(a => !a.startsWith('--')) || null
 
   p.intro(bold('storyboard snapshots'))
@@ -90,7 +179,26 @@ async function run() {
   const imagesDir = path.join(root, 'assets', 'canvas', 'snapshots')
 
   // Discover canvases from disk
-  const allFiles = findCanvasFiles(root)
+  let allFiles = findCanvasFiles(root)
+
+  // --changed-only: restrict to canvases with JSONL changes since last commit
+  if (changedOnly && !force) {
+    try {
+      const changed = execSync('git diff HEAD~1 --name-only -- "*.canvas.jsonl"', {
+        cwd: root, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'],
+      }).trim().split('\n').filter(Boolean)
+      if (changed.length === 0) {
+        p.log.info('No canvas changes detected')
+        p.outro(dim('Nothing to do'))
+        process.exit(0)
+      }
+      const changedSet = new Set(changed.map(f => f.replace(/\\/g, '/')))
+      allFiles = allFiles.filter(f => changedSet.has(f.relPath.replace(/\\/g, '/')))
+    } catch {
+      // git diff failed (maybe no previous commit) — fall through to full scan
+    }
+  }
+
   const targets = canvasFilter
     ? allFiles.filter(f => {
         const id = toCanvasId(f.relPath)
@@ -187,19 +295,24 @@ async function run() {
         // Figma embeds only need a single snapshot (no theme variants)
         const themesNeeded = isFigma ? ['light'] : THEMES
 
-        // Check existing snapshots
-        const hasLight = !!widget.props?.snapshotLight
-        const hasDark = !!widget.props?.snapshotDark
-        const allExist = isFigma ? hasLight : (hasLight && hasDark)
-        if (allExist && !force) {
+        // Skip widgets that don't need regeneration
+        if (!force && !isWidgetDirty(widget, root)) {
           totalSkipped++
-          p.log.step(dim(`  ${widgetLabel} — snapshots exist, skipping`))
+          p.log.step(dim(`  ${widgetLabel} — up to date, skipping`))
           continue
         }
 
-        const themesToCapture = force
-          ? themesNeeded
+        // When force is set, recapture all themes; otherwise only missing ones
+        const hasLight = !!widget.props?.snapshotLight
+        const hasDark = !!widget.props?.snapshotDark
+        let themesToCapture = force
+          ? [...themesNeeded]
           : themesNeeded.filter(t => t === 'light' ? !hasLight : !hasDark)
+
+        // If all themes exist but source hash changed, recapture all
+        if (themesToCapture.length === 0) {
+          themesToCapture = [...themesNeeded]
+        }
 
         const embedUrl = resolveEmbedUrl(serverUrl, widget)
         if (!embedUrl) {
@@ -240,6 +353,14 @@ async function run() {
         }
 
         if (Object.keys(updates).length > 0) {
+          // Record source file hash so future runs can detect staleness
+          if (widget.type === 'story') {
+            const sourceFile = resolveSourceFile(widget, root)
+            if (sourceFile) {
+              const hash = gitHashFile(sourceFile, root)
+              if (hash) updates._snapshotHash = hash
+            }
+          }
           widget.props = { ...widget.props, ...updates }
           canvasDirty = true
         }
@@ -260,10 +381,9 @@ async function run() {
     // Auto-commit snapshot files so they don't clutter git status
     if (totalSnapshots > 0) {
       try {
-        const { execSync } = await import(/* @vite-ignore */ 'node:child_process')
         execSync('git add assets/canvas/snapshots/ src/canvas/', { cwd: root, stdio: 'pipe' })
         execSync(
-          `git commit -m "chore: update canvas snapshots" --no-verify --allow-empty`,
+          `git commit -m "chore: update canvas snapshots [skip ci]" --no-verify --allow-empty`,
           { cwd: root, stdio: 'pipe' }
         )
         p.log.step(dim('Snapshots committed'))

@@ -31,6 +31,7 @@ export default function ComponentWidget({
 }) {
   const containerRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
+  const [showIframe, setShowIframe] = useState(false)
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -75,12 +76,16 @@ export default function ComponentWidget({
       <div ref={containerRef} className={styles.container} style={sizeStyle}>
         <div className={styles.content}>
           {useIframe ? (
-            <iframe
-              src={iframeSrc}
-              className={styles.iframe}
-              title={exportName || 'Component widget'}
-              sandbox="allow-same-origin allow-scripts"
-            />
+            showIframe ? (
+              <iframe
+                src={iframeSrc}
+                className={styles.iframe}
+                title={exportName || 'Component widget'}
+                sandbox="allow-same-origin allow-scripts"
+              />
+            ) : (
+              <div className={styles.placeholder} />
+            )
           ) : Component ? (
             <ComponentErrorBoundary name={exportName}>
               <Component />
@@ -93,6 +98,7 @@ export default function ComponentWidget({
             onClick={(e) => {
               // Don't enter interactive mode for modifier clicks (shift/meta/ctrl for multi-select)
               if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+              if (useIframe) setShowIframe(true)
               enterInteractive()
             }}
             role="button"
@@ -101,6 +107,7 @@ export default function ComponentWidget({
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault()
                 e.stopPropagation()
+                if (useIframe) setShowIframe(true)
                 enterInteractive()
               }
             }}

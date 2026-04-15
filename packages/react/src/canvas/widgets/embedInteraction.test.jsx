@@ -1,20 +1,28 @@
 /**
  * Tests for embed interaction UX (click-to-interact overlay).
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, fireEvent, screen } from '@testing-library/react'
 import PrototypeEmbed from './PrototypeEmbed.jsx'
 import FigmaEmbed from './FigmaEmbed.jsx'
 import ComponentWidget from './ComponentWidget.jsx'
+import StoryWidget from './StoryWidget.jsx'
 
 // Mock buildPrototypeIndex for PrototypeEmbed
 vi.mock('@dfosco/storyboard-core', () => ({
   buildPrototypeIndex: () => ({ folders: [], prototypes: [], globalFlows: [], sorted: { title: { prototypes: [], folders: [] } } }),
+  getStoryData: (storyId) => ({ _route: `/components/${storyId}` }),
 }))
 
 // Simple mock wrapper for WidgetWrapper
 vi.mock('./WidgetWrapper.jsx', () => ({
   default: ({ children }) => <div data-testid="widget-wrapper">{children}</div>,
+}))
+
+vi.mock('@dfosco/storyboard-core/inspector/highlighter', () => ({
+  createInspectorHighlighter: async () => ({
+    codeToHtml: () => '<pre><code></code></pre>',
+  }),
 }))
 
 // Mock ResizeHandle
@@ -44,17 +52,19 @@ describe('Embed interaction overlay', () => {
     })
 
     it('enters interactive mode on single click (not double-click)', async () => {
-      render(<PrototypeEmbed {...defaultProps} />)
+      const { container } = render(<PrototypeEmbed {...defaultProps} />)
       
       // Overlay should exist before interaction
       const overlay = screen.getByRole('button', { name: /click to interact/i })
       expect(overlay).toBeInTheDocument()
+      expect(container.querySelector('iframe')).not.toBeInTheDocument()
       
       // Single click should remove the overlay (enter interactive mode)
       fireEvent.click(overlay)
       
       // Overlay should no longer exist
       expect(screen.queryByRole('button', { name: /click to interact/i })).not.toBeInTheDocument()
+      expect(container.querySelector('iframe')).toBeInTheDocument()
     })
 
     it('does not enter interactive mode on shift+click (preserves multi-select)', () => {
@@ -112,12 +122,34 @@ describe('Embed interaction overlay', () => {
     })
 
     it('enters interactive mode on single click', () => {
-      render(<FigmaEmbed {...defaultProps} />)
+      const { container } = render(<FigmaEmbed {...defaultProps} />)
       
       const overlay = screen.getByRole('button', { name: /click to interact/i })
+      expect(container.querySelector('iframe')).not.toBeInTheDocument()
       fireEvent.click(overlay)
       
       expect(screen.queryByRole('button', { name: /click to interact/i })).not.toBeInTheDocument()
+      expect(container.querySelector('iframe')).toBeInTheDocument()
+    })
+  })
+
+  describe('StoryWidget', () => {
+    const defaultProps = {
+      props: { storyId: 'button-patterns', exportName: 'Primary', width: 400, height: 300 },
+      onUpdate: vi.fn(),
+      resizable: false,
+    }
+
+    it('mounts iframe only after user activation', () => {
+      const { container } = render(<StoryWidget {...defaultProps} />)
+
+      const overlay = screen.getByRole('button', { name: /click to interact with story component/i })
+      expect(container.querySelector('iframe')).not.toBeInTheDocument()
+
+      fireEvent.click(overlay)
+
+      expect(screen.queryByRole('button', { name: /click to interact with story component/i })).not.toBeInTheDocument()
+      expect(container.querySelector('iframe')).toBeInTheDocument()
     })
   })
 
@@ -150,6 +182,24 @@ describe('Embed interaction overlay', () => {
       fireEvent.click(overlay)
       
       expect(screen.queryByRole('button', { name: /click to interact/i })).not.toBeInTheDocument()
+    })
+
+    it('mounts dev iframe only after user activation', () => {
+      const { container } = render(
+        <ComponentWidget
+          {...defaultProps}
+          isLocalDev
+          jsxModule="/src/canvas/mock.canvas.jsx"
+          exportName="MockComponent"
+        />
+      )
+
+      const overlay = screen.getByRole('button', { name: /click to interact with component/i })
+      expect(container.querySelector('iframe')).not.toBeInTheDocument()
+
+      fireEvent.click(overlay)
+
+      expect(container.querySelector('iframe')).toBeInTheDocument()
     })
   })
 })

@@ -596,10 +596,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
               {/* Placeholder — only when no snapshots and no iframe */}
               {!hasAnySnap && !showIframe && (
-                <div className={styles.placeholder}>
-                  <CollageFrameIcon size={36} />
-                  <span className={styles.placeholderLabel}>{`${prototypeTitle} prototype`}</span>
-                </div>
+                <div className={styles.placeholder} />
               )}
             </div>
 

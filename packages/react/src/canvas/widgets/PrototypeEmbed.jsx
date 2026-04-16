@@ -376,7 +376,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
         style={{ width, height, ...chromeVars }}
       >
         <div className={styles.header}>
-          <span className={styles.headerTitle}>👾 {prototypeTitle}</span>
+          <span className={styles.headerTitle}><CollageFrameIcon size={13} /> {prototypeTitle}</span>
         </div>
         {editing ? (
           <div

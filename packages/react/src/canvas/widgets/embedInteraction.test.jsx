@@ -71,7 +71,7 @@ describe('Embed interaction overlay', () => {
       const overlay = screen.getByRole('button', { name: /click to interact/i })
       expect(overlay).toBeInTheDocument()
       expect(container.querySelector('iframe')).not.toBeInTheDocument()
-      expect(screen.getByText('👾 Design Overview')).toBeInTheDocument()
+      expect(screen.getByText('Design Overview')).toBeInTheDocument()
       expect(screen.getByText('Design Overview prototype')).toBeInTheDocument()
       
       // Single click should remove the overlay (enter interactive mode)

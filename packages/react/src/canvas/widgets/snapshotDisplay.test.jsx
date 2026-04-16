@@ -1,5 +1,5 @@
 /**
- * Tests for iframe snapshot display — single theme-aware image.
+ * Tests for iframe snapshot display — single snapshot prop.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, fireEvent, waitFor, act } from '@testing-library/react'
@@ -65,7 +65,7 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--light.webp?v=123',
+            snapshot: '/_storyboard/canvas/images/snapshot-proto-abc123.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
@@ -74,12 +74,11 @@ describe('Snapshot display', () => {
 
       const img = wrapper.querySelector('img')
       expect(img).toBeInTheDocument()
-      expect(img.src).toContain('snapshot-proto-abc123--light.webp')
-      expect(img.alt).toContain('snapshot')
+      expect(img.src).toContain('snapshot-proto-abc123.webp')
       expect(wrapper.querySelector('iframe')).not.toBeInTheDocument()
     })
 
-    it('switches snapshot src when canvas theme changes', async () => {
+    it('falls back to snapshotLight for backward compat', () => {
       const { wrapper } = renderInCanvas(
         <PrototypeEmbed
           id="proto-abc123"
@@ -89,22 +88,15 @@ describe('Snapshot display', () => {
             height: 300,
             zoom: 100,
             snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--light.webp?v=1',
-            snapshotDark: '/_storyboard/canvas/images/snapshot-proto-abc123--dark.webp?v=1',
           }}
           onUpdate={vi.fn()}
           resizable={false}
-        />,
-        'light'
+        />
       )
 
-      expect(wrapper.querySelector('img').src).toContain('--light.webp')
-
-      // Simulate CanvasPage changing the ancestor attribute (exactly what happens live)
-      act(() => { wrapper.setAttribute('data-sb-canvas-theme', 'dark') })
-
-      await waitFor(() => {
-        expect(wrapper.querySelector('img').src).toContain('--dark.webp')
-      })
+      const img = wrapper.querySelector('img')
+      expect(img).toBeInTheDocument()
+      expect(img.src).toContain('snapshot-proto-abc123--light.webp')
     })
 
     it('shows placeholder when no snapshot exists', () => {
@@ -130,7 +122,7 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--light.webp?v=123',
+            snapshot: '/_storyboard/canvas/images/snapshot-proto-abc123.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
@@ -152,7 +144,7 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-other-widget--light.webp?v=123',
+            snapshot: '/_storyboard/canvas/images/snapshot-other-widget.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
@@ -171,7 +163,7 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-ext--light.webp?v=123',
+            snapshot: '/_storyboard/canvas/images/snapshot-proto-ext.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
@@ -179,27 +171,6 @@ describe('Snapshot display', () => {
       )
 
       expect(wrapper.querySelector('img')).not.toBeInTheDocument()
-    })
-
-    it('falls back to light snapshot when dark snapshot is missing', () => {
-      const { wrapper } = renderInCanvas(
-        <PrototypeEmbed
-          id="proto-abc123"
-          props={{
-            src: '/test',
-            width: 400,
-            height: 300,
-            zoom: 100,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--light.webp?v=1',
-          }}
-          onUpdate={vi.fn()}
-          resizable={false}
-        />
-      )
-
-      const imgs = wrapper.querySelectorAll('img')
-      expect(imgs).toHaveLength(1)
-      expect(imgs[0].src).toContain('--light.webp')
     })
   })
 
@@ -213,7 +184,7 @@ describe('Snapshot display', () => {
             exportName: 'Primary',
             width: 400,
             height: 300,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-story-abc123--light.webp?v=456',
+            snapshot: '/_storyboard/canvas/images/snapshot-story-abc123.webp?v=456',
           }}
           onUpdate={vi.fn()}
           resizable={false}
@@ -222,32 +193,26 @@ describe('Snapshot display', () => {
 
       const img = wrapper.querySelector('img')
       expect(img).toBeInTheDocument()
-      expect(img.src).toContain('snapshot-story-abc123--light.webp')
+      expect(img.src).toContain('snapshot-story-abc123.webp')
       expect(wrapper.querySelector('iframe')).not.toBeInTheDocument()
     })
 
-    it('switches snapshot src when canvas theme changes', async () => {
+    it('falls back to snapshotDark for backward compat', () => {
       const { wrapper } = renderInCanvas(
         <StoryWidget
           id="story-abc123"
           props={{
             storyId: 'button-patterns',
-            snapshotLight: '/_storyboard/canvas/images/snapshot-story-abc123--light.webp?v=1',
             snapshotDark: '/_storyboard/canvas/images/snapshot-story-abc123--dark.webp?v=1',
           }}
           onUpdate={vi.fn()}
           resizable={false}
-        />,
-        'light'
+        />
       )
 
-      expect(wrapper.querySelector('img').src).toContain('--light.webp')
-
-      act(() => { wrapper.setAttribute('data-sb-canvas-theme', 'dark') })
-
-      await waitFor(() => {
-        expect(wrapper.querySelector('img').src).toContain('--dark.webp')
-      })
+      const img = wrapper.querySelector('img')
+      expect(img).toBeInTheDocument()
+      expect(img.src).toContain('snapshot-story-abc123--dark.webp')
     })
 
     it('shows placeholder when no snapshot exists', () => {
@@ -278,7 +243,7 @@ describe('Snapshot display', () => {
             exportName: 'Primary',
             width: 400,
             height: 300,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-story-abc123--light.webp?v=456',
+            snapshot: '/_storyboard/canvas/images/snapshot-story-abc123.webp?v=456',
           }}
           onUpdate={vi.fn()}
           resizable={false}

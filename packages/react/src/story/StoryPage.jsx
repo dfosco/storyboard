@@ -74,6 +74,7 @@ export default function StoryPage({ name }) {
   }
 
   if (!exports) {
+    if (isEmbed) return null
     return (
       <div className={styles.loading}>Loading story…</div>
     )

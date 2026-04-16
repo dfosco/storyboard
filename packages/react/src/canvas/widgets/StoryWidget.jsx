@@ -20,6 +20,16 @@ import { useIframeDevLogs } from './iframeDevLogs.js'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
+function RefreshCwIcon({ size = 36 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+    </svg>
+  )
+}
+
 function ComponentIcon({ size = 36 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
@@ -89,6 +99,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
   const iframeRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
   const [showIframe, setShowIframe] = useState(false)
+  const [iframeLoaded, setIframeLoaded] = useState(false)
   const [showCode, setShowCode] = useState(!!props?.showCode)
   const [sourceCode, setSourceCode] = useState(null)
   const [highlightedHtml, setHighlightedHtml] = useState(null)
@@ -117,6 +128,10 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
     setShowIframe(true)
     setInteractive(true)
   }, [])
+
+  useEffect(() => {
+    if (!showIframe) setIframeLoaded(false)
+  }, [showIframe])
 
   useEffect(() => {
     if (!interactive) return
@@ -305,23 +320,30 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
           </div>
         ) : (
           <>
-            {showIframe ? (
-              <div className={styles.content}>
+            <div className={styles.content}>
+              {showIframe && (
                 <iframe
                   ref={iframeRef}
                   src={iframeSrc}
                   className={styles.iframe}
+                  style={iframeLoaded ? undefined : { opacity: 0 }}
+                  onLoad={() => setIframeLoaded(true)}
                   title={displayName}
                 />
-              </div>
-            ) : (
-              <div className={styles.content}>
-                <div className={styles.placeholder}>
-                  <ComponentIcon size={36} />
-                  <span className={styles.placeholderLabel}>{displayName}</span>
+              )}
+              {(!showIframe || !iframeLoaded) && (
+                <div className={styles.placeholder} style={showIframe ? { position: 'absolute', inset: 0 } : undefined}>
+                  {showIframe ? (
+                    <span className={styles.spinner}><RefreshCwIcon size={36} /></span>
+                  ) : (
+                    <>
+                      <ComponentIcon size={36} />
+                      <span className={styles.placeholderLabel}>{displayName}</span>
+                    </>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {!interactive && (
               <div

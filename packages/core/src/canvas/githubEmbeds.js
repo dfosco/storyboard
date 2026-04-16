@@ -189,6 +189,7 @@ function buildDiscussionSnapshot(target, discussion) {
     context: toContext(target),
     title: discussion?.title ? `#${number} ${discussion.title}` : `Discussion #${number}`,
     body: normalizeBody(discussion?.body),
+    bodyHtml: discussion?.bodyHTML || '',
     authors: uniqueStrings([discussion?.author?.login, discussion?.user?.login]),
     createdAt: discussion?.createdAt ?? discussion?.created_at ?? null,
     updatedAt: discussion?.updatedAt ?? discussion?.updated_at ?? null,
@@ -222,6 +223,7 @@ function buildDiscussionCommentSnapshot(target, comment, discussion) {
     context: toContext(target),
     title: `Comment on ${parentLabel}`,
     body: normalizeBody(comment?.body),
+    bodyHtml: comment?.bodyHTML || '',
     authors: uniqueStrings([comment?.author?.login, comment?.user?.login, discussion?.author?.login, discussion?.user?.login]),
     createdAt: comment?.createdAt ?? comment?.created_at ?? null,
     updatedAt: comment?.updatedAt ?? comment?.updated_at ?? null,
@@ -269,6 +271,7 @@ query($owner: String!, $repo: String!, $number: Int!) {
       number
       title
       body
+      bodyHTML
       createdAt
       updatedAt
       author { login }
@@ -297,6 +300,7 @@ query($owner: String!, $repo: String!, $number: Int!, $after: String) {
       number
       title
       body
+      bodyHTML
       createdAt
       updatedAt
       author { login }
@@ -308,6 +312,7 @@ query($owner: String!, $repo: String!, $number: Int!, $after: String) {
         nodes {
           databaseId
           body
+          bodyHTML
           createdAt
           updatedAt
           author { login }

@@ -102,13 +102,25 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const [storyIndexKey, setStoryIndexKey] = useState(0)
   const [snapshotBroken, setSnapshotBroken] = useState(false)
 
-  // Resolve canvas theme for snapshot theming
-  const canvasTheme = useMemo(() => {
+  // Resolve canvas theme — reactive to theme changes
+  const [canvasTheme, setCanvasTheme] = useState(() => {
     if (typeof localStorage === 'undefined') return 'light'
     const stored = localStorage.getItem('sb-color-scheme') || 'system'
     if (stored !== 'system') return stored
     if (typeof window.matchMedia !== 'function') return 'light'
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  })
+
+  useEffect(() => {
+    function readTheme() {
+      if (typeof localStorage === 'undefined') return
+      const stored = localStorage.getItem('sb-color-scheme') || 'system'
+      if (stored !== 'system') { setCanvasTheme(stored); return }
+      if (typeof window.matchMedia !== 'function') { setCanvasTheme('light'); return }
+      setCanvasTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    }
+    document.addEventListener('storyboard:theme:changed', readTheme)
+    return () => document.removeEventListener('storyboard:theme:changed', readTheme)
   }, [])
 
   // Snapshot capture hook
@@ -116,13 +128,17 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     iframeRef,
     widgetId,
     onUpdate,
+    canvasTheme,
   })
 
-  // Determine if a valid snapshot exists (both theme keys have the same URL)
+  // Determine if a valid snapshot exists for the current theme
   const validSnapshot = useMemo(() => {
-    const url = snapshotLight || snapshotDark
-    return url && widgetId && url.includes(widgetId) ? url : null
-  }, [snapshotLight, snapshotDark, widgetId])
+    const url = canvasTheme?.startsWith('dark') ? snapshotDark : snapshotLight
+    const fallback = canvasTheme?.startsWith('dark') ? snapshotLight : snapshotDark
+    const chosen = (url && widgetId && url.includes(widgetId)) ? url
+      : (fallback && widgetId && fallback.includes(widgetId)) ? fallback : null
+    return chosen
+  }, [canvasTheme, snapshotLight, snapshotDark, widgetId])
 
   // Reset broken state when snapshot URL changes
   useEffect(() => { setSnapshotBroken(false) }, [validSnapshot])

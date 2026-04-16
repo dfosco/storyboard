@@ -124,14 +124,19 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     iframeRef,
     widgetId,
     onUpdate: isExternal ? null : onUpdate,
+    canvasTheme,
   })
 
-  // Determine if a valid snapshot exists (both theme keys have the same URL)
+  // Determine if a valid snapshot exists for the current theme
   const validSnapshot = useMemo(() => {
     if (isExternal) return null
-    const url = snapshotLight || snapshotDark
-    return url && widgetId && url.includes(widgetId) ? url : null
-  }, [snapshotLight, snapshotDark, widgetId, isExternal])
+    const url = canvasTheme?.startsWith('dark') ? snapshotDark : snapshotLight
+    // Fall back to whichever exists if current theme's snapshot is missing
+    const fallback = canvasTheme?.startsWith('dark') ? snapshotLight : snapshotDark
+    const chosen = (url && widgetId && url.includes(widgetId)) ? url
+      : (fallback && widgetId && fallback.includes(widgetId)) ? fallback : null
+    return chosen
+  }, [canvasTheme, snapshotLight, snapshotDark, widgetId, isExternal])
 
   // Reset broken state when snapshot URL changes
   useEffect(() => { setSnapshotBroken(false) }, [validSnapshot])

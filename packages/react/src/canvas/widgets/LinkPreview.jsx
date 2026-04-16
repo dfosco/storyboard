@@ -1,107 +1,160 @@
-import { useState } from 'react'
+import { useMemo } from 'react'
+import { remark } from 'remark'
+import remarkGfm from 'remark-gfm'
+import remarkHtml from 'remark-html'
 import WidgetWrapper from './WidgetWrapper.jsx'
+import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, linkPreviewSchema } from './widgetProps.js'
 import styles from './LinkPreview.module.css'
 
-function formatDateLabel(rawValue) {
-  if (!rawValue) return ''
-  const parsed = new Date(rawValue)
-  if (Number.isNaN(parsed.getTime())) return ''
-  return parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+function renderMarkdown(text) {
+  if (!text) return ''
+  const result = remark()
+    .use(remarkGfm)
+    .use(remarkHtml, { sanitize: false })
+    .processSync(text)
+  return String(result)
 }
 
-export default function LinkPreview({ id, props, onRefreshGitHub, canRefreshGitHub }) {
-  const [refreshing, setRefreshing] = useState(false)
-  const [refreshError, setRefreshError] = useState('')
+function timeAgo(dateStr) {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return ''
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`
+  const years = Math.floor(months / 12)
+  return `${years} year${years === 1 ? '' : 's'} ago`
+}
 
+/**
+ * Split a title like "#42 Ship GitHub embeds" into { number: "#42", rest: "Ship GitHub embeds" }.
+ */
+function splitIssueTitle(title) {
+  if (!title) return { number: '', rest: '' }
+  const match = title.match(/^(#\d+)\s+(.*)$/)
+  if (match) return { number: match[1], rest: match[2] }
+  return { number: '', rest: title }
+}
+
+function GitHubIssueCard({ url, title, github, width, height, onUpdate, resizable }) {
+  const authors = Array.isArray(github?.authors)
+    ? github.authors.filter((a) => typeof a === 'string' && a.trim())
+    : []
+  const primaryAuthor = authors[0] || ''
+  const createdAgo = timeAgo(github?.createdAt)
+  const { number: issueNumber, rest: titleText } = splitIssueTitle(title)
+
+  const bodyHtml = useMemo(() => renderMarkdown(github?.body || ''), [github?.body])
+
+  const sizeStyle = {
+    ...(width ? { width: `${width}px` } : {}),
+    ...(height ? { minHeight: `${height}px` } : {}),
+  }
+
+  const handleResize = (w, h) => onUpdate?.({ width: w, height: h })
+
+  return (
+    <WidgetWrapper>
+      <div className={styles.issueCard} style={sizeStyle}>
+        <header className={styles.issueHeader}>
+          <h2 className={styles.issueTitle}>
+            {titleText || url}
+            {issueNumber && <span className={styles.issueNumber}> {issueNumber}</span>}
+          </h2>
+          <p className={styles.issueContext}>{github?.context || ''}</p>
+        </header>
+
+        <div className={styles.issueByline}>
+          <div className={styles.issueBylineLeft}>
+            {primaryAuthor && (
+              <img
+                className={styles.avatar}
+                src={`https://github.com/${primaryAuthor}.png?size=40`}
+                alt=""
+                width="20"
+                height="20"
+                loading="lazy"
+              />
+            )}
+            <span className={styles.bylineText}>
+              {primaryAuthor && <strong>{primaryAuthor}</strong>}
+              {primaryAuthor && createdAgo ? ` opened ${createdAgo}` : createdAgo ? `Opened ${createdAgo}` : ''}
+            </span>
+          </div>
+        </div>
+
+        {bodyHtml && (
+          <div
+            className={styles.issueBody}
+            dangerouslySetInnerHTML={{ __html: bodyHtml }}
+          />
+        )}
+      </div>
+      {resizable && <ResizeHandle width={width} height={height} onResize={handleResize} />}
+    </WidgetWrapper>
+  )
+}
+
+export default function LinkPreview({ id, props, onUpdate, resizable }) {
   const url = readProp(props, 'url', linkPreviewSchema)
   const title = readProp(props, 'title', linkPreviewSchema)
   const github = props?.github && typeof props.github === 'object' ? props.github : null
-  const authors = Array.isArray(github?.authors)
-    ? github.authors.filter((author) => typeof author === 'string' && author.trim())
-    : []
-
-  const createdLabel = formatDateLabel(github?.createdAt)
-  const updatedLabel = formatDateLabel(github?.updatedAt)
-  const hasRefresh = Boolean(github && canRefreshGitHub && onRefreshGitHub)
 
   const width = typeof props?.width === 'number' ? props.width : null
   const height = typeof props?.height === 'number' ? props.height : null
+
+  if (github) {
+    return (
+      <GitHubIssueCard
+        url={url}
+        title={title}
+        github={github}
+        width={width}
+        height={height}
+        onUpdate={onUpdate}
+        resizable={resizable}
+      />
+    )
+  }
+
   const sizeStyle = (width || height)
     ? { ...(width ? { width: `${width}px` } : {}), ...(height ? { minHeight: `${height}px` } : {}) }
     : undefined
 
   let hostname = ''
-  try {
-    hostname = new URL(url).hostname
-  } catch {
-    // invalid URL
-  }
+  try { hostname = new URL(url).hostname } catch { /* */ }
 
-  async function handleRefresh(event) {
-    event.preventDefault()
-    event.stopPropagation()
-    if (!hasRefresh || refreshing || !url) return
-    setRefreshing(true)
-    setRefreshError('')
-
-    try {
-      const result = await onRefreshGitHub(id, url)
-      if (result?.error) setRefreshError(result.error)
-    } catch {
-      setRefreshError('Unable to refresh GitHub metadata right now.')
-    } finally {
-      setRefreshing(false)
-    }
-  }
+  const handleResize = (w, h) => onUpdate?.({ width: w, height: h })
 
   return (
     <WidgetWrapper>
-      <div className={`${styles.card} ${github ? styles.cardGithub : ''}`} style={sizeStyle}>
+      <div className={styles.card} style={sizeStyle}>
         <div className={styles.header}>
-          <span className={styles.icon}>{github ? '🐙' : '🔗'}</span>
+          <span className={styles.icon}>🔗</span>
           <div className={styles.text}>
             {title && <p className={styles.title}>{title}</p>}
-            {github?.context && <p className={styles.context}>{github.context}</p>}
           </div>
-          {hasRefresh && (
-            <button
-              type="button"
-              className={styles.refreshButton}
-              onClick={handleRefresh}
-              onMouseDown={(event) => event.stopPropagation()}
-              onPointerDown={(event) => event.stopPropagation()}
-              disabled={refreshing}
-              aria-label="Refresh GitHub metadata"
-            >
-              {refreshing ? 'Refreshing…' : 'Refresh'}
-            </button>
-          )}
         </div>
-
-        {github?.body && <p className={styles.body}>{github.body}</p>}
-
-        {github && (
-          <p className={styles.meta}>
-            {authors.length > 0 ? `By ${authors.join(', ')}` : 'GitHub'}
-            {createdLabel ? ` · Created ${createdLabel}` : ''}
-            {updatedLabel ? ` · Updated ${updatedLabel}` : ''}
-          </p>
-        )}
-
-        {refreshError && <p className={styles.error}>{refreshError}</p>}
-
         <a
           href={url || '#'}
           target="_blank"
           rel="noopener noreferrer"
           className={styles.url}
-          onMouseDown={(event) => event.stopPropagation()}
-          onPointerDown={(event) => event.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
         >
           {hostname || url}
         </a>
       </div>
+      {resizable && <ResizeHandle width={width} height={height} onResize={handleResize} />}
     </WidgetWrapper>
   )
 }

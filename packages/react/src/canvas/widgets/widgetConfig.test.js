@@ -12,8 +12,8 @@ describe('isResizable', () => {
     expect(isResizable('component')).toBe(true)
   })
 
-  it('returns false for widget types with resize disabled', () => {
-    expect(isResizable('link-preview')).toBe(false)
+  it('returns true for link-preview (resize enabled)', () => {
+    expect(isResizable('link-preview')).toBe(true)
   })
 
   it('returns true for markdown (resize enabled, dev only)', () => {

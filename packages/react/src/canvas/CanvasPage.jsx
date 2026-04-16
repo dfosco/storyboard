@@ -308,10 +308,18 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
     } else if (actionId === 'copy') {
       onCopy?.(widget)
     } else if (actionId === 'copy-text') {
-      const text = widget.props?.text || widget.props?.content || ''
+      const title = widget.props?.title || ''
+      const body = widget.props?.text || widget.props?.content || widget.props?.github?.body || ''
+      const text = title && body ? `# ${title}\n\n${body}` : title || body
       navigator.clipboard?.writeText(text).catch(() => {})
+    } else if (actionId === 'open-external') {
+      const url = widget.props?.url || widget.props?.src
+      if (url) window.open(url, '_blank', 'noopener,noreferrer')
+    } else if (actionId === 'refresh-github') {
+      const url = widget.props?.url
+      if (url && onRefreshGitHub) onRefreshGitHub(widget.id, url)
     }
-  }, [widget, onRemove, onCopy])
+  }, [widget, onRemove, onCopy, onRefreshGitHub])
 
   const handleWidgetFieldUpdate = useCallback((updates) => {
     onUpdate?.(widget.id, updates)
@@ -619,8 +627,8 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       const snapshot = result.snapshot
       return {
         title: snapshot.title || '',
-        width: 420,
-        height: 220,
+        width: 580,
+        height: 400,
         github: {
           kind: snapshot.kind || 'issue',
           parentKind: snapshot.parentKind || snapshot.kind || 'issue',

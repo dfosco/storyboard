@@ -219,8 +219,8 @@ describe('CanvasPage canvas bridge', () => {
         type: 'link-preview',
         props: expect.objectContaining({
           title: '#42 Ship GitHub embeds',
-          width: 420,
-          height: 220,
+          width: 580,
+          height: 400,
           github: expect.objectContaining({
             context: 'GitHub · dfosco/storyboard · Issue #42',
             body: 'Details from GitHub',

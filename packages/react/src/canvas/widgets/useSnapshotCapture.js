@@ -2,11 +2,12 @@
  * useSnapshotCapture — parent-side capture orchestration hook.
  *
  * Listens for snapshot-ready signals from an embedded iframe and
- * provides a requestCapture() function that triggers a capture,
- * uploads the resulting image, and persists the URL via onUpdate.
+ * provides a requestCapture() function that triggers a capture.
  *
- * Captures BOTH light and dark theme snapshots on every capture
- * so the correct thumbnail is always available when the theme changes.
+ * Performs TRUE dual-theme capture: captures current theme, then
+ * tells the iframe to switch theme (hidden via visibility:hidden),
+ * captures the alternate theme, and switches back. The user never
+ * sees the theme flash because the iframe is hidden during the switch.
  *
  * Only active in dev mode (when onUpdate is provided).
  */
@@ -14,6 +15,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { uploadImage } from '../canvasApi.js'
 
 const CAPTURE_TIMEOUT = 5000
+const THEME_SWITCH_TIMEOUT = 2000
 
 /**
  * Run a single capture request against the iframe.
@@ -51,16 +53,48 @@ function captureOnce(iframeContentWindow, requestId, listeners) {
   })
 }
 
+/**
+ * Tell the iframe to switch its Primer theme and wait for confirmation.
+ */
+function switchTheme(iframeContentWindow, theme, requestId, listeners) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      cleanup()
+      resolve(false)
+    }, THEME_SWITCH_TIMEOUT)
+
+    function cleanup() {
+      clearTimeout(timer)
+      const idx = listeners.indexOf(handler)
+      if (idx !== -1) listeners.splice(idx, 1)
+    }
+
+    function handler(data) {
+      if (data.requestId !== requestId) return
+      cleanup()
+      resolve(true)
+    }
+
+    listeners.push(handler)
+    iframeContentWindow.postMessage({
+      type: 'storyboard:embed:set-theme',
+      theme,
+      requestId,
+    }, '*')
+  })
+}
+
 export function useSnapshotCapture({
   iframeRef,
   widgetId,
   onUpdate,
+  canvasTheme,
 }) {
   const [iframeReady, setIframeReady] = useState(false)
   const iframeReadyRef = useRef(false)
   const capturingRef = useRef(false)
   const requestIdCounter = useRef(0)
-  // Array of pending response handlers — allows multiple in-flight
+  // Handlers for both snapshot and theme-applied responses
   const responseHandlers = useRef([])
 
   // Reset ready state when iframe is unmounted/remounted
@@ -82,8 +116,8 @@ export function useSnapshotCapture({
         iframeReadyRef.current = true
       }
 
-      if (e.data?.type === 'storyboard:embed:snapshot') {
-        // Dispatch to all pending capture handlers
+      if (e.data?.type === 'storyboard:embed:snapshot' ||
+          e.data?.type === 'storyboard:embed:theme-applied') {
         for (const fn of responseHandlers.current) {
           fn(e.data)
         }
@@ -95,10 +129,9 @@ export function useSnapshotCapture({
   }, [iframeRef, onUpdate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
-   * Trigger a snapshot capture. Captures the current iframe state once
-   * and stores the URL under BOTH snapshotLight and snapshotDark keys
-   * so a thumbnail is always available regardless of canvas theme.
-   * Returns the updates object with the snapshot URLs.
+   * Dual-theme capture. Captures current theme, then hides iframe,
+   * switches to alternate theme, captures again, switches back.
+   * Returns { snapshotLight, snapshotDark } URLs.
    */
   const requestCapture = useCallback(async () => {
     if (!onUpdate) return {}
@@ -108,36 +141,70 @@ export function useSnapshotCapture({
 
     capturingRef.current = true
     const cw = iframeRef.current.contentWindow
+    const iframe = iframeRef.current
     const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
     const updates = {}
+    const currentTheme = canvasTheme || 'light'
+    const isCurrentDark = currentTheme.startsWith('dark')
+    const alternateTheme = isCurrentDark ? 'light' : 'dark'
 
     try {
-      const requestId = ++requestIdCounter.current
-      const dataUrl = await captureOnce(cw, requestId, responseHandlers.current)
+      // 1. Capture current theme (iframe is visible, user sees current state)
+      const currentKey = isCurrentDark ? 'snapshotDark' : 'snapshotLight'
+      const currentReqId = ++requestIdCounter.current
+      const currentDataUrl = await captureOnce(cw, currentReqId, responseHandlers.current)
 
-      if (dataUrl) {
-        const filename = `snapshot-${widgetId}--latest.webp`
-        const result = await uploadImage(dataUrl, `snapshot-${widgetId}`, filename)
+      if (currentDataUrl) {
+        const filename = `snapshot-${widgetId}--${isCurrentDark ? 'dark' : 'light'}.webp`
+        const result = await uploadImage(currentDataUrl, `snapshot-${widgetId}`, filename)
         if (result?.filename) {
           const cacheBust = `?v=${Date.now()}`
-          const url = `${base}/_storyboard/canvas/images/${result.filename}${cacheBust}`
-          // Store under both keys so thumbnail is always available
-          updates.snapshotLight = url
-          updates.snapshotDark = url
+          updates[currentKey] = `${base}/_storyboard/canvas/images/${result.filename}${cacheBust}`
         }
       }
+
+      // 2. Hide iframe, switch theme, capture alternate
+      const savedVisibility = iframe.style.visibility
+      iframe.style.visibility = 'hidden'
+
+      const switchReqId = ++requestIdCounter.current
+      const switched = await switchTheme(cw, alternateTheme, switchReqId, responseHandlers.current)
+
+      if (switched) {
+        const altKey = isCurrentDark ? 'snapshotLight' : 'snapshotDark'
+        const altReqId = ++requestIdCounter.current
+        const altDataUrl = await captureOnce(cw, altReqId, responseHandlers.current)
+
+        if (altDataUrl) {
+          const filename = `snapshot-${widgetId}--${isCurrentDark ? 'light' : 'dark'}.webp`
+          const result = await uploadImage(altDataUrl, `snapshot-${widgetId}`, filename)
+          if (result?.filename) {
+            const cacheBust = `?v=${Date.now()}`
+            updates[altKey] = `${base}/_storyboard/canvas/images/${result.filename}${cacheBust}`
+          }
+        }
+
+        // 3. Switch back to original theme
+        const switchBackReqId = ++requestIdCounter.current
+        await switchTheme(cw, currentTheme, switchBackReqId, responseHandlers.current)
+      }
+
+      // 4. Restore iframe visibility
+      iframe.style.visibility = savedVisibility || ''
 
       if (Object.keys(updates).length > 0) {
         onUpdate?.(updates)
       }
       return updates
     } catch (err) {
+      // Always restore visibility on error
+      if (iframe) iframe.style.visibility = ''
       console.warn('[snapshot] Capture failed:', err)
       return {}
     } finally {
       capturingRef.current = false
     }
-  }, [onUpdate, iframeRef, widgetId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [onUpdate, iframeRef, widgetId, canvasTheme]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return { iframeReady, requestCapture }
 }

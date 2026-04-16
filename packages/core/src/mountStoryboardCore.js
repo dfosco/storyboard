@@ -263,6 +263,31 @@ export async function mountStoryboardCore(config = {}, options = {}) {
       // Listen for capture requests from the parent canvas
       window.addEventListener('message', async (e) => {
         if (e.source !== window.parent) return
+
+        // Theme switch for dual-theme snapshot capture.
+        // Sets Primer data attributes on <html>, waits for repaint, responds.
+        if (e.data?.type === 'storyboard:embed:set-theme') {
+          const { theme, requestId: themeReqId } = e.data
+          const html = document.documentElement
+          if (theme?.startsWith('dark')) {
+            html.setAttribute('data-color-mode', 'dark')
+            html.setAttribute('data-dark-theme', theme === 'dark_dimmed' ? 'dark_dimmed' : 'dark')
+            html.setAttribute('data-light-theme', 'light')
+          } else {
+            html.setAttribute('data-color-mode', 'light')
+            html.setAttribute('data-dark-theme', 'dark')
+            html.setAttribute('data-light-theme', theme || 'light')
+          }
+          // Wait for repaint so CSS variables propagate
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            window.parent.postMessage(
+              { type: 'storyboard:embed:theme-applied', requestId: themeReqId },
+              '*'
+            )
+          }))
+          return
+        }
+
         if (e.data?.type !== 'storyboard:embed:capture') return
 
         const { requestId, width, height } = e.data

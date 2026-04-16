@@ -65,8 +65,18 @@ describe('parseGitHubEmbedUrl', () => {
     })
   })
 
+  it('parses pull request links', () => {
+    expect(parseGitHubEmbedUrl('https://github.com/dfosco/storyboard/pull/789')).toEqual({
+      kind: 'pull_request',
+      parentKind: 'pull_request',
+      owner: 'dfosco',
+      repo: 'storyboard',
+      number: 789,
+      url: 'https://github.com/dfosco/storyboard/pull/789',
+    })
+  })
+
   it('rejects unsupported URLs and hashes', () => {
-    expect(parseGitHubEmbedUrl('https://github.com/dfosco/storyboard/pull/1')).toBeNull()
     expect(parseGitHubEmbedUrl('https://github.com/dfosco/storyboard/issues/123#foo')).toBeNull()
     expect(parseGitHubEmbedUrl('https://example.com/dfosco/storyboard/issues/123')).toBeNull()
     expect(parseGitHubEmbedUrl('not a url')).toBeNull()

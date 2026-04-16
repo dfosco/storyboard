@@ -1,6 +1,7 @@
 const GH_HOST_RE = /^(www\.)?github\.com$/i
 const ISSUE_PATH_RE = /^\/([^/]+)\/([^/]+)\/issues\/(\d+)\/?$/
 const DISCUSSION_PATH_RE = /^\/([^/]+)\/([^/]+)\/discussions\/(\d+)\/?$/
+const PULL_REQUEST_PATH_RE = /^\/([^/]+)\/([^/]+)\/pull\/(\d+)\/?$/
 const ISSUE_COMMENT_HASH_RE = /^#issuecomment-(\d+)$/i
 const DISCUSSION_COMMENT_HASH_RE = /^#discussioncomment-(\d+)$/i
 
@@ -58,6 +59,16 @@ export function parseGitHubUrl(rawUrl) {
 
       if (parsed.hash) return null
       return { kind: 'discussion', parentKind: 'discussion', owner, repo, number }
+    }
+
+    const prMatch = parsed.pathname.match(PULL_REQUEST_PATH_RE)
+    if (prMatch) {
+      const [, owner, repo, numberRaw] = prMatch
+      const number = toNumber(numberRaw)
+      if (!number) return null
+
+      if (parsed.hash) return null
+      return { kind: 'pull_request', parentKind: 'pull_request', owner, repo, number }
     }
   } catch {
     return null

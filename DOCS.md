@@ -63,8 +63,8 @@ Storyboard is built with [Vite](https://vite.dev) and uses [GitHub Primer](https
 ### Install and run
 
 ```bash
-npm install
-npm run dev     # starts at http://localhost:1234
+npx storyboard setup   # first-time: install deps, Caddy proxy, start proxy
+npx storyboard dev     # start dev server → http://storyboard.localhost/storyboard/
 ```
 
 ### What you'll see
@@ -79,7 +79,7 @@ In the bottom-right corner, you'll see the **toolbar** — a floating bar with t
 npm run build    # outputs to dist/
 ```
 
-The output is a static site you can deploy anywhere.
+> **Note:** `npm run dev` and `npm run build` still work as before. The `storyboard` CLI adds proxy management, worktree support, and creation tools on top.
 
 ### What's already wired for you
 
@@ -164,12 +164,12 @@ Create a `default.flow.json` file in the same folder:
 
 ### 5. See it in action
 
-Visit `http://localhost:1234/MyProfile` — you should see the profile page with Jane's data.
+Visit `http://storyboard.localhost/storyboard/MyProfile` — you should see the profile page with Jane's data.
 
 Now try changing the name via the URL hash:
 
 ```
-http://localhost:1234/MyProfile#user.name=Alice
+http://storyboard.localhost/storyboard/MyProfile#user.name=Alice
 ```
 
 The page updates instantly. That's the core of Storyboard: **data in JSON, state in the URL**.
@@ -299,7 +299,7 @@ Create additional flow files to prototype different scenarios:
 Switch between flows by changing the URL parameter:
 
 ```
-http://localhost:1234/Dashboard?flow=empty-state
+http://storyboard.localhost/storyboard/Dashboard?flow=empty-state
 ```
 
 No code changes needed. The toolbar also shows a **flow switcher** when multiple flows exist.

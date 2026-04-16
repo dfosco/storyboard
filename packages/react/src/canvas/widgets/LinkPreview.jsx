@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { remark } from 'remark'
 import remarkGfm from 'remark-gfm'
 import remarkHtml from 'remark-html'
+import { MarkGithubIcon } from '@primer/octicons-react'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, linkPreviewSchema } from './widgetProps.js'
@@ -90,6 +91,21 @@ function splitIssueTitle(title) {
   return { number: '', rest: title }
 }
 
+const KIND_LABELS = {
+  issue: 'Issue',
+  pull_request: 'Pull Request',
+  discussion: 'Discussion',
+  comment: 'Comment',
+}
+
+function getCommentKindLabel(github) {
+  if (github?.kind !== 'comment') return KIND_LABELS[github?.kind] || 'GitHub'
+  if (github?.parentKind === 'issue') return 'Issue Comment'
+  if (github?.parentKind === 'pull_request') return 'PR Comment'
+  if (github?.parentKind === 'discussion') return 'Discussion Comment'
+  return 'Comment'
+}
+
 function GitHubIssueCard({ url, title, github, width, collapsed, onUpdate }) {
   const authors = Array.isArray(github?.authors)
     ? github.authors.filter((a) => typeof a === 'string' && a.trim())
@@ -97,6 +113,8 @@ function GitHubIssueCard({ url, title, github, width, collapsed, onUpdate }) {
   const primaryAuthor = authors[0] || ''
   const createdAgo = timeAgo(github?.createdAt)
   const { number: issueNumber, rest: titleText } = splitIssueTitle(title)
+
+  const kindLabel = getCommentKindLabel(github)
 
   // Prefer pre-rendered bodyHtml (has signed image URLs), fall back to remark for discussions
   const bodyHtml = useMemo(() => {
@@ -130,6 +148,10 @@ function GitHubIssueCard({ url, title, github, width, collapsed, onUpdate }) {
   return (
     <WidgetWrapper>
       <div className={`${styles.issueCard} ${collapsed ? styles.issueCardCollapsed : ''}`} style={sizeStyle}>
+        <div className={styles.typeBar}>
+          <MarkGithubIcon size={16} />
+          <span>{kindLabel}</span>
+        </div>
         <header className={styles.issueHeader}>
           <h2 className={styles.issueTitle}>
             {titleText || url}

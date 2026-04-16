@@ -1,12 +1,12 @@
 /**
- * Tests for useSnapshotCapture hook — parent-side capture orchestration.
+ * Tests for useSnapshotCapture hook — single-capture orchestration.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useSnapshotCapture } from './useSnapshotCapture.js'
 
 vi.mock('../canvasApi.js', () => ({
-  uploadImage: vi.fn().mockResolvedValue({ filename: 'snapshot-test-widget--light.webp' }),
+  uploadImage: vi.fn().mockResolvedValue({ filename: 'snapshot-test-widget.webp' }),
 }))
 
 import { uploadImage } from '../canvasApi.js'
@@ -35,15 +35,6 @@ describe('useSnapshotCapture', () => {
       if (type === 'message') listeners = listeners.filter(l => l !== fn)
       origRemove.call(window, type, fn, opts)
     })
-    // Mock Image so preload resolves immediately in tests
-    vi.stubGlobal('Image', class MockImage {
-      constructor() { this._onload = null }
-      set onload(fn) { this._onload = fn }
-      get onload() { return this._onload }
-      set onerror(fn) { this._onerror = fn }
-      set src(v) { this._src = v; Promise.resolve().then(() => this._onload?.()) }
-      get src() { return this._src }
-    })
   })
 
   afterEach(() => { vi.restoreAllMocks() })
@@ -56,7 +47,7 @@ describe('useSnapshotCapture', () => {
   it('returns iframeReady=false initially', () => {
     const iframeRef = createMockIframeRef()
     const { result } = renderHook(() =>
-      useSnapshotCapture({ iframeRef, widgetId: 'w1', onUpdate: vi.fn(), canvasTheme: 'light' })
+      useSnapshotCapture({ iframeRef, widgetId: 'w1', onUpdate: vi.fn() })
     )
     expect(result.current.iframeReady).toBe(false)
   })
@@ -65,7 +56,7 @@ describe('useSnapshotCapture', () => {
     const cw = createMockContentWindow()
     const iframeRef = createMockIframeRef(cw)
     const { result } = renderHook(() =>
-      useSnapshotCapture({ iframeRef, widgetId: 'w1', onUpdate: vi.fn(), canvasTheme: 'light' })
+      useSnapshotCapture({ iframeRef, widgetId: 'w1', onUpdate: vi.fn() })
     )
     act(() => { dispatchMessage(cw, { type: 'storyboard:embed:snapshot-ready' }) })
     expect(result.current.iframeReady).toBe(true)
@@ -75,7 +66,7 @@ describe('useSnapshotCapture', () => {
     const cw = createMockContentWindow()
     const iframeRef = createMockIframeRef(cw)
     const { result } = renderHook(() =>
-      useSnapshotCapture({ iframeRef, widgetId: 'w1', onUpdate: null, canvasTheme: 'light' })
+      useSnapshotCapture({ iframeRef, widgetId: 'w1', onUpdate: null })
     )
     await act(async () => { await result.current.requestCapture() })
     expect(cw.postMessage).not.toHaveBeenCalled()
@@ -85,141 +76,89 @@ describe('useSnapshotCapture', () => {
     const cw = createMockContentWindow()
     const iframeRef = createMockIframeRef(cw)
     const { result } = renderHook(() =>
-      useSnapshotCapture({ iframeRef, widgetId: 'w1', onUpdate: vi.fn(), canvasTheme: 'light' })
+      useSnapshotCapture({ iframeRef, widgetId: 'w1', onUpdate: vi.fn() })
     )
     await act(async () => { await result.current.requestCapture() })
     expect(cw.postMessage).not.toHaveBeenCalled()
   })
 
-  it('sends capture + set-theme + capture + set-theme for dual-theme', async () => {
+  it('sends single capture and calls onUpdate with snapshot', async () => {
     const cw = createMockContentWindow()
-    // Need a real iframe element for style.visibility
-    const style = { visibility: "" }
-    
-    const iframeRef = { current: { contentWindow: cw, style } }
+    const iframeRef = createMockIframeRef(cw)
     const onUpdate = vi.fn()
     const { result } = renderHook(() =>
-      useSnapshotCapture({ iframeRef, widgetId: 'test-widget', onUpdate, canvasTheme: 'light' })
+      useSnapshotCapture({ iframeRef, widgetId: 'test-widget', onUpdate })
     )
 
     act(() => { dispatchMessage(cw, { type: 'storyboard:embed:snapshot-ready' }) })
 
-    uploadImage
-      .mockResolvedValueOnce({ filename: 'snapshot-test-widget--light.webp' })
-      .mockResolvedValueOnce({ filename: 'snapshot-test-widget--dark.webp' })
+    uploadImage.mockResolvedValueOnce({ filename: 'snapshot-test-widget.webp' })
 
     await act(async () => {
       const promise = result.current.requestCapture()
 
-      // Respond to capture 1 (current=light)
       await new Promise(r => setTimeout(r, 10))
-      dispatchMessage(cw, { type: 'storyboard:embed:snapshot', requestId: 1, dataUrl: 'data:image/webp;base64,LIGHT' })
-
-      // Respond to set-theme (switch to dark)
-      await new Promise(r => setTimeout(r, 10))
-      dispatchMessage(cw, { type: 'storyboard:embed:theme-applied', requestId: 2 })
-
-      // Respond to capture 2 (alternate=dark)
-      await new Promise(r => setTimeout(r, 10))
-      dispatchMessage(cw, { type: 'storyboard:embed:snapshot', requestId: 3, dataUrl: 'data:image/webp;base64,DARK' })
-
-      // Respond to set-theme back (switch to light)
-      await new Promise(r => setTimeout(r, 10))
-      dispatchMessage(cw, { type: 'storyboard:embed:theme-applied', requestId: 4 })
+      dispatchMessage(cw, { type: 'storyboard:embed:snapshot', requestId: 1, dataUrl: 'data:image/webp;base64,IMG' })
 
       await promise
     })
 
-    // 2 captures + 2 theme switches = 4 postMessages
-    expect(cw.postMessage).toHaveBeenCalledTimes(4)
-    expect(uploadImage).toHaveBeenCalledTimes(2)
-    // Intermediate onUpdate for current theme + final with both
+    // Single capture, single postMessage
+    expect(cw.postMessage).toHaveBeenCalledTimes(1)
+    expect(uploadImage).toHaveBeenCalledTimes(1)
     expect(onUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        snapshotLight: expect.stringContaining('snapshot-test-widget--light.webp'),
-      })
-    )
-    expect(onUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        snapshotLight: expect.stringContaining('snapshot-test-widget--light.webp'),
-        snapshotDark: expect.stringContaining('snapshot-test-widget--dark.webp'),
+        snapshot: expect.stringContaining('snapshot-test-widget.webp'),
       })
     )
   })
 
-  it('discards stale capture results via generation token', async () => {
+  it('guards against concurrent captures', async () => {
     const cw = createMockContentWindow()
-    const style = { visibility: "" }
-    const iframeRef = { current: { contentWindow: cw, style } }
+    const iframeRef = createMockIframeRef(cw)
     const onUpdate = vi.fn()
     const { result } = renderHook(() =>
-      useSnapshotCapture({ iframeRef, widgetId: 'gen-widget', onUpdate, canvasTheme: 'light' })
+      useSnapshotCapture({ iframeRef, widgetId: 'w1', onUpdate })
     )
 
     act(() => { dispatchMessage(cw, { type: 'storyboard:embed:snapshot-ready' }) })
+    uploadImage.mockResolvedValue({ filename: 'snapshot-w1.webp' })
 
-    uploadImage.mockResolvedValue({ filename: 'snapshot-gen-widget--light.webp' })
-
-    // Start first capture — will be waiting for response
-    let capture1Done = false
-    let capture2Done = false
     await act(async () => {
-      const promise1 = result.current.requestCapture().then(() => { capture1Done = true })
+      const p1 = result.current.requestCapture()
+      // Second call while first is in-flight should no-op
+      const p2 = result.current.requestCapture()
 
-      // Respond to first capture
       await new Promise(r => setTimeout(r, 10))
-      dispatchMessage(cw, { type: 'storyboard:embed:snapshot', requestId: 1, dataUrl: 'data:image/webp;base64,FIRST' })
+      dispatchMessage(cw, { type: 'storyboard:embed:snapshot', requestId: 1, dataUrl: 'data:image/webp;base64,IMG' })
 
-      // Start second capture before first completes its alternate-theme work
-      // This won't start because capturingRef is still true, so it will return {}
-      const promise2 = result.current.requestCapture().then(() => { capture2Done = true })
-
-      // Complete first capture's theme switch and alternate capture
-      await new Promise(r => setTimeout(r, 10))
-      dispatchMessage(cw, { type: 'storyboard:embed:theme-applied', requestId: 2 })
-      await new Promise(r => setTimeout(r, 10))
-      dispatchMessage(cw, { type: 'storyboard:embed:snapshot', requestId: 3, dataUrl: 'data:image/webp;base64,DARK' })
-      await new Promise(r => setTimeout(r, 10))
-      dispatchMessage(cw, { type: 'storyboard:embed:theme-applied', requestId: 4 })
-
-      await promise1
-      await promise2
+      await p1
+      await p2
     })
 
-    // The second capture should have no-opped (capturingRef guard)
-    expect(capture1Done).toBe(true)
-    expect(capture2Done).toBe(true)
+    expect(cw.postMessage).toHaveBeenCalledTimes(1)
   })
 
-  it('restores iframe visibility on error', async () => {
+  it('handles capture failure gracefully', async () => {
     const cw = createMockContentWindow()
-    const style = { visibility: "visible" }
-    const iframeRef = { current: { contentWindow: cw, style } }
+    const iframeRef = createMockIframeRef(cw)
     const onUpdate = vi.fn()
     const { result } = renderHook(() =>
-      useSnapshotCapture({ iframeRef, widgetId: 'err-widget', onUpdate, canvasTheme: 'light' })
+      useSnapshotCapture({ iframeRef, widgetId: 'w1', onUpdate })
     )
 
     act(() => { dispatchMessage(cw, { type: 'storyboard:embed:snapshot-ready' }) })
-
-    // Make uploadImage throw to trigger error path
     uploadImage.mockRejectedValueOnce(new Error('upload failed'))
 
     await act(async () => {
       const promise = result.current.requestCapture()
 
-      // Respond to capture
       await new Promise(r => setTimeout(r, 10))
       dispatchMessage(cw, { type: 'storyboard:embed:snapshot', requestId: 1, dataUrl: 'data:image/webp;base64,FAIL' })
 
       await promise
     })
 
-    // Visibility should be restored after error
-    expect(style.visibility).toBe('')
-    // onUpdate should not be called with failed data
-    expect(onUpdate).not.toHaveBeenCalledWith(
-      expect.objectContaining({ snapshotLight: expect.any(String) })
-    )
+    expect(onUpdate).not.toHaveBeenCalled()
   })
 })

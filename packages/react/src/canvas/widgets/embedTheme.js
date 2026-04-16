@@ -4,7 +4,7 @@
  */
 export function resolveCanvasTheme() {
   if (typeof localStorage === 'undefined') return 'light'
-  let sync = { prototype: true, toolbar: false, codeBoxes: true, canvas: false }
+  let sync = { prototype: true, toolbar: false, codeBoxes: true, canvas: true }
   try {
     const rawSync = localStorage.getItem('sb-theme-sync')
     if (rawSync) sync = { ...sync, ...JSON.parse(rawSync) }
@@ -16,6 +16,42 @@ export function resolveCanvasTheme() {
   if (stored !== 'system') return stored
   return typeof window.matchMedia === 'function' &&
     window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+/**
+ * Subscribe to canvas theme changes for embed widget snapshot switching.
+ *
+ * Reads `data-sb-canvas-theme` from the nearest ancestor set by CanvasPage.
+ * With canvas sync ON (the default), this attribute follows the global theme.
+ * Uses MutationObserver for immediate reaction + event backup.
+ */
+export function subscribeCanvasTheme({ anchorRef, onTheme }) {
+  if (typeof onTheme !== 'function') return () => {}
+
+  let observed = null
+  let observer = null
+
+  function readAndEmit() {
+    const el = anchorRef?.current?.closest?.('[data-sb-canvas-theme]') || null
+    if (el !== observed) {
+      if (observer) observer.disconnect()
+      observer = null
+      observed = el
+      if (el && typeof MutationObserver !== 'undefined') {
+        observer = new MutationObserver(readAndEmit)
+        observer.observe(el, { attributes: true, attributeFilter: ['data-sb-canvas-theme'] })
+      }
+    }
+    onTheme(el?.getAttribute('data-sb-canvas-theme') || 'light')
+  }
+
+  readAndEmit()
+  document.addEventListener('storyboard:theme:changed', readAndEmit)
+
+  return () => {
+    document.removeEventListener('storyboard:theme:changed', readAndEmit)
+    if (observer) observer.disconnect()
+  }
 }
 
 export function getEmbedChromeVars(theme) {

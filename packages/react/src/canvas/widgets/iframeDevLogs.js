@@ -3,7 +3,12 @@ import { useEffect, useRef } from 'react'
 let loadedIframeCount = 0
 
 function isDevRuntime() {
-  return typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
+  if (typeof window === 'undefined' || window.__SB_LOCAL_DEV__ !== true) return false
+  try {
+    return window.localStorage?.getItem('flag.dev-logs') === 'true'
+  } catch {
+    return false
+  }
 }
 
 function toText(value) {

@@ -138,3 +138,24 @@
 .expandClose:hover {
   background: rgba(0, 0, 0, 0.7);
 }
+
+.emptyState {
+  width: 100%;
+  height: calc(100% - 10px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.emptyIcon {
+  color: var(--fgColor-muted, #656d76);
+  opacity: 0.5;
+}
+
+.emptyLabel {
+  color: var(--fgColor-muted, #656d76);
+  font-size: 13px;
+  font-style: italic;
+}

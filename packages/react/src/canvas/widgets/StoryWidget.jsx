@@ -205,6 +205,14 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     }
   }, [iframeReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Capture when iframe becomes ready after refresh-thumbnail requested it
+  useEffect(() => {
+    if (iframeReady && captureOnReadyRef.current) {
+      captureOnReadyRef.current = false
+      requestCapture()
+    }
+  }, [iframeReady, requestCapture])
+
   // Cleanup resize timer on unmount
   useEffect(() => () => clearTimeout(resizeTimerRef.current), [])
 
@@ -294,10 +302,15 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
           window.open(`${base}${story._route}`, '_blank', 'noopener')
         }
       } else if (actionId === 'refresh-thumbnail') {
-        requestCapture()
+        if (iframeReady && iframeRef.current?.contentWindow) {
+          requestCapture()
+        } else {
+          captureOnReadyRef.current = true
+          setShowIframe(true)
+        }
       }
     },
-  }), [storyId, showCode, toggleShowCode, copyCode, requestCapture])
+  }), [storyId, showCode, toggleShowCode, copyCode, iframeReady, requestCapture])
 
   const iframeSrc = useMemo(
     () => resolveStoryUrl(storyId, exportName),

@@ -320,6 +320,14 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     }
   }, [iframeReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Capture when iframe becomes ready after refresh-thumbnail requested it
+  useEffect(() => {
+    if (iframeReady && captureOnReadyRef.current) {
+      captureOnReadyRef.current = false
+      requestCapture()
+    }
+  }, [iframeReady, requestCapture])
+
   // Cleanup resize timer on unmount
   useEffect(() => () => clearTimeout(resizeTimerRef.current), [])
 
@@ -409,10 +417,15 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
       } else if (actionId === 'open-external') {
         if (rawSrc) window.open(rawSrc, '_blank', 'noopener')
       } else if (actionId === 'refresh-thumbnail') {
-        requestCapture()
+        if (iframeReady && iframeRef.current?.contentWindow) {
+          requestCapture()
+        } else {
+          captureOnReadyRef.current = true
+          setShowIframe(true)
+        }
       }
     },
-  }), [rawSrc, requestCapture])
+  }), [rawSrc, iframeReady, requestCapture])
 
   function handlePickRoute(route) {
     onUpdate?.({ src: route })

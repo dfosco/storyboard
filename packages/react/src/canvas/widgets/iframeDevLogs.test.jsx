@@ -12,11 +12,13 @@ describe('useIframeDevLogs', () => {
 
   beforeEach(() => {
     window.__SB_LOCAL_DEV__ = true
+    window.localStorage.setItem('flag.dev-logs', 'true')
     infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
   })
 
   afterEach(() => {
     infoSpy.mockRestore()
+    window.localStorage.removeItem('flag.dev-logs')
     delete window.__SB_LOCAL_DEV__
   })
 
@@ -61,5 +63,15 @@ describe('useIframeDevLogs', () => {
       4,
       '[storyboard][iframe] unloaded (0) FigmaEmbed: /figma',
     )
+  })
+
+  it('does not log when dev-logs flag is disabled', () => {
+    window.localStorage.setItem('flag.dev-logs', 'false')
+    const { rerender, unmount } = render(<Probe loaded={false} src="/off" />)
+    rerender(<Probe loaded src="/off" />)
+    rerender(<Probe loaded={false} src="/off" />)
+
+    expect(infoSpy).not.toHaveBeenCalled()
+    unmount()
   })
 })

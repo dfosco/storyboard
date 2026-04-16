@@ -367,7 +367,7 @@
       "label": "Link Preview",
       "icon": "🔗",
       "resize": {
-        "enabled": false,
+        "enabled": true,
         "prod": false
       },
       "props": {
@@ -382,15 +382,52 @@
           "label": "Title",
           "category": "content",
           "default": ""
+        },
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "min": 200,
+          "default": 320
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 80
         }
       },
       "features": [
+        {
+          "id": "open-external",
+          "type": "action",
+          "action": "open-external",
+          "label": "$label:open-ext",
+          "icon": "open-external",
+          "prod": true
+        },
         {
           "id": "copy",
           "type": "action",
           "action": "copy",
           "label": "$label:duplicate",
           "icon": "copy"
+        },
+        {
+          "id": "refresh-github",
+          "type": "action",
+          "action": "refresh-github",
+          "label": "Refresh data",
+          "icon": "sync"
+        },
+        {
+          "id": "copy-text",
+          "type": "action",
+          "action": "copy-text",
+          "label": "$label:copy-text",
+          "icon": "unwrap",
+          "menu": true,
+          "prod": true
         },
         {
           "id": "copy-link",

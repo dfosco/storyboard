@@ -1,34 +1,229 @@
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { remark } from 'remark'
+import remarkGfm from 'remark-gfm'
+import remarkHtml from 'remark-html'
 import WidgetWrapper from './WidgetWrapper.jsx'
+import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, linkPreviewSchema } from './widgetProps.js'
 import styles from './LinkPreview.module.css'
 
-export default function LinkPreview({ props }) {
-  const url = readProp(props, 'url', linkPreviewSchema)
-  const title = readProp(props, 'title', linkPreviewSchema)
+const VIDEO_EXT_RE = /\.(mp4|mov|webm|ogg)(\?[^)]*)?$/i
+const VIDEO_URL_LINE_RE = /^<p>\s*(https?:\/\/[^\s<]+\.(mp4|mov|webm|ogg)(?:\?[^\s<]*)?)\s*<\/p>$/gim
 
-  let hostname = ''
-  try {
-    hostname = new URL(url).hostname
-  } catch { /* invalid URL */ }
+/**
+ * Post-process HTML body for canvas rendering:
+ * - Links open in new tabs
+ * - Unwrap <details> wrappers around videos (GitHub wraps them)
+ * - Convert bare video URLs and video-linked images to <video> elements
+ * - Mark checked checkboxes with data attribute for accent styling
+ */
+function postProcessHtml(html) {
+  if (!html) return ''
+  let out = html
+
+  // Open all links in new tabs
+  out = out.replace(/<a\s/g, '<a target="_blank" rel="noopener noreferrer" ')
+  // Dedupe target if GitHub already set it
+  out = out.replace(/target="_blank"\s*rel="noopener noreferrer"\s*target="_blank"/g, 'target="_blank"')
+
+  // Unwrap <details><summary>...</summary><video ...></details> → just the <video>
+  out = out.replace(/<details[^>]*>\s*<summary[^>]*>[\s\S]*?<\/summary>\s*(<video[\s\S]*?<\/video>)\s*<\/details>/gi, '$1')
+
+  // Convert bare video URLs (wrapped in <p>) into <video> elements
+  out = out.replace(VIDEO_URL_LINE_RE, (_, url) =>
+    `<video src="${url}" controls preload="none"></video>`
+  )
+
+  // Convert img tags pointing at video files to <video>
+  out = out.replace(/<img\s+([^>]*?)src="([^"]+\.(mp4|mov|webm|ogg)(?:\?[^"]*)?)"([^>]*)\/?>/gi, (_, _pre, url) =>
+    `<video src="${url}" controls preload="none"></video>`
+  )
+
+  // Existing <video> tags from GitHub: set preload=none to prevent auto-loading spinner
+  out = out.replace(/<video\s/g, '<video preload="none" ')
+  // Dedupe if we already added it
+  out = out.replace(/preload="none"\s+preload="[^"]*"/g, 'preload="none"')
+
+  // Remove disabled from checkboxes so accent-color works (CSS blocks interaction instead)
+  out = out.replace(/<input\s+([^>]*?)disabled([^>]*)>/gi, (match, before, after) => {
+    if (!match.includes('type="checkbox"')) return match
+    return `<input ${before}${after}>`
+  })
+
+  return out
+}
+
+function renderMarkdown(text) {
+  if (!text) return ''
+  const result = remark()
+    .use(remarkGfm)
+    .use(remarkHtml, { sanitize: false })
+    .processSync(text)
+  return postProcessHtml(String(result))
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return ''
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`
+  const years = Math.floor(months / 12)
+  return `${years} year${years === 1 ? '' : 's'} ago`
+}
+
+/**
+ * Split a title like "#42 Ship GitHub embeds" into { number: "#42", rest: "Ship GitHub embeds" }.
+ */
+function splitIssueTitle(title) {
+  if (!title) return { number: '', rest: '' }
+  const match = title.match(/^(#\d+)\s+(.*)$/)
+  if (match) return { number: match[1], rest: match[2] }
+  return { number: '', rest: title }
+}
+
+function GitHubIssueCard({ url, title, github, width, height, onUpdate, resizable }) {
+  const authors = Array.isArray(github?.authors)
+    ? github.authors.filter((a) => typeof a === 'string' && a.trim())
+    : []
+  const primaryAuthor = authors[0] || ''
+  const createdAgo = timeAgo(github?.createdAt)
+  const { number: issueNumber, rest: titleText } = splitIssueTitle(title)
+
+  // Prefer pre-rendered bodyHtml (has signed image URLs), fall back to remark for discussions
+  const bodyHtml = useMemo(() => {
+    if (github?.bodyHtml) return postProcessHtml(github.bodyHtml)
+    return renderMarkdown(github?.body || '')
+  }, [github?.bodyHtml, github?.body])
+
+  // Set body HTML via ref — avoids React destroying/recreating video elements on re-render
+  const bodyRef = useRef(null)
+  const lastHtmlRef = useRef('')
+  useEffect(() => {
+    if (bodyRef.current && bodyHtml !== lastHtmlRef.current) {
+      bodyRef.current.innerHTML = bodyHtml
+      lastHtmlRef.current = bodyHtml
+    }
+  }, [bodyHtml])
+
+  // Also set on initial mount via callback ref
+  const setBodyRef = useCallback((el) => {
+    bodyRef.current = el
+    if (el && bodyHtml && bodyHtml !== lastHtmlRef.current) {
+      el.innerHTML = bodyHtml
+      lastHtmlRef.current = bodyHtml
+    }
+  }, [bodyHtml])
+
+  const sizeStyle = {
+    ...(width ? { width: `${width}px` } : {}),
+    ...(height ? { minHeight: `${height}px` } : {}),
+  }
+
+  const handleResize = (w, h) => onUpdate?.({ width: w, height: h })
 
   return (
     <WidgetWrapper>
-      <div className={styles.card}>
-        <span className={styles.icon}>🔗</span>
-        <div className={styles.text}>
-          {title && <p className={styles.title}>{title}</p>}
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.url}
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            {hostname || url}
-          </a>
+      <div className={styles.issueCard} style={sizeStyle}>
+        <header className={styles.issueHeader}>
+          <h2 className={styles.issueTitle}>
+            {titleText || url}
+            {issueNumber && <span className={styles.issueNumber}> {issueNumber}</span>}
+          </h2>
+          <p className={styles.issueContext}>{github?.context || ''}</p>
+        </header>
+
+        <div className={styles.issueByline}>
+          <div className={styles.issueBylineLeft}>
+            {primaryAuthor && (
+              <img
+                className={styles.avatar}
+                src={`https://github.com/${primaryAuthor}.png?size=40`}
+                alt=""
+                width="20"
+                height="20"
+                loading="lazy"
+              />
+            )}
+            <span className={styles.bylineText}>
+              {primaryAuthor && <strong>{primaryAuthor}</strong>}
+              {primaryAuthor && createdAgo ? ` opened ${createdAgo}` : createdAgo ? `Opened ${createdAgo}` : ''}
+            </span>
+          </div>
         </div>
+
+        {bodyHtml && (
+          <div
+            className={styles.issueBody}
+            ref={setBodyRef}
+          />
+        )}
       </div>
+      {resizable && <ResizeHandle width={width} height={height} onResize={handleResize} />}
+    </WidgetWrapper>
+  )
+}
+
+export default function LinkPreview({ id, props, onUpdate, resizable }) {
+  const url = readProp(props, 'url', linkPreviewSchema)
+  const title = readProp(props, 'title', linkPreviewSchema)
+  const github = props?.github && typeof props.github === 'object' ? props.github : null
+
+  const width = typeof props?.width === 'number' ? props.width : null
+  const height = typeof props?.height === 'number' ? props.height : null
+
+  if (github) {
+    return (
+      <GitHubIssueCard
+        url={url}
+        title={title}
+        github={github}
+        width={width}
+        height={height}
+        onUpdate={onUpdate}
+        resizable={resizable}
+      />
+    )
+  }
+
+  const sizeStyle = (width || height)
+    ? { ...(width ? { width: `${width}px` } : {}), ...(height ? { minHeight: `${height}px` } : {}) }
+    : undefined
+
+  let hostname = ''
+  try { hostname = new URL(url).hostname } catch { /* */ }
+
+  const handleResize = (w, h) => onUpdate?.({ width: w, height: h })
+
+  return (
+    <WidgetWrapper>
+      <div className={styles.card} style={sizeStyle}>
+        <div className={styles.header}>
+          <span className={styles.icon}>🔗</span>
+          <div className={styles.text}>
+            {title && <p className={styles.title}>{title}</p>}
+          </div>
+        </div>
+        <a
+          href={url || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.url}
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {hostname || url}
+        </a>
+      </div>
+      {resizable && <ResizeHandle width={width} height={height} onResize={handleResize} />}
     </WidgetWrapper>
   )
 }

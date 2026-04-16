@@ -39,6 +39,12 @@ function postProcessHtml(html) {
     `<video src="${url}" controls preload="metadata"></video>`
   )
 
+  // Remove disabled from checkboxes so accent-color works (CSS blocks interaction instead)
+  out = out.replace(/<input\s+([^>]*?)disabled([^>]*)>/gi, (match, before, after) => {
+    if (!match.includes('type="checkbox"')) return match
+    return `<input ${before}${after}>`
+  })
+
   return out
 }
 

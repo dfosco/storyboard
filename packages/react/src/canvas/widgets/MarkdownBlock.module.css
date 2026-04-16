@@ -49,6 +49,7 @@
   max-width: 100%;
   height: auto;
   border-radius: 6px;
+  border: 1px solid var(--borderColor-default, #d0d7de);
   margin: 8px 0;
   display: block;
   pointer-events: auto;

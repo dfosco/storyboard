@@ -35,6 +35,7 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate, resizable }, re
   const [expanded, setExpanded] = useState(false)
 
   const iframeRef = useRef(null)
+  const embedRef = useRef(null)
   const inlineContainerRef = useRef(null)
   const modalContainerRef = useRef(null)
 
@@ -55,6 +56,18 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate, resizable }, re
     setShowIframe(true)
     setInteractive(true)
   }, [])
+
+  useEffect(() => {
+    if (!interactive || expanded) return
+    function handlePointerDown(e) {
+      if (embedRef.current && !embedRef.current.contains(e.target)) {
+        setInteractive(false)
+        setShowIframe(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [interactive, expanded])
 
   // Close expanded modal on Escape
   useEffect(() => {
@@ -117,7 +130,7 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate, resizable }, re
   return (
     <>
     <WidgetWrapper>
-      <div className={styles.embed} style={{ width, height }}>
+      <div ref={embedRef} className={styles.embed} style={{ width, height }}>
         <div className={styles.header}>
           <FigmaLogo />
           <span className={styles.headerTitle}>{title}</span>

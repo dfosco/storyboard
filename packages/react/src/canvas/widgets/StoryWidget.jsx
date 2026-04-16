@@ -112,6 +112,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
     function handlePointerDown(e) {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setInteractive(false)
+        setShowIframe(false)
       }
     }
     document.addEventListener('pointerdown', handlePointerDown)

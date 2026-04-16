@@ -163,17 +163,26 @@ function GitHubIssueCard({ url, title, github, width, collapsed, onUpdate }) {
         <div className={styles.issueByline}>
           <div className={styles.issueBylineLeft}>
             {primaryAuthor && (
-              <img
-                className={styles.avatar}
-                src={`https://github.com/${primaryAuthor}.png?size=40`}
-                alt=""
-                width="20"
-                height="20"
-                loading="lazy"
-              />
+              <a
+                href={`https://github.com/${primaryAuthor}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.authorLink}
+                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <img
+                  className={styles.avatar}
+                  src={`https://github.com/${primaryAuthor}.png?size=40`}
+                  alt=""
+                  width="20"
+                  height="20"
+                  loading="lazy"
+                />
+                <strong>{primaryAuthor}</strong>
+              </a>
             )}
             <span className={styles.bylineText}>
-              {primaryAuthor && <strong>{primaryAuthor}</strong>}
               {primaryAuthor && createdAgo ? ` opened ${createdAgo}` : createdAgo ? `Opened ${createdAgo}` : ''}
             </span>
           </div>

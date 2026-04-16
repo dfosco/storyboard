@@ -118,6 +118,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   useEffect(() => {
     if (canvasThemeInitRef.current) { canvasThemeInitRef.current = false; return }
     if (!onUpdate || interactive) return
+    const rect = containerRef.current?.getBoundingClientRect()
     enqueueRefresh(widgetId, () => {
       return new Promise((resolve) => {
         refreshResolveRef.current = resolve
@@ -125,7 +126,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
         setShowIframe(true)
         setTimeout(() => { refreshResolveRef.current = null; resolve() }, 10000)
       })
-    })
+    }, rect ? { x: rect.left, y: rect.top } : undefined)
   }, [canvasTheme]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Snapshot capture hook

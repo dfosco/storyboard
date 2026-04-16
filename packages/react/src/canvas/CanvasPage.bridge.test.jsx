@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, act } from '@testing-library/react'
+import { fireEvent, render, screen, act, waitFor } from '@testing-library/react'
 import CanvasPage from './CanvasPage.jsx'
 import { getCanvasPrimerAttrs, getCanvasThemeVars } from './canvasTheme.js'
-import { updateCanvas } from './canvasApi.js'
+import { addWidget, checkGitHubCliAvailable, fetchGitHubEmbed, updateCanvas } from './canvasApi.js'
 
 vi.mock('@dfosco/tiny-canvas', () => ({
   Canvas: ({ children, onDragEnd }) => (
@@ -77,6 +77,8 @@ vi.mock('./widgets/figmaUrl.js', () => ({
 
 vi.mock('./canvasApi.js', () => ({
   addWidget: vi.fn(),
+  checkGitHubCliAvailable: vi.fn(),
+  fetchGitHubEmbed: vi.fn(),
   updateCanvas: vi.fn(() => Promise.resolve({ success: true })),
   removeWidget: vi.fn(),
   uploadImage: vi.fn(),
@@ -94,9 +96,26 @@ vi.mock('./useUndoRedo.js', () => ({
 }))
 
 describe('CanvasPage canvas bridge', () => {
+  function dispatchTextPaste(text) {
+    const event = new Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'clipboardData', {
+      value: {
+        getData: (type) => (type === 'text/plain' ? text : ''),
+        items: [],
+      },
+    })
+    document.dispatchEvent(event)
+  }
+
   beforeEach(() => {
     delete window.__storyboardCanvasBridgeState
     vi.clearAllMocks()
+    addWidget.mockResolvedValue({
+      success: true,
+      widget: { id: 'widget-link', type: 'link-preview', position: { x: 0, y: 0 }, props: {} },
+    })
+    checkGitHubCliAvailable.mockResolvedValue({ available: true })
+    fetchGitHubEmbed.mockResolvedValue({ success: false })
   })
 
   it('publishes bridge state and responds to status requests', () => {
@@ -143,6 +162,72 @@ describe('CanvasPage canvas bridge', () => {
     })
 
     document.removeEventListener('storyboard:canvas:unmounted', unmountedHandler)
+  })
+
+  it('shows gh install banner when gh is unavailable during GitHub URL paste', async () => {
+    checkGitHubCliAvailable.mockResolvedValue({
+      available: false,
+      installUrl: 'https://github.com/cli/cli',
+    })
+
+    render(<CanvasPage name="design-overview" />)
+
+    await act(async () => {
+      dispatchTextPaste('https://github.com/dfosco/storyboard/issues/42')
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(addWidget).toHaveBeenCalled()
+    })
+    expect(fetchGitHubEmbed).not.toHaveBeenCalled()
+    expect(screen.getByRole('link', { name: 'Install GitHub CLI' })).toHaveAttribute(
+      'href',
+      'https://github.com/cli/cli',
+    )
+  })
+
+  it('hydrates GitHub metadata when gh is available during paste', async () => {
+    checkGitHubCliAvailable.mockResolvedValue({ available: true })
+    fetchGitHubEmbed.mockResolvedValue({
+      success: true,
+      snapshot: {
+        kind: 'issue',
+        parentKind: 'issue',
+        context: 'GitHub · dfosco/storyboard · Issue #42',
+        title: '#42 Ship GitHub embeds',
+        body: 'Details from GitHub',
+        authors: ['dfosco'],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+      },
+    })
+
+    render(<CanvasPage name="design-overview" />)
+
+    await act(async () => {
+      dispatchTextPaste('https://github.com/dfosco/storyboard/issues/42')
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(fetchGitHubEmbed).toHaveBeenCalledWith('https://github.com/dfosco/storyboard/issues/42')
+    })
+    expect(addWidget).toHaveBeenCalledWith(
+      'design-overview',
+      expect.objectContaining({
+        type: 'link-preview',
+        props: expect.objectContaining({
+          title: '#42 Ship GitHub embeds',
+          width: 580,
+          height: 400,
+          github: expect.objectContaining({
+            context: 'GitHub · dfosco/storyboard · Issue #42',
+            body: 'Details from GitHub',
+          }),
+        }),
+      }),
+    )
   })
 
   it.skip('persists dragged JSON widgets and JSX sources to canvas JSONL via update API', async () => {

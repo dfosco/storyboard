@@ -522,8 +522,6 @@ export function startRenameWatcher(root) {
     }
   }
 
-  log('Active')
-
   return {
     close() {
       if (debounceTimer) clearTimeout(debounceTimer)

@@ -634,6 +634,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           parentKind: snapshot.parentKind || snapshot.kind || 'issue',
           context: snapshot.context || '',
           body: snapshot.body || '',
+          bodyHtml: snapshot.bodyHtml || '',
           authors: Array.isArray(snapshot.authors)
             ? snapshot.authors.filter((author) => typeof author === 'string' && author.trim())
             : [],

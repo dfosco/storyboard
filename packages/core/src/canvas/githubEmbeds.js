@@ -56,11 +56,14 @@ function runGh(args) {
   })
 }
 
-function runGhApi(pathname) {
+function runGhApi(pathname, { withHtml = false } = {}) {
+  const accept = withHtml
+    ? 'application/vnd.github.full+json'
+    : 'application/vnd.github+json'
   const output = runGh([
     'api',
     '-H',
-    'Accept: application/vnd.github+json',
+    `Accept: ${accept}`,
     '-H',
     'X-GitHub-Api-Version: 2022-11-28',
     pathname,
@@ -71,44 +74,6 @@ function runGhApi(pathname) {
   } catch {
     throw new GitHubEmbedError('gh_invalid_json', 'GitHub CLI returned invalid JSON.', 502)
   }
-}
-
-/**
- * Fetch a GitHub URL as raw bytes via `gh api`.
- * Returns { buffer, contentType } or throws.
- */
-export function fetchGitHubAssetBytes(url) {
-  const result = execFileSync('gh', ['api', url], {
-    timeout: GH_TIMEOUT_MS,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    maxBuffer: 20 * 1024 * 1024,
-    encoding: 'buffer',
-  })
-  // Sniff content type from magic bytes
-  let contentType = 'application/octet-stream'
-  if (result[0] === 0x89 && result[1] === 0x50) contentType = 'image/png'
-  else if (result[0] === 0xFF && result[1] === 0xD8) contentType = 'image/jpeg'
-  else if (result[0] === 0x47 && result[1] === 0x49) contentType = 'image/gif'
-  else if (result[0] === 0x52 && result[1] === 0x49 && result[2] === 0x46 && result[3] === 0x46) contentType = 'image/webp'
-  else if (result.length > 4 && result.slice(0, 4).toString() === 'ftyp') contentType = 'video/mp4'
-  else if (result.length > 8 && result.slice(4, 8).toString() === 'ftyp') contentType = 'video/mp4'
-  return { buffer: result, contentType }
-}
-
-const GH_ASSET_URL_RE = /https:\/\/github\.com\/user-attachments\/assets\/[a-f0-9-]+/gi
-const GH_PRIVATE_IMAGE_RE = /https:\/\/private-user-images\.githubusercontent\.com\/[^\s)"'<>]+/gi
-
-/**
- * Rewrite GitHub asset URLs in markdown body to route through the local proxy.
- * This allows the dev server to serve private images using the user's gh auth.
- */
-export function rewriteGitHubAssetUrls(body, proxyBase) {
-  if (!body || !proxyBase) return body
-  return body
-    .replace(GH_ASSET_URL_RE, (url) =>
-      `${proxyBase}?url=${encodeURIComponent(url)}`)
-    .replace(GH_PRIVATE_IMAGE_RE, (url) =>
-      `${proxyBase}?url=${encodeURIComponent(url)}`)
 }
 
 function runGhGraphql(query, variables = {}) {
@@ -192,6 +157,7 @@ function buildPullRequestSnapshot(target, pr) {
     context: toContext(target),
     title: pr?.title ? `#${number} ${pr.title}` : `Pull Request #${number}`,
     body: normalizeBody(pr?.body),
+    bodyHtml: pr?.body_html || '',
     authors: uniqueStrings([pr?.user?.login]),
     createdAt: pr?.created_at ?? null,
     updatedAt: pr?.updated_at ?? null,
@@ -207,6 +173,7 @@ function buildIssueSnapshot(target, issue) {
     context: toContext(target),
     title: issue?.title ? `#${number} ${issue.title}` : `Issue #${number}`,
     body: normalizeBody(issue?.body),
+    bodyHtml: issue?.body_html || '',
     authors: uniqueStrings([issue?.user?.login]),
     createdAt: issue?.created_at ?? null,
     updatedAt: issue?.updated_at ?? null,
@@ -238,6 +205,7 @@ function buildIssueCommentSnapshot(target, comment, issue) {
     context: toContext(target),
     title: `Comment on ${parentLabel}`,
     body: normalizeBody(comment?.body),
+    bodyHtml: comment?.body_html || '',
     authors: uniqueStrings([comment?.user?.login, issue?.user?.login]),
     createdAt: comment?.created_at ?? null,
     updatedAt: comment?.updated_at ?? null,
@@ -525,12 +493,12 @@ export function fetchGitHubEmbedSnapshot(rawUrl) {
 
   try {
     if (target.kind === 'issue') {
-      const issue = runGhApi(`repos/${target.owner}/${target.repo}/issues/${target.number}`)
+      const issue = runGhApi(`repos/${target.owner}/${target.repo}/issues/${target.number}`, { withHtml: true })
       return buildIssueSnapshot(target, issue)
     }
 
     if (target.kind === 'pull_request') {
-      const pr = runGhApi(`repos/${target.owner}/${target.repo}/pulls/${target.number}`)
+      const pr = runGhApi(`repos/${target.owner}/${target.repo}/pulls/${target.number}`, { withHtml: true })
       return buildPullRequestSnapshot(target, pr)
     }
 
@@ -540,9 +508,9 @@ export function fetchGitHubEmbedSnapshot(rawUrl) {
     }
 
     if (target.parentKind === 'issue') {
-      const comment = runGhApi(`repos/${target.owner}/${target.repo}/issues/comments/${target.commentId}`)
+      const comment = runGhApi(`repos/${target.owner}/${target.repo}/issues/comments/${target.commentId}`, { withHtml: true })
       assertIssueCommentParent(target, comment)
-      const issue = runGhApi(`repos/${target.owner}/${target.repo}/issues/${target.number}`)
+      const issue = runGhApi(`repos/${target.owner}/${target.repo}/issues/${target.number}`, { withHtml: true })
       return buildIssueCommentSnapshot(target, comment, issue)
     }
 

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
-import { getEmbedChromeVars, resolveCanvasTheme } from './embedTheme.js'
+import { getEmbedChromeVars } from './embedTheme.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
 import { useSnapshotCapture } from './useSnapshotCapture.js'
 import styles from './PrototypeEmbed.module.css'
@@ -88,7 +88,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const [iframeLoaded, setIframeLoaded] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [filter, setFilter] = useState('')
-  const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasTheme())
+  const [canvasTheme, setCanvasTheme] = useState('light')
   const [brokenSnaps, setBrokenSnaps] = useState({})
 
   const inputRef = useRef(null)
@@ -271,9 +271,22 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
           // deselect re-render before html-to-image blocks the main thread.
           setTimeout(() => {
             if (exitSessionRef.current !== session) return
-            requestCapture({ force: true }).then(() => {
+            requestCapture({ force: true }).then((updates) => {
               if (exitSessionRef.current !== session) return
-              setShowIframe(false)
+              // Preload snapshot image before unmounting iframe to prevent white flash
+              const snap = updates?.snapshotLight || updates?.snapshotDark
+              if (snap) {
+                const img = new Image()
+                const done = () => {
+                  if (exitSessionRef.current === session) setShowIframe(false)
+                }
+                img.onload = done
+                img.onerror = done
+                img.src = snap
+                setTimeout(done, 2000) // fallback timeout
+              } else {
+                setShowIframe(false)
+              }
             })
           }, 0)
         } else if (isExternal && showIframe) {
@@ -294,8 +307,13 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive, expanded, onUpdate, isExternal, iframeLoaded, requestCapture])
 
+  // Read canvas theme from the closest ancestor [data-sb-canvas-theme] attribute
+  // set by CanvasPage — this is the actual displayed theme regardless of sync settings.
   useEffect(() => {
-    const readTheme = () => setCanvasTheme(resolveCanvasTheme())
+    function readTheme() {
+      const container = embedRef.current?.closest?.('[data-sb-canvas-theme]')
+      setCanvasTheme(container?.getAttribute('data-sb-canvas-theme') || 'light')
+    }
     readTheme()
     document.addEventListener('storyboard:theme:changed', readTheme)
     const mq = window.matchMedia?.('(prefers-color-scheme: dark)')

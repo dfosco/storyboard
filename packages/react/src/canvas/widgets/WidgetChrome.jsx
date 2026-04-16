@@ -436,6 +436,7 @@ export default function WidgetChrome({
   return (
     <div
       className={styles.chromeContainer}
+      data-widget-id={widgetId}
       data-tc-elevated={(hovered || selected) || undefined}
       onMouseEnter={(readOnly && !hasFeatures) ? undefined : handleMouseEnter}
       onMouseLeave={(readOnly && !hasFeatures) ? undefined : handleMouseLeave}

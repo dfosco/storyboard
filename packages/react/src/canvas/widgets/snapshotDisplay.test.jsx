@@ -2,7 +2,7 @@
  * Tests for iframe snapshot display — static thumbnail rendering.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import PrototypeEmbed from './PrototypeEmbed.jsx'
 import StoryWidget from './StoryWidget.jsx'
 
@@ -49,7 +49,7 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/snapshots/snapshot-proto-abc123--latest.webp?v=123',
+            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--latest.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
@@ -79,6 +79,32 @@ describe('Snapshot display', () => {
       expect(screen.getByText('Design Overview prototype')).toBeInTheDocument()
     })
 
+    it('falls back to placeholder when snapshot image fails to load', () => {
+      const { container } = render(
+        <PrototypeEmbed
+          id="proto-abc123"
+          props={{
+            src: '/test',
+            width: 400,
+            height: 300,
+            zoom: 100,
+            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--latest.webp?v=123',
+          }}
+          onUpdate={vi.fn()}
+          resizable={false}
+        />
+      )
+
+      const img = container.querySelector('img')
+      expect(img).toBeInTheDocument()
+
+      fireEvent.error(img)
+
+      // After error, img should be gone and placeholder shown
+      expect(container.querySelector('img')).not.toBeInTheDocument()
+      expect(screen.getByText('Design Overview prototype')).toBeInTheDocument()
+    })
+
     it('ignores snapshot that does not match widget ID', () => {
       const { container } = render(
         <PrototypeEmbed
@@ -88,7 +114,7 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/snapshots/snapshot-other-widget--latest.webp?v=123',
+            snapshotLight: '/_storyboard/canvas/images/snapshot-other-widget--latest.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
@@ -109,7 +135,7 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/snapshots/snapshot-proto-ext--latest.webp?v=123',
+            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-ext--latest.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
@@ -131,7 +157,7 @@ describe('Snapshot display', () => {
             exportName: 'Primary',
             width: 400,
             height: 300,
-            snapshotLight: '/_storyboard/canvas/snapshots/snapshot-story-abc123--latest.webp?v=456',
+            snapshotLight: '/_storyboard/canvas/images/snapshot-story-abc123--latest.webp?v=456',
           }}
           onUpdate={vi.fn()}
           resizable={false}
@@ -161,6 +187,31 @@ describe('Snapshot display', () => {
 
       expect(container.querySelector('img')).not.toBeInTheDocument()
       expect(container.querySelector('iframe')).not.toBeInTheDocument()
+    })
+
+    it('falls back to placeholder when snapshot image fails to load', () => {
+      const { container } = render(
+        <StoryWidget
+          id="story-abc123"
+          props={{
+            storyId: 'button-patterns',
+            exportName: 'Primary',
+            width: 400,
+            height: 300,
+            snapshotLight: '/_storyboard/canvas/images/snapshot-story-abc123--latest.webp?v=456',
+          }}
+          onUpdate={vi.fn()}
+          resizable={false}
+        />
+      )
+
+      const img = container.querySelector('img')
+      expect(img).toBeInTheDocument()
+
+      fireEvent.error(img)
+
+      // After error, img should be gone and placeholder shown
+      expect(container.querySelector('img')).not.toBeInTheDocument()
     })
   })
 })

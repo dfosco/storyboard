@@ -1,5 +1,5 @@
 /**
- * Tests for iframe snapshot display — static thumbnail rendering.
+ * Tests for iframe snapshot display — layered dual-theme rendering.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
@@ -49,7 +49,7 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--latest.webp?v=123',
+            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--light.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
@@ -58,10 +58,35 @@ describe('Snapshot display', () => {
 
       const img = container.querySelector('img')
       expect(img).toBeInTheDocument()
-      expect(img.src).toContain('snapshot-proto-abc123--latest.webp')
+      expect(img.src).toContain('snapshot-proto-abc123--light.webp')
       expect(img.alt).toContain('snapshot')
-      // No iframe should be mounted
       expect(container.querySelector('iframe')).not.toBeInTheDocument()
+    })
+
+    it('renders both themed snapshots with correct visibility', () => {
+      const { container } = render(
+        <PrototypeEmbed
+          id="proto-abc123"
+          props={{
+            src: '/test',
+            width: 400,
+            height: 300,
+            zoom: 100,
+            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--light.webp?v=1',
+            snapshotDark: '/_storyboard/canvas/images/snapshot-proto-abc123--dark.webp?v=1',
+          }}
+          onUpdate={vi.fn()}
+          resizable={false}
+        />
+      )
+
+      const imgs = container.querySelectorAll('img')
+      expect(imgs).toHaveLength(2)
+      // Default theme is light — light visible, dark hidden
+      expect(imgs[0].src).toContain('--light.webp')
+      expect(imgs[0].style.visibility).not.toBe('hidden')
+      expect(imgs[1].src).toContain('--dark.webp')
+      expect(imgs[1].style.visibility).toBe('hidden')
     })
 
     it('shows placeholder when no snapshot exists', () => {
@@ -88,7 +113,7 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--latest.webp?v=123',
+            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--light.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
@@ -114,7 +139,7 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-other-widget--latest.webp?v=123',
+            snapshotLight: '/_storyboard/canvas/images/snapshot-other-widget--light.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
@@ -135,7 +160,7 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-ext--latest.webp?v=123',
+            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-ext--light.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
@@ -144,6 +169,30 @@ describe('Snapshot display', () => {
 
       // External URLs should never show snapshots
       expect(container.querySelector('img')).not.toBeInTheDocument()
+    })
+
+    it('falls back to light snapshot when dark snapshot is missing', () => {
+      const { container } = render(
+        <PrototypeEmbed
+          id="proto-abc123"
+          props={{
+            src: '/test',
+            width: 400,
+            height: 300,
+            zoom: 100,
+            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--light.webp?v=1',
+            // no snapshotDark — light snapshot should show regardless of theme
+          }}
+          onUpdate={vi.fn()}
+          resizable={false}
+        />
+      )
+
+      const imgs = container.querySelectorAll('img')
+      expect(imgs).toHaveLength(1)
+      expect(imgs[0].src).toContain('--light.webp')
+      // Should be visible (no visibility: hidden) since it's the only snapshot
+      expect(imgs[0].style.visibility).not.toBe('hidden')
     })
   })
 
@@ -157,7 +206,7 @@ describe('Snapshot display', () => {
             exportName: 'Primary',
             width: 400,
             height: 300,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-story-abc123--latest.webp?v=456',
+            snapshotLight: '/_storyboard/canvas/images/snapshot-story-abc123--light.webp?v=456',
           }}
           onUpdate={vi.fn()}
           resizable={false}
@@ -166,8 +215,31 @@ describe('Snapshot display', () => {
 
       const img = container.querySelector('img')
       expect(img).toBeInTheDocument()
-      expect(img.src).toContain('snapshot-story-abc123--latest.webp')
+      expect(img.src).toContain('snapshot-story-abc123--light.webp')
       expect(container.querySelector('iframe')).not.toBeInTheDocument()
+    })
+
+    it('renders both themed snapshots with correct visibility', () => {
+      const { container } = render(
+        <StoryWidget
+          id="story-abc123"
+          props={{
+            storyId: 'button-patterns',
+            snapshotLight: '/_storyboard/canvas/images/snapshot-story-abc123--light.webp?v=1',
+            snapshotDark: '/_storyboard/canvas/images/snapshot-story-abc123--dark.webp?v=1',
+          }}
+          onUpdate={vi.fn()}
+          resizable={false}
+        />
+      )
+
+      const imgs = container.querySelectorAll('img')
+      expect(imgs).toHaveLength(2)
+      // Default theme is light — light visible, dark hidden
+      expect(imgs[0].src).toContain('--light.webp')
+      expect(imgs[0].style.visibility).not.toBe('hidden')
+      expect(imgs[1].src).toContain('--dark.webp')
+      expect(imgs[1].style.visibility).toBe('hidden')
     })
 
     it('shows placeholder when no snapshot exists', () => {
@@ -198,7 +270,7 @@ describe('Snapshot display', () => {
             exportName: 'Primary',
             width: 400,
             height: 300,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-story-abc123--latest.webp?v=456',
+            snapshotLight: '/_storyboard/canvas/images/snapshot-story-abc123--light.webp?v=456',
           }}
           onUpdate={vi.fn()}
           resizable={false}

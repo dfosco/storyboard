@@ -1,3 +1,23 @@
+/**
+ * Resolve the effective canvas theme from localStorage + sync settings.
+ * Respects the canvas-specific theme sync toggle.
+ */
+export function resolveCanvasTheme() {
+  if (typeof localStorage === 'undefined') return 'light'
+  let sync = { prototype: true, toolbar: false, codeBoxes: true, canvas: false }
+  try {
+    const rawSync = localStorage.getItem('sb-theme-sync')
+    if (rawSync) sync = { ...sync, ...JSON.parse(rawSync) }
+  } catch { /* ignore */ }
+  if (!sync.canvas) return 'light'
+  const attrTheme = document.documentElement.getAttribute('data-sb-canvas-theme')
+  if (attrTheme) return attrTheme
+  const stored = localStorage.getItem('sb-color-scheme') || 'system'
+  if (stored !== 'system') return stored
+  return typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 export function getEmbedChromeVars(theme) {
   const value = String(theme || 'light')
   if (value === 'dark_dimmed') {

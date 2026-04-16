@@ -1481,7 +1481,8 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
     document.addEventListener('paste', handlePaste)
     return () => document.removeEventListener('paste', handlePaste)
-  }, [canvasId, undoRedo, localWidgets, buildGitHubPreviewUpdates])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasId, undoRedo, localWidgets])
 
   // --- Drag and drop handlers for images from Finder/file manager ---
   // Separate effect to ensure listeners attach after scroll container mounts (loading=false)

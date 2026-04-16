@@ -176,6 +176,7 @@
   max-width: 100%;
   height: auto;
   border-radius: 6px;
+  border: 1px solid var(--borderColor-muted, #d8dee4);
   margin: 8px 0;
   display: block;
   pointer-events: auto;
@@ -188,6 +189,7 @@
   margin: 8px 0;
   display: block;
   pointer-events: auto;
+  background: var(--bgColor-muted, #f6f8fa);
 }
 .issueBody h1 {
   font-size: 20px;
@@ -326,6 +328,17 @@
   border: none;
   border-top: 1px solid var(--borderColor-default, #d0d7de);
   margin: 16px 0;
+}
+
+/* Details/summary — show content expanded, no collapse UI */
+.issueBody details {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.issueBody summary {
+  display: none;
 }
 
 .error {

@@ -1652,6 +1652,15 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
     document.addEventListener('mouseup', handlePanEnd)
   }, [spaceHeld])
 
+  // Stable callback for deselecting all widgets
+  const handleDeselectAll = useCallback(() => setSelectedWidgetIds(new Set()), [])
+
+  // Stable callback for widget removal + deselect
+  const handleWidgetRemoveAndDeselect = useCallback((id) => {
+    handleWidgetRemove(id)
+    setSelectedWidgetIds(new Set())
+  }, [handleWidgetRemove])
+
   if (!canvas) {
     return (
       <div className={styles.empty}>
@@ -1682,15 +1691,6 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
 
   const canvasThemeVars = getCanvasThemeVars(canvasTheme)
   const canvasPrimerAttrs = getCanvasPrimerAttrs(canvasTheme)
-
-  // Stable callback for deselecting all widgets
-  const handleDeselectAll = useCallback(() => setSelectedWidgetIds(new Set()), [])
-
-  // Stable callback for widget removal + deselect
-  const handleWidgetRemoveAndDeselect = useCallback((id) => {
-    handleWidgetRemove(id)
-    setSelectedWidgetIds(new Set())
-  }, [handleWidgetRemove])
 
   // Merge JSX-sourced widgets (from .canvas.jsx) and JSON widgets
   const allChildren = []

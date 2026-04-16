@@ -109,6 +109,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     iframeRef,
     widgetId,
     onUpdate: isExternal ? null : onUpdate,
+    showIframe,
   })
 
   // Single snapshot — backward compat reads snapshotLight/snapshotDark if snapshot is missing

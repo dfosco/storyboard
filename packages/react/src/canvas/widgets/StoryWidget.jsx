@@ -133,6 +133,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     iframeRef,
     widgetId,
     onUpdate,
+    showIframe,
   })
 
   // Single snapshot

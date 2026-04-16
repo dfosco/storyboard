@@ -159,7 +159,7 @@ function GitHubIssueCard({ url, title, github, width, collapsed, onUpdate }) {
 
         {bodyHtml && (
           <div
-            className={styles.issueBody}
+            className={`${styles.issueBody} ${collapsed ? styles.issueBodyScrollable : ''}`}
             ref={setBodyRef}
           />
         )}

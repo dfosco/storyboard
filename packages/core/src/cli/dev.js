@@ -20,6 +20,7 @@ import { generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunnin
 import { startRenameWatcher } from '../rename-watcher/watcher.js'
 import { parseFlags } from './flags.js'
 import { hasUncommittedChanges, localBranchExists, resolveDefaultBranch } from './dev-helpers.js'
+import { compactAll } from '../canvas/compact.js'
 
 const flagSchema = {
   port: { type: 'number', description: 'Override dev server port' },
@@ -225,6 +226,14 @@ async function main() {
   const proxyUrl = `http://${domain}${basePath}`
   const directUrl = `http://localhost:${port}${basePath}`
 
+  // Compact bloated canvas JSONL files before starting Vite
+  const compacted = compactAll(targetCwd)
+  if (compacted.length > 0) {
+    for (const r of compacted) {
+      p.log.info(`[compact] ${r.name}: ${(r.before / 1024).toFixed(0)}KB → ${(r.after / 1024).toFixed(0)}KB`)
+    }
+  }
+
   // Resolve Vite binary relative to target worktree
   const localVite = resolve(targetCwd, 'node_modules', '.bin', 'vite')
   const useLocalVite = existsSync(localVite)
@@ -246,6 +255,16 @@ async function main() {
 
   // Start rename watcher in target directory
   const renameWatcher = startRenameWatcher(targetCwd)
+
+  // Auto-compact every 15 minutes while the dev server is running
+  const compactInterval = setInterval(() => {
+    try {
+      const results = compactAll(targetCwd)
+      for (const r of results) {
+        p.log.info(`[compact] ${r.name}: ${(r.before / 1024).toFixed(0)}KB → ${(r.after / 1024).toFixed(0)}KB`)
+      }
+    } catch { /* non-critical */ }
+  }, 15 * 60 * 1000)
 
   let caddyUpdated = false
   let ready = false
@@ -324,6 +343,7 @@ async function main() {
 
   child.on('exit', (code) => {
     renameWatcher.close()
+    clearInterval(compactInterval)
     if (code && code !== 0 && !ready) {
       p.log.error(`Vite exited with code ${code}`)
     }

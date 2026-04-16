@@ -19,7 +19,8 @@ function renderMarkdown(text) {
     .use(remarkGfm)
     .use(remarkHtml, { sanitize: false })
     .processSync(text)
-  return String(result)
+  // Open all links in new tabs
+  return String(result).replace(/<a\s/g, '<a target="_blank" rel="noopener noreferrer" ')
 }
 
 /**

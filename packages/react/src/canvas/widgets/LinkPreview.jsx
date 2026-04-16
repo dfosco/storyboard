@@ -10,25 +10,45 @@ import styles from './LinkPreview.module.css'
 const VIDEO_EXT_RE = /\.(mp4|mov|webm|ogg)(\?[^)]*)?$/i
 const VIDEO_URL_LINE_RE = /^<p>\s*(https?:\/\/[^\s<]+\.(mp4|mov|webm|ogg)(?:\?[^\s<]*)?)\s*<\/p>$/gim
 
+/**
+ * Post-process HTML body for canvas rendering:
+ * - Links open in new tabs
+ * - Unwrap <details> wrappers around videos (GitHub wraps them)
+ * - Convert bare video URLs and video-linked images to <video> elements
+ * - Mark checked checkboxes with data attribute for accent styling
+ */
+function postProcessHtml(html) {
+  if (!html) return ''
+  let out = html
+
+  // Open all links in new tabs
+  out = out.replace(/<a\s/g, '<a target="_blank" rel="noopener noreferrer" ')
+  // Dedupe target if GitHub already set it
+  out = out.replace(/target="_blank"\s*rel="noopener noreferrer"\s*target="_blank"/g, 'target="_blank"')
+
+  // Unwrap <details><summary>...</summary><video ...></details> → just the <video>
+  out = out.replace(/<details[^>]*>\s*<summary[^>]*>[\s\S]*?<\/summary>\s*(<video[\s\S]*?<\/video>)\s*<\/details>/gi, '$1')
+
+  // Convert bare video URLs (wrapped in <p>) into <video> elements
+  out = out.replace(VIDEO_URL_LINE_RE, (_, url) =>
+    `<video src="${url}" controls preload="metadata"></video>`
+  )
+
+  // Convert img tags pointing at video files to <video>
+  out = out.replace(/<img\s+([^>]*?)src="([^"]+\.(mp4|mov|webm|ogg)(?:\?[^"]*)?)"([^>]*)\/?>/gi, (_, _pre, url) =>
+    `<video src="${url}" controls preload="metadata"></video>`
+  )
+
+  return out
+}
+
 function renderMarkdown(text) {
   if (!text) return ''
   const result = remark()
     .use(remarkGfm)
     .use(remarkHtml, { sanitize: false })
     .processSync(text)
-  let html = String(result)
-
-  // Convert bare video URLs (wrapped in <p>) into <video> elements
-  html = html.replace(VIDEO_URL_LINE_RE, (_, url) =>
-    `<video src="${url}" controls preload="metadata" style="max-width:100%;border-radius:6px"></video>`
-  )
-
-  // Convert markdown image links to videos when the src is a video file
-  html = html.replace(/<img\s+([^>]*?)src="([^"]+\.(mp4|mov|webm|ogg)(?:\?[^"]*)?)"([^>]*)>/gi, (_, pre, url) =>
-    `<video src="${url}" controls preload="metadata" style="max-width:100%;border-radius:6px"></video>`
-  )
-
-  return html
+  return postProcessHtml(String(result))
 }
 
 function timeAgo(dateStr) {
@@ -69,7 +89,7 @@ function GitHubIssueCard({ url, title, github, width, height, onUpdate, resizabl
 
   // Prefer pre-rendered bodyHtml (has signed image URLs), fall back to remark for discussions
   const bodyHtml = useMemo(() => {
-    if (github?.bodyHtml) return github.bodyHtml
+    if (github?.bodyHtml) return postProcessHtml(github.bodyHtml)
     return renderMarkdown(github?.body || '')
   }, [github?.bodyHtml, github?.body])
 

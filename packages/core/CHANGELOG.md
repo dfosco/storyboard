@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.27
+
+### Patch Changes
+
+-   Fix hooks ordering crash on canvas page (useCallback after early return)
+
 ## 4.0.0-beta.26
 
 ### Patch Changes

@@ -82,6 +82,20 @@
   max-height: 800px;
 }
 
+.typeBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fgColor-muted, #656d76);
+  background: var(--bgColor-muted, #f6f8fa);
+  border-bottom: 1px solid var(--borderColor-muted, #d8dee4);
+  white-space: nowrap;
+  user-select: none;
+}
+
 .issueBodyScrollable {
   flex: 1;
   min-height: 0;

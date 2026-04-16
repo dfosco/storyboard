@@ -19,7 +19,7 @@ import ResizeHandle from './ResizeHandle.jsx'
 import { useIframeDevLogs } from './iframeDevLogs.js'
 import { useSnapshotCapture } from './useSnapshotCapture.js'
 import { subscribeCanvasTheme } from './embedTheme.js'
-import { enqueueRefresh, cancelRefresh } from './refreshQueue.js'
+import { enqueueRefresh, cancelRefresh, REVEAL_INTERVAL } from './refreshQueue.js'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -94,7 +94,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const resizeTimerRef = useRef(null)
   const captureOnReadyRef = useRef(false)
   const exitSessionRef = useRef(0)
-  const refreshResolveRef = useRef(null)
+  const refreshMetaRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
   const [showIframe, setShowIframe] = useState(false)
   const [iframeLoaded, setIframeLoaded] = useState(false)
@@ -119,12 +119,12 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     if (canvasThemeInitRef.current) { canvasThemeInitRef.current = false; return }
     if (!onUpdate || interactive) return
     const rect = containerRef.current?.getBoundingClientRect()
-    enqueueRefresh(widgetId, () => {
+    enqueueRefresh(widgetId, ({ revealOrder, batchStart }) => {
       return new Promise((resolve) => {
-        refreshResolveRef.current = resolve
+        refreshMetaRef.current = { revealOrder, batchStart, resolve }
         captureOnReadyRef.current = true
         setShowIframe(true)
-        setTimeout(() => { refreshResolveRef.current = null; resolve() }, 10000)
+        setTimeout(() => { refreshMetaRef.current = null; resolve() }, 10000)
       })
     }, rect ? { x: rect.left, y: rect.top } : undefined)
   }, [canvasTheme]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -231,21 +231,28 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     if (iframeReady && captureOnReadyRef.current) {
       captureOnReadyRef.current = false
       requestCapture().then((updates) => {
-        const resolve = refreshResolveRef.current
-        if (resolve) {
-          refreshResolveRef.current = null
+        const meta = refreshMetaRef.current
+        if (meta) {
+          refreshMetaRef.current = null
           const snap = updates?.snapshot
-          if (snap) {
-            const img = new Image()
-            const done = () => setShowIframe(false)
-            img.onload = done
-            img.onerror = done
-            img.src = snap
-            setTimeout(done, 2000)
-          } else {
-            setShowIframe(false)
+          const reveal = () => {
+            if (snap) {
+              const img = new Image()
+              const done = () => setShowIframe(false)
+              img.onload = done
+              img.onerror = done
+              img.src = snap
+              setTimeout(done, 2000)
+            } else {
+              setShowIframe(false)
+            }
+            meta.resolve()
           }
-          resolve()
+          // Wait for our reveal slot in the wave
+          const elapsed = Date.now() - meta.batchStart
+          const targetTime = meta.revealOrder * REVEAL_INTERVAL
+          const wait = Math.max(0, targetTime - elapsed)
+          setTimeout(reveal, wait)
         }
       })
     }

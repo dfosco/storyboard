@@ -304,13 +304,19 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
   // On canvas theme change, enqueue a background snapshot refresh.
   // Skips the initial render (canvasThemeInitRef tracks first value).
+  // Uses a ref to check hasSnap at callback time (not closure time).
   const canvasThemeInitRef = useRef(true)
   const refreshMetaRef = useRef(null)
+  const hasSnapRef = useRef(hasSnap)
+  hasSnapRef.current = hasSnap
   useEffect(() => {
     if (canvasThemeInitRef.current) { canvasThemeInitRef.current = false; return }
     if (isExternal || !onUpdate || interactive || !hasSnap) return
     const rect = embedRef.current?.getBoundingClientRect()
     enqueueRefresh(widgetId, ({ revealOrder, batchStart }) => {
+      // Re-check hasSnap at callback time — snapshot may have been
+      // marked broken (404) between enqueue and execution.
+      if (!hasSnapRef.current) return Promise.resolve(false)
       return new Promise((resolve) => {
         refreshMetaRef.current = { revealOrder, batchStart, resolve }
         captureOnReadyRef.current = true

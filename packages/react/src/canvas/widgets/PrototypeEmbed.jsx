@@ -230,15 +230,16 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
 
   // Exit interactive mode when clicking outside the embed
   useEffect(() => {
-    if (!interactive) return
+    if (!interactive || expanded) return
     function handlePointerDown(e) {
       if (embedRef.current && !embedRef.current.contains(e.target)) {
         setInteractive(false)
+        setShowIframe(false)
       }
     }
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [interactive])
+  }, [interactive, expanded])
 
   useEffect(() => {
     function readToolbarTheme() {

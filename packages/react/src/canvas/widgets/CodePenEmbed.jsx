@@ -10,7 +10,7 @@ import { createPortal } from 'react-dom'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetConfig.js'
-import { isCodePenUrl, toCodePenEmbedUrl, getCodePenTitle } from './codepenUrl.js'
+import { isCodePenUrl, toCodePenEmbedUrl, getCodePenTitle, fetchCodePenMeta } from './codepenUrl.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
 import styles from './CodePenEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
@@ -68,7 +68,22 @@ export default forwardRef(function CodePenEmbed({ props, onUpdate, resizable }, 
 
   const isValid = useMemo(() => isCodePenUrl(url), [url])
   const embedUrl = useMemo(() => (isValid ? toCodePenEmbedUrl(url) : ''), [url, isValid])
-  const title = useMemo(() => (url ? getCodePenTitle(url) : 'CodePen'), [url])
+  const fallbackTitle = useMemo(() => (url ? getCodePenTitle(url) : 'CodePen'), [url])
+
+  // Fetch pen metadata (title + author) from CodePen oEmbed API
+  const [penMeta, setPenMeta] = useState(null)
+  useEffect(() => {
+    if (!url || !isValid) return
+    let cancelled = false
+    fetchCodePenMeta(url).then((meta) => {
+      if (!cancelled && meta) setPenMeta(meta)
+    })
+    return () => { cancelled = true }
+  }, [url, isValid])
+
+  const headerTitle = penMeta?.title
+    ? `${penMeta.title} · ${penMeta.author || fallbackTitle}`
+    : fallbackTitle
 
   useIframeDevLogs({
     widget: 'CodePenEmbed',
@@ -165,7 +180,7 @@ export default forwardRef(function CodePenEmbed({ props, onUpdate, resizable }, 
       <div ref={embedRef} className={styles.embed} style={{ width, height }}>
         <div className={styles.header}>
           <CodePenLogo className={styles.codepenLogo} />
-          <span className={styles.headerTitle}>{title}</span>
+          <span className={styles.headerTitle}>{headerTitle}</span>
         </div>
         {embedUrl ? (
           <>
@@ -179,7 +194,7 @@ export default forwardRef(function CodePenEmbed({ props, onUpdate, resizable }, 
                   ref={iframeRef}
                   src={embedUrl}
                   className={styles.iframe}
-                  title={`CodePen: ${title}`}
+                  title={`CodePen: ${headerTitle}`}
                   allowFullScreen
                   loading="lazy"
                 />

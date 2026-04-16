@@ -81,6 +81,10 @@ describe('Embed interaction overlay', () => {
       expect(screen.queryByRole('button', { name: /click to interact/i })).not.toBeInTheDocument()
       expect(screen.queryByText('Design Overview prototype')).not.toBeInTheDocument()
       expect(container.querySelector('iframe')).toBeInTheDocument()
+
+      fireEvent.pointerDown(document.body)
+      expect(screen.getByRole('button', { name: /click to interact/i })).toBeInTheDocument()
+      expect(container.querySelector('iframe')).not.toBeInTheDocument()
     })
 
     it('does not enter interactive mode on shift+click (preserves multi-select)', () => {
@@ -146,6 +150,10 @@ describe('Embed interaction overlay', () => {
       
       expect(screen.queryByRole('button', { name: /click to interact/i })).not.toBeInTheDocument()
       expect(container.querySelector('iframe')).toBeInTheDocument()
+
+      fireEvent.pointerDown(document.body)
+      expect(screen.getByRole('button', { name: /click to interact/i })).toBeInTheDocument()
+      expect(container.querySelector('iframe')).not.toBeInTheDocument()
     })
   })
 
@@ -166,6 +174,10 @@ describe('Embed interaction overlay', () => {
 
       expect(screen.queryByRole('button', { name: /click to interact with story component/i })).not.toBeInTheDocument()
       expect(container.querySelector('iframe')).toBeInTheDocument()
+
+      fireEvent.pointerDown(document.body)
+      expect(screen.getByRole('button', { name: /click to interact with story component/i })).toBeInTheDocument()
+      expect(container.querySelector('iframe')).not.toBeInTheDocument()
     })
   })
 
@@ -216,6 +228,10 @@ describe('Embed interaction overlay', () => {
       fireEvent.click(overlay)
 
       expect(container.querySelector('iframe')).toBeInTheDocument()
+
+      fireEvent.pointerDown(document.body)
+      expect(screen.getByRole('button', { name: /click to interact with component/i })).toBeInTheDocument()
+      expect(container.querySelector('iframe')).not.toBeInTheDocument()
     })
   })
 })

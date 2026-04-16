@@ -361,7 +361,8 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
  *
  * @param {{ canvasId: string }} props - Canvas name as indexed by the data plugin
  */
-export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = null }) {
+export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages = [], canvasMeta = null }) {
+  const canvasId = canvasIdProp || name || ''
   const { canvas, jsxExports, jsxError, loading } = useCanvas(canvasId)
   const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true && !new URLSearchParams(window.location.search).has('prodMode')
 

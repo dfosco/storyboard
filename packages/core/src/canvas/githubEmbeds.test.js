@@ -128,6 +128,109 @@ describe('fetchGitHubEmbedSnapshot', () => {
     })
   })
 
+  it('hydrates discussion snapshot metadata via gh graphql', () => {
+    ghExec
+      .mockReturnValueOnce('gh version 2.58.0')
+      .mockReturnValueOnce(JSON.stringify({
+        data: {
+          repository: {
+            discussion: {
+              number: 456,
+              title: 'Canvas API questions',
+              body: 'Discussion body',
+              createdAt: '2026-02-01T00:00:00Z',
+              updatedAt: '2026-02-02T00:00:00Z',
+              author: { login: 'octocat' },
+            },
+          },
+        },
+      }))
+
+    const snapshot = fetchGitHubEmbedSnapshot('https://github.com/dfosco/storyboard/discussions/456')
+
+    expect(snapshot).toEqual({
+      kind: 'discussion',
+      parentKind: 'discussion',
+      context: 'GitHub · dfosco/storyboard · Discussion #456',
+      title: '#456 Canvas API questions',
+      body: 'Discussion body',
+      authors: ['octocat'],
+      createdAt: '2026-02-01T00:00:00Z',
+      updatedAt: '2026-02-02T00:00:00Z',
+      url: 'https://github.com/dfosco/storyboard/discussions/456',
+    })
+
+    const graphqlArgs = ghExec.mock.calls[1][1]
+    expect(graphqlArgs.slice(0, 2)).toEqual(['api', 'graphql'])
+  })
+
+  it('rejects issue comment URLs when comment parent does not match', () => {
+    ghExec
+      .mockReturnValueOnce('gh version 2.58.0')
+      .mockReturnValueOnce(JSON.stringify({
+        body: 'Comment body',
+        user: { login: 'octocat' },
+        issue_url: 'https://api.github.com/repos/dfosco/storyboard/issues/999',
+      }))
+
+    try {
+      fetchGitHubEmbedSnapshot('https://github.com/dfosco/storyboard/issues/123#issuecomment-987')
+      throw new Error('Expected fetchGitHubEmbedSnapshot to throw')
+    } catch (error) {
+      expect(error).toBeInstanceOf(GitHubEmbedError)
+      expect(error.code).toBe('gh_not_found')
+      expect(error.status).toBe(404)
+    }
+  })
+
+  it('hydrates discussion comment snapshot metadata via gh graphql', () => {
+    ghExec
+      .mockReturnValueOnce('gh version 2.58.0')
+      .mockReturnValueOnce(JSON.stringify({
+        data: {
+          repository: {
+            discussion: {
+              number: 456,
+              title: 'Canvas API questions',
+              body: 'Discussion body',
+              createdAt: '2026-02-01T00:00:00Z',
+              updatedAt: '2026-02-02T00:00:00Z',
+              author: { login: 'maintainer' },
+              comments: {
+                pageInfo: {
+                  hasNextPage: false,
+                  endCursor: null,
+                },
+                nodes: [
+                  {
+                    databaseId: 654,
+                    body: 'This is a comment',
+                    createdAt: '2026-02-03T00:00:00Z',
+                    updatedAt: '2026-02-04T00:00:00Z',
+                    author: { login: 'contributor' },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      }))
+
+    const snapshot = fetchGitHubEmbedSnapshot('https://github.com/dfosco/storyboard/discussions/456#discussioncomment-654')
+
+    expect(snapshot).toEqual({
+      kind: 'comment',
+      parentKind: 'discussion',
+      context: 'GitHub · dfosco/storyboard · Discussion #456 comment',
+      title: 'Comment on #456 Canvas API questions',
+      body: 'This is a comment',
+      authors: ['contributor', 'maintainer'],
+      createdAt: '2026-02-03T00:00:00Z',
+      updatedAt: '2026-02-04T00:00:00Z',
+      url: 'https://github.com/dfosco/storyboard/discussions/456#discussioncomment-654',
+    })
+  })
+
   it('throws gh_unavailable when gh is missing', () => {
     ghExec.mockImplementation(() => {
       throw new Error('spawn gh ENOENT')

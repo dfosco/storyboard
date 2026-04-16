@@ -20,6 +20,17 @@ import { useIframeDevLogs } from './iframeDevLogs.js'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
+function ComponentIcon({ size = 36 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <path d="M5.21173 15.1113L2.52473 12.4243C2.29041 12.1899 2.29041 11.8101 2.52473 11.5757L5.21173 8.88873C5.44605 8.65442 5.82595 8.65442 6.06026 8.88873L8.74727 11.5757C8.98158 11.8101 8.98158 12.1899 8.74727 12.4243L6.06026 15.1113C5.82595 15.3456 5.44605 15.3456 5.21173 15.1113Z" />
+      <path d="M11.5757 21.475L8.88874 18.788C8.65443 18.5537 8.65443 18.1738 8.88874 17.9395L11.5757 15.2525C11.8101 15.0182 12.19 15.0182 12.4243 15.2525L15.1113 17.9395C15.3456 18.1738 15.3456 18.5537 15.1113 18.788L12.4243 21.475C12.19 21.7094 11.8101 21.7094 11.5757 21.475Z" />
+      <path d="M11.5757 8.7475L8.88874 6.06049C8.65443 5.82618 8.65443 5.44628 8.88874 5.21197L11.5757 2.52496C11.8101 2.29065 12.19 2.29065 12.4243 2.52496L15.1113 5.21197C15.3456 5.44628 15.3456 5.82618 15.1113 6.06049L12.4243 8.7475C12.19 8.98181 11.8101 8.98181 11.5757 8.7475Z" />
+      <path d="M17.9396 15.1113L15.2526 12.4243C15.0183 12.1899 15.0183 11.8101 15.2526 11.5757L17.9396 8.88873C18.174 8.65442 18.5539 8.65442 18.7882 8.88873L21.4752 11.5757C21.7095 11.8101 21.7095 12.1899 21.4752 12.4243L18.7882 15.1113C18.5539 15.3456 18.174 15.3456 17.9396 15.1113Z" />
+    </svg>
+  )
+}
+
 function resolveStoryUrl(storyId, exportName) {
   const story = getStoryData(storyId)
   if (!story?._route) return null
@@ -231,7 +242,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
       <WidgetWrapper>
         <div className={styles.container} ref={containerRef}>
           <div className={styles.error}>
-            <span className={styles.errorIcon}>📖</span>
+            <span className={styles.errorIcon}><ComponentIcon size={20} /></span>
             <span className={styles.errorText}>Missing story ID</span>
           </div>
         </div>
@@ -244,7 +255,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
       <WidgetWrapper>
         <div className={styles.container} ref={containerRef}>
           <div className={styles.error}>
-            <span className={styles.errorIcon}>📖</span>
+            <span className={styles.errorIcon}><ComponentIcon size={20} /></span>
             <span className={styles.errorText}>Story &ldquo;{storyId}&rdquo; not found or has no route</span>
           </div>
         </div>
@@ -260,7 +271,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
     <WidgetWrapper>
       <div ref={containerRef} className={styles.container} style={sizeStyle}>
         <div className={styles.header}>
-          <span className={styles.headerIcon}>📖</span>
+          <span className={styles.headerIcon}><ComponentIcon size={13} /></span>
           <span className={styles.headerTitle}>{displayName}</span>
         </div>
         {showCode ? (
@@ -304,7 +315,12 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
                 />
               </div>
             ) : (
-              <div className={styles.content} />
+              <div className={styles.content}>
+                <div className={styles.placeholder}>
+                  <ComponentIcon size={36} />
+                  <span className={styles.placeholderLabel}>{displayName}</span>
+                </div>
+              </div>
             )}
 
             {!interactive && (

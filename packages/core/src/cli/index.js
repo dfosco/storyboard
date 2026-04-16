@@ -67,6 +67,8 @@ function helpScreen(version) {
     cmd('canvas add <type>', 'Add widget to a canvas'),
     `                              ${dim('types: sticky-note, markdown, prototype')}`,
     cmd('canvas read [name]', 'Read canvas state and list widgets'),
+    cmd('compact [name]', 'Compact canvas JSONL files (removes bloat)'),
+    cmd('compact --all', 'Force compact all canvases'),
     '',
     `  ${bold(cyan('Setup'))}`,
     cmd('setup', 'Install deps, Caddy proxy, start proxy'),
@@ -100,6 +102,9 @@ switch (command) {
     break
   case 'create':
     import('./create.js')
+    break
+  case 'compact':
+    import('./compact.js')
     break
   case 'canvas':
     if (process.argv[3] === 'add') {

@@ -90,7 +90,7 @@ function splitIssueTitle(title) {
   return { number: '', rest: title }
 }
 
-function GitHubIssueCard({ url, title, github, width, height, onUpdate, resizable }) {
+function GitHubIssueCard({ url, title, github, width, collapsed, onUpdate }) {
   const authors = Array.isArray(github?.authors)
     ? github.authors.filter((a) => typeof a === 'string' && a.trim())
     : []
@@ -125,14 +125,11 @@ function GitHubIssueCard({ url, title, github, width, height, onUpdate, resizabl
 
   const sizeStyle = {
     ...(width ? { width: `${width}px` } : {}),
-    ...(height ? { minHeight: `${height}px` } : {}),
   }
-
-  const handleResize = (w, h) => onUpdate?.({ width: w, height: h })
 
   return (
     <WidgetWrapper>
-      <div className={styles.issueCard} style={sizeStyle}>
+      <div className={`${styles.issueCard} ${collapsed ? styles.issueCardCollapsed : ''}`} style={sizeStyle}>
         <header className={styles.issueHeader}>
           <h2 className={styles.issueTitle}>
             {titleText || url}
@@ -167,7 +164,6 @@ function GitHubIssueCard({ url, title, github, width, height, onUpdate, resizabl
           />
         )}
       </div>
-      {resizable && <ResizeHandle width={width} height={height} onResize={handleResize} />}
     </WidgetWrapper>
   )
 }
@@ -187,9 +183,8 @@ export default function LinkPreview({ id, props, onUpdate, resizable }) {
         title={title}
         github={github}
         width={width}
-        height={height}
+        collapsed={!!props?.collapsed}
         onUpdate={onUpdate}
-        resizable={resizable}
       />
     )
   }

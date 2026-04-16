@@ -4,6 +4,7 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetConfig.js'
 import { toFigmaEmbedUrl, getFigmaTitle, getFigmaType, isFigmaUrl } from './figmaUrl.js'
+import { useIframeDevLogs } from './iframeDevLogs.js'
 import styles from './FigmaEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -43,6 +44,12 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate, resizable }, re
   const title = useMemo(() => (url ? getFigmaTitle(url) : 'Figma'), [url])
   const figmaType = useMemo(() => getFigmaType(url), [url])
   const typeLabel = figmaType ? TYPE_LABELS[figmaType] : 'Figma'
+
+  useIframeDevLogs({
+    widget: 'FigmaEmbed',
+    loaded: showIframe && Boolean(embedUrl),
+    src: embedUrl,
+  })
 
   const enterInteractive = useCallback(() => {
     setShowIframe(true)

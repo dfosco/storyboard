@@ -2,6 +2,7 @@ import { useRef, useCallback, useState, useEffect, useMemo } from 'react'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import ComponentErrorBoundary from '../ComponentErrorBoundary.jsx'
+import { useIframeDevLogs } from './iframeDevLogs.js'
 import styles from './ComponentWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -64,6 +65,12 @@ export default function ComponentWidget({
   }, [isLocalDev, jsxModule, exportName, canvasTheme])
 
   const useIframe = isLocalDev && iframeSrc
+
+  useIframeDevLogs({
+    widget: 'ComponentWidget',
+    loaded: Boolean(useIframe && showIframe),
+    src: iframeSrc,
+  })
 
   if (!useIframe && !Component) return null
 

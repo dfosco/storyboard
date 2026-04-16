@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 10px 10px;
   font-size: 12px;
   font-weight: 500;
   color: var(--fgColor-muted, #656d76);
@@ -23,6 +23,11 @@
   user-select: none;
 }
 
+.headerIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
 .headerTitle {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -31,7 +36,7 @@
 .iframeContainer {
   position: relative;
   width: 100%;
-  height: calc(100% - 31px);
+  height: calc(100% - 37px);
   overflow: hidden;
 }
 
@@ -70,6 +75,15 @@
 .iframe {
   border: none;
   display: block;
+}
+
+.snapshotImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+  display: block;
+  pointer-events: none;
 }
 
 .empty {

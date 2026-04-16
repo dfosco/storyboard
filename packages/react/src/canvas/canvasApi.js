@@ -40,8 +40,10 @@ export function removeWidget(canvasId, widgetId) {
   return request('/widget', 'DELETE', { name: canvasId, widgetId })
 }
 
-export function uploadImage(dataUrl, canvasId) {
-  return request('/image', 'POST', { dataUrl, canvasName: canvasId })
+export function uploadImage(dataUrl, canvasId, filename) {
+  const body = { dataUrl, canvasName: canvasId }
+  if (filename) body.filename = filename
+  return request('/image', 'POST', body)
 }
 
 export function toggleImagePrivacy(filename) {

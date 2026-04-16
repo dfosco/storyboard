@@ -625,12 +625,21 @@ export function Default() {
     // ── Image routes ──────────────────────────────────────────────────
 
     const imagesDir = path.join(root, 'assets', 'canvas', 'images')
+    const snapshotsDir = path.join(root, 'assets', 'canvas', 'snapshots')
 
     const MIME_TO_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' }
     const EXT_TO_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' }
     const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5 MB
 
+    // Route snapshot uploads (snapshot-* prefix) to the snapshots directory
+    function resolveWriteDir(canvasName) {
+      return canvasName?.startsWith('snapshot-') ? snapshotsDir : imagesDir
+    }
+
     function resolveImagePath(filename) {
+      // Check snapshots dir first, then images
+      const snapshotPath = path.join(snapshotsDir, filename)
+      if (fs.existsSync(snapshotPath)) return snapshotPath
       const imagePath = path.join(imagesDir, filename)
       if (fs.existsSync(imagePath)) return imagePath
       return null
@@ -670,8 +679,16 @@ export function Default() {
       const pad = (n) => String(n).padStart(2, '0')
       const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}--${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
       const prefix = canvasName ? `${canvasName.replace(/[\/:]/g, '--')}--` : ''
-      const filename = `${prefix}${dateStr}.${ext}`
-      const targetDir = imagesDir
+
+      // Support explicit filename for snapshot uploads (stable naming)
+      const explicitName = body.filename
+      let filename
+      if (explicitName && /^snapshot-[a-z0-9_-]+--latest\.webp$/i.test(explicitName)) {
+        filename = explicitName
+      } else {
+        filename = `${prefix}${dateStr}.${ext}`
+      }
+      const targetDir = resolveWriteDir(canvasName || '')
 
       try {
         fs.mkdirSync(targetDir, { recursive: true })

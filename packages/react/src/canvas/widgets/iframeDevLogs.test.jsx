@@ -8,17 +8,15 @@ function Probe({ widget = 'Probe', loaded = false, src = '/test' }) {
 }
 
 describe('useIframeDevLogs', () => {
-  let infoSpy
+  let logSpy
 
   beforeEach(() => {
     window.__SB_LOCAL_DEV__ = true
-    window.localStorage.setItem('flag.dev-logs', 'true')
-    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
   })
 
   afterEach(() => {
-    infoSpy.mockRestore()
-    window.localStorage.removeItem('flag.dev-logs')
+    logSpy.mockRestore()
     delete window.__SB_LOCAL_DEV__
   })
 
@@ -27,13 +25,15 @@ describe('useIframeDevLogs', () => {
     rerender(<Probe loaded src="/alpha" />)
     rerender(<Probe loaded={false} src="/alpha" />)
 
-    expect(infoSpy).toHaveBeenNthCalledWith(
+    expect(logSpy).toHaveBeenNthCalledWith(
       1,
-      '[storyboard][iframe] loaded (1) Probe: /alpha',
+      '[storyboard][iframe] loaded | count=1 | Probe',
+      { event: 'loaded', count: 1, widget: 'Probe', src: '/alpha' },
     )
-    expect(infoSpy).toHaveBeenNthCalledWith(
+    expect(logSpy).toHaveBeenNthCalledWith(
       2,
-      '[storyboard][iframe] unloaded (0) Probe: /alpha',
+      '[storyboard][iframe] unloaded | count=0 | Probe',
+      { event: 'unloaded', count: 0, widget: 'Probe', src: '/alpha' },
     )
 
     unmount()
@@ -43,35 +43,39 @@ describe('useIframeDevLogs', () => {
     const first = render(<Probe widget="PrototypeEmbed" loaded src="/proto" />)
     const second = render(<Probe widget="FigmaEmbed" loaded src="/figma" />)
 
-    expect(infoSpy).toHaveBeenNthCalledWith(
+    expect(logSpy).toHaveBeenNthCalledWith(
       1,
-      '[storyboard][iframe] loaded (1) PrototypeEmbed: /proto',
+      '[storyboard][iframe] loaded | count=1 | PrototypeEmbed',
+      { event: 'loaded', count: 1, widget: 'PrototypeEmbed', src: '/proto' },
     )
-    expect(infoSpy).toHaveBeenNthCalledWith(
+    expect(logSpy).toHaveBeenNthCalledWith(
       2,
-      '[storyboard][iframe] loaded (2) FigmaEmbed: /figma',
+      '[storyboard][iframe] loaded | count=2 | FigmaEmbed',
+      { event: 'loaded', count: 2, widget: 'FigmaEmbed', src: '/figma' },
     )
 
     first.unmount()
-    expect(infoSpy).toHaveBeenNthCalledWith(
+    expect(logSpy).toHaveBeenNthCalledWith(
       3,
-      '[storyboard][iframe] unloaded (1) PrototypeEmbed: /proto',
+      '[storyboard][iframe] unloaded | count=1 | PrototypeEmbed',
+      { event: 'unloaded', count: 1, widget: 'PrototypeEmbed', src: '/proto' },
     )
 
     second.unmount()
-    expect(infoSpy).toHaveBeenNthCalledWith(
+    expect(logSpy).toHaveBeenNthCalledWith(
       4,
-      '[storyboard][iframe] unloaded (0) FigmaEmbed: /figma',
+      '[storyboard][iframe] unloaded | count=0 | FigmaEmbed',
+      { event: 'unloaded', count: 0, widget: 'FigmaEmbed', src: '/figma' },
     )
   })
 
-  it('does not log when dev-logs flag is disabled', () => {
-    window.localStorage.setItem('flag.dev-logs', 'false')
+  it('does not log outside local dev runtime', () => {
+    window.__SB_LOCAL_DEV__ = false
     const { rerender, unmount } = render(<Probe loaded={false} src="/off" />)
     rerender(<Probe loaded src="/off" />)
     rerender(<Probe loaded={false} src="/off" />)
 
-    expect(infoSpy).not.toHaveBeenCalled()
+    expect(logSpy).not.toHaveBeenCalled()
     unmount()
   })
 })

@@ -9,6 +9,10 @@
  * captures the alternate theme, and switches back. The user never
  * sees the theme flash because the iframe is hidden during the switch.
  *
+ * Optimized pipeline: the first theme's upload runs in parallel with
+ * the alternate theme's capture, and capture generation tokens prevent
+ * stale results from overwriting newer snapshots.
+ *
  * Only active in dev mode (when onUpdate is provided).
  */
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -84,6 +88,19 @@ function switchTheme(iframeContentWindow, theme, requestId, listeners) {
   })
 }
 
+/**
+ * Upload a captured dataUrl and return the resolved image URL.
+ */
+async function uploadAndResolve(dataUrl, widgetId, themeLabel, base) {
+  const filename = `snapshot-${widgetId}--${themeLabel}.webp`
+  const result = await uploadImage(dataUrl, `snapshot-${widgetId}`, filename)
+  if (result?.filename) {
+    const cacheBust = `?v=${Date.now()}`
+    return `${base}/_storyboard/canvas/images/${result.filename}${cacheBust}`
+  }
+  return null
+}
+
 export function useSnapshotCapture({
   iframeRef,
   widgetId,
@@ -94,6 +111,8 @@ export function useSnapshotCapture({
   const iframeReadyRef = useRef(false)
   const capturingRef = useRef(false)
   const requestIdCounter = useRef(0)
+  // Generation token — incremented on each capture request to detect stale results
+  const captureGeneration = useRef(0)
   // Handlers for both snapshot and theme-applied responses
   const responseHandlers = useRef([])
 
@@ -126,14 +145,18 @@ export function useSnapshotCapture({
 
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
-  }, [iframeRef, onUpdate]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [iframeRef, onUpdate])
 
   /**
-   * Dual-theme capture. Captures current theme, then hides iframe,
-   * switches to alternate theme, captures again, switches back.
-   * Returns { snapshotLight, snapshotDark } URLs.
+   * Dual-theme capture with pipelined uploads.
+   *
+   * Pipeline: capture theme-1 → start upload-1 in parallel with
+   * (hide iframe → switch theme → capture theme-2) → upload-2.
+   *
+   * Generation tokens prevent stale captures from overwriting newer ones.
+   *
    * @param {Object} opts
-   * @param {boolean} opts.force - Skip the iframeReady guard (use when iframe is known to be loaded)
+   * @param {boolean} opts.force - Skip the iframeReady guard
    */
   const requestCapture = useCallback(async ({ force = false } = {}) => {
     if (!onUpdate) return {}
@@ -142,6 +165,7 @@ export function useSnapshotCapture({
     if (!force && !iframeReadyRef.current) return {}
 
     capturingRef.current = true
+    const gen = ++captureGeneration.current
     const cw = iframeRef.current.contentWindow
     const iframe = iframeRef.current
     const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
@@ -153,57 +177,70 @@ export function useSnapshotCapture({
     try {
       // 1. Capture current theme (iframe is visible, user sees current state)
       const currentKey = isCurrentDark ? 'snapshotDark' : 'snapshotLight'
+      const currentLabel = isCurrentDark ? 'dark' : 'light'
       const currentReqId = ++requestIdCounter.current
       const currentDataUrl = await captureOnce(cw, currentReqId, responseHandlers.current)
 
+      // Bail if a newer capture started while we were waiting
+      if (gen !== captureGeneration.current) return {}
+
+      // 2. Start upload of theme-1 in parallel with alternate-theme capture
+      const uploadPromise1 = currentDataUrl
+        ? uploadAndResolve(currentDataUrl, widgetId, currentLabel, base)
+        : Promise.resolve(null)
+
+      // Publish theme-1 immediately so snapshot img is ready before iframe hides
       if (currentDataUrl) {
-        const filename = `snapshot-${widgetId}--${isCurrentDark ? 'dark' : 'light'}.webp`
-        const result = await uploadImage(currentDataUrl, `snapshot-${widgetId}`, filename)
-        if (result?.filename) {
-          const cacheBust = `?v=${Date.now()}`
-          updates[currentKey] = `${base}/_storyboard/canvas/images/${result.filename}${cacheBust}`
-          // Publish immediately so the snapshot img is ready before iframe hides
-          onUpdate?.({ [currentKey]: updates[currentKey] })
-          await new Promise(resolve => {
-            const img = new Image()
-            img.onload = resolve
-            img.onerror = resolve
-            img.src = updates[currentKey]
-            setTimeout(resolve, 2000)
-          })
-        }
+        uploadPromise1.then(url => {
+          if (url && gen === captureGeneration.current) {
+            updates[currentKey] = url
+            onUpdate?.({ [currentKey]: url })
+          }
+        })
       }
 
-      // 2. Hide iframe, switch theme, capture alternate (snapshot now visible behind)
+      // 3. Hide iframe, switch theme, capture alternate — overlaps with upload-1
       const savedVisibility = iframe.style.visibility
       iframe.style.visibility = 'hidden'
 
       const switchReqId = ++requestIdCounter.current
       const switched = await switchTheme(cw, alternateTheme, switchReqId, responseHandlers.current)
 
+      if (gen !== captureGeneration.current) {
+        iframe.style.visibility = savedVisibility || ''
+        return {}
+      }
+
       if (switched) {
         const altKey = isCurrentDark ? 'snapshotLight' : 'snapshotDark'
+        const altLabel = isCurrentDark ? 'light' : 'dark'
         const altReqId = ++requestIdCounter.current
         const altDataUrl = await captureOnce(cw, altReqId, responseHandlers.current)
 
+        if (gen !== captureGeneration.current) {
+          iframe.style.visibility = savedVisibility || ''
+          return {}
+        }
+
         if (altDataUrl) {
-          const filename = `snapshot-${widgetId}--${isCurrentDark ? 'light' : 'dark'}.webp`
-          const result = await uploadImage(altDataUrl, `snapshot-${widgetId}`, filename)
-          if (result?.filename) {
-            const cacheBust = `?v=${Date.now()}`
-            updates[altKey] = `${base}/_storyboard/canvas/images/${result.filename}${cacheBust}`
+          const altUrl = await uploadAndResolve(altDataUrl, widgetId, altLabel, base)
+          if (altUrl && gen === captureGeneration.current) {
+            updates[altKey] = altUrl
           }
         }
 
-        // 3. Switch back to original theme
+        // 4. Switch back to original theme
         const switchBackReqId = ++requestIdCounter.current
         await switchTheme(cw, currentTheme, switchBackReqId, responseHandlers.current)
       }
 
-      // 4. Restore iframe visibility
+      // Ensure upload-1 is complete before final update
+      await uploadPromise1
+
+      // 5. Restore iframe visibility
       iframe.style.visibility = savedVisibility || ''
 
-      if (Object.keys(updates).length > 0) {
+      if (gen === captureGeneration.current && Object.keys(updates).length > 0) {
         onUpdate?.(updates)
       }
       return updates
@@ -215,7 +252,7 @@ export function useSnapshotCapture({
     } finally {
       capturingRef.current = false
     }
-  }, [onUpdate, iframeRef, widgetId, canvasTheme]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [onUpdate, iframeRef, widgetId, canvasTheme])
 
   return { iframeReady, requestCapture }
 }

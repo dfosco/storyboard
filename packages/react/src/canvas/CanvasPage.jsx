@@ -1,5 +1,4 @@
-import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
+import { createElement, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas } from '@dfosco/tiny-canvas'
 import '@dfosco/tiny-canvas/style.css'
 import { useCanvas } from './useCanvas.js'
@@ -267,8 +266,10 @@ function WidgetRenderer({ widget, onUpdate, widgetRef }) {
 /**
  * Wrapper for each JSON widget that holds its own ref for imperative actions.
  * This allows WidgetChrome to dispatch actions to the widget via ref.
+ *
+ * Memoized to prevent re-renders during zoom and unrelated state changes.
  */
-function ChromeWrappedWidget({
+const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
   widget,
   selected,
   multiSelected,
@@ -293,6 +294,10 @@ function ChromeWrappedWidget({
     }
   }, [widget, onRemove, onCopy])
 
+  const handleWidgetFieldUpdate = useCallback((updates) => {
+    onUpdate?.(widget.id, updates)
+  }, [onUpdate, widget.id])
+
   return (
     <WidgetChrome
       widgetId={widget.id}
@@ -305,17 +310,29 @@ function ChromeWrappedWidget({
       onSelect={onSelect}
       onDeselect={onDeselect}
       onAction={handleAction}
-      onUpdate={onUpdate ? (updates) => onUpdate(widget.id, updates) : undefined}
+      onUpdate={onUpdate ? handleWidgetFieldUpdate : undefined}
       readOnly={readOnly}
     >
       <WidgetRenderer
         widget={widget}
-        onUpdate={onUpdate ? (updates) => onUpdate(widget.id, updates) : undefined}
+        onUpdate={onUpdate ? handleWidgetFieldUpdate : undefined}
         widgetRef={widgetRef}
       />
     </WidgetChrome>
   )
-}
+}, function chromeWidgetAreEqual(prev, next) {
+  return (
+    prev.widget === next.widget &&
+    prev.selected === next.selected &&
+    prev.multiSelected === next.multiSelected &&
+    prev.readOnly === next.readOnly &&
+    prev.onSelect === next.onSelect &&
+    prev.onDeselect === next.onDeselect &&
+    prev.onUpdate === next.onUpdate &&
+    prev.onRemove === next.onRemove &&
+    prev.onCopy === next.onCopy
+  )
+})
 
 /**
  * Generic canvas page component.
@@ -335,6 +352,9 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
   const [zoom, setZoom] = useState(initialViewport?.zoom ?? 100)
   const zoomRef = useRef(initialViewport?.zoom ?? 100)
   const scrollRef = useRef(null)
+  const zoomElRef = useRef(null)
+  const zoomCommitTimer = useRef(null)
+  const zoomEventTimer = useRef(null)
   const pendingScrollRestore = useRef(initialViewport)
   // Gate viewport persistence until initial positioning is complete.
   // Tracks which canvasId was last initialized — save effects only
@@ -704,9 +724,16 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
     })
   }, [canvasId, undoRedo, debouncedSave, transitionPeers, clearDragPreview])
 
+  // Keep zoomRef in sync when React state is set (e.g. by toolbar or zoom-to-fit)
   useEffect(() => {
     zoomRef.current = zoom
   }, [zoom])
+
+  // Cleanup zoom timers on unmount
+  useEffect(() => () => {
+    clearTimeout(zoomCommitTimer.current)
+    clearTimeout(zoomEventTimer.current)
+  }, [])
 
   // Restore scroll position from localStorage after first render.
   // When saved state is fresh (< 15 min), restore it. Otherwise zoom-to-fit
@@ -730,7 +757,14 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
         const fitZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(fitScale * 100)))
         const newScale = fitZoom / 100
         zoomRef.current = fitZoom
-        flushSync(() => setZoom(fitZoom))
+        // Imperative DOM update for initial zoom-to-fit — same path as applyZoom
+        const zoomEl = zoomElRef.current
+        if (zoomEl) {
+          zoomEl.style.transform = `scale(${newScale})`
+          zoomEl.style.width = `${Math.max(10000, 100 / newScale)}vw`
+          zoomEl.style.height = `${Math.max(10000, 100 / newScale)}vh`
+        }
+        setZoom(fitZoom)
         el.scrollLeft = (bounds.minX - FIT_PADDING) * newScale
         el.scrollTop = (bounds.minY - FIT_PADDING) * newScale
       } else {
@@ -846,12 +880,19 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
    * When a cursor position is provided (e.g. from a wheel event), the
    * canvas point under the cursor stays fixed. Otherwise falls back to
    * the viewport center.
+   *
+   * Performs an imperative DOM mutation instead of a React state update
+   * to avoid triggering a full re-render of the widget tree on every
+   * zoom tick. React state is committed after a debounce for toolbar
+   * display updates.
    */
   function applyZoom(newZoom, clientX, clientY) {
     const el = scrollRef.current
+    const zoomEl = zoomElRef.current
     const clampedZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newZoom))
 
-    if (!el) {
+    if (!el || !zoomEl) {
+      zoomRef.current = clampedZoom
       setZoom(clampedZoom)
       return
     }
@@ -869,23 +910,36 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
     const canvasX = (el.scrollLeft + anchorX) / oldScale
     const canvasY = (el.scrollTop + anchorY) / oldScale
 
-    // Synchronous render so the DOM has the new transform before we adjust scroll
+    // Imperative DOM update — no React re-render
     zoomRef.current = clampedZoom
-    flushSync(() => setZoom(clampedZoom))
+    zoomEl.style.transform = `scale(${newScale})`
+    zoomEl.style.width = `${Math.max(10000, 100 / newScale)}vw`
+    zoomEl.style.height = `${Math.max(10000, 100 / newScale)}vh`
+
+    // Hint GPU compositing during active zoom
+    zoomEl.dataset.zooming = ''
 
     // Scroll so the same canvas point stays under the anchor
     el.scrollLeft = canvasX * newScale - anchorX
     el.scrollTop = canvasY * newScale - anchorY
 
-    // Persist after both zoom and scroll are settled (the zoom effect
-    // fires inside flushSync before the scroll adjustment above, so it
-    // would capture stale scroll values).
-    if (viewportInitName.current === canvasId) {
-      saveViewportState(canvasId, {
-        zoom: clampedZoom,
-        scrollLeft: el.scrollLeft,
-        scrollTop: el.scrollTop,
-      })
+    // Debounced commit: update React state for toolbar display + persistence
+    clearTimeout(zoomCommitTimer.current)
+    zoomCommitTimer.current = setTimeout(() => {
+      // Remove GPU compositing hint
+      delete zoomEl.dataset.zooming
+      setZoom(clampedZoom)
+    }, 150)
+
+    // Throttled zoom-changed event for external consumers (toolbar)
+    if (!zoomEventTimer.current) {
+      zoomEventTimer.current = setTimeout(() => {
+        zoomEventTimer.current = null
+        window[CANVAS_BRIDGE_STATE_KEY] = { active: true, canvasId, zoom: zoomRef.current }
+        document.dispatchEvent(new CustomEvent('storyboard:canvas:zoom-changed', {
+          detail: { zoom: zoomRef.current }
+        }))
+      }, 100)
     }
   }
 
@@ -1067,9 +1121,15 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
       const fitZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(fitScale * 100)))
       const newScale = fitZoom / 100
 
-      // Apply zoom synchronously so DOM updates before we scroll
+      // Imperative DOM update — same path as applyZoom
       zoomRef.current = fitZoom
-      flushSync(() => setZoom(fitZoom))
+      const zoomEl = zoomElRef.current
+      if (zoomEl) {
+        zoomEl.style.transform = `scale(${newScale})`
+        zoomEl.style.width = `${Math.max(10000, 100 / newScale)}vw`
+        zoomEl.style.height = `${Math.max(10000, 100 / newScale)}vh`
+      }
+      setZoom(fitZoom)
 
       // Scroll so the bounding box top-left (with padding) is at viewport top-left
       el.scrollLeft = (bounds.minX - FIT_PADDING) * newScale
@@ -1623,6 +1683,15 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
   const canvasThemeVars = getCanvasThemeVars(canvasTheme)
   const canvasPrimerAttrs = getCanvasPrimerAttrs(canvasTheme)
 
+  // Stable callback for deselecting all widgets
+  const handleDeselectAll = useCallback(() => setSelectedWidgetIds(new Set()), [])
+
+  // Stable callback for widget removal + deselect
+  const handleWidgetRemoveAndDeselect = useCallback((id) => {
+    handleWidgetRemove(id)
+    setSelectedWidgetIds(new Set())
+  }, [handleWidgetRemove])
+
   // Merge JSX-sourced widgets (from .canvas.jsx) and JSON widgets
   const allChildren = []
 
@@ -1653,7 +1722,7 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
           selected={selectedWidgetIds.has(`jsx-${exportName}`)}
           multiSelected={isMultiSelected && selectedWidgetIds.has(`jsx-${exportName}`)}
           onSelect={(shiftKey) => handleWidgetSelect(`jsx-${exportName}`, shiftKey)}
-          onDeselect={() => setSelectedWidgetIds(new Set())}
+          onDeselect={handleDeselectAll}
           readOnly={!isLocalDev}
         >
           <ComponentWidget
@@ -1695,13 +1764,10 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
           selected={selectedWidgetIds.has(widget.id)}
           multiSelected={isMultiSelected && selectedWidgetIds.has(widget.id)}
           onSelect={(shiftKey) => handleWidgetSelect(widget.id, shiftKey)}
-          onDeselect={() => setSelectedWidgetIds(new Set())}
+          onDeselect={handleDeselectAll}
           onUpdate={isLocalDev ? handleWidgetUpdate : undefined}
           onCopy={isLocalDev ? handleWidgetCopy : undefined}
-          onRemove={isLocalDev ? (id) => {
-            handleWidgetRemove(id)
-            setSelectedWidgetIds(new Set())
-          } : undefined}
+          onRemove={isLocalDev ? handleWidgetRemoveAndDeselect : undefined}
           readOnly={!isLocalDev}
         />
       </div>
@@ -1729,10 +1795,11 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
           ...canvasThemeVars,
           ...(spaceHeld ? { cursor: panningActive ? 'grabbing' : 'grab' } : {}),
         }}
-        onClick={() => setSelectedWidgetIds(new Set())}
+        onClick={handleDeselectAll}
         onMouseDown={handlePanStart}
       >
         <div
+          ref={zoomElRef}
           data-storyboard-canvas-zoom
           data-sb-canvas-theme={canvasTheme}
           className={styles.canvasZoom}

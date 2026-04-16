@@ -338,7 +338,15 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
       const url = widget.props?.url
       if (url && onRefreshGitHub) onRefreshGitHub(widget.id, url)
     } else if (actionId === 'toggle-collapse') {
-      onUpdate?.(widget.id, { collapsed: !widget.props?.collapsed })
+      const wasCollapsed = !!widget.props?.collapsed
+      onUpdate?.(widget.id, { collapsed: !wasCollapsed })
+      // When collapsing, pan viewport to center the widget
+      if (!wasCollapsed) {
+        requestAnimationFrame(() => {
+          const el = document.getElementById(widget.id)
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        })
+      }
     }
   }, [widget, onRemove, onCopy, onRefreshGitHub])
 

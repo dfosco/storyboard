@@ -18,6 +18,7 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { useIframeDevLogs } from './iframeDevLogs.js'
 import { useSnapshotCapture } from './useSnapshotCapture.js'
+import { subscribeCanvasTheme } from './embedTheme.js'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -32,13 +33,17 @@ function ComponentIcon({ size = 36 }) {
   )
 }
 
-function resolveStoryUrl(storyId, exportName) {
+function resolveStoryUrl(storyId, exportName, canvasTheme) {
   const story = getStoryData(storyId)
   if (!story?._route) return null
 
   const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
   const route = story._route
-  const params = new URLSearchParams({ _sb_embed: '1' })
+  const params = new URLSearchParams({
+    _sb_embed: '1',
+    _sb_theme_target: 'prototype',
+    _sb_canvas_theme: canvasTheme || 'light',
+  })
   if (exportName) params.set('export', exportName)
 
   return `${base}${route}?${params}`
@@ -106,22 +111,10 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   // Resolve canvas theme — reactive to theme changes
   const [canvasTheme, setCanvasTheme] = useState('light')
 
-  // Read canvas theme from the closest ancestor [data-sb-canvas-theme] attribute
-  // set by CanvasPage — this is the actual displayed theme regardless of sync settings.
-  useEffect(() => {
-    function readTheme() {
-      const container = containerRef.current?.closest?.('[data-sb-canvas-theme]')
-      setCanvasTheme(container?.getAttribute('data-sb-canvas-theme') || 'light')
-    }
-    readTheme()
-    document.addEventListener('storyboard:theme:changed', readTheme)
-    const mq = window.matchMedia?.('(prefers-color-scheme: dark)')
-    mq?.addEventListener?.('change', readTheme)
-    return () => {
-      document.removeEventListener('storyboard:theme:changed', readTheme)
-      mq?.removeEventListener?.('change', readTheme)
-    }
-  }, [])
+  useEffect(() => subscribeCanvasTheme({
+    anchorRef: containerRef,
+    onTheme: setCanvasTheme,
+  }), [])
 
   // Snapshot capture hook
   const { iframeReady, requestCapture } = useSnapshotCapture({
@@ -337,8 +330,8 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   }), [storyId, showCode, toggleShowCode, copyCode, iframeReady, requestCapture])
 
   const iframeSrc = useMemo(
-    () => resolveStoryUrl(storyId, exportName),
-    [storyId, exportName, storyIndexKey],
+    () => resolveStoryUrl(storyId, exportName, canvasTheme),
+    [storyId, exportName, storyIndexKey, canvasTheme],
   )
 
   useIframeDevLogs({

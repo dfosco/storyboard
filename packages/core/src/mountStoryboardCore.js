@@ -270,13 +270,23 @@ export async function mountStoryboardCore(config = {}, options = {}) {
           const { theme, requestId: themeReqId } = e.data
           const html = document.documentElement
           if (theme?.startsWith('dark')) {
+            const darkTheme = theme === 'dark_dimmed' ? 'dark_dimmed' : 'dark'
             html.setAttribute('data-color-mode', 'dark')
-            html.setAttribute('data-dark-theme', theme === 'dark_dimmed' ? 'dark_dimmed' : 'dark')
+            html.setAttribute('data-dark-theme', darkTheme)
             html.setAttribute('data-light-theme', 'light')
+            html.setAttribute('data-sb-theme', darkTheme)
+            html.setAttribute('data-sb-toolbar-theme', darkTheme)
+            html.setAttribute('data-sb-code-theme', darkTheme)
+            html.setAttribute('data-sb-canvas-theme', darkTheme)
           } else {
+            const lightTheme = theme || 'light'
             html.setAttribute('data-color-mode', 'light')
             html.setAttribute('data-dark-theme', 'dark')
-            html.setAttribute('data-light-theme', theme || 'light')
+            html.setAttribute('data-light-theme', lightTheme)
+            html.setAttribute('data-sb-theme', lightTheme)
+            html.setAttribute('data-sb-toolbar-theme', lightTheme)
+            html.setAttribute('data-sb-code-theme', lightTheme)
+            html.setAttribute('data-sb-canvas-theme', lightTheme)
           }
           // Wait for repaint so CSS variables propagate
           requestAnimationFrame(() => requestAnimationFrame(() => {

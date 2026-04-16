@@ -283,9 +283,9 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
         if (chromeEl) return
 
         setInteractive(false)
-        if (onUpdate && !isExternal && iframeReady && iframeRef.current?.contentWindow) {
-          // Capture then preload snapshot before hiding iframe to avoid flash
-          requestCapture().then((updates) => {
+        if (onUpdate && !isExternal && iframeLoaded && iframeRef.current?.contentWindow) {
+          // Force capture — iframe is loaded since user was interacting
+          requestCapture({ force: true }).then((updates) => {
             const url = updates?.snapshotLight || updates?.snapshotDark
             if (url) {
               const img = new Image()
@@ -305,7 +305,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     }
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [interactive, expanded, onUpdate, isExternal, iframeReady, requestCapture])
+  }, [interactive, expanded, onUpdate, isExternal, iframeLoaded, requestCapture])
 
   useEffect(() => {
     function readToolbarTheme() {

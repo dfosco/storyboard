@@ -14,7 +14,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { uploadImage } from '../canvasApi.js'
 
-const CAPTURE_TIMEOUT = 5000
+const CAPTURE_TIMEOUT = 3000
 const THEME_SWITCH_TIMEOUT = 2000
 
 /**
@@ -132,12 +132,14 @@ export function useSnapshotCapture({
    * Dual-theme capture. Captures current theme, then hides iframe,
    * switches to alternate theme, captures again, switches back.
    * Returns { snapshotLight, snapshotDark } URLs.
+   * @param {Object} opts
+   * @param {boolean} opts.force - Skip the iframeReady guard (use when iframe is known to be loaded)
    */
-  const requestCapture = useCallback(async () => {
+  const requestCapture = useCallback(async ({ force = false } = {}) => {
     if (!onUpdate) return {}
     if (!iframeRef.current?.contentWindow) return {}
     if (capturingRef.current) return {}
-    if (!iframeReadyRef.current) return {}
+    if (!force && !iframeReadyRef.current) return {}
 
     capturingRef.current = true
     const cw = iframeRef.current.contentWindow

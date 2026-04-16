@@ -199,8 +199,9 @@ export default function storyboardServer() {
       // Wire canvas API routes (always enabled — CRUD for .canvas.jsonl files)
       routeHandlers.set('canvas', createCanvasHandler({ root, sendJson }))
 
-      // Ignore assets/canvas/ so image writes don't trigger reloads
+      // Ignore assets/canvas/ so image/snapshot writes don't trigger reloads
       server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'images'))
+      server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'snapshots'))
 
       // Wire autosync API routes (always enabled — git automation for dev)
       routeHandlers.set('autosync', createAutosyncHandler({ root, sendJson }))
@@ -412,16 +413,18 @@ export default function storyboardServer() {
       // Private images (prefixed with _) are excluded from the build.
       for (const dir of [
         path.join(root, 'assets', 'canvas', 'images'),
+        path.join(root, 'assets', 'canvas', 'snapshots'),
       ]) {
         try {
           const imageFiles = await fs.promises.readdir(dir)
+          const subdir = dir.endsWith('snapshots') ? 'snapshots' : 'images'
           for (const file of imageFiles) {
             if (file.startsWith('_') || file.startsWith('.')) continue
             try {
               const data = await fs.promises.readFile(path.join(dir, file))
               this.emitFile({
                 type: 'asset',
-                fileName: `_storyboard/canvas/images/${file}`,
+                fileName: `_storyboard/canvas/${subdir}/${file}`,
                 source: data,
               })
             } catch { /* skip unreadable files */ }

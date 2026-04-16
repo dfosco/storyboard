@@ -17,6 +17,7 @@ import { createInspectorHighlighter } from '@dfosco/storyboard-core/inspector/hi
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { useIframeDevLogs } from './iframeDevLogs.js'
+import { useSnapshotCapture } from './useSnapshotCapture.js'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -89,14 +90,17 @@ async function fetchStorySource(modulePath) {
   return source
 }
 
-export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, ref) {
+export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, resizable }, ref) {
   const storyId = props?.storyId || ''
   const exportName = props?.exportName || ''
   const width = props?.width
   const height = props?.height
+  const snapshotLight = props?.snapshotLight || ''
+  const snapshotDark = props?.snapshotDark || ''
 
   const containerRef = useRef(null)
   const iframeRef = useRef(null)
+  const resizeTimerRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
   const [showIframe, setShowIframe] = useState(false)
   const [iframeLoaded, setIframeLoaded] = useState(false)
@@ -105,6 +109,29 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
   const [highlightedHtml, setHighlightedHtml] = useState(null)
   const [sourceLoading, setSourceLoading] = useState(false)
   const [storyIndexKey, setStoryIndexKey] = useState(0)
+
+  // Resolve canvas theme for snapshot theming
+  const canvasTheme = useMemo(() => {
+    if (typeof localStorage === 'undefined') return 'light'
+    const stored = localStorage.getItem('sb-color-scheme') || 'system'
+    if (stored !== 'system') return stored
+    if (typeof window.matchMedia !== 'function') return 'light'
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }, [])
+
+  // Snapshot capture hook
+  const { iframeReady, requestCapture } = useSnapshotCapture({
+    iframeRef,
+    widgetId,
+    onUpdate,
+    canvasTheme,
+  })
+
+  // Determine if a valid snapshot exists for the current theme
+  const validSnapshot = useMemo(() => {
+    const url = canvasTheme?.startsWith('dark') ? snapshotDark : snapshotLight
+    return url && widgetId && url.includes(widgetId) ? url : null
+  }, [canvasTheme, snapshotLight, snapshotDark, widgetId])
 
   // Re-resolve story URL when the story index is live-patched (new story added)
   useEffect(() => {
@@ -133,21 +160,42 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
     if (!showIframe) setIframeLoaded(false)
   }, [showIframe])
 
+  // Exit interactive mode when clicking outside.
+  // Delays iframe teardown to allow snapshot capture.
   useEffect(() => {
     if (!interactive) return
     function handlePointerDown(e) {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setInteractive(false)
-        setShowIframe(false)
+        if (onUpdate && iframeReady && iframeRef.current?.contentWindow) {
+          requestCapture().then(() => setShowIframe(false))
+        } else {
+          setShowIframe(false)
+        }
       }
     }
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [interactive])
+  }, [interactive, onUpdate, iframeReady, requestCapture])
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
-  }, [onUpdate])
+    // Recapture snapshot after resize (debounced)
+    clearTimeout(resizeTimerRef.current)
+    resizeTimerRef.current = setTimeout(() => requestCapture(), 1500)
+  }, [onUpdate, requestCapture])
+
+  // Capture snapshot on first iframe ready (when no existing snapshot)
+  useEffect(() => {
+    if (!iframeReady || !onUpdate) return
+    const hasSnapshot = (snapshotLight?.includes(widgetId)) || (snapshotDark?.includes(widgetId))
+    if (!hasSnapshot) {
+      requestCapture()
+    }
+  }, [iframeReady]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cleanup resize timer on unmount
+  useEffect(() => () => clearTimeout(resizeTimerRef.current), [])
 
   // Load source code when show-code is toggled on
   useEffect(() => {
@@ -234,9 +282,11 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
           const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
           window.open(`${base}${story._route}`, '_blank', 'noopener')
         }
+      } else if (actionId === 'refresh-thumbnail') {
+        requestCapture()
       }
     },
-  }), [storyId, showCode, toggleShowCode, copyCode])
+  }), [storyId, showCode, toggleShowCode, copyCode, requestCapture])
 
   const iframeSrc = useMemo(
     () => resolveStoryUrl(storyId, exportName),
@@ -286,7 +336,7 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
     <WidgetWrapper>
       <div ref={containerRef} className={styles.container} style={sizeStyle}>
         <div className={styles.header}>
-          <span className={styles.headerIcon}><ComponentIcon size={13} /></span>
+          <span className={styles.headerIcon}><ComponentIcon size={16} /></span>
           <span className={styles.headerTitle}>{displayName}</span>
         </div>
         {showCode ? (
@@ -332,16 +382,25 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
                 />
               )}
               {(!showIframe || !iframeLoaded) && (
-                <div className={styles.placeholder} style={showIframe ? { position: 'absolute', inset: 0 } : undefined}>
-                  {showIframe ? (
-                    <span className={styles.spinner}><RefreshCwIcon size={36} /></span>
-                  ) : (
-                    <>
-                      <ComponentIcon size={36} />
-                      <span className={styles.placeholderLabel}>{displayName}</span>
-                    </>
-                  )}
-                </div>
+                validSnapshot && !showIframe ? (
+                  <img
+                    src={validSnapshot}
+                    alt={`${displayName} snapshot`}
+                    className={styles.snapshotImage}
+                    draggable={false}
+                  />
+                ) : (
+                  <div className={styles.placeholder} style={showIframe ? { position: 'absolute', inset: 0 } : undefined}>
+                    {showIframe ? (
+                      <span className={styles.spinner}><RefreshCwIcon size={36} /></span>
+                    ) : (
+                      <>
+                        <ComponentIcon size={36} />
+                        <span className={styles.placeholderLabel}>{displayName}</span>
+                      </>
+                    )}
+                  </div>
+                )
               )}
             </div>
 

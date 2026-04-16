@@ -268,6 +268,14 @@
           }
         },
         {
+          "id": "refresh-thumbnail",
+          "type": "action",
+          "action": "refresh-thumbnail",
+          "label": "Refresh thumbnail",
+          "icon": "image",
+          "menu": true
+        },
+        {
           "id": "delete",
           "type": "action",
           "action": "delete",
@@ -528,6 +536,14 @@
             "label": "$label:copy-id",
             "action": "copy-widget-id"
           }
+        },
+        {
+          "id": "refresh-thumbnail",
+          "type": "action",
+          "action": "refresh-thumbnail",
+          "label": "Refresh thumbnail",
+          "icon": "image",
+          "menu": true
         },
         {
           "id": "delete",

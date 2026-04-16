@@ -12,6 +12,7 @@ const DISCUSSION_COMMENT_HASH_RE = /^#discussioncomment-(\d+)$/i
 
 const GH_TIMEOUT_MS = 15_000
 const BODY_MAX_LENGTH = 700
+const NOT_FOUND_MESSAGE = 'GitHub resource was not found or is not accessible with current credentials.'
 
 export class GitHubEmbedError extends Error {
   constructor(code, message, status = 500) {
@@ -75,6 +76,21 @@ function runGhApi(pathname) {
   }
 }
 
+function runGhGraphql(query, variables = {}) {
+  const args = ['api', 'graphql', '-f', `query=${query}`]
+  for (const [name, value] of Object.entries(variables)) {
+    if (value == null) continue
+    args.push('-F', `${name}=${String(value)}`)
+  }
+
+  const output = runGh(args)
+  try {
+    return JSON.parse(output || '{}')
+  } catch {
+    throw new GitHubEmbedError('gh_invalid_json', 'GitHub CLI returned invalid JSON.', 502)
+  }
+}
+
 function sanitizeGhErrorMessage(message) {
   return String(message || '')
     .replace(/gh[pousr]_[A-Za-z0-9_]+/g, '[redacted-token]')
@@ -88,6 +104,8 @@ function extractStatusCode(message) {
 }
 
 function toFriendlyError(error) {
+  if (error instanceof GitHubEmbedError) return error
+
   const raw = sanitizeGhErrorMessage(error?.stderr || error?.message || 'Failed to fetch GitHub data.')
   const status = extractStatusCode(raw)
 
@@ -102,7 +120,7 @@ function toFriendlyError(error) {
   if (status === 404) {
     return new GitHubEmbedError(
       'gh_not_found',
-      'GitHub resource was not found or is not accessible with current credentials.',
+      NOT_FOUND_MESSAGE,
       404,
     )
   }
@@ -153,9 +171,9 @@ function buildDiscussionSnapshot(target, discussion) {
     context: toContext(target),
     title: discussion?.title ? `#${number} ${discussion.title}` : `Discussion #${number}`,
     body: normalizeBody(discussion?.body),
-    authors: uniqueStrings([discussion?.user?.login]),
-    createdAt: discussion?.created_at ?? null,
-    updatedAt: discussion?.updated_at ?? null,
+    authors: uniqueStrings([discussion?.author?.login, discussion?.user?.login]),
+    createdAt: discussion?.createdAt ?? discussion?.created_at ?? null,
+    updatedAt: discussion?.updatedAt ?? discussion?.updated_at ?? null,
     url: target.url,
   }
 }
@@ -185,10 +203,126 @@ function buildDiscussionCommentSnapshot(target, comment, discussion) {
     context: toContext(target),
     title: `Comment on ${parentLabel}`,
     body: normalizeBody(comment?.body),
-    authors: uniqueStrings([comment?.user?.login, discussion?.user?.login]),
-    createdAt: comment?.created_at ?? null,
-    updatedAt: comment?.updated_at ?? null,
+    authors: uniqueStrings([comment?.author?.login, comment?.user?.login, discussion?.author?.login, discussion?.user?.login]),
+    createdAt: comment?.createdAt ?? comment?.created_at ?? null,
+    updatedAt: comment?.updatedAt ?? comment?.updated_at ?? null,
     url: target.url,
+  }
+}
+
+function parseIssueRefFromApiUrl(issueUrl) {
+  if (typeof issueUrl !== 'string' || !issueUrl) return null
+  try {
+    const parsed = new URL(issueUrl)
+    const match = parsed.pathname.match(/^\/repos\/([^/]+)\/([^/]+)\/issues\/(\d+)$/)
+    if (!match) return null
+    const number = parseNumber(match[3])
+    if (!number) return null
+    return {
+      owner: match[1],
+      repo: match[2],
+      number,
+    }
+  } catch {
+    return null
+  }
+}
+
+function assertIssueCommentParent(target, comment) {
+  const parent = parseIssueRefFromApiUrl(comment?.issue_url)
+  if (!parent) {
+    throw new GitHubEmbedError('gh_not_found', NOT_FOUND_MESSAGE, 404)
+  }
+
+  const sameOwner = parent.owner.toLowerCase() === target.owner.toLowerCase()
+  const sameRepo = parent.repo.toLowerCase() === target.repo.toLowerCase()
+  const sameNumber = parent.number === target.number
+  if (!sameOwner || !sameRepo || !sameNumber) {
+    throw new GitHubEmbedError('gh_not_found', NOT_FOUND_MESSAGE, 404)
+  }
+}
+
+function fetchDiscussion(target) {
+  const query = `
+query($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    discussion(number: $number) {
+      number
+      title
+      body
+      createdAt
+      updatedAt
+      author { login }
+    }
+  }
+}
+`
+  const response = runGhGraphql(query, {
+    owner: target.owner,
+    repo: target.repo,
+    number: target.number,
+  })
+
+  const discussion = response?.data?.repository?.discussion
+  if (!discussion) {
+    throw new GitHubEmbedError('gh_not_found', NOT_FOUND_MESSAGE, 404)
+  }
+  return discussion
+}
+
+function fetchDiscussionComment(target) {
+  const query = `
+query($owner: String!, $repo: String!, $number: Int!, $after: String) {
+  repository(owner: $owner, name: $repo) {
+    discussion(number: $number) {
+      number
+      title
+      body
+      createdAt
+      updatedAt
+      author { login }
+      comments(first: 100, after: $after) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          databaseId
+          body
+          createdAt
+          updatedAt
+          author { login }
+        }
+      }
+    }
+  }
+}
+`
+
+  let after = null
+  while (true) {
+    const response = runGhGraphql(query, {
+      owner: target.owner,
+      repo: target.repo,
+      number: target.number,
+      after,
+    })
+
+    const discussion = response?.data?.repository?.discussion
+    if (!discussion) {
+      throw new GitHubEmbedError('gh_not_found', NOT_FOUND_MESSAGE, 404)
+    }
+
+    const comment = (discussion?.comments?.nodes || [])
+      .find((node) => Number(node?.databaseId) === target.commentId)
+
+    if (comment) return { discussion, comment }
+
+    const pageInfo = discussion?.comments?.pageInfo
+    if (!pageInfo?.hasNextPage || !pageInfo?.endCursor) {
+      throw new GitHubEmbedError('gh_not_found', NOT_FOUND_MESSAGE, 404)
+    }
+    after = pageInfo.endCursor
   }
 }
 
@@ -327,18 +461,18 @@ export function fetchGitHubEmbedSnapshot(rawUrl) {
     }
 
     if (target.kind === 'discussion') {
-      const discussion = runGhApi(`repos/${target.owner}/${target.repo}/discussions/${target.number}`)
+      const discussion = fetchDiscussion(target)
       return buildDiscussionSnapshot(target, discussion)
     }
 
     if (target.parentKind === 'issue') {
       const comment = runGhApi(`repos/${target.owner}/${target.repo}/issues/comments/${target.commentId}`)
+      assertIssueCommentParent(target, comment)
       const issue = runGhApi(`repos/${target.owner}/${target.repo}/issues/${target.number}`)
       return buildIssueCommentSnapshot(target, comment, issue)
     }
 
-    const comment = runGhApi(`repos/${target.owner}/${target.repo}/discussions/comments/${target.commentId}`)
-    const discussion = runGhApi(`repos/${target.owner}/${target.repo}/discussions/${target.number}`)
+    const { comment, discussion } = fetchDiscussionComment(target)
     return buildDiscussionCommentSnapshot(target, comment, discussion)
   } catch (error) {
     throw toFriendlyError(error)

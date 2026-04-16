@@ -17,6 +17,8 @@
  *   POST   /create   — create a new .canvas.jsonl file
  *   GET    /stories  — list all .story.{jsx,tsx} files with exports
  *   POST   /create-story — scaffold a new .story.{jsx,tsx} file
+ *   GET    /github/available — check if local gh CLI is installed
+ *   POST   /github/embed — fetch GitHub issue/discussion/comment metadata via gh
  *   POST   /image    — upload a pasted image to src/canvas/images/
  *   GET    /images/* — serve an image file from src/canvas/images/
  *   POST   /image/toggle-private — toggle _prefix on image filename
@@ -27,6 +29,13 @@ import path from 'node:path'
 import { Buffer } from 'node:buffer'
 import { materializeFromText, serializeEvent } from './materializer.js'
 import { toCanvasId, parseCanvasId } from './identity.js'
+import {
+  GH_INSTALL_URL,
+  GitHubEmbedError,
+  fetchGitHubEmbedSnapshot,
+  isGhCliAvailable,
+  isGitHubEmbedUrl,
+} from './githubEmbeds.js'
 
 /**
  * Scan src/canvas/ for directories containing .meta.json files.
@@ -618,6 +627,53 @@ export function Default() {
         })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to create story: ${err.message}` })
+      }
+      return
+    }
+
+    // GET /github/available — check if gh CLI is installed locally
+    if (routePath === '/github/available' && method === 'GET') {
+      sendJson(res, 200, {
+        available: isGhCliAvailable(),
+        installUrl: GH_INSTALL_URL,
+      })
+      return
+    }
+
+    // POST /github/embed — fetch metadata for GitHub issue/discussion/comment links
+    if (routePath === '/github/embed' && method === 'POST') {
+      const rawUrl = typeof body?.url === 'string' ? body.url.trim() : ''
+
+      if (!rawUrl) {
+        sendJson(res, 400, { code: 'invalid_url', error: 'url is required' })
+        return
+      }
+
+      if (!isGitHubEmbedUrl(rawUrl)) {
+        sendJson(res, 400, {
+          code: 'unsupported_url',
+          error: 'Only GitHub issue, discussion, and comment URLs are supported.',
+        })
+        return
+      }
+
+      try {
+        const snapshot = fetchGitHubEmbedSnapshot(rawUrl)
+        sendJson(res, 200, { success: true, snapshot })
+      } catch (error) {
+        if (error instanceof GitHubEmbedError) {
+          sendJson(res, error.status ?? 500, {
+            code: error.code,
+            error: error.message,
+            installUrl: error.code === 'gh_unavailable' ? GH_INSTALL_URL : undefined,
+          })
+          return
+        }
+
+        sendJson(res, 500, {
+          code: 'gh_fetch_failed',
+          error: error?.message || 'Failed to fetch GitHub metadata.',
+        })
       }
       return
     }

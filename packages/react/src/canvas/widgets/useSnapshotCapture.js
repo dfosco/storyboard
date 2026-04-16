@@ -162,10 +162,19 @@ export function useSnapshotCapture({
         if (result?.filename) {
           const cacheBust = `?v=${Date.now()}`
           updates[currentKey] = `${base}/_storyboard/canvas/images/${result.filename}${cacheBust}`
+          // Publish immediately so the snapshot img is ready before iframe hides
+          onUpdate?.({ [currentKey]: updates[currentKey] })
+          await new Promise(resolve => {
+            const img = new Image()
+            img.onload = resolve
+            img.onerror = resolve
+            img.src = updates[currentKey]
+            setTimeout(resolve, 2000)
+          })
         }
       }
 
-      // 2. Hide iframe, switch theme, capture alternate
+      // 2. Hide iframe, switch theme, capture alternate (snapshot now visible behind)
       const savedVisibility = iframe.style.visibility
       iframe.style.visibility = 'hidden'
 

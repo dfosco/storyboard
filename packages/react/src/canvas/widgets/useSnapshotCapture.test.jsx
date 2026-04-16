@@ -35,6 +35,15 @@ describe('useSnapshotCapture', () => {
       if (type === 'message') listeners = listeners.filter(l => l !== fn)
       origRemove.call(window, type, fn, opts)
     })
+    // Mock Image so preload resolves immediately in tests
+    vi.stubGlobal('Image', class MockImage {
+      constructor() { this._onload = null }
+      set onload(fn) { this._onload = fn }
+      get onload() { return this._onload }
+      set onerror(fn) { this._onerror = fn }
+      set src(v) { this._src = v; Promise.resolve().then(() => this._onload?.()) }
+      get src() { return this._src }
+    })
   })
 
   afterEach(() => { vi.restoreAllMocks() })
@@ -124,6 +133,12 @@ describe('useSnapshotCapture', () => {
     // 2 captures + 2 theme switches = 4 postMessages
     expect(cw.postMessage).toHaveBeenCalledTimes(4)
     expect(uploadImage).toHaveBeenCalledTimes(2)
+    // Intermediate onUpdate for current theme + final with both
+    expect(onUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        snapshotLight: expect.stringContaining('snapshot-test-widget--light.webp'),
+      })
+    )
     expect(onUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         snapshotLight: expect.stringContaining('snapshot-test-widget--light.webp'),

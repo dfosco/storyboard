@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
-import { getEmbedChromeVars } from './embedTheme.js'
+import { getEmbedChromeVars, resolveCanvasTheme } from './embedTheme.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
 import { useSnapshotCapture } from './useSnapshotCapture.js'
 import styles from './PrototypeEmbed.module.css'
@@ -60,23 +60,6 @@ function normalizeRoutePath(value, basePath = '') {
   return route || '/'
 }
 
-function resolveCanvasThemeFromStorage() {
-  if (typeof localStorage === 'undefined') return 'light'
-  let sync = { prototype: true, toolbar: false, codeBoxes: true, canvas: false }
-  try {
-    const rawSync = localStorage.getItem('sb-theme-sync')
-    if (rawSync) sync = { ...sync, ...JSON.parse(rawSync) }
-  } catch {
-    // Ignore malformed sync settings
-  }
-  if (!sync.canvas) return 'light'
-  const attrTheme = document.documentElement.getAttribute('data-sb-canvas-theme')
-  if (attrTheme) return attrTheme
-  const stored = localStorage.getItem('sb-color-scheme') || 'system'
-  if (stored !== 'system') return stored
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
 export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdate, resizable }, ref) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
   const width = readProp(props, 'width', prototypeEmbedSchema)
@@ -105,14 +88,15 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const [iframeLoaded, setIframeLoaded] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [filter, setFilter] = useState('')
-  const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
-  const [snapshotBroken, setSnapshotBroken] = useState(false)
+  const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasTheme())
+  const [brokenSnaps, setBrokenSnaps] = useState({})
 
   const inputRef = useRef(null)
   const filterRef = useRef(null)
   const embedRef = useRef(null)
   const iframeRef = useRef(null)
   const captureOnReadyRef = useRef(false)
+  const exitSessionRef = useRef(0)
   const inlineContainerRef = useRef(null)
   const modalContainerRef = useRef(null)
   const resizeTimerRef = useRef(null)
@@ -127,19 +111,11 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     canvasTheme,
   })
 
-  // Determine if a valid snapshot exists for the current theme
-  const validSnapshot = useMemo(() => {
-    if (isExternal) return null
-    const url = canvasTheme?.startsWith('dark') ? snapshotDark : snapshotLight
-    // Fall back to whichever exists if current theme's snapshot is missing
-    const fallback = canvasTheme?.startsWith('dark') ? snapshotLight : snapshotDark
-    const chosen = (url && widgetId && url.includes(widgetId)) ? url
-      : (fallback && widgetId && fallback.includes(widgetId)) ? fallback : null
-    return chosen
-  }, [canvasTheme, snapshotLight, snapshotDark, widgetId, isExternal])
-
-  // Reset broken state when snapshot URL changes
-  useEffect(() => { setSnapshotBroken(false) }, [validSnapshot])
+  // Determine available snapshots for layered rendering
+  const isDark = canvasTheme?.startsWith('dark')
+  const hasLightSnap = !isExternal && !!(snapshotLight && snapshotLight.includes(widgetId) && !brokenSnaps[snapshotLight])
+  const hasDarkSnap = !isExternal && !!(snapshotDark && snapshotDark.includes(widgetId) && !brokenSnaps[snapshotDark])
+  const hasAnySnap = hasLightSnap || hasDarkSnap
 
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''
@@ -273,30 +249,30 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   }, [showIframe])
 
   // Exit interactive mode when clicking outside the embed.
-  // Delays iframe teardown to allow snapshot capture.
+  // Keeps iframe mounted until snapshots are captured and preloaded.
   useEffect(() => {
     if (!interactive || expanded) return
     function handlePointerDown(e) {
       if (embedRef.current && !embedRef.current.contains(e.target)) {
-        // Don't exit if click is within our own WidgetChrome toolbar
         const chromeEl = e.target.closest(`[data-widget-id="${widgetId}"]`)
         if (chromeEl) return
 
         setInteractive(false)
         if (onUpdate && !isExternal && iframeLoaded && iframeRef.current?.contentWindow) {
-          // Force capture — iframe is loaded since user was interacting
-          requestCapture({ force: true }).then((updates) => {
-            const url = updates?.snapshotLight || updates?.snapshotDark
-            if (url) {
-              const img = new Image()
-              const done = () => setShowIframe(false)
-              img.onload = done
-              img.onerror = done
-              img.src = url
-              setTimeout(done, 3000)
-            } else {
-              setShowIframe(false)
+          const session = ++exitSessionRef.current
+          requestCapture({ force: true }).then(async (updates) => {
+            if (exitSessionRef.current !== session) return
+            const urls = [updates?.snapshotLight, updates?.snapshotDark].filter(Boolean)
+            if (urls.length > 0) {
+              await Promise.all(urls.map(url => new Promise(resolve => {
+                const img = new Image()
+                img.onload = resolve
+                img.onerror = resolve
+                img.src = url
+              })))
             }
+            if (exitSessionRef.current !== session) return
+            setShowIframe(false)
           })
         } else {
           setShowIframe(false)
@@ -308,19 +284,16 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   }, [interactive, expanded, onUpdate, isExternal, iframeLoaded, requestCapture])
 
   useEffect(() => {
-    function readToolbarTheme() {
-      setCanvasTheme(resolveCanvasThemeFromStorage())
-    }
-    readToolbarTheme()
-    document.addEventListener('storyboard:theme:changed', readToolbarTheme)
-    return () => document.removeEventListener('storyboard:theme:changed', readToolbarTheme)
+    const readTheme = () => setCanvasTheme(resolveCanvasTheme())
+    readTheme()
+    document.addEventListener('storyboard:theme:changed', readTheme)
+    return () => document.removeEventListener('storyboard:theme:changed', readTheme)
   }, [])
 
   // Capture snapshot on first iframe ready (when no existing snapshot)
   useEffect(() => {
     if (!iframeReady || !onUpdate || isExternal) return
-    const hasSnapshot = (snapshotLight?.includes(widgetId)) || (snapshotDark?.includes(widgetId))
-    if (!hasSnapshot) {
+    if (!hasAnySnap) {
       requestCapture()
     }
   }, [iframeReady]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -407,6 +380,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const chromeVars = useMemo(() => getEmbedChromeVars(canvasTheme), [canvasTheme])
 
   const enterInteractive = useCallback(() => {
+    exitSessionRef.current++
     setShowIframe(true)
     setInteractive(true)
   }, [])
@@ -551,6 +525,29 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
               className={styles.iframeContainer}
               style={expanded ? { visibility: 'hidden' } : undefined}
             >
+              {/* Snapshot layer — both themes always in DOM for instant swap */}
+              {hasLightSnap && (
+                <img
+                  src={snapshotLight}
+                  className={styles.snapshotImage}
+                  style={(isDark && hasDarkSnap) ? { visibility: 'hidden' } : undefined}
+                  alt={`${prototypeTitle} snapshot`}
+                  draggable={false}
+                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshotLight]: true }))}
+                />
+              )}
+              {hasDarkSnap && (
+                <img
+                  src={snapshotDark}
+                  className={styles.snapshotImage}
+                  style={(!isDark && hasLightSnap) ? { visibility: 'hidden' } : undefined}
+                  alt={`${prototypeTitle} snapshot`}
+                  draggable={false}
+                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshotDark]: true }))}
+                />
+              )}
+
+              {/* Iframe layer — on top, transparent until loaded */}
               {showIframe && (
                 <iframe
                   ref={iframeRef}
@@ -568,27 +565,13 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                   sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
                 />
               )}
-              {(!showIframe || !iframeLoaded) && (
-                validSnapshot && !showIframe && !snapshotBroken ? (
-                  <img
-                    src={validSnapshot}
-                    alt={`${prototypeTitle} snapshot`}
-                    className={styles.snapshotImage}
-                    draggable={false}
-                    onError={() => setSnapshotBroken(true)}
-                  />
-                ) : (
-                  <div className={styles.placeholder} style={showIframe ? { position: 'absolute', inset: 0 } : undefined}>
-                    {showIframe ? (
-                      <div className={styles.spinner} />
-                    ) : (
-                      <>
-                        <CollageFrameIcon size={36} />
-                        <span className={styles.placeholderLabel}>{`${prototypeTitle} prototype`}</span>
-                      </>
-                    )}
-                  </div>
-                )
+
+              {/* Placeholder — only when no snapshots and no iframe */}
+              {!hasAnySnap && !showIframe && (
+                <div className={styles.placeholder}>
+                  <CollageFrameIcon size={36} />
+                  <span className={styles.placeholderLabel}>{`${prototypeTitle} prototype`}</span>
+                </div>
               )}
             </div>
 

@@ -29,6 +29,7 @@
 }
 
 .iframeContainer {
+  position: relative;
   width: 100%;
   height: calc(100% - 31px);
   overflow: hidden;
@@ -54,6 +55,16 @@
 .placeholderLabel {
   font-size: 13px;
   font-weight: 500;
+}
+
+.spinner {
+  display: inline-flex;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .iframe {

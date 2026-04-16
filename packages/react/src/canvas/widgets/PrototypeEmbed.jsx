@@ -309,15 +309,15 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   useEffect(() => {
     if (canvasThemeInitRef.current) { canvasThemeInitRef.current = false; return }
     if (isExternal || !onUpdate || interactive) return
+    const rect = embedRef.current?.getBoundingClientRect()
     enqueueRefresh(widgetId, () => {
       return new Promise((resolve) => {
         refreshResolveRef.current = resolve
         captureOnReadyRef.current = true
         setShowIframe(true)
-        // Safety timeout — free queue slot even if capture stalls
         setTimeout(() => { refreshResolveRef.current = null; resolve() }, 10000)
       })
-    })
+    }, rect ? { x: rect.left, y: rect.top } : undefined)
   }, [canvasTheme]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Capture snapshot on first iframe ready (when no existing snapshot)

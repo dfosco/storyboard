@@ -5,6 +5,7 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
+import { useSnapshotCapture } from './useSnapshotCapture.js'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -86,12 +87,14 @@ function resolveCanvasThemeFromStorage() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }, ref) {
+export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdate, resizable }, ref) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
   const width = readProp(props, 'width', prototypeEmbedSchema)
   const height = readProp(props, 'height', prototypeEmbedSchema)
   const zoom = readProp(props, 'zoom', prototypeEmbedSchema)
   const label = readProp(props, 'label', prototypeEmbedSchema) || src
+  const snapshotLight = props?.snapshotLight || ''
+  const snapshotDark = props?.snapshotDark || ''
 
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
   const baseSegment = basePath.replace(/^\//, '')
@@ -120,6 +123,24 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
   const iframeRef = useRef(null)
   const inlineContainerRef = useRef(null)
   const modalContainerRef = useRef(null)
+  const resizeTimerRef = useRef(null)
+  const prevInteractiveRef = useRef(false)
+
+  // Snapshot capture hook — only active in dev mode (onUpdate present)
+  const isExternal = /^https?:\/\//.test(src || '')
+  const { iframeReady, requestCapture } = useSnapshotCapture({
+    iframeRef,
+    widgetId,
+    onUpdate: isExternal ? null : onUpdate,
+    canvasTheme,
+  })
+
+  // Determine if a valid snapshot exists for the current theme
+  const validSnapshot = useMemo(() => {
+    if (isExternal) return null
+    const url = canvasTheme?.startsWith('dark') ? snapshotDark : snapshotLight
+    return url && widgetId && url.includes(widgetId) ? url : null
+  }, [canvasTheme, snapshotLight, snapshotDark, widgetId, isExternal])
 
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''
@@ -252,18 +273,24 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
     if (!showIframe) setIframeLoaded(false)
   }, [showIframe])
 
-  // Exit interactive mode when clicking outside the embed
+  // Exit interactive mode when clicking outside the embed.
+  // Delays iframe teardown to allow snapshot capture.
   useEffect(() => {
     if (!interactive || expanded) return
     function handlePointerDown(e) {
       if (embedRef.current && !embedRef.current.contains(e.target)) {
         setInteractive(false)
-        setShowIframe(false)
+        if (onUpdate && !isExternal && iframeReady && iframeRef.current?.contentWindow) {
+          // Capture before teardown, then hide iframe
+          requestCapture().then(() => setShowIframe(false))
+        } else {
+          setShowIframe(false)
+        }
       }
     }
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [interactive, expanded])
+  }, [interactive, expanded, onUpdate, isExternal, iframeReady, requestCapture])
 
   useEffect(() => {
     function readToolbarTheme() {
@@ -273,6 +300,18 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
     document.addEventListener('storyboard:theme:changed', readToolbarTheme)
     return () => document.removeEventListener('storyboard:theme:changed', readToolbarTheme)
   }, [])
+
+  // Capture snapshot on first iframe ready (when no existing snapshot)
+  useEffect(() => {
+    if (!iframeReady || !onUpdate || isExternal) return
+    const hasSnapshot = (snapshotLight?.includes(widgetId)) || (snapshotDark?.includes(widgetId))
+    if (!hasSnapshot) {
+      requestCapture()
+    }
+  }, [iframeReady]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cleanup resize timer on unmount
+  useEffect(() => () => clearTimeout(resizeTimerRef.current), [])
 
   // Close expanded modal on Escape
   useEffect(() => {
@@ -359,9 +398,11 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
         setExpanded(true)
       } else if (actionId === 'open-external') {
         if (rawSrc) window.open(rawSrc, '_blank', 'noopener')
+      } else if (actionId === 'refresh-thumbnail') {
+        requestCapture()
       }
     },
-  }), [rawSrc])
+  }), [rawSrc, requestCapture])
 
   function handlePickRoute(route) {
     onUpdate?.({ src: route })
@@ -391,7 +432,8 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
         style={{ width, height, ...chromeVars }}
       >
         <div className={styles.header}>
-          <span className={styles.headerTitle}><CollageFrameIcon size={13} /> {prototypeTitle}</span>
+          <span className={styles.headerIcon}><CollageFrameIcon size={16} /></span>
+          <span className={styles.headerTitle}>{prototypeTitle}</span>
         </div>
         {editing ? (
           <div
@@ -499,16 +541,25 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
                 />
               )}
               {(!showIframe || !iframeLoaded) && (
-                <div className={styles.placeholder} style={showIframe ? { position: 'absolute', inset: 0 } : undefined}>
-                  {showIframe ? (
-                    <span className={styles.spinner}><RefreshCwIcon size={36} /></span>
-                  ) : (
-                    <>
-                      <CollageFrameIcon size={36} />
-                      <span className={styles.placeholderLabel}>{`${prototypeTitle} prototype`}</span>
-                    </>
-                  )}
-                </div>
+                validSnapshot && !showIframe ? (
+                  <img
+                    src={validSnapshot}
+                    alt={`${prototypeTitle} snapshot`}
+                    className={styles.snapshotImage}
+                    draggable={false}
+                  />
+                ) : (
+                  <div className={styles.placeholder} style={showIframe ? { position: 'absolute', inset: 0 } : undefined}>
+                    {showIframe ? (
+                      <span className={styles.spinner}><RefreshCwIcon size={36} /></span>
+                    ) : (
+                      <>
+                        <CollageFrameIcon size={36} />
+                        <span className={styles.placeholderLabel}>{`${prototypeTitle} prototype`}</span>
+                      </>
+                    )}
+                  </div>
+                )
               )}
             </div>
 
@@ -564,6 +615,9 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
             function onUp() {
               document.removeEventListener('mousemove', onMove)
               document.removeEventListener('mouseup', onUp)
+              // Recapture snapshot after resize (debounced)
+              clearTimeout(resizeTimerRef.current)
+              resizeTimerRef.current = setTimeout(() => requestCapture(), 1500)
             }
             document.addEventListener('mousemove', onMove)
             document.addEventListener('mouseup', onUp)

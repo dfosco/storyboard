@@ -59,10 +59,16 @@ export default function StoryPage({ name }) {
     return () => { cancelled = true }
   }, [name, story])
 
-  // Signal snapshot-ready after story renders in embed mode
-  // (kept as a generic embed-ready signal for future use)
+  // Signal snapshot-ready after story renders in embed mode.
+  // Stories have no data loading so they render fast — fire
+  // the explicit ready signal instead of waiting for the 1.5s fallback.
   useEffect(() => {
     if (!isEmbed || !exports || window.parent === window) return
+    document.fonts.ready.then(() => {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        window.__sbSnapshotReady?.()
+      }))
+    })
   }, [isEmbed, exports])
 
   if (error) {

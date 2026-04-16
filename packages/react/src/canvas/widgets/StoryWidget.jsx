@@ -124,7 +124,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
         refreshMetaRef.current = { revealOrder, batchStart, resolve }
         captureOnReadyRef.current = true
         setShowIframe(true)
-        setTimeout(() => { refreshMetaRef.current = null; resolve() }, 10000)
+        setTimeout(() => { refreshMetaRef.current = null; resolve(false) }, 10000)
       })
     }, rect ? { x: rect.left, y: rect.top } : undefined)
   }, [canvasTheme]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -246,7 +246,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
             } else {
               setShowIframe(false)
             }
-            meta.resolve()
+            meta.resolve(!!snap)
           }
           // Wait for our reveal slot in the wave
           const elapsed = Date.now() - meta.batchStart

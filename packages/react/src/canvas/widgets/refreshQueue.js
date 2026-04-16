@@ -2,6 +2,8 @@
  * Concurrent refresh queue for bulk snapshot recapture (e.g. on theme change).
  * Limits concurrent iframe-based captures to avoid overloading the main thread.
  * Staggers starts by 150ms for a smooth visual cascade.
+ * Sorts queued items spatially (top-to-bottom, left-to-right) so refreshes
+ * sweep across the canvas like a wave.
  * Supports cancellation by widget ID — if a user activates an embed while it's
  * queued, it gets removed so the manual interaction takes priority.
  */
@@ -9,10 +11,6 @@ const queue = []
 let running = 0
 let drainScheduled = false
 
-// 4 concurrent is safe: iframe loading is async (network/parse), and the
-// blocking part (toBlob) naturally serializes because each widget's iframe
-// loads at different speeds. Memory is fine — these are same-origin lightweight
-// pages, not heavy external sites.
 const MAX_CONCURRENT = 4
 const STAGGER_MS = 150
 
@@ -20,13 +18,14 @@ const STAGGER_MS = 150
  * Enqueue a snapshot refresh task for a widget.
  * @param {string} widgetId — unique widget identifier (for cancellation)
  * @param {() => Promise<void>} fn — the async work to perform
+ * @param {{ x: number, y: number }} [pos] — spatial position for wave ordering
  */
-export function enqueueRefresh(widgetId, fn) {
+export function enqueueRefresh(widgetId, fn, pos) {
   // Dedupe — if this widget is already queued, replace its task
   const existing = queue.findIndex(item => item.widgetId === widgetId)
   if (existing !== -1) queue.splice(existing, 1)
 
-  queue.push({ widgetId, fn })
+  queue.push({ widgetId, fn, x: pos?.x ?? 0, y: pos?.y ?? 0 })
   scheduleDrain()
 }
 
@@ -43,8 +42,14 @@ function scheduleDrain() {
   if (drainScheduled) return
   drainScheduled = true
   // Use setTimeout(0) to batch multiple enqueueRefresh calls from the same
-  // React commit into a single drain pass.
-  setTimeout(() => { drainScheduled = false; drain() }, 0)
+  // React commit into a single drain pass — all widgets enqueue first, THEN
+  // we sort and start draining in spatial order.
+  setTimeout(() => {
+    drainScheduled = false
+    // Sort: top-to-bottom first (y), then left-to-right (x) for same row
+    queue.sort((a, b) => a.y - b.y || a.x - b.x)
+    drain()
+  }, 0)
 }
 
 function drain() {

@@ -80,11 +80,13 @@
 
 .issueCardCollapsed {
   max-height: 800px;
-  overflow: hidden;
 }
 
 .issueBodyScrollable {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   pointer-events: auto;
 }
 
@@ -164,7 +166,6 @@
   font-size: 14px;
   line-height: 1.6;
   color: var(--fgColor-default, #1f2328);
-  overflow: hidden;
 }
 
 .issueBody :global(*) {

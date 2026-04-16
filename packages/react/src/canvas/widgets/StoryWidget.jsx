@@ -110,7 +110,12 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   useEffect(() => {
     const readTheme = () => setCanvasTheme(resolveCanvasTheme())
     document.addEventListener('storyboard:theme:changed', readTheme)
-    return () => document.removeEventListener('storyboard:theme:changed', readTheme)
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)')
+    mq?.addEventListener?.('change', readTheme)
+    return () => {
+      document.removeEventListener('storyboard:theme:changed', readTheme)
+      mq?.removeEventListener?.('change', readTheme)
+    }
   }, [])
 
   // Snapshot capture hook
@@ -126,6 +131,9 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const hasLightSnap = !!(snapshotLight && snapshotLight.includes(widgetId) && !brokenSnaps[snapshotLight])
   const hasDarkSnap = !!(snapshotDark && snapshotDark.includes(widgetId) && !brokenSnaps[snapshotDark])
   const hasAnySnap = hasLightSnap || hasDarkSnap
+  const snapshotSrc = isDark
+    ? (hasDarkSnap ? snapshotDark : snapshotLight)
+    : (hasLightSnap ? snapshotLight : snapshotDark)
 
   // Re-resolve story URL when the story index is live-patched (new story added)
   useEffect(() => {
@@ -393,25 +401,14 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
         ) : (
           <>
             <div className={styles.content}>
-              {/* Snapshot layer — both themes always in DOM for instant swap */}
-              {hasLightSnap && (
+              {/* Snapshot layer — single theme-aware image */}
+              {hasAnySnap && (
                 <img
-                  src={snapshotLight}
+                  src={snapshotSrc}
                   className={styles.snapshotImage}
-                  style={(isDark && hasDarkSnap) ? { visibility: 'hidden' } : undefined}
                   alt={`${displayName} snapshot`}
                   draggable={false}
-                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshotLight]: true }))}
-                />
-              )}
-              {hasDarkSnap && (
-                <img
-                  src={snapshotDark}
-                  className={styles.snapshotImage}
-                  style={(!isDark && hasLightSnap) ? { visibility: 'hidden' } : undefined}
-                  alt={`${displayName} snapshot`}
-                  draggable={false}
-                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshotDark]: true }))}
+                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshotSrc]: true }))}
                 />
               )}
 
@@ -421,7 +418,10 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
                   ref={iframeRef}
                   src={iframeSrc}
                   className={styles.iframe}
-                  style={iframeLoaded ? undefined : { opacity: 0 }}
+                  style={{
+                    ...(iframeLoaded ? undefined : { opacity: 0 }),
+                    transition: 'opacity 150ms ease',
+                  }}
                   onLoad={() => setIframeLoaded(true)}
                   title={displayName}
                 />
@@ -452,9 +452,9 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
                     enterInteractive()
                   }
                 }}
-                aria-label="Click to interact with story component"
+                aria-label={hasAnySnap ? 'Click to interact with story component' : 'Click to open story component'}
               >
-                <span className={overlayStyles.interactHint}>Click to interact</span>
+                <span className={overlayStyles.interactHint}>{hasAnySnap ? 'Click to interact' : 'Click to open'}</span>
               </div>
             )}
           </>

@@ -117,6 +117,9 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const hasLightSnap = !isExternal && !!(snapshotLight && snapshotLight.includes(widgetId) && !brokenSnaps[snapshotLight])
   const hasDarkSnap = !isExternal && !!(snapshotDark && snapshotDark.includes(widgetId) && !brokenSnaps[snapshotDark])
   const hasAnySnap = hasLightSnap || hasDarkSnap
+  const snapshotSrc = isDark
+    ? (hasDarkSnap ? snapshotDark : snapshotLight)
+    : (hasLightSnap ? snapshotLight : snapshotDark)
 
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''
@@ -295,7 +298,12 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     const readTheme = () => setCanvasTheme(resolveCanvasTheme())
     readTheme()
     document.addEventListener('storyboard:theme:changed', readTheme)
-    return () => document.removeEventListener('storyboard:theme:changed', readTheme)
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)')
+    mq?.addEventListener?.('change', readTheme)
+    return () => {
+      document.removeEventListener('storyboard:theme:changed', readTheme)
+      mq?.removeEventListener?.('change', readTheme)
+    }
   }, [])
 
   // Capture snapshot on first iframe ready (when no existing snapshot)
@@ -537,25 +545,14 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
               className={styles.iframeContainer}
               style={expanded ? { visibility: 'hidden' } : undefined}
             >
-              {/* Snapshot layer — both themes always in DOM for instant swap */}
-              {hasLightSnap && (
+              {/* Snapshot layer — single theme-aware image */}
+              {hasAnySnap && (
                 <img
-                  src={snapshotLight}
+                  src={snapshotSrc}
                   className={styles.snapshotImage}
-                  style={(isDark && hasDarkSnap) ? { visibility: 'hidden' } : undefined}
                   alt={`${prototypeTitle} snapshot`}
                   draggable={false}
-                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshotLight]: true }))}
-                />
-              )}
-              {hasDarkSnap && (
-                <img
-                  src={snapshotDark}
-                  className={styles.snapshotImage}
-                  style={(!isDark && hasLightSnap) ? { visibility: 'hidden' } : undefined}
-                  alt={`${prototypeTitle} snapshot`}
-                  draggable={false}
-                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshotDark]: true }))}
+                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshotSrc]: true }))}
                 />
               )}
 
@@ -570,6 +567,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                     height: height / scale,
                     transform: `scale(${scale})`,
                     transformOrigin: '0 0',
+                    transition: 'opacity 150ms ease',
                     ...(iframeLoaded ? {} : { opacity: 0 }),
                   }}
                   onLoad={() => setIframeLoaded(true)}
@@ -603,9 +601,9 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                     enterInteractive()
                   }
                 }}
-                aria-label="Click to interact with prototype"
+                aria-label={hasAnySnap ? 'Click to interact with prototype' : 'Click to open prototype'}
               >
-                <span className={overlayStyles.interactHint}>Click to interact</span>
+                <span className={overlayStyles.interactHint}>{hasAnySnap ? 'Click to interact' : 'Click to open'}</span>
               </div>
             )}
           </>

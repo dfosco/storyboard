@@ -1,27 +1,29 @@
 /**
  * Concurrent refresh queue for bulk snapshot recapture (e.g. on theme change).
- * Limits concurrent iframe-based captures to avoid overloading the main thread.
- * Staggers starts by 150ms for a smooth visual cascade.
- * Sorts queued items spatially (top-to-bottom, left-to-right) so refreshes
- * sweep across the canvas like a wave.
- * Supports cancellation by widget ID — if a user activates an embed while it's
- * queued, it gets removed so the manual interaction takes priority.
+ *
+ * Captures run in parallel (up to MAX_CONCURRENT) for speed, but REVEALS are
+ * staggered on a fixed timeline — widget 0 reveals at 0ms, widget 1 at
+ * REVEAL_INTERVAL ms, widget 2 at 2×REVEAL_INTERVAL ms, etc., all relative to
+ * batch start. This creates a clean, predictable wave sweep regardless of how
+ * fast each capture completes.
+ *
+ * Sorted spatially (top-to-bottom, left-to-right) before assigning reveal slots.
+ * Supports cancellation by widget ID.
  */
 const queue = []
 let running = 0
 let drainScheduled = false
 
 const MAX_CONCURRENT = 4
-const STAGGER_MS = 150
+export const REVEAL_INTERVAL = 200
 
 /**
  * Enqueue a snapshot refresh task for a widget.
  * @param {string} widgetId — unique widget identifier (for cancellation)
- * @param {() => Promise<void>} fn — the async work to perform
+ * @param {(meta: { revealOrder: number, batchStart: number }) => Promise<void>} fn
  * @param {{ x: number, y: number }} [pos] — spatial position for wave ordering
  */
 export function enqueueRefresh(widgetId, fn, pos) {
-  // Dedupe — if this widget is already queued, replace its task
   const existing = queue.findIndex(item => item.widgetId === widgetId)
   if (existing !== -1) queue.splice(existing, 1)
 
@@ -31,7 +33,6 @@ export function enqueueRefresh(widgetId, fn, pos) {
 
 /**
  * Cancel a pending refresh for a widget (e.g. user activated it manually).
- * Has no effect if the widget's task is already running.
  */
 export function cancelRefresh(widgetId) {
   const idx = queue.findIndex(item => item.widgetId === widgetId)
@@ -41,13 +42,16 @@ export function cancelRefresh(widgetId) {
 function scheduleDrain() {
   if (drainScheduled) return
   drainScheduled = true
-  // Use setTimeout(0) to batch multiple enqueueRefresh calls from the same
-  // React commit into a single drain pass — all widgets enqueue first, THEN
-  // we sort and start draining in spatial order.
+  // Batch all enqueueRefresh calls from the same React commit, then sort
+  // spatially and assign reveal slots before starting captures.
   setTimeout(() => {
     drainScheduled = false
-    // Sort: top-to-bottom first (y), then left-to-right (x) for same row
     queue.sort((a, b) => a.y - b.y || a.x - b.x)
+    const batchStart = Date.now()
+    queue.forEach((item, i) => {
+      item.revealOrder = i
+      item.batchStart = batchStart
+    })
     drain()
   }, 0)
 }
@@ -56,14 +60,14 @@ function drain() {
   if (running >= MAX_CONCURRENT || queue.length === 0) return
 
   running++
-  const { fn } = queue.shift()
+  const { fn, revealOrder, batchStart } = queue.shift()
   Promise.resolve()
-    .then(fn)
+    .then(() => fn({ revealOrder, batchStart }))
     .catch(() => {})
     .finally(() => { running--; drain() })
 
-  // Stagger the next start for a visual cascade
+  // Start next capture immediately (no stagger on capture start — only reveals are staggered)
   if (queue.length > 0 && running < MAX_CONCURRENT) {
-    setTimeout(drain, STAGGER_MS)
+    drain()
   }
 }

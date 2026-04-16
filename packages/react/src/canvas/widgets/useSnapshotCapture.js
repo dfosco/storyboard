@@ -95,15 +95,16 @@ export function useSnapshotCapture({
   }, [iframeRef, onUpdate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
-   * Trigger a dual-theme snapshot capture. Captures both light and dark
-   * variants sequentially, uploads both, and persists URLs via onUpdate.
-   * Returns a promise that resolves when both captures complete (or timeout).
+   * Trigger a snapshot capture. Captures the current iframe state once
+   * and stores the URL under BOTH snapshotLight and snapshotDark keys
+   * so a thumbnail is always available regardless of canvas theme.
+   * Returns the updates object with the snapshot URLs.
    */
   const requestCapture = useCallback(async () => {
-    if (!onUpdate) return
-    if (!iframeRef.current?.contentWindow) return
-    if (capturingRef.current) return
-    if (!iframeReadyRef.current) return
+    if (!onUpdate) return {}
+    if (!iframeRef.current?.contentWindow) return {}
+    if (capturingRef.current) return {}
+    if (!iframeReadyRef.current) return {}
 
     capturingRef.current = true
     const cw = iframeRef.current.contentWindow
@@ -111,19 +112,18 @@ export function useSnapshotCapture({
     const updates = {}
 
     try {
-      // Capture both themes sequentially
-      for (const theme of ['light', 'dark']) {
-        const requestId = ++requestIdCounter.current
-        const dataUrl = await captureOnce(cw, requestId, responseHandlers.current)
+      const requestId = ++requestIdCounter.current
+      const dataUrl = await captureOnce(cw, requestId, responseHandlers.current)
 
-        if (dataUrl) {
-          const filename = `snapshot-${widgetId}--${theme}.webp`
-          const result = await uploadImage(dataUrl, `snapshot-${widgetId}`, filename)
-          if (result?.filename) {
-            const themeKey = theme === 'dark' ? 'snapshotDark' : 'snapshotLight'
-            const cacheBust = `?v=${Date.now()}`
-            updates[themeKey] = `${base}/_storyboard/canvas/images/${result.filename}${cacheBust}`
-          }
+      if (dataUrl) {
+        const filename = `snapshot-${widgetId}--latest.webp`
+        const result = await uploadImage(dataUrl, `snapshot-${widgetId}`, filename)
+        if (result?.filename) {
+          const cacheBust = `?v=${Date.now()}`
+          const url = `${base}/_storyboard/canvas/images/${result.filename}${cacheBust}`
+          // Store under both keys so thumbnail is always available
+          updates.snapshotLight = url
+          updates.snapshotDark = url
         }
       }
 

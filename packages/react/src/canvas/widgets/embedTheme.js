@@ -18,16 +18,17 @@ export function resolveCanvasTheme() {
     window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-function normalizeTheme(value) {
-  return String(value || 'light')
-}
-
 /**
- * Subscribe to canvas theme updates for embed widgets.
- * Uses three sources, in priority order:
- * 1) `storyboard:theme:changed` event detail (fast path)
- * 2) nearest `[data-sb-canvas-theme]` ancestor (source of truth in canvas DOM)
- * 3) matchMedia fallback for system theme changes
+ * Subscribe to canvas theme changes for embed widgets.
+ *
+ * Reads from the nearest ancestor `[data-sb-canvas-theme]` attribute set by
+ * CanvasPage, using a MutationObserver to react immediately when CanvasPage
+ * updates the attribute. Falls back to `storyboard:theme:changed` event for
+ * initial read timing.
+ *
+ * Does NOT use `event.detail.canvasResolved` — that value is gated on
+ * `sync.canvas` in themeStore and can be 'light' even when the canvas
+ * is actually dark. The DOM attribute is the source of truth.
  */
 export function subscribeCanvasTheme({ anchorRef, onTheme }) {
   if (typeof onTheme !== 'function') return () => {}
@@ -35,55 +36,32 @@ export function subscribeCanvasTheme({ anchorRef, onTheme }) {
   let themedContainer = null
   let observer = null
 
-  function emit(theme) {
-    onTheme(normalizeTheme(theme))
-  }
-
-  function attachObserver(container) {
-    if (themedContainer === container) return
-    if (observer) observer.disconnect()
-    themedContainer = container
-    observer = null
-    if (!container || typeof MutationObserver === 'undefined') return
-    observer = new MutationObserver(() => {
-      emit(container.getAttribute('data-sb-canvas-theme') || 'light')
-    })
-    observer.observe(container, {
-      attributes: true,
-      attributeFilter: ['data-sb-canvas-theme'],
-    })
-  }
-
-  function readFromDom() {
-    const container = anchorRef?.current?.closest?.('[data-sb-canvas-theme]') || null
-    attachObserver(container)
-    emit(container?.getAttribute('data-sb-canvas-theme') || 'light')
-  }
-
-  function onThemeChanged(event) {
-    const fromEvent = event?.detail?.canvasResolved
-    if (typeof fromEvent === 'string' && fromEvent.length > 0) {
-      emit(fromEvent)
+  function readAndEmit() {
+    const el = anchorRef?.current?.closest?.('[data-sb-canvas-theme]') || null
+    if (el !== themedContainer) {
+      if (observer) observer.disconnect()
+      observer = null
+      themedContainer = el
+      if (el && typeof MutationObserver !== 'undefined') {
+        observer = new MutationObserver(readAndEmit)
+        observer.observe(el, { attributes: true, attributeFilter: ['data-sb-canvas-theme'] })
+      }
     }
-    // Re-read after event to avoid races with ancestor attribute updates.
-    if (typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(readFromDom)
-    } else {
-      setTimeout(readFromDom, 0)
-    }
+    onTheme(el?.getAttribute('data-sb-canvas-theme') || 'light')
   }
 
-  readFromDom()
+  // Initial read
+  readAndEmit()
+
+  // Re-read whenever the toolbar theme is changed — CanvasPage will have
+  // updated the ancestor attribute by the time the event reaches us.
+  function onThemeChanged() {
+    readAndEmit()
+  }
   document.addEventListener('storyboard:theme:changed', onThemeChanged)
-
-  const mediaQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-    ? window.matchMedia('(prefers-color-scheme: dark)')
-    : null
-  mediaQuery?.addEventListener?.('change', readFromDom)
 
   return () => {
     document.removeEventListener('storyboard:theme:changed', onThemeChanged)
-    mediaQuery?.removeEventListener?.('change', readFromDom)
     if (observer) observer.disconnect()
   }
 }

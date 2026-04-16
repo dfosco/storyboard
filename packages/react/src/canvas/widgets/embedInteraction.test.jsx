@@ -10,7 +10,20 @@ import StoryWidget from './StoryWidget.jsx'
 
 // Mock buildPrototypeIndex for PrototypeEmbed
 vi.mock('@dfosco/storyboard-core', () => ({
-  buildPrototypeIndex: () => ({ folders: [], prototypes: [], globalFlows: [], sorted: { title: { prototypes: [], folders: [] } } }),
+  buildPrototypeIndex: () => ({
+    folders: [],
+    prototypes: [
+      {
+        name: 'Design Overview',
+        dirName: 'examples',
+        isExternal: false,
+        hideFlows: true,
+        flows: [{ route: '/test', name: 'default', meta: { title: 'Design Overview' } }],
+      },
+    ],
+    globalFlows: [],
+    sorted: { title: { prototypes: [], folders: [] } },
+  }),
   getStoryData: (storyId) => ({ _route: `/components/${storyId}` }),
 }))
 
@@ -58,12 +71,15 @@ describe('Embed interaction overlay', () => {
       const overlay = screen.getByRole('button', { name: /click to interact/i })
       expect(overlay).toBeInTheDocument()
       expect(container.querySelector('iframe')).not.toBeInTheDocument()
+      expect(screen.getByText('Design Overview')).toBeInTheDocument()
+      expect(screen.getByText('Design Overview prototype')).toBeInTheDocument()
       
       // Single click should remove the overlay (enter interactive mode)
       fireEvent.click(overlay)
       
       // Overlay should no longer exist
       expect(screen.queryByRole('button', { name: /click to interact/i })).not.toBeInTheDocument()
+      expect(screen.queryByText('Design Overview prototype')).not.toBeInTheDocument()
       expect(container.querySelector('iframe')).toBeInTheDocument()
     })
 

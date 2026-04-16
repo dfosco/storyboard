@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { createPortal } from 'react-dom'
+import { ImageIcon } from '@primer/octicons-react'
 import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
@@ -11,6 +12,41 @@ function formatName(name) {
   return name
     .replace(/[-_]/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function listInternalPrototypes(index) {
+  const allProtos = []
+  const sortedFolders = index.sorted?.title?.folders
+  const sortedPrototypes = index.sorted?.title?.prototypes
+  const folderList = Array.isArray(sortedFolders) && sortedFolders.length > 0
+    ? sortedFolders
+    : (index.folders || [])
+  const standaloneList = Array.isArray(sortedPrototypes) && sortedPrototypes.length > 0
+    ? sortedPrototypes
+    : (index.prototypes || [])
+
+  for (const folder of folderList) {
+    for (const proto of folder.prototypes || []) {
+      if (!proto.isExternal) allProtos.push(proto)
+    }
+  }
+  for (const proto of standaloneList) {
+    if (!proto.isExternal) allProtos.push(proto)
+  }
+  return allProtos
+}
+
+function normalizeRoutePath(value, basePath = '') {
+  if (!value || /^https?:\/\//.test(value)) return ''
+  const noHash = value.split('#')[0]
+  let route = noHash.split('?')[0]
+  route = route.replace(/^\/branch--[^/]+/, '')
+  if (basePath && route.startsWith(basePath)) {
+    route = route.slice(basePath.length) || '/'
+  }
+  if (!route.startsWith('/')) route = `/${route}`
+  route = route.replace(/\/+$/, '')
+  return route || '/'
 }
 
 function resolveCanvasThemeFromStorage() {
@@ -89,16 +125,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
     const groups = []
     const idx = prototypeIndex
 
-    // Collect all prototypes (from folders first, then ungrouped)
-    const allProtos = []
-    for (const folder of (idx.sorted?.title?.folders || idx.folders || [])) {
-      for (const proto of folder.prototypes || []) {
-        if (!proto.isExternal) allProtos.push(proto)
-      }
-    }
-    for (const proto of (idx.sorted?.title?.prototypes || idx.prototypes || [])) {
-      if (!proto.isExternal) allProtos.push(proto)
-    }
+    const allProtos = listInternalPrototypes(idx)
 
     for (const proto of allProtos) {
       if (proto.hideFlows && proto.flows.length === 1) {
@@ -153,6 +180,35 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
       })
       .filter(Boolean)
   }, [pickerGroups, filter])
+
+  const prototypeName = useMemo(() => {
+    const currentRoute = normalizeRoutePath(src, basePath) || normalizeRoutePath(rawSrc, basePath)
+    if (!currentRoute) return ''
+
+    let bestMatchName = ''
+    let bestMatchLength = -1
+
+    for (const proto of listInternalPrototypes(prototypeIndex)) {
+      const candidateRoutes = [
+        `/${proto.dirName}`,
+        ...(proto.flows || []).map((flow) => flow.route),
+      ]
+      for (const candidate of candidateRoutes) {
+        const candidateRoute = normalizeRoutePath(candidate, basePath)
+        if (!candidateRoute || candidateRoute === '/') continue
+        if (currentRoute === candidateRoute || currentRoute.startsWith(`${candidateRoute}/`)) {
+          if (candidateRoute.length > bestMatchLength) {
+            bestMatchLength = candidateRoute.length
+            bestMatchName = proto.name || ''
+          }
+        }
+      }
+    }
+
+    return bestMatchName
+  }, [prototypeIndex, src, rawSrc, basePath])
+
+  const prototypeTitle = prototypeName || label || 'Prototype'
 
   const hasPicker = pickerGroups.length > 0
 
@@ -303,7 +359,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
         style={{ width, height, ...chromeVars }}
       >
         <div className={styles.header}>
-          <span className={styles.headerTitle}>{label || 'Prototype'}</span>
+          <span className={styles.headerTitle}>{prototypeTitle}</span>
         </div>
         {editing ? (
           <div
@@ -404,12 +460,17 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
                     transform: `scale(${scale})`,
                     transformOrigin: '0 0',
                   }}
-                  title={label || 'Prototype embed'}
+                  title={`${prototypeTitle} prototype`}
                   sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
                 />
               </div>
             ) : (
-              <div className={styles.iframeContainer} />
+              <div className={styles.iframeContainer}>
+                <div className={styles.placeholder}>
+                  <ImageIcon size={36} className={styles.placeholderIcon} />
+                  <span className={styles.placeholderLabel}>{`${prototypeTitle} prototype`}</span>
+                </div>
+              </div>
             )}
 
             {!interactive && !expanded && (

@@ -18,7 +18,6 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { useIframeDevLogs } from './iframeDevLogs.js'
 import { useSnapshotCapture } from './useSnapshotCapture.js'
-import { resolveCanvasTheme } from './embedTheme.js'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -105,10 +104,16 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const [brokenSnaps, setBrokenSnaps] = useState({})
 
   // Resolve canvas theme — reactive to theme changes
-  const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasTheme())
+  const [canvasTheme, setCanvasTheme] = useState('light')
 
+  // Read canvas theme from the closest ancestor [data-sb-canvas-theme] attribute
+  // set by CanvasPage — this is the actual displayed theme regardless of sync settings.
   useEffect(() => {
-    const readTheme = () => setCanvasTheme(resolveCanvasTheme())
+    function readTheme() {
+      const container = containerRef.current?.closest?.('[data-sb-canvas-theme]')
+      setCanvasTheme(container?.getAttribute('data-sb-canvas-theme') || 'light')
+    }
+    readTheme()
     document.addEventListener('storyboard:theme:changed', readTheme)
     const mq = window.matchMedia?.('(prefers-color-scheme: dark)')
     mq?.addEventListener?.('change', readTheme)
@@ -182,9 +187,22 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
           // deselect re-render before html-to-image blocks the main thread.
           setTimeout(() => {
             if (exitSessionRef.current !== session) return
-            requestCapture({ force: true }).then(() => {
+            requestCapture({ force: true }).then((updates) => {
               if (exitSessionRef.current !== session) return
-              setShowIframe(false)
+              // Preload snapshot image before unmounting iframe to prevent white flash
+              const snap = updates?.snapshotLight || updates?.snapshotDark
+              if (snap) {
+                const img = new Image()
+                const done = () => {
+                  if (exitSessionRef.current === session) setShowIframe(false)
+                }
+                img.onload = done
+                img.onerror = done
+                img.src = snap
+                setTimeout(done, 2000) // fallback timeout
+              } else {
+                setShowIframe(false)
+              }
             })
           }, 0)
         } else {

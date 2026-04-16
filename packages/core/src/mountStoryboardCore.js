@@ -38,7 +38,7 @@ function applyEarlyTheme() {
     typeof localStorage !== 'undefined'
       ? localStorage.getItem('sb-theme-sync')
       : null
-  let syncTargets = { prototype: true, toolbar: false, codeBoxes: true, canvas: false }
+  let syncTargets = { prototype: true, toolbar: false, codeBoxes: true, canvas: true }
   if (storedSync) {
     try {
       syncTargets = { ...syncTargets, ...JSON.parse(storedSync) }

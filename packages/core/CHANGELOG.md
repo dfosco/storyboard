@@ -1,5 +1,14 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.31
+
+### Patch Changes
+
+-   Fix iframe auto-mount on canvas load when snapshots are missing
+
+    -   Don't auto-mount iframes for snapshot refresh when no snapshot exists
+    -   Hide rename-watcher startup notice from dev server output
+
 ## 4.0.0-beta.30
 
 ### Patch Changes

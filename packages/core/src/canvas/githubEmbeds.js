@@ -11,7 +11,6 @@ const ISSUE_COMMENT_HASH_RE = /^#issuecomment-(\d+)$/i
 const DISCUSSION_COMMENT_HASH_RE = /^#discussioncomment-(\d+)$/i
 
 const GH_TIMEOUT_MS = 15_000
-const BODY_MAX_LENGTH = 700
 const NOT_FOUND_MESSAGE = 'GitHub resource was not found or is not accessible with current credentials.'
 
 export class GitHubEmbedError extends Error {
@@ -34,13 +33,10 @@ function parseNumber(raw) {
 
 function normalizeBody(body) {
   if (typeof body !== 'string') return ''
-  const compact = body
+  return body
     .replace(/\r\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
-  if (!compact) return ''
-  if (compact.length <= BODY_MAX_LENGTH) return compact
-  return `${compact.slice(0, BODY_MAX_LENGTH - 1).trimEnd()}…`
 }
 
 function uniqueStrings(values) {

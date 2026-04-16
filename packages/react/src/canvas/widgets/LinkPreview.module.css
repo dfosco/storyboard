@@ -83,8 +83,9 @@
   overflow: hidden;
 }
 
-.issueCardCollapsed .issueBody {
+.issueBodyScrollable {
   overflow-y: auto;
+  pointer-events: auto;
 }
 
 .issueHeader {

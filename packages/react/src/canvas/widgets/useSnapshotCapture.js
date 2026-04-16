@@ -196,7 +196,7 @@ export function useSnapshotCapture({
             updates[currentKey] = url
             onUpdate?.({ [currentKey]: url })
           }
-        })
+        }).catch(() => {})
       }
 
       // 3. Hide iframe, switch theme, capture alternate — overlaps with upload-1

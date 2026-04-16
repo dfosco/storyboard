@@ -67,7 +67,11 @@ function GitHubIssueCard({ url, title, github, width, height, onUpdate, resizabl
   const createdAgo = timeAgo(github?.createdAt)
   const { number: issueNumber, rest: titleText } = splitIssueTitle(title)
 
-  const bodyHtml = useMemo(() => renderMarkdown(github?.body || ''), [github?.body])
+  // Prefer pre-rendered bodyHtml (has signed image URLs), fall back to remark for discussions
+  const bodyHtml = useMemo(() => {
+    if (github?.bodyHtml) return github.bodyHtml
+    return renderMarkdown(github?.body || '')
+  }, [github?.bodyHtml, github?.body])
 
   const sizeStyle = {
     ...(width ? { width: `${width}px` } : {}),

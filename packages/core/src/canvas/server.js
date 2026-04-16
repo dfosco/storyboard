@@ -19,7 +19,6 @@
  *   POST   /create-story — scaffold a new .story.{jsx,tsx} file
  *   GET    /github/available — check if local gh CLI is installed
  *   POST   /github/embed — fetch GitHub issue/discussion/PR/comment metadata via gh
- *   GET    /github/proxy?url=... — proxy GitHub asset images through local gh auth
  *   POST   /image    — upload a pasted image to src/canvas/images/
  *   GET    /images/* — serve an image file from src/canvas/images/
  *   POST   /image/toggle-private — toggle _prefix on image filename
@@ -33,11 +32,9 @@ import { toCanvasId, parseCanvasId } from './identity.js'
 import {
   GH_INSTALL_URL,
   GitHubEmbedError,
-  fetchGitHubAssetBytes,
   fetchGitHubEmbedSnapshot,
   isGhCliAvailable,
   isGitHubEmbedUrl,
-  rewriteGitHubAssetUrls,
 } from './githubEmbeds.js'
 
 /**
@@ -662,12 +659,6 @@ export function Default() {
 
       try {
         const snapshot = fetchGitHubEmbedSnapshot(rawUrl)
-        // Rewrite private asset URLs to route through local proxy
-        const base = (import.meta.env?.BASE_URL || req.headers?.['x-forwarded-prefix'] || '/').replace(/\/$/, '')
-        const proxyBase = `${base}/_storyboard/canvas/github/proxy`
-        if (snapshot.body) {
-          snapshot.body = rewriteGitHubAssetUrls(snapshot.body, proxyBase)
-        }
         sendJson(res, 200, { success: true, snapshot })
       } catch (error) {
         if (error instanceof GitHubEmbedError) {
@@ -683,41 +674,6 @@ export function Default() {
           code: 'gh_fetch_failed',
           error: error?.message || 'Failed to fetch GitHub metadata.',
         })
-      }
-      return
-    }
-
-    // GET /github/proxy?url=... — proxy GitHub asset images through local gh auth
-    if (routePath === '/github/proxy' && method === 'GET') {
-      const proxyUrl = new URL(req.url, 'http://localhost').searchParams.get('url')
-      if (!proxyUrl) {
-        sendJson(res, 400, { error: 'url parameter is required' })
-        return
-      }
-
-      // Only proxy known GitHub asset domains
-      try {
-        const parsed = new URL(proxyUrl)
-        const allowed = parsed.hostname === 'github.com' || parsed.hostname.endsWith('.githubusercontent.com')
-        if (!allowed) {
-          sendJson(res, 403, { error: 'Only GitHub asset URLs can be proxied' })
-          return
-        }
-      } catch {
-        sendJson(res, 400, { error: 'Invalid URL' })
-        return
-      }
-
-      try {
-        const { buffer, contentType } = fetchGitHubAssetBytes(proxyUrl)
-        res.writeHead(200, {
-          'Content-Type': contentType,
-          'Content-Length': buffer.length,
-          'Cache-Control': 'private, max-age=3600',
-        })
-        res.end(buffer)
-      } catch (err) {
-        sendJson(res, 502, { error: `Failed to proxy GitHub asset: ${err.message}` })
       }
       return
     }

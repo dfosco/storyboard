@@ -131,6 +131,7 @@ describe('fetchGitHubEmbedSnapshot', () => {
       context: 'GitHub · dfosco/storyboard · Issue #123',
       title: '#123 Ship GitHub embeds',
       body: 'A detailed body',
+      bodyHtml: '',
       authors: ['dfosco'],
       createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-02T00:00:00Z',

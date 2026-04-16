@@ -33,17 +33,13 @@ function ComponentIcon({ size = 36 }) {
   )
 }
 
-function resolveStoryUrl(storyId, exportName, canvasTheme) {
+function resolveStoryUrl(storyId, exportName) {
   const story = getStoryData(storyId)
   if (!story?._route) return null
 
   const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
   const route = story._route
-  const params = new URLSearchParams({
-    _sb_embed: '1',
-    _sb_theme_target: 'prototype',
-    _sb_canvas_theme: canvasTheme || 'light',
-  })
+  const params = new URLSearchParams({ _sb_embed: '1', _sb_theme_target: 'prototype' })
   if (exportName) params.set('export', exportName)
 
   return `${base}${route}?${params}`
@@ -330,8 +326,8 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   }), [storyId, showCode, toggleShowCode, copyCode, iframeReady, requestCapture])
 
   const iframeSrc = useMemo(
-    () => resolveStoryUrl(storyId, exportName, canvasTheme),
-    [storyId, exportName, storyIndexKey, canvasTheme],
+    () => resolveStoryUrl(storyId, exportName),
+    [storyId, exportName, storyIndexKey],
   )
 
   useIframeDevLogs({

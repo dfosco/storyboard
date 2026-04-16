@@ -10,6 +10,30 @@ import overlayStyles from './embedOverlay.module.css'
 
 const figmaEmbedSchema = schemas['figma-embed']
 
+/** Feather-icons figma icon (monochrome, stroke-based) */
+function FigmaIcon({ size = 32, className }) {
+  return (
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 5.5A3.5 3.5 0 0 1 8.5 2H12v7H8.5A3.5 3.5 0 0 1 5 5.5z" />
+      <path d="M12 2h3.5a3.5 3.5 0 1 1 0 7H12V2z" />
+      <path d="M12 12.5a3.5 3.5 0 1 1 7 0 3.5 3.5 0 1 1-7 0z" />
+      <path d="M5 19.5A3.5 3.5 0 0 1 8.5 16H12v3.5a3.5 3.5 0 1 1-7 0z" />
+      <path d="M5 12.5A3.5 3.5 0 0 1 8.5 9H12v7H8.5A3.5 3.5 0 0 1 5 12.5z" />
+    </svg>
+  )
+}
+
 /** Inline Figma logo SVG */
 function FigmaLogo() {
   return (
@@ -31,13 +55,15 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate, resizable }, re
   const height = readProp(props, 'height', figmaEmbedSchema)
 
   const [interactive, setInteractive] = useState(false)
-  const [showIframe, setShowIframe] = useState(false)
+  const [showIframe, setShowIframe] = useState(true)
   const [expanded, setExpanded] = useState(false)
 
   const iframeRef = useRef(null)
   const embedRef = useRef(null)
   const inlineContainerRef = useRef(null)
   const modalContainerRef = useRef(null)
+  const teardownTimerRef = useRef(null)
+  const exitSessionRef = useRef(0)
 
   // Validate URL at render time — only embed known Figma URLs
   const isValid = useMemo(() => isFigmaUrl(url), [url])
@@ -53,6 +79,8 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate, resizable }, re
   })
 
   const enterInteractive = useCallback(() => {
+    exitSessionRef.current++
+    clearTimeout(teardownTimerRef.current)
     setShowIframe(true)
     setInteractive(true)
   }, [])
@@ -62,12 +90,20 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate, resizable }, re
     function handlePointerDown(e) {
       if (embedRef.current && !embedRef.current.contains(e.target)) {
         setInteractive(false)
-        setShowIframe(false)
+        // Keep iframe alive for 5 min — Figma is slow to reload
+        const session = ++exitSessionRef.current
+        clearTimeout(teardownTimerRef.current)
+        teardownTimerRef.current = setTimeout(() => {
+          if (exitSessionRef.current !== session) return
+          setShowIframe(false)
+        }, 5 * 60 * 1000)
       }
     }
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive, expanded])
+
+  useEffect(() => () => clearTimeout(teardownTimerRef.current), [])
 
   // Close expanded modal on Escape
   useEffect(() => {
@@ -178,11 +214,10 @@ export default forwardRef(function FigmaEmbed({ props, onUpdate, resizable }, re
             )}
           </>
         ) : (
-          <div className={styles.iframeContainer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ color: 'var(--fgColor-muted, #656d76)', fontSize: 14, fontStyle: 'italic' }}>
-              No Figma URL
-            </p>
-          </div>
+        <div className={styles.emptyState}>
+          <FigmaIcon size={32} className={styles.emptyIcon} />
+          <span className={styles.emptyLabel}>No Figma URL</span>
+        </div>
         )}
       </div>
       {resizable && (

@@ -407,11 +407,11 @@
           "prod": true
         },
         {
-          "id": "copy",
+          "id": "toggle-collapse",
           "type": "action",
-          "action": "copy",
-          "label": "$label:duplicate",
-          "icon": "copy"
+          "action": "toggle-collapse",
+          "label": "Collapse height",
+          "icon": "fold"
         },
         {
           "id": "refresh-github",
@@ -421,11 +421,11 @@
           "icon": "sync"
         },
         {
-          "id": "toggle-collapse",
+          "id": "copy",
           "type": "action",
-          "action": "toggle-collapse",
-          "label": "Collapse height",
-          "icon": "fold",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy",
           "menu": true
         },
         {

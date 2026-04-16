@@ -91,6 +91,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const containerRef = useRef(null)
   const iframeRef = useRef(null)
   const resizeTimerRef = useRef(null)
+  const captureOnReadyRef = useRef(false)
   const [interactive, setInteractive] = useState(false)
   const [showIframe, setShowIframe] = useState(false)
   const [iframeLoaded, setIframeLoaded] = useState(false)
@@ -165,8 +166,20 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
 
         setInteractive(false)
         if (onUpdate && iframeReady && iframeRef.current?.contentWindow) {
-          // Always capture before teardown for consistent snapshots
-          requestCapture().then(() => setShowIframe(false))
+          // Capture then preload snapshot before hiding iframe to avoid flash
+          requestCapture().then((updates) => {
+            const url = updates?.snapshotLight || updates?.snapshotDark
+            if (url) {
+              const img = new Image()
+              const done = () => setShowIframe(false)
+              img.onload = done
+              img.onerror = done
+              img.src = url
+              setTimeout(done, 3000)
+            } else {
+              setShowIframe(false)
+            }
+          })
         } else {
           setShowIframe(false)
         }

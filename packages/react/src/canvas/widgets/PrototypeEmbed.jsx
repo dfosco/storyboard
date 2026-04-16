@@ -308,7 +308,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const refreshMetaRef = useRef(null)
   useEffect(() => {
     if (canvasThemeInitRef.current) { canvasThemeInitRef.current = false; return }
-    if (isExternal || !onUpdate || interactive) return
+    if (isExternal || !onUpdate || interactive || !hasSnap) return
     const rect = embedRef.current?.getBoundingClientRect()
     enqueueRefresh(widgetId, ({ revealOrder, batchStart }) => {
       return new Promise((resolve) => {

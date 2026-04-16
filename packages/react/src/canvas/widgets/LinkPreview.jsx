@@ -154,10 +154,18 @@ function GitHubIssueCard({ url, title, github, width, collapsed, onUpdate }) {
         </div>
         <header className={styles.issueHeader}>
           <h2 className={styles.issueTitle}>
-            {titleText || url}
-            {issueNumber && <span className={styles.issueNumber}> {issueNumber}</span>}
+            <a
+              href={url || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.issueTitleLink}
+              onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {titleText || url}
+              {issueNumber && <span className={styles.issueNumber}> {issueNumber}</span>}
+            </a>
           </h2>
-          <p className={styles.issueContext}>{github?.context || ''}</p>
         </header>
 
         <div className={styles.issueByline}>
@@ -179,7 +187,7 @@ function GitHubIssueCard({ url, title, github, width, collapsed, onUpdate }) {
                   height="20"
                   loading="lazy"
                 />
-                <strong>{primaryAuthor}</strong>
+                {primaryAuthor}
               </a>
             )}
             <span className={styles.bylineText}>

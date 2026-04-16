@@ -116,13 +116,13 @@
   color: var(--fgColor-default, #1f2328);
 }
 
-.issueTitle a {
+.issueTitleLink {
   color: inherit;
   text-decoration: none;
 }
 
-.issueTitle a:hover {
-  color: var(--fgColor-accent, #0969da);
+.issueTitleLink:hover {
+  text-decoration: underline;
 }
 
 .issueNumber {
@@ -168,6 +168,7 @@
   color: var(--fgColor-default, #1f2328);
   font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .authorLink:hover {

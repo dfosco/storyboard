@@ -1,81 +1,45 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import LinkPreview from './LinkPreview.jsx'
 
 describe('LinkPreview', () => {
-  it('runs refresh with pending state for GitHub embeds', async () => {
-    let resolveRefresh
-    const onRefreshGitHub = vi.fn(
-      () =>
-        new Promise((resolve) => {
-          resolveRefresh = resolve
-        }),
-    )
-
-    render(
+  it('renders GitHub issue card with markdown body and author byline', () => {
+    const { container } = render(
       <LinkPreview
         id="link-1"
-        canRefreshGitHub
-        onRefreshGitHub={onRefreshGitHub}
         props={{
           url: 'https://github.com/dfosco/storyboard/issues/42',
           title: '#42 Ship GitHub embeds',
           github: {
             context: 'GitHub · dfosco/storyboard · Issue #42',
-            body: 'Details from GitHub',
+            body: '## Summary\n\nThis is a **bold** point.\n\n- Item one\n- Item two',
             authors: ['dfosco'],
+            createdAt: '2026-01-01T00:00:00Z',
           },
         }}
       />,
     )
 
-    const refreshButton = screen.getByRole('button', { name: 'Refresh GitHub metadata' })
-    fireEvent.click(refreshButton)
+    // Title split: text + muted number
+    expect(screen.getByText('Ship GitHub embeds')).toBeInTheDocument()
+    expect(screen.getByText('#42')).toBeInTheDocument()
 
-    expect(onRefreshGitHub).toHaveBeenCalledWith('link-1', 'https://github.com/dfosco/storyboard/issues/42')
-    expect(refreshButton).toBeDisabled()
-    expect(refreshButton).toHaveTextContent('Refreshing')
+    // Markdown body renders headings, bold, lists
+    const headings = container.querySelectorAll('h2')
+    expect(headings.length).toBeGreaterThanOrEqual(1)
+    // Find the body heading (not the title)
+    const summaryHeading = Array.from(headings).find(h => h.textContent === 'Summary')
+    expect(summaryHeading).toBeTruthy()
+    expect(container.querySelectorAll('li')).toHaveLength(2)
 
-    resolveRefresh({ updated: true })
-    await waitFor(() => {
-      expect(refreshButton).not.toBeDisabled()
-    })
-    expect(refreshButton).toHaveTextContent('Refresh')
+    // Author byline
+    expect(screen.getByText('dfosco')).toBeInTheDocument()
   })
 
-  it('shows refresh error message when refresh fails', async () => {
-    const onRefreshGitHub = vi.fn(() => Promise.reject(new Error('network')))
-
+  it('does not render GitHub layout for non-GitHub links', () => {
     render(
       <LinkPreview
         id="link-2"
-        canRefreshGitHub
-        onRefreshGitHub={onRefreshGitHub}
-        props={{
-          url: 'https://github.com/dfosco/storyboard/issues/43',
-          title: '#43 Broken refresh',
-          github: {
-            context: 'GitHub · dfosco/storyboard · Issue #43',
-            body: 'Details from GitHub',
-            authors: ['dfosco'],
-          },
-        }}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh GitHub metadata' }))
-
-    await waitFor(() => {
-      expect(screen.getByText('Unable to refresh GitHub metadata right now.')).toBeInTheDocument()
-    })
-  })
-
-  it('does not render refresh button for non-GitHub links', () => {
-    render(
-      <LinkPreview
-        id="link-3"
-        canRefreshGitHub
-        onRefreshGitHub={vi.fn()}
         props={{
           url: 'https://example.com/docs',
           title: 'Example docs',
@@ -83,6 +47,25 @@ describe('LinkPreview', () => {
       />,
     )
 
-    expect(screen.queryByRole('button', { name: 'Refresh GitHub metadata' })).toBeNull()
+    expect(screen.getByText('Example docs')).toBeInTheDocument()
+    expect(screen.getByText('example.com')).toBeInTheDocument()
+  })
+
+  it('renders plain link-preview without github data', () => {
+    const { container } = render(
+      <LinkPreview
+        id="link-3"
+        props={{
+          url: 'https://figma.com/design/abc',
+          title: 'My design',
+          width: 320,
+          height: 120,
+        }}
+      />,
+    )
+
+    expect(screen.getByText('My design')).toBeInTheDocument()
+    // No issue card rendered
+    expect(container.querySelector('header')).toBeNull()
   })
 })

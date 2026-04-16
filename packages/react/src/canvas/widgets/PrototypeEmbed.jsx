@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { createPortal } from 'react-dom'
-import { ImageIcon } from '@primer/octicons-react'
 import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
@@ -8,6 +7,16 @@ import { getEmbedChromeVars } from './embedTheme.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
+
+function CollageFrameIcon({ size = 36 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <path d="M19.4 20H4.6C4.26863 20 4 19.7314 4 19.4V4.6C4 4.26863 4.26863 4 4.6 4H19.4C19.7314 4 20 4.26863 20 4.6V19.4C20 19.7314 19.7314 20 19.4 20Z" />
+      <path d="M11 12V4" />
+      <path d="M4 12H20" />
+    </svg>
+  )
+}
 
 function formatName(name) {
   return name
@@ -475,7 +484,7 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
             ) : (
               <div className={styles.iframeContainer}>
                 <div className={styles.placeholder}>
-                  <ImageIcon size={36} className={styles.placeholderIcon} />
+                  <CollageFrameIcon size={36} />
                   <span className={styles.placeholderLabel}>{`${prototypeTitle} prototype`}</span>
                 </div>
               </div>

@@ -116,6 +116,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const [expanded, setExpanded] = useState(false)
   const [filter, setFilter] = useState('')
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
+  const [snapshotBroken, setSnapshotBroken] = useState(false)
 
   const inputRef = useRef(null)
   const filterRef = useRef(null)
@@ -141,6 +142,9 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     const url = canvasTheme?.startsWith('dark') ? snapshotDark : snapshotLight
     return url && widgetId && url.includes(widgetId) ? url : null
   }, [canvasTheme, snapshotLight, snapshotDark, widgetId, isExternal])
+
+  // Reset broken state when snapshot URL changes
+  useEffect(() => { setSnapshotBroken(false) }, [validSnapshot])
 
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''
@@ -279,6 +283,10 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     if (!interactive || expanded) return
     function handlePointerDown(e) {
       if (embedRef.current && !embedRef.current.contains(e.target)) {
+        // Don't exit if click is within our own WidgetChrome toolbar
+        const chromeEl = e.target.closest(`[data-widget-id="${widgetId}"]`)
+        if (chromeEl) return
+
         setInteractive(false)
         if (onUpdate && !isExternal && iframeReady && iframeRef.current?.contentWindow) {
           // Capture before teardown, then hide iframe
@@ -541,12 +549,13 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                 />
               )}
               {(!showIframe || !iframeLoaded) && (
-                validSnapshot && !showIframe ? (
+                validSnapshot && !showIframe && !snapshotBroken ? (
                   <img
                     src={validSnapshot}
                     alt={`${prototypeTitle} snapshot`}
                     className={styles.snapshotImage}
                     draggable={false}
+                    onError={() => setSnapshotBroken(true)}
                   />
                 ) : (
                   <div className={styles.placeholder} style={showIframe ? { position: 'absolute', inset: 0 } : undefined}>

@@ -109,6 +109,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const [highlightedHtml, setHighlightedHtml] = useState(null)
   const [sourceLoading, setSourceLoading] = useState(false)
   const [storyIndexKey, setStoryIndexKey] = useState(0)
+  const [snapshotBroken, setSnapshotBroken] = useState(false)
 
   // Resolve canvas theme for snapshot theming
   const canvasTheme = useMemo(() => {
@@ -132,6 +133,9 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     const url = canvasTheme?.startsWith('dark') ? snapshotDark : snapshotLight
     return url && widgetId && url.includes(widgetId) ? url : null
   }, [canvasTheme, snapshotLight, snapshotDark, widgetId])
+
+  // Reset broken state when snapshot URL changes
+  useEffect(() => { setSnapshotBroken(false) }, [validSnapshot])
 
   // Re-resolve story URL when the story index is live-patched (new story added)
   useEffect(() => {
@@ -166,6 +170,10 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     if (!interactive) return
     function handlePointerDown(e) {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
+        // Don't exit if click is within our own WidgetChrome toolbar
+        const chromeEl = e.target.closest(`[data-widget-id="${widgetId}"]`)
+        if (chromeEl) return
+
         setInteractive(false)
         if (onUpdate && iframeReady && iframeRef.current?.contentWindow) {
           requestCapture().then(() => setShowIframe(false))
@@ -382,12 +390,13 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
                 />
               )}
               {(!showIframe || !iframeLoaded) && (
-                validSnapshot && !showIframe ? (
+                validSnapshot && !showIframe && !snapshotBroken ? (
                   <img
                     src={validSnapshot}
                     alt={`${displayName} snapshot`}
                     className={styles.snapshotImage}
                     draggable={false}
+                    onError={() => setSnapshotBroken(true)}
                   />
                 ) : (
                   <div className={styles.placeholder} style={showIframe ? { position: 'absolute', inset: 0 } : undefined}>

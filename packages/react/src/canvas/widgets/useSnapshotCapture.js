@@ -71,7 +71,8 @@ export function useSnapshotCapture({
       if (result?.filename) {
         const themeKey = canvasTheme?.startsWith('dark') ? 'snapshotDark' : 'snapshotLight'
         const cacheBust = `?v=${Date.now()}`
-        onUpdate?.({ [themeKey]: `/_storyboard/canvas/snapshots/${result.filename}${cacheBust}` })
+        const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+        onUpdate?.({ [themeKey]: `${base}/_storyboard/canvas/images/${result.filename}${cacheBust}` })
       }
     } catch (err) {
       console.warn('[snapshot] Upload failed:', err)

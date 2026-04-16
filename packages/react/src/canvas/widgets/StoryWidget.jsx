@@ -16,6 +16,7 @@ import { getStoryData } from '@dfosco/storyboard-core'
 import { createInspectorHighlighter } from '@dfosco/storyboard-core/inspector/highlighter'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
+import { useIframeDevLogs } from './iframeDevLogs.js'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -214,6 +215,12 @@ export default forwardRef(function StoryWidget({ props, onUpdate, resizable }, r
     () => resolveStoryUrl(storyId, exportName),
     [storyId, exportName, storyIndexKey],
   )
+
+  useIframeDevLogs({
+    widget: 'StoryWidget',
+    loaded: showIframe && !showCode && Boolean(iframeSrc),
+    src: iframeSrc,
+  })
 
   const displayName = exportName ? `${storyId} / ${exportName}` : storyId
 

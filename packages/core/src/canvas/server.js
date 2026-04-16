@@ -702,7 +702,10 @@ export function Default() {
 
     // GET /images/<filename> — serve an image file
     if (routePath.startsWith('/images/') && method === 'GET') {
-      const filename = routePath.slice('/images/'.length)
+      // Strip query string (e.g. ?v=123 cache busters) from filename
+      let filename = routePath.slice('/images/'.length)
+      const qIdx = filename.indexOf('?')
+      if (qIdx !== -1) filename = filename.slice(0, qIdx)
 
       // Block path traversal
       if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {

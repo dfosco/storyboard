@@ -5,6 +5,7 @@ import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
+import { useIframeDevLogs } from './iframeDevLogs.js'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -110,6 +111,12 @@ export default forwardRef(function PrototypeEmbed({ props, onUpdate, resizable }
     const sep = base.includes('?') ? '&' : '?'
     return `${base}${sep}_sb_embed&_sb_theme_target=prototype&_sb_canvas_theme=${canvasTheme}${hash}`
   }, [rawSrc, canvasTheme])
+
+  useIframeDevLogs({
+    widget: 'PrototypeEmbed',
+    loaded: showIframe && Boolean(iframeSrc),
+    src: iframeSrc,
+  })
 
   // Build prototype index for the picker
   const prototypeIndex = useMemo(() => {

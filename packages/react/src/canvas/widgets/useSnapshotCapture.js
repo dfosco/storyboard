@@ -21,6 +21,11 @@ import { uploadImage } from '../canvasApi.js'
 const CAPTURE_TIMEOUT = 3000
 const THEME_SWITCH_TIMEOUT = 2000
 
+/** Yield to the main thread so React renders and user interactions aren't blocked. */
+function yieldToMain() {
+  return new Promise(resolve => setTimeout(resolve, 0))
+}
+
 /**
  * Run a single capture request against the iframe.
  * Returns the dataUrl or null on failure.
@@ -198,6 +203,13 @@ export function useSnapshotCapture({
           }
         }).catch(() => {})
       }
+
+      // Yield to main thread between captures so React re-renders
+      // and user interactions aren't blocked by back-to-back toBlob calls.
+      await yieldToMain()
+
+      // Bail if a newer capture started while we yielded
+      if (gen !== captureGeneration.current) return {}
 
       // 3. Hide iframe, switch theme, capture alternate — overlaps with upload-1
       const savedVisibility = iframe.style.visibility

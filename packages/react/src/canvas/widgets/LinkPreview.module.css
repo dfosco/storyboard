@@ -160,6 +160,20 @@
   flex-shrink: 0;
 }
 
+.authorLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--fgColor-default, #1f2328);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.authorLink:hover {
+  text-decoration: underline;
+}
+
 .bylineText {
   font-size: 13px;
   color: var(--fgColor-muted, #656d76);

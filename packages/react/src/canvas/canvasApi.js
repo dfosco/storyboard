@@ -53,3 +53,11 @@ export function toggleImagePrivacy(filename) {
 export function getCanvas(canvasId) {
   return request(`/read?name=${encodeURIComponent(canvasId)}`, 'GET')
 }
+
+export function checkGitHubCliAvailable() {
+  return request('/github/available', 'GET')
+}
+
+export function fetchGitHubEmbed(url) {
+  return request('/github/embed', 'POST', { url })
+}

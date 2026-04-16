@@ -103,6 +103,8 @@ vi.mock('./widgets/figmaUrl.js', () => ({
 
 vi.mock('./canvasApi.js', () => ({
   addWidget: vi.fn(),
+  checkGitHubCliAvailable: vi.fn(() => Promise.resolve({ available: true })),
+  fetchGitHubEmbed: vi.fn(() => Promise.resolve({ success: false })),
   updateCanvas: vi.fn(() => Promise.resolve({ success: true })),
   removeWidget: vi.fn(() => Promise.resolve({ success: true })),
   uploadImage: vi.fn(),

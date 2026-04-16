@@ -367,7 +367,7 @@
       "label": "Link Preview",
       "icon": "🔗",
       "resize": {
-        "enabled": true,
+        "enabled": false,
         "prod": false
       },
       "props": {
@@ -419,6 +419,14 @@
           "action": "refresh-github",
           "label": "Refresh data",
           "icon": "sync"
+        },
+        {
+          "id": "toggle-collapse",
+          "type": "action",
+          "action": "toggle-collapse",
+          "label": "Collapse height",
+          "icon": "fold",
+          "menu": true
         },
         {
           "id": "copy-text",

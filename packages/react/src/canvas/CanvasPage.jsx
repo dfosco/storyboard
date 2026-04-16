@@ -300,7 +300,26 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
   readOnly,
 }) {
   const widgetRef = useRef(null)
-  const features = getFeatures(widget.type, { isLocalDev: !readOnly })
+  const rawFeatures = getFeatures(widget.type, { isLocalDev: !readOnly })
+
+  // Dynamically adjust features based on widget state
+  const features = useMemo(() => {
+    const isGitHub = !!widget.props?.github
+    return rawFeatures.map((f) => {
+      // Toggle collapse label and hide when content is short (no github = no collapse)
+      if (f.action === 'toggle-collapse') {
+        if (!isGitHub) return null
+        return {
+          ...f,
+          label: widget.props?.collapsed ? 'Expand height' : 'Collapse height',
+          icon: widget.props?.collapsed ? 'unfold' : 'fold',
+        }
+      }
+      // Hide refresh-github for non-GitHub link previews
+      if (f.action === 'refresh-github' && !isGitHub) return null
+      return f
+    }).filter(Boolean)
+  }, [rawFeatures, widget.props?.github, widget.props?.collapsed])
 
   const handleAction = useCallback((actionId) => {
     if (actionId === 'delete') {
@@ -318,6 +337,8 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
     } else if (actionId === 'refresh-github') {
       const url = widget.props?.url
       if (url && onRefreshGitHub) onRefreshGitHub(widget.id, url)
+    } else if (actionId === 'toggle-collapse') {
+      onUpdate?.(widget.id, { collapsed: !widget.props?.collapsed })
     }
   }, [widget, onRemove, onCopy, onRefreshGitHub])
 

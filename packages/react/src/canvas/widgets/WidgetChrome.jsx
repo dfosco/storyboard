@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Tooltip } from '@primer/react'
-import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode, UnwrapIcon as OcticonUnwrap, ImageIcon as OcticonImage } from '@primer/octicons-react'
+import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode, UnwrapIcon as OcticonUnwrap, ImageIcon as OcticonImage, UnfoldIcon as OcticonUnfold, FoldIcon as OcticonFold } from '@primer/octicons-react'
 import styles from './WidgetChrome.module.css'
 
 const STICKY_NOTE_COLORS = {
@@ -130,6 +130,14 @@ function SyncIcon() {
   )
 }
 
+function UnfoldIcon() {
+  return <OcticonUnfold size={12} />
+}
+
+function FoldIcon() {
+  return <OcticonFold size={12} />
+}
+
 /** Icon registry — maps icon name strings from config to React components. */
 const ICON_REGISTRY = {
   'trash': DeleteIcon,
@@ -149,6 +157,8 @@ const ICON_REGISTRY = {
   'download': DownloadIcon,
   'expand': ExpandIcon,
   'sync': SyncIcon,
+  'unfold': UnfoldIcon,
+  'fold': FoldIcon,
 }
 
 /** Danger-styled actions in the overflow menu. */

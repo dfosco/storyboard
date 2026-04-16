@@ -468,7 +468,10 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
 
               {/* Placeholder — only when no snapshot and no iframe */}
               {!hasSnap && !showIframe && (
-                <div className={styles.placeholder} />
+                <div className={styles.placeholder}>
+                  <ComponentIcon size={36} />
+                  <span className={styles.placeholderLabel}>{displayName}</span>
+                </div>
               )}
             </div>
 

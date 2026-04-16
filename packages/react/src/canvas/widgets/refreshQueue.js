@@ -7,12 +7,18 @@
  * batch start. This creates a clean, predictable wave sweep regardless of how
  * fast each capture completes.
  *
+ * After a batch completes, any widgets that failed are re-enqueued for a
+ * single retry pass.
+ *
  * Sorted spatially (top-to-bottom, left-to-right) before assigning reveal slots.
  * Supports cancellation by widget ID.
  */
 const queue = []
 let running = 0
 let drainScheduled = false
+let batchTotal = 0
+let batchDone = 0
+const batchFailed = []
 
 const MAX_CONCURRENT = 4
 export const REVEAL_INTERVAL = 200
@@ -20,7 +26,8 @@ export const REVEAL_INTERVAL = 200
 /**
  * Enqueue a snapshot refresh task for a widget.
  * @param {string} widgetId — unique widget identifier (for cancellation)
- * @param {(meta: { revealOrder: number, batchStart: number }) => Promise<void>} fn
+ * @param {(meta: { revealOrder: number, batchStart: number }) => Promise<boolean>} fn
+ *   Must resolve to `true` on success, `false` on failure.
  * @param {{ x: number, y: number }} [pos] — spatial position for wave ordering
  */
 export function enqueueRefresh(widgetId, fn, pos) {
@@ -48,23 +55,51 @@ function scheduleDrain() {
     drainScheduled = false
     queue.sort((a, b) => a.y - b.y || a.x - b.x)
     const batchStart = Date.now()
+    batchTotal = queue.length
+    batchDone = 0
+    batchFailed.length = 0
+    queue.forEach((item, i) => {
+      item.revealOrder = i
+      item.batchStart = batchStart
+      item.isRetry = item.isRetry || false
+    })
+    drain()
+  }, 0)
+}
+
+function onTaskDone(success, item) {
+  batchDone++
+  if (!success && !item.isRetry) {
+    batchFailed.push(item)
+  }
+  // When batch is complete, re-enqueue failures for one retry
+  if (batchDone >= batchTotal && batchFailed.length > 0) {
+    const retries = batchFailed.splice(0)
+    for (const failed of retries) {
+      failed.isRetry = true
+      queue.push(failed)
+    }
+    batchTotal = queue.length
+    batchDone = 0
+    const batchStart = Date.now()
     queue.forEach((item, i) => {
       item.revealOrder = i
       item.batchStart = batchStart
     })
-    drain()
-  }, 0)
+  }
+  drain()
 }
 
 function drain() {
   if (running >= MAX_CONCURRENT || queue.length === 0) return
 
   running++
-  const { fn, revealOrder, batchStart } = queue.shift()
+  const item = queue.shift()
+  const { fn, revealOrder, batchStart } = item
   Promise.resolve()
     .then(() => fn({ revealOrder, batchStart }))
-    .catch(() => {})
-    .finally(() => { running--; drain() })
+    .then((success) => { running--; onTaskDone(success !== false, item) })
+    .catch(() => { running--; onTaskDone(false, item) })
 
   // Start next capture immediately (no stagger on capture start — only reveals are staggered)
   if (queue.length > 0 && running < MAX_CONCURRENT) {

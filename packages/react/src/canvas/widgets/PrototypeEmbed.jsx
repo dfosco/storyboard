@@ -315,7 +315,8 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
         refreshMetaRef.current = { revealOrder, batchStart, resolve }
         captureOnReadyRef.current = true
         setShowIframe(true)
-        setTimeout(() => { refreshMetaRef.current = null; resolve() }, 10000)
+        // Safety timeout — report failure so retry pass picks it up
+        setTimeout(() => { refreshMetaRef.current = null; resolve(false) }, 10000)
       })
     }, rect ? { x: rect.left, y: rect.top } : undefined)
   }, [canvasTheme]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -348,7 +349,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
             } else {
               setShowIframe(false)
             }
-            meta.resolve()
+            meta.resolve(!!snap)
           }
           // Wait for our reveal slot in the wave
           const elapsed = Date.now() - meta.batchStart

@@ -76,11 +76,14 @@
   box-sizing: border-box;
   overflow: hidden;
   font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
-  transition: max-height 0.3s ease;
 }
 
 .issueCardCollapsed {
   max-height: 800px;
+  overflow: hidden;
+}
+
+.issueCardCollapsed .issueBody {
   overflow-y: auto;
 }
 

@@ -42,6 +42,23 @@
   height: calc(100% - 31px);
 }
 
+.placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--fgColor-muted, #656d76);
+  text-align: center;
+}
+
+.placeholderLabel {
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .iframe {
   display: block;
   width: 100%;

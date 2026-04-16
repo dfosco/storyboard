@@ -32,6 +32,13 @@
   min-height: 100%;
 }
 
+/* GPU compositing hint during active zoom gestures — applied imperatively
+   via data-zooming attribute and removed on zoom-end to avoid permanent
+   memory pressure on the large canvas surface. */
+.canvasZoom[data-zooming] {
+  will-change: transform;
+}
+
 /* Selection outline is now handled by WidgetChrome.module.css (.widgetSlotSelected) */
 
 .canvasTitle {

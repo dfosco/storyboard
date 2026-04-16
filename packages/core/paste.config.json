@@ -16,6 +16,19 @@
       }
     },
     {
+      "name": "codepen",
+      "match": {
+        "hostname": "^codepen\\.io$",
+        "pathname": "^/[^/]+/(pen|full|details|embed)/[A-Za-z0-9]+"
+      },
+      "widget": "codepen-embed",
+      "props": {
+        "url": { "template": "$url" },
+        "width": 800,
+        "height": 450
+      }
+    },
+    {
       "name": "same-origin",
       "match": {
         "sameOrigin": true

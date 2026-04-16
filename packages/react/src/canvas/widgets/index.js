@@ -4,6 +4,7 @@ import PrototypeEmbed from './PrototypeEmbed.jsx'
 import LinkPreview from './LinkPreview.jsx'
 import ImageWidget from './ImageWidget.jsx'
 import FigmaEmbed from './FigmaEmbed.jsx'
+import CodePenEmbed from './CodePenEmbed.jsx'
 import StoryWidget from './StoryWidget.jsx'
 
 /**
@@ -17,6 +18,7 @@ export const widgetRegistry = {
   'link-preview': LinkPreview,
   'image': ImageWidget,
   'figma-embed': FigmaEmbed,
+  'codepen-embed': CodePenEmbed,
   'story': StoryWidget,
 }
 

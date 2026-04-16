@@ -26,6 +26,7 @@
   {"folder":"branch--4.0.0-canvas-folder-iteration","branch":"4.0.0-canvas-folder-iteration"},
   {"folder":"branch--4.0.0-canvas-unique-id","branch":"4.0.0-canvas-unique-id"},
   {"folder":"branch--4.0.0-clean-story-routes","branch":"4.0.0-clean-story-routes"},
+  {"folder":"branch--4.0.0-codepen-embed","branch":"4.0.0-codepen-embed"},
   {"folder":"branch--4.0.0-component-iframe-isolation","branch":"4.0.0-component-iframe-isolation"},
   {"folder":"branch--4.0.0-create-cli-expansion","branch":"4.0.0-create-cli-expansion"},
   {"folder":"branch--4.0.0-extend-to-optimizeDeps","branch":"4.0.0-extend-to-optimizeDeps"},

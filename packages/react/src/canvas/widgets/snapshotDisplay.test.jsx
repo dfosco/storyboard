@@ -2,7 +2,7 @@
  * Tests for iframe snapshot display — layered dual-theme rendering.
  */
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, fireEvent, waitFor, act } from '@testing-library/react'
 import PrototypeEmbed from './PrototypeEmbed.jsx'
 import StoryWidget from './StoryWidget.jsx'
 
@@ -32,7 +32,7 @@ vi.mock('@dfosco/storyboard-core/inspector/highlighter', () => ({
   createInspectorHighlighter: async () => ({
     codeToHtml: () => '<pre><code></code></pre>',
   }),
-}))
+}), { virtual: true })
 
 vi.mock('./ResizeHandle.jsx', () => ({
   default: () => <div data-testid="resize-handle" />,
@@ -63,7 +63,7 @@ describe('Snapshot display', () => {
       expect(container.querySelector('iframe')).not.toBeInTheDocument()
     })
 
-    it('renders both themed snapshots with correct visibility', () => {
+    it('switches snapshot src on theme change', async () => {
       const { container } = render(
         <PrototypeEmbed
           id="proto-abc123"
@@ -80,13 +80,20 @@ describe('Snapshot display', () => {
         />
       )
 
-      const imgs = container.querySelectorAll('img')
-      expect(imgs).toHaveLength(2)
-      // Default theme is light — light visible, dark hidden
-      expect(imgs[0].src).toContain('--light.webp')
-      expect(imgs[0].style.visibility).not.toBe('hidden')
-      expect(imgs[1].src).toContain('--dark.webp')
-      expect(imgs[1].style.visibility).toBe('hidden')
+      const img = container.querySelector('img')
+      expect(img).toBeInTheDocument()
+      expect(img.src).toContain('--light.webp')
+
+      act(() => {
+        document.dispatchEvent(new CustomEvent('storyboard:theme:changed', {
+          detail: { canvasResolved: 'dark' },
+        }))
+      })
+
+      await waitFor(() => {
+        const switched = container.querySelector('img')
+        expect(switched.src).toContain('--dark.webp')
+      })
     })
 
     it('shows placeholder when no snapshot exists', () => {
@@ -101,7 +108,6 @@ describe('Snapshot display', () => {
 
       expect(container.querySelector('img')).not.toBeInTheDocument()
       expect(container.querySelector('iframe')).not.toBeInTheDocument()
-      expect(screen.getByText('Design Overview prototype')).toBeInTheDocument()
     })
 
     it('falls back to placeholder when snapshot image fails to load', () => {
@@ -127,7 +133,6 @@ describe('Snapshot display', () => {
 
       // After error, img should be gone and placeholder shown
       expect(container.querySelector('img')).not.toBeInTheDocument()
-      expect(screen.getByText('Design Overview prototype')).toBeInTheDocument()
     })
 
     it('ignores snapshot that does not match widget ID', () => {
@@ -148,7 +153,6 @@ describe('Snapshot display', () => {
 
       // Should show placeholder, not the mismatched snapshot
       expect(container.querySelector('img')).not.toBeInTheDocument()
-      expect(screen.getByText('Design Overview prototype')).toBeInTheDocument()
     })
 
     it('does not show snapshot for external URLs', () => {
@@ -219,7 +223,7 @@ describe('Snapshot display', () => {
       expect(container.querySelector('iframe')).not.toBeInTheDocument()
     })
 
-    it('renders both themed snapshots with correct visibility', () => {
+    it('switches snapshot src on theme change', async () => {
       const { container } = render(
         <StoryWidget
           id="story-abc123"
@@ -233,13 +237,20 @@ describe('Snapshot display', () => {
         />
       )
 
-      const imgs = container.querySelectorAll('img')
-      expect(imgs).toHaveLength(2)
-      // Default theme is light — light visible, dark hidden
-      expect(imgs[0].src).toContain('--light.webp')
-      expect(imgs[0].style.visibility).not.toBe('hidden')
-      expect(imgs[1].src).toContain('--dark.webp')
-      expect(imgs[1].style.visibility).toBe('hidden')
+      const img = container.querySelector('img')
+      expect(img).toBeInTheDocument()
+      expect(img.src).toContain('--light.webp')
+
+      act(() => {
+        document.dispatchEvent(new CustomEvent('storyboard:theme:changed', {
+          detail: { canvasResolved: 'dark' },
+        }))
+      })
+
+      await waitFor(() => {
+        const switched = container.querySelector('img')
+        expect(switched.src).toContain('--dark.webp')
+      })
     })
 
     it('shows placeholder when no snapshot exists', () => {

@@ -18,6 +18,76 @@ export function resolveCanvasTheme() {
     window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
+function normalizeTheme(value) {
+  return String(value || 'light')
+}
+
+/**
+ * Subscribe to canvas theme updates for embed widgets.
+ * Uses three sources, in priority order:
+ * 1) `storyboard:theme:changed` event detail (fast path)
+ * 2) nearest `[data-sb-canvas-theme]` ancestor (source of truth in canvas DOM)
+ * 3) matchMedia fallback for system theme changes
+ */
+export function subscribeCanvasTheme({ anchorRef, onTheme }) {
+  if (typeof onTheme !== 'function') return () => {}
+
+  let themedContainer = null
+  let observer = null
+
+  function emit(theme) {
+    onTheme(normalizeTheme(theme))
+  }
+
+  function attachObserver(container) {
+    if (themedContainer === container) return
+    if (observer) observer.disconnect()
+    themedContainer = container
+    observer = null
+    if (!container || typeof MutationObserver === 'undefined') return
+    observer = new MutationObserver(() => {
+      emit(container.getAttribute('data-sb-canvas-theme') || 'light')
+    })
+    observer.observe(container, {
+      attributes: true,
+      attributeFilter: ['data-sb-canvas-theme'],
+    })
+  }
+
+  function readFromDom() {
+    const container = anchorRef?.current?.closest?.('[data-sb-canvas-theme]') || null
+    attachObserver(container)
+    emit(container?.getAttribute('data-sb-canvas-theme') || 'light')
+  }
+
+  function onThemeChanged(event) {
+    const fromEvent = event?.detail?.canvasResolved
+    if (typeof fromEvent === 'string' && fromEvent.length > 0) {
+      emit(fromEvent)
+    }
+    // Re-read after event to avoid races with ancestor attribute updates.
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(readFromDom)
+    } else {
+      setTimeout(readFromDom, 0)
+    }
+  }
+
+  readFromDom()
+  document.addEventListener('storyboard:theme:changed', onThemeChanged)
+
+  const mediaQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-color-scheme: dark)')
+    : null
+  mediaQuery?.addEventListener?.('change', readFromDom)
+
+  return () => {
+    document.removeEventListener('storyboard:theme:changed', onThemeChanged)
+    mediaQuery?.removeEventListener?.('change', readFromDom)
+    if (observer) observer.disconnect()
+  }
+}
+
 export function getEmbedChromeVars(theme) {
   const value = String(theme || 'light')
   if (value === 'dark_dimmed') {

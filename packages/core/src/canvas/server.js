@@ -734,7 +734,7 @@ export function Default() {
       const now = new Date()
       const pad = (n) => String(n).padStart(2, '0')
       const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}--${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
-      const prefix = canvasName ? `${canvasName.replace(/[\/:]/g, '--')}--` : ''
+      const prefix = canvasName ? `${canvasName.replace(/[/:]/g, '--')}--` : ''
 
       // Support explicit filename for snapshot uploads (stable naming)
       const explicitName = body.filename

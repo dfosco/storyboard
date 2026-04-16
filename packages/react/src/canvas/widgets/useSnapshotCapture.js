@@ -130,8 +130,10 @@ export function useSnapshotCapture({
       if (Object.keys(updates).length > 0) {
         onUpdate?.(updates)
       }
+      return updates
     } catch (err) {
       console.warn('[snapshot] Capture failed:', err)
+      return {}
     } finally {
       capturingRef.current = false
     }

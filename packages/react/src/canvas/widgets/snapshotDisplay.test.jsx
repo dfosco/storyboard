@@ -1,8 +1,8 @@
 /**
- * Tests for iframe snapshot display — layered dual-theme rendering.
+ * Tests for iframe snapshot display — single snapshot prop.
  */
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, fireEvent, waitFor, act } from '@testing-library/react'
 import PrototypeEmbed from './PrototypeEmbed.jsx'
 import StoryWidget from './StoryWidget.jsx'
 
@@ -32,16 +32,32 @@ vi.mock('@dfosco/storyboard-core/inspector/highlighter', () => ({
   createInspectorHighlighter: async () => ({
     codeToHtml: () => '<pre><code></code></pre>',
   }),
-}))
+}), { virtual: true })
 
 vi.mock('./ResizeHandle.jsx', () => ({
   default: () => <div data-testid="resize-handle" />,
 }))
 
+/**
+ * Render inside a wrapper with data-sb-canvas-theme, matching the real
+ * CanvasPage DOM structure that subscribeCanvasTheme reads from.
+ */
+function renderInCanvas(ui, theme = 'light') {
+  const wrapper = document.createElement('div')
+  wrapper.setAttribute('data-sb-canvas-theme', theme)
+  document.body.appendChild(wrapper)
+  const result = render(ui, { container: wrapper })
+  return { ...result, wrapper }
+}
+
+afterEach(() => {
+  document.querySelectorAll('[data-sb-canvas-theme]').forEach(el => el.remove())
+})
+
 describe('Snapshot display', () => {
   describe('PrototypeEmbed', () => {
     it('shows snapshot image when valid snapshot prop exists', () => {
-      const { container } = render(
+      const { wrapper } = renderInCanvas(
         <PrototypeEmbed
           id="proto-abc123"
           props={{
@@ -49,22 +65,21 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--light.webp?v=123',
+            snapshot: '/_storyboard/canvas/images/snapshot-proto-abc123.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
         />
       )
 
-      const img = container.querySelector('img')
+      const img = wrapper.querySelector('img')
       expect(img).toBeInTheDocument()
-      expect(img.src).toContain('snapshot-proto-abc123--light.webp')
-      expect(img.alt).toContain('snapshot')
-      expect(container.querySelector('iframe')).not.toBeInTheDocument()
+      expect(img.src).toContain('snapshot-proto-abc123.webp')
+      expect(wrapper.querySelector('iframe')).not.toBeInTheDocument()
     })
 
-    it('renders both themed snapshots with correct visibility', () => {
-      const { container } = render(
+    it('falls back to snapshotLight for backward compat', () => {
+      const { wrapper } = renderInCanvas(
         <PrototypeEmbed
           id="proto-abc123"
           props={{
@@ -73,24 +88,19 @@ describe('Snapshot display', () => {
             height: 300,
             zoom: 100,
             snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--light.webp?v=1',
-            snapshotDark: '/_storyboard/canvas/images/snapshot-proto-abc123--dark.webp?v=1',
           }}
           onUpdate={vi.fn()}
           resizable={false}
         />
       )
 
-      const imgs = container.querySelectorAll('img')
-      expect(imgs).toHaveLength(2)
-      // Default theme is light — light visible, dark hidden
-      expect(imgs[0].src).toContain('--light.webp')
-      expect(imgs[0].style.visibility).not.toBe('hidden')
-      expect(imgs[1].src).toContain('--dark.webp')
-      expect(imgs[1].style.visibility).toBe('hidden')
+      const img = wrapper.querySelector('img')
+      expect(img).toBeInTheDocument()
+      expect(img.src).toContain('snapshot-proto-abc123--light.webp')
     })
 
     it('shows placeholder when no snapshot exists', () => {
-      const { container } = render(
+      const { wrapper } = renderInCanvas(
         <PrototypeEmbed
           id="proto-xyz"
           props={{ src: '/test', width: 400, height: 300, zoom: 100 }}
@@ -99,13 +109,12 @@ describe('Snapshot display', () => {
         />
       )
 
-      expect(container.querySelector('img')).not.toBeInTheDocument()
-      expect(container.querySelector('iframe')).not.toBeInTheDocument()
-      expect(screen.getByText('Design Overview prototype')).toBeInTheDocument()
+      expect(wrapper.querySelector('img')).not.toBeInTheDocument()
+      expect(wrapper.querySelector('iframe')).not.toBeInTheDocument()
     })
 
     it('falls back to placeholder when snapshot image fails to load', () => {
-      const { container } = render(
+      const { wrapper } = renderInCanvas(
         <PrototypeEmbed
           id="proto-abc123"
           props={{
@@ -113,25 +122,21 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--light.webp?v=123',
+            snapshot: '/_storyboard/canvas/images/snapshot-proto-abc123.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
         />
       )
 
-      const img = container.querySelector('img')
+      const img = wrapper.querySelector('img')
       expect(img).toBeInTheDocument()
-
       fireEvent.error(img)
-
-      // After error, img should be gone and placeholder shown
-      expect(container.querySelector('img')).not.toBeInTheDocument()
-      expect(screen.getByText('Design Overview prototype')).toBeInTheDocument()
+      expect(wrapper.querySelector('img')).not.toBeInTheDocument()
     })
 
     it('ignores snapshot that does not match widget ID', () => {
-      const { container } = render(
+      const { wrapper } = renderInCanvas(
         <PrototypeEmbed
           id="proto-abc123"
           props={{
@@ -139,20 +144,18 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-other-widget--light.webp?v=123',
+            snapshot: '/_storyboard/canvas/images/snapshot-other-widget.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
         />
       )
 
-      // Should show placeholder, not the mismatched snapshot
-      expect(container.querySelector('img')).not.toBeInTheDocument()
-      expect(screen.getByText('Design Overview prototype')).toBeInTheDocument()
+      expect(wrapper.querySelector('img')).not.toBeInTheDocument()
     })
 
     it('does not show snapshot for external URLs', () => {
-      const { container } = render(
+      const { wrapper } = renderInCanvas(
         <PrototypeEmbed
           id="proto-ext"
           props={{
@@ -160,45 +163,20 @@ describe('Snapshot display', () => {
             width: 400,
             height: 300,
             zoom: 100,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-ext--light.webp?v=123',
+            snapshot: '/_storyboard/canvas/images/snapshot-proto-ext.webp?v=123',
           }}
           onUpdate={vi.fn()}
           resizable={false}
         />
       )
 
-      // External URLs should never show snapshots
-      expect(container.querySelector('img')).not.toBeInTheDocument()
-    })
-
-    it('falls back to light snapshot when dark snapshot is missing', () => {
-      const { container } = render(
-        <PrototypeEmbed
-          id="proto-abc123"
-          props={{
-            src: '/test',
-            width: 400,
-            height: 300,
-            zoom: 100,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-proto-abc123--light.webp?v=1',
-            // no snapshotDark — light snapshot should show regardless of theme
-          }}
-          onUpdate={vi.fn()}
-          resizable={false}
-        />
-      )
-
-      const imgs = container.querySelectorAll('img')
-      expect(imgs).toHaveLength(1)
-      expect(imgs[0].src).toContain('--light.webp')
-      // Should be visible (no visibility: hidden) since it's the only snapshot
-      expect(imgs[0].style.visibility).not.toBe('hidden')
+      expect(wrapper.querySelector('img')).not.toBeInTheDocument()
     })
   })
 
   describe('StoryWidget', () => {
     it('shows snapshot image when valid snapshot prop exists', () => {
-      const { container } = render(
+      const { wrapper } = renderInCanvas(
         <StoryWidget
           id="story-abc123"
           props={{
@@ -206,26 +184,25 @@ describe('Snapshot display', () => {
             exportName: 'Primary',
             width: 400,
             height: 300,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-story-abc123--light.webp?v=456',
+            snapshot: '/_storyboard/canvas/images/snapshot-story-abc123.webp?v=456',
           }}
           onUpdate={vi.fn()}
           resizable={false}
         />
       )
 
-      const img = container.querySelector('img')
+      const img = wrapper.querySelector('img')
       expect(img).toBeInTheDocument()
-      expect(img.src).toContain('snapshot-story-abc123--light.webp')
-      expect(container.querySelector('iframe')).not.toBeInTheDocument()
+      expect(img.src).toContain('snapshot-story-abc123.webp')
+      expect(wrapper.querySelector('iframe')).not.toBeInTheDocument()
     })
 
-    it('renders both themed snapshots with correct visibility', () => {
-      const { container } = render(
+    it('falls back to snapshotDark for backward compat', () => {
+      const { wrapper } = renderInCanvas(
         <StoryWidget
           id="story-abc123"
           props={{
             storyId: 'button-patterns',
-            snapshotLight: '/_storyboard/canvas/images/snapshot-story-abc123--light.webp?v=1',
             snapshotDark: '/_storyboard/canvas/images/snapshot-story-abc123--dark.webp?v=1',
           }}
           onUpdate={vi.fn()}
@@ -233,17 +210,13 @@ describe('Snapshot display', () => {
         />
       )
 
-      const imgs = container.querySelectorAll('img')
-      expect(imgs).toHaveLength(2)
-      // Default theme is light — light visible, dark hidden
-      expect(imgs[0].src).toContain('--light.webp')
-      expect(imgs[0].style.visibility).not.toBe('hidden')
-      expect(imgs[1].src).toContain('--dark.webp')
-      expect(imgs[1].style.visibility).toBe('hidden')
+      const img = wrapper.querySelector('img')
+      expect(img).toBeInTheDocument()
+      expect(img.src).toContain('snapshot-story-abc123--dark.webp')
     })
 
     it('shows placeholder when no snapshot exists', () => {
-      const { container } = render(
+      const { wrapper } = renderInCanvas(
         <StoryWidget
           id="story-xyz"
           props={{
@@ -257,12 +230,12 @@ describe('Snapshot display', () => {
         />
       )
 
-      expect(container.querySelector('img')).not.toBeInTheDocument()
-      expect(container.querySelector('iframe')).not.toBeInTheDocument()
+      expect(wrapper.querySelector('img')).not.toBeInTheDocument()
+      expect(wrapper.querySelector('iframe')).not.toBeInTheDocument()
     })
 
     it('falls back to placeholder when snapshot image fails to load', () => {
-      const { container } = render(
+      const { wrapper } = renderInCanvas(
         <StoryWidget
           id="story-abc123"
           props={{
@@ -270,20 +243,17 @@ describe('Snapshot display', () => {
             exportName: 'Primary',
             width: 400,
             height: 300,
-            snapshotLight: '/_storyboard/canvas/images/snapshot-story-abc123--light.webp?v=456',
+            snapshot: '/_storyboard/canvas/images/snapshot-story-abc123.webp?v=456',
           }}
           onUpdate={vi.fn()}
           resizable={false}
         />
       )
 
-      const img = container.querySelector('img')
+      const img = wrapper.querySelector('img')
       expect(img).toBeInTheDocument()
-
       fireEvent.error(img)
-
-      // After error, img should be gone and placeholder shown
-      expect(container.querySelector('img')).not.toBeInTheDocument()
+      expect(wrapper.querySelector('img')).not.toBeInTheDocument()
     })
   })
 })

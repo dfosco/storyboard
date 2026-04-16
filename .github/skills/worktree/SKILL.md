@@ -36,16 +36,24 @@ Use the slugified name for both the **branch name** and **worktree directory** t
 
 ### Step 1: Create the worktree
 
+**Always resolve the repository root first:**
+
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel)
+```
+
+Then create the worktree at `$REPO_ROOT/.worktrees/<branch-name>`. Never use a relative `.worktrees/` path — it can resolve incorrectly when the current directory is itself inside a worktree.
+
 If the branch already exists locally or on the remote:
 
 ```bash
-git worktree add .worktrees/<branch-name> <branch-name>
+git worktree add "$REPO_ROOT/.worktrees/<branch-name>" <branch-name>
 ```
 
 If the branch does NOT exist yet, create it from the current HEAD:
 
 ```bash
-git worktree add .worktrees/<branch-name> -b <branch-name>
+git worktree add "$REPO_ROOT/.worktrees/<branch-name>" -b <branch-name>
 ```
 
 ### Step 2: Register a dev-server port
@@ -98,7 +106,7 @@ The dev server automatically uses the port assigned in Step 2.
 
 ## Notes
 
-- Worktrees live in `.worktrees/` at the repo root — this directory is already gitignored.
+- **Worktrees MUST live in `.worktrees/` at the REPOSITORY ROOT — never anywhere else.** The repository root is the top-level git directory (use `git rev-parse --show-toplevel` to find it). If you are currently inside a worktree (e.g. `.worktrees/4.0.0/`), do NOT create nested worktrees inside it (e.g. `.worktrees/4.0.0/.worktrees/`). Always `cd` to the repo root or use an absolute path to the root `.worktrees/` directory.
 - The branch name comes from the user's request (e.g., "create worktree comments-redo" → branch is `comments-redo`).
 - **Always slugify** the branch name (Step 0) before creating the worktree. Dots cause issues with subdomain routing and are replaced with hyphens.
 - If the worktree already exists, inform the user and `cd` into it instead of recreating it.

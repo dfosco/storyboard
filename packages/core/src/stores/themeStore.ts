@@ -206,7 +206,7 @@ const DEFAULT_SYNC: ThemeSyncTargets = {
   prototype: true,
   toolbar: false,
   codeBoxes: true,
-  canvas: false,
+  canvas: true,
 }
 
 function readStoredSync(): ThemeSyncTargets {

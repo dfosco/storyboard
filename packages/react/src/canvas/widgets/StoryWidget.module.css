@@ -93,6 +93,7 @@
   object-position: top left;
   display: block;
   pointer-events: none;
+  transition: opacity 150ms ease;
 }
 
 .codeView {

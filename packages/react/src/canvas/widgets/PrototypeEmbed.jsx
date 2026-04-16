@@ -6,6 +6,7 @@ import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars, subscribeCanvasTheme } from './embedTheme.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
 import { useSnapshotCapture } from './useSnapshotCapture.js'
+import { enqueueRefresh, cancelRefresh } from './refreshQueue.js'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -66,8 +67,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const height = readProp(props, 'height', prototypeEmbedSchema)
   const zoom = readProp(props, 'zoom', prototypeEmbedSchema)
   const label = readProp(props, 'label', prototypeEmbedSchema) || src
-  const snapshotLight = props?.snapshotLight || ''
-  const snapshotDark = props?.snapshotDark || ''
+  const snapshot = props?.snapshot || props?.snapshotLight || props?.snapshotDark || ''
 
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
   const baseSegment = basePath.replace(/^\//, '')
@@ -109,17 +109,10 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     iframeRef,
     widgetId,
     onUpdate: isExternal ? null : onUpdate,
-    canvasTheme,
   })
 
-  // Determine available snapshots for layered rendering
-  const isDark = canvasTheme?.startsWith('dark')
-  const hasLightSnap = !isExternal && !!(snapshotLight && snapshotLight.includes(widgetId) && !brokenSnaps[snapshotLight])
-  const hasDarkSnap = !isExternal && !!(snapshotDark && snapshotDark.includes(widgetId) && !brokenSnaps[snapshotDark])
-  const hasAnySnap = hasLightSnap || hasDarkSnap
-  const snapshotSrc = isDark
-    ? (hasDarkSnap ? snapshotDark : snapshotLight)
-    : (hasLightSnap ? snapshotLight : snapshotDark)
+  // Single snapshot — backward compat reads snapshotLight/snapshotDark if snapshot is missing
+  const hasSnap = !isExternal && !!(snapshot && snapshot.includes(widgetId) && !brokenSnaps[snapshot])
 
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''
@@ -129,8 +122,8 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     const base = hashIdx >= 0 ? rawSrc.slice(0, hashIdx) : rawSrc
     const hash = hashIdx >= 0 ? rawSrc.slice(hashIdx) : ''
     const sep = base.includes('?') ? '&' : '?'
-    return `${base}${sep}_sb_embed&_sb_theme_target=prototype&_sb_canvas_theme=${canvasTheme}${hash}`
-  }, [rawSrc, canvasTheme])
+    return `${base}${sep}_sb_embed&_sb_theme_target=prototype${hash}`
+  }, [rawSrc])
 
   useIframeDevLogs({
     widget: 'PrototypeEmbed',
@@ -264,17 +257,13 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
         setInteractive(false)
         if (onUpdate && !isExternal && iframeLoaded && iframeRef.current?.contentWindow) {
-          // Keep iframe mounted but hidden for background capture
           if (iframeRef.current) iframeRef.current.style.visibility = 'hidden'
           const session = ++exitSessionRef.current
-          // Defer capture to next macrotask so React can flush the
-          // deselect re-render before html-to-image blocks the main thread.
           setTimeout(() => {
             if (exitSessionRef.current !== session) return
             requestCapture({ force: true }).then((updates) => {
               if (exitSessionRef.current !== session) return
-              // Preload snapshot image before unmounting iframe to prevent white flash
-              const snap = updates?.snapshotLight || updates?.snapshotDark
+              const snap = updates?.snapshot
               if (snap) {
                 const img = new Image()
                 const done = () => {
@@ -283,7 +272,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                 img.onload = done
                 img.onerror = done
                 img.src = snap
-                setTimeout(done, 2000) // fallback timeout
+                setTimeout(done, 2000)
               } else {
                 setShowIframe(false)
               }
@@ -312,10 +301,28 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     onTheme: setCanvasTheme,
   }), [])
 
+  // On canvas theme change, enqueue a background snapshot refresh.
+  // Skips the initial render (canvasThemeInitRef tracks first value).
+  const canvasThemeInitRef = useRef(true)
+  const refreshResolveRef = useRef(null)
+  useEffect(() => {
+    if (canvasThemeInitRef.current) { canvasThemeInitRef.current = false; return }
+    if (isExternal || !onUpdate || interactive) return
+    enqueueRefresh(widgetId, () => {
+      return new Promise((resolve) => {
+        refreshResolveRef.current = resolve
+        captureOnReadyRef.current = true
+        setShowIframe(true)
+        // Safety timeout — free queue slot even if capture stalls
+        setTimeout(() => { refreshResolveRef.current = null; resolve() }, 10000)
+      })
+    })
+  }, [canvasTheme]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Capture snapshot on first iframe ready (when no existing snapshot)
   useEffect(() => {
     if (!iframeReady || !onUpdate || isExternal) return
-    if (!hasAnySnap) {
+    if (!hasSnap) {
       requestCapture()
     }
   }, [iframeReady]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -324,7 +331,25 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   useEffect(() => {
     if (iframeReady && captureOnReadyRef.current) {
       captureOnReadyRef.current = false
-      requestCapture()
+      requestCapture().then((updates) => {
+        // If this was a queued refresh, preload then tear down iframe
+        const resolve = refreshResolveRef.current
+        if (resolve) {
+          refreshResolveRef.current = null
+          const snap = updates?.snapshot
+          if (snap) {
+            const img = new Image()
+            const done = () => setShowIframe(false)
+            img.onload = done
+            img.onerror = done
+            img.src = snap
+            setTimeout(done, 2000)
+          } else {
+            setShowIframe(false)
+          }
+          resolve()
+        }
+      })
     }
   }, [iframeReady, requestCapture])
 
@@ -407,9 +432,10 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const enterInteractive = useCallback(() => {
     exitSessionRef.current++
     clearTimeout(teardownTimerRef.current)
+    cancelRefresh(widgetId)
     setShowIframe(true)
     setInteractive(true)
-  }, [])
+  }, [widgetId])
 
   // Expose imperative action handlers for WidgetChrome
   useImperativeHandle(ref, () => ({
@@ -551,14 +577,14 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
               className={styles.iframeContainer}
               style={expanded ? { visibility: 'hidden' } : undefined}
             >
-              {/* Snapshot layer — single theme-aware image */}
-              {hasAnySnap && (
+              {/* Snapshot layer — single image */}
+              {hasSnap && (
                 <img
-                  src={snapshotSrc}
+                  src={snapshot}
                   className={styles.snapshotImage}
                   alt={`${prototypeTitle} snapshot`}
                   draggable={false}
-                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshotSrc]: true }))}
+                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshot]: true }))}
                 />
               )}
 
@@ -582,8 +608,8 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                 />
               )}
 
-              {/* Placeholder — only when no snapshots and no iframe */}
-              {!hasAnySnap && !showIframe && (
+              {/* Placeholder — only when no snapshot and no iframe */}
+              {!hasSnap && !showIframe && (
                 <div className={styles.placeholder} />
               )}
             </div>
@@ -604,9 +630,9 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                     enterInteractive()
                   }
                 }}
-                aria-label={hasAnySnap ? 'Click to interact with prototype' : 'Click to open prototype'}
+                aria-label={hasSnap ? 'Click to interact with prototype' : 'Click to open prototype'}
               >
-                <span className={overlayStyles.interactHint}>{hasAnySnap ? 'Click to interact' : 'Click to open'}</span>
+                <span className={overlayStyles.interactHint}>{hasSnap ? 'Click to interact' : 'Click to open'}</span>
               </div>
             )}
           </>

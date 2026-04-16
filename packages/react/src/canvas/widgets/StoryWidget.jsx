@@ -19,6 +19,7 @@ import ResizeHandle from './ResizeHandle.jsx'
 import { useIframeDevLogs } from './iframeDevLogs.js'
 import { useSnapshotCapture } from './useSnapshotCapture.js'
 import { subscribeCanvasTheme } from './embedTheme.js'
+import { enqueueRefresh, cancelRefresh } from './refreshQueue.js'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -86,14 +87,14 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const exportName = props?.exportName || ''
   const width = props?.width
   const height = props?.height
-  const snapshotLight = props?.snapshotLight || ''
-  const snapshotDark = props?.snapshotDark || ''
+  const snapshot = props?.snapshot || props?.snapshotLight || props?.snapshotDark || ''
 
   const containerRef = useRef(null)
   const iframeRef = useRef(null)
   const resizeTimerRef = useRef(null)
   const captureOnReadyRef = useRef(false)
   const exitSessionRef = useRef(0)
+  const refreshResolveRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
   const [showIframe, setShowIframe] = useState(false)
   const [iframeLoaded, setIframeLoaded] = useState(false)
@@ -112,22 +113,30 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     onTheme: setCanvasTheme,
   }), [])
 
+  // On canvas theme change, enqueue a background snapshot refresh
+  const canvasThemeInitRef = useRef(true)
+  useEffect(() => {
+    if (canvasThemeInitRef.current) { canvasThemeInitRef.current = false; return }
+    if (!onUpdate || interactive) return
+    enqueueRefresh(widgetId, () => {
+      return new Promise((resolve) => {
+        refreshResolveRef.current = resolve
+        captureOnReadyRef.current = true
+        setShowIframe(true)
+        setTimeout(() => { refreshResolveRef.current = null; resolve() }, 10000)
+      })
+    })
+  }, [canvasTheme]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Snapshot capture hook
   const { iframeReady, requestCapture } = useSnapshotCapture({
     iframeRef,
     widgetId,
     onUpdate,
-    canvasTheme,
   })
 
-  // Determine available snapshots for layered rendering
-  const isDark = canvasTheme?.startsWith('dark')
-  const hasLightSnap = !!(snapshotLight && snapshotLight.includes(widgetId) && !brokenSnaps[snapshotLight])
-  const hasDarkSnap = !!(snapshotDark && snapshotDark.includes(widgetId) && !brokenSnaps[snapshotDark])
-  const hasAnySnap = hasLightSnap || hasDarkSnap
-  const snapshotSrc = isDark
-    ? (hasDarkSnap ? snapshotDark : snapshotLight)
-    : (hasLightSnap ? snapshotLight : snapshotDark)
+  // Single snapshot
+  const hasSnap = !!(snapshot && snapshot.includes(widgetId) && !brokenSnaps[snapshot])
 
   // Re-resolve story URL when the story index is live-patched (new story added)
   useEffect(() => {
@@ -149,9 +158,10 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
 
   const enterInteractive = useCallback(() => {
     exitSessionRef.current++
+    cancelRefresh(widgetId)
     setShowIframe(true)
     setInteractive(true)
-  }, [])
+  }, [widgetId])
 
   useEffect(() => {
     if (!showIframe) setIframeLoaded(false)
@@ -169,17 +179,13 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
 
         setInteractive(false)
         if (onUpdate && iframeLoaded && iframeRef.current?.contentWindow) {
-          // Keep iframe mounted but hidden for background capture
           if (iframeRef.current) iframeRef.current.style.visibility = 'hidden'
           const session = ++exitSessionRef.current
-          // Defer capture to next macrotask so React can flush the
-          // deselect re-render before html-to-image blocks the main thread.
           setTimeout(() => {
             if (exitSessionRef.current !== session) return
             requestCapture({ force: true }).then((updates) => {
               if (exitSessionRef.current !== session) return
-              // Preload snapshot image before unmounting iframe to prevent white flash
-              const snap = updates?.snapshotLight || updates?.snapshotDark
+              const snap = updates?.snapshot
               if (snap) {
                 const img = new Image()
                 const done = () => {
@@ -188,7 +194,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
                 img.onload = done
                 img.onerror = done
                 img.src = snap
-                setTimeout(done, 2000) // fallback timeout
+                setTimeout(done, 2000)
               } else {
                 setShowIframe(false)
               }
@@ -213,7 +219,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   // Capture snapshot on first iframe ready (when no existing snapshot)
   useEffect(() => {
     if (!iframeReady || !onUpdate) return
-    if (!hasAnySnap) {
+    if (!hasSnap) {
       requestCapture()
     }
   }, [iframeReady]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -222,7 +228,24 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   useEffect(() => {
     if (iframeReady && captureOnReadyRef.current) {
       captureOnReadyRef.current = false
-      requestCapture()
+      requestCapture().then((updates) => {
+        const resolve = refreshResolveRef.current
+        if (resolve) {
+          refreshResolveRef.current = null
+          const snap = updates?.snapshot
+          if (snap) {
+            const img = new Image()
+            const done = () => setShowIframe(false)
+            img.onload = done
+            img.onerror = done
+            img.src = snap
+            setTimeout(done, 2000)
+          } else {
+            setShowIframe(false)
+          }
+          resolve()
+        }
+      })
     }
   }, [iframeReady, requestCapture])
 
@@ -408,14 +431,14 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
         ) : (
           <>
             <div className={styles.content}>
-              {/* Snapshot layer — single theme-aware image */}
-              {hasAnySnap && (
+              {/* Snapshot layer — single image */}
+              {hasSnap && (
                 <img
-                  src={snapshotSrc}
+                  src={snapshot}
                   className={styles.snapshotImage}
                   alt={`${displayName} snapshot`}
                   draggable={false}
-                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshotSrc]: true }))}
+                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshot]: true }))}
                 />
               )}
 
@@ -434,8 +457,8 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
                 />
               )}
 
-              {/* Placeholder — only when no snapshots and no iframe */}
-              {!hasAnySnap && !showIframe && (
+              {/* Placeholder — only when no snapshot and no iframe */}
+              {!hasSnap && !showIframe && (
                 <div className={styles.placeholder} />
               )}
             </div>
@@ -456,9 +479,9 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
                     enterInteractive()
                   }
                 }}
-                aria-label={hasAnySnap ? 'Click to interact with story component' : 'Click to open story component'}
+                aria-label={hasSnap ? 'Click to interact with story component' : 'Click to open story component'}
               >
-                <span className={overlayStyles.interactHint}>{hasAnySnap ? 'Click to interact' : 'Click to open'}</span>
+                <span className={overlayStyles.interactHint}>{hasSnap ? 'Click to interact' : 'Click to open'}</span>
               </div>
             )}
           </>

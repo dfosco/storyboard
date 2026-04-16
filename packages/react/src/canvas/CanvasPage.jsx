@@ -42,7 +42,7 @@ function getToolbarColorMode(theme) {
 
 function resolveCanvasThemeFromStorage() {
   if (typeof localStorage === 'undefined') return 'light'
-  let sync = { prototype: true, toolbar: false, codeBoxes: true, canvas: false }
+  let sync = { prototype: true, toolbar: false, codeBoxes: true, canvas: true }
   try {
     const rawSync = localStorage.getItem('sb-theme-sync')
     if (rawSync) sync = { ...sync, ...JSON.parse(rawSync) }

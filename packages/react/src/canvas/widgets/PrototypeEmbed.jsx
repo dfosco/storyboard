@@ -112,6 +112,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const filterRef = useRef(null)
   const embedRef = useRef(null)
   const iframeRef = useRef(null)
+  const captureOnReadyRef = useRef(false)
   const inlineContainerRef = useRef(null)
   const modalContainerRef = useRef(null)
   const resizeTimerRef = useRef(null)
@@ -278,8 +279,20 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
         setInteractive(false)
         if (onUpdate && !isExternal && iframeReady && iframeRef.current?.contentWindow) {
-          // Always capture before teardown for consistent snapshots
-          requestCapture().then(() => setShowIframe(false))
+          // Capture then preload snapshot before hiding iframe to avoid flash
+          requestCapture().then((updates) => {
+            const url = updates?.snapshotLight || updates?.snapshotDark
+            if (url) {
+              const img = new Image()
+              const done = () => setShowIframe(false)
+              img.onload = done
+              img.onerror = done
+              img.src = url
+              setTimeout(done, 3000)
+            } else {
+              setShowIframe(false)
+            }
+          })
         } else {
           setShowIframe(false)
         }

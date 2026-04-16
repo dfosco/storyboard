@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { remark } from 'remark'
 import remarkGfm from 'remark-gfm'
 import remarkHtml from 'remark-html'
@@ -31,13 +31,18 @@ function postProcessHtml(html) {
 
   // Convert bare video URLs (wrapped in <p>) into <video> elements
   out = out.replace(VIDEO_URL_LINE_RE, (_, url) =>
-    `<video src="${url}" controls preload="metadata"></video>`
+    `<video src="${url}" controls preload="none"></video>`
   )
 
   // Convert img tags pointing at video files to <video>
   out = out.replace(/<img\s+([^>]*?)src="([^"]+\.(mp4|mov|webm|ogg)(?:\?[^"]*)?)"([^>]*)\/?>/gi, (_, _pre, url) =>
-    `<video src="${url}" controls preload="metadata"></video>`
+    `<video src="${url}" controls preload="none"></video>`
   )
+
+  // Existing <video> tags from GitHub: set preload=none to prevent auto-loading spinner
+  out = out.replace(/<video\s/g, '<video preload="none" ')
+  // Dedupe if we already added it
+  out = out.replace(/preload="none"\s+preload="[^"]*"/g, 'preload="none"')
 
   // Remove disabled from checkboxes so accent-color works (CSS blocks interaction instead)
   out = out.replace(/<input\s+([^>]*?)disabled([^>]*)>/gi, (match, before, after) => {
@@ -99,6 +104,25 @@ function GitHubIssueCard({ url, title, github, width, height, onUpdate, resizabl
     return renderMarkdown(github?.body || '')
   }, [github?.bodyHtml, github?.body])
 
+  // Set body HTML via ref — avoids React destroying/recreating video elements on re-render
+  const bodyRef = useRef(null)
+  const lastHtmlRef = useRef('')
+  useEffect(() => {
+    if (bodyRef.current && bodyHtml !== lastHtmlRef.current) {
+      bodyRef.current.innerHTML = bodyHtml
+      lastHtmlRef.current = bodyHtml
+    }
+  }, [bodyHtml])
+
+  // Also set on initial mount via callback ref
+  const setBodyRef = useCallback((el) => {
+    bodyRef.current = el
+    if (el && bodyHtml && bodyHtml !== lastHtmlRef.current) {
+      el.innerHTML = bodyHtml
+      lastHtmlRef.current = bodyHtml
+    }
+  }, [bodyHtml])
+
   const sizeStyle = {
     ...(width ? { width: `${width}px` } : {}),
     ...(height ? { minHeight: `${height}px` } : {}),
@@ -139,7 +163,7 @@ function GitHubIssueCard({ url, title, github, width, height, onUpdate, resizabl
         {bodyHtml && (
           <div
             className={styles.issueBody}
-            dangerouslySetInnerHTML={{ __html: bodyHtml }}
+            ref={setBodyRef}
           />
         )}
       </div>

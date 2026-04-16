@@ -254,7 +254,9 @@ export default function storyboardServer() {
         const pathAfterPrefix = url.slice(API_PREFIX.length)
         const slashIndex = pathAfterPrefix.indexOf('/')
         const prefix = slashIndex === -1 ? pathAfterPrefix : pathAfterPrefix.slice(0, slashIndex)
-        const restPath = slashIndex === -1 ? '/' : pathAfterPrefix.slice(slashIndex)
+        let restPath = slashIndex === -1 ? '/' : pathAfterPrefix.slice(slashIndex)
+        const qIdx = restPath.indexOf('?')
+        if (qIdx !== -1) restPath = restPath.slice(0, qIdx)
 
         const handler = routeHandlers.get(prefix)
         if (!handler) {

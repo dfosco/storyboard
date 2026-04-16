@@ -118,11 +118,11 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     onUpdate,
   })
 
-  // Determine if a valid snapshot exists for the current theme
+  // Determine if a valid snapshot exists (both theme keys have the same URL)
   const validSnapshot = useMemo(() => {
-    const url = canvasTheme?.startsWith('dark') ? snapshotDark : snapshotLight
+    const url = snapshotLight || snapshotDark
     return url && widgetId && url.includes(widgetId) ? url : null
-  }, [canvasTheme, snapshotLight, snapshotDark, widgetId])
+  }, [snapshotLight, snapshotDark, widgetId])
 
   // Reset broken state when snapshot URL changes
   useEffect(() => { setSnapshotBroken(false) }, [validSnapshot])

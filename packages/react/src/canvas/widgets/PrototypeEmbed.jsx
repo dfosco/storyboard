@@ -126,12 +126,12 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     onUpdate: isExternal ? null : onUpdate,
   })
 
-  // Determine if a valid snapshot exists for the current theme
+  // Determine if a valid snapshot exists (both theme keys have the same URL)
   const validSnapshot = useMemo(() => {
     if (isExternal) return null
-    const url = canvasTheme?.startsWith('dark') ? snapshotDark : snapshotLight
+    const url = snapshotLight || snapshotDark
     return url && widgetId && url.includes(widgetId) ? url : null
-  }, [canvasTheme, snapshotLight, snapshotDark, widgetId, isExternal])
+  }, [snapshotLight, snapshotDark, widgetId, isExternal])
 
   // Reset broken state when snapshot URL changes
   useEffect(() => { setSnapshotBroken(false) }, [validSnapshot])

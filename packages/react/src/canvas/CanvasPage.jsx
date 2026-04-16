@@ -9,10 +9,19 @@ import { schemas, getDefaults } from './widgets/widgetProps.js'
 import { getFeatures, isResizable } from './widgets/widgetConfig.js'
 import { createPasteContext, resolvePaste } from './widgets/pasteRules.js'
 import { getPasteRules } from '@dfosco/storyboard-core'
+import { isGitHubEmbedUrl } from './widgets/githubUrl.js'
 import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import useUndoRedo from './useUndoRedo.js'
-import { addWidget as addWidgetApi, updateCanvas, removeWidget as removeWidgetApi, uploadImage, getCanvas as getCanvasApi } from './canvasApi.js'
+import {
+  addWidget as addWidgetApi,
+  checkGitHubCliAvailable,
+  fetchGitHubEmbed,
+  getCanvas as getCanvasApi,
+  removeWidget as removeWidgetApi,
+  updateCanvas,
+  uploadImage,
+} from './canvasApi.js'
 import PageSelector from './PageSelector.jsx'
 import { stories as storyIndex } from 'virtual:storyboard-data-index'
 import styles from './CanvasPage.module.css'
@@ -24,6 +33,7 @@ const ZOOM_MAX = 200
 const VIEWPORT_TTL_MS = 15 * 60 * 1000
 
 const CANVAS_BRIDGE_STATE_KEY = '__storyboardCanvasBridgeState'
+const GH_INSTALL_URL = 'https://github.com/cli/cli'
 
 /** Matches branch-deploy base path prefixes like /branch--my-feature/ */
 const BRANCH_PREFIX_RE = /^\/branch--[^/]+/
@@ -248,7 +258,7 @@ function computeCanvasBounds(widgets, componentEntries) {
 }
 
 /** Renders a single JSON-defined widget by type lookup. */
-function WidgetRenderer({ widget, onUpdate, widgetRef }) {
+function WidgetRenderer({ widget, onUpdate, widgetRef, onRefreshGitHub, canRefreshGitHub }) {
   const Component = getWidgetComponent(widget.type)
   if (!Component) {
     console.warn(`[canvas] Unknown widget type: ${widget.type}`)
@@ -256,7 +266,14 @@ function WidgetRenderer({ widget, onUpdate, widgetRef }) {
   }
   const resizable = isResizable(widget.type) && !!onUpdate
   // Only pass ref to forwardRef-wrapped components (e.g. PrototypeEmbed)
-  const elementProps = { id: widget.id, props: widget.props, onUpdate, resizable }
+  const elementProps = {
+    id: widget.id,
+    props: widget.props,
+    onUpdate,
+    resizable,
+    onRefreshGitHub,
+    canRefreshGitHub,
+  }
   if (Component.$$typeof === Symbol.for('react.forward_ref')) {
     elementProps.ref = widgetRef
   }
@@ -278,6 +295,8 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
   onUpdate,
   onRemove,
   onCopy,
+  onRefreshGitHub,
+  canRefreshGitHub,
   readOnly,
 }) {
   const widgetRef = useRef(null)
@@ -317,6 +336,8 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
         widget={widget}
         onUpdate={onUpdate ? handleWidgetFieldUpdate : undefined}
         widgetRef={widgetRef}
+        onRefreshGitHub={onRefreshGitHub}
+        canRefreshGitHub={canRefreshGitHub}
       />
     </WidgetChrome>
   )
@@ -364,6 +385,7 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
   const [snapEnabled, setSnapEnabled] = useState(canvas?.snapToGrid ?? false)
   const [snapGridSize, setSnapGridSize] = useState(canvas?.gridSize || 40)
+  const [showGhInstallBanner, setShowGhInstallBanner] = useState(false)
 
   // Refs for snap settings (used by drop handler inside effect closure)
   const snapEnabledRef = useRef(snapEnabled)
@@ -573,6 +595,57 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
       console.error('[canvas] Failed to copy widget:', err)
     }
   }, [canvasId, localWidgets, undoRedo])
+
+  const showMissingGhBanner = useCallback(() => {
+    setShowGhInstallBanner(true)
+  }, [])
+
+  const buildGitHubPreviewUpdates = useCallback(async (url) => {
+    try {
+      const availability = await checkGitHubCliAvailable()
+      if (!availability?.available) {
+        showMissingGhBanner()
+        return null
+      }
+
+      const result = await fetchGitHubEmbed(url)
+      if (result?.code === 'gh_unavailable') {
+        showMissingGhBanner()
+        return null
+      }
+      if (!result?.success || !result?.snapshot) return null
+
+      const snapshot = result.snapshot
+      return {
+        title: snapshot.title || '',
+        width: 420,
+        height: 220,
+        github: {
+          kind: snapshot.kind || 'issue',
+          parentKind: snapshot.parentKind || snapshot.kind || 'issue',
+          context: snapshot.context || '',
+          body: snapshot.body || '',
+          authors: Array.isArray(snapshot.authors)
+            ? snapshot.authors.filter((author) => typeof author === 'string' && author.trim())
+            : [],
+          createdAt: snapshot.createdAt ?? null,
+          updatedAt: snapshot.updatedAt ?? null,
+          fetchedAt: new Date().toISOString(),
+        },
+      }
+    } catch (err) {
+      console.error('[canvas] Failed to fetch GitHub embed metadata:', err)
+      return null
+    }
+  }, [showMissingGhBanner])
+
+  const handleRefreshGitHubWidget = useCallback(async (widgetId, url) => {
+    if (!widgetId || !url) return { updated: false }
+    const updates = await buildGitHubPreviewUpdates(url)
+    if (!updates) return { updated: false }
+    handleWidgetUpdate(widgetId, updates)
+    return { updated: true }
+  }, [buildGitHubPreviewUpdates, handleWidgetUpdate])
 
   const debouncedSourceSave = useRef(
     debounce((canvasId, sources) => {
@@ -1371,7 +1444,13 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
       e.preventDefault()
       const resolved = resolvePaste(text, pasteCtx, getPasteRules())
       if (!resolved) return
-      const { type, props } = resolved
+      const { type } = resolved
+      let props = resolved.props
+
+      if (type === 'link-preview' && isGitHubEmbedUrl(props?.url || text)) {
+        const githubUpdates = await buildGitHubPreviewUpdates(props?.url || text)
+        if (githubUpdates) props = { ...props, ...githubUpdates }
+      }
 
       const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
       const pos = centerPositionForWidget(center, type, props)
@@ -1392,7 +1471,7 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
 
     document.addEventListener('paste', handlePaste)
     return () => document.removeEventListener('paste', handlePaste)
-  }, [canvasId, undoRedo, localWidgets])
+  }, [canvasId, undoRedo, localWidgets, buildGitHubPreviewUpdates])
 
   // --- Drag and drop handlers for images from Finder/file manager ---
   // Separate effect to ensure listeners attach after scroll container mounts (loading=false)
@@ -1768,6 +1847,8 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
           onUpdate={isLocalDev ? handleWidgetUpdate : undefined}
           onCopy={isLocalDev ? handleWidgetCopy : undefined}
           onRemove={isLocalDev ? handleWidgetRemoveAndDeselect : undefined}
+          onRefreshGitHub={isLocalDev ? handleRefreshGitHubWidget : undefined}
+          canRefreshGitHub={isLocalDev}
           readOnly={!isLocalDev}
         />
       </div>
@@ -1816,6 +1897,28 @@ export default function CanvasPage({ canvasId, siblingPages = [], canvasMeta = n
           </Canvas>
         </div>
       </div>
+      {showGhInstallBanner && (
+        <aside className={styles.ghInstallBanner} role="status" aria-live="polite">
+          <span className={styles.ghInstallBannerText}>
+            GitHub embeds require local <code>gh</code> CLI access.
+          </span>
+          <a
+            href={GH_INSTALL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.ghInstallBannerLink}
+          >
+            Install GitHub CLI
+          </a>
+          <button
+            type="button"
+            className={styles.ghInstallBannerDismiss}
+            onClick={() => setShowGhInstallBanner(false)}
+          >
+            Dismiss
+          </button>
+        </aside>
+      )}
     </>
   )
 }

@@ -1,0 +1,346 @@
+import { execFileSync } from 'node:child_process'
+
+export const GH_INSTALL_URL = 'https://github.com/cli/cli'
+
+const GH_HOST_RE = /^(www\.)?github\.com$/i
+const OWNER_RE = /^[A-Za-z0-9_.-]+$/
+const REPO_RE = /^[A-Za-z0-9_.-]+$/
+const ISSUE_PATH_RE = /^\/([^/]+)\/([^/]+)\/issues\/(\d+)\/?$/
+const DISCUSSION_PATH_RE = /^\/([^/]+)\/([^/]+)\/discussions\/(\d+)\/?$/
+const ISSUE_COMMENT_HASH_RE = /^#issuecomment-(\d+)$/i
+const DISCUSSION_COMMENT_HASH_RE = /^#discussioncomment-(\d+)$/i
+
+const GH_TIMEOUT_MS = 15_000
+const BODY_MAX_LENGTH = 700
+
+export class GitHubEmbedError extends Error {
+  constructor(code, message, status = 500) {
+    super(message)
+    this.name = 'GitHubEmbedError'
+    this.code = code
+    this.status = status
+  }
+}
+
+function isValidRepoRef(owner, repo) {
+  return OWNER_RE.test(owner) && REPO_RE.test(repo)
+}
+
+function parseNumber(raw) {
+  const parsed = Number.parseInt(raw, 10)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function normalizeBody(body) {
+  if (typeof body !== 'string') return ''
+  const compact = body
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+  if (!compact) return ''
+  if (compact.length <= BODY_MAX_LENGTH) return compact
+  return `${compact.slice(0, BODY_MAX_LENGTH - 1).trimEnd()}…`
+}
+
+function uniqueStrings(values) {
+  return [...new Set(
+    (values || [])
+      .map((value) => (typeof value === 'string' ? value.trim() : ''))
+      .filter(Boolean)
+  )]
+}
+
+function runGh(args) {
+  return execFileSync('gh', args, {
+    encoding: 'utf-8',
+    timeout: GH_TIMEOUT_MS,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+}
+
+function runGhApi(pathname) {
+  const output = runGh([
+    'api',
+    '-H',
+    'Accept: application/vnd.github+json',
+    '-H',
+    'X-GitHub-Api-Version: 2022-11-28',
+    pathname,
+  ])
+
+  try {
+    return JSON.parse(output || '{}')
+  } catch {
+    throw new GitHubEmbedError('gh_invalid_json', 'GitHub CLI returned invalid JSON.', 502)
+  }
+}
+
+function sanitizeGhErrorMessage(message) {
+  return String(message || '')
+    .replace(/gh[pousr]_[A-Za-z0-9_]+/g, '[redacted-token]')
+    .trim()
+}
+
+function extractStatusCode(message) {
+  const match = String(message || '').match(/(?:HTTP\s+)?(401|403|404|422|429|500|502|503)\b/)
+  if (!match) return null
+  return Number.parseInt(match[1], 10)
+}
+
+function toFriendlyError(error) {
+  const raw = sanitizeGhErrorMessage(error?.stderr || error?.message || 'Failed to fetch GitHub data.')
+  const status = extractStatusCode(raw)
+
+  if (status === 401 || status === 403) {
+    return new GitHubEmbedError(
+      'gh_auth_required',
+      'GitHub API rejected the request. Run `gh auth login` to access private resources.',
+      401,
+    )
+  }
+
+  if (status === 404) {
+    return new GitHubEmbedError(
+      'gh_not_found',
+      'GitHub resource was not found or is not accessible with current credentials.',
+      404,
+    )
+  }
+
+  if (status === 429) {
+    return new GitHubEmbedError(
+      'gh_rate_limited',
+      'GitHub API rate limit reached. Try again in a few minutes.',
+      429,
+    )
+  }
+
+  return new GitHubEmbedError(
+    'gh_fetch_failed',
+    raw || 'Failed to fetch GitHub metadata via gh CLI.',
+    502,
+  )
+}
+
+function toContext(target) {
+  const repo = `${target.owner}/${target.repo}`
+  if (target.kind === 'issue') return `GitHub · ${repo} · Issue #${target.number}`
+  if (target.kind === 'discussion') return `GitHub · ${repo} · Discussion #${target.number}`
+  if (target.parentKind === 'issue') return `GitHub · ${repo} · Issue #${target.number} comment`
+  return `GitHub · ${repo} · Discussion #${target.number} comment`
+}
+
+function buildIssueSnapshot(target, issue) {
+  const number = issue?.number ?? target.number
+  return {
+    kind: 'issue',
+    parentKind: 'issue',
+    context: toContext(target),
+    title: issue?.title ? `#${number} ${issue.title}` : `Issue #${number}`,
+    body: normalizeBody(issue?.body),
+    authors: uniqueStrings([issue?.user?.login]),
+    createdAt: issue?.created_at ?? null,
+    updatedAt: issue?.updated_at ?? null,
+    url: target.url,
+  }
+}
+
+function buildDiscussionSnapshot(target, discussion) {
+  const number = discussion?.number ?? target.number
+  return {
+    kind: 'discussion',
+    parentKind: 'discussion',
+    context: toContext(target),
+    title: discussion?.title ? `#${number} ${discussion.title}` : `Discussion #${number}`,
+    body: normalizeBody(discussion?.body),
+    authors: uniqueStrings([discussion?.user?.login]),
+    createdAt: discussion?.created_at ?? null,
+    updatedAt: discussion?.updated_at ?? null,
+    url: target.url,
+  }
+}
+
+function buildIssueCommentSnapshot(target, comment, issue) {
+  const issueNumber = issue?.number ?? target.number
+  const parentLabel = issue?.title ? `#${issueNumber} ${issue.title}` : `Issue #${issueNumber}`
+  return {
+    kind: 'comment',
+    parentKind: 'issue',
+    context: toContext(target),
+    title: `Comment on ${parentLabel}`,
+    body: normalizeBody(comment?.body),
+    authors: uniqueStrings([comment?.user?.login, issue?.user?.login]),
+    createdAt: comment?.created_at ?? null,
+    updatedAt: comment?.updated_at ?? null,
+    url: target.url,
+  }
+}
+
+function buildDiscussionCommentSnapshot(target, comment, discussion) {
+  const discussionNumber = discussion?.number ?? target.number
+  const parentLabel = discussion?.title ? `#${discussionNumber} ${discussion.title}` : `Discussion #${discussionNumber}`
+  return {
+    kind: 'comment',
+    parentKind: 'discussion',
+    context: toContext(target),
+    title: `Comment on ${parentLabel}`,
+    body: normalizeBody(comment?.body),
+    authors: uniqueStrings([comment?.user?.login, discussion?.user?.login]),
+    createdAt: comment?.created_at ?? null,
+    updatedAt: comment?.updated_at ?? null,
+    url: target.url,
+  }
+}
+
+/**
+ * Parse a GitHub URL to a supported embed target.
+ *
+ * Supported patterns:
+ * - /{owner}/{repo}/issues/{number}
+ * - /{owner}/{repo}/discussions/{number}
+ * - /{owner}/{repo}/issues/{number}#issuecomment-{id}
+ * - /{owner}/{repo}/discussions/{number}#discussioncomment-{id}
+ *
+ * @param {string} rawUrl
+ * @returns {null | {
+ *   kind: 'issue' | 'discussion' | 'comment',
+ *   parentKind: 'issue' | 'discussion',
+ *   owner: string,
+ *   repo: string,
+ *   number: number,
+ *   commentId?: number,
+ *   url: string
+ * }}
+ */
+export function parseGitHubEmbedUrl(rawUrl) {
+  try {
+    const parsed = new URL(rawUrl)
+    if (!GH_HOST_RE.test(parsed.hostname)) return null
+
+    const issueMatch = parsed.pathname.match(ISSUE_PATH_RE)
+    if (issueMatch) {
+      const [, owner, repo, numberRaw] = issueMatch
+      if (!isValidRepoRef(owner, repo)) return null
+      const number = parseNumber(numberRaw)
+      if (!number) return null
+
+      const commentMatch = parsed.hash.match(ISSUE_COMMENT_HASH_RE)
+      if (commentMatch) {
+        const commentId = parseNumber(commentMatch[1])
+        if (!commentId) return null
+        return {
+          kind: 'comment',
+          parentKind: 'issue',
+          owner,
+          repo,
+          number,
+          commentId,
+          url: parsed.toString(),
+        }
+      }
+
+      if (parsed.hash) return null
+      return {
+        kind: 'issue',
+        parentKind: 'issue',
+        owner,
+        repo,
+        number,
+        url: parsed.toString(),
+      }
+    }
+
+    const discussionMatch = parsed.pathname.match(DISCUSSION_PATH_RE)
+    if (discussionMatch) {
+      const [, owner, repo, numberRaw] = discussionMatch
+      if (!isValidRepoRef(owner, repo)) return null
+      const number = parseNumber(numberRaw)
+      if (!number) return null
+
+      const commentMatch = parsed.hash.match(DISCUSSION_COMMENT_HASH_RE)
+      if (commentMatch) {
+        const commentId = parseNumber(commentMatch[1])
+        if (!commentId) return null
+        return {
+          kind: 'comment',
+          parentKind: 'discussion',
+          owner,
+          repo,
+          number,
+          commentId,
+          url: parsed.toString(),
+        }
+      }
+
+      if (parsed.hash) return null
+      return {
+        kind: 'discussion',
+        parentKind: 'discussion',
+        owner,
+        repo,
+        number,
+        url: parsed.toString(),
+      }
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
+export function isGitHubEmbedUrl(rawUrl) {
+  return parseGitHubEmbedUrl(rawUrl) !== null
+}
+
+export function isGhCliAvailable() {
+  try {
+    runGh(['--version'])
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function fetchGitHubEmbedSnapshot(rawUrl) {
+  const target = parseGitHubEmbedUrl(rawUrl)
+  if (!target) {
+    throw new GitHubEmbedError(
+      'unsupported_url',
+      'Only GitHub issue, discussion, and comment URLs are supported.',
+      400,
+    )
+  }
+
+  if (!isGhCliAvailable()) {
+    throw new GitHubEmbedError(
+      'gh_unavailable',
+      'GitHub CLI (gh) is not installed. Install it to enable GitHub embeds.',
+      503,
+    )
+  }
+
+  try {
+    if (target.kind === 'issue') {
+      const issue = runGhApi(`repos/${target.owner}/${target.repo}/issues/${target.number}`)
+      return buildIssueSnapshot(target, issue)
+    }
+
+    if (target.kind === 'discussion') {
+      const discussion = runGhApi(`repos/${target.owner}/${target.repo}/discussions/${target.number}`)
+      return buildDiscussionSnapshot(target, discussion)
+    }
+
+    if (target.parentKind === 'issue') {
+      const comment = runGhApi(`repos/${target.owner}/${target.repo}/issues/comments/${target.commentId}`)
+      const issue = runGhApi(`repos/${target.owner}/${target.repo}/issues/${target.number}`)
+      return buildIssueCommentSnapshot(target, comment, issue)
+    }
+
+    const comment = runGhApi(`repos/${target.owner}/${target.repo}/discussions/comments/${target.commentId}`)
+    const discussion = runGhApi(`repos/${target.owner}/${target.repo}/discussions/${target.number}`)
+    return buildDiscussionCommentSnapshot(target, comment, discussion)
+  } catch (error) {
+    throw toFriendlyError(error)
+  }
+}

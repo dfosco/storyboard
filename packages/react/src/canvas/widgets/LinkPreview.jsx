@@ -7,13 +7,28 @@ import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, linkPreviewSchema } from './widgetProps.js'
 import styles from './LinkPreview.module.css'
 
+const VIDEO_EXT_RE = /\.(mp4|mov|webm|ogg)(\?[^)]*)?$/i
+const VIDEO_URL_LINE_RE = /^<p>\s*(https?:\/\/[^\s<]+\.(mp4|mov|webm|ogg)(?:\?[^\s<]*)?)\s*<\/p>$/gim
+
 function renderMarkdown(text) {
   if (!text) return ''
   const result = remark()
     .use(remarkGfm)
     .use(remarkHtml, { sanitize: false })
     .processSync(text)
-  return String(result)
+  let html = String(result)
+
+  // Convert bare video URLs (wrapped in <p>) into <video> elements
+  html = html.replace(VIDEO_URL_LINE_RE, (_, url) =>
+    `<video src="${url}" controls preload="metadata" style="max-width:100%;border-radius:6px"></video>`
+  )
+
+  // Convert markdown image links to videos when the src is a video file
+  html = html.replace(/<img\s+([^>]*?)src="([^"]+\.(mp4|mov|webm|ogg)(?:\?[^"]*)?)"([^>]*)>/gi, (_, pre, url) =>
+    `<video src="${url}" controls preload="metadata" style="max-width:100%;border-radius:6px"></video>`
+  )
+
+  return html
 }
 
 function timeAgo(dateStr) {

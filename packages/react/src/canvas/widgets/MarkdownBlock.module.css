@@ -24,6 +24,35 @@
   pointer-events: none;
 }
 
+.preview a {
+  color: var(--sb--markdown-accent);
+  text-decoration: none;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.preview a:hover {
+  text-decoration: underline;
+}
+
+.preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 8px 0;
+  display: block;
+  pointer-events: auto;
+}
+
+.preview video {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 8px 0;
+  display: block;
+  pointer-events: auto;
+}
+
 .preview h1 {
   font-size: 20px;
   font-weight: 700;
@@ -75,10 +104,11 @@
   list-style-type: decimal;
 }
 
-/* GFM: Task lists */
+/* GFM: Task lists — accent-colored checkboxes */
 .preview input[type="checkbox"] {
   margin-right: 6px;
   pointer-events: none;
+  accent-color: var(--sb--markdown-accent);
 }
 
 .preview li:has(input[type="checkbox"]) {
@@ -110,16 +140,6 @@
 .preview th {
   background: var(--bgColor-muted, #f6f8fa);
   font-weight: 600;
-}
-
-/* GFM: Autolinks */
-.preview a {
-  color: var(--sb--markdown-accent);
-  text-decoration: none;
-}
-
-.preview a:hover {
-  text-decoration: underline;
 }
 
 /* Code blocks */

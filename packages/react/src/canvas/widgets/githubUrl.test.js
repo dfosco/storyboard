@@ -44,8 +44,17 @@ describe('parseGitHubUrl', () => {
     })
   })
 
+  it('classifies pull request URLs', () => {
+    expect(parseGitHubUrl('https://github.com/dfosco/storyboard/pull/12')).toEqual({
+      kind: 'pull_request',
+      parentKind: 'pull_request',
+      owner: 'dfosco',
+      repo: 'storyboard',
+      number: 12,
+    })
+  })
+
   it('rejects unsupported paths and hashes', () => {
-    expect(parseGitHubUrl('https://github.com/dfosco/storyboard/pull/12')).toBeNull()
     expect(parseGitHubUrl('https://github.com/dfosco/storyboard/issues/12#random')).toBeNull()
     expect(parseGitHubUrl('https://example.com/dfosco/storyboard/issues/12')).toBeNull()
     expect(parseGitHubUrl('not a url')).toBeNull()
@@ -56,10 +65,10 @@ describe('isGitHubEmbedUrl', () => {
   it('returns true for supported GitHub URLs', () => {
     expect(isGitHubEmbedUrl('https://github.com/dfosco/storyboard/issues/12')).toBe(true)
     expect(isGitHubEmbedUrl('https://github.com/dfosco/storyboard/discussions/99#discussioncomment-888')).toBe(true)
+    expect(isGitHubEmbedUrl('https://github.com/dfosco/storyboard/pull/1')).toBe(true)
   })
 
   it('returns false for unsupported URLs', () => {
-    expect(isGitHubEmbedUrl('https://github.com/dfosco/storyboard/pull/1')).toBe(false)
     expect(isGitHubEmbedUrl('https://example.com')).toBe(false)
   })
 })

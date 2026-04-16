@@ -683,7 +683,7 @@ export function Default() {
       // Support explicit filename for snapshot uploads (stable naming)
       const explicitName = body.filename
       let filename
-      if (explicitName && /^snapshot-[a-z0-9_-]+--latest\.webp$/i.test(explicitName)) {
+      if (explicitName && /^snapshot-[a-z0-9_-]+--(latest|light|dark)\.webp$/i.test(explicitName)) {
         filename = explicitName
       } else {
         filename = `${prefix}${dateStr}.${ext}`

@@ -123,7 +123,6 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     iframeRef,
     widgetId,
     onUpdate: isExternal ? null : onUpdate,
-    canvasTheme,
   })
 
   // Determine if a valid snapshot exists for the current theme
@@ -279,7 +278,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
         setInteractive(false)
         if (onUpdate && !isExternal && iframeReady && iframeRef.current?.contentWindow) {
-          // Capture before teardown, then hide iframe
+          // Always capture before teardown for consistent snapshots
           requestCapture().then(() => setShowIframe(false))
         } else {
           setShowIframe(false)

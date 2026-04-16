@@ -115,7 +115,6 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     iframeRef,
     widgetId,
     onUpdate,
-    canvasTheme,
   })
 
   // Determine if a valid snapshot exists for the current theme
@@ -166,6 +165,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
 
         setInteractive(false)
         if (onUpdate && iframeReady && iframeRef.current?.contentWindow) {
+          // Always capture before teardown for consistent snapshots
           requestCapture().then(() => setShowIframe(false))
         } else {
           setShowIframe(false)

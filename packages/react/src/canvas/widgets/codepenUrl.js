@@ -31,8 +31,7 @@ export function toCodePenEmbedUrl(url) {
 }
 
 /**
- * Extract a human-readable title from a CodePen URL.
- * Returns the pen ID and username.
+ * Extract a fallback title from a CodePen URL (user/penId).
  */
 export function getCodePenTitle(url) {
   const m = url?.match(CODEPEN_RE)
@@ -46,4 +45,31 @@ export function getCodePenTitle(url) {
 export function getCodePenUser(url) {
   const m = url?.match(CODEPEN_RE)
   return m?.[1] || ''
+}
+
+/** In-memory cache for oEmbed results keyed by pen URL. */
+const _oembedCache = new Map()
+
+/**
+ * Fetch pen metadata (title, author_name) via CodePen's oEmbed API.
+ * Returns `{ title, author }` or null on failure. Results are cached.
+ */
+export async function fetchCodePenMeta(url) {
+  if (!url || !isCodePenUrl(url)) return null
+  if (_oembedCache.has(url)) return _oembedCache.get(url)
+
+  try {
+    const endpoint = `https://codepen.io/api/oembed?url=${encodeURIComponent(url)}&format=json`
+    const res = await fetch(endpoint)
+    if (!res.ok) return null
+    const data = await res.json()
+    const meta = {
+      title: data.title || '',
+      author: data.author_name || '',
+    }
+    _oembedCache.set(url, meta)
+    return meta
+  } catch {
+    return null
+  }
 }

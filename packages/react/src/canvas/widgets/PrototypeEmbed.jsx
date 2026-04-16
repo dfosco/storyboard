@@ -97,6 +97,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const iframeRef = useRef(null)
   const captureOnReadyRef = useRef(false)
   const exitSessionRef = useRef(0)
+  const teardownTimerRef = useRef(null)
   const inlineContainerRef = useRef(null)
   const modalContainerRef = useRef(null)
   const resizeTimerRef = useRef(null)
@@ -272,6 +273,15 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
               setShowIframe(false)
             })
           }, 0)
+        } else if (isExternal && showIframe) {
+          // External embeds (e.g. Figma) are slow to reload — keep the
+          // iframe mounted for 2 min so re-entering is instant.
+          const session = ++exitSessionRef.current
+          clearTimeout(teardownTimerRef.current)
+          teardownTimerRef.current = setTimeout(() => {
+            if (exitSessionRef.current !== session) return
+            setShowIframe(false)
+          }, 2 * 60 * 1000)
         } else {
           setShowIframe(false)
         }
@@ -304,8 +314,11 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     }
   }, [iframeReady, requestCapture])
 
-  // Cleanup resize timer on unmount
-  useEffect(() => () => clearTimeout(resizeTimerRef.current), [])
+  // Cleanup timers on unmount
+  useEffect(() => () => {
+    clearTimeout(resizeTimerRef.current)
+    clearTimeout(teardownTimerRef.current)
+  }, [])
 
   // Close expanded modal on Escape
   useEffect(() => {
@@ -379,6 +392,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
   const enterInteractive = useCallback(() => {
     exitSessionRef.current++
+    clearTimeout(teardownTimerRef.current)
     setShowIframe(true)
     setInteractive(true)
   }, [])

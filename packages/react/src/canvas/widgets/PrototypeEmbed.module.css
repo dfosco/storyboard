@@ -41,8 +41,8 @@
 }
 
 .placeholder {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -79,9 +79,13 @@
 .iframe {
   border: none;
   display: block;
+  position: relative;
+  z-index: 1;
 }
 
 .snapshotImage {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;

@@ -18,6 +18,7 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { useIframeDevLogs } from './iframeDevLogs.js'
 import { useSnapshotCapture } from './useSnapshotCapture.js'
+import { resolveCanvasTheme } from './embedTheme.js'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -92,6 +93,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const iframeRef = useRef(null)
   const resizeTimerRef = useRef(null)
   const captureOnReadyRef = useRef(false)
+  const exitSessionRef = useRef(0)
   const [interactive, setInteractive] = useState(false)
   const [showIframe, setShowIframe] = useState(false)
   const [iframeLoaded, setIframeLoaded] = useState(false)
@@ -100,25 +102,13 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const [highlightedHtml, setHighlightedHtml] = useState(null)
   const [sourceLoading, setSourceLoading] = useState(false)
   const [storyIndexKey, setStoryIndexKey] = useState(0)
-  const [snapshotBroken, setSnapshotBroken] = useState(false)
+  const [brokenSnaps, setBrokenSnaps] = useState({})
 
   // Resolve canvas theme — reactive to theme changes
-  const [canvasTheme, setCanvasTheme] = useState(() => {
-    if (typeof localStorage === 'undefined') return 'light'
-    const stored = localStorage.getItem('sb-color-scheme') || 'system'
-    if (stored !== 'system') return stored
-    if (typeof window.matchMedia !== 'function') return 'light'
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  })
+  const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasTheme())
 
   useEffect(() => {
-    function readTheme() {
-      if (typeof localStorage === 'undefined') return
-      const stored = localStorage.getItem('sb-color-scheme') || 'system'
-      if (stored !== 'system') { setCanvasTheme(stored); return }
-      if (typeof window.matchMedia !== 'function') { setCanvasTheme('light'); return }
-      setCanvasTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    }
+    const readTheme = () => setCanvasTheme(resolveCanvasTheme())
     document.addEventListener('storyboard:theme:changed', readTheme)
     return () => document.removeEventListener('storyboard:theme:changed', readTheme)
   }, [])
@@ -131,17 +121,11 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     canvasTheme,
   })
 
-  // Determine if a valid snapshot exists for the current theme
-  const validSnapshot = useMemo(() => {
-    const url = canvasTheme?.startsWith('dark') ? snapshotDark : snapshotLight
-    const fallback = canvasTheme?.startsWith('dark') ? snapshotLight : snapshotDark
-    const chosen = (url && widgetId && url.includes(widgetId)) ? url
-      : (fallback && widgetId && fallback.includes(widgetId)) ? fallback : null
-    return chosen
-  }, [canvasTheme, snapshotLight, snapshotDark, widgetId])
-
-  // Reset broken state when snapshot URL changes
-  useEffect(() => { setSnapshotBroken(false) }, [validSnapshot])
+  // Determine available snapshots for layered rendering
+  const isDark = canvasTheme?.startsWith('dark')
+  const hasLightSnap = !!(snapshotLight && snapshotLight.includes(widgetId) && !brokenSnaps[snapshotLight])
+  const hasDarkSnap = !!(snapshotDark && snapshotDark.includes(widgetId) && !brokenSnaps[snapshotDark])
+  const hasAnySnap = hasLightSnap || hasDarkSnap
 
   // Re-resolve story URL when the story index is live-patched (new story added)
   useEffect(() => {
@@ -162,6 +146,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   }, [onUpdate])
 
   const enterInteractive = useCallback(() => {
+    exitSessionRef.current++
     setShowIframe(true)
     setInteractive(true)
   }, [])
@@ -171,30 +156,30 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   }, [showIframe])
 
   // Exit interactive mode when clicking outside.
-  // Delays iframe teardown to allow snapshot capture.
+  // Keeps iframe mounted until snapshots are captured and preloaded.
   useEffect(() => {
     if (!interactive) return
     function handlePointerDown(e) {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
-        // Don't exit if click is within our own WidgetChrome toolbar
         const chromeEl = e.target.closest(`[data-widget-id="${widgetId}"]`)
         if (chromeEl) return
 
         setInteractive(false)
         if (onUpdate && iframeLoaded && iframeRef.current?.contentWindow) {
-          // Force capture — iframe is loaded since user was interacting
-          requestCapture({ force: true }).then((updates) => {
-            const url = updates?.snapshotLight || updates?.snapshotDark
-            if (url) {
-              const img = new Image()
-              const done = () => setShowIframe(false)
-              img.onload = done
-              img.onerror = done
-              img.src = url
-              setTimeout(done, 3000)
-            } else {
-              setShowIframe(false)
+          const session = ++exitSessionRef.current
+          requestCapture({ force: true }).then(async (updates) => {
+            if (exitSessionRef.current !== session) return
+            const urls = [updates?.snapshotLight, updates?.snapshotDark].filter(Boolean)
+            if (urls.length > 0) {
+              await Promise.all(urls.map(url => new Promise(resolve => {
+                const img = new Image()
+                img.onload = resolve
+                img.onerror = resolve
+                img.src = url
+              })))
             }
+            if (exitSessionRef.current !== session) return
+            setShowIframe(false)
           })
         } else {
           setShowIframe(false)
@@ -215,8 +200,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   // Capture snapshot on first iframe ready (when no existing snapshot)
   useEffect(() => {
     if (!iframeReady || !onUpdate) return
-    const hasSnapshot = (snapshotLight?.includes(widgetId)) || (snapshotDark?.includes(widgetId))
-    if (!hasSnapshot) {
+    if (!hasAnySnap) {
       requestCapture()
     }
   }, [iframeReady]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -411,6 +395,29 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
         ) : (
           <>
             <div className={styles.content}>
+              {/* Snapshot layer — both themes always in DOM for instant swap */}
+              {hasLightSnap && (
+                <img
+                  src={snapshotLight}
+                  className={styles.snapshotImage}
+                  style={(isDark && hasDarkSnap) ? { visibility: 'hidden' } : undefined}
+                  alt={`${displayName} snapshot`}
+                  draggable={false}
+                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshotLight]: true }))}
+                />
+              )}
+              {hasDarkSnap && (
+                <img
+                  src={snapshotDark}
+                  className={styles.snapshotImage}
+                  style={(!isDark && hasLightSnap) ? { visibility: 'hidden' } : undefined}
+                  alt={`${displayName} snapshot`}
+                  draggable={false}
+                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshotDark]: true }))}
+                />
+              )}
+
+              {/* Iframe layer — on top, transparent until loaded */}
               {showIframe && (
                 <iframe
                   ref={iframeRef}
@@ -421,27 +428,13 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
                   title={displayName}
                 />
               )}
-              {(!showIframe || !iframeLoaded) && (
-                validSnapshot && !showIframe && !snapshotBroken ? (
-                  <img
-                    src={validSnapshot}
-                    alt={`${displayName} snapshot`}
-                    className={styles.snapshotImage}
-                    draggable={false}
-                    onError={() => setSnapshotBroken(true)}
-                  />
-                ) : (
-                  <div className={styles.placeholder} style={showIframe ? { position: 'absolute', inset: 0 } : undefined}>
-                    {showIframe ? (
-                      <div className={styles.spinner} />
-                    ) : (
-                      <>
-                        <ComponentIcon size={36} />
-                        <span className={styles.placeholderLabel}>{displayName}</span>
-                      </>
-                    )}
-                  </div>
-                )
+
+              {/* Placeholder — only when no snapshots and no iframe */}
+              {!hasAnySnap && !showIframe && (
+                <div className={styles.placeholder}>
+                  <ComponentIcon size={36} />
+                  <span className={styles.placeholderLabel}>{displayName}</span>
+                </div>
               )}
             </div>
 

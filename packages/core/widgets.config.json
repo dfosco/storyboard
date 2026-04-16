@@ -143,7 +143,7 @@
           "id": "copy-text",
           "type": "action",
           "action": "copy-text",
-          "label": "$label:copy-text",
+          "label": "Copy Markdown",
           "icon": "unwrap",
           "menu": true,
           "prod": true
@@ -432,7 +432,7 @@
           "id": "copy-text",
           "type": "action",
           "action": "copy-text",
-          "label": "$label:copy-text",
+          "label": "Copy Markdown",
           "icon": "unwrap",
           "menu": true,
           "prod": true

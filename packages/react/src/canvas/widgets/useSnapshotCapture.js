@@ -53,6 +53,7 @@ export function useSnapshotCapture({
   iframeRef,
   widgetId,
   onUpdate,
+  showIframe,
 }) {
   const [iframeReady, setIframeReady] = useState(false)
   const iframeReadyRef = useRef(false)
@@ -68,6 +69,15 @@ export function useSnapshotCapture({
     setIframeReady(false)
     iframeReadyRef.current = false
   }, [widgetId])
+
+  // Reset readiness when iframe is torn down so remount waits for new snapshot-ready
+  useEffect(() => {
+    if (!showIframe) {
+      setIframeReady(false)
+      iframeReadyRef.current = false
+      lastContentWindowRef.current = null
+    }
+  }, [showIframe])
 
   // Listen for postMessage events from the embedded iframe
   useEffect(() => {

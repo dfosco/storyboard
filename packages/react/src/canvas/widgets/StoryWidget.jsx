@@ -156,7 +156,8 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   }, [showIframe])
 
   // Exit interactive mode when clicking outside.
-  // Keeps iframe mounted until snapshots are captured and preloaded.
+  // Hides iframe immediately for a responsive feel, then captures
+  // snapshots in the background with the iframe hidden but still mounted.
   useEffect(() => {
     if (!interactive) return
     function handlePointerDown(e) {
@@ -166,18 +167,10 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
 
         setInteractive(false)
         if (onUpdate && iframeLoaded && iframeRef.current?.contentWindow) {
+          // Keep iframe mounted but hidden for background capture
+          if (iframeRef.current) iframeRef.current.style.visibility = 'hidden'
           const session = ++exitSessionRef.current
-          requestCapture({ force: true }).then(async (updates) => {
-            if (exitSessionRef.current !== session) return
-            const urls = [updates?.snapshotLight, updates?.snapshotDark].filter(Boolean)
-            if (urls.length > 0) {
-              await Promise.all(urls.map(url => new Promise(resolve => {
-                const img = new Image()
-                img.onload = resolve
-                img.onerror = resolve
-                img.src = url
-              })))
-            }
+          requestCapture({ force: true }).then(() => {
             if (exitSessionRef.current !== session) return
             setShowIframe(false)
           })

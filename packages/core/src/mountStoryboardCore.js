@@ -298,7 +298,7 @@ export async function mountStoryboardCore(config = {}, options = {}) {
             quality: 0.85,
             width: width || document.documentElement.clientWidth,
             height: height || document.documentElement.clientHeight,
-            pixelRatio: 2,
+            pixelRatio: 1,
           })
           const dataUrl = await new Promise((resolve, reject) => {
             const reader = new FileReader()

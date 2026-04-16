@@ -249,7 +249,8 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   }, [showIframe])
 
   // Exit interactive mode when clicking outside the embed.
-  // Keeps iframe mounted until snapshots are captured and preloaded.
+  // Hides iframe immediately for a responsive feel, then captures
+  // snapshots in the background with the iframe hidden but still mounted.
   useEffect(() => {
     if (!interactive || expanded) return
     function handlePointerDown(e) {
@@ -259,18 +260,10 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
         setInteractive(false)
         if (onUpdate && !isExternal && iframeLoaded && iframeRef.current?.contentWindow) {
+          // Keep iframe mounted but hidden for background capture
+          if (iframeRef.current) iframeRef.current.style.visibility = 'hidden'
           const session = ++exitSessionRef.current
-          requestCapture({ force: true }).then(async (updates) => {
-            if (exitSessionRef.current !== session) return
-            const urls = [updates?.snapshotLight, updates?.snapshotDark].filter(Boolean)
-            if (urls.length > 0) {
-              await Promise.all(urls.map(url => new Promise(resolve => {
-                const img = new Image()
-                img.onload = resolve
-                img.onerror = resolve
-                img.src = url
-              })))
-            }
+          requestCapture({ force: true }).then(() => {
             if (exitSessionRef.current !== session) return
             setShowIframe(false)
           })

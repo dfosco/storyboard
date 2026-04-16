@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
-import { getEmbedChromeVars } from './embedTheme.js'
+import { getEmbedChromeVars, subscribeCanvasTheme } from './embedTheme.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
 import { useSnapshotCapture } from './useSnapshotCapture.js'
 import styles from './PrototypeEmbed.module.css'
@@ -307,22 +307,10 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive, expanded, onUpdate, isExternal, iframeLoaded, requestCapture])
 
-  // Read canvas theme from the closest ancestor [data-sb-canvas-theme] attribute
-  // set by CanvasPage — this is the actual displayed theme regardless of sync settings.
-  useEffect(() => {
-    function readTheme() {
-      const container = embedRef.current?.closest?.('[data-sb-canvas-theme]')
-      setCanvasTheme(container?.getAttribute('data-sb-canvas-theme') || 'light')
-    }
-    readTheme()
-    document.addEventListener('storyboard:theme:changed', readTheme)
-    const mq = window.matchMedia?.('(prefers-color-scheme: dark)')
-    mq?.addEventListener?.('change', readTheme)
-    return () => {
-      document.removeEventListener('storyboard:theme:changed', readTheme)
-      mq?.removeEventListener?.('change', readTheme)
-    }
-  }, [])
+  useEffect(() => subscribeCanvasTheme({
+    anchorRef: embedRef,
+    onTheme: setCanvasTheme,
+  }), [])
 
   // Capture snapshot on first iframe ready (when no existing snapshot)
   useEffect(() => {

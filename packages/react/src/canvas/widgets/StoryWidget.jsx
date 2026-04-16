@@ -170,10 +170,15 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
           // Keep iframe mounted but hidden for background capture
           if (iframeRef.current) iframeRef.current.style.visibility = 'hidden'
           const session = ++exitSessionRef.current
-          requestCapture({ force: true }).then(() => {
+          // Defer capture to next macrotask so React can flush the
+          // deselect re-render before html-to-image blocks the main thread.
+          setTimeout(() => {
             if (exitSessionRef.current !== session) return
-            setShowIframe(false)
-          })
+            requestCapture({ force: true }).then(() => {
+              if (exitSessionRef.current !== session) return
+              setShowIframe(false)
+            })
+          }, 0)
         } else {
           setShowIframe(false)
         }

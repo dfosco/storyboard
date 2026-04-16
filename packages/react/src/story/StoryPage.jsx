@@ -1,11 +1,9 @@
 /**
  * StoryPage — renders a .story.jsx module at its own route.
  *
- * When visited at e.g. /canvas/button-patterns, renders all named exports
- * from button-patterns.story.jsx in a gallery layout.
- *
- * When ?export=ExportName is present, renders only that single export
- * (used by iframe embeds from canvas StoryWidget).
+ * Renders only the bare component(s) with no layout chrome.
+ * When ?export=ExportName is present, renders that single export.
+ * Without ?export, renders all named exports stacked.
  */
 import { useState, useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
@@ -13,7 +11,7 @@ import { getStoryData } from '@dfosco/storyboard-core'
 import { ThemeProvider, BaseStyles } from '@primer/react'
 import styles from './StoryPage.module.css'
 
-function StoryErrorBoundaryFallback({ name, error }) {
+function StoryErrorFallback({ name, error }) {
   return (
     <div className={styles.error}>
       <strong>{name}</strong>
@@ -60,8 +58,6 @@ export default function StoryPage({ name }) {
   }, [name, story])
 
   // Signal snapshot-ready after story renders in embed mode.
-  // Stories have no data loading so they render fast — fire
-  // the explicit ready signal instead of waiting for the 1.5s fallback.
   useEffect(() => {
     if (!isEmbed || !exports || window.parent === window) return
     document.fonts.ready.then(() => {
@@ -73,80 +69,48 @@ export default function StoryPage({ name }) {
 
   if (error) {
     return (
-      <div className={styles.page}>
-        <StoryErrorBoundaryFallback name={name} error={error} />
-      </div>
+      <StoryErrorFallback name={name} error={error} />
     )
   }
 
   if (!exports) {
     return (
-      <div className={styles.page}>
-        <div className={styles.loading}>Loading story…</div>
-      </div>
+      <div className={styles.loading}>Loading story…</div>
     )
   }
 
-  // Single export mode (for iframe embedding)
+  // Single export mode
   if (exportFilter) {
     const Component = exports[exportFilter]
     if (!Component) {
       return (
-        <div className={styles.page}>
-          <StoryErrorBoundaryFallback
-            name={`${name}/${exportFilter}`}
-            error={`Export "${exportFilter}" not found in story "${name}"`}
-          />
-        </div>
-      )
-    }
-
-    // Minimal wrapper for embed mode
-    if (isEmbed) {
-      return (
-        <ThemeProvider colorMode="day">
-          <BaseStyles>
-            <Component />
-          </BaseStyles>
-        </ThemeProvider>
+        <StoryErrorFallback
+          name={`${name}/${exportFilter}`}
+          error={`Export "${exportFilter}" not found in story "${name}"`}
+        />
       )
     }
 
     return (
-      <div className={styles.page}>
-        <header className={styles.header}>
-          <h1 className={styles.title}>{name}</h1>
-          <span className={styles.exportBadge}>{exportFilter}</span>
-        </header>
-        <section className={styles.storySection}>
+      <ThemeProvider colorMode="day">
+        <BaseStyles>
           <Component />
-        </section>
-      </div>
+        </BaseStyles>
+      </ThemeProvider>
     )
   }
 
-  // Gallery mode — render all exports
+  // All exports — render each component bare
   const exportNames = Object.keys(exports)
 
   return (
-    <div className={styles.page}>
-      {!isEmbed && (
-        <header className={styles.header}>
-          <h1 className={styles.title}>{name}</h1>
-          <span className={styles.count}>{exportNames.length} {exportNames.length === 1 ? 'export' : 'exports'}</span>
-        </header>
-      )}
-      {exportNames.map((exportName) => {
-        const Component = exports[exportName]
-        return (
-          <section key={exportName} className={styles.storySection}>
-            {!isEmbed && <h2 className={styles.exportName}>{exportName}</h2>}
-            <div className={styles.storyContent}>
-              <Component />
-            </div>
-          </section>
-        )
-      })}
-    </div>
+    <ThemeProvider colorMode="day">
+      <BaseStyles>
+        {exportNames.map((exportName) => {
+          const Component = exports[exportName]
+          return <Component key={exportName} />
+        })}
+      </BaseStyles>
+    </ThemeProvider>
   )
 }

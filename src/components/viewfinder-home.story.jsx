@@ -151,9 +151,9 @@ function ArtifactCard({ id, name, author, updated, color, type, starred, onToggl
 
 function CreateMenu({ onClose }) {
   const items = [
+    { icon: <Icon name="canvas" size={18} />, title: 'Canvas', desc: 'Interactive board for prototypes, components, and documents' },
     { icon: <Icon name="prototype" size={18} />, title: 'Prototype', desc: 'Interactive page flow' },
-    { icon: <Icon name="canvas" size={18} />, title: 'Canvas', desc: 'Freeform board' },
-    { icon: <Icon name="component" size={18} />, title: 'Component', desc: 'Reusable widget' },
+    { icon: <Icon name="component" size={18} />, title: 'Component', desc: 'Reusable component' },
   ]
 
   return (

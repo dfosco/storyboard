@@ -195,6 +195,7 @@ function ArtifactCard({ item, basePath, starred, onToggleStar }) {
         <span className={css.cardBadge}>{getTypeLabel(item.type)}</span>
         <div className={css.cardActions}>
           {item.flows?.length > 0 && <FlowsDropdown flows={item.flows} basePath={basePath} />}
+          {item.pages?.length > 1 && <PagesDropdown pages={item.pages} basePath={basePath} />}
           <StarBtn active={starred} onClick={() => onToggleStar(item.id)} />
         </div>
       </div>
@@ -267,6 +268,43 @@ function FlowsDropdown({ flows, basePath }) {
                 }}
               >
                 {flow.meta?.title || flow.name}
+              </Menu.Item>
+            ))}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  )
+}
+
+/* ─── Pages Dropdown ─── */
+
+function PagesDropdown({ pages, basePath }) {
+  if (!pages || pages.length < 2) return null
+  return (
+    <Menu.Root>
+      <Menu.Trigger
+        className={css.iconBtn}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+        aria-label="See pages"
+        title="See pages"
+      >
+        <Icon name="canvas" size={16} />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner className={css.flowsPositioner} side="bottom" align="end" sideOffset={4}>
+          <Menu.Popup className={css.flowsPopup}>
+            <div className={css.flowsTitle}>Pages</div>
+            {pages.map(page => (
+              <Menu.Item
+                key={page.route}
+                className={css.flowsItem}
+                onClick={(e) => {
+                  e.preventDefault()
+                  window.location.href = withBase(basePath, page.route)
+                }}
+              >
+                {page.name}
               </Menu.Item>
             ))}
           </Menu.Popup>
@@ -784,6 +822,7 @@ export default function Viewfinder({
         externalUrl: null,
         folder: canvas.folder,
         description: canvas.description,
+        pages: canvas.pages || null,
       })
     }
 

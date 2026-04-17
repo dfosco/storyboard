@@ -208,9 +208,18 @@ export function buildPrototypeIndex(knownRoutes = []) {
     const meta = data._canvasMeta
     const group = data._group || null
 
-    // If this canvas belongs to a group we've already seen, skip it
-    // (the first page in the group represents the whole canvas)
-    if (group && seenGroups.has(group)) continue
+    const pageEntry = {
+      name: meta?.title || data.title || canvasId.split('/').pop(),
+      route: data._route || `/canvas/${canvasId}`,
+    }
+
+    // If this canvas belongs to a group we've already seen, add as a page
+    if (group && seenGroups.has(group)) {
+      const idx = seenGroups.get(group)
+      if (!canvasEntries[idx].pages) canvasEntries[idx].pages = [{ name: canvasEntries[idx].name, route: canvasEntries[idx].route }]
+      canvasEntries[idx].pages.push(pageEntry)
+      continue
+    }
 
     const entry = {
       name: meta?.title || data.title || canvasId,

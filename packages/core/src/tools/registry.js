@@ -16,6 +16,7 @@ export const coreHandlers = {
   autosync:             () => import('./handlers/autosync.js'),
   'canvas-add-widget':  () => import('./handlers/canvasAddWidget.js'),
   'canvas-toolbar':     () => import('./handlers/canvasToolbar.js'),
+  'hide-toolbars':      () => import('./handlers/hideToolbars.js'),
 }
 
 // Keep legacy export name for backward compatibility

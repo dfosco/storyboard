@@ -91,9 +91,12 @@
   }
 
   function goToMain() {
-    // Find main branch folder or use empty string
     const main = allBranches.find(b => b.branch === 'main')
     window.location.href = branchBasePath + (main?.folder || '')
+  }
+
+  function hideChrome() {
+    document.documentElement.classList.add('storyboard-chrome-hidden')
   }
 </script>
 
@@ -106,9 +109,14 @@
         <Icon name="feather/chevron-down" size={10} />
       </button>
 
-      <button class="branch-bar-close" onclick={goToMain} aria-label="Switch to main">
-        ×
-      </button>
+      <div class="branch-bar-actions">
+        <button class="branch-bar-action" onclick={hideChrome} aria-label="Hide UI">
+          Hide
+        </button>
+        <button class="branch-bar-action" onclick={goToMain} aria-label="Switch to main">
+          Close
+        </button>
+      </div>
     </div>
 
     {#if open}
@@ -143,10 +151,11 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    height: 24px;
+    height: 32px;
     background: #1a1a1a;
     color: #ccc;
-    padding: 0 12px;
+    padding: 4px 12px;
+    position: relative;
   }
 
   .branch-bar-trigger {
@@ -157,6 +166,7 @@
     border: none;
     color: #ddd;
     font-size: 11px;
+    font-weight: 400;
     font-family: inherit;
     cursor: pointer;
     padding: 2px 8px;
@@ -170,35 +180,42 @@
   }
 
   .branch-bar-name {
-    font-weight: 600;
+    font-weight: 500;
     max-width: 240px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .branch-bar-close {
+  .branch-bar-actions {
     position: absolute;
     right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .branch-bar-action {
     background: none;
     border: none;
-    color: #888;
-    font-size: 14px;
+    color: #777;
+    font-size: 11px;
+    font-weight: 400;
+    font-family: inherit;
     cursor: pointer;
-    padding: 0 4px;
-    line-height: 1;
+    padding: 2px 8px;
     border-radius: 3px;
     transition: all 0.1s;
   }
 
-  .branch-bar-close:hover {
+  .branch-bar-action:hover {
     color: #fff;
     background: rgba(255, 255, 255, 0.1);
   }
 
   .branch-bar-dropdown {
     position: absolute;
-    top: 24px;
+    top: 32px;
     left: 50%;
     transform: translateX(-50%);
     background: #1a1a1a;
@@ -243,11 +260,11 @@
 
   /* Push page content down when branch bar is visible */
   :global(html:has(.branch-bar)) {
-    --sb-branch-bar-height: 24px;
+    --sb-branch-bar-height: 32px;
   }
 
   :global(html:has(.branch-bar) body) {
-    padding-top: 24px;
+    padding-top: 32px;
   }
 
   /* Hide when chrome is hidden (cmd+.) */

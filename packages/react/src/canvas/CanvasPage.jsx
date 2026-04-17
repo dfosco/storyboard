@@ -9,6 +9,7 @@ import { schemas, getDefaults } from './widgets/widgetProps.js'
 import { getFeatures, isResizable } from './widgets/widgetConfig.js'
 import { createPasteContext, resolvePaste } from './widgets/pasteRules.js'
 import { getPasteRules } from '@dfosco/storyboard-core'
+import { registerSmoothCorners } from '@dfosco/storyboard-core/smooth-corners'
 import { isGitHubEmbedUrl } from './widgets/githubUrl.js'
 import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
@@ -37,6 +38,8 @@ const VIEWPORT_TTL_MS = 15 * 60 * 1000
 
 const CANVAS_BRIDGE_STATE_KEY = '__storyboardCanvasBridgeState'
 const GH_INSTALL_URL = 'https://github.com/cli/cli'
+
+registerSmoothCorners()
 
 /** Matches branch-deploy base path prefixes like /branch--my-feature/ */
 const BRANCH_PREFIX_RE = /^\/branch--[^/]+/
@@ -2032,7 +2035,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   return (
     <>
       <div className={styles.canvasTitle}>
-        <a href={(import.meta.env?.BASE_URL || '/').replace(/\/$/, '') || '/'} className={styles.canvasLogo} aria-label="Go to homepage">
+        <a href={(import.meta.env?.BASE_URL || '/')} className={`${styles.canvasLogo} smooth-corners`} aria-label="Go to homepage">
           <Icon name="iconoir/key-command" size={16} color="#fff" />
         </a>
         {siblingPages.length > 1 && (

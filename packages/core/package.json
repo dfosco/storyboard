@@ -54,7 +54,8 @@
     "./canvas/collision": "./src/canvas/collision.js",
     "./canvas/identity": "./src/canvas/identity.js",
     "./config": "./src/configSchema.js",
-    "./inspector/highlighter": "./src/inspector/highlighter.js"
+    "./inspector/highlighter": "./src/inspector/highlighter.js",
+    "./smooth-corners": "./src/smoothCorners.js"
   },
   "dependencies": {
     "@clack/prompts": "^1.2.0",

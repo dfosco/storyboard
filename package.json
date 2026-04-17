@@ -19,6 +19,8 @@
         "test:watch": "vitest",
         "test:core": "vitest run packages/core",
         "test:react": "vitest run packages/react",
+        "sync": "./scripts/sync-local.sh",
+        "sync:no-build": "./scripts/sync-local.sh --no-build",
         "release": "./scripts/release.sh",
         "release:beta": "PRERELEASE_TAG=beta ./scripts/release.sh",
         "release:alpha": "PRERELEASE_TAG=alpha ./scripts/release.sh",

@@ -31,7 +31,8 @@
       "prod": true,
       "menuWidth": "280px",
       "handler": "core:flows",
-      "excludeRoutes": ["^/$", "/viewfinder"]
+      "excludeRoutes": ["^/$", "/viewfinder", "/canvas/", "/components/", "/notebook/"],
+      "hideInCommandPalette": ["^/$", "/viewfinder", "/canvas/", "/components/", "/notebook/"]
     },    
     "theme": {
       "label": "Theme",
@@ -62,7 +63,8 @@
       "handler": "core:comments",
       "modes": ["*"],
       "prod": true,
-      "excludeRoutes": ["^/$", "/viewfinder"]
+      "excludeRoutes": ["^/$", "/viewfinder"],
+      "hideInCommandPalette": ["^/$", "/viewfinder"]
     },
     "inspector": {
       "ariaLabel": "Inspect components",
@@ -73,7 +75,8 @@
       "handler": "core:inspector",
       "modes": ["*"],
       "prod": true,
-      "excludeRoutes": ["^/$", "/viewfinder", "/canvas/", "/components/"],
+      "excludeRoutes": ["^/$", "/viewfinder", "/canvas/", "/components/", "/notebook/"],
+      "hideInCommandPalette": ["^/$", "/viewfinder", "/canvas/", "/components/", "/notebook/"],
       "meta": { "strokeWeight": 2, "scale": 1.1 },
       "shortcut": { "key": "i", "label": "⌘I" }
     },    
@@ -115,7 +118,8 @@
       "modes": ["*"],
       "meta": { "strokeWeight": 2, "scale": 1.2 },
       "menuWidth": "300px",
-      "excludeRoutes": ["^/$", "/viewfinder"]
+      "excludeRoutes": ["^/$", "/viewfinder"],
+      "hideInCommandPalette": ["^(?!/canvas)"]
     },
     "canvas-zoom": {
       "ariaLabel": "Zoom controls",

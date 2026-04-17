@@ -364,16 +364,10 @@ export default function StoryboardCommandPalette({ basePath }) {
     setActivePage(pageId)
   }
 
-  // [devlog] Mount confirmation
-  useEffect(() => {
-    console.log('[CommandPalette] mounted, basePath:', basePath)
-    return () => console.log('[CommandPalette] unmounted')
-  }, [])
-
   // Listen for Cmd+K directly
-  // Note: the Svelte CoreUIBar also handles Cmd+K by dispatching
-  // 'storyboard:toggle-palette', so we only handle it here if the
-  // Svelte handler didn't fire (detected by a short delay).
+  // The Svelte CoreUIBar also handles Cmd+K by dispatching
+  // 'storyboard:toggle-palette'. We use rAF to detect if Svelte
+  // already fired the toggle event and skip to avoid double-toggle.
   useEffect(() => {
     let toggledByEvent = false
 
@@ -384,12 +378,9 @@ export default function StoryboardCommandPalette({ basePath }) {
     function handleKeyDown(e) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
-        // If the Svelte CoreUIBar already dispatched the toggle event
-        // in this same keydown cycle, skip to avoid double-toggle
         toggledByEvent = false
         requestAnimationFrame(() => {
-          if (toggledByEvent) return // Svelte already handled it
-          console.log('[CommandPalette] Cmd+K (direct)')
+          if (toggledByEvent) return
           const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
           setItems(built.groups)
           setToolMenus(built.toolMenus)
@@ -444,7 +435,6 @@ export default function StoryboardCommandPalette({ basePath }) {
   }, [basePath])
 
   const handleChangeOpen = useCallback((value) => {
-    console.log('[CommandPalette] onChangeOpen:', value)
     if (!value) {
       setOpen(false)
       setActivePage('root')

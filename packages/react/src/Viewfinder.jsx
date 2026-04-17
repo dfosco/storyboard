@@ -148,7 +148,7 @@ function AvatarStack({ authors }) {
           width={24}
           height={24}
           loading="lazy"
-          onError={(e) => { console.warn('[Viewfinder] avatar failed:', username); e.target.style.display = 'none' }}
+          onError={(e) => { e.target.style.display = 'none' }}
         />
       ))}
     </div>

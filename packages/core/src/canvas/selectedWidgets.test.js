@@ -130,7 +130,7 @@ describe('selectedWidgets', () => {
       client
     )
 
-    const written = JSON.parse(spies.writeFileSync.mock.calls[0][1].trim())
+    const written = JSON.parse(spies.writeFileSync.mock.calls.at(-1)[1].trim())
     expect(written.canvasFile).toBe('src/canvas/design.canvas.jsonl')
   })
 
@@ -287,6 +287,8 @@ describe('selectedWidgets', () => {
     const handler = server._handlers.get('storyboard:canvas-focused')
     const client = {}
 
+    const callsAfterSetup = spies.writeFileSync.mock.calls.length
+
     // Missing tabId
     handler({ canvasId: 'design', widgetIds: [], widgets: [] }, client)
     // Missing canvasId
@@ -294,7 +296,8 @@ describe('selectedWidgets', () => {
     // Null data
     handler(null, client)
 
-    expect(spies.writeFileSync).not.toHaveBeenCalled()
+    // No additional writes beyond the initial scaffold
+    expect(spies.writeFileSync.mock.calls.length).toBe(callsAfterSetup)
   })
 
   it('clears file on server shutdown', () => {

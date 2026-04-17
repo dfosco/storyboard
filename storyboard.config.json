@@ -38,7 +38,7 @@
         "source": "tools",
         "toolIds": [
           { "id": "viewfinder", "label": "Homepage" },
-          { "id": "repository", "label": "Go to repository", "action": "github/storyboard" },
+          { "id": "repository", "label": "Go to repository", "feature": "github/storyboard" },
           { "id": "theme", "label": "Switch Theme" }
         ]
       },

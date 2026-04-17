@@ -430,12 +430,7 @@ function buildPaletteItems(basePath, onCreateAction, onNavigateToPage) {
   const base = (basePath || '/').replace(/\/+$/, '')
   const prefix = base === '/' ? '' : base
 
-  const config = getCommandPaletteConfig()
-  console.log('[CommandPalette] config sections:', config?.sections?.length, config?.sections?.map(s => s.id))
-
   const { groups, toolMenus } = buildConfigSections(prefix, onNavigateToPage, onCreateAction)
-
-  console.log('[CommandPalette] built groups:', groups.map(g => g.id + '(' + (g.items?.length || 0) + ')'))
 
   return { groups, toolMenus }
 }

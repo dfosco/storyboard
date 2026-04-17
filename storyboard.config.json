@@ -55,36 +55,29 @@
       },      
       { "id": "sep2", "items": [] },
       {
-        "id": "recent",
-        "title": "Recently opened",
-        "source": "recent",
-        "limit": 5
-      },
-      { "id": "sep3", "items": [] },
-      {
         "id": "create",
         "title": "Create new",
         "source": "create"
       },
-      { "id": "sep4", "items": [] },
+      { "id": "sep3", "items": [] },
       {
         "id": "prototypes",
         "title": "Prototypes",
         "source": "prototypes"
       },
-      { "id": "sep5", "items": [] },
+      { "id": "sep4", "items": [] },
       {
         "id": "canvases",
         "title": "Canvas",
         "source": "canvases"
       },
-      { "id": "sep6", "items": [] },
+      { "id": "sep5", "items": [] },
       {
         "id": "stories",
         "title": "Stories",
         "source": "stories"
       },
-      { "id": "sep7", "items": [] },
+      { "id": "sep6", "items": [] },
       { "id": "other-tools", "title": "More Tools", "source": "tool-subpages" }      
     ]
   }

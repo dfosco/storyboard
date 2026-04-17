@@ -283,17 +283,40 @@ describe('CanvasPage canvas bridge', () => {
 })
 
 describe('getCanvasThemeVars', () => {
-  it('returns a distinct dark-dimmed background token', () => {
+  it('returns correct tokens for each theme', () => {
     expect(getCanvasThemeVars('light')['--sb--canvas-bg']).toBe('#f6f8fa')
     expect(getCanvasThemeVars('light')['--tc-bg-muted']).toBe('#f6f8fa')
-    expect(getCanvasThemeVars('dark')['--sb--canvas-bg']).toBe('#161b22')
-    expect(getCanvasThemeVars('dark')['--bgColor-muted']).toBe('#161b22')
-    expect(getCanvasThemeVars('dark')['--tc-bg-muted']).toBe('#161b22')
-    expect(getCanvasThemeVars('dark_dimmed')['--sb--canvas-bg']).toBe('#22272e')
-    expect(getCanvasThemeVars('dark_dimmed')['--bgColor-muted']).toBe('#22272e')
-    expect(getCanvasThemeVars('dark_dimmed')['--tc-bg-muted']).toBe('#22272e')
-    expect(getCanvasThemeVars('dark_dimmed')['--tc-dot-color']).toBe('rgba(205, 217, 229, 0.22)')
-    expect(getCanvasThemeVars('dark_dimmed')['--overlay-backdrop-bgColor']).toBe('rgba(205, 217, 229, 0.22)')
+    expect(getCanvasThemeVars('dark')['--sb--canvas-bg']).toBe('#151b23')
+    expect(getCanvasThemeVars('dark')['--bgColor-muted']).toBe('#151b23')
+    expect(getCanvasThemeVars('dark')['--tc-bg-muted']).toBe('#151b23')
+    expect(getCanvasThemeVars('dark_dimmed')['--sb--canvas-bg']).toBe('#262c36')
+    expect(getCanvasThemeVars('dark_dimmed')['--bgColor-muted']).toBe('#262c36')
+    expect(getCanvasThemeVars('dark_dimmed')['--tc-bg-muted']).toBe('#262c36')
+    expect(getCanvasThemeVars('dark_dimmed')['--tc-dot-color']).toBe('rgba(209, 215, 224, 0.18)')
+    expect(getCanvasThemeVars('dark_dimmed')['--overlay-backdrop-bgColor']).toBe('rgba(209, 215, 224, 0.18)')
+  })
+
+  it('returns distinct values for dark_high_contrast', () => {
+    const vars = getCanvasThemeVars('dark_high_contrast')
+    expect(vars['--bgColor-default']).toBe('#010409')
+    expect(vars['--borderColor-default']).toBe('#b7bdc8')
+    expect(vars['--fgColor-default']).toBe('#ffffff')
+  })
+
+  it('returns distinct values for dark_colorblind', () => {
+    const vars = getCanvasThemeVars('dark_colorblind')
+    expect(vars['--bgColor-default']).toBe('#0d1117')
+    expect(vars['--fgColor-muted']).toBe('#9198a1')
+  })
+
+  it('returns distinct values for light_colorblind', () => {
+    const vars = getCanvasThemeVars('light_colorblind')
+    expect(vars['--bgColor-default']).toBe('#ffffff')
+    expect(vars['--fgColor-muted']).toBe('#59636e')
+  })
+
+  it('falls back to light for unknown themes', () => {
+    expect(getCanvasThemeVars('unknown')).toEqual(getCanvasThemeVars('light'))
   })
 })
 
@@ -304,6 +327,11 @@ describe('getCanvasPrimerAttrs', () => {
       'data-dark-theme': 'dark',
       'data-light-theme': 'light',
     })
+    expect(getCanvasPrimerAttrs('light_colorblind')).toEqual({
+      'data-color-mode': 'light',
+      'data-dark-theme': 'dark',
+      'data-light-theme': 'light_colorblind',
+    })
     expect(getCanvasPrimerAttrs('dark')).toEqual({
       'data-color-mode': 'dark',
       'data-dark-theme': 'dark',
@@ -312,6 +340,16 @@ describe('getCanvasPrimerAttrs', () => {
     expect(getCanvasPrimerAttrs('dark_dimmed')).toEqual({
       'data-color-mode': 'dark',
       'data-dark-theme': 'dark_dimmed',
+      'data-light-theme': 'light',
+    })
+    expect(getCanvasPrimerAttrs('dark_high_contrast')).toEqual({
+      'data-color-mode': 'dark',
+      'data-dark-theme': 'dark_high_contrast',
+      'data-light-theme': 'light',
+    })
+    expect(getCanvasPrimerAttrs('dark_colorblind')).toEqual({
+      'data-color-mode': 'dark',
+      'data-dark-theme': 'dark_colorblind',
       'data-light-theme': 'light',
     })
   })

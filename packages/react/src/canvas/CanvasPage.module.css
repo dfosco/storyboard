@@ -46,7 +46,7 @@
   width: 32px;
   height: 32px;
   background: var(--bgColor-emphasis, #313131);
-  border-radius: 6px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;

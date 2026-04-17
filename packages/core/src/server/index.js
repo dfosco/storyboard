@@ -20,7 +20,23 @@ import { getPort, portsFilePath, repoRoot, worktreeDir, listWorktrees } from '..
 import { generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, reloadCaddy, readDevDomain } from '../cli/proxy.js'
 import { compactAll } from '../canvas/compact.js'
 
-const SERVER_PORT = 4100
+const SERVER_PORT_BASE = 4100
+
+/**
+ * Derive a deterministic server port from the devDomain.
+ * Each repo (identified by its devDomain) gets its own port.
+ */
+function deriveServerPort(domain) {
+  let h = 0
+  for (let i = 0; i < domain.length; i++) {
+    h = ((h << 5) - h + domain.charCodeAt(i)) | 0
+  }
+  // Map to port range 4100-4199
+  return SERVER_PORT_BASE + (Math.abs(h) % 100)
+}
+
+const DEV_DOMAIN = readDevDomain()
+export const SERVER_PORT = deriveServerPort(DEV_DOMAIN)
 const HEALTH_TIMEOUT = 30_000
 const HEALTH_INTERVAL = 300
 
@@ -282,7 +298,7 @@ const server = http.createServer(async (req, res) => {
 
   // Health check
   if (pathname === '/health') {
-    sendJson(res, 200, { ok: true })
+    sendJson(res, 200, { ok: true, devDomain: DEV_DOMAIN })
     return
   }
 

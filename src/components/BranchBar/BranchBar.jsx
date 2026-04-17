@@ -1,21 +1,23 @@
 /**
  * BranchBar — dark top bar showing current branch on non-main routes.
- * Mounted at app root, shows on /branch-- routes with a dropdown to switch.
+ *
+ * Dev: shows branch name as a static label (use CLI to switch branches).
+ * Prod: same label (dropdown switching deferred to ViewfinderNew).
  */
-import { useState, useEffect } from 'react'
-import { useBranches, useSwitchBranch } from './useBranches.js'
-import BranchDropdown from './BranchDropdown.jsx'
+import { useState, useEffect, useMemo } from 'react'
+import { GitBranchIcon } from '@primer/octicons-react'
 import css from './BranchBar.module.css'
 
 export default function BranchBar({ basePath }) {
-  const { branches, currentBranch, branchBasePath, gitUser } = useBranches(basePath)
-  const { switching, switchError, switchBranch } = useSwitchBranch(basePath, branchBasePath)
   const [hidden, setHidden] = useState(false)
 
-  // On /branch-- routes only
+  const currentBranch = useMemo(() => {
+    const m = (basePath || '').match(/\/branch--([^/]+)\/?$/)
+    return m ? m[1] : 'main'
+  }, [basePath])
+
   const isOnBranch = currentBranch !== 'main'
 
-  // Listen for chrome hidden (cmd+.)
   useEffect(() => {
     const observer = new MutationObserver(() => {
       setHidden(document.documentElement.classList.contains('storyboard-chrome-hidden'))
@@ -26,9 +28,6 @@ export default function BranchBar({ basePath }) {
 
   if (!isOnBranch || hidden) return null
 
-  // Never render inside embeds (iframes) — prototypes and story previews
-  if (window.self !== window.top) return null
-
   function hideChrome() {
     window.dispatchEvent(new KeyboardEvent('keydown', {
       key: '.', metaKey: true, bubbles: true,
@@ -38,15 +37,10 @@ export default function BranchBar({ basePath }) {
   return (
     <div className={css.bar} data-branch-bar>
       <div className={css.barInner}>
-        <BranchDropdown
-          branches={branches}
-          currentBranch={currentBranch}
-          gitUser={gitUser}
-          switching={switching}
-          switchError={switchError}
-          switchBranch={switchBranch}
-          variant="bar"
-        />
+        <span className={css.barLabel}>
+          <GitBranchIcon size={12} />
+          <span className={css.barBranchName}>{currentBranch}</span>
+        </span>
         <div className={css.barActions}>
           <button className={css.barAction} onClick={hideChrome}>Hide</button>
         </div>

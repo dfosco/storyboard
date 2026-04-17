@@ -137,6 +137,13 @@ function getThumbClass(color) {
   return css[`thumb${color}`] || css.thumbSlate
 }
 
+function getTypeIcon(type, size = 14) {
+  if (type === 'prototype') return <PrototypeIcon size={size} />
+  if (type === 'canvas') return <CanvasIcon size={size} />
+  if (type === 'component') return <ComponentIcon size={size} />
+  return null
+}
+
 function getBadge(type) {
   const map = {
     prototype: { cls: css.badgePrototype, label: 'Prototype' },
@@ -320,7 +327,7 @@ export function ViewfinderHome({ title = 'Storyboard', subtitle }) {
         )}
         {starredItems.map(s => (
           <div key={s.id} className={css.starredItem} onClick={() => handleOpen(s.id)}>
-            <span className={css.starredDot} style={{ background: getBadge(s.type).dotColor }} />
+            <span className={css.starredIcon}>{getTypeIcon(s.type)}</span>
             {s.name}
           </div>
         ))}

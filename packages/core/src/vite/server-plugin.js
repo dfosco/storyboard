@@ -206,6 +206,32 @@ export default function storyboardServer() {
       // Wire autosync API routes (always enabled — git automation for dev)
       routeHandlers.set('autosync', createAutosyncHandler({ root, sendJson }))
 
+      // Worktrees API — lists available worktrees/branches from ports.json
+      routeHandlers.set('worktrees', async (req, res) => {
+        try {
+          // Walk up from root to find the repo root's .worktrees/ports.json
+          let dir = root
+          let portsPath = null
+          for (let i = 0; i < 10; i++) {
+            const candidate = path.join(dir, '.worktrees', 'ports.json')
+            if (fs.existsSync(candidate)) { portsPath = candidate; break }
+            // Check if ports.json is a sibling (we're inside a worktree)
+            const parentCandidate = path.join(path.dirname(dir), 'ports.json')
+            if (fs.existsSync(parentCandidate)) { portsPath = parentCandidate; break }
+            const parent = path.dirname(dir)
+            if (parent === dir) break
+            dir = parent
+          }
+          if (!portsPath) { sendJson(res, 200, []); return }
+          const ports = JSON.parse(fs.readFileSync(portsPath, 'utf8'))
+          const branches = Object.keys(ports).map(name => ({
+            branch: name,
+            folder: name === 'main' ? '' : `branch--${name}/`,
+          }))
+          sendJson(res, 200, branches)
+        } catch { sendJson(res, 200, []) }
+      })
+
       // Watch toolbar.config.json for changes — trigger full reload so
       // CoreUIBar.svelte picks up menu/mode config changes during dev
       const toolbarConfigPath = path.resolve(

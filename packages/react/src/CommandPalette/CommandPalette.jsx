@@ -21,6 +21,7 @@ import {
 } from '@dfosco/storyboard-core'
 import CreateDialog from './CreateDialog.jsx'
 import BranchBar from '../BranchBar/BranchBar.jsx'
+import AuthModal from '../AuthModal/AuthModal.jsx'
 import './command-palette.css'
 
 /**
@@ -916,6 +917,7 @@ export default function StoryboardCommandPalette({ basePath }) {
       onClose={() => setCreateType(null)}
     />
     <BranchBar basePath={basePath} />
+    <AuthModal />
     </>
   )
 }

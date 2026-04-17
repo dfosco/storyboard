@@ -91,3 +91,68 @@
 .itemActive:hover {
   background: var(--bgColor-accent-muted, #ddf4ff);
 }
+
+.separator {
+  height: 1px;
+  background: var(--borderColor-default, rgba(0, 0, 0, 0.15));
+  margin: 4px 8px;
+  list-style: none;
+}
+
+.addItem {
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--fgColor-muted, #656d76);
+  font-size: 12px;
+}
+
+.addItem:hover {
+  background: var(--bgColor-muted, #f6f8fa);
+  color: var(--fgColor-default, #1f2328);
+}
+
+.addForm {
+  display: flex;
+  gap: 4px;
+  padding: 4px 6px;
+  list-style: none;
+}
+
+.addInput {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--borderColor-default, rgba(0, 0, 0, 0.15));
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+
+.addInput:focus {
+  border-color: var(--focus-outlineColor, #0969da);
+  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.3);
+}
+
+.addSubmit {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  background: var(--bgColor-accent-emphasis, #0969da);
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.addSubmit:hover {
+  opacity: 0.9;
+}
+
+.addSubmit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

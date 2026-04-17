@@ -228,7 +228,38 @@ export default function LinkPreview({ id, props, onUpdate, resizable }) {
     )
   }
 
+  const ogImage = props?.ogImage || null
+  const description = props?.description || ''
+  const canEdit = typeof onUpdate === 'function'
   const cardRef = useRef(null)
+  const inputRef = useRef(null)
+  const [editing, setEditing] = useState(false)
+  const [editValue, setEditValue] = useState(title)
+
+  // Sync editValue when title prop changes externally
+  useEffect(() => { setEditValue(title) }, [title])
+
+  const startEditing = useCallback(() => {
+    if (!canEdit) return
+    setEditValue(title)
+    setEditing(true)
+  }, [canEdit, title])
+
+  const commitEdit = useCallback(() => {
+    setEditing(false)
+    const trimmed = editValue.trim()
+    if (trimmed !== title) {
+      onUpdate?.({ title: trimmed })
+    }
+  }, [editValue, title, onUpdate])
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [editing])
+
   const sizeStyle = (width || height)
     ? { ...(width ? { width: `${width}px` } : {}), ...(height ? { minHeight: `${height}px` } : {}) }
     : undefined
@@ -239,14 +270,46 @@ export default function LinkPreview({ id, props, onUpdate, resizable }) {
   const handleResize = (w, h) => onUpdate?.({ width: w, height: h })
 
   return (
-    <WidgetWrapper>
-      <div ref={cardRef} className={styles.card} style={sizeStyle}>
-        <div className={styles.header}>
-          <span className={styles.icon}>🔗</span>
-          <div className={styles.text}>
-            {title && <p className={styles.title}>{title}</p>}
-          </div>
-        </div>
+    <div ref={cardRef} className={styles.card} style={sizeStyle}>
+      {ogImage && (
+        <img
+          className={styles.ogImage}
+          src={ogImage}
+          alt=""
+          loading="lazy"
+          onError={(e) => { e.target.style.display = 'none' }}
+        />
+      )}
+      <div className={styles.body}>
+        {editing ? (
+          <input
+            ref={inputRef}
+            className={styles.titleInput}
+            data-canvas-allow-text-selection
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitEdit()
+              if (e.key === 'Escape') setEditing(false)
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <p
+            className={styles.title}
+            data-canvas-allow-text-selection={!canEdit ? '' : undefined}
+            onDoubleClick={startEditing}
+            role={canEdit ? 'button' : undefined}
+            tabIndex={canEdit ? 0 : undefined}
+            onKeyDown={canEdit ? (e) => { if (e.key === 'Enter') startEditing() } : undefined}
+          >
+            {title || hostname || url || 'Untitled'}
+          </p>
+        )}
+        {description && <p className={styles.description}>{description}</p>}
         <a
           href={url || '#'}
           target="_blank"
@@ -259,6 +322,6 @@ export default function LinkPreview({ id, props, onUpdate, resizable }) {
         </a>
       </div>
       {resizable && <ResizeHandle targetRef={cardRef} width={width} height={height} onResize={handleResize} />}
-    </WidgetWrapper>
+    </div>
   )
 }

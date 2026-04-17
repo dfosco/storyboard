@@ -1024,7 +1024,7 @@ export default function ViewfinderNew({
           </div>
         </div>
         <div className={css.topActions}>
-          {!window.__SB_LOCAL_DEV__ && <BranchDropdown basePath={basePath} />}
+          <BranchDropdown basePath={basePath} />
           <Menu.Root open={showCreate} onOpenChange={setShowCreate}>
             <Menu.Trigger className={css.createBtn}>
               + Create

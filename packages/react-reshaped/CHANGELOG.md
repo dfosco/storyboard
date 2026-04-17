@@ -1,5 +1,12 @@
 # @dfosco/storyboard-react-reshaped
 
+## 4.0.0-beta.37
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-react@4.0.0-beta.37
+
 ## 4.0.0-beta.36
 
 ### Patch Changes

@@ -453,6 +453,18 @@
           "category": "content",
           "default": ""
         },
+        "description": {
+          "type": "text",
+          "label": "Description",
+          "category": "content",
+          "default": ""
+        },
+        "ogImage": {
+          "type": "url",
+          "label": "OG Image",
+          "category": "content",
+          "default": ""
+        },
         "width": {
           "type": "number",
           "label": "Width",

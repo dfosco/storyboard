@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
-import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon } from '@primer/octicons-react'
+import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon } from '@primer/octicons-react'
 import { Menu } from '@base-ui/react/menu'
 import Icon from './Icon.jsx'
 import css from './ViewfinderNew.module.css'
@@ -98,16 +98,39 @@ function getTypeIcon(type, size = 14) {
   return null
 }
 
+/* ─── Avatar Stack ─── */
+
+function AvatarStack({ authors }) {
+  if (!authors || authors.length === 0) return null
+  const list = Array.isArray(authors) ? authors : [authors]
+  return (
+    <div className={css.avatarStack}>
+      {list.map(username => (
+        <img
+          key={username}
+          className={css.avatarImg}
+          src={`https://github.com/${username}.png`}
+          alt={username}
+          width={24}
+          height={24}
+          loading="lazy"
+        />
+      ))}
+    </div>
+  )
+}
+
 /* ─── Star Button ─── */
 
 function StarBtn({ active, onClick }) {
   return (
     <button
-      className={active ? css.starBtnActive : css.starBtn}
+      className={active ? css.iconBtnActive : css.iconBtn}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClick() }}
-      aria-label={active ? 'Unstar' : 'Star'}
+      aria-label={active ? 'Remove favorite' : 'Favorite'}
+      title={active ? 'Remove favorite' : 'Favorite'}
     >
-      {active ? '★' : '☆'}
+      {active ? <StarFillIcon size={16} /> : <StarIcon size={16} />}
     </button>
   )
 }
@@ -127,11 +150,18 @@ function ArtifactCard({ item, basePath, starred, onToggleStar }) {
     ? { href: item.externalUrl, target: '_blank', rel: 'noopener noreferrer' }
     : { href }
 
+  const authorList = item.author
+    ? (Array.isArray(item.author) ? item.author : [item.author])
+    : item.gitAuthor ? [item.gitAuthor] : []
+
   return (
     <Tag className={css.card} {...linkProps} onClick={handleClick}>
-      <div className={`${css.cardThumb} ${thumbClass(item.name)}`}>
+      <div className={css.cardHeader}>
         <span className={css.cardBadge}>{getTypeLabel(item.type)}</span>
-        <StarBtn active={starred} onClick={() => onToggleStar(item.id)} />
+        <div className={css.cardActions}>
+          {item.flows?.length > 0 && <FlowsDropdown flows={item.flows} basePath={basePath} />}
+          <StarBtn active={starred} onClick={() => onToggleStar(item.id)} />
+        </div>
       </div>
       <div className={css.cardBody}>
         <div className={css.cardBodyContent}>
@@ -139,14 +169,18 @@ function ArtifactCard({ item, basePath, starred, onToggleStar }) {
             {item.name}
             {isExternal && <span className={css.externalBadge}>↗</span>}
           </div>
-          <div className={css.cardMeta}>
-            {item.author && <span>{Array.isArray(item.author) ? item.author.join(', ') : item.author}</span>}
-            {!item.author && item.gitAuthor && <span>{item.gitAuthor}</span>}
-            {(item.author || item.gitAuthor) && formatRelativeTime(item.lastModified) && <span className={css.cardMetaDot} />}
-            {formatRelativeTime(item.lastModified) && <span>{formatRelativeTime(item.lastModified)}</span>}
+          {item.description && (
+            <div className={css.cardDescription}>{item.description}</div>
+          )}
+          <div className={css.cardFooter}>
+            <AvatarStack authors={authorList} />
+            <div className={css.cardMeta}>
+              {authorList.length > 0 && <span>{authorList.join(', ')}</span>}
+              {authorList.length > 0 && formatRelativeTime(item.lastModified) && <span className={css.cardMetaDot} />}
+              {formatRelativeTime(item.lastModified) && <span>{formatRelativeTime(item.lastModified)}</span>}
+            </div>
           </div>
         </div>
-        {item.flows?.length > 0 && <FlowsDropdown flows={item.flows} basePath={basePath} />}
       </div>
     </Tag>
   )
@@ -177,10 +211,12 @@ function FlowsDropdown({ flows, basePath }) {
   return (
     <Menu.Root>
       <Menu.Trigger
-        className={css.flowsBtn}
+        className={css.iconBtn}
         onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+        aria-label="See flows"
+        title="See flows"
       >
-        <ChevronDownIcon size={12} />
+        <Icon name="flow" size={16} />
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner className={css.flowsPositioner} side="bottom" align="end" sideOffset={4}>
@@ -209,9 +245,9 @@ function FlowsDropdown({ flows, basePath }) {
 
 function FolderSection({ folder, collapsed, onToggle, basePath, starred, onToggleStar }) {
   return (
-    <section className={css.folderSection}>
+    <section className={collapsed ? css.folderSectionCollapsed : css.folderSection}>
       <button className={css.folderHeader} onClick={onToggle}>
-        <FileDirectoryFillIcon size={16} className={css.folderIcon} />
+        <Icon name={collapsed ? 'folder' : 'folder-open'} size={16} className={css.folderIcon} />
         <span className={css.folderName}>{folder.name}</span>
         <span className={css.folderCount}>{folder.items.length}</span>
         <ChevronRightIcon
@@ -238,6 +274,16 @@ function FolderSection({ folder, collapsed, onToggle, basePath, starred, onToggl
 
 /* ─── Create Footer ─── */
 
+function CreateTip() {
+  return (
+    <div className={css.createTip}>
+      <span className={css.createTipText}>
+        Tip: You can ask your AI assistant to create any of these artifacts: <code className={css.createTipCode}>Create a prototype</code>, <code className={css.createTipCode}>Create a canvas</code>, etc
+      </span>
+    </div>
+  )
+}
+
 function CreateFooter() {
   return (
     <div className={css.createFooter}>
@@ -255,12 +301,27 @@ function CreateForm({ type, onBack, onClose, basePath }) {
   const [description, setDescription] = useState('')
   const [url, setUrl] = useState('')
   const [isExternal, setIsExternal] = useState(false)
+  const [prototype, setPrototype] = useState('')
+  const [prototypes, setPrototypes] = useState([])
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  const needsPrototype = type === 'Flow' || type === 'Page'
+
+  useEffect(() => {
+    if (!needsPrototype) return
+    fetch('/_storyboard/workshop/flows')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.prototypes) setPrototypes(data.prototypes)
+      })
+      .catch(() => {})
+  }, [needsPrototype])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!name.trim()) { setError('Name is required'); return }
+    if (needsPrototype && !prototype) { setError('Select a prototype'); return }
     setError('')
     setSubmitting(true)
 
@@ -272,6 +333,12 @@ function CreateForm({ type, onBack, onClose, basePath }) {
       endpoint = '/_storyboard/workshop/prototypes'
       body = { name: name.trim(), title: title.trim(), description: description.trim() }
       if (isExternal) { body.external = true; body.url = url.trim() }
+    } else if (type === 'Flow') {
+      endpoint = '/_storyboard/workshop/flows'
+      body = { name: name.trim(), title: title.trim(), prototype, description: description.trim() }
+    } else if (type === 'Page') {
+      endpoint = '/_storyboard/workshop/pages'
+      body = { name: name.trim(), prototype }
     } else {
       endpoint = '/_storyboard/canvas/create-story'
       body = { name: name.trim(), location: 'src/components' }
@@ -296,12 +363,30 @@ function CreateForm({ type, onBack, onClose, basePath }) {
     }
   }
 
+  const typeLabels = { Canvas: 'Canvas', Prototype: 'Prototype', Component: 'Component', Flow: 'Prototype Flow', Page: 'Prototype Page' }
+
   return (
     <form onSubmit={handleSubmit}>
       <button type="button" className={css.createFormBack} onClick={onBack}>
         ← Back
       </button>
-      <div className={css.createMenuTitle}>New {type}</div>
+      <div className={css.createMenuTitle}>New {typeLabels[type] || type}</div>
+
+      {needsPrototype && (
+        <div className={css.createFormField}>
+          <label className={css.createFormLabel}>Prototype *</label>
+          <select
+            className={css.createFormInput}
+            value={prototype}
+            onChange={e => setPrototype(e.target.value)}
+          >
+            <option value="">Select a prototype…</option>
+            {prototypes.map(p => (
+              <option key={p.name} value={p.name}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className={css.createFormField}>
         <label className={css.createFormLabel}>Name *</label>
@@ -309,12 +394,12 @@ function CreateForm({ type, onBack, onClose, basePath }) {
           className={css.createFormInput}
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder={`my-${type.toLowerCase()}`}
-          autoFocus
+          placeholder={type === 'Page' ? 'my-page' : `my-${type.toLowerCase()}`}
+          autoFocus={!needsPrototype}
         />
       </div>
 
-      {type !== 'Component' && (
+      {type !== 'Component' && type !== 'Page' && (
         <>
           <div className={css.createFormField}>
             <label className={css.createFormLabel}>Title</label>
@@ -377,10 +462,11 @@ function CreateForm({ type, onBack, onClose, basePath }) {
   )
 }
 
-/* ─── Create Menu ─── */
+/* ─── Create Menu (Dropdown) ─── */
 
 function CreateMenu({ onClose, basePath }) {
   const [activeForm, setActiveForm] = useState(null)
+  const [showMore, setShowMore] = useState(false)
 
   const items = [
     { icon: <Icon name="canvas" size={18} />, title: 'Canvas', desc: 'Interactive board for prototypes, components, and documents' },
@@ -388,35 +474,57 @@ function CreateMenu({ onClose, basePath }) {
     { icon: <Icon name="component" size={18} />, title: 'Component', desc: 'Reusable component' },
   ]
 
-  return (
-    <div className={css.createMenuOverlay} onClick={onClose}>
-      <div className={css.createMenu} onClick={e => e.stopPropagation()}>
-        {activeForm ? (
-          <CreateForm
-            type={activeForm}
-            onBack={() => setActiveForm(null)}
-            onClose={onClose}
-            basePath={basePath}
-          />
-        ) : (
-          <>
-            <div className={css.createMenuTitle}>Create new</div>
-            <div className={css.createMenuGrid}>
-              {items.map(it => (
-                <button key={it.title} className={css.createMenuItem} onClick={() => setActiveForm(it.title)}>
-                  <div className={css.createMenuIcon}>{it.icon}</div>
-                  <div>
-                    <div className={css.createMenuItemTitle}>{it.title}</div>
-                    <div className={css.createMenuItemDesc}>{it.desc}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <CreateFooter />
-          </>
-        )}
+  const moreItems = [
+    { title: 'Prototype Flow', desc: 'A flow data file for a prototype', type: 'Flow' },
+    { title: 'Prototype Page', desc: 'A new page inside a prototype', type: 'Page' },
+  ]
+
+  if (activeForm) {
+    return (
+      <div className={css.createDropdownForm}>
+        <CreateForm
+          type={activeForm}
+          onBack={() => setActiveForm(null)}
+          onClose={onClose}
+          basePath={basePath}
+        />
       </div>
-    </div>
+    )
+  }
+
+  return (
+    <>
+      <div className={css.createDropdownTitle}>Create new artifact</div>
+      <div className={css.createDropdownGrid}>
+        {items.map(it => (
+          <button key={it.title} className={css.createMenuItem} onClick={() => setActiveForm(it.title)}>
+            <div className={css.createMenuIcon}>{it.icon}</div>
+            <div>
+              <div className={css.createMenuItemTitle}>{it.title}</div>
+              <div className={css.createMenuItemDesc}>{it.desc}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {!showMore ? (
+        <button className={css.moreOptionsBtn} onClick={() => setShowMore(true)}>
+          More options <ChevronDownIcon size={12} />
+        </button>
+      ) : (
+        <div className={css.moreOptionsSection}>
+          {moreItems.map(it => (
+            <button key={it.title} className={css.moreOptionItem} onClick={() => setActiveForm(it.type)}>
+              <div className={css.moreOptionTitle}>{it.title}</div>
+              <div className={css.moreOptionDesc}>{it.desc}</div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <CreateTip />
+      <CreateFooter />
+    </>
   )
 }
 
@@ -802,6 +910,7 @@ export default function ViewfinderNew({
   const [activeTab, setActiveTab] = useState('All')
   const [showCreate, setShowCreate] = useState(false)
   const [showPAT, setShowPAT] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [groupByFolders, setGroupByFolders] = useState(() => {
     try { return localStorage.getItem(GROUP_BY_FOLDERS_KEY) !== 'false' } catch { return true }
   })
@@ -899,30 +1008,46 @@ export default function ViewfinderNew({
       {/* ─── Full-width Header ─── */}
       <header className={css.topBar}>
         <div className={css.topBarLeft}>
-          <div className={css.logo}><Icon name="iconoir/key-command" size={18} color="#fff" /></div>
+          <button
+            className={css.hamburgerBtn}
+            onClick={() => setSidebarOpen(prev => !prev)}
+            aria-label="Toggle menu"
+          >
+            {sidebarOpen ? <XIcon size={18} /> : <ThreeBarsIcon size={18} />}
+          </button>
+          <div className={`${css.logo} smooth-corners`}><Icon name="iconoir/key-command" size={22} color="#fff" /></div>
           <div>
             <div className={css.appName}>{title}</div>
             {subtitle && <div className={css.appSubtitle}>{subtitle}</div>}
           </div>
         </div>
         <div className={css.topActions}>
-          <BranchDropdown basePath={basePath} />
-          <button className={css.createBtn} onClick={() => setShowCreate(true)}>
-            Create Artifact
-          </button>
+          {!window.__SB_LOCAL_DEV__ && <BranchDropdown basePath={basePath} />}
+          <Menu.Root open={showCreate} onOpenChange={setShowCreate}>
+            <Menu.Trigger className={css.createBtn}>
+              + Create
+            </Menu.Trigger>
+            <Menu.Portal>
+              <Menu.Positioner className={css.createDropdownPositioner} side="bottom" align="end" sideOffset={4}>
+                <Menu.Popup className={css.createDropdown}>
+                  <CreateMenu onClose={() => setShowCreate(false)} basePath={basePath} />
+                </Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
         </div>
       </header>
 
       {/* ─── Body: Sidebar + Content ─── */}
       <div className={css.body}>
         {/* ─── Sidebar ─── */}
-        <aside className={css.sidebar}>
+        <aside className={`${css.sidebar}${sidebarOpen ? ` ${css.sidebarOpen}` : ''}`}>
           <nav className={css.navSection}>
             {NAV_ITEMS.map(nav => (
               <button
                 key={nav.id}
                 className={activeNav === nav.id ? css.navItemActive : css.navItem}
-                onClick={() => setActiveNav(nav.id)}
+                onClick={() => { setActiveNav(nav.id); setSidebarOpen(false) }}
               >
                 <span className={css.navIcon}><Icon name={nav.iconName} size={16} /></span>
                 {nav.label}
@@ -994,8 +1119,19 @@ export default function ViewfinderNew({
                 {activeTab === 'Starred' && 'No starred items. Click ☆ on a card to star it.'}
                 {activeTab === 'All' && 'No items found. Create a prototype, canvas, or component to get started.'}
               </div>
-            ) : groupByFolders && grouped ? (
+            ) : groupByFolders && grouped && activeTab === 'All' && activeNav === 'all' ? (
               <>
+                {grouped.folders.map(folder => (
+                  <FolderSection
+                    key={folder.dirName}
+                    folder={folder}
+                    collapsed={collapsedFolders.has(folder.dirName)}
+                    onToggle={() => toggleFolder(folder.dirName)}
+                    basePath={basePath}
+                    starred={starred}
+                    onToggleStar={toggleStar}
+                  />
+                ))}
                 {grouped.ungrouped.length > 0 && (
                   <div className={css.grid}>
                     {grouped.ungrouped.map(item => (
@@ -1009,17 +1145,6 @@ export default function ViewfinderNew({
                     ))}
                   </div>
                 )}
-                {grouped.folders.map(folder => (
-                  <FolderSection
-                    key={folder.dirName}
-                    folder={folder}
-                    collapsed={collapsedFolders.has(folder.dirName)}
-                    onToggle={() => toggleFolder(folder.dirName)}
-                    basePath={basePath}
-                    starred={starred}
-                    onToggleStar={toggleStar}
-                  />
-                ))}
               </>
             ) : (
               <div className={css.grid}>
@@ -1039,7 +1164,6 @@ export default function ViewfinderNew({
       </div>
 
       {/* Modals */}
-      {showCreate && <CreateMenu onClose={() => setShowCreate(false)} basePath={basePath} />}
       <PATDialog open={showPAT} onClose={() => setShowPAT(false)} />
     </div>
   )

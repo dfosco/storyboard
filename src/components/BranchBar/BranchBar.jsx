@@ -36,7 +36,7 @@ export default function BranchBar({ basePath }) {
   }
 
   return (
-    <div className={css.bar}>
+    <div className={css.bar} data-branch-bar>
       <div className={css.barInner}>
         <BranchDropdown
           branches={branches}

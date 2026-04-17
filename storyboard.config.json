@@ -40,7 +40,7 @@
       },
       {
         "id": "tools",
-        "title": "Tools",
+        "title": "",
         "source": "tools",
         "toolIds": [
           { "id": "viewfinder", "label": "Go to index page" },

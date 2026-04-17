@@ -534,10 +534,37 @@ export default function StoryboardCommandPalette({ basePath }) {
     }
   }, [])
 
-  const filteredItems = useMemo(
-    () => filterItems(items, search),
-    [items, search]
-  )
+  // Flatten sub-page options into searchable groups so they appear in root search
+  const subPageGroups = useMemo(() => {
+    return toolMenus.map(menu => ({
+      heading: menu.label || menu.title || menu.id,
+      id: `subpage:${menu.id}`,
+      items: (menu.options || []).map((opt, i) => ({
+        id: `subpage:${menu.id}:${i}`,
+        children: opt.label,
+        keywords: [opt.label, menu.label || menu.id],
+        showType: false,
+        onClick: () => {
+          if (opt.execute) {
+            opt.execute()
+          } else if (opt.toolHandler === 'core:theme' && opt.value) {
+            setTheme(opt.value)
+          } else if (opt.action) {
+            executeAction(opt.action, opt.value)
+          }
+          setOpen(false)
+          setActivePage('root')
+        },
+      })),
+    })).filter(g => g.items.length > 0)
+  }, [toolMenus])
+
+  const filteredItems = useMemo(() => {
+    const base = filterItems(items, search)
+    if (!search) return base
+    const matchingSub = filterItems(subPageGroups, search)
+    return [...base, ...matchingSub]
+  }, [items, search, subPageGroups])
 
   // Items without separators — used for keyboard navigation indexing
   const navigableItems = useMemo(

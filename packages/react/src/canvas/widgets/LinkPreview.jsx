@@ -228,6 +228,7 @@ export default function LinkPreview({ id, props, onUpdate, resizable }) {
     )
   }
 
+  const cardRef = useRef(null)
   const sizeStyle = (width || height)
     ? { ...(width ? { width: `${width}px` } : {}), ...(height ? { minHeight: `${height}px` } : {}) }
     : undefined
@@ -239,7 +240,7 @@ export default function LinkPreview({ id, props, onUpdate, resizable }) {
 
   return (
     <WidgetWrapper>
-      <div className={styles.card} style={sizeStyle}>
+      <div ref={cardRef} className={styles.card} style={sizeStyle}>
         <div className={styles.header}>
           <span className={styles.icon}>🔗</span>
           <div className={styles.text}>
@@ -257,7 +258,7 @@ export default function LinkPreview({ id, props, onUpdate, resizable }) {
           {hostname || url}
         </a>
       </div>
-      {resizable && <ResizeHandle width={width} height={height} onResize={handleResize} />}
+      {resizable && <ResizeHandle targetRef={cardRef} width={width} height={height} onResize={handleResize} />}
     </WidgetWrapper>
   )
 }

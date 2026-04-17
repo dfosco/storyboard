@@ -174,15 +174,18 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
           showType: false,
           onClick: () => { window.location.href = tool.url },
         })
-      } else if (tool.render === 'sidepanel' || tool.render === 'button') {
+      } else {
+        // Fallback for menu, sidepanel, button, or any other render type
         const action = actions.find(a => a.toolKey === toolId)
-        remainingItems.push({
-          id: `cfg:${section.id}:${toolId}`,
-          children: label,
-          keywords: [label, toolId].filter(Boolean),
-          showType: false,
-          ...(action ? { onClick: () => executeAction(action.id) } : {}),
-        })
+        if (action) {
+          remainingItems.push({
+            id: `cfg:${section.id}:${toolId}`,
+            children: label,
+            keywords: [label, toolId].filter(Boolean),
+            showType: false,
+            onClick: () => executeAction(action.id),
+          })
+        }
       }
     }
 
@@ -586,6 +589,7 @@ export default function StoryboardCommandPalette({ basePath }) {
   const [search, setSearch] = useState('')
   const [items, setItems] = useState([])
   const [toolMenus, setToolMenus] = useState([])
+  const [authorIndex, setAuthorIndex] = useState(new Map())
   const [activePage, setActivePage] = useState('root')
   const [createType, setCreateType] = useState(null)
 
@@ -619,6 +623,7 @@ export default function StoryboardCommandPalette({ basePath }) {
           const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
           setItems(built.groups)
           setToolMenus(built.toolMenus)
+          setAuthorIndex(built.authorIndex)
           setSearch('')
           setActivePage('root')
           setOpen(prev => !prev)
@@ -644,6 +649,7 @@ export default function StoryboardCommandPalette({ basePath }) {
             const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
             setItems(built.groups)
             setToolMenus(built.toolMenus)
+            setAuthorIndex(built.authorIndex)
             setSearch('')
             setActivePage('root')
           }, 0)
@@ -656,6 +662,7 @@ export default function StoryboardCommandPalette({ basePath }) {
       const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
       setItems(built.groups)
       setToolMenus(built.toolMenus)
+      setAuthorIndex(built.authorIndex)
       setSearch('')
       setActivePage('root')
       setOpen(true)
@@ -705,8 +712,39 @@ export default function StoryboardCommandPalette({ basePath }) {
     const base = filterItems(items, search)
     if (!search) return base
     const matchingSub = filterItems(subPageGroups, search)
-    return [...base, ...matchingSub]
-  }, [items, search, subPageGroups])
+    const result = [...base, ...matchingSub]
+
+    // Author search: match usernames against author index
+    const q = search.toLowerCase()
+    for (const [key, { author, items: authorItems }] of authorIndex) {
+      if (!key.includes(q)) continue
+      // Avoid duplicates with already-shown artifact items
+      const shownIds = new Set(result.flatMap(g => g.items.map(i => i.id)))
+      const uniqueItems = authorItems.filter(item => !shownIds.has(`author:${item.id}`))
+      if (uniqueItems.length === 0) continue
+      result.push({
+        heading: `Artifacts by @${author}`,
+        id: `author:${key}`,
+        items: uniqueItems.map(item => ({
+          id: `author:${item.id}`,
+          children: (
+            <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{item.name}</span>
+              <span style={{ fontSize: '12px', color: 'var(--fgColor-muted, #999)' }}>{item.type}</span>
+            </span>
+          ),
+          keywords: [item.name, item.id, item.type, author, `@${author}`],
+          showType: false,
+          onClick: () => {
+            trackRecent(item.type.toLowerCase(), item.id, item.name)
+            window.location.href = item.route
+          },
+        })),
+      })
+    }
+
+    return result
+  }, [items, search, subPageGroups, authorIndex])
 
   // Items without separators — used for keyboard navigation indexing
   const navigableItems = useMemo(

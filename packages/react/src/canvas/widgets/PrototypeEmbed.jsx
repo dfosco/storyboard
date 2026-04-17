@@ -133,19 +133,22 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
       .filter(Boolean)
   }, [pickerGroups, filter])
 
-  const prototypeName = useMemo(() => {
-    if (!src) return ''
+  const prototypeTitle = useMemo(() => {
+    if (!src) return label || 'Prototype'
+    const cleanSrc = src.replace(/^\/branch--[^/]+/, '')
     for (const group of pickerGroups) {
       for (const item of group.items) {
         const cleanRoute = item.route.replace(/^\/branch--[^/]+/, '')
-        const cleanSrc = src.replace(/^\/branch--[^/]+/, '')
-        if (cleanRoute === cleanSrc) return item.name
+        if (cleanRoute === cleanSrc) {
+          // If the flow name matches the group name, just show the name
+          if (item.name === group.label) return group.label
+          return `${group.label} · ${item.name}`
+        }
       }
     }
-    return ''
-  }, [src, pickerGroups])
+    return label || 'Prototype'
+  }, [src, label, pickerGroups])
 
-  const prototypeTitle = prototypeName || label || 'Prototype'
   const hasPicker = pickerGroups.length > 0
 
   useIframeDevLogs({

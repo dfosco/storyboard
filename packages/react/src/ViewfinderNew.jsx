@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
-import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon } from '@primer/octicons-react'
+import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, PlusIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon } from '@primer/octicons-react'
 import { Menu } from '@base-ui/react/menu'
 import Icon from './Icon.jsx'
 import css from './ViewfinderNew.module.css'
@@ -905,6 +905,13 @@ export default function ViewfinderNew({
   const { starred, toggle: toggleStar } = useStarred()
   const recentIds = useRecent()
 
+  // Listen for auth modal trigger from Svelte (comments tool / "C" shortcut)
+  useEffect(() => {
+    function handleOpenAuth() { setShowPAT(true) }
+    document.addEventListener('storyboard:open-auth-modal', handleOpenAuth)
+    return () => document.removeEventListener('storyboard:open-auth-modal', handleOpenAuth)
+  }, [])
+
   // Filter by nav category
   const navFiltered = useMemo(() => {
     if (activeNav === 'all') return allItems
@@ -1012,7 +1019,7 @@ export default function ViewfinderNew({
           <BranchDropdown basePath={basePath} />
           <Menu.Root open={showCreate} onOpenChange={setShowCreate}>
             <Menu.Trigger className={css.createBtn}>
-              + Create
+              <PlusIcon size={14} /> Create
             </Menu.Trigger>
             <Menu.Portal>
               <Menu.Positioner className={css.createDropdownPositioner} side="bottom" align="end" sideOffset={4}>

@@ -121,6 +121,9 @@ switch (command) {
   case 'exit':
     import('./exit.js')
     break
+  case 'server':
+    import('./server.js')
+    break
   case 'code':
     import('./code.js')
     break

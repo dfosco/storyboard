@@ -28,7 +28,7 @@ import './command-palette.css'
  *   - Tool section:  { source: "tools", toolIds: ["theme", "flows"] }
  *   - Tool-menu:     { type: "tool-menu", options: [...] }
  */
-function buildConfigSections(prefix, onNavigateToPage) {
+function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
   const config = getCommandPaletteConfig()
   const sections = config?.sections || []
   const groups = []
@@ -41,7 +41,7 @@ function buildConfigSections(prefix, onNavigateToPage) {
     }
 
     if (section.source) {
-      const result = buildDynamicSection(section, prefix, onNavigateToPage)
+      const result = buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction)
       if (result?.group) groups.push(result.group)
       if (result?.subPages) toolMenus.push(...result.subPages)
       continue
@@ -93,10 +93,67 @@ function buildConfigSections(prefix, onNavigateToPage) {
   return { groups, toolMenus }
 }
 
-function buildDynamicSection(section, prefix, onNavigateToPage) {
-  // --- Tools source ---
+function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) {
   if (section.source === 'tools') {
     return buildToolsSection(section, prefix, onNavigateToPage)
+  }
+
+  // --- Create source (dev-only workshop actions) ---
+  if (section.source === 'create') {
+    const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
+    if (!isLocalDev) return null
+    const createItems = [
+      { id: 'create:canvas', children: 'New Canvas', keywords: ['create', 'canvas', 'new', 'board'], showType: false, onClick: () => onCreateAction?.('Canvas') },
+      { id: 'create:prototype', children: 'New Prototype', keywords: ['create', 'prototype', 'new', 'page'], showType: false, onClick: () => onCreateAction?.('Prototype') },
+      { id: 'create:component', children: 'New Component', keywords: ['create', 'component', 'new', 'story'], showType: false, onClick: () => onCreateAction?.('Component') },
+      { id: 'create:flow', children: 'New Prototype Flow', keywords: ['create', 'flow', 'new', 'data'], showType: false, onClick: () => onCreateAction?.('Flow') },
+      { id: 'create:page', children: 'New Prototype Page', keywords: ['create', 'page', 'new'], showType: false, onClick: () => onCreateAction?.('Page') },
+    ]
+    return { group: { heading: section.title, id: `cfg:${section.id}`, items: createItems } }
+  }
+
+  // --- Commands source (all registered toolbar actions) ---
+  if (section.source === 'commands') {
+    const mode = getCurrentMode() || 'default'
+    const actions = getActionsForMode(mode)
+    const commandItems = []
+    for (const action of actions) {
+      if (action.type === 'header' || action.type === 'separator' || action.type === 'footer') continue
+      if (action.toolKey) {
+        const state = getToolbarToolState(action.toolKey)
+        if (state === 'disabled' || state === 'hidden') continue
+      }
+      if (action.type === 'submenu') {
+        const children = getActionChildren(action.id)
+        for (const child of children) {
+          commandItems.push({
+            id: `cmd:${action.id}/${child.id || child.label}`,
+            children: child.label,
+            keywords: [action.label, child.label],
+            onClick: () => { if (child.execute) child.execute() },
+          })
+        }
+      } else if (action.type === 'link' && action.url) {
+        commandItems.push({
+          id: `cmd:${action.id}`,
+          children: action.label,
+          keywords: [action.label],
+          onClick: () => {
+            const url = action.url.startsWith('/') && !action.url.startsWith('//') ? prefix + action.url : action.url
+            window.location.href = url
+          },
+        })
+      } else {
+        commandItems.push({
+          id: `cmd:${action.id}`,
+          children: action.label,
+          keywords: [action.label],
+          onClick: () => executeAction(action.id),
+        })
+      }
+    }
+    if (commandItems.length === 0) return null
+    return { group: { heading: section.title, id: `cfg:${section.id}`, items: commandItems } }
   }
 
   // --- Recent source: all artifact types from getRecent() ---
@@ -318,184 +375,15 @@ function resolveRecentRoute(entry, prefix) {
 
 /**
  * Build the JSON structure for react-cmdk from all data providers.
+ * Entirely config-driven — all sections come from commandPalette.sections.
  */
 function buildPaletteItems(basePath, onCreateAction, onNavigateToPage) {
   const base = (basePath || '/').replace(/\/+$/, '')
   const prefix = base === '/' ? '' : base
-  const groups = []
-  const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
 
-  // Config-driven sections (prepended)
-  const { groups: configGroups, toolMenus } = buildConfigSections(prefix, onNavigateToPage)
+  const { groups, toolMenus } = buildConfigSections(prefix, onNavigateToPage, onCreateAction)
 
-  // --- Create (dev only) ---
-  if (isLocalDev) {
-    groups.push({
-      heading: 'Create',
-      id: 'create',
-      items: [
-        { id: 'create:canvas', children: 'New Canvas', keywords: ['create', 'canvas', 'new', 'board'], onClick: () => onCreateAction?.('Canvas') },
-        { id: 'create:prototype', children: 'New Prototype', keywords: ['create', 'prototype', 'new', 'page'], onClick: () => onCreateAction?.('Prototype') },
-        { id: 'create:component', children: 'New Component', keywords: ['create', 'component', 'new', 'story'], onClick: () => onCreateAction?.('Component') },
-        { id: 'create:flow', children: 'New Prototype Flow', keywords: ['create', 'flow', 'new', 'data'], onClick: () => onCreateAction?.('Flow') },
-        { id: 'create:page', children: 'New Prototype Page', keywords: ['create', 'page', 'new'], onClick: () => onCreateAction?.('Page') },
-      ],
-    })
-  }
-
-  // --- Recent ---
-  const recent = getRecent()
-  if (recent.length > 0) {
-    groups.push({
-      heading: 'Recent',
-      id: 'recent',
-      items: recent.map(entry => ({
-        id: `recent:${entry.type}:${entry.key}`,
-        children: entry.label,
-        keywords: [entry.type, entry.key],
-        onClick: () => {
-          trackRecent(entry.type, entry.key, entry.label)
-          const route = resolveRecentRoute(entry, prefix)
-          if (route) window.location.href = route
-        },
-      })),
-    })
-  }
-
-  // --- Commands ---
-  const mode = getCurrentMode() || 'default'
-  const actions = getActionsForMode(mode)
-  const commandItems = []
-
-  for (const action of actions) {
-    if (action.type === 'header' || action.type === 'separator' || action.type === 'footer') continue
-    if (action.toolKey) {
-      const state = getToolbarToolState(action.toolKey)
-      if (state === 'disabled' || state === 'hidden') continue
-    }
-
-    if (action.type === 'submenu') {
-      const children = getActionChildren(action.id)
-      for (const child of children) {
-        commandItems.push({
-          id: `cmd:${action.id}/${child.id || child.label}`,
-          children: child.label,
-          keywords: [action.label, child.label],
-          onClick: () => { if (child.execute) child.execute() },
-        })
-      }
-    } else if (action.type === 'link' && action.url) {
-      commandItems.push({
-        id: `cmd:${action.id}`,
-        children: action.label,
-        keywords: [action.label],
-        onClick: () => {
-          if (action.url.startsWith('/') && !action.url.startsWith('//')) {
-            window.location.href = prefix + action.url
-          } else {
-            window.location.href = action.url
-          }
-        },
-      })
-    } else {
-      commandItems.push({
-        id: `cmd:${action.id}`,
-        children: action.label,
-        keywords: [action.label],
-        onClick: () => executeAction(action.id),
-      })
-    }
-  }
-
-  if (commandItems.length > 0) {
-    groups.push({ heading: 'Commands', id: 'commands', items: commandItems })
-  }
-
-  // --- Prototypes ---
-  const index = buildPrototypeIndex()
-  const protoItems = []
-
-  function addProto(proto) {
-    if (proto.isExternal) {
-      protoItems.push({
-        id: `proto:${proto.dirName}`,
-        children: proto.name,
-        keywords: [proto.dirName, proto.name, ...(proto.author ? [].concat(proto.author) : []), proto.folder || ''].filter(Boolean),
-        href: proto.externalUrl,
-        target: '_blank',
-        onClick: () => trackRecent('prototype', proto.dirName, proto.name),
-      })
-    } else {
-      protoItems.push({
-        id: `proto:${proto.dirName}`,
-        children: proto.name,
-        keywords: [proto.dirName, proto.name, ...(proto.author ? [].concat(proto.author) : []), proto.folder || ''].filter(Boolean),
-        onClick: () => {
-          trackRecent('prototype', proto.dirName, proto.name)
-          window.location.href = `${prefix}/${proto.dirName}`
-        },
-      })
-    }
-  }
-
-  for (const proto of index.prototypes) addProto(proto)
-  for (const folder of index.folders) {
-    for (const proto of folder.prototypes) addProto(proto)
-  }
-
-  if (protoItems.length > 0) {
-    groups.push({ heading: 'Prototypes', id: 'prototypes', items: protoItems })
-  }
-
-  // --- Canvases ---
-  const canvasItems = []
-
-  function addCanvas(canvas) {
-    canvasItems.push({
-      id: `canvas:${canvas.dirName}`,
-      children: canvas.name,
-      keywords: [canvas.dirName, canvas.name, ...(canvas.author ? [].concat(canvas.author) : []), canvas.folder || ''].filter(Boolean),
-      onClick: () => {
-        trackRecent('canvas', canvas.dirName, canvas.name)
-        window.location.href = `${prefix}${canvas.route}`
-      },
-    })
-  }
-
-  for (const canvas of index.canvases) addCanvas(canvas)
-  for (const folder of index.folders) {
-    if (folder.canvases) {
-      for (const canvas of folder.canvases) addCanvas(canvas)
-    }
-  }
-
-  if (canvasItems.length > 0) {
-    groups.push({ heading: 'Canvases', id: 'canvases', items: canvasItems })
-  }
-
-  // --- Stories ---
-  const storyNames = listStories()
-  const storyItems = []
-  for (const name of storyNames) {
-    const data = getStoryData(name)
-    if (!data) continue
-    const route = data._route || `/components/${name}`
-    storyItems.push({
-      id: `story:${name}`,
-      children: name,
-      keywords: [name, 'story', 'component'],
-      onClick: () => {
-        trackRecent('story', name, name)
-        window.location.href = `${prefix}${route}`
-      },
-    })
-  }
-
-  if (storyItems.length > 0) {
-    groups.push({ heading: 'Stories', id: 'stories', items: storyItems })
-  }
-
-  return { groups: [...configGroups, ...groups], toolMenus }
+  return { groups, toolMenus }
 }
 
 /**

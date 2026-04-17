@@ -50,6 +50,26 @@
         "title": "Recent",
         "source": "recent",
         "limit": 5
+      },
+      {
+        "id": "create",
+        "title": "Create",
+        "source": "create"
+      },
+      {
+        "id": "prototypes",
+        "title": "Prototypes",
+        "source": "prototypes"
+      },
+      {
+        "id": "canvases",
+        "title": "Canvases",
+        "source": "canvases"
+      },
+      {
+        "id": "stories",
+        "title": "Stories",
+        "source": "stories"
       }      
     ]
   }

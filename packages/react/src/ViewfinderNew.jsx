@@ -296,12 +296,27 @@ function CreateForm({ type, onBack, onClose, basePath }) {
   const [description, setDescription] = useState('')
   const [url, setUrl] = useState('')
   const [isExternal, setIsExternal] = useState(false)
+  const [prototype, setPrototype] = useState('')
+  const [prototypes, setPrototypes] = useState([])
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  const needsPrototype = type === 'Flow' || type === 'Page'
+
+  useEffect(() => {
+    if (!needsPrototype) return
+    fetch('/_storyboard/workshop/flows')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.prototypes) setPrototypes(data.prototypes)
+      })
+      .catch(() => {})
+  }, [needsPrototype])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!name.trim()) { setError('Name is required'); return }
+    if (needsPrototype && !prototype) { setError('Select a prototype'); return }
     setError('')
     setSubmitting(true)
 
@@ -313,6 +328,12 @@ function CreateForm({ type, onBack, onClose, basePath }) {
       endpoint = '/_storyboard/workshop/prototypes'
       body = { name: name.trim(), title: title.trim(), description: description.trim() }
       if (isExternal) { body.external = true; body.url = url.trim() }
+    } else if (type === 'Flow') {
+      endpoint = '/_storyboard/workshop/flows'
+      body = { name: name.trim(), title: title.trim(), prototype, description: description.trim() }
+    } else if (type === 'Page') {
+      endpoint = '/_storyboard/workshop/pages'
+      body = { name: name.trim(), prototype }
     } else {
       endpoint = '/_storyboard/canvas/create-story'
       body = { name: name.trim(), location: 'src/components' }
@@ -337,12 +358,30 @@ function CreateForm({ type, onBack, onClose, basePath }) {
     }
   }
 
+  const typeLabels = { Canvas: 'Canvas', Prototype: 'Prototype', Component: 'Component', Flow: 'Prototype Flow', Page: 'Prototype Page' }
+
   return (
     <form onSubmit={handleSubmit}>
       <button type="button" className={css.createFormBack} onClick={onBack}>
         ← Back
       </button>
-      <div className={css.createMenuTitle}>New {type}</div>
+      <div className={css.createMenuTitle}>New {typeLabels[type] || type}</div>
+
+      {needsPrototype && (
+        <div className={css.createFormField}>
+          <label className={css.createFormLabel}>Prototype *</label>
+          <select
+            className={css.createFormInput}
+            value={prototype}
+            onChange={e => setPrototype(e.target.value)}
+          >
+            <option value="">Select a prototype…</option>
+            {prototypes.map(p => (
+              <option key={p.name} value={p.name}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className={css.createFormField}>
         <label className={css.createFormLabel}>Name *</label>
@@ -350,12 +389,12 @@ function CreateForm({ type, onBack, onClose, basePath }) {
           className={css.createFormInput}
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder={`my-${type.toLowerCase()}`}
-          autoFocus
+          placeholder={type === 'Page' ? 'my-page' : `my-${type.toLowerCase()}`}
+          autoFocus={!needsPrototype}
         />
       </div>
 
-      {type !== 'Component' && (
+      {type !== 'Component' && type !== 'Page' && (
         <>
           <div className={css.createFormField}>
             <label className={css.createFormLabel}>Title</label>
@@ -431,8 +470,8 @@ function CreateMenu({ onClose, basePath }) {
   ]
 
   const moreItems = [
-    { title: 'Prototype Flow', desc: 'A flow data file for a prototype' },
-    { title: 'Prototype Page', desc: 'A new page inside a prototype' },
+    { title: 'Prototype Flow', desc: 'A flow data file for a prototype', type: 'Flow' },
+    { title: 'Prototype Page', desc: 'A new page inside a prototype', type: 'Page' },
   ]
 
   if (activeForm) {
@@ -470,7 +509,7 @@ function CreateMenu({ onClose, basePath }) {
       ) : (
         <div className={css.moreOptionsSection}>
           {moreItems.map(it => (
-            <button key={it.title} className={css.moreOptionItem} onClick={onClose}>
+            <button key={it.title} className={css.moreOptionItem} onClick={() => setActiveForm(it.type)}>
               <div className={css.moreOptionTitle}>{it.title}</div>
               <div className={css.moreOptionDesc}>{it.desc}</div>
             </button>
@@ -1046,7 +1085,7 @@ export default function ViewfinderNew({
                 {activeTab === 'Starred' && 'No starred items. Click ☆ on a card to star it.'}
                 {activeTab === 'All' && 'No items found. Create a prototype, canvas, or component to get started.'}
               </div>
-            ) : groupByFolders && grouped ? (
+            ) : groupByFolders && grouped && activeTab === 'All' && activeNav === 'all' ? (
               <>
                 {grouped.folders.map(folder => (
                   <FolderSection

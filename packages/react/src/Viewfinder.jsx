@@ -330,7 +330,7 @@ function CreateFooter() {
 
 /* ─── Create Form ─── */
 
-function CreateForm({ type, onBack, onClose, basePath }) {
+function CreateForm({ type, onClose, basePath }) {
   const [name, setName] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -404,10 +404,12 @@ function CreateForm({ type, onBack, onClose, basePath }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <button type="button" className={css.createFormBack} onClick={onBack}>
-        ← Back
-      </button>
-      <div className={css.createMenuTitle}>New {typeLabels[type] || type}</div>
+      <div className={css.createFormHeader}>
+        <div className={css.createMenuTitle}>New {typeLabels[type] || type}</div>
+        <button type="button" className={css.createFormClose} onClick={onClose} aria-label="Close">
+          <XIcon size={16} />
+        </button>
+      </div>
 
       {needsPrototype && (
         <div className={css.createFormField}>
@@ -488,13 +490,10 @@ function CreateForm({ type, onBack, onClose, basePath }) {
       {error && <div className={css.createFormError}>{error}</div>}
 
       <div className={css.createFormActions}>
-        <button type="button" className={css.btnSecondary} onClick={onClose}>Cancel</button>
-        <button type="submit" className={css.btnPrimary} disabled={submitting}>
-          {submitting ? 'Creating…' : 'Create'}
+        <button type="submit" className={css.createFormSubmit} disabled={submitting}>
+          {submitting ? 'Creating…' : `Create ${typeLabels[type] || type}`}
         </button>
       </div>
-
-      <CreateFooter />
     </form>
   )
 }

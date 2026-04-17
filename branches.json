@@ -47,6 +47,7 @@
   {"folder":"branch--4.0.0-mona-sans","branch":"4.0.0-mona-sans"},
   {"folder":"branch--4.0.0-multi-dev","branch":"4.0.0-multi-dev"},
   {"folder":"branch--4.0.0-multi-page-canvas","branch":"4.0.0-multi-page-canvas"},
+  {"folder":"branch--4.0.0-npm-sync","branch":"4.0.0-npm-sync"},
   {"folder":"branch--4.0.0-nuke-snapshots","branch":"4.0.0-nuke-snapshots"},
   {"folder":"branch--4.0.0-on-demand-snapshots","branch":"4.0.0-on-demand-snapshots"},
   {"folder":"branch--4.0.0-paste-rules","branch":"4.0.0-paste-rules"},

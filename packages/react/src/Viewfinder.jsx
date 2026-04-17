@@ -216,7 +216,7 @@ function FlowsDropdown({ flows, basePath }) {
         aria-label="See flows"
         title="See flows"
       >
-        <Icon name="flow" size={16} />
+        <Icon name="feather/fast-forward" size={16} />
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner className={css.flowsPositioner} side="bottom" align="end" sideOffset={4}>

@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--sb-branch-bar-height, 0px));
   font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
   color: var(--fgColor-muted, #656d76);
   font-size: 16px;
@@ -16,7 +16,7 @@
 
 .canvasScroll {
   width: 100vw;
-  height: 100vh;
+  height: calc(100vh - var(--sb-branch-bar-height, 0px));
   overflow: auto;
   background-color: var(--sb--canvas-bg, var(--bgColor-muted, #f6f8fa));
 }
@@ -43,7 +43,7 @@
 
 .canvasTitle {
   position: fixed;
-  top: 12px;
+  top: calc(12px + var(--sb-branch-bar-height, 0px));
   left: 16px;
   z-index: 10;
   display: flex;

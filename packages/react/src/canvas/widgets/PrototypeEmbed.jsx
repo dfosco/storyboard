@@ -91,7 +91,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const [canvasTheme, _setCanvasTheme] = useState('light')
   const [brokenSnaps, _setBrokenSnaps] = useState({})
 
-  // ── Debug logging wrappers ──
+  // ── Debug logging wrappers (temporary) ──
   const setInteractive = (v) => { console.log(`[embed:${widgetId}] setInteractive →`, v); _setInteractive(v) }
   const setShowIframe = (v) => { if (v) console.trace(`[embed:${widgetId}] setShowIframe → TRUE`); else console.log(`[embed:${widgetId}] setShowIframe → false`); _setShowIframe(v) }
   const setIframeLoaded = (v) => { console.log(`[embed:${widgetId}] iframeLoaded →`, v); _setIframeLoaded(v) }
@@ -251,33 +251,27 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   }, [editing, hasPicker])
 
   useEffect(() => {
-    console.log(`[embed:${widgetId}] effect:showIframe →`, showIframe)
     if (!showIframe) setIframeLoaded(false)
   }, [showIframe])
 
   // Exit interactive mode when clicking outside the embed.
-  // Hides iframe immediately for a responsive feel, then captures
-  // snapshots in the background with the iframe hidden but still mounted.
+  // Captures a snapshot in the background, then unmounts the iframe.
   useEffect(() => {
     if (!interactive || expanded) return
-    console.log(`[embed:${widgetId}] effect:exit-interactive listener attached`)
     function handlePointerDown(e) {
       if (embedRef.current && !embedRef.current.contains(e.target)) {
         const chromeEl = e.target.closest(`[data-widget-id="${widgetId}"]`)
         if (chromeEl) return
 
-        console.log(`[embed:${widgetId}] exit-interactive: pointerdown outside, iframeLoaded=${iframeLoaded}, hasContentWindow=${!!iframeRef.current?.contentWindow}`)
         setInteractive(false)
         if (onUpdate && !isExternal && iframeLoaded && iframeRef.current?.contentWindow) {
           if (iframeRef.current) iframeRef.current.style.visibility = 'hidden'
           const session = ++exitSessionRef.current
-          console.log(`[embed:${widgetId}] exit-interactive: starting capture, session=${session}`)
           setTimeout(() => {
-            if (exitSessionRef.current !== session) { console.log(`[embed:${widgetId}] exit-interactive: stale session ${session}, current=${exitSessionRef.current}`); return }
+            if (exitSessionRef.current !== session) return
             requestCapture({ force: true }).then((updates) => {
-              if (exitSessionRef.current !== session) { console.log(`[embed:${widgetId}] exit-interactive: stale session after capture`); return }
+              if (exitSessionRef.current !== session) return
               const snap = updates?.snapshot
-              console.log(`[embed:${widgetId}] exit-interactive: capture done, snap=${snap ? 'yes(' + snap.length + ')' : 'null'}`)
               if (snap) {
                 const img = new Image()
                 const done = () => {
@@ -293,8 +287,6 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
             })
           }, 0)
         } else if (isExternal && showIframe) {
-          // External embeds (e.g. Figma) are slow to reload — keep the
-          // iframe mounted for 2 min so re-entering is instant.
           const session = ++exitSessionRef.current
           clearTimeout(teardownTimerRef.current)
           teardownTimerRef.current = setTimeout(() => {
@@ -316,25 +308,27 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   }), [])
 
   // On canvas theme change, enqueue a background snapshot refresh.
-  // Skips the initial render (canvasThemeInitRef tracks first value).
-  // Uses a ref to check hasSnap at callback time (not closure time).
-  const canvasThemeInitRef = useRef(true)
+  // Only fires for true user-initiated theme changes (not page load).
+  // Uses mountTime to ignore the initial theme resolution that happens
+  // within the first 3 seconds of mount.
+  const mountTimeRef = useRef(Date.now())
   const refreshMetaRef = useRef(null)
   const hasSnapRef = useRef(hasSnap)
   hasSnapRef.current = hasSnap
   useEffect(() => {
-    if (canvasThemeInitRef.current) { canvasThemeInitRef.current = false; console.log(`[embed:${widgetId}] theme-effect: skip init`); return }
-    if (isExternal || !onUpdate || interactive || !hasSnap) { console.log(`[embed:${widgetId}] theme-effect: skip (ext=${isExternal}, noUpdate=${!onUpdate}, interactive=${interactive}, hasSnap=${hasSnap})`); return }
-    console.log(`[embed:${widgetId}] theme-effect: enqueue refresh, hasSnap=${hasSnap}, hasSnapRef=${hasSnapRef.current}`)
+    // Ignore theme changes during initial page load (first 3 seconds)
+    const elapsed = Date.now() - mountTimeRef.current
+    if (elapsed < 3000) { console.log(`[embed:${widgetId}] theme-effect: skip page-load (${elapsed}ms)`); return }
+    if (isExternal || !onUpdate || interactive) { console.log(`[embed:${widgetId}] theme-effect: skip (ext=${isExternal}, noUpdate=${!onUpdate}, interactive=${interactive})`); return }
+    if (!hasSnapRef.current) { console.log(`[embed:${widgetId}] theme-effect: skip (no snap)`); return }
+    console.log(`[embed:${widgetId}] theme-effect: enqueue refresh, hasSnapRef=${hasSnapRef.current}`)
     const rect = embedRef.current?.getBoundingClientRect()
     enqueueRefresh(widgetId, ({ revealOrder, batchStart }) => {
-      console.log(`[embed:${widgetId}] refresh-callback: hasSnapRef=${hasSnapRef.current}`)
-      if (!hasSnapRef.current) { console.log(`[embed:${widgetId}] refresh-callback: ABORT, no snap`); return Promise.resolve(false) }
+      if (!hasSnapRef.current) return Promise.resolve(false)
       return new Promise((resolve) => {
         refreshMetaRef.current = { revealOrder, batchStart, resolve }
         captureOnReadyRef.current = true
         setShowIframe(true)
-        // Safety timeout — report failure so retry pass picks it up
         setTimeout(() => { refreshMetaRef.current = null; resolve(false) }, 10000)
       })
     }, rect ? { x: rect.left, y: rect.top } : undefined)
@@ -342,10 +336,8 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
   // Capture snapshot on first iframe ready (when no existing snapshot)
   useEffect(() => {
-    console.log(`[embed:${widgetId}] effect:iframeReady → ${iframeReady}, onUpdate=${!!onUpdate}, isExternal=${isExternal}, hasSnap=${hasSnap}`)
     if (!iframeReady || !onUpdate || isExternal) return
     if (!hasSnap) {
-      console.log(`[embed:${widgetId}] first-ready: requestCapture (no snap)`)
       requestCapture()
     }
   }, [iframeReady]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -354,10 +346,8 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   useEffect(() => {
     if (iframeReady && captureOnReadyRef.current) {
       captureOnReadyRef.current = false
-      console.log(`[embed:${widgetId}] captureOnReady: requestCapture`)
       requestCapture().then((updates) => {
         const meta = refreshMetaRef.current
-        console.log(`[embed:${widgetId}] captureOnReady: done, snap=${updates?.snapshot ? 'yes' : 'null'}, hasMeta=${!!meta}`)
         if (meta) {
           refreshMetaRef.current = null
           const snap = updates?.snapshot
@@ -374,7 +364,6 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
             }
             meta.resolve(!!snap)
           }
-          // Wait for our reveal slot in the wave
           const elapsed = Date.now() - meta.batchStart
           const targetTime = meta.revealOrder * REVEAL_INTERVAL
           const wait = Math.max(0, targetTime - elapsed)
@@ -616,7 +605,12 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                   className={styles.snapshotImage}
                   alt={`${prototypeTitle} snapshot`}
                   draggable={false}
-                  onError={() => { console.log(`[embed:${widgetId}] snapshot img onError: ${snapshot?.slice(0, 60)}`); setBrokenSnaps(prev => ({ ...prev, [snapshot]: true })) }}
+                  onError={() => {
+                    console.log(`[embed:${widgetId}] snapshot img onError: ${snapshot?.slice(0, 60)}`)
+                    setBrokenSnaps(prev => ({ ...prev, [snapshot]: true }))
+                    // Clear the broken snapshot from widget data so we stop trying
+                    onUpdate?.({ snapshot: '' })
+                  }}
                 />
               )}
 

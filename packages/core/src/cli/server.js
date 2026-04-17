@@ -63,7 +63,7 @@ async function main() {
     p.log.error(`Failed to start dev for ${initialBranch}: ${err.message}`)
   }
 
-  p.outro('Server running — switch branches from the UI or with storyboard dev <branch>')
+  p.outro('Server running')
 }
 
 main()

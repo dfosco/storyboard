@@ -21,6 +21,23 @@ import CreateDialog from './CreateDialog.jsx'
 import './command-palette.css'
 
 /**
+ * Check if a tool should be hidden from the command palette on the current route.
+ * Uses the same pattern-matching logic as excludeRoutes.
+ */
+function isHiddenInPalette(tool) {
+  const patterns = tool.hideInCommandPalette
+  if (!patterns || !Array.isArray(patterns) || patterns.length === 0) return false
+  if (typeof window === 'undefined') return false
+  let pathname = window.location.pathname
+  const base = (typeof import.meta !== 'undefined' ? import.meta.env?.BASE_URL : '/') || '/'
+  const baseTrimmed = base.replace(/\/+$/, '')
+  if (baseTrimmed && pathname.startsWith(baseTrimmed)) {
+    pathname = pathname.slice(baseTrimmed.length) || '/'
+  }
+  return patterns.some(pattern => new RegExp(pattern).test(pathname))
+}
+
+/**
  * Build groups from commandPalette.sections config.
  * Returns { groups, toolMenus } where toolMenus are entries with sub-pages.
  *
@@ -106,6 +123,7 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
       if (tool.disabled) continue
+      if (isHiddenInPalette(tool)) continue
 
       const label = tool.label || tool.ariaLabel || toolId
       const excluded = isExcludedByRoute(tool)
@@ -401,6 +419,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       if (!tool) continue
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
+      if (isHiddenInPalette(tool)) continue
       entries.push({ toolId, tool, label: customLabel || tool.label || toolId })
     }
   } else {
@@ -408,6 +427,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       if (tool.surface !== 'command-list') continue
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
+      if (isHiddenInPalette(tool)) continue
       entries.push({ toolId, tool, label: tool.label || toolId })
     }
   }

@@ -13,6 +13,7 @@
   import { onMount, onDestroy, untrack } from 'svelte'
   import './core-ui-colors.css'
   import CommandMenu from './CommandMenu.svelte'
+  import BranchBar from './BranchBar.svelte'
   import PwaInstallBanner from './PwaInstallBanner.svelte'
   import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
   import * as Tooltip from './lib/components/ui/tooltip/index.js'
@@ -765,6 +766,7 @@
 
 {#if !isEmbed}
   <PwaInstallBanner />
+  <BranchBar {basePath} />
 {/if}
 
 <style>

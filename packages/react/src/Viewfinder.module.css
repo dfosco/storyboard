@@ -100,7 +100,7 @@
 
 .branchBtn:hover {
   background: var(--bgColor-muted, #f5f5f5);
-  border-color: #ccc;
+  border-color: var(--borderColor-muted);
 }
 
 .branchBtnText {
@@ -265,7 +265,7 @@
 .navCount {
   margin-left: auto;
   font-size: 14px;
-  color: #aaa;
+  color: var(--fgColor-muted);
   font-weight: 500;
 }
 
@@ -313,7 +313,7 @@
 .starredEmpty {
   padding: 6px 20px;
   font-size: 14px;
-  color: #bbb;
+  color: var(--fgColor-muted);
   font-style: italic;
 }
 
@@ -377,7 +377,7 @@
 
 .loginBtn:hover {
   background: var(--bgColor-muted, #f5f5f5);
-  border-color: #ccc;
+  border-color: var(--borderColor-muted);
 }
 
 /* ─── Main Content ─── */
@@ -504,7 +504,7 @@
   border: none;
   background: none;
   cursor: pointer;
-  color: #bbb;
+  color: var(--fgColor-muted);
   transition: all 0.15s;
 }
 
@@ -515,12 +515,12 @@
 
 .iconBtnActive {
   composes: iconBtn;
-  color: #f59e0b;
+  color: var(--fgColor-attention, #f59e0b);
 }
 
 .iconBtnActive:hover {
   background: rgba(0, 0, 0, 0.06);
-  color: #d97706;
+  color: var(--fgColor-attention, #d97706);
 }
 
 .cardActions {
@@ -557,7 +557,7 @@
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  color: #aaa;
+  color: var(--fgColor-muted);
   text-decoration: none;
 }
 
@@ -565,7 +565,7 @@
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: #d1d5db;
+  background: var(--borderColor-muted, #d1d5db);
 }
 
 /* Folder card */
@@ -576,11 +576,11 @@
 
 .folderThumb {
   height: 140px;
-  background: #f0f4ff;
+  background: var(--bgColor-accent-muted, #f0f4ff);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #54aeff;
+  color: var(--fgColor-accent, #54aeff);
 }
 
 /* External badge */
@@ -643,7 +643,7 @@
 }
 
 .createMenuItem:hover {
-  border-color: #ccc;
+  border-color: var(--borderColor-muted);
   background: var(--bgColor-inset, #fafafa);
 }
 
@@ -753,17 +753,17 @@
 
 .createFormError {
   font-size: 14px;
-  color: #dc2626;
+  color: var(--fgColor-danger, #dc2626);
   margin-top: 8px;
 }
 
 /* Muted thumbnail colors */
-.thumbBlue { background: #f0f4f8; }
-.thumbAmber { background: #faf5ee; }
-.thumbGreen { background: #f0f7f4; }
-.thumbPurple { background: #f5f0fa; }
-.thumbRose { background: #faf0f2; }
-.thumbSlate { background: #f3f4f6; }
+.thumbBlue { background: var(--bgColor-accent-muted, #f0f4f8); }
+.thumbAmber { background: var(--bgColor-attention-muted, #faf5ee); }
+.thumbGreen { background: var(--bgColor-success-muted, #f0f7f4); }
+.thumbPurple { background: var(--bgColor-done-muted, #f5f0fa); }
+.thumbRose { background: var(--bgColor-danger-muted, #faf0f2); }
+.thumbSlate { background: var(--bgColor-neutral-muted, #f3f4f6); }
 
 
 /* Group by folders checkbox */
@@ -937,7 +937,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  border: 2px solid #fff;
+  border: 2px solid var(--bgColor-default, #fff);
   object-fit: cover;
   flex-shrink: 0;
 }
@@ -1011,7 +1011,7 @@
   gap: 4px;
   background: none;
   border: none;
-  color: #666;
+  color: var(--fgColor-muted);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;

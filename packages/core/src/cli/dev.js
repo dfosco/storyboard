@@ -333,7 +333,7 @@ async function main() {
       p.log.success(directUrl)
       p.log.warning('Proxy not running — run `npx storyboard setup` for clean URLs')
     }
-    p.outro('Ready — switch branches from the UI or run storyboard dev <branch>')
+    p.outro('Ready')
 
     // Pipe Vite output for interactive use
     entry.child.stdout.pipe(process.stdout)

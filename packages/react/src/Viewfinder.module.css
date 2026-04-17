@@ -195,7 +195,7 @@
 
 .branchSeparator {
   height: 1px;
-  background: #e5e5e5;
+  background: var(--vf-border);
   margin: 4px 10px;
 }
 
@@ -306,7 +306,7 @@
 
 .separator {
   height: 1px;
-  background: #e5e5e5;
+  background: var(--vf-border);
   margin: 8px 16px;
 }
 

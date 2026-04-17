@@ -209,6 +209,9 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
                   + Add new page
                 </li>
               )}
+              {successMsg && (
+                <li className={styles.successMsg}>✓ {successMsg}</li>
+              )}
             </>
           )}
         </ul>

@@ -152,12 +152,14 @@
   font-style: italic;
 }
 
-.starredDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  background: #ccc;
+.starredIcon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  opacity: 0.5;
 }
 
 /* Sidebar footer — user card */

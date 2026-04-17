@@ -1446,35 +1446,71 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       const text = e.clipboardData?.getData('text/plain')?.trim()
       if (!text) return
 
-      // Detect canvasId::widgetId format for widget duplication (cross-canvas copy-paste)
+      // Detect canvasId::widgetId or canvasId::id1,id2,id3 format for widget duplication
       // Also supports legacy canvasId/widgetId for basenames without slashes,
       // but only when the second segment looks like a widget ID (type-hash).
       const widgetRefMatch = text.match(/^(.+)::([^:]+)$/) || (text.indexOf('::') === -1 && text.match(/^([^/]+)\/((?:sticky-note|markdown|prototype|link-preview|figma-embed|component|image)-[a-z0-9]+)$/))
       if (widgetRefMatch) {
         e.preventDefault()
-        const [, sourceCanvas, sourceWidgetId] = widgetRefMatch
-        // Component widgets are code, not duplicable data — silently consume the ref
-        if (sourceWidgetId.startsWith('jsx-')) return
+        const [, sourceCanvas, sourceWidgetRef] = widgetRefMatch
+        const sourceWidgetIds = sourceWidgetRef.split(',').filter(id => !id.startsWith('jsx-'))
+        if (sourceWidgetIds.length === 0) return
+
         try {
-          let sourceWidget = null
+          // Resolve source widgets in canvas order
+          let sourceList
           if (sourceCanvas === canvasId) {
-            sourceWidget = (localWidgets ?? []).find(w => w.id === sourceWidgetId)
+            sourceList = localWidgets ?? []
           } else {
             const canvasData = await getCanvasApi(sourceCanvas)
-            sourceWidget = (canvasData?.widgets ?? []).find(w => w.id === sourceWidgetId)
+            sourceList = canvasData?.widgets ?? []
           }
-          if (sourceWidget) {
-            const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
-            const pos = centerPositionForWidget(center, sourceWidget.type, sourceWidget.props)
-            undoRedo.snapshot(stateRef.current, 'add')
+
+          const sourceWidgets = sourceList.filter(w => sourceWidgetIds.includes(w.id))
+          if (sourceWidgets.length === 0) return
+
+          // Compute bounding box of source widgets for relative positioning
+          const fallback = { width: 200, height: 150 }
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+          for (const w of sourceWidgets) {
+            const wx = w.position?.x ?? 0
+            const wy = w.position?.y ?? 0
+            const ww = w.props?.width ?? WIDGET_FALLBACK_SIZES[w.type]?.width ?? fallback.width
+            const wh = w.props?.height ?? WIDGET_FALLBACK_SIZES[w.type]?.height ?? fallback.height
+            if (wx < minX) minX = wx
+            if (wy < minY) minY = wy
+            if (wx + ww > maxX) maxX = wx + ww
+            if (wy + wh > maxY) maxY = wy + wh
+          }
+          const groupW = maxX - minX
+          const groupH = maxY - minY
+
+          // Center the group in the viewport
+          const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
+          const baseX = Math.round(center.x - groupW / 2)
+          const baseY = Math.round(center.y - groupH / 2)
+
+          // Single undo snapshot for the entire paste
+          undoRedo.snapshot(stateRef.current, 'add')
+
+          // Paste all widgets, collecting new IDs for selection
+          const newWidgets = []
+          for (const w of sourceWidgets) {
+            const relX = (w.position?.x ?? 0) - minX
+            const relY = (w.position?.y ?? 0) - minY
             const result = await addWidgetApi(canvasId, {
-              type: sourceWidget.type,
-              props: { ...sourceWidget.props },
-              position: pos,
+              type: w.type,
+              props: { ...w.props },
+              position: { x: baseX + relX, y: baseY + relY },
             })
             if (result.success && result.widget) {
-              setLocalWidgets((prev) => [...(prev || []), result.widget])
+              newWidgets.push(result.widget)
             }
+          }
+
+          if (newWidgets.length > 0) {
+            setLocalWidgets((prev) => [...(prev || []), ...newWidgets])
+            setSelectedWidgetIds(new Set(newWidgets.map(w => w.id)))
           }
         } catch (err) {
           console.error('[canvas] Failed to paste widget reference:', err)
@@ -1505,6 +1541,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         if (result.success && result.widget) {
           undoRedo.snapshot(stateRef.current, 'add')
           setLocalWidgets((prev) => [...(prev || []), result.widget])
+          setSelectedWidgetIds(new Set([result.widget.id]))
         }
       } catch (err) {
         console.error('[canvas] Failed to add widget from paste:', err)

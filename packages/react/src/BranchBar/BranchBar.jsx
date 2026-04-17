@@ -11,6 +11,12 @@ import css from './BranchBar.module.css'
 export default function BranchBar({ basePath }) {
   const [hidden, setHidden] = useState(false)
 
+  const isHiddenByParam = useMemo(() => {
+    if (typeof window === 'undefined') return false
+    const params = new URLSearchParams(window.location.search)
+    return params.has('_sb_hide_branch_bar') || params.has('_sb_embed')
+  }, [])
+
   const currentBranch = useMemo(() => {
     const m = (basePath || '').match(/\/branch--([^/]+)\/?$/)
     return m ? m[1] : 'main'
@@ -26,7 +32,7 @@ export default function BranchBar({ basePath }) {
     return () => observer.disconnect()
   }, [])
 
-  if (!isOnBranch || hidden) return null
+  if (!isOnBranch || hidden || isHiddenByParam) return null
 
   function hideChrome() {
     window.dispatchEvent(new KeyboardEvent('keydown', {

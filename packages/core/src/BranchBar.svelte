@@ -24,6 +24,10 @@
   let open = $state(false)
   let chromeHidden = $state(false)
   let barEl: HTMLElement | undefined = $state()
+  let switching: string | null = $state(null)
+  let switchError: string | null = $state(null)
+
+  const isLocalDev = typeof window !== 'undefined' && (window as any).__SB_LOCAL_DEV__ === true
 
   // Parse current branch from basePath
   const currentBranch = $derived(() => {
@@ -86,13 +90,43 @@
       })
   )
 
-  function navigate(folder: string) {
-    window.location.href = `${branchBasePath}${folder}`
+  async function switchToBranch(branch: string) {
+    if (switching) return
+
+    if (!isLocalDev) {
+      // Prod: direct navigation
+      const target = allBranches.find(b => b.branch === branch)
+      window.location.href = `${branchBasePath}${target?.folder || `branch--${branch}/`}`
+      return
+    }
+
+    // Dev: call switch-branch API to spin up server first
+    switching = branch
+    switchError = null
+    open = false
+
+    const apiBase = (basePath || '/').replace(/\/$/, '')
+    try {
+      const res = await fetch(`${apiBase}/_storyboard/switch-branch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ branch }),
+      })
+      const data = await res.json()
+      if (res.ok && data.url) {
+        window.location.href = data.url
+      } else {
+        switchError = data.error || 'Failed to switch'
+        switching = null
+      }
+    } catch (e: any) {
+      switchError = e.message || 'Server not reachable'
+      switching = null
+    }
   }
 
   function goToMain() {
-    const main = allBranches.find(b => b.branch === 'main')
-    window.location.href = branchBasePath + (main?.folder || '')
+    switchToBranch('main')
   }
 
   function hideChrome() {
@@ -103,26 +137,36 @@
 {#if isOnBranch && !chromeHidden}
   <div class="branch-bar" bind:this={barEl}>
     <div class="branch-bar-inner">
-      <button class="branch-bar-trigger" onclick={() => { open = !open }}>
-        <Icon name="feather/git-branch" size={12} />
-        <span class="branch-bar-name">{currentBranch()}</span>
-        <Icon name="feather/chevron-down" size={10} />
-      </button>
+      {#if switching}
+        <span class="branch-bar-switching">
+          <span class="branch-bar-spinner"></span>
+          Switching to {switching}…
+        </span>
+      {:else}
+        <button class="branch-bar-trigger" onclick={() => { open = !open }} disabled={!!switching}>
+          <Icon name="feather/git-branch" size={12} />
+          <span class="branch-bar-name">{currentBranch()}</span>
+          <Icon name="feather/chevron-down" size={10} />
+        </button>
+      {/if}
 
       <div class="branch-bar-actions">
-        <button class="branch-bar-action" onclick={hideChrome} aria-label="Hide UI">
+        {#if switchError}
+          <span class="branch-bar-error">{switchError}</span>
+        {/if}
+        <button class="branch-bar-action" onclick={hideChrome} aria-label="Hide UI" disabled={!!switching}>
           Hide
         </button>
-        <button class="branch-bar-action" onclick={goToMain} aria-label="Switch to main">
+        <button class="branch-bar-action" onclick={goToMain} aria-label="Switch to main" disabled={!!switching}>
           Close
         </button>
       </div>
     </div>
 
-    {#if open}
+    {#if open && !switching}
       <div class="branch-bar-dropdown">
         {#each sortedBranches as b (b.branch)}
-          <button class="branch-bar-option" onclick={() => navigate(b.folder)}>
+          <button class="branch-bar-option" onclick={() => switchToBranch(b.branch)}>
             <Icon name="feather/git-branch" size={12} />
             {b.branch}
           </button>
@@ -256,6 +300,35 @@
     color: #666;
     font-size: 11px;
     font-style: italic;
+  }
+
+  .branch-bar-switching {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #aaa;
+    font-size: 11px;
+    font-weight: 400;
+  }
+
+  .branch-bar-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: branch-bar-spin 0.6s linear infinite;
+  }
+
+  @keyframes branch-bar-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .branch-bar-error {
+    color: #f87171;
+    font-size: 10px;
+    margin-right: 4px;
   }
 
   /* Push page content down when branch bar is visible */

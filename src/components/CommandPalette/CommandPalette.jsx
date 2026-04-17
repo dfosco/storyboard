@@ -207,17 +207,22 @@ export default function StoryboardCommandPalette({ basePath }) {
   useEffect(() => {
     function handleToggle() {
       setOpen(prev => {
-        const next = !prev
-        if (next) {
-          setItems(buildPaletteItems(basePath))
-          setSearch('')
+        if (!prev) {
+          // Opening — build items synchronously before render
+          const built = buildPaletteItems(basePath)
+          // Use setTimeout to set items after open state is committed
+          setTimeout(() => {
+            setItems(built)
+            setSearch('')
+          }, 0)
         }
-        return next
+        return !prev
       })
     }
 
     function handleOpen() {
-      setItems(buildPaletteItems(basePath))
+      const built = buildPaletteItems(basePath)
+      setItems(built)
       setSearch('')
       setOpen(true)
     }
@@ -230,14 +235,17 @@ export default function StoryboardCommandPalette({ basePath }) {
     }
   }, [basePath])
 
+  // Guard against react-cmdk calling onChangeOpen(false) unexpectedly
+  const handleChangeOpen = useCallback((value) => {
+    if (!value) {
+      setOpen(false)
+    }
+  }, [])
+
   const filteredItems = useMemo(
     () => filterItems(items, search),
     [items, search]
   )
-
-  const handleChangeOpen = useCallback((value) => {
-    setOpen(value)
-  }, [])
 
   const handleChangeSearch = useCallback((value) => {
     setSearch(value)
@@ -249,6 +257,7 @@ export default function StoryboardCommandPalette({ basePath }) {
       onChangeOpen={handleChangeOpen}
       search={search}
       isOpen={open}
+      page="root"
       placeholder="Search commands, prototypes, canvases, stories..."
     >
       <CommandPalette.Page id="root">

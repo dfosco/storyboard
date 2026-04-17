@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import 'react-cmdk/dist/cmdk.css'
-import CommandPalette, { filterItems, getItemIndex } from 'react-cmdk'
+import * as ReactCmdk from 'react-cmdk'
+const CommandPalette = ReactCmdk.default || ReactCmdk
+const { filterItems, getItemIndex } = ReactCmdk
 import {
   buildPrototypeIndex,
   listStories,

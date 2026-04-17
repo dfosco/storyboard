@@ -9,13 +9,18 @@ import styles from './PageSelector.module.css'
  *
  * @param {{ currentName: string, pages: Array<{ name: string, route: string, title: string }>, isLocalDev?: boolean }} props
  */
-export default function PageSelector({ currentName, pages, isLocalDev = false }) {
+export default function PageSelector({ currentName, pages: initialPages, isLocalDev = false }) {
   const [open, setOpen] = useState(false)
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [pages, setPages] = useState(initialPages)
+  const [successMsg, setSuccessMsg] = useState(null)
   const containerRef = useRef(null)
   const inputRef = useRef(null)
+
+  // Sync pages when prop changes (e.g. HMR reload)
+  useEffect(() => { setPages(initialPages) }, [initialPages])
 
   const currentPage = pages.find((p) => p.name === currentName)
   const currentLabel = currentPage?.title || currentName.split('/').pop()
@@ -46,18 +51,32 @@ export default function PageSelector({ currentName, pages, isLocalDev = false })
         setCreating(false)
         return
       }
-      // Navigate to the new page once Vite picks it up
-      const kebab = trimmed
-        .replace(/[^a-zA-Z0-9\s_-]/g, '')
-        .trim()
-        .replace(/[\s_]+/g, '-')
-        .toLowerCase()
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
-      const route = folder ? `/${folder}/${kebab}` : `/${kebab}`
+      const route = result.route
       const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
-      // Small delay to let Vite detect the new file
-      setTimeout(() => { window.location.href = base + route }, 600)
+      const targetUrl = base + route
+
+      // Optimistically add the new page to the bottom of the list
+      const pageName = result.name || trimmed
+      setPages(prev => [...prev, { name: pageName, route, title: trimmed }])
+
+      // Show success confirmation and reset form
+      setSuccessMsg(`"${trimmed}" created`)
+      setAdding(false)
+      setNewName('')
+      setCreating(false)
+
+      // Navigate to the new page after Vite picks up the new file
+      if (import.meta.hot) {
+        const timer = setTimeout(() => {
+          window.location.href = targetUrl
+        }, 3000)
+        import.meta.hot.on('vite:beforeFullReload', () => {
+          clearTimeout(timer)
+          sessionStorage.setItem('sb-pending-navigate', targetUrl)
+        })
+      } else {
+        setTimeout(() => { window.location.href = targetUrl }, 1000)
+      }
     } catch (err) {
       console.error('Failed to create canvas page:', err)
       setCreating(false)
@@ -77,6 +96,7 @@ export default function PageSelector({ currentName, pages, isLocalDev = false })
         setOpen(false)
         setAdding(false)
         setNewName('')
+        setSuccessMsg(null)
       }
     }
     document.addEventListener('mousedown', handleClick)

@@ -272,6 +272,23 @@ export async function mountStoryboardCore(config = {}, options = {}) {
 
   // Show pending workshop notifications (e.g. canvas created before Vite reload)
   showPendingNotification(basePath)
+
+  // Handle pending navigation (e.g. after PageSelector created a new canvas page)
+  handlePendingNavigation()
+}
+
+/**
+ * Check sessionStorage for a pending navigation target.
+ * Used by PageSelector when creating a new canvas page — Vite does a full-reload
+ * after detecting the new file, so we stash the target URL and navigate after reload.
+ */
+function handlePendingNavigation() {
+  try {
+    const target = sessionStorage.getItem('sb-pending-navigate')
+    if (!target) return
+    sessionStorage.removeItem('sb-pending-navigate')
+    window.location.href = target
+  } catch { /* ignore */ }
 }
 
 /**
@@ -288,6 +305,12 @@ function showPendingNotification(basePath) {
       sessionStorage.removeItem(key)
       const { success: message, route, path: filePath } = JSON.parse(raw)
       if (!message) continue
+      // Skip toast if we're already on the created page
+      if (route) {
+        const currentPath = window.location.pathname
+        const fullRoute = route.startsWith('/') ? (basePath.replace(/\/$/, '') + route) : route
+        if (currentPath === fullRoute || currentPath === fullRoute + '/') continue
+      }
       showToast(message, route, basePath, filePath)
       return
     } catch { /* ignore malformed session entry */ }

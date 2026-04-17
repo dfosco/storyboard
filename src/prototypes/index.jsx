@@ -1,12 +1,12 @@
-import ViewfinderNew from '@dfosco/storyboard-react/ViewfinderNew'
+import { Viewfinder } from '@dfosco/storyboard-react'
 
 const pageModules = import.meta.glob('/src/prototypes/*/*.jsx')
 
 export default function IndexPage() {
   return (
-    <ViewfinderNew
+    <Viewfinder
       title="Storyboard"
-      subtitle="A collaborative space for design artifacts"
+      subtitle="Collaborative workspace for design & code artifacts"
       pageModules={pageModules}
       basePath={import.meta.env.BASE_URL}
     />

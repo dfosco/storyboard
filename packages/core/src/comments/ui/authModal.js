@@ -7,8 +7,6 @@
 
 import { getCachedUser, clearToken } from '../auth.js'
 
-const MODAL_ID = 'sb-auth-modal'
-
 /**
  * Open the auth modal. Dispatches a custom event to trigger the React PATDialog.
  * @param {{ initialError?: string|null }} [options]

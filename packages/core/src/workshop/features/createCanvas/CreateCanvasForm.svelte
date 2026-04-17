@@ -109,12 +109,7 @@
     <Label for="sb-canvas-name">Name</Label>
     <Input id="sb-canvas-name" placeholder="e.g. design-overview" autocomplete="off" spellcheck="false" bind:value={name} />
     {#if nameError}<p class="text-sm text-destructive">{nameError}</p>{/if}
-    {#if routePreview}<p class="text-xs text-muted-foreground">Route: <code class="px-1 py-0.5 bg-muted rounded font-mono text-foreground text-xs">{routePreview}</code></p>{/if}
-  </div>
-
-  <div class="space-y-1">
-    <Label for="sb-canvas-title">Title</Label>
-    <Input id="sb-canvas-title" placeholder={autoTitle || 'Auto-derived from name'} value={displayTitle} oninput={handleTitleInput} onblur={handleTitleBlur} />
+    {#if routePreview}<p class="text-xs text-muted-foreground mt-1.5">Route: <code class="px-1 py-0.5 bg-muted rounded font-mono text-foreground text-xs">{routePreview}</code></p>{/if}
   </div>
 
   <div class="space-y-1">

@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
-import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon } from '@primer/octicons-react'
+import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, StarIcon, StarFillIcon } from '@primer/octicons-react'
 import { Menu } from '@base-ui/react/menu'
 import Icon from './Icon.jsx'
 import css from './ViewfinderNew.module.css'
@@ -125,11 +125,12 @@ function AvatarStack({ authors }) {
 function StarBtn({ active, onClick }) {
   return (
     <button
-      className={active ? css.starBtnActive : css.starBtn}
+      className={active ? css.iconBtnActive : css.iconBtn}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClick() }}
-      aria-label={active ? 'Unstar' : 'Star'}
+      aria-label={active ? 'Remove favorite' : 'Favorite'}
+      title={active ? 'Remove favorite' : 'Favorite'}
     >
-      {active ? '★' : '☆'}
+      {active ? <StarFillIcon size={16} /> : <StarIcon size={16} />}
     </button>
   )
 }
@@ -157,7 +158,10 @@ function ArtifactCard({ item, basePath, starred, onToggleStar }) {
     <Tag className={css.card} {...linkProps} onClick={handleClick}>
       <div className={css.cardHeader}>
         <span className={css.cardBadge}>{getTypeLabel(item.type)}</span>
-        <StarBtn active={starred} onClick={() => onToggleStar(item.id)} />
+        <div className={css.cardActions}>
+          {item.flows?.length > 0 && <FlowsDropdown flows={item.flows} basePath={basePath} />}
+          <StarBtn active={starred} onClick={() => onToggleStar(item.id)} />
+        </div>
       </div>
       <div className={css.cardBody}>
         <div className={css.cardBodyContent}>
@@ -177,7 +181,6 @@ function ArtifactCard({ item, basePath, starred, onToggleStar }) {
             </div>
           </div>
         </div>
-        {item.flows?.length > 0 && <FlowsDropdown flows={item.flows} basePath={basePath} />}
       </div>
     </Tag>
   )
@@ -208,10 +211,12 @@ function FlowsDropdown({ flows, basePath }) {
   return (
     <Menu.Root>
       <Menu.Trigger
-        className={css.flowsBtn}
+        className={css.iconBtn}
         onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+        aria-label="See flows"
+        title="See flows"
       >
-        <ChevronDownIcon size={12} />
+        <Icon name="flow" size={16} />
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner className={css.flowsPositioner} side="bottom" align="end" sideOffset={4}>

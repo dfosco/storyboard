@@ -1405,7 +1405,13 @@
   border-bottom: 1px solid #e5e5e5;
 }
 
-.folderSection:last-child {
+.folderSectionCollapsed {
+  composes: folderSection;
+  padding-bottom: 0;
+}
+
+.folderSection:last-child,
+.folderSectionCollapsed:last-child {
   border-bottom: none;
   margin-bottom: 0;
 }

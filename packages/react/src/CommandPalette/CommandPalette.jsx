@@ -17,6 +17,7 @@ import {
   getCommandPaletteConfig,
   getToolbarConfig,
   setTheme,
+  getTheme,
   isExcludedByRoute,
 } from '@dfosco/storyboard-core'
 import CreateDialog from './CreateDialog.jsx'
@@ -675,6 +676,14 @@ export default function StoryboardCommandPalette({ basePath }) {
   const [authorIndex, setAuthorIndex] = useState(new Map())
   const [activePage, setActivePage] = useState('root')
   const [createType, setCreateType] = useState(null)
+  const [currentTheme, setCurrentTheme] = useState(() => getTheme())
+
+  // Keep currentTheme in sync when theme changes
+  useEffect(() => {
+    const handler = (e) => setCurrentTheme(e.detail.theme)
+    document.addEventListener('storyboard:theme:changed', handler)
+    return () => document.removeEventListener('storyboard:theme:changed', handler)
+  }, [])
 
   function handleCreateAction(type) {
     setOpen(false)
@@ -773,7 +782,9 @@ export default function StoryboardCommandPalette({ basePath }) {
       id: `subpage:${menu.id}`,
       items: (menu.options || []).map((opt, i) => ({
         id: `subpage:${menu.id}:${i}`,
-        children: opt.label,
+        children: opt.toolHandler === 'core:theme' && opt.value === currentTheme
+          ? <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}><span>{opt.label}</span><span>✓</span></span>
+          : opt.label,
         keywords: [opt.label, menu.label || menu.id],
         showType: false,
         onClick: () => {
@@ -789,7 +800,7 @@ export default function StoryboardCommandPalette({ basePath }) {
         },
       })),
     })).filter(g => g.items.length > 0)
-  }, [toolMenus])
+  }, [toolMenus, currentTheme])
 
   const filteredItems = useMemo(() => {
     const base = filterItems(items, search)
@@ -903,7 +914,9 @@ export default function StoryboardCommandPalette({ basePath }) {
                   setActivePage('root')
                 }}
               >
-                {opt.label}
+                {opt.toolHandler === 'core:theme' && opt.value === currentTheme
+                  ? <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}><span>{opt.label}</span><span>✓</span></span>
+                  : opt.label}
               </CommandPalette.ListItem>
             ))}
           </CommandPalette.List>

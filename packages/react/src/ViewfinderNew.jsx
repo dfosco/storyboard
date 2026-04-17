@@ -4,9 +4,10 @@
  * Replaces the old list-based Viewfinder with a sidebar + grid layout.
  * Wired to real data from buildPrototypeIndex and listStories.
  */
-import { useState, useMemo, useCallback, useSyncExternalStore } from 'react'
+import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
-import { MarkGithubIcon } from '@primer/octicons-react'
+import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon } from '@primer/octicons-react'
+import { Menu } from '@base-ui/react/menu'
 import Icon from './Icon.jsx'
 import css from './ViewfinderNew.module.css'
 
@@ -472,6 +473,138 @@ const NAV_ITEMS = [
 
 const TAB_FILTERS = ['All', 'Recent', 'Starred']
 
+/* ─── Branch Dropdown ─── */
+
+function useBranches(basePath) {
+  const [branches, setBranches] = useState(() => {
+    if (typeof window !== 'undefined' && Array.isArray(window.__SB_BRANCHES__)) {
+      return window.__SB_BRANCHES__
+    }
+    return null
+  })
+
+  const [gitUser, setGitUser] = useState(null)
+
+  useEffect(() => {
+    const apiBase = (basePath || '/').replace(/\/$/, '')
+
+    // Fetch git user info for "my branches" filtering
+    fetch(`${apiBase}/_storyboard/git-user`).then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.name) setGitUser(data.name) })
+      .catch(() => {})
+
+    // If no branches from window global, fetch from server API
+    if (!branches) {
+      fetch(`${apiBase}/_storyboard/worktrees`).then(r => r.ok ? r.json() : null)
+        .then(data => { if (Array.isArray(data) && data.length > 0) setBranches(data) })
+        .catch(() => {})
+    }
+  }, [])
+
+  const currentBranch = useMemo(() => {
+    const m = (basePath || '').match(/\/branch--([^/]+)\/?$/)
+    return m ? m[1] : 'main'
+  }, [basePath])
+
+  const branchBasePath = (basePath || '/').replace(/\/branch--[^/]*\/$/, '/')
+
+  return { branches, currentBranch, branchBasePath, gitUser }
+}
+
+function BranchDropdown({ basePath }) {
+  const { branches, currentBranch, branchBasePath, gitUser } = useBranches(basePath)
+  const [showAll, setShowAll] = useState(false)
+
+  if (!branches || branches.length === 0) return null
+
+  const twoWeeksAgo = Date.now() - 14 * 24 * 60 * 60 * 1000
+
+  // Split into "my branches" vs others
+  const myBranches = gitUser
+    ? branches.filter(b => b.author === gitUser || b.branch === currentBranch)
+    : branches.filter(b => b.branch === currentBranch)
+
+  const otherBranches = branches.filter(b => !myBranches.some(m => m.branch === b.branch))
+
+  // Recent = last 2 weeks (or all if showAll)
+  const recentBranches = showAll
+    ? [...otherBranches].sort((a, b) => (a.branch || '').localeCompare(b.branch || ''))
+    : otherBranches
+        .filter(b => !b.lastModified || new Date(b.lastModified).getTime() > twoWeeksAgo)
+        .sort((a, b) => (a.branch || '').localeCompare(b.branch || ''))
+
+  const navigate = (folder) => {
+    if (folder) window.location.href = `${branchBasePath}${folder}`
+  }
+
+  return (
+    <Menu.Root>
+      <Menu.Trigger className={css.branchBtn}>
+        <GitBranchIcon size={14} />
+        <span className={css.branchBtnText}>{currentBranch}</span>
+        <ChevronDownIcon size={12} />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner className={css.branchPositioner} side="bottom" align="end" sideOffset={4}>
+          <Menu.Popup className={css.branchPopup}>
+            {myBranches.length > 0 && (
+              <>
+                <div className={css.branchSectionLabel}>My branches</div>
+                {myBranches.map(b => (
+                  <Menu.Item
+                    key={b.branch}
+                    className={`${css.branchItem}${b.branch === currentBranch ? ` ${css.branchItemActive}` : ''}`}
+                    onClick={() => navigate(b.folder)}
+                  >
+                    <GitBranchIcon size={12} />
+                    {b.branch}
+                  </Menu.Item>
+                ))}
+              </>
+            )}
+
+            {myBranches.length > 0 && recentBranches.length > 0 && (
+              <div className={css.branchSeparator} />
+            )}
+
+            {recentBranches.length > 0 && (
+              <>
+                <div className={css.branchSectionLabel}>
+                  {showAll ? 'All branches' : 'Recent branches'}
+                </div>
+                <Menu.Viewport className={css.branchViewport}>
+                  {recentBranches.map(b => (
+                    <Menu.Item
+                      key={b.branch}
+                      className={`${css.branchItem}${b.branch === currentBranch ? ` ${css.branchItemActive}` : ''}`}
+                      onClick={() => navigate(b.folder)}
+                    >
+                      <GitBranchIcon size={12} />
+                      {b.branch}
+                    </Menu.Item>
+                  ))}
+                </Menu.Viewport>
+              </>
+            )}
+
+            {!showAll && otherBranches.length > recentBranches.length && (
+              <>
+                <div className={css.branchSeparator} />
+                <button
+                  className={css.branchShowAll}
+                  onClick={(e) => { e.stopPropagation(); setShowAll(true) }}
+                >
+                  See all branches ({otherBranches.length})
+                </button>
+              </>
+            )}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  )
+}
+
 /* ─── Main Component ─── */
 
 export default function ViewfinderNew({
@@ -628,6 +761,7 @@ export default function ViewfinderNew({
           </div>
         </div>
         <div className={css.topActions}>
+          <BranchDropdown basePath={basePath} />
           <button className={css.createBtn} onClick={() => setShowCreate(true)}>
             + Create
           </button>

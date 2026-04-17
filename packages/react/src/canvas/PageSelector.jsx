@@ -120,7 +120,8 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
     return () => document.removeEventListener('keydown', handleKey)
   }, [open, adding])
 
-  if (!pages || pages.length < 2) return null
+  // Show selector when there are multiple pages, or in dev mode (to allow adding pages)
+  if (!pages || (pages.length < 2 && !isLocalDev)) return null
 
   return (
     <nav ref={containerRef} className={styles.container} aria-label="Canvas pages">

@@ -232,7 +232,11 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
   if (canvasId) {
     const canvasData = canvases?.[canvasId]
     const group = canvasData?._group
-    const siblingPages = group ? canvasGroupMap.get(group) || [] : []
+    // Include the current canvas as a sibling even if it's the only page in its group,
+    // so the PageSelector can render and allow adding new pages.
+    const siblingPages = group
+      ? canvasGroupMap.get(group) || []
+      : [{ name: canvasId, route: canvasData?._route || `/canvas/${canvasId}`, title: canvasData?.title || canvasId.split('/').pop() }]
     const canvasMeta = canvasData?._canvasMeta || null
     const canvasValue = {
       data: null,

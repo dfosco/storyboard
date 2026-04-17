@@ -4,64 +4,62 @@
   Shows when the app is loaded on a non-main branch (basePath contains branch--).
   Hidden on embeds (_sb_embed) and when CoreUI chrome is hidden (cmd+.).
   
-  Features:
-  - Branch name display
-  - Dropdown to switch to other branches
-  - × button to switch to main
+  Switches branches via POST /_storyboard/switch-branch → server starts Vite,
+  registers Caddy route, responds with redirect URL.
 -->
 
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount } from 'svelte'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
 
   interface Props {
     basePath?: string
-    branches?: Array<{ branch: string; folder: string }>
   }
 
-  let { basePath = '/', branches = [] }: Props = $props()
+  let { basePath = '/' }: Props = $props()
 
   let open = $state(false)
+  let switching = $state<string | null>(null)
+  let error = $state<string | null>(null)
   let chromeHidden = $state(false)
   let barEl: HTMLElement | undefined = $state()
+  let branches: Array<{ branch: string; folder: string }> = $state([])
 
-  // Parse current branch from basePath
   const currentBranch = $derived(() => {
     const m = (basePath || '').match(/\/branch--([^/]+)\/?/)
     return m ? m[1] : null
   })
 
-  // Base path without branch prefix (for switching)
   const branchBasePath = $derived(
     (basePath || '/').replace(/\/branch--[^/]*\/?/, '/')
   )
 
-  // Don't render if we're on main (no branch-- in path)
   const isOnBranch = $derived(!!currentBranch())
 
-  // Fetch branches from server if not provided
-  let fetchedBranches: Array<{ branch: string; folder: string }> = $state([])
-  
-  onMount(() => {
-    if (branches.length === 0) {
-      const apiBase = (basePath || '/').replace(/\/$/, '')
-      fetch(`${apiBase}/_storyboard/worktrees`)
-        .then(r => r.ok ? r.json() : [])
-        .then(data => { if (Array.isArray(data)) fetchedBranches = data })
-        .catch(() => {})
-    }
+  const sortedBranches = $derived(
+    [...branches]
+      .filter(b => b.branch !== currentBranch())
+      .sort((a, b) => {
+        if (a.branch === 'main') return -1
+        if (b.branch === 'main') return 1
+        return a.branch.localeCompare(b.branch)
+      })
+  )
 
-    // Listen for chrome hidden toggle
+  onMount(() => {
+    const apiBase = (basePath || '/').replace(/\/$/, '')
+    fetch(`${apiBase}/_storyboard/worktrees`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) branches = data })
+      .catch(() => {})
+
     const observer = new MutationObserver(() => {
       chromeHidden = document.documentElement.classList.contains('storyboard-chrome-hidden')
     })
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
 
-    // Close dropdown on outside click
     function handleClick(e: MouseEvent) {
-      if (open && barEl && !barEl.contains(e.target as Node)) {
-        open = false
-      }
+      if (open && barEl && !barEl.contains(e.target as Node)) open = false
     }
     document.addEventListener('click', handleClick)
 
@@ -71,28 +69,35 @@
     }
   })
 
-  const allBranches = $derived(
-    branches.length > 0 ? branches : fetchedBranches
-  )
+  async function switchBranch(branch: string) {
+    switching = branch
+    error = null
+    open = false
 
-  // Sort: main first, then A-Z
-  const sortedBranches = $derived(
-    [...allBranches]
-      .filter(b => b.branch !== currentBranch())
-      .sort((a, b) => {
-        if (a.branch === 'main') return -1
-        if (b.branch === 'main') return 1
-        return a.branch.localeCompare(b.branch)
+    const apiBase = (basePath || '/').replace(/\/$/, '')
+
+    try {
+      const res = await fetch(`${apiBase}/_storyboard/switch-branch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ branch }),
       })
-  )
+      const data = await res.json()
 
-  function navigate(folder: string) {
-    window.location.href = `${branchBasePath}${folder}`
+      if (res.ok && data.url) {
+        window.location.href = data.url
+      } else {
+        error = data.error || 'Failed to switch branch'
+        switching = null
+      }
+    } catch (e: any) {
+      error = e.message || 'Server not reachable'
+      switching = null
+    }
   }
 
   function goToMain() {
-    const main = allBranches.find(b => b.branch === 'main')
-    window.location.href = branchBasePath + (main?.folder || '')
+    switchBranch('main')
   }
 
   function hideChrome() {
@@ -103,26 +108,32 @@
 {#if isOnBranch && !chromeHidden}
   <div class="branch-bar" bind:this={barEl}>
     <div class="branch-bar-inner">
-      <button class="branch-bar-trigger" onclick={() => { open = !open }}>
-        <Icon name="feather/git-branch" size={12} />
-        <span class="branch-bar-name">{currentBranch()}</span>
-        <Icon name="feather/chevron-down" size={10} />
-      </button>
+      {#if switching}
+        <span class="branch-bar-switching">
+          Switching to {switching}…
+        </span>
+      {:else}
+        <button class="branch-bar-trigger" onclick={() => { open = !open }}>
+          <Icon name="feather/git-branch" size={12} />
+          <span class="branch-bar-name">{currentBranch()}</span>
+          <Icon name="feather/chevron-down" size={10} />
+        </button>
+      {/if}
 
       <div class="branch-bar-actions">
-        <button class="branch-bar-action" onclick={hideChrome} aria-label="Hide UI">
-          Hide
-        </button>
-        <button class="branch-bar-action" onclick={goToMain} aria-label="Switch to main">
-          Close
-        </button>
+        <button class="branch-bar-action" onclick={hideChrome}>Hide</button>
+        <button class="branch-bar-action" onclick={goToMain}>Close</button>
       </div>
     </div>
+
+    {#if error}
+      <div class="branch-bar-error">{error}</div>
+    {/if}
 
     {#if open}
       <div class="branch-bar-dropdown">
         {#each sortedBranches as b (b.branch)}
-          <button class="branch-bar-option" onclick={() => navigate(b.folder)}>
+          <button class="branch-bar-option" onclick={() => switchBranch(b.branch)}>
             <Icon name="feather/git-branch" size={12} />
             {b.branch}
           </button>
@@ -187,6 +198,12 @@
     white-space: nowrap;
   }
 
+  .branch-bar-switching {
+    font-size: 11px;
+    color: #999;
+    font-style: italic;
+  }
+
   .branch-bar-actions {
     position: absolute;
     right: 8px;
@@ -211,6 +228,14 @@
   .branch-bar-action:hover {
     color: #fff;
     background: rgba(255, 255, 255, 0.1);
+  }
+
+  .branch-bar-error {
+    background: #7f1d1d;
+    color: #fca5a5;
+    font-size: 11px;
+    text-align: center;
+    padding: 4px 12px;
   }
 
   .branch-bar-dropdown {
@@ -258,7 +283,6 @@
     font-style: italic;
   }
 
-  /* Push page content down when branch bar is visible */
   :global(html:has(.branch-bar)) {
     --sb-branch-bar-height: 32px;
   }
@@ -267,7 +291,6 @@
     padding-top: 32px;
   }
 
-  /* Hide when chrome is hidden (cmd+.) */
   :global(html.storyboard-chrome-hidden .branch-bar) {
     display: none;
   }

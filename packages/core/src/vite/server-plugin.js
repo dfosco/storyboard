@@ -284,7 +284,25 @@ export default function storyboardServer() {
 
         const handler = routeHandlers.get(prefix)
         if (!handler) {
-          sendJson(res, 404, { error: `No handler registered for prefix: ${prefix}` })
+          // Proxy to standalone storyboard server for unhandled prefixes
+          try {
+            const proxyReq = await import('node:http')
+            const proxyUrl = `http://localhost:4100${url}`
+            const proxy = proxyReq.default.request(proxyUrl, { method: req.method, headers: req.headers }, (proxyRes) => {
+              res.writeHead(proxyRes.statusCode, proxyRes.headers)
+              proxyRes.pipe(res)
+            })
+            proxy.on('error', () => {
+              sendJson(res, 502, { error: `Storyboard server not running. Start it with: npx storyboard server` })
+            })
+            if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+              req.pipe(proxy)
+            } else {
+              proxy.end()
+            }
+          } catch {
+            sendJson(res, 502, { error: 'Storyboard server not running' })
+          }
           return
         }
 

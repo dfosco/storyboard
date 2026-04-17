@@ -5,8 +5,41 @@
   flex-direction: column;
   height: calc(100vh - var(--sb-branch-bar-height, 0px));
   font-family: 'Mona Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #1a1a1a;
-  background: #fafafa;
+
+  /* ─── Theme tokens (light defaults) ─── */
+  --vf-bg: #fafafa;
+  --vf-bg-surface: #fff;
+  --vf-bg-inset: #f5f5f5;
+  --vf-bg-hover: #f0f0f0;
+  --vf-fg: #1a1a1a;
+  --vf-fg-muted: #555;
+  --vf-fg-subtle: #999;
+  --vf-fg-faint: #888;
+  --vf-border: #e5e5e5;
+  --vf-border-muted: #eee;
+  --vf-accent: #1a1a1a;
+  --vf-accent-hover: #333;
+  --vf-link: #2563eb;
+
+  color: var(--vf-fg);
+  background: var(--vf-bg);
+}
+
+/* ─── Dark mode overrides ─── */
+.layout[data-color-mode="dark"] {
+  --vf-bg: #22272e;
+  --vf-bg-surface: #2d333b;
+  --vf-bg-inset: #2d333b;
+  --vf-bg-hover: #373e47;
+  --vf-fg: #adbac7;
+  --vf-fg-muted: #768390;
+  --vf-fg-subtle: #636e7b;
+  --vf-fg-faint: #636e7b;
+  --vf-border: #444c56;
+  --vf-border-muted: #373e47;
+  --vf-accent: #adbac7;
+  --vf-accent-hover: #cdd9e5;
+  --vf-link: #539bf5;
 }
 
 /* ─── Full-width header ─── */

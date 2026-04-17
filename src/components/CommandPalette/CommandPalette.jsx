@@ -371,28 +371,41 @@ export default function StoryboardCommandPalette({ basePath }) {
   }, [])
 
   // Listen for Cmd+K directly
+  // Note: the Svelte CoreUIBar also handles Cmd+K by dispatching
+  // 'storyboard:toggle-palette', so we only handle it here if the
+  // Svelte handler didn't fire (detected by a short delay).
   useEffect(() => {
+    let toggledByEvent = false
+
+    function handleToggleEvent() {
+      toggledByEvent = true
+    }
+
     function handleKeyDown(e) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
-        console.log('[CommandPalette] Cmd+K detected')
-        setOpen(prev => {
-          if (!prev) {
-            // Build items synchronously before opening
-            const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
-            console.log('[CommandPalette] built:', built.groups.length, 'groups')
-            setItems(built.groups)
-            setToolMenus(built.toolMenus)
-            setSearch('')
-            setActivePage('root')
-          }
-          return !prev
+        // If the Svelte CoreUIBar already dispatched the toggle event
+        // in this same keydown cycle, skip to avoid double-toggle
+        toggledByEvent = false
+        requestAnimationFrame(() => {
+          if (toggledByEvent) return // Svelte already handled it
+          console.log('[CommandPalette] Cmd+K (direct)')
+          const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
+          setItems(built.groups)
+          setToolMenus(built.toolMenus)
+          setSearch('')
+          setActivePage('root')
+          setOpen(prev => !prev)
         })
       }
     }
+
+    document.addEventListener('storyboard:toggle-palette', handleToggleEvent)
     document.addEventListener('keydown', handleKeyDown)
-    console.log('[CommandPalette] Cmd+K listener registered')
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('storyboard:toggle-palette', handleToggleEvent)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [basePath])
 
   // Listen for toggle events from Svelte CoreUIBar
@@ -400,11 +413,14 @@ export default function StoryboardCommandPalette({ basePath }) {
     function handleToggle() {
       setOpen(prev => {
         if (!prev) {
-          const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
-          setItems(built.groups)
-          setToolMenus(built.toolMenus)
-          setSearch('')
-          setActivePage('root')
+          // Use setTimeout to set items after open state is committed
+          setTimeout(() => {
+            const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
+            setItems(built.groups)
+            setToolMenus(built.toolMenus)
+            setSearch('')
+            setActivePage('root')
+          }, 0)
         }
         return !prev
       })

@@ -95,6 +95,7 @@ export function useSnapshotCapture({
       }
 
       if (e.data?.type === 'storyboard:embed:snapshot-ready') {
+        console.log(`[snapshot:${widgetId}] iframe ready`)
         setIframeReady(true)
         iframeReadyRef.current = true
       }
@@ -115,10 +116,11 @@ export function useSnapshotCapture({
    * Uploads and saves as `snapshot` prop, overwriting any previous value.
    */
   const requestCapture = useCallback(async ({ force = false } = {}) => {
+    console.log(`[snapshot:${widgetId}] requestCapture: force=${force}, hasContentWindow=${!!iframeRef.current?.contentWindow}, capturing=${capturingRef.current}, ready=${iframeReadyRef.current}`)
     if (!onUpdate) return {}
-    if (!iframeRef.current?.contentWindow) return {}
-    if (capturingRef.current) return {}
-    if (!force && !iframeReadyRef.current) return {}
+    if (!iframeRef.current?.contentWindow) { console.log(`[snapshot:${widgetId}] requestCapture: no contentWindow`); return {} }
+    if (capturingRef.current) { console.log(`[snapshot:${widgetId}] requestCapture: already capturing`); return {} }
+    if (!force && !iframeReadyRef.current) { console.log(`[snapshot:${widgetId}] requestCapture: not ready`); return {} }
 
     capturingRef.current = true
     const gen = ++captureGeneration.current
@@ -129,18 +131,20 @@ export function useSnapshotCapture({
       const reqId = ++requestIdCounter.current
       const dataUrl = await captureOnce(cw, reqId, responseHandlers.current)
 
-      if (gen !== captureGeneration.current) return {}
-      if (!dataUrl) return {}
+      if (gen !== captureGeneration.current) { console.log(`[snapshot:${widgetId}] stale gen after capture`); return {} }
+      if (!dataUrl) { console.log(`[snapshot:${widgetId}] captureOnce returned null`); return {} }
 
       const filename = `snapshot-${widgetId}.webp`
+      console.log(`[snapshot:${widgetId}] uploading ${filename}`)
       const result = await uploadImage(dataUrl, `snapshot-${widgetId}`, filename)
 
-      if (gen !== captureGeneration.current) return {}
+      if (gen !== captureGeneration.current) { console.log(`[snapshot:${widgetId}] stale gen after upload`); return {} }
 
       if (result?.filename) {
         const cacheBust = `?v=${Date.now()}`
         const url = `${base}/_storyboard/canvas/images/${result.filename}${cacheBust}`
         const updates = { snapshot: url }
+        console.log(`[snapshot:${widgetId}] saved: ${url.slice(0, 60)}`)
         onUpdate?.(updates)
         return updates
       }

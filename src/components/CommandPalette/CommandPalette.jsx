@@ -310,7 +310,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
           })
           items.push({
             id: `cfg:${section.id}:${toolId}`,
-            children: `${label} →`,
+            children: label,
             keywords: [label, toolId].filter(Boolean),
             onClick: () => onNavigateToPage?.(pageId),
             closeOnSelect: false,
@@ -338,7 +338,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
         })
         items.push({
           id: `cfg:${section.id}:${toolId}`,
-          children: `${label} →`,
+          children: label,
           keywords: [label, toolId].filter(Boolean),
           onClick: () => onNavigateToPage?.(pageId),
           closeOnSelect: false,

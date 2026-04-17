@@ -59,3 +59,8 @@ body[data-color-mode="dark"] .command-palette .border-t,
 body[data-color-mode="dark"] .command-palette .border-b {
   border-color: #444c56 !important;
 }
+
+/* Hide "Action" / "Link" type labels on all list items */
+.command-palette .command-palette-list-item .text-gray-500.text-sm {
+  display: none !important;
+}

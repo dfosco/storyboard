@@ -37,8 +37,11 @@ export { FormContext } from './context/FormContext.js'
 // Viewfinder dashboard
 export { default as Viewfinder } from './Viewfinder.jsx'
 
-// Command Palette
+// Command Palette (includes BranchBar automatically)
 export { default as StoryboardCommandPalette } from './CommandPalette/CommandPalette.jsx'
+
+// Branch Bar (standalone, for consumers who don't use CommandPalette)
+export { default as BranchBar } from './BranchBar/BranchBar.jsx'
 
 // Canvas
 export { default as CanvasPage } from './canvas/CanvasPage.jsx'

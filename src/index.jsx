@@ -14,7 +14,6 @@ import { mountStoryboardCore } from '@dfosco/storyboard-core'
 import '@dfosco/storyboard-core/comments/ui/comment-layout.css'
 import storyboardConfig from '../storyboard.config.json'
 import { StoryboardCommandPalette } from '@dfosco/storyboard-react'
-import BranchBar from './components/BranchBar/BranchBar.jsx'
 import AuthModal from './components/AuthModal/AuthModal.jsx'
 
 // Redirect after canvas creation — Vite full-reloads when a new
@@ -43,7 +42,6 @@ root.render(
                 <ThemeSync />
                 <RouterProvider router={router} />
                 <StoryboardCommandPalette basePath={import.meta.env.BASE_URL} />
-                <BranchBar basePath={import.meta.env.BASE_URL} />
                 <AuthModal />
             </BaseStyles>
         </ThemeProvider>

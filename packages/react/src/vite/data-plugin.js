@@ -1128,6 +1128,30 @@ export default function storyboardDataPlugin() {
       return []
     },
 
+    // Inject __SB_BRANCHES__ into HTML so the Viewfinder branch selector works.
+    // Reads .worktrees/ports.json to enumerate active worktree dev servers.
+    transformIndexHtml(html, ctx) {
+      // Only inject in dev mode
+      if (!ctx.server) return html
+
+      try {
+        const portsJsonPath = path.resolve(root, '.worktrees', 'ports.json')
+        if (!fs.existsSync(portsJsonPath)) return html
+
+        const ports = JSON.parse(fs.readFileSync(portsJsonPath, 'utf-8'))
+        const branches = Object.entries(ports)
+          .filter(([name]) => name !== 'main')
+          .map(([name, port]) => ({ branch: name, folder: `branch--${name}`, port }))
+
+        if (branches.length === 0) return html
+
+        const script = `<script>window.__SB_BRANCHES__ = ${JSON.stringify(branches)};</script>`
+        return html.replace('</head>', `${script}\n</head>`)
+      } catch {
+        return html
+      }
+    },
+
     // Rebuild index on each build start
     buildStart() {
       buildResult = null

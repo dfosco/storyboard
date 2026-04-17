@@ -1,25 +1,38 @@
 {
   "surfaces": {
-    "main-toolbar": { "position": "bottom-right", "layout": "row" },
-    "canvas-toolbar": { "position": "bottom-left", "layout": "row" },
-    "command-list": { "position": "command-menu", "layout": "list" }
+    "main-toolbar": {
+      "position": "bottom-right",
+      "layout": "row"
+    },
+    "canvas-toolbar": {
+      "position": "bottom-left",
+      "layout": "row"
+    },
+    "command-list": {
+      "position": "command-menu",
+      "layout": "list"
+    }
   },
-
   "command": {
     "icon": "iconoir/key-command",
-    "meta": { "strokeWeight": 2 },
-    "shortcut": { "key": "k", "label": "⌘ + K to open" }
+    "meta": {
+      "strokeWeight": 2
+    },
+    "shortcut": {
+      "key": "k",
+      "label": "⌘ + K to open"
+    }
   },
-
   "shortcuts": {
-    "hideChrome": { "key": ".", "label": "⌘ + . to hide" }
+    "hideChrome": {
+      "key": ".",
+      "label": "⌘ + . to hide"
+    }
   },
-
   "highlighting": {
     "dark": "github-dark-dimmed",
     "light": "github"
   },
-
   "tools": {
     "flows": {
       "label": "Flows",
@@ -27,31 +40,61 @@
       "icon": "feather/fast-forward",
       "render": "menu",
       "surface": "main-toolbar",
-      "modes": ["*"],
+      "modes": [
+        "*"
+      ],
       "prod": true,
       "menuWidth": "280px",
       "handler": "core:flows",
-      "excludeRoutes": ["^/$", "/viewfinder"]
-    },    
+      "excludeRoutes": [
+        "^/$",
+        "/viewfinder"
+      ]
+    },
     "theme": {
       "label": "Theme",
       "ariaLabel": "Switch theme",
       "icon": "primer/sun",
-      "meta": { "strokeWeight": 2 },
+      "meta": {
+        "strokeWeight": 2
+      },
       "render": "menu",
       "surface": "main-toolbar",
       "handler": "core:theme",
-      "modes": ["*"],
+      "modes": [
+        "*"
+      ],
       "prod": true,
       "menuWidth": "260px",
       "options": [
-        { "label": "System", "value": "system" },
-        { "label": "Light", "value": "light" },
-        { "label": "Light colorblind", "value": "light_colorblind" },
-        { "label": "Dark", "value": "dark" },
-        { "label": "Dark colorblind", "value": "dark_colorblind" },
-        { "label": "Dark high contrast", "value": "dark_high_contrast" },
-        { "label": "Dark Dimmed", "value": "dark_dimmed" }
+        {
+          "label": "System",
+          "value": "system"
+        },
+        {
+          "label": "Light",
+          "value": "light"
+        },
+        {
+          "label": "Light colorblind",
+          "value": "light_colorblind"
+        },
+        {
+          "label": "Dark",
+          "value": "dark"
+        },
+        {
+          "label": "Dark colorblind",
+          "value": "dark_colorblind"
+        },
+        {
+          "label": "Dark high contrast",
+          "value": "dark_high_contrast"
+        },
+        {
+          "label": "Dark Dimmed",
+          "value": "dark_dimmed"
+        }
       ]
     },
     "comments": {
@@ -60,9 +103,14 @@
       "render": "button",
       "surface": "*",
       "handler": "core:comments",
-      "modes": ["*"],
+      "modes": [
+        "*"
+      ],
       "prod": true,
-      "excludeRoutes": ["^/$", "/viewfinder"]
+      "excludeRoutes": [
+        "^/$",
+        "/viewfinder"
+      ]
     },
     "inspector": {
       "ariaLabel": "Inspect components",
@@ -71,30 +119,94 @@
       "surface": "main-toolbar",
       "sidepanel": "inspector",
       "handler": "core:inspector",
-      "modes": ["*"],
+      "modes": [
+        "*"
+      ],
       "prod": true,
-      "excludeRoutes": ["^/$", "/viewfinder", "/canvas/", "/components/"],
-      "meta": { "strokeWeight": 2, "scale": 1.1 },
-      "shortcut": { "key": "i", "label": "⌘I" }
-    },    
+      "excludeRoutes": [
+        "^/$",
+        "/viewfinder",
+        "/canvas/",
+        "/components/"
+      ],
+      "meta": {
+        "strokeWeight": 2,
+        "scale": 1.1
+      },
+      "shortcut": {
+        "key": "i",
+        "label": "⌘I"
+      }
+    },
     "create": {
       "disabled": true,
       "label": "Create",
       "ariaLabel": "Create",
       "icon": "iconoir/plus-circle",
-      "meta": { "strokeWeight": 2, "scale": 1.1 },
+      "meta": {
+        "strokeWeight": 2,
+        "scale": 1.1
+      },
       "render": "menu",
       "surface": "main-toolbar",
       "handler": "core:create",
-      "modes": ["*"],
+      "modes": [
+        "*"
+      ],
       "menuWidth": "290px",
       "actions": [
-        { "type": "header", "label": "Create" },
-        { "id": "workshop/create-prototype", "label": "New prototype", "type": "default", "modes": ["*"], "feature": "createPrototype" },
-        { "id": "workshop/create-flow", "label": "New flow", "type": "default", "modes": ["*"], "feature": "createFlow", "excludeRoutes": ["/canvas/", "/components/"] },
-        { "id": "workshop/create-page", "label": "New page",  "type": "default", "modes": ["*"], "feature": "createPage", "excludeRoutes": ["/canvas/", "/components/"] },
-        { "id": "workshop/create-canvas", "label": "New canvas", "type": "default", "modes": ["*"], "feature": "createCanvas" },
-        { "type": "footer", "label": "Only available in dev environment" }
+        {
+          "type": "header",
+          "label": "Create"
+        },
+        {
+          "id": "workshop/create-prototype",
+          "label": "New prototype",
+          "type": "default",
+          "modes": [
+            "*"
+          ],
+          "feature": "createPrototype"
+        },
+        {
+          "id": "workshop/create-flow",
+          "label": "New flow",
+          "type": "default",
+          "modes": [
+            "*"
+          ],
+          "feature": "createFlow",
+          "excludeRoutes": [
+            "/canvas/",
+            "/components/"
+          ]
+        },
+        {
+          "id": "workshop/create-page",
+          "label": "New page",
+          "type": "default",
+          "modes": [
+            "*"
+          ],
+          "feature": "createPage",
+          "excludeRoutes": [
+            "/canvas/",
+            "/components/"
+          ]
+        },
+        {
+          "id": "workshop/create-canvas",
+          "label": "New canvas",
+          "type": "default",
+          "modes": [
+            "*"
+          ],
+          "feature": "createCanvas"
+        },
+        {
+          "type": "footer",
+          "label": "Only available in dev environment"
+        }
       ]
     },
     "autosync": {
@@ -103,7 +215,9 @@
       "render": "menu",
       "surface": "main-toolbar",
       "handler": "core:autosync",
-      "modes": ["*"],
+      "modes": [
+        "*"
+      ],
       "menuWidth": "400px"
     },
     "canvas-add-widget": {
@@ -112,29 +226,53 @@
       "render": "menu",
       "surface": "canvas-toolbar",
       "handler": "core:canvas-add-widget",
-      "modes": ["*"],
-      "meta": { "strokeWeight": 2, "scale": 1.2 },
+      "modes": [
+        "*"
+      ],
+      "meta": {
+        "strokeWeight": 2,
+        "scale": 1.2
+      },
       "menuWidth": "300px",
-      "excludeRoutes": ["^/$", "/viewfinder"]
+      "excludeRoutes": [
+        "^/$",
+        "/viewfinder"
+      ],
+      "hideInCommandPalette": [
+        "^(?!/canvas)"
+      ]
     },
     "canvas-zoom": {
       "ariaLabel": "Zoom controls",
       "render": "canvas-zoom",
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
-      "modes": ["*"],
-      "prod": true
+      "modes": [
+        "*"
+      ],
+      "prod": true,
+      "hideInCommandPalette": [
+        "^(?!/canvas)"
+      ]
     },
     "canvas-zoom-to-fit": {
       "ariaLabel": "Zoom to objects",
       "label": "Zoom to objects",
       "icon": "iconoir/square-3d-three-points",
-      "meta": { "strokeWeight": 2, "scale": 1.2 },
+      "meta": {
+        "strokeWeight": 2,
+        "scale": 1.2
+      },
       "render": "canvas-zoom-to-fit",
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
-      "modes": ["*"],
-      "prod": true
+      "modes": [
+        "*"
+      ],
+      "prod": true,
+      "hideInCommandPalette": [
+        "^(?!/canvas)"
+      ]
     },
     "canvas-snap": {
       "ariaLabel": "Snap to grid",
@@ -142,25 +280,40 @@
       "labelOn": "Snap to grid (on)",
       "labelOff": "Snap to grid (off)",
       "icon": "primer/apps",
-      "meta": { "strokeWeight": 1.5, "scale": 1.2 },
+      "meta": {
+        "strokeWeight": 1.5,
+        "scale": 1.2
+      },
       "render": "canvas-snap",
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
       "gridSize": 40,
-      "modes": ["*"]
+      "modes": [
+        "*"
+      ],
+      "hideInCommandPalette": [
+        "^(?!/canvas)"
+      ]
     },
     "canvas-undo-redo": {
       "ariaLabel": "Undo and redo",
       "render": "canvas-undo-redo",
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
-      "modes": ["*"]
+      "modes": [
+        "*"
+      ],
+      "hideInCommandPalette": [
+        "^(?!/canvas)"
+      ]
     },
     "viewfinder": {
       "label": "Go to index page",
       "render": "link",
       "surface": "command-list",
-      "modes": ["*"],
+      "modes": [
+        "*"
+      ],
       "prod": true,
       "url": "/"
     },
@@ -168,7 +321,9 @@
       "label": "Go to repository",
       "render": "link",
       "surface": "command-list",
-      "modes": ["*"],
+      "modes": [
+        "*"
+      ],
       "prod": true,
       "url": "https://github.com/dfosco/storyboard"
     },
@@ -180,15 +335,22 @@
       "surface": "command-list",
       "sidepanel": "docs",
       "handler": "core:docs",
-      "modes": ["*"],
+      "modes": [
+        "*"
+      ],
       "prod": true,
-      "shortcut": { "key": "d", "label": "⌘D" }
-    },    
+      "shortcut": {
+        "key": "d",
+        "label": "⌘D"
+      }
+    },
     "devtools": {
       "label": "Devtools",
       "render": "submenu",
       "surface": "command-list",
-      "modes": ["*"],
+      "modes": [
+        "*"
+      ],
       "prod": true,
       "handler": "core:devtools"
     },
@@ -196,7 +358,9 @@
       "label": "Feature Flags",
       "render": "submenu",
       "surface": "command-list",
-      "modes": ["*"],
+      "modes": [
+        "*"
+      ],
       "prod": true,
       "handler": "core:feature-flags"
     }

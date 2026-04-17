@@ -156,3 +156,10 @@
   opacity: 0.5;
   cursor: default;
 }
+
+.successMsg {
+  padding: 4px 12px 6px;
+  font-size: 11px;
+  color: #1a7f37;
+  font-weight: 500;
+}

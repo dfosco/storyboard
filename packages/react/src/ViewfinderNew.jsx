@@ -713,9 +713,20 @@ function BranchDropdown({ basePath }) {
         .filter(b => !b.lastModified || new Date(b.lastModified).getTime() > twoWeeksAgo)
         .sort((a, b) => (a.branch || '').localeCompare(b.branch || ''))
 
+  const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
+
   const switchBranch = async (branch) => {
     setSwitching(branch)
     setSwitchError(null)
+
+    if (!isLocalDev) {
+      // Prod: direct navigation
+      const target = branches?.find(b => b.branch === branch)
+      window.location.href = `${branchBasePath}${target?.folder || (branch === 'main' ? '' : `branch--${branch}/`)}`
+      return
+    }
+
+    // Dev: call switch-branch API to spin up server
     const apiBase = (basePath || '/').replace(/\/$/, '')
     try {
       const res = await fetch(`${apiBase}/_storyboard/switch-branch`, {

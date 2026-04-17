@@ -13,7 +13,6 @@
   import { onMount, onDestroy, untrack } from 'svelte'
   import './core-ui-colors.css'
   import CommandPalette from './CommandPalette.svelte'
-  import BranchBar from './BranchBar.svelte'
   import * as Panel from './lib/components/ui/panel/index.js'
   import PwaInstallBanner from './PwaInstallBanner.svelte'
   import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
@@ -767,10 +766,6 @@
 
 {#if !isEmbed}
   <PwaInstallBanner />
-{/if}
-
-{#if !isEmbed}
-  <BranchBar {basePath} />
 {/if}
 
 <!-- Flow info panel (previously inside CommandMenu) -->

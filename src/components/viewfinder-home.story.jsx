@@ -44,10 +44,11 @@ function CanvasIcon({ size = 16 }) {
 function AllItemsIcon({ size = 16 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="7" y="7" width="10" height="10" rx="2" />
+      <rect x="3" y="3" width="4" height="4" rx="2" />
+      <rect x="17" y="3" width="4" height="4" rx="2" />
+      <rect x="17" y="17" width="4" height="4" rx="2" />
+      <rect x="3" y="17" width="4" height="4" rx="2" />
     </svg>
   )
 }

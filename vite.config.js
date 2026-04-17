@@ -58,6 +58,7 @@ export default defineConfig(() => {
             '@dfosco/storyboard-core/inspector/highlighter': path.resolve(__dirname, 'packages/core/src/inspector/highlighter.js'),
             '@dfosco/storyboard-core/comments': path.resolve(__dirname, 'packages/core/src/comments/index.js'),
             '@dfosco/storyboard-core': path.resolve(__dirname, 'packages/core/src/index.js'),
+            '@dfosco/storyboard-react/Icon': path.resolve(__dirname, 'packages/react/src/Icon.jsx'),
             '@dfosco/storyboard-react/vite': path.resolve(__dirname, 'packages/react/src/vite/data-plugin.js'),
             '@dfosco/storyboard-react/hash-preserver': path.resolve(__dirname, 'packages/react/src/hashPreserver.js'),
             '@dfosco/storyboard-react/canvas/CanvasPage': path.resolve(__dirname, 'packages/react/src/canvas/CanvasPage.jsx'),

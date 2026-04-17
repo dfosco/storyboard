@@ -98,6 +98,28 @@ function getTypeIcon(type, size = 14) {
   return null
 }
 
+/* ─── Avatar Stack ─── */
+
+function AvatarStack({ authors }) {
+  if (!authors || authors.length === 0) return null
+  const list = Array.isArray(authors) ? authors : [authors]
+  return (
+    <div className={css.avatarStack}>
+      {list.map(username => (
+        <img
+          key={username}
+          className={css.avatarImg}
+          src={`https://github.com/${username}.png`}
+          alt={username}
+          width={24}
+          height={24}
+          loading="lazy"
+        />
+      ))}
+    </div>
+  )
+}
+
 /* ─── Star Button ─── */
 
 function StarBtn({ active, onClick }) {
@@ -127,9 +149,13 @@ function ArtifactCard({ item, basePath, starred, onToggleStar }) {
     ? { href: item.externalUrl, target: '_blank', rel: 'noopener noreferrer' }
     : { href }
 
+  const authorList = item.author
+    ? (Array.isArray(item.author) ? item.author : [item.author])
+    : item.gitAuthor ? [item.gitAuthor] : []
+
   return (
     <Tag className={css.card} {...linkProps} onClick={handleClick}>
-      <div className={`${css.cardThumb} ${thumbClass(item.name)}`}>
+      <div className={css.cardHeader}>
         <span className={css.cardBadge}>{getTypeLabel(item.type)}</span>
         <StarBtn active={starred} onClick={() => onToggleStar(item.id)} />
       </div>
@@ -139,11 +165,16 @@ function ArtifactCard({ item, basePath, starred, onToggleStar }) {
             {item.name}
             {isExternal && <span className={css.externalBadge}>↗</span>}
           </div>
-          <div className={css.cardMeta}>
-            {item.author && <span>{Array.isArray(item.author) ? item.author.join(', ') : item.author}</span>}
-            {!item.author && item.gitAuthor && <span>{item.gitAuthor}</span>}
-            {(item.author || item.gitAuthor) && formatRelativeTime(item.lastModified) && <span className={css.cardMetaDot} />}
-            {formatRelativeTime(item.lastModified) && <span>{formatRelativeTime(item.lastModified)}</span>}
+          {item.description && (
+            <div className={css.cardDescription}>{item.description}</div>
+          )}
+          <div className={css.cardFooter}>
+            <AvatarStack authors={authorList} />
+            <div className={css.cardMeta}>
+              {authorList.length > 0 && <span>{authorList.join(', ')}</span>}
+              {authorList.length > 0 && formatRelativeTime(item.lastModified) && <span className={css.cardMetaDot} />}
+              {formatRelativeTime(item.lastModified) && <span>{formatRelativeTime(item.lastModified)}</span>}
+            </div>
           </div>
         </div>
         {item.flows?.length > 0 && <FlowsDropdown flows={item.flows} basePath={basePath} />}
@@ -237,6 +268,16 @@ function FolderSection({ folder, collapsed, onToggle, basePath, starred, onToggl
 }
 
 /* ─── Create Footer ─── */
+
+function CreateTip() {
+  return (
+    <div className={css.createTip}>
+      <span className={css.createTipText}>
+        Tip: You can ask your AI assistant to create any of these artifacts: <code className={css.createTipCode}>Create a prototype</code>, <code className={css.createTipCode}>Create a canvas</code>, etc
+      </span>
+    </div>
+  )
+}
 
 function CreateFooter() {
   return (
@@ -377,10 +418,11 @@ function CreateForm({ type, onBack, onClose, basePath }) {
   )
 }
 
-/* ─── Create Menu ─── */
+/* ─── Create Menu (Dropdown) ─── */
 
 function CreateMenu({ onClose, basePath }) {
   const [activeForm, setActiveForm] = useState(null)
+  const [showMore, setShowMore] = useState(false)
 
   const items = [
     { icon: <Icon name="canvas" size={18} />, title: 'Canvas', desc: 'Interactive board for prototypes, components, and documents' },
@@ -388,35 +430,57 @@ function CreateMenu({ onClose, basePath }) {
     { icon: <Icon name="component" size={18} />, title: 'Component', desc: 'Reusable component' },
   ]
 
-  return (
-    <div className={css.createMenuOverlay} onClick={onClose}>
-      <div className={css.createMenu} onClick={e => e.stopPropagation()}>
-        {activeForm ? (
-          <CreateForm
-            type={activeForm}
-            onBack={() => setActiveForm(null)}
-            onClose={onClose}
-            basePath={basePath}
-          />
-        ) : (
-          <>
-            <div className={css.createMenuTitle}>Create new</div>
-            <div className={css.createMenuGrid}>
-              {items.map(it => (
-                <button key={it.title} className={css.createMenuItem} onClick={() => setActiveForm(it.title)}>
-                  <div className={css.createMenuIcon}>{it.icon}</div>
-                  <div>
-                    <div className={css.createMenuItemTitle}>{it.title}</div>
-                    <div className={css.createMenuItemDesc}>{it.desc}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <CreateFooter />
-          </>
-        )}
+  const moreItems = [
+    { title: 'Prototype Flow', desc: 'A flow data file for a prototype' },
+    { title: 'Prototype Page', desc: 'A new page inside a prototype' },
+  ]
+
+  if (activeForm) {
+    return (
+      <div className={css.createDropdownForm}>
+        <CreateForm
+          type={activeForm}
+          onBack={() => setActiveForm(null)}
+          onClose={onClose}
+          basePath={basePath}
+        />
       </div>
-    </div>
+    )
+  }
+
+  return (
+    <>
+      <div className={css.createDropdownTitle}>Create new artifact</div>
+      <div className={css.createDropdownGrid}>
+        {items.map(it => (
+          <button key={it.title} className={css.createMenuItem} onClick={() => setActiveForm(it.title)}>
+            <div className={css.createMenuIcon}>{it.icon}</div>
+            <div>
+              <div className={css.createMenuItemTitle}>{it.title}</div>
+              <div className={css.createMenuItemDesc}>{it.desc}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {!showMore ? (
+        <button className={css.moreOptionsBtn} onClick={() => setShowMore(true)}>
+          More options <ChevronDownIcon size={12} />
+        </button>
+      ) : (
+        <div className={css.moreOptionsSection}>
+          {moreItems.map(it => (
+            <button key={it.title} className={css.moreOptionItem} onClick={onClose}>
+              <div className={css.moreOptionTitle}>{it.title}</div>
+              <div className={css.moreOptionDesc}>{it.desc}</div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <CreateTip />
+      <CreateFooter />
+    </>
   )
 }
 
@@ -885,10 +949,19 @@ export default function ViewfinderNew({
           </div>
         </div>
         <div className={css.topActions}>
-          <BranchDropdown basePath={basePath} />
-          <button className={css.createBtn} onClick={() => setShowCreate(true)}>
-            Create Artifact
-          </button>
+          {!window.__SB_LOCAL_DEV__ && <BranchDropdown basePath={basePath} />}
+          <Menu.Root open={showCreate} onOpenChange={setShowCreate}>
+            <Menu.Trigger className={css.createBtn}>
+              + Create
+            </Menu.Trigger>
+            <Menu.Portal>
+              <Menu.Positioner className={css.createDropdownPositioner} side="bottom" align="end" sideOffset={4}>
+                <Menu.Popup className={css.createDropdown}>
+                  <CreateMenu onClose={() => setShowCreate(false)} basePath={basePath} />
+                </Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
         </div>
       </header>
 
@@ -975,6 +1048,17 @@ export default function ViewfinderNew({
               </div>
             ) : groupByFolders && grouped ? (
               <>
+                {grouped.folders.map(folder => (
+                  <FolderSection
+                    key={folder.dirName}
+                    folder={folder}
+                    collapsed={collapsedFolders.has(folder.dirName)}
+                    onToggle={() => toggleFolder(folder.dirName)}
+                    basePath={basePath}
+                    starred={starred}
+                    onToggleStar={toggleStar}
+                  />
+                ))}
                 {grouped.ungrouped.length > 0 && (
                   <div className={css.grid}>
                     {grouped.ungrouped.map(item => (
@@ -988,17 +1072,6 @@ export default function ViewfinderNew({
                     ))}
                   </div>
                 )}
-                {grouped.folders.map(folder => (
-                  <FolderSection
-                    key={folder.dirName}
-                    folder={folder}
-                    collapsed={collapsedFolders.has(folder.dirName)}
-                    onToggle={() => toggleFolder(folder.dirName)}
-                    basePath={basePath}
-                    starred={starred}
-                    onToggleStar={toggleStar}
-                  />
-                ))}
               </>
             ) : (
               <div className={css.grid}>
@@ -1018,7 +1091,6 @@ export default function ViewfinderNew({
       </div>
 
       {/* Modals */}
-      {showCreate && <CreateMenu onClose={() => setShowCreate(false)} basePath={basePath} />}
       <PATDialog open={showPAT} onClose={() => setShowPAT(false)} />
     </div>
   )

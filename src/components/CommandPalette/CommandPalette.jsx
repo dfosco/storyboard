@@ -15,6 +15,7 @@ import {
   getCommandPaletteConfig,
   getToolbarConfig,
   setTheme,
+  isExcludedByRoute,
 } from '@dfosco/storyboard-core'
 import CreateDialog from './CreateDialog.jsx'
 import './command-palette.css'
@@ -107,6 +108,19 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
       if (tool.disabled) continue
 
       const label = tool.label || tool.ariaLabel || toolId
+      const excluded = isExcludedByRoute(tool)
+
+      // Route-excluded tools show as disabled with hint
+      if (excluded) {
+        remainingItems.push({
+          id: `cfg:${section.id}:${toolId}`,
+          children: <><span>{label}</span><span style={{ marginLeft: 'auto', fontSize: '12px', opacity: 0.5 }}>Not available on this page</span></>,
+          keywords: [label, toolId].filter(Boolean),
+          showType: false,
+          disabled: true,
+        })
+        continue
+      }
 
       // Tools with submenu children
       if (tool.render === 'submenu' || tool.render === 'menu') {
@@ -151,31 +165,24 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
         }
       }
 
-      // Sidepanel / button / link tools on command-list surface
-      if (tool.surface === 'command-list') {
-        if (tool.render === 'link' && tool.url) {
-          remainingItems.push({
-            id: `cfg:${section.id}:${toolId}`,
-            children: label,
-            keywords: [label, toolId].filter(Boolean),
-            showType: false,
-            onClick: () => {
-              const url = tool.url.startsWith('/') ? tool.url : tool.url
-              window.location.href = url
-            },
-          })
-        } else {
-          const action = actions.find(a => a.toolKey === toolId)
-          if (action) {
-            remainingItems.push({
-              id: `cfg:${section.id}:${toolId}`,
-              children: label,
-              keywords: [label, toolId].filter(Boolean),
-              showType: false,
-              onClick: () => executeAction(action.id),
-            })
-          }
-        }
+      // Any remaining tools (all surfaces)
+      if (tool.render === 'link' && tool.url) {
+        remainingItems.push({
+          id: `cfg:${section.id}:${toolId}`,
+          children: label,
+          keywords: [label, toolId].filter(Boolean),
+          showType: false,
+          onClick: () => { window.location.href = tool.url },
+        })
+      } else if (tool.render === 'sidepanel' || tool.render === 'button') {
+        const action = actions.find(a => a.toolKey === toolId)
+        remainingItems.push({
+          id: `cfg:${section.id}:${toolId}`,
+          children: label,
+          keywords: [label, toolId].filter(Boolean),
+          showType: false,
+          ...(action ? { onClick: () => executeAction(action.id) } : {}),
+        })
       }
     }
 
@@ -517,6 +524,46 @@ function resolveRecentRoute(entry, prefix) {
 }
 
 /**
+ * Build a map of author → artifacts from the prototype index.
+ * Returns { authorIndex: Map<lowercase-author, { author, items[] }> }
+ */
+function buildAuthorIndex(prefix) {
+  const index = buildPrototypeIndex()
+  const authorMap = new Map()
+
+  function addItem(author, item) {
+    const key = author.toLowerCase()
+    if (!authorMap.has(key)) authorMap.set(key, { author, items: [] })
+    authorMap.get(key).items.push(item)
+  }
+
+  function processAuthors(authors, item) {
+    if (!authors) return
+    const list = Array.isArray(authors) ? authors : [authors]
+    for (const a of list) if (a) addItem(a, item)
+  }
+
+  for (const p of index.prototypes) {
+    processAuthors(p.author, { name: p.name, route: `${prefix}/${p.dirName}`, id: p.dirName, type: 'Prototype' })
+  }
+  for (const f of index.folders) {
+    for (const p of f.prototypes) {
+      processAuthors(p.author, { name: p.name, route: `${prefix}/${p.dirName}`, id: p.dirName, type: 'Prototype' })
+    }
+    if (f.canvases) {
+      for (const c of f.canvases) {
+        processAuthors(c.author, { name: c.name, route: `${prefix}${c.route}`, id: c.dirName, type: 'Canvas' })
+      }
+    }
+  }
+  for (const c of index.canvases) {
+    processAuthors(c.author, { name: c.name, route: `${prefix}${c.route}`, id: c.dirName, type: 'Canvas' })
+  }
+
+  return authorMap
+}
+
+/**
  * Build the JSON structure for react-cmdk from all data providers.
  * Entirely config-driven — all sections come from commandPalette.sections.
  */
@@ -525,8 +572,9 @@ function buildPaletteItems(basePath, onCreateAction, onNavigateToPage) {
   const prefix = base === '/' ? '' : base
 
   const { groups, toolMenus } = buildConfigSections(prefix, onNavigateToPage, onCreateAction)
+  const authorIndex = buildAuthorIndex(prefix)
 
-  return { groups, toolMenus }
+  return { groups, toolMenus, authorIndex }
 }
 
 /**

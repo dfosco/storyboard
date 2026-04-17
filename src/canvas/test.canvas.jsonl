@@ -4,3 +4,4 @@
 {"event":"settings_updated","timestamp":"2026-04-17T16:27:48.145Z","settings":{"snapToGrid":true}}
 {"event":"settings_updated","timestamp":"2026-04-17T16:27:48.162Z","settings":{"snapToGrid":true}}
 {"event":"widget_added","timestamp":"2026-04-17T16:27:53.390Z","widget":{"id":"markdown-2azxqi","type":"markdown","position":{"x":1015,"y":526},"props":{"content":"canvas-undo-redo\""}}}
+{"event":"widget_removed","timestamp":"2026-04-17T16:35:22.200Z","widgetId":"markdown-2azxqi"}

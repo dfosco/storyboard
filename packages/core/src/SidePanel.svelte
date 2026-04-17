@@ -269,7 +269,7 @@
 <style>
   .sb-sidepanel {
     position: fixed;
-    top: 0;
+    top: var(--sb-branch-bar-height, 0px);
     right: 0;
     bottom: 0;
     width: var(--sb--sidepanel-width, 420px);

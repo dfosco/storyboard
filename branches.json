@@ -65,6 +65,7 @@
   {"folder":"branch--canvas-collision-detection","branch":"canvas-collision-detection"},
   {"folder":"branch--canvas-image-drag-drop","branch":"canvas-image-drag-drop"},
   {"folder":"branch--canvas-lock-negative-positions","branch":"canvas-lock-negative-positions"},
+  {"folder":"branch--canvas-theme-all-primers","branch":"canvas-theme-all-primers"},
   {"folder":"branch--canvas-updates-3.10","branch":"canvas-updates-3.10"},
   {"folder":"branch--comment-cursor-dark","branch":"comment-cursor-dark"},
   {"folder":"branch--comments-alpine","branch":"comments-alpine"},

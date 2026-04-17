@@ -731,6 +731,12 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasA
     initCalls.push(`initUIConfig(${JSON.stringify(config.ui)})`)
   }
 
+  // Customer mode config from storyboard.config.json
+  if (config?.customerMode) {
+    imports.push(`import { initCustomerModeConfig } from '@dfosco/storyboard-core'`)
+    initCalls.push(`initCustomerModeConfig(${JSON.stringify(config.customerMode)})`)
+  }
+
   // Log info when multiple flows target the same route
   const routeGroups = {}
   for (const [name, { route, isDefault }] of Object.entries(resolvedFlowRoutes)) {

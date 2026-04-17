@@ -59,6 +59,14 @@
  */
 
 /**
+ * @typedef {object} CustomerModeConfig
+ * @property {boolean} enabled       — master toggle for customer mode
+ * @property {boolean} hideChrome    — hides all toolbars (except canvas tools), branchbar, cmd+k, cmd+.
+ * @property {boolean} hideHomepage  — removes the storyboard homepage (leaves empty page)
+ * @property {string}  protoHomepage — internal /path that replaces homepage; redirects from / and /viewfinder
+ */
+
+/**
  * @typedef {object} StoryboardConfig
  * @property {string}   [customDomain]
  * @property {string}   [devDomain]
@@ -72,6 +80,7 @@
  * @property {object}   [toolbar]
  * @property {CanvasConfig} [canvas]
  * @property {CommandPaletteConfig} [commandPalette]
+ * @property {CustomerModeConfig} [customerMode]
  */
 
 /** Built-in paste rules shipped with storyboard. */
@@ -110,6 +119,12 @@ export const configDefaults = {
     providers: ['prototypes', 'flows', 'canvases', 'pages'],
     ranking: 'frecency',
     sections: [],
+  },
+  customerMode: {
+    enabled: false,
+    hideChrome: false,
+    hideHomepage: false,
+    protoHomepage: '',
   },
 }
 

@@ -25,7 +25,10 @@
   },
   "featureFlags": {},
   "canvas": {},
-  "commandPalette": {
-    "sections": []
+  "customerMode": {
+    "enabled": false,
+    "hideChrome": false,
+    "hideHomepage": false,
+    "protoHomepage": ""
   }
 }

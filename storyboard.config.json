@@ -38,9 +38,8 @@
         "source": "tools",
         "toolIds": [
           { "id": "viewfinder", "label": "Homepage" },
-          { "id": "repository", "label": "Repository" },
-          { "id": "theme", "label": "Switch Theme" },
-          { "id": "docs", "label": "Storyboard Docs" }
+          { "id": "repository", "label": "Go to repository", "action": "github/storyboard" },
+          { "id": "theme", "label": "Switch Theme" }
         ]
       },
       { "id": "sep1", "items": [] },
@@ -49,7 +48,7 @@
         "title": "",
         "source": "tools",
         "toolIds": [
-          { "id": "docs", "label": "Documentation" },
+          { "id": "docs", "label": "Storyboard Docs" },
           { "id": "devtools", "label": "Devtools" },
           { "id": "feature-flags", "label": "Feature Flags" }
         ]
@@ -61,26 +60,32 @@
         "source": "recent",
         "limit": 5
       },
+      { "id": "sep3", "items": [] },
       {
         "id": "create",
         "title": "Create new",
         "source": "create"
       },
+      { "id": "sep4", "items": [] },
       {
         "id": "prototypes",
         "title": "Prototypes",
         "source": "prototypes"
       },
+      { "id": "sep5", "items": [] },
       {
         "id": "canvases",
         "title": "Canvas",
         "source": "canvases"
       },
+      { "id": "sep6", "items": [] },
       {
         "id": "stories",
         "title": "Stories",
         "source": "stories"
-      }      
+      },
+      { "id": "sep7", "items": [] },
+      { "id": "other-tools", "title": "More Tools", "source": "tool-subpages" }      
     ]
   }
 }

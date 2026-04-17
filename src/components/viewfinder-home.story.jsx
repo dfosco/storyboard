@@ -126,7 +126,7 @@ const ITEM_MAP = Object.fromEntries(ALL_ITEMS.map(i => [i.id, i]))
 const NAV_ITEMS = [
   { id: 'all', label: 'All items', icon: <AllItemsIcon size={16} /> },
   { id: 'prototypes', label: 'Prototypes', icon: <PrototypeIcon size={16} /> },
-  { id: 'canvases', label: 'Canvases', icon: <CanvasIcon size={16} /> },
+  { id: 'canvases', label: 'Canvas', icon: <CanvasIcon size={16} /> },
   { id: 'components', label: 'Components', icon: <ComponentIcon size={16} /> },
 ]
 

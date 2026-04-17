@@ -15,6 +15,7 @@
 }
 
 .canvasScroll {
+  position: relative;
   width: 100vw;
   height: calc(100vh - var(--sb-branch-bar-height, 0px));
   overflow: auto;
@@ -139,4 +140,14 @@
 
 .ghInstallBannerDismiss:hover {
   background: var(--bgColor-muted, #f6f8fa);
+}
+
+/* Marquee selection rectangle */
+.marqueeRect {
+  position: absolute;
+  background: rgba(56, 132, 255, 0.12);
+  border: 1.5px solid rgba(56, 132, 255, 0.6);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 9999;
 }

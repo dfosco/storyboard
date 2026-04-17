@@ -215,7 +215,7 @@ describe('Embed interaction overlay', () => {
         <ComponentWidget
           {...defaultProps}
           isLocalDev
-          jsxModule="/src/canvas/mock.canvas.jsx"
+          jsxModule="/src/canvas/mock.story.jsx"
           exportName="MockComponent"
         />
       )

@@ -1129,7 +1129,7 @@ Use the toolbar's create menu → **New canvas**, or create a `.canvas.jsonl` fi
 | **Markdown** | Rich text block with Markdown rendering |
 | **Prototype** | Embedded iframe of another prototype or any URL — including Figma embeds, CodePen, deployed apps, etc. Supports zoom controls. |
 | **Link preview** | Preview card for an external URL |
-| **Component** | Custom JSX component from a companion `.canvas.jsx` file |
+| **Component** | Custom JSX component from a `.story.jsx` file |
 
 ### Using canvases
 
@@ -1154,10 +1154,10 @@ This also works for any embeddable URL: CodePen, CodeSandbox, deployed apps, Goo
 
 ### Custom component widgets
 
-Create a companion `.canvas.jsx` file next to your `.canvas.jsonl`. Each named export becomes an available component widget:
+Create a `.story.jsx` file in `src/components/`. Each named export becomes an available component widget on any canvas:
 
 ```jsx
-// my-board.canvas.jsx
+// my-component.story.jsx
 export function StatusCard({ label, count }) {
   return <div className="card">{label}: {count}</div>
 }

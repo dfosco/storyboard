@@ -7,7 +7,7 @@ import styles from './ComponentWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
 /**
- * Renders a live JSX export from a .canvas.jsx companion file.
+ * Renders a live JSX export from a .story.jsx file.
  *
  * In dev mode (isLocalDev), each component is rendered inside an iframe
  * via the /_storyboard/canvas/isolate middleware. This isolates broken

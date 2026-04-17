@@ -1,12 +1,12 @@
 /**
  * Canvas Component Isolate — iframe entry point.
  *
- * Renders a single named export from a .canvas.jsx module inside an
+ * Renders a single named export from a .story.jsx module inside an
  * isolated document. The parent CanvasPage embeds this via an iframe
  * so a broken component cannot crash the entire canvas.
  *
  * Query params:
- *   module — absolute or base-relative path to the .canvas.jsx file
+ *   module — absolute or base-relative path to the .story.jsx file
  *   export — the named export to render
  *   theme  — canvas theme (light / dark / dark_dimmed)
  */
@@ -97,9 +97,9 @@ async function mount() {
     return
   }
 
-  // Validate: only allow .canvas.jsx and .story.{jsx,tsx} modules
-  if (!modulePath.endsWith('.canvas.jsx') && !modulePath.match(/\.story\.(jsx|tsx)$/)) {
-    root.render(createElement('div', { style: errorStyle }, 'Invalid module path — only .canvas.jsx and .story.jsx/.tsx files are allowed'))
+  // Validate: only allow .story.{jsx,tsx} modules
+  if (!modulePath.match(/\.story\.(jsx|tsx)$/)) {
+    root.render(createElement('div', { style: errorStyle }, 'Invalid module path — only .story.jsx/.tsx files are allowed'))
     return
   }
 

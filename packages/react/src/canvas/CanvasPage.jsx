@@ -1942,7 +1942,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   const canvasThemeVars = getCanvasThemeVars(canvasTheme)
   const canvasPrimerAttrs = getCanvasPrimerAttrs(canvasTheme)
 
-  // Merge JSX-sourced widgets (from .canvas.jsx) and JSON widgets
+  // Merge JSX-sourced widgets and JSON widgets
   const allChildren = []
 
   // 1. Component widgets (from jsxExports or sources fallback)

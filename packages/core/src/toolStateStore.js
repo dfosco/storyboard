@@ -76,6 +76,8 @@ export function initToolbarToolStates(toolsConfig, options = {}) {
 
     if (isDevOnly && !isLocalDev) {
       _states.set(id, TOOL_STATES.DISABLED)
+    } else if (tool.disabled === true) {
+      _states.set(id, TOOL_STATES.DISABLED)
     } else {
       const state = tool.state || TOOL_STATES.ACTIVE
       _states.set(id, state)

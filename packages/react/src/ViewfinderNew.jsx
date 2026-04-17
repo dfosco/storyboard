@@ -690,6 +690,10 @@ function useBranches(basePath) {
 }
 
 function BranchDropdown({ basePath }) {
+  // Dev: hide dropdown — use CLI to switch branches
+  const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
+  if (isLocalDev) return null
+
   const { branches, currentBranch, branchBasePath, gitUser } = useBranches(basePath)
   const [showAll, setShowAll] = useState(false)
   const [switching, setSwitching] = useState(null)
@@ -713,38 +717,10 @@ function BranchDropdown({ basePath }) {
         .filter(b => !b.lastModified || new Date(b.lastModified).getTime() > twoWeeksAgo)
         .sort((a, b) => (a.branch || '').localeCompare(b.branch || ''))
 
-  const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
-
-  const switchBranch = async (branch) => {
+  const switchBranch = (branch) => {
     setSwitching(branch)
-    setSwitchError(null)
-
-    if (!isLocalDev) {
-      // Prod: direct navigation
-      const target = branches?.find(b => b.branch === branch)
-      window.location.href = `${branchBasePath}${target?.folder || (branch === 'main' ? '' : `branch--${branch}/`)}`
-      return
-    }
-
-    // Dev: call switch-branch API to spin up server
-    const apiBase = (basePath || '/').replace(/\/$/, '')
-    try {
-      const res = await fetch(`${apiBase}/_storyboard/switch-branch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ branch }),
-      })
-      const data = await res.json()
-      if (res.ok && data.url) {
-        window.location.href = data.url
-      } else {
-        setSwitchError(data.error || 'Failed to switch')
-        setSwitching(null)
-      }
-    } catch (e) {
-      setSwitchError(e.message || 'Server not reachable')
-      setSwitching(null)
-    }
+    const target = branches?.find(b => b.branch === branch)
+    window.location.href = `${branchBasePath}${target?.folder || (branch === 'main' ? '' : `branch--${branch}/`)}`
   }
 
   return (

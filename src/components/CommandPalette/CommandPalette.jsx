@@ -796,8 +796,9 @@ export default function StoryboardCommandPalette({ basePath }) {
 
     // Author search: match usernames against author index
     const q = search.toLowerCase()
+    const authorQ = q.startsWith('@') ? q.slice(1) : q
     for (const [key, { author, items: authorItems }] of authorIndex) {
-      if (!key.includes(q)) continue
+      if (!key.includes(authorQ)) continue
       // Avoid duplicates with already-shown artifact items
       const shownIds = new Set(result.flatMap(g => g.items.map(i => i.id)))
       const uniqueItems = authorItems.filter(item => !shownIds.has(`author:${item.id}`))

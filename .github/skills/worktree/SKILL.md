@@ -17,23 +17,6 @@ Creates a git worktree for a given branch name inside `.worktrees/` and switches
 
 When the user asks for a worktree named `<branch-name>`:
 
-### Step 0: Slugify the branch name
-
-Sanitize the branch name to avoid filesystem and subdomain issues:
-
-1. Convert to lowercase.
-2. Replace dots (`.`), spaces, underscores, and other non-alphanumeric characters (except `-` and `/`) with hyphens.
-3. Collapse consecutive hyphens into one.
-4. Trim leading/trailing hyphens from each segment.
-
-**Examples:**
-- `feature.v2` → `feature-v2`
-- `v3.11.0` → `v3-11-0`
-- `my_cool.feature` → `my-cool-feature`
-- `UPPER.Case` → `upper-case`
-
-Use the slugified name for both the **branch name** and **worktree directory** throughout the rest of the workflow.
-
 ### Preferred: Use `npx storyboard dev <branch>`
 
 The `storyboard` CLI handles the full worktree lifecycle in a single command:

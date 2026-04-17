@@ -5,7 +5,7 @@
  */
 
 import * as p from '@clack/prompts'
-import { existsSync } from 'fs'
+import { existsSync, writeFileSync, mkdirSync } from 'fs'
 import path from 'path'
 import { execSync } from 'child_process'
 import { generateCaddyfile, isCaddyInstalled, isCaddyRunning, startCaddy, reloadCaddy } from './proxy.js'
@@ -188,14 +188,26 @@ if (isInstalled('code')) {
 
 // 7. Asset directories
 {
-  const dirs = ['assets/canvas/images']
+  const dirs = ['assets/canvas/images', '.storyboard']
   for (const dir of dirs) {
     if (!existsSync(dir)) {
-      try {
-        execSync(`mkdir -p ${dir}`, { stdio: 'pipe' })
-      } catch { /* ignore */ }
+      try { mkdirSync(dir, { recursive: true }) } catch { /* ignore */ }
     }
   }
+
+  // Scaffold initial .selectedwidgets.json if missing
+  const selectedWidgetsPath = '.storyboard/.selectedwidgets.json'
+  if (!existsSync(selectedWidgetsPath)) {
+    try {
+      writeFileSync(selectedWidgetsPath, JSON.stringify({
+        canvasId: null,
+        canvasFile: null,
+        selectedWidgetIds: [],
+        widgets: [],
+      }, null, 2) + '\n', 'utf-8')
+    } catch { /* ignore */ }
+  }
+
   p.log.success('Canvas asset directories ready')
 }
 

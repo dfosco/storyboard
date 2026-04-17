@@ -629,22 +629,23 @@ Use `ask_user`:
 
 The name must be **kebab-case** (e.g., `button-patterns`, `user-card`).
 
-### Step C2: Ask for the directory
+### Step C2: Create the component directory and story file
 
-List existing subdirectories inside `src/components/`. Use `ask_user` with options:
+**Every component must live in its own directory.** Create `src/components/<PascalName>/` containing:
 
-- `src/components/` (root) — Top-level component
-- Any existing subdirectories (e.g., `src/components/forms/`, `src/components/layout/`)
+- `<PascalName>.jsx` — The component file
+- `<PascalName>.module.css` — CSS Module styles
+- `<name>.story.jsx` — Story file with a `Default` named export that renders the component
 
-If the user wants a new subdirectory, create it.
+Convert the kebab-case name to PascalCase for the directory and component files (e.g., `button-patterns` → `ButtonPatterns/ButtonPatterns.jsx`). The story file stays kebab-case.
 
-### Step C3: Create the story file
+Each named export in the story becomes a renderable variant at the component's route URL.
 
-Create `src/components/<directory?>/<name>.story.jsx` with a scaffold containing a `Default` named export that renders a placeholder component. Each named export becomes a renderable variant at the component's route URL.
+**Never place component files flat in `src/components/` — always use a subdirectory.**
 
-### Step C4: Confirm and suggest next steps
+### Step C3: Confirm and suggest next steps
 
-1. Show the created file path and route URL (`/components/<name>`)
+1. Show the created directory and file paths
 2. Suggest next steps:
    - Visit `/components/<name>` to see the rendered component
    - Add more named exports for different variants
@@ -655,5 +656,4 @@ Create `src/components/<directory?>/<name>.story.jsx` with a scaffold containing
 
 ```bash
 storyboard create component --name my-component
-storyboard create component --name my-component --directory forms
 ```

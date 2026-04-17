@@ -149,6 +149,8 @@ The fix was a one-line compaction (4MB → 9KB). Everything the user reported �
 - Use **Primer Octicons** from `@primer/octicons-react` for icons
 - Use **CSS Modules** (`*.module.css`) for component-specific styles
   - If you find any `sx` styled-components styling, migrate them to CSS Modules
+- **Components must live in their own directory:** `src/components/Name/Name.jsx`, `Name.module.css`, `name.story.jsx`. Never place component files flat in `src/components/`.
+- **Always use the `create` skill** when creating new components or stories — don't manually create files.
 - **Every piece of data consumed in a page must gracefully handle `null` or `undefined` without crashing.** Since flow data, records, and overrides can all be partial, incomplete, or missing, components must never assume a field exists. Use optional chaining, fallback values, or conditional rendering for every data access.
 - **Branch URL support is required for any feature involving URL fragments or URL matching.** Branch deploys use `VITE_BASE_PATH=/branch--{branch-name}/` which changes `import.meta.env.BASE_URL`. Any URL matching, same-origin detection, or src resolution must account for branch-prefixed paths (e.g. `/branch--my-feature/MyPrototype`). When implementing URL-related features, ask the user about branch URL support — if they're unavailable, build for it by default.
 

@@ -1,0 +1,608 @@
+/* Viewfinder Home — SaaS-style homescreen */
+
+.layout {
+  display: flex;
+  height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #1a1a2e;
+  background: #f8f9fb;
+}
+
+/* ─── Sidebar ─── */
+
+.sidebar {
+  width: 240px;
+  min-width: 240px;
+  background: #fff;
+  border-right: 1px solid #e4e7ec;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.sidebarHeader {
+  padding: 20px 16px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo {
+  width: 28px;
+  height: 28px;
+  background: #2563eb;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.appName {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.searchBox {
+  margin: 0 12px 8px;
+  padding: 7px 10px;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #f8f9fb;
+  color: #6b7280;
+  outline: none;
+  width: calc(100% - 24px);
+}
+
+.searchBox:focus {
+  border-color: #2563eb;
+  background: #fff;
+}
+
+/* Nav items */
+
+.navSection {
+  padding: 4px 8px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #4b5563;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.navItem:hover {
+  background: #f3f4f6;
+}
+
+.navItemActive {
+  composes: navItem;
+  background: #eef2ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.navIcon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  font-size: 15px;
+}
+
+.navItemActive .navIcon {
+  opacity: 1;
+}
+
+.navCount {
+  margin-left: auto;
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* Separator */
+
+.separator {
+  height: 1px;
+  background: #e4e7ec;
+  margin: 8px 16px;
+}
+
+/* Starred section */
+
+.sectionLabel {
+  padding: 8px 20px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.starredItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 20px;
+  font-size: 13px;
+  color: #4b5563;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.starredItem:hover {
+  background: #f3f4f6;
+}
+
+.starredDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Sidebar footer — user card */
+
+.sidebarFooter {
+  margin-top: auto;
+  border-top: 1px solid #e4e7ec;
+  padding: 12px;
+}
+
+.userCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.userCard:hover {
+  background: #f3f4f6;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #e4e7ec;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.userName {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a1a2e;
+}
+
+.userSub {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.loginBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: #f3f4f6;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.loginBtn:hover {
+  background: #eef2ff;
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+/* ─── Main Content ─── */
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  border-bottom: 1px solid #e4e7ec;
+  background: #fff;
+}
+
+.pageTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.topActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.createBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.createBtn:hover {
+  background: #1d4ed8;
+}
+
+.viewToggle {
+  display: flex;
+  align-items: center;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.viewToggleBtn {
+  padding: 6px 10px;
+  background: #fff;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 14px;
+  transition: all 0.1s;
+}
+
+.viewToggleBtn:hover {
+  color: #4b5563;
+}
+
+.viewToggleBtnActive {
+  composes: viewToggleBtn;
+  background: #f3f4f6;
+  color: #2563eb;
+}
+
+/* Tabs */
+
+.tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 32px;
+  background: #fff;
+  border-bottom: 1px solid #e4e7ec;
+}
+
+.tab {
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.tab:hover {
+  color: #1a1a2e;
+}
+
+.tabActive {
+  composes: tab;
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  font-weight: 600;
+}
+
+/* Grid */
+
+.content {
+  padding: 24px 32px;
+  flex: 1;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+/* Card */
+
+.card {
+  background: #fff;
+  border: 1px solid #e4e7ec;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.card:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+  transform: translateY(-1px);
+}
+
+.cardThumb {
+  height: 160px;
+  background: #f0f1f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.cardThumbPattern {
+  width: 100%;
+  height: 100%;
+  opacity: 0.15;
+  background-image:
+    linear-gradient(45deg, #6b7280 25%, transparent 25%),
+    linear-gradient(-45deg, #6b7280 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #6b7280 75%),
+    linear-gradient(-45deg, transparent 75%, #6b7280 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+.cardBadge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.badgePrototype {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.badgeCanvas {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.badgeComponent {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.badgeExternal {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+.cardBody {
+  padding: 14px 16px;
+}
+
+.cardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.cardMetaDot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #d1d5db;
+}
+
+/* Create menu overlay */
+
+.createMenuOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.createMenu {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  padding: 24px;
+  width: 400px;
+  max-width: 90vw;
+}
+
+.createMenuTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #1a1a2e;
+}
+
+.createMenuGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.createMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.createMenuItem:hover {
+  border-color: #2563eb;
+  background: #eef2ff;
+}
+
+.createMenuIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.createMenuItemTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.createMenuItemDesc {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* PAT Token dialog */
+
+.dialog {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  padding: 28px;
+  width: 440px;
+  max-width: 90vw;
+}
+
+.dialogTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #1a1a2e;
+}
+
+.dialogDesc {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 20px;
+}
+
+.dialogInput {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: monospace;
+  margin-bottom: 16px;
+  box-sizing: border-box;
+}
+
+.dialogInput:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btnSecondary {
+  padding: 8px 16px;
+  background: #f3f4f6;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.btnSecondary:hover {
+  background: #e5e7eb;
+}
+
+.btnPrimary {
+  padding: 8px 16px;
+  background: #2563eb;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+}
+
+.btnPrimary:hover {
+  background: #1d4ed8;
+}
+
+/* Color accents for thumbnails */
+.thumbBlue { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
+.thumbAmber { background: linear-gradient(135deg, #fef3c7, #fde68a); }
+.thumbGreen { background: linear-gradient(135deg, #d1fae5, #a7f3d0); }
+.thumbPurple { background: linear-gradient(135deg, #f3e8ff, #e9d5ff); }
+.thumbRose { background: linear-gradient(135deg, #ffe4e6, #fecdd3); }
+.thumbSlate { background: linear-gradient(135deg, #f1f5f9, #e2e8f0); }

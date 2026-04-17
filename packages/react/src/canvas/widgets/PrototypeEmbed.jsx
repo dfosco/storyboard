@@ -403,7 +403,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
           </div>
         )}
       </div>
-      {resizable && <ResizeHandle width={width} height={height} onResize={handleResize} />}
+      {resizable && <ResizeHandle targetRef={embedRef} width={width} height={height} onResize={handleResize} />}
     </WidgetWrapper>
     {createPortal(
       <div

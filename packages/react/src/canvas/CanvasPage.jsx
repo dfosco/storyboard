@@ -1098,6 +1098,69 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     }
   }, [canvasId])
 
+  // --- Selected widgets bridge ---
+  // Writes .selectedwidgets.json so Copilot knows which canvas/widgets are active.
+  // Uses a stable tabId to survive WebSocket reconnects.
+  const selectionTabIdRef = useRef(Math.random().toString(36).slice(2, 10))
+
+  // Gather selected widget data from refs (safe for callbacks/timeouts)
+  const getSelectedWidgetData = useCallback(() => {
+    const ids = [...selectedIdsRef.current]
+    const widgets = (stateRef.current.widgets || [])
+      .filter(w => ids.includes(w.id))
+      .map(w => ({ id: w.id, type: w.type, props: w.props }))
+
+    // Include jsx-* component selections
+    for (const id of ids) {
+      if (id.startsWith('jsx-') && !widgets.some(w => w.id === id)) {
+        widgets.push({ id, type: 'component', props: { exportName: id.slice(4) } })
+      }
+    }
+
+    return { widgetIds: ids, widgets }
+  }, [])
+
+  // Send focus event on mount, tab focus, and visibility change
+  useEffect(() => {
+    if (!import.meta.hot) return
+
+    const tabId = selectionTabIdRef.current
+
+    function sendFocus() {
+      const { widgetIds, widgets } = getSelectedWidgetData()
+      import.meta.hot.send('storyboard:canvas-focused', { tabId, canvasId, widgetIds, widgets })
+    }
+
+    sendFocus()
+
+    function handleVisibility() {
+      if (!document.hidden) sendFocus()
+    }
+    function handleFocus() { sendFocus() }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleFocus)
+      import.meta.hot.send('storyboard:canvas-unfocused', { tabId })
+    }
+  }, [canvasId, getSelectedWidgetData])
+
+  // Debounced selection change (500ms) — reads from refs at fire time
+  useEffect(() => {
+    if (!import.meta.hot) return
+
+    const tabId = selectionTabIdRef.current
+    const timer = setTimeout(() => {
+      const { widgetIds, widgets } = getSelectedWidgetData()
+      import.meta.hot.send('storyboard:selection-changed', { tabId, canvasId, widgetIds: widgetIds, widgets })
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [selectedWidgetIds, canvasId, getSelectedWidgetData])
+
   // Add a widget by type — used by CanvasControls and CoreUIBar event
   const addWidget = useCallback(async (type) => {
     const defaultProps = schemas[type] ? getDefaults(schemas[type]) : {}

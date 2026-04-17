@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
-import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon } from '@primer/octicons-react'
+import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon } from '@primer/octicons-react'
 import { Menu } from '@base-ui/react/menu'
 import Icon from './Icon.jsx'
 import css from './ViewfinderNew.module.css'
@@ -16,6 +16,7 @@ import css from './ViewfinderNew.module.css'
 const STARRED_KEY = 'sb-viewfinder-starred'
 const RECENT_KEY = 'sb-viewfinder-recent'
 const MAX_RECENT = 30
+const GROUP_BY_FOLDERS_KEY = 'sb-viewfinder-group-folders'
 
 function readJSON(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) || fallback }
@@ -133,16 +134,19 @@ function ArtifactCard({ item, basePath, starred, onToggleStar }) {
         <StarBtn active={starred} onClick={() => onToggleStar(item.id)} />
       </div>
       <div className={css.cardBody}>
-        <div className={css.cardTitle}>
-          {item.name}
-          {isExternal && <span className={css.externalBadge}>↗</span>}
+        <div className={css.cardBodyContent}>
+          <div className={css.cardTitle}>
+            {item.name}
+            {isExternal && <span className={css.externalBadge}>↗</span>}
+          </div>
+          <div className={css.cardMeta}>
+            {item.author && <span>{Array.isArray(item.author) ? item.author.join(', ') : item.author}</span>}
+            {!item.author && item.gitAuthor && <span>{item.gitAuthor}</span>}
+            {(item.author || item.gitAuthor) && formatRelativeTime(item.lastModified) && <span className={css.cardMetaDot} />}
+            {formatRelativeTime(item.lastModified) && <span>{formatRelativeTime(item.lastModified)}</span>}
+          </div>
         </div>
-        <div className={css.cardMeta}>
-          {item.author && <span>{Array.isArray(item.author) ? item.author.join(', ') : item.author}</span>}
-          {!item.author && item.gitAuthor && <span>{item.gitAuthor}</span>}
-          {(item.author || item.gitAuthor) && formatRelativeTime(item.lastModified) && <span className={css.cardMetaDot} />}
-          {formatRelativeTime(item.lastModified) && <span>{formatRelativeTime(item.lastModified)}</span>}
-        </div>
+        {item.flows?.length > 0 && <FlowsDropdown flows={item.flows} basePath={basePath} />}
       </div>
     </Tag>
   )
@@ -164,6 +168,72 @@ function formatRelativeTime(dateStr) {
   if (days < 7) return `${days}d ago`
   if (days < 30) return `${Math.floor(days / 7)}w ago`
   return date.toLocaleDateString()
+}
+
+/* ─── Flows Dropdown ─── */
+
+function FlowsDropdown({ flows, basePath }) {
+  if (!flows || flows.length === 0) return null
+  return (
+    <Menu.Root>
+      <Menu.Trigger
+        className={css.flowsBtn}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+      >
+        <ChevronDownIcon size={12} />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner className={css.flowsPositioner} side="bottom" align="end" sideOffset={4}>
+          <Menu.Popup className={css.flowsPopup}>
+            <div className={css.flowsTitle}>Flows</div>
+            {flows.map(flow => (
+              <Menu.Item
+                key={flow.key}
+                className={css.flowsItem}
+                onClick={(e) => {
+                  e.preventDefault()
+                  window.location.href = withBase(basePath, flow.route)
+                }}
+              >
+                {flow.meta?.title || flow.name}
+              </Menu.Item>
+            ))}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  )
+}
+
+/* ─── Folder Section ─── */
+
+function FolderSection({ folder, collapsed, onToggle, basePath, starred, onToggleStar }) {
+  return (
+    <section className={css.folderSection}>
+      <button className={css.folderHeader} onClick={onToggle}>
+        <FileDirectoryFillIcon size={16} className={css.folderIcon} />
+        <span className={css.folderName}>{folder.name}</span>
+        <span className={css.folderCount}>{folder.items.length}</span>
+        <ChevronRightIcon
+          size={14}
+          className={collapsed ? css.folderChevron : css.folderChevronExpanded}
+        />
+      </button>
+      {!collapsed && (
+        <div className={css.grid}>
+          {folder.items.map(item => (
+            <ArtifactCard
+              key={item.id}
+              item={item}
+              basePath={basePath}
+              starred={starred.has(item.id)}
+              onToggleStar={onToggleStar}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  )
 }
 
 /* ─── Create Footer ─── */
@@ -465,7 +535,7 @@ function PATDialog({ open, onClose }) {
 /* ─── Nav config ─── */
 
 const NAV_ITEMS = [
-  { id: 'all', label: 'All items', iconName: 'iconoir/view-grid' },
+  { id: 'all', label: 'All artifacts', iconName: 'iconoir/view-grid' },
   { id: 'prototypes', label: 'Prototypes', iconName: 'prototype' },
   { id: 'canvases', label: 'Canvas', iconName: 'canvas' },
   { id: 'components', label: 'Components', iconName: 'component' },
@@ -650,6 +720,7 @@ export default function ViewfinderNew({
         externalUrl: proto.externalUrl,
         folder: proto.folder,
         description: proto.description,
+        flows: proto.flows || [],
       })
     }
 
@@ -710,6 +781,10 @@ export default function ViewfinderNew({
   const [activeTab, setActiveTab] = useState('All')
   const [showCreate, setShowCreate] = useState(false)
   const [showPAT, setShowPAT] = useState(false)
+  const [groupByFolders, setGroupByFolders] = useState(() => {
+    try { return localStorage.getItem(GROUP_BY_FOLDERS_KEY) !== 'false' } catch { return true }
+  })
+  const [collapsedFolders, setCollapsedFolders] = useState(new Set())
   const { starred, toggle: toggleStar } = useStarred()
   const recentIds = useRecent()
 
@@ -730,11 +805,60 @@ export default function ViewfinderNew({
       }
       return ordered
     }
-    if (activeTab === 'Starred') {
-      return navFiltered.filter(i => starred.has(i.id))
-    }
-    return navFiltered
+    const base = activeTab === 'Starred'
+      ? navFiltered.filter(i => starred.has(i.id))
+      : navFiltered
+    return [...base].sort((a, b) => {
+      const aTime = a.lastModified ? new Date(a.lastModified).getTime() : 0
+      const bTime = b.lastModified ? new Date(b.lastModified).getTime() : 0
+      return bTime - aTime
+    })
   }, [activeTab, activeNav, navFiltered, recentIds, itemMap, starred])
+
+  // Grouped items for folder view
+  const grouped = useMemo(() => {
+    if (!groupByFolders) return null
+    const folderItems = {}
+    const ungrouped = []
+    for (const item of items) {
+      if (item.folder) {
+        if (!folderItems[item.folder]) folderItems[item.folder] = []
+        folderItems[item.folder].push(item)
+      } else {
+        ungrouped.push(item)
+      }
+    }
+    const folderMeta = {}
+    for (const f of prototypeIndex.folders || []) folderMeta[f.dirName] = f
+    const folders = Object.entries(folderItems).map(([dirName, fItems]) => ({
+      dirName,
+      name: folderMeta[dirName]?.name || dirName,
+      items: fItems,
+    }))
+    folders.sort((a, b) => {
+      const aMax = Math.max(0, ...a.items.map(i => i.lastModified ? new Date(i.lastModified).getTime() : 0))
+      const bMax = Math.max(0, ...b.items.map(i => i.lastModified ? new Date(i.lastModified).getTime() : 0))
+      return bMax - aMax
+    })
+    return { ungrouped, folders }
+  }, [items, groupByFolders, prototypeIndex])
+
+  const toggleGrouping = useCallback(() => {
+    setGroupByFolders(prev => {
+      const next = !prev
+      try { localStorage.setItem(GROUP_BY_FOLDERS_KEY, String(next)) } catch {}
+      return next
+    })
+  }, [])
+
+  const toggleFolder = useCallback((dirName) => {
+    setCollapsedFolders(prev => {
+      const next = new Set(prev)
+      if (next.has(dirName)) next.delete(dirName)
+      else next.add(dirName)
+      return next
+    })
+  }, [])
 
   // Counts
   const counts = useMemo(() => ({
@@ -747,7 +871,7 @@ export default function ViewfinderNew({
   // Starred items for sidebar
   const starredItems = useMemo(() => allItems.filter(i => starred.has(i.id)), [allItems, starred])
 
-  const pageTitle = NAV_ITEMS.find(n => n.id === activeNav)?.label || 'All items'
+  const pageTitle = NAV_ITEMS.find(n => n.id === activeNav)?.label || 'All artifacts'
 
   return (
     <div className={css.layout}>
@@ -763,7 +887,7 @@ export default function ViewfinderNew({
         <div className={css.topActions}>
           <BranchDropdown basePath={basePath} />
           <button className={css.createBtn} onClick={() => setShowCreate(true)}>
-            + Create
+            Create Artifact
           </button>
         </div>
       </header>
@@ -830,6 +954,15 @@ export default function ViewfinderNew({
                 {t}
               </button>
             ))}
+            <label className={css.groupByFolders}>
+              <input
+                type="checkbox"
+                className={css.groupByFoldersCheckbox}
+                checked={groupByFolders}
+                onChange={toggleGrouping}
+              />
+              Group by folders
+            </label>
           </div>
 
           {/* Grid */}
@@ -840,6 +973,33 @@ export default function ViewfinderNew({
                 {activeTab === 'Starred' && 'No starred items. Click ☆ on a card to star it.'}
                 {activeTab === 'All' && 'No items found. Create a prototype, canvas, or component to get started.'}
               </div>
+            ) : groupByFolders && grouped ? (
+              <>
+                {grouped.ungrouped.length > 0 && (
+                  <div className={css.grid}>
+                    {grouped.ungrouped.map(item => (
+                      <ArtifactCard
+                        key={item.id}
+                        item={item}
+                        basePath={basePath}
+                        starred={starred.has(item.id)}
+                        onToggleStar={toggleStar}
+                      />
+                    ))}
+                  </div>
+                )}
+                {grouped.folders.map(folder => (
+                  <FolderSection
+                    key={folder.dirName}
+                    folder={folder}
+                    collapsed={collapsedFolders.has(folder.dirName)}
+                    onToggle={() => toggleFolder(folder.dirName)}
+                    basePath={basePath}
+                    starred={starred}
+                    onToggleStar={toggleStar}
+                  />
+                ))}
+              </>
             ) : (
               <div className={css.grid}>
                 {items.map(item => (

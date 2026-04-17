@@ -26,6 +26,10 @@ describe('configSchema', () => {
       expect(c.canvas.github.ghGuard).toBe('copy')
       expect(c.commandPalette.providers).toEqual(['prototypes', 'flows', 'canvases', 'pages'])
       expect(c.commandPalette.ranking).toBe('frecency')
+      expect(c.customerMode.enabled).toBe(false)
+      expect(c.customerMode.hideChrome).toBe(false)
+      expect(c.customerMode.hideHomepage).toBe(false)
+      expect(c.customerMode.protoHomepage).toBe('')
     })
 
     it('returns full defaults when called with undefined', () => {

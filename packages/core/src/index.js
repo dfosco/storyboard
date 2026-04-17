@@ -94,6 +94,9 @@ export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comm
 export { initCanvasConfig, getPasteRules } from './canvasConfig.js'
 export { getCommandPaletteConfig } from './commandPaletteConfig.js'
 
+// Customer mode config
+export { initCustomerModeConfig, getCustomerModeConfig, isCustomerMode } from './customerModeConfig.js'
+
 // Theme
 export {
   setTheme,

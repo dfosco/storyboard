@@ -20,6 +20,7 @@ import { initUIConfig } from './uiConfig.js'
 import { initCanvasConfig } from './canvasConfig.js'
 import { initCommandPaletteConfig } from './commandPaletteConfig.js'
 import { initToolbarConfig } from './toolbarConfigStore.js'
+import { initCustomerModeConfig } from './customerModeConfig.js'
 
 let _mounted = false
 
@@ -162,8 +163,20 @@ export async function mountStoryboardCore(config = {}, options = {}) {
     initCanvasConfig(config.canvas)
   }
 
+  // Load and merge command palette config.
+  // Core defaults come from commandpalette.config.json (bundled).
+  // Client can provide overrides via config.commandPalette (legacy) or a commandpalette.config.json at repo root.
+  const defaultCmdPaletteConfig = (await import('../commandpalette.config.json')).default
   if (config.commandPalette) {
-    initCommandPaletteConfig(config.commandPalette)
+    const { deepMerge: deepMergeCp } = await import('./loader.js')
+    initCommandPaletteConfig(deepMergeCp(defaultCmdPaletteConfig, config.commandPalette))
+  } else {
+    initCommandPaletteConfig({ ...defaultCmdPaletteConfig })
+  }
+
+  // Initialize customer mode config
+  if (config.customerMode) {
+    initCustomerModeConfig(config.customerMode)
   }
 
   // Initialize comments config (framework-agnostic)

@@ -270,7 +270,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
           </>
         )}
       </div>
-      {resizable && <ResizeHandle width={width} height={height} onResize={handleResize} />}
+      {resizable && <ResizeHandle targetRef={containerRef} width={width} height={height} onResize={handleResize} />}
     </WidgetWrapper>
   )
 })

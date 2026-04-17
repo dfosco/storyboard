@@ -46,8 +46,7 @@ packages/core/dist/storyboard-ui.*
 agent-browser.json
 
 # Selected widgets bridge (real-time canvas selection for Copilot)
-.selectedwidgets.json
-.selectedwidgets.json.tmp
+.storyboard
 
 # Private canvas images (underscore prefix = not committed)
 src/canvas/images/_*

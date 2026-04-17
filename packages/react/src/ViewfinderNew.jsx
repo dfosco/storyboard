@@ -673,12 +673,10 @@ function useBranches(basePath) {
       .then(data => { if (data?.name) setGitUser(data.name) })
       .catch(() => {})
 
-    // If no branches from window global, fetch from server API
-    if (!branches) {
-      fetch(`${apiBase}/_storyboard/worktrees`).then(r => r.ok ? r.json() : null)
-        .then(data => { if (Array.isArray(data) && data.length > 0) setBranches(data) })
-        .catch(() => {})
-    }
+    // Always fetch live branch list from server API
+    fetch(`${apiBase}/_storyboard/worktrees`).then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data) && data.length > 0) setBranches(data) })
+      .catch(() => {})
   }, [])
 
   const currentBranch = useMemo(() => {

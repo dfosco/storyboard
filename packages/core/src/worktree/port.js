@@ -71,10 +71,28 @@ export function detectWorktreeName() {
 }
 
 /**
+ * Check if a port is in use by another process (synchronous, best-effort via lsof).
+ * Skipped when NODE_ENV=test to avoid test flakiness from real port state.
+ * @param {number} port
+ * @returns {boolean}
+ */
+function isPortInUse(port) {
+  if (process.env.NODE_ENV === 'test') return false
+  try {
+    execSync(`lsof -i :${port} -sTCP:LISTEN`, { stdio: 'ignore', timeout: 2000 })
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Get or assign a port for the given worktree name.
  *
  * Creates .worktrees/ports.json if it doesn't exist. Assigns ports
  * starting at BASE_PORT+1 (1235) for non-main worktrees.
+ * If the previously assigned port was stolen by another process,
+ * reassigns to the next available port.
  *
  * @param {string} worktreeName
  * @returns {number}
@@ -95,13 +113,19 @@ export function getPort(worktreeName) {
 
   if (worktreeName === 'main') return ports.main || BASE_PORT
 
-  if (!ports[worktreeName]) {
-    const usedPorts = Object.values(ports)
-    let nextPort = BASE_PORT + 1
-    while (usedPorts.includes(nextPort)) nextPort++
-    ports[worktreeName] = nextPort
-    writeFileSync(portsFile, JSON.stringify(ports, null, 2) + '\n')
+  // If port already assigned, verify it's not stolen by another process
+  if (ports[worktreeName]) {
+    if (!isPortInUse(ports[worktreeName])) {
+      return ports[worktreeName]
+    }
+    // Port is occupied — fall through to reassign
   }
+
+  const usedPorts = Object.values(ports)
+  let nextPort = BASE_PORT + 1
+  while (usedPorts.includes(nextPort)) nextPort++
+  ports[worktreeName] = nextPort
+  writeFileSync(portsFile, JSON.stringify(ports, null, 2) + '\n')
 
   return ports[worktreeName]
 }

@@ -325,7 +325,7 @@
     // Configurable shortcut to open the command menu (works even when hidden)
     if (openKey && e.key === openKey && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
-      commandMenuOpen = !commandMenuOpen
+      document.dispatchEvent(new CustomEvent('storyboard:toggle-palette'))
     }
     // Config-driven tool shortcuts (e.g. Cmd+D for docs, Cmd+I for inspector)
     for (const menu of cleanedMenus) {
@@ -748,10 +748,10 @@
       {/each}
     {/if}
     {#if commandMenuConfig}
-      <div class={visible || commandMenuOpen ? '' : 'default-button-dimmed'}>
+      <div class={visible ? '' : 'default-button-dimmed'}>
         <Tooltip.Root>
           <Tooltip.Trigger>
-            <CommandPalette {basePath} bind:open={commandMenuOpen} shortcuts={shortcutsConfig} tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} />
+            <CommandPalette tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} />
           </Tooltip.Trigger>
           <Tooltip.Content side="top">Command Menu</Tooltip.Content>
         </Tooltip.Root>

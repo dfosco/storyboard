@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
-import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, PlusIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon } from '@primer/octicons-react'
+import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, PlusIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon, StackIcon } from '@primer/octicons-react'
 import { Menu } from '@base-ui/react/menu'
 import Icon from './Icon.jsx'
 import css from './Viewfinder.module.css'
@@ -289,7 +289,7 @@ function PagesDropdown({ pages, basePath }) {
         aria-label="See pages"
         title="See pages"
       >
-        <Icon name="canvas" size={16} />
+        <StackIcon size={16} />
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner className={css.flowsPositioner} side="bottom" align="end" sideOffset={4}>

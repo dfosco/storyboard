@@ -13,15 +13,32 @@ import {
   getRecent,
   trackRecent,
 } from '@dfosco/storyboard-core'
+import CreateDialog from './CreateDialog.jsx'
 import './command-palette.css'
 
 /**
  * Build the JSON structure for react-cmdk from all data providers.
  */
-function buildPaletteItems(basePath) {
+function buildPaletteItems(basePath, onCreateAction) {
   const base = (basePath || '/').replace(/\/+$/, '')
   const prefix = base === '/' ? '' : base
   const groups = []
+  const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
+
+  // --- Create (dev only) ---
+  if (isLocalDev) {
+    groups.push({
+      heading: 'Create',
+      id: 'create',
+      items: [
+        { id: 'create:canvas', children: 'New Canvas', keywords: ['create', 'canvas', 'new', 'board'], onClick: () => onCreateAction?.('Canvas') },
+        { id: 'create:prototype', children: 'New Prototype', keywords: ['create', 'prototype', 'new', 'page'], onClick: () => onCreateAction?.('Prototype') },
+        { id: 'create:component', children: 'New Component', keywords: ['create', 'component', 'new', 'story'], onClick: () => onCreateAction?.('Component') },
+        { id: 'create:flow', children: 'New Prototype Flow', keywords: ['create', 'flow', 'new', 'data'], onClick: () => onCreateAction?.('Flow') },
+        { id: 'create:page', children: 'New Prototype Page', keywords: ['create', 'page', 'new'], onClick: () => onCreateAction?.('Page') },
+      ],
+    })
+  }
 
   // --- Recent ---
   const recent = getRecent()
@@ -202,15 +219,20 @@ export default function StoryboardCommandPalette({ basePath }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [items, setItems] = useState([])
+  const [createType, setCreateType] = useState(null)
+
+  function handleCreateAction(type) {
+    setOpen(false)
+    // Delay so palette closes before dialog opens
+    requestAnimationFrame(() => setCreateType(type))
+  }
 
   // Listen for toggle events from Svelte CoreUIBar (dispatched on cmd+k)
   useEffect(() => {
     function handleToggle() {
       setOpen(prev => {
         if (!prev) {
-          // Opening — build items synchronously before render
-          const built = buildPaletteItems(basePath)
-          // Use setTimeout to set items after open state is committed
+          const built = buildPaletteItems(basePath, handleCreateAction)
           setTimeout(() => {
             setItems(built)
             setSearch('')
@@ -221,7 +243,7 @@ export default function StoryboardCommandPalette({ basePath }) {
     }
 
     function handleOpen() {
-      const built = buildPaletteItems(basePath)
+      const built = buildPaletteItems(basePath, handleCreateAction)
       setItems(built)
       setSearch('')
       setOpen(true)
@@ -252,6 +274,7 @@ export default function StoryboardCommandPalette({ basePath }) {
   }, [])
 
   return (
+    <>
     <CommandPalette
       onChangeSearch={handleChangeSearch}
       onChangeOpen={handleChangeOpen}
@@ -280,5 +303,12 @@ export default function StoryboardCommandPalette({ basePath }) {
         )}
       </CommandPalette.Page>
     </CommandPalette>
+
+    <CreateDialog
+      type={createType}
+      basePath={basePath}
+      onClose={() => setCreateType(null)}
+    />
+    </>
   )
 }

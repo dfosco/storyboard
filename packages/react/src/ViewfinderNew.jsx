@@ -532,116 +532,6 @@ function CreateMenu({ onClose, basePath }) {
 
 /* ─── PAT Dialog ─── */
 
-const COMMENTS_TOKEN_KEY = 'sb-comments-token'
-const REPO_OWNER = 'dfosco'
-const REPO_NAME = 'storyboard'
-
-function getRepoInfo() {
-  try {
-    const cfg = typeof __STORYBOARD_CONFIG__ !== 'undefined' ? __STORYBOARD_CONFIG__ : null
-    const repo = cfg?.repository
-    if (repo?.owner && repo?.name) return repo
-  } catch { /* ignore */ }
-  return { owner: REPO_OWNER, name: REPO_NAME }
-}
-
-function PATDialog({ open, onClose }) {
-  const [tokenValue, setTokenValue] = useState('')
-
-  if (!open) return null
-
-  const repo = getRepoInfo()
-
-  const handleSignIn = () => {
-    const trimmed = tokenValue.trim()
-    if (!trimmed) return
-
-    // Store token to localStorage
-    try { localStorage.setItem(COMMENTS_TOKEN_KEY, trimmed) } catch { /* ignore */ }
-
-    // Try the comments auth API if available
-    try {
-      import('@dfosco/storyboard-core/comments').then(({ setToken }) => {
-        setToken(trimmed)
-      }).catch(() => {})
-    } catch { /* comments module may not be initialized */ }
-
-    setTokenValue('')
-    onClose()
-  }
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') handleSignIn()
-  }
-
-  return (
-    <div className={css.createMenuOverlay} onClick={onClose}>
-      <div className={css.dialog} onClick={e => e.stopPropagation()}>
-        <button className={css.dialogClose} onClick={onClose} aria-label="Close">×</button>
-
-        <div className={css.dialogTitle}>Sign in for comments</div>
-        <div className={css.dialogDesc}>
-          Leave comments for other users to see and respond, and react to! Storyboard comments use Discussions as a back-end and require a GitHub PAT to be enabled.
-        </div>
-
-        <hr className={css.dialogSeparator} />
-
-        <div className={css.tokenCard}>
-          <div className={css.tokenCardTitle}>Fine-grained Personal Access Token</div>
-          <div className={css.tokenCardRow}>
-            <span className={css.tokenCardLabel}>Owner:</span>
-            <span className={css.tokenCardValue}>{repo.owner}</span>
-          </div>
-          <div className={css.tokenCardRow}>
-            <span className={css.tokenCardLabel}>Expiration:</span>
-            <span className={css.tokenCardValue}><strong>366 days</strong> (recommended)</span>
-          </div>
-          <div className={css.tokenCardRow}>
-            <span className={css.tokenCardLabel}>Repository access:</span>
-            <span className={css.tokenCardValue}>Only select repositories &gt; {repo.owner}/{repo.name}</span>
-          </div>
-          <div className={css.tokenCardRow}>
-            <span className={css.tokenCardLabel}>Permissions:</span>
-            <span className={css.tokenCardValue}>Repositories &gt; Discussions &gt; Access: Read and Write</span>
-          </div>
-        </div>
-
-        <a
-          className={css.tokenLink}
-          href="https://github.com/settings/personal-access-tokens/new"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Create a GitHub Fine-Grained Personal Access Token ↗
-        </a>
-
-        <hr className={css.dialogSeparator} />
-
-        <label className={css.dialogLabel}>Personal Access Token</label>
-        <input
-          className={css.dialogInput}
-          placeholder="github_pat_… or ghp_…"
-          type="password"
-          autoFocus
-          value={tokenValue}
-          onChange={e => setTokenValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-
-        <div className={css.warningBanner}>
-          <span className={css.warningIcon}>⚠️</span>
-          <span>Comments are an experimental feature and may be unstable.</span>
-        </div>
-
-        <div className={css.dialogActions}>
-          <button className={css.btnSecondary} onClick={onClose}>Cancel</button>
-          <button className={css.btnPrimary} onClick={handleSignIn}>Sign in</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /* ─── Nav config ─── */
 
 const NAV_ITEMS = [
@@ -896,7 +786,6 @@ export default function ViewfinderNew({
   const [activeNav, setActiveNav] = useState('all')
   const [activeTab, setActiveTab] = useState('All')
   const [showCreate, setShowCreate] = useState(false)
-  const [showPAT, setShowPAT] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [groupByFolders, setGroupByFolders] = useState(() => {
     try { return localStorage.getItem(GROUP_BY_FOLDERS_KEY) !== 'false' } catch { return true }
@@ -904,13 +793,6 @@ export default function ViewfinderNew({
   const [collapsedFolders, setCollapsedFolders] = useState(new Set())
   const { starred, toggle: toggleStar } = useStarred()
   const recentIds = useRecent()
-
-  // Listen for auth modal trigger from Svelte (comments tool / "C" shortcut)
-  useEffect(() => {
-    function handleOpenAuth() { setShowPAT(true) }
-    document.addEventListener('storyboard:open-auth-modal', handleOpenAuth)
-    return () => document.removeEventListener('storyboard:open-auth-modal', handleOpenAuth)
-  }, [])
 
   // Filter by nav category
   const navFiltered = useMemo(() => {
@@ -1073,7 +955,7 @@ export default function ViewfinderNew({
 
           {/* User profile / login */}
           <div className={css.sidebarFooter}>
-            <button className={css.loginBtn} onClick={() => setShowPAT(true)}>
+            <button className={css.loginBtn} onClick={() => document.dispatchEvent(new CustomEvent('storyboard:open-auth-modal'))}>
               <span className={css.avatar}><MarkGithubIcon size={16} /></span>
               <div>
                 <div className={css.userName}>Sign in</div>
@@ -1158,9 +1040,6 @@ export default function ViewfinderNew({
           </div>
         </main>
       </div>
-
-      {/* Modals */}
-      <PATDialog open={showPAT} onClose={() => setShowPAT(false)} />
     </div>
   )
 }

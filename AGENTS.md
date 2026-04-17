@@ -20,7 +20,7 @@
 **Rules:**
 1. **Always check this file first** — even if the user doesn't explicitly mention widgets, their prompt may implicitly reference what's selected (e.g., "implement this image" = the selected image widget).
 2. **For image widgets** — when a selected widget has `type: "image"`, resolve its image source:
-   - The image file lives at `src/canvas/images/{props.src}` (or `assets/canvas/images/{props.src}` for built assets)
+   - The image file lives at `/assets/canvas/images/{props.src}` 
    - **Always load the actual image into your context** so you can see what the user is referring to
 3. **For all other widget types** — use the widget's `props` to understand its content (e.g., `props.text` for sticky notes, `props.content` for markdown blocks).
 4. **Use `canvasFile`** to cross-reference the full canvas state if you need more context about surrounding widgets or layout.

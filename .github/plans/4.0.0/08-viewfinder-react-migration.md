@@ -32,12 +32,15 @@ The Viewfinder page lists all prototypes, canvases, and external prototypes. It 
 - Mode switcher, comment overlay
 - Any tool handler that touches prototype DOM
 
+
+
+
 ---
 
 ## Implementation Notes
 
-- Use Primer React components (`ActionList`, `TextInput`, `Label`, etc.) for the UI
-- Use CSS Modules for component-specific styles
+- Viewfinder should use BaseUI components in place of custom CSS implementation
+- Keep features and design the same for now, I will re-design later
 - The Viewfinder data (prototype list, metadata) is already available via the Vite data plugin virtual module — React can import it directly
 - Route should remain at the same URL (root `/` or viewfinder path)
 - Must handle null/undefined gracefully for all prototype metadata fields
@@ -49,4 +52,3 @@ The Viewfinder page lists all prototypes, canvases, and external prototypes. It 
 
 - No hard dependency on other 4.0 features
 - Can run in parallel with paste rules, sticky markdown, widget mode system
-- Command palette (`07`) may eventually replace Viewfinder search — but the migration should use a standard search UI that the palette can later hook into

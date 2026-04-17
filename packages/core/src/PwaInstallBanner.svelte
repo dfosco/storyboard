@@ -93,7 +93,7 @@
     color: var(--fgColor-default, #e6edf3);
     border: 1px solid var(--borderColor-default, #30363d);
     border-radius: 0.75rem;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+    font-family: "Mona Sans", -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
     font-size: 0.8125rem;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   }

@@ -3,53 +3,88 @@
  * Re-imagines the Viewfinder as a traditional app dashboard
  * with sidebar navigation, artifact grid, create menu, and user profile.
  */
-import { useState } from 'react'
-import { Dialog } from '@base-ui/react/dialog'
-import { Menu } from '@base-ui/react/menu'
-import { Tabs } from '@base-ui/react/tabs'
-import { Separator } from '@base-ui/react/separator'
-import { Tooltip } from '@base-ui/react/tooltip'
+import { useState, useCallback, useSyncExternalStore } from 'react'
 import css from './viewfinder-home.module.css'
+
+/* ─── localStorage helpers ─── */
+
+const STARRED_KEY = 'sb-viewfinder-starred'
+const RECENT_KEY = 'sb-viewfinder-recent'
+const MAX_RECENT = 20
+
+function readJSON(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) || fallback }
+  catch { return fallback }
+}
+
+function writeJSON(key, value) {
+  localStorage.setItem(key, JSON.stringify(value))
+  window.dispatchEvent(new StorageEvent('storage', { key }))
+}
+
+// Tiny external store so React re-renders on localStorage writes
+function createLocalStorageStore(key, fallback) {
+  const subscribe = (cb) => {
+    const handler = (e) => { if (!e.key || e.key === key) cb() }
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
+  }
+  const getSnapshot = () => localStorage.getItem(key) || JSON.stringify(fallback)
+  return { subscribe, getSnapshot }
+}
+
+const starredStore = createLocalStorageStore(STARRED_KEY, [])
+const recentStore = createLocalStorageStore(RECENT_KEY, [])
+
+function useStarred() {
+  const raw = useSyncExternalStore(starredStore.subscribe, starredStore.getSnapshot)
+  const ids = JSON.parse(raw)
+  const toggle = useCallback((id) => {
+    const current = readJSON(STARRED_KEY, [])
+    const next = current.includes(id) ? current.filter(x => x !== id) : [...current, id]
+    writeJSON(STARRED_KEY, next)
+  }, [])
+  return { starred: new Set(ids), toggle }
+}
+
+function useRecent() {
+  const raw = useSyncExternalStore(recentStore.subscribe, recentStore.getSnapshot)
+  return JSON.parse(raw)
+}
+
+function trackRecent(id) {
+  const current = readJSON(RECENT_KEY, [])
+  const next = [id, ...current.filter(x => x !== id)].slice(0, MAX_RECENT)
+  writeJSON(RECENT_KEY, next)
+}
 
 /* ─── Mock Data ─── */
 
-const PROTOTYPES = [
-  { id: 'p1', name: 'Security Overview', author: 'dfosco', updated: '2 hours ago', color: 'Blue' },
-  { id: 'p2', name: 'Repository Settings', author: 'dfosco', updated: '5 hours ago', color: 'Slate' },
-  { id: 'p3', name: 'Actions Dashboard', author: 'mona', updated: 'Yesterday', color: 'Green' },
-  { id: 'p4', name: 'Copilot Chat', author: 'dfosco', updated: '2 days ago', color: 'Purple' },
-  { id: 'p5', name: 'Issue Tracker', author: 'mona', updated: '3 days ago', color: 'Amber' },
-  { id: 'p6', name: 'PR Review Flow', author: 'dfosco', updated: '4 days ago', color: 'Rose' },
+const ALL_ITEMS = [
+  { id: 'p1', name: 'Security Overview', author: 'dfosco', updated: '2 hours ago', color: 'Blue', type: 'prototype' },
+  { id: 'p2', name: 'Repository Settings', author: 'dfosco', updated: '5 hours ago', color: 'Slate', type: 'prototype' },
+  { id: 'p3', name: 'Actions Dashboard', author: 'mona', updated: 'Yesterday', color: 'Green', type: 'prototype' },
+  { id: 'p4', name: 'Copilot Chat', author: 'dfosco', updated: '2 days ago', color: 'Purple', type: 'prototype' },
+  { id: 'p5', name: 'Issue Tracker', author: 'mona', updated: '3 days ago', color: 'Amber', type: 'prototype' },
+  { id: 'p6', name: 'PR Review Flow', author: 'dfosco', updated: '4 days ago', color: 'Rose', type: 'prototype' },
+  { id: 'c1', name: 'Viewfinder Redesign', author: 'dfosco', updated: 'Just now', color: 'Purple', type: 'canvas' },
+  { id: 'c2', name: 'Navigation Patterns', author: 'dfosco', updated: '1 day ago', color: 'Blue', type: 'canvas' },
+  { id: 'c3', name: 'Component Library', author: 'mona', updated: '3 days ago', color: 'Green', type: 'canvas' },
+  { id: 'k1', name: 'TextInput', author: 'dfosco', updated: '1 day ago', color: 'Slate', type: 'component' },
+  { id: 'k2', name: 'Button Patterns', author: 'dfosco', updated: '2 days ago', color: 'Blue', type: 'component' },
+  { id: 'k3', name: 'Textarea', author: 'mona', updated: '5 days ago', color: 'Green', type: 'component' },
 ]
 
-const CANVASES = [
-  { id: 'c1', name: 'Viewfinder Redesign', author: 'dfosco', updated: 'Just now', color: 'Purple' },
-  { id: 'c2', name: 'Navigation Patterns', author: 'dfosco', updated: '1 day ago', color: 'Blue' },
-  { id: 'c3', name: 'Component Library', author: 'mona', updated: '3 days ago', color: 'Green' },
-]
-
-const COMPONENTS = [
-  { id: 'k1', name: 'TextInput', author: 'dfosco', updated: '1 day ago', color: 'Slate' },
-  { id: 'k2', name: 'Button Patterns', author: 'dfosco', updated: '2 days ago', color: 'Blue' },
-  { id: 'k3', name: 'Textarea', author: 'mona', updated: '5 days ago', color: 'Green' },
-]
-
-const STARRED = [
-  { name: 'Security Overview', color: '#3b82f6' },
-  { name: 'Viewfinder Redesign', color: '#a855f7' },
-  { name: 'Actions Dashboard', color: '#10b981' },
-]
+const ITEM_MAP = Object.fromEntries(ALL_ITEMS.map(i => [i.id, i]))
 
 const NAV_ITEMS = [
-  { id: 'all', label: 'All items', icon: '⊞', count: 12 },
-  { id: 'prototypes', label: 'Prototypes', icon: '◇', count: 6 },
-  { id: 'canvases', label: 'Canvases', icon: '▢', count: 3 },
-  { id: 'components', label: 'Components', icon: '⬡', count: 3 },
+  { id: 'all', label: 'All items', icon: '⊞' },
+  { id: 'prototypes', label: 'Prototypes', icon: '◇' },
+  { id: 'canvases', label: 'Canvases', icon: '▢' },
+  { id: 'components', label: 'Components', icon: '⬡' },
 ]
 
-const TAB_FILTERS = ['All', 'Recent', 'Shared with me', 'Archived']
-
-const THUMB_COLORS = ['thumbBlue', 'thumbAmber', 'thumbGreen', 'thumbPurple', 'thumbRose', 'thumbSlate']
+const TAB_FILTERS = ['All', 'Recent', 'Starred']
 
 function getThumbClass(color) {
   return css[`thumb${color}`] || css.thumbSlate
@@ -64,14 +99,33 @@ function getBadge(type) {
   return map[type] || map.prototype
 }
 
+function countByType(type) {
+  return ALL_ITEMS.filter(i => i.type === type).length
+}
+
+/* ─── Star Button ─── */
+
+function StarBtn({ active, onClick }) {
+  return (
+    <button
+      className={active ? css.starBtnActive : css.starBtn}
+      onClick={(e) => { e.stopPropagation(); onClick() }}
+      aria-label={active ? 'Unstar' : 'Star'}
+    >
+      {active ? '★' : '☆'}
+    </button>
+  )
+}
+
 /* ─── Card Component ─── */
 
-function ArtifactCard({ name, author, updated, color, type }) {
+function ArtifactCard({ id, name, author, updated, color, type, starred, onToggleStar, onOpen }) {
   const badge = getBadge(type)
   return (
-    <div className={css.card}>
+    <div className={css.card} onClick={() => onOpen(id)}>
       <div className={`${css.cardThumb} ${getThumbClass(color)}`}>
         <span className={`${css.cardBadge} ${badge.cls}`}>{badge.label}</span>
+        <StarBtn active={starred} onClick={() => onToggleStar(id)} />
       </div>
       <div className={css.cardBody}>
         <div className={css.cardTitle}>{name}</div>
@@ -89,12 +143,9 @@ function ArtifactCard({ name, author, updated, color, type }) {
 
 function CreateMenu({ onClose }) {
   const items = [
-    { icon: '◇', title: 'Prototype', desc: 'Interactive page flow', bg: '#dbeafe', fg: '#2563eb' },
-    { icon: '▢', title: 'Canvas', desc: 'Freeform board', bg: '#fef3c7', fg: '#b45309' },
-    { icon: '⬡', title: 'Component', desc: 'Reusable widget', bg: '#d1fae5', fg: '#059669' },
-    { icon: '⊕', title: 'External', desc: 'Link to external URL', bg: '#f3e8ff', fg: '#7c3aed' },
-    { icon: '{}', title: 'Object', desc: 'Data fragment', bg: '#f1f5f9', fg: '#475569' },
-    { icon: '≡', title: 'Record', desc: 'Data collection', bg: '#ffe4e6', fg: '#e11d48' },
+    { icon: '◇', title: 'Prototype', desc: 'Interactive page flow', bg: '#f0f0f0', fg: '#1a1a1a' },
+    { icon: '▢', title: 'Canvas', desc: 'Freeform board', bg: '#f0f0f0', fg: '#1a1a1a' },
+    { icon: '⬡', title: 'Component', desc: 'Reusable widget', bg: '#f0f0f0', fg: '#1a1a1a' },
   ]
 
   return (
@@ -145,28 +196,41 @@ function PATDialog({ open, onClose }) {
 
 /* ─── Main Story Export ─── */
 
-export function ViewfinderHome() {
+export function ViewfinderHome({ title = 'Storyboard', subtitle }) {
   const [activeNav, setActiveNav] = useState('all')
   const [activeTab, setActiveTab] = useState('All')
   const [showCreate, setShowCreate] = useState(false)
   const [showPAT, setShowPAT] = useState(false)
+  const { starred, toggle: toggleStar } = useStarred()
+  const recentIds = useRecent()
 
+  const handleOpen = useCallback((id) => {
+    trackRecent(id)
+  }, [])
+
+  // Filter by nav category
+  const navFiltered = activeNav === 'all'
+    ? ALL_ITEMS
+    : ALL_ITEMS.filter(i => i.type === (activeNav === 'canvases' ? 'canvas' : activeNav === 'components' ? 'component' : 'prototype'))
+
+  // Filter by tab
   const items = (() => {
-    switch (activeNav) {
-      case 'prototypes':
-        return PROTOTYPES.map(p => ({ ...p, type: 'prototype' }))
-      case 'canvases':
-        return CANVASES.map(c => ({ ...c, type: 'canvas' }))
-      case 'components':
-        return COMPONENTS.map(k => ({ ...k, type: 'component' }))
-      default:
-        return [
-          ...PROTOTYPES.map(p => ({ ...p, type: 'prototype' })),
-          ...CANVASES.map(c => ({ ...c, type: 'canvas' })),
-          ...COMPONENTS.map(k => ({ ...k, type: 'component' })),
-        ]
+    if (activeTab === 'Recent') {
+      const ordered = recentIds.map(id => ITEM_MAP[id]).filter(Boolean)
+      if (activeNav !== 'all') {
+        const typeFilter = activeNav === 'canvases' ? 'canvas' : activeNav === 'components' ? 'component' : 'prototype'
+        return ordered.filter(i => i.type === typeFilter)
+      }
+      return ordered
     }
+    if (activeTab === 'Starred') {
+      return navFiltered.filter(i => starred.has(i.id))
+    }
+    return navFiltered
   })()
+
+  // Starred items for sidebar
+  const starredItems = ALL_ITEMS.filter(i => starred.has(i.id))
 
   const pageTitle = NAV_ITEMS.find(n => n.id === activeNav)?.label || 'All items'
 
@@ -176,31 +240,40 @@ export function ViewfinderHome() {
       <aside className={css.sidebar}>
         <div className={css.sidebarHeader}>
           <div className={css.logo}>S</div>
-          <span className={css.appName}>Storyboard</span>
+          <div>
+            <div className={css.appName}>{title}</div>
+            {subtitle && <div className={css.appSubtitle}>{subtitle}</div>}
+          </div>
         </div>
 
-        <input className={css.searchBox} placeholder="Search…" />
-
         <nav className={css.navSection}>
-          {NAV_ITEMS.map(nav => (
-            <button
-              key={nav.id}
-              className={activeNav === nav.id ? css.navItemActive : css.navItem}
-              onClick={() => setActiveNav(nav.id)}
-            >
-              <span className={css.navIcon}>{nav.icon}</span>
-              {nav.label}
-              <span className={css.navCount}>{nav.count}</span>
-            </button>
-          ))}
+          {NAV_ITEMS.map(nav => {
+            const count = nav.id === 'all'
+              ? ALL_ITEMS.length
+              : countByType(nav.id === 'canvases' ? 'canvas' : nav.id === 'components' ? 'component' : 'prototype')
+            return (
+              <button
+                key={nav.id}
+                className={activeNav === nav.id ? css.navItemActive : css.navItem}
+                onClick={() => setActiveNav(nav.id)}
+              >
+                <span className={css.navIcon}>{nav.icon}</span>
+                {nav.label}
+                <span className={css.navCount}>{count}</span>
+              </button>
+            )
+          })}
         </nav>
 
         <div className={css.separator} />
 
         <div className={css.sectionLabel}>Starred</div>
-        {STARRED.map(s => (
-          <div key={s.name} className={css.starredItem}>
-            <span className={css.starredDot} style={{ background: s.color }} />
+        {starredItems.length === 0 && (
+          <div className={css.starredEmpty}>Star items to pin them here</div>
+        )}
+        {starredItems.map(s => (
+          <div key={s.id} className={css.starredItem} onClick={() => handleOpen(s.id)}>
+            <span className={css.starredDot} style={{ background: getBadge(s.type).dotColor }} />
             {s.name}
           </div>
         ))}
@@ -222,10 +295,6 @@ export function ViewfinderHome() {
         <div className={css.topBar}>
           <h1 className={css.pageTitle}>{pageTitle}</h1>
           <div className={css.topActions}>
-            <div className={css.viewToggle}>
-              <button className={css.viewToggleBtnActive} title="Grid">⊞</button>
-              <button className={css.viewToggleBtn} title="List">≡</button>
-            </div>
             <button className={css.createBtn} onClick={() => setShowCreate(true)}>
               + Create
             </button>
@@ -247,11 +316,24 @@ export function ViewfinderHome() {
 
         {/* Grid */}
         <div className={css.content}>
-          <div className={css.grid}>
-            {items.map(item => (
-              <ArtifactCard key={item.id} {...item} />
-            ))}
-          </div>
+          {items.length === 0 ? (
+            <div className={css.emptyState}>
+              {activeTab === 'Recent' && 'No recently opened items yet.'}
+              {activeTab === 'Starred' && 'No starred items. Click ☆ on a card to star it.'}
+            </div>
+          ) : (
+            <div className={css.grid}>
+              {items.map(item => (
+                <ArtifactCard
+                  key={item.id}
+                  {...item}
+                  starred={starred.has(item.id)}
+                  onToggleStar={toggleStar}
+                  onOpen={handleOpen}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </main>
 

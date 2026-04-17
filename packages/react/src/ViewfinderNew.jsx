@@ -1053,6 +1053,7 @@ export default function ViewfinderNew({
       <div className={css.body}>
         {/* ─── Sidebar ─── */}
         <aside className={`${css.sidebar}${sidebarOpen ? ` ${css.sidebarOpen}` : ''}`}>
+          <div className={css.sidebarContent}>
           <nav className={css.navSection}>
             {NAV_ITEMS.map(nav => (
               <button
@@ -1085,6 +1086,7 @@ export default function ViewfinderNew({
               {s.name}
             </a>
           ))}
+          </div>
 
           {/* User profile / login */}
           <div className={css.sidebarFooter}>

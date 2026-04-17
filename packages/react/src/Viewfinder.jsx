@@ -1,5 +1,5 @@
 /**
- * ViewfinderNew — SaaS-style homescreen for Storyboard.
+ * Viewfinder — SaaS-style homescreen for Storyboard.
  *
  * Replaces the old list-based Viewfinder with a sidebar + grid layout.
  * Wired to real data from buildPrototypeIndex and listStories.
@@ -9,7 +9,7 @@ import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } fr
 import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, PlusIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon } from '@primer/octicons-react'
 import { Menu } from '@base-ui/react/menu'
 import Icon from './Icon.jsx'
-import css from './ViewfinderNew.module.css'
+import css from './Viewfinder.module.css'
 
 /* ─── localStorage helpers ─── */
 
@@ -683,7 +683,7 @@ function BranchDropdown({ basePath }) {
 
 /* ─── Main Component ─── */
 
-export default function ViewfinderNew({
+export default function Viewfinder({
   pageModules = {},
   basePath,
   title = 'Storyboard',

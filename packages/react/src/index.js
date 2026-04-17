@@ -35,7 +35,7 @@ export { FormContext } from './context/FormContext.js'
 // ModeSwitch and ToolbarShell UI moved to @dfosco/storyboard-svelte-ui
 
 // Viewfinder dashboard
-export { default as Viewfinder } from './ViewfinderNew.jsx'
+export { default as Viewfinder } from './Viewfinder.jsx'
 
 // Canvas
 export { default as CanvasPage } from './canvas/CanvasPage.jsx'

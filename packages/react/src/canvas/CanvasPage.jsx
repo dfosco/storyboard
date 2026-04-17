@@ -1299,13 +1299,16 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         e.preventDefault()
         setSelectedWidgetIds(new Set())
       }
-      // Copy shortcut (single widget selected):
-      // cmd+c → copy canvasId::widgetId (for cross-canvas paste-duplicate)
+      // Copy shortcut (one or more widgets selected):
+      // cmd+c → copy canvasId::id1,id2,... (for cross-canvas paste-duplicate)
       const mod = e.metaKey || e.ctrlKey
-      if (mod && e.key === 'c' && !e.shiftKey && selectedWidgetIds.size === 1) {
-        const widgetId = [...selectedWidgetIds][0]
-        e.preventDefault()
-        navigator.clipboard.writeText(`${canvasId}::${widgetId}`).catch(() => {})
+      if (mod && e.key === 'c' && !e.shiftKey && selectedWidgetIds.size >= 1) {
+        // Filter out non-duplicable widgets (jsx- component widgets are code)
+        const copyableIds = [...selectedWidgetIds].filter(id => !id.startsWith('jsx-'))
+        if (copyableIds.length > 0) {
+          e.preventDefault()
+          navigator.clipboard.writeText(`${canvasId}::${copyableIds.join(',')}`).catch(() => {})
+        }
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault()

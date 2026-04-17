@@ -42,6 +42,19 @@
 
 /* Selection outline is now handled by WidgetChrome.module.css (.widgetSlotSelected) */
 
+.canvasLogo {
+  width: 32px;
+  height: 32px;
+  background: var(--bgColor-emphasis, #313131);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fgColor-onEmphasis, #fff);
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
 .canvasTitle {
   position: fixed;
   top: calc(12px + var(--sb-branch-bar-height, 0px));

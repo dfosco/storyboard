@@ -1663,6 +1663,20 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     return () => document.removeEventListener('wheel', handleWheel)
   }, [])
 
+  // Receive cmd+wheel events forwarded from prototype/story iframes
+  useEffect(() => {
+    function handleMessage(e) {
+      if (e.data?.type !== 'storyboard:embed:wheel') return
+      zoomAccum.current += -e.data.deltaY
+      const step = Math.trunc(zoomAccum.current)
+      if (step === 0) return
+      zoomAccum.current -= step
+      applyZoom(zoomRef.current + step)
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
+
   // Touch pinch-to-zoom for mobile — two-finger pinch zooms the canvas
   const pinchState = useRef({ active: false, startDist: 0, startZoom: 0, centerX: 0, centerY: 0 })
   useEffect(() => {

@@ -54,6 +54,7 @@ const customIcons = {
   },
   'flow': {
     viewBox: '0 0 24 24',
+    strokeWidth: '2.5',
     strokePaths: [
       'M13 19L22 12L13 5L13 19Z',
       'M2 19L11 12L2 5L2 19Z',
@@ -136,7 +137,7 @@ export default function Icon({ name, size = 16, label, color, strokeWeight, clas
     if (custom.strokePaths) {
       return (
         <span className={className} style={style}>
-          <svg width={size} height={size} viewBox={custom.viewBox} fill="none" stroke="currentColor" strokeWidth="1.5" {...ariaProps}>
+          <svg width={size} height={size} viewBox={custom.viewBox} fill="none" stroke="currentColor" strokeWidth={custom.strokeWidth || "1.5"} strokeLinecap="round" strokeLinejoin="round" {...ariaProps}>
             {custom.strokePaths.map((d, i) => <path key={i} d={d} />)}
           </svg>
         </span>

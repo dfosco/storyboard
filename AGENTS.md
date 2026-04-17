@@ -141,6 +141,7 @@ The fix was a one-line compaction (4MB → 9KB). Everything the user reported �
 2. If an isolated benchmark says "it's fast," that doesn't mean the full pipeline is fast — measure the pipeline
 3. Prefer the simplest explanation that matches ALL symptoms before building complex fixes
 4. If you're on your third patch for the same bug, step back and question your diagnosis
+5. **If you can't find the root cause after 2 passes at a problem, add temporary `console.log` devlogs** prefixed with `[devlog]` or `[ComponentName]` to trace the issue in the actual browser. Commit them, ask the user to check the console, and remove them once the bug is found.
 
 ## Key Conventions to follow at all times
 

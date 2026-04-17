@@ -364,8 +364,16 @@ export default function StoryboardCommandPalette({ basePath }) {
     setActivePage(pageId)
   }
 
+  // [devlog] Mount confirmation
+  useEffect(() => {
+    console.log('[CommandPalette] mounted, basePath:', basePath)
+    return () => console.log('[CommandPalette] unmounted')
+  }, [])
+
   function rebuildItems() {
+    console.log('[CommandPalette] rebuildItems called')
     const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
+    console.log('[CommandPalette] built:', built.groups.length, 'groups,', built.toolMenus.length, 'toolMenus')
     setItems(built.groups)
     setToolMenus(built.toolMenus)
     setSearch('')
@@ -377,6 +385,7 @@ export default function StoryboardCommandPalette({ basePath }) {
     function handleKeyDown(e) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
+        console.log('[CommandPalette] Cmd+K detected')
         setOpen(prev => {
           if (!prev) setTimeout(rebuildItems, 0)
           return !prev
@@ -384,6 +393,7 @@ export default function StoryboardCommandPalette({ basePath }) {
       }
     }
     document.addEventListener('keydown', handleKeyDown)
+    console.log('[CommandPalette] Cmd+K listener registered')
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [basePath])
 

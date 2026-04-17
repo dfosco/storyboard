@@ -50,7 +50,8 @@
         "toolIds": [
           { "id": "docs", "label": "Storyboard Docs" },
           { "id": "devtools", "label": "Devtools" },
-          { "id": "feature-flags", "label": "Feature Flags" }
+          { "id": "feature-flags", "label": "Feature Flags" },
+          { "id": "autosync", "label": "Auto Sync" }
         ]
       },      
       { "id": "sep2", "items": [] },

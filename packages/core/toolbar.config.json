@@ -30,7 +30,8 @@
       "modes": ["*"],
       "prod": true,
       "menuWidth": "280px",
-      "handler": "core:flows"
+      "handler": "core:flows",
+      "excludeRoutes": ["^/$", "/viewfinder"]
     },    
     "theme": {
       "label": "Theme",
@@ -113,7 +114,8 @@
       "handler": "core:canvas-add-widget",
       "modes": ["*"],
       "meta": { "strokeWeight": 2, "scale": 1.2 },
-      "menuWidth": "300px"
+      "menuWidth": "300px",
+      "excludeRoutes": ["^/$", "/viewfinder"]
     },
     "canvas-zoom": {
       "ariaLabel": "Zoom controls",

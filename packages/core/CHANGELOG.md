@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.33
+
+### Patch Changes
+
+-   Add comprehensive iframe lifecycle logging for embed widget debugging
+
 ## 4.0.0-beta.32
 
 ### Patch Changes

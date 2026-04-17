@@ -4,53 +4,8 @@
  * with sidebar navigation, artifact grid, create menu, and user profile.
  */
 import { useState, useCallback, useSyncExternalStore } from 'react'
+import Icon from '@dfosco/storyboard-react/Icon'
 import css from './viewfinder-home.module.css'
-
-/* ─── Icons (matching widget title bars) ─── */
-
-function PrototypeIcon({ size = 16 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <path d="M19.4 20H4.6C4.26863 20 4 19.7314 4 19.4V4.6C4 4.26863 4.26863 4 4.6 4H19.4C19.7314 4 20 4.26863 20 4.6V19.4C20 19.7314 19.7314 20 19.4 20Z" />
-      <path d="M11 12V4" />
-      <path d="M4 12H20" />
-    </svg>
-  )
-}
-
-function ComponentIcon({ size = 16 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <path d="M5.21173 15.1113L2.52473 12.4243C2.29041 12.1899 2.29041 11.8101 2.52473 11.5757L5.21173 8.88873C5.44605 8.65442 5.82595 8.65442 6.06026 8.88873L8.74727 11.5757C8.98158 11.8101 8.98158 12.1899 8.74727 12.4243L6.06026 15.1113C5.82595 15.3456 5.44605 15.3456 5.21173 15.1113Z" />
-      <path d="M11.5757 21.475L8.88874 18.788C8.65443 18.5537 8.65443 18.1738 8.88874 17.9395L11.5757 15.2525C11.8101 15.0182 12.19 15.0182 12.4243 15.2525L15.1113 17.9395C15.3456 18.1738 15.3456 18.5537 15.1113 18.788L12.4243 21.475C12.19 21.7094 11.8101 21.7094 11.5757 21.475Z" />
-      <path d="M17.9395 15.1113L15.2525 12.4243C15.0182 12.1899 15.0182 11.8101 15.2525 11.5757L17.9395 8.88873C18.1738 8.65442 18.5537 8.65442 18.788 8.88873L21.475 11.5757C21.7094 11.8101 21.7094 12.1899 21.475 12.4243L18.788 15.1113C18.5537 15.3456 18.1738 15.3456 17.9395 15.1113Z" />
-      <path d="M11.5757 8.74727L8.88874 6.06026C8.65443 5.82595 8.65443 5.44605 8.88874 5.21173L11.5757 2.52473C11.8101 2.29041 12.19 2.29041 12.4243 2.52473L15.1113 5.21173C15.3456 5.44605 15.3456 5.82595 15.1113 6.06026L12.4243 8.74727C12.19 8.98158 11.8101 8.98158 11.5757 8.74727Z" />
-    </svg>
-  )
-}
-
-// Canvas icon from assets/icons/canvas.svg
-function CanvasIcon({ size = 16 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 28 23" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <rect x="1" y="1" width="26" height="21" rx="7" />
-      <path d="M17.8421 12.9776V12.9788L17.8409 12.9812C18.2386 12.451 18.9901 12.3434 19.5204 12.7409C20.0506 13.1385 20.1582 13.8901 19.7606 14.4204L18.8008 13.7008C19.7416 14.4064 19.7606 14.4209 19.7606 14.4215L19.7583 14.4239C19.7573 14.4252 19.756 14.427 19.7548 14.4286C19.7524 14.4317 19.7499 14.436 19.7466 14.4403C19.7399 14.449 19.7311 14.4601 19.7208 14.4731C19.7001 14.4992 19.6715 14.5332 19.6364 14.5751C19.566 14.6589 19.4665 14.7734 19.3387 14.9067C19.0842 15.1723 18.712 15.5216 18.2312 15.8713C17.2736 16.5677 15.831 17.3011 14.0003 17.3011C12.1695 17.3011 10.727 16.5677 9.76938 15.8713C9.28854 15.5216 8.91634 15.1723 8.66184 14.9067C8.53409 14.7734 8.43453 14.6589 8.36415 14.5751C8.32905 14.5332 8.30044 14.4992 8.27977 14.4731C8.26946 14.4601 8.26066 14.449 8.25398 14.4403C8.25066 14.436 8.24819 14.4317 8.24578 14.4286C8.24457 14.427 8.24325 14.4252 8.24226 14.4239L8.23992 14.4215C8.24001 14.4209 8.25896 14.4064 9.19979 13.7008L8.23992 14.4204C7.8424 13.8901 7.94999 13.1385 8.48018 12.7409C9.01029 12.3435 9.76077 12.4513 10.1585 12.9812L10.1597 12.98L10.1585 12.9776H10.1573C10.1583 12.9789 10.1602 12.9801 10.162 12.9823C10.1691 12.9914 10.182 13.0091 10.2018 13.0327C10.2416 13.08 10.3064 13.1534 10.394 13.2449C10.5708 13.4293 10.8366 13.6804 11.1805 13.9305C11.873 14.4341 12.8308 14.9009 14.0003 14.9009C15.1698 14.9009 16.1276 14.4341 16.8201 13.9305C17.164 13.6804 17.4298 13.4293 17.6065 13.2449C17.6942 13.1534 17.759 13.08 17.7987 13.0327C17.8186 13.0091 17.8314 12.9914 17.8386 12.9823L17.8421 12.9776Z" fill="currentColor" stroke="none" />
-      <path d="M10.4111 6.5C11.0739 6.5 11.6112 7.03731 11.6112 7.70012C11.6112 8.36293 11.0739 8.90025 10.4111 8.90025H10.3993C9.73653 8.90025 9.19922 8.36293 9.19922 7.70012C9.19922 7.03731 9.73653 6.5 10.3993 6.5H10.4111Z" fill="currentColor" stroke="none" />
-      <path d="M17.6103 6.5C18.2731 6.5 18.8104 7.03731 18.8104 7.70012C18.8104 8.36293 18.2731 8.90025 17.6103 8.90025H17.5986C16.9358 8.90025 16.3984 8.36293 16.3984 7.70012C16.3984 7.03731 16.9358 6.5 17.5986 6.5H17.6103Z" fill="currentColor" stroke="none" />
-    </svg>
-  )
-}
-
-function AllItemsIcon({ size = 16 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M9 6V18" />
-      <path d="M15 6V18" />
-      <path d="M9 6C9 4.34315 7.65685 3 6 3C4.34315 3 3 4.34315 3 6C3 7.65685 4.34315 9 6 9H18C19.6569 9 21 7.65685 21 6C21 4.34315 19.6569 3 18 3C16.3431 3 15 4.34315 15 6" />
-      <path d="M9 18C9 19.6569 7.65685 21 6 21C4.34315 21 3 19.6569 3 18C3 16.3431 4.34315 15 6 15H18C19.6569 15 21 16.3431 21 18C21 19.6569 19.6569 21 18 21C16.3431 21 15 19.6569 15 18" />
-    </svg>
-  )
-}
 
 /* ─── localStorage helpers ─── */
 
@@ -124,10 +79,10 @@ const ALL_ITEMS = [
 const ITEM_MAP = Object.fromEntries(ALL_ITEMS.map(i => [i.id, i]))
 
 const NAV_ITEMS = [
-  { id: 'all', label: 'All items', icon: <AllItemsIcon size={16} /> },
-  { id: 'prototypes', label: 'Prototypes', icon: <PrototypeIcon size={16} /> },
-  { id: 'canvases', label: 'Canvas', icon: <CanvasIcon size={16} /> },
-  { id: 'components', label: 'Components', icon: <ComponentIcon size={16} /> },
+  { id: 'all', label: 'All items', icon: <Icon name="iconoir/key-command" size={16} /> },
+  { id: 'prototypes', label: 'Prototypes', icon: <Icon name="prototype" size={16} /> },
+  { id: 'canvases', label: 'Canvas', icon: <Icon name="canvas" size={16} /> },
+  { id: 'components', label: 'Components', icon: <Icon name="component" size={16} /> },
 ]
 
 const TAB_FILTERS = ['All', 'Recent', 'Starred']
@@ -137,9 +92,9 @@ function getThumbClass(color) {
 }
 
 function getTypeIcon(type, size = 14) {
-  if (type === 'prototype') return <PrototypeIcon size={size} />
-  if (type === 'canvas') return <CanvasIcon size={size} />
-  if (type === 'component') return <ComponentIcon size={size} />
+  if (type === 'prototype') return <Icon name="prototype" size={size} />
+  if (type === 'canvas') return <Icon name="canvas" size={size} />
+  if (type === 'component') return <Icon name="component" size={size} />
   return null
 }
 
@@ -196,9 +151,9 @@ function ArtifactCard({ id, name, author, updated, color, type, starred, onToggl
 
 function CreateMenu({ onClose }) {
   const items = [
-    { icon: <PrototypeIcon size={18} />, title: 'Prototype', desc: 'Interactive page flow' },
-    { icon: <CanvasIcon size={18} />, title: 'Canvas', desc: 'Freeform board' },
-    { icon: <ComponentIcon size={18} />, title: 'Component', desc: 'Reusable widget' },
+    { icon: <Icon name="prototype" size={18} />, title: 'Prototype', desc: 'Interactive page flow' },
+    { icon: <Icon name="canvas" size={18} />, title: 'Canvas', desc: 'Freeform board' },
+    { icon: <Icon name="component" size={18} />, title: 'Component', desc: 'Reusable widget' },
   ]
 
   return (

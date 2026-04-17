@@ -121,6 +121,27 @@ Detailed architectural documentation lives in `.github/architecture/`. Consult t
 
 After any meaningful refactor, ask the user if the architecture documents should be updated.
 
+### Debugging
+
+When diagnosing performance issues or bugs, **always test end-to-end in the actual environment** — never rely on isolated microbenchmarks to dismiss a hypothesis.
+
+**Example:** A canvas page was seizing on load. The user pointed at the 4MB `.canvas.jsonl` file as the likely cause. An isolated Node.js benchmark showed the materializer processed it in 36ms, so the file size was dismissed and attention shifted to React effects, iframe gating, and snapshot capture systems. Weeks of increasingly complex fixes followed — `canvasThemeInitRef` guards, `hasSnapRef` defense-in-depth, mount-time guards, stale closure fixes, retry loop removal — none of which solved the problem.
+
+The actual root cause was always the 4MB JSONL file. The 36ms materializer benchmark didn't account for:
+- Vite's file watcher re-reading the file on every change
+- The data plugin re-materializing it and sending the full state over WebSocket
+- The virtual module being invalidated and re-transformed
+- The browser receiving and processing the HMR update
+- React re-rendering ALL widgets from the new canvas state
+
+The fix was a one-line compaction (4MB → 9KB). Everything the user reported — slow load, seizing during interaction, memory buildup — was caused by the file size hitting every layer of the Vite → HMR → React pipeline on every single edit.
+
+**Rules:**
+1. When the user points at something, test it in the actual environment (dev server, browser, full pipeline), not in an isolated script
+2. If an isolated benchmark says "it's fast," that doesn't mean the full pipeline is fast — measure the pipeline
+3. Prefer the simplest explanation that matches ALL symptoms before building complex fixes
+4. If you're on your third patch for the same bug, step back and question your diagnosis
+
 ## Key Conventions to follow at all times
 
 - Use **Primer React** components from `@primer/react` for all UI elements

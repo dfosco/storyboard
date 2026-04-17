@@ -14,7 +14,6 @@ import { mountStoryboardCore } from '@dfosco/storyboard-core'
 import '@dfosco/storyboard-core/comments/ui/comment-layout.css'
 import storyboardConfig from '../storyboard.config.json'
 import { StoryboardCommandPalette } from '@dfosco/storyboard-react'
-import AuthModal from './components/AuthModal/AuthModal.jsx'
 
 // Redirect after canvas creation — Vite full-reloads when a new
 // .canvas.jsonl is created. The form sets ?redirect=/canvas/name
@@ -42,7 +41,6 @@ root.render(
                 <ThemeSync />
                 <RouterProvider router={router} />
                 <StoryboardCommandPalette basePath={import.meta.env.BASE_URL} />
-                <AuthModal />
             </BaseStyles>
         </ThemeProvider>
     </StrictMode>

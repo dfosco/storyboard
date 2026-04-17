@@ -43,6 +43,9 @@ export { default as StoryboardCommandPalette } from './CommandPalette/CommandPal
 // Branch Bar (standalone, for consumers who don't use CommandPalette)
 export { default as BranchBar } from './BranchBar/BranchBar.jsx'
 
+// Auth Modal (standalone, for consumers who don't use CommandPalette)
+export { default as AuthModal } from './AuthModal/AuthModal.jsx'
+
 // Canvas
 export { default as CanvasPage } from './canvas/CanvasPage.jsx'
 export { useCanvas } from './canvas/useCanvas.js'

@@ -118,7 +118,7 @@
 }
 
 .codeLabel {
-  font-family: "Ioskeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
 .codeCloseBtn {
@@ -152,7 +152,7 @@
 .codeBlock pre {
   margin: 0;
   padding: var(--base-size-8, 8px) !important;
-  font-family: "Ioskeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 12px;
   font-weight: 400;
   line-height: 1.6;
@@ -163,7 +163,7 @@
 
 /* Fallback when no highlighted HTML (plain pre/code) */
 .codeBlock > code {
-  font-family: "Ioskeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 12px;
   font-weight: 400;
   line-height: 1.6;

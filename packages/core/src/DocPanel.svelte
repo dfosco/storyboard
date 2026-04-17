@@ -132,7 +132,7 @@
     align-items: center;
     gap: 4px;
     font-size: 12px;
-    font-family: "Ioskeley Mono", ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
     color: var(--fgColor-muted, #848d97);
     text-decoration: none;
     flex-shrink: 0;
@@ -239,7 +239,7 @@
   }
 
   .markdown-body :global(code) {
-    font-family: "Ioskeley Mono", ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
     font-size: 0.9em;
     padding: 2px 6px;
     background: var(--bgColor-muted, #161b22);

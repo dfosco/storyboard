@@ -6,6 +6,7 @@
  */
 import { useState, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
+import { MarkGithubIcon } from '@primer/octicons-react'
 import Icon from './Icon.jsx'
 import css from './ViewfinderNew.module.css'
 
@@ -164,9 +165,152 @@ function formatRelativeTime(dateStr) {
   return date.toLocaleDateString()
 }
 
+/* ─── Create Footer ─── */
+
+function CreateFooter() {
+  return (
+    <div className={css.createFooter}>
+      <span className={css.createFooterDot} />
+      <span className={css.createFooterText}>Only available in dev environment</span>
+    </div>
+  )
+}
+
+/* ─── Create Form ─── */
+
+function CreateForm({ type, onBack, onClose, basePath }) {
+  const [name, setName] = useState('')
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [url, setUrl] = useState('')
+  const [isExternal, setIsExternal] = useState(false)
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!name.trim()) { setError('Name is required'); return }
+    setError('')
+    setSubmitting(true)
+
+    let endpoint, body
+    if (type === 'Canvas') {
+      endpoint = '/_storyboard/canvas/create'
+      body = { name: name.trim(), title: title.trim(), description: description.trim(), grid: true, gridSize: 24 }
+    } else if (type === 'Prototype') {
+      endpoint = '/_storyboard/workshop/prototypes'
+      body = { name: name.trim(), title: title.trim(), description: description.trim() }
+      if (isExternal) { body.external = true; body.url = url.trim() }
+    } else {
+      endpoint = '/_storyboard/canvas/create-story'
+      body = { name: name.trim(), location: 'src/components' }
+    }
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || `Request failed (${res.status})`)
+      }
+      const data = await res.json().catch(() => ({}))
+      const route = data.route || data.path || `/${name.trim()}`
+      window.location.href = withBase(basePath, route)
+    } catch (err) {
+      setError(err.message)
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <button type="button" className={css.createFormBack} onClick={onBack}>
+        ← Back
+      </button>
+      <div className={css.createMenuTitle}>New {type}</div>
+
+      <div className={css.createFormField}>
+        <label className={css.createFormLabel}>Name *</label>
+        <input
+          className={css.createFormInput}
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder={`my-${type.toLowerCase()}`}
+          autoFocus
+        />
+      </div>
+
+      {type !== 'Component' && (
+        <>
+          <div className={css.createFormField}>
+            <label className={css.createFormLabel}>Title</label>
+            <input
+              className={css.createFormInput}
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Optional display title"
+            />
+          </div>
+          <div className={css.createFormField}>
+            <label className={css.createFormLabel}>Description</label>
+            <input
+              className={css.createFormInput}
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Optional description"
+            />
+          </div>
+        </>
+      )}
+
+      {type === 'Prototype' && (
+        <>
+          <div className={css.createFormField}>
+            <label className={css.createFormCheckbox}>
+              <input
+                type="checkbox"
+                checked={isExternal}
+                onChange={e => setIsExternal(e.target.checked)}
+              />
+              External prototype
+            </label>
+          </div>
+          {isExternal && (
+            <div className={css.createFormField}>
+              <label className={css.createFormLabel}>URL</label>
+              <input
+                className={css.createFormInput}
+                value={url}
+                onChange={e => setUrl(e.target.value)}
+                placeholder="https://example.com"
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      {error && <div className={css.createFormError}>{error}</div>}
+
+      <div className={css.createFormActions}>
+        <button type="button" className={css.btnSecondary} onClick={onClose}>Cancel</button>
+        <button type="submit" className={css.btnPrimary} disabled={submitting}>
+          {submitting ? 'Creating…' : 'Create'}
+        </button>
+      </div>
+
+      <CreateFooter />
+    </form>
+  )
+}
+
 /* ─── Create Menu ─── */
 
-function CreateMenu({ onClose }) {
+function CreateMenu({ onClose, basePath }) {
+  const [activeForm, setActiveForm] = useState(null)
+
   const items = [
     { icon: <Icon name="canvas" size={18} />, title: 'Canvas', desc: 'Interactive board for prototypes, components, and documents' },
     { icon: <Icon name="prototype" size={18} />, title: 'Prototype', desc: 'Interactive page flow' },
@@ -176,18 +320,30 @@ function CreateMenu({ onClose }) {
   return (
     <div className={css.createMenuOverlay} onClick={onClose}>
       <div className={css.createMenu} onClick={e => e.stopPropagation()}>
-        <div className={css.createMenuTitle}>Create new</div>
-        <div className={css.createMenuGrid}>
-          {items.map(it => (
-            <button key={it.title} className={css.createMenuItem} onClick={onClose}>
-              <div className={css.createMenuIcon}>{it.icon}</div>
-              <div>
-                <div className={css.createMenuItemTitle}>{it.title}</div>
-                <div className={css.createMenuItemDesc}>{it.desc}</div>
-              </div>
-            </button>
-          ))}
-        </div>
+        {activeForm ? (
+          <CreateForm
+            type={activeForm}
+            onBack={() => setActiveForm(null)}
+            onClose={onClose}
+            basePath={basePath}
+          />
+        ) : (
+          <>
+            <div className={css.createMenuTitle}>Create new</div>
+            <div className={css.createMenuGrid}>
+              {items.map(it => (
+                <button key={it.title} className={css.createMenuItem} onClick={() => setActiveForm(it.title)}>
+                  <div className={css.createMenuIcon}>{it.icon}</div>
+                  <div>
+                    <div className={css.createMenuItemTitle}>{it.title}</div>
+                    <div className={css.createMenuItemDesc}>{it.desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <CreateFooter />
+          </>
+        )}
       </div>
     </div>
   )
@@ -195,24 +351,110 @@ function CreateMenu({ onClose }) {
 
 /* ─── PAT Dialog ─── */
 
+const COMMENTS_TOKEN_KEY = 'sb-comments-token'
+const REPO_OWNER = 'dfosco'
+const REPO_NAME = 'storyboard'
+
+function getRepoInfo() {
+  try {
+    const cfg = typeof __STORYBOARD_CONFIG__ !== 'undefined' ? __STORYBOARD_CONFIG__ : null
+    const repo = cfg?.repository
+    if (repo?.owner && repo?.name) return repo
+  } catch { /* ignore */ }
+  return { owner: REPO_OWNER, name: REPO_NAME }
+}
+
 function PATDialog({ open, onClose }) {
+  const [tokenValue, setTokenValue] = useState('')
+
   if (!open) return null
+
+  const repo = getRepoInfo()
+
+  const handleSignIn = () => {
+    const trimmed = tokenValue.trim()
+    if (!trimmed) return
+
+    // Store token to localStorage
+    try { localStorage.setItem(COMMENTS_TOKEN_KEY, trimmed) } catch { /* ignore */ }
+
+    // Try the comments auth API if available
+    try {
+      import('@dfosco/storyboard-core/comments').then(({ setToken }) => {
+        setToken(trimmed)
+      }).catch(() => {})
+    } catch { /* comments module may not be initialized */ }
+
+    setTokenValue('')
+    onClose()
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleSignIn()
+  }
+
   return (
     <div className={css.createMenuOverlay} onClick={onClose}>
       <div className={css.dialog} onClick={e => e.stopPropagation()}>
-        <div className={css.dialogTitle}>Sign in with GitHub</div>
+        <button className={css.dialogClose} onClick={onClose} aria-label="Close">×</button>
+
+        <div className={css.dialogTitle}>Sign in for comments</div>
         <div className={css.dialogDesc}>
-          Enter a Personal Access Token to sync prototypes and enable collaboration.
+          Leave comments for other users to see and respond, and react to! Storyboard comments use Discussions as a back-end and require a GitHub PAT to be enabled.
         </div>
+
+        <hr className={css.dialogSeparator} />
+
+        <div className={css.tokenCard}>
+          <div className={css.tokenCardTitle}>Fine-grained Personal Access Token</div>
+          <div className={css.tokenCardRow}>
+            <span className={css.tokenCardLabel}>Owner:</span>
+            <span className={css.tokenCardValue}>{repo.owner}</span>
+          </div>
+          <div className={css.tokenCardRow}>
+            <span className={css.tokenCardLabel}>Expiration:</span>
+            <span className={css.tokenCardValue}><strong>366 days</strong> (recommended)</span>
+          </div>
+          <div className={css.tokenCardRow}>
+            <span className={css.tokenCardLabel}>Repository access:</span>
+            <span className={css.tokenCardValue}>Only select repositories &gt; {repo.owner}/{repo.name}</span>
+          </div>
+          <div className={css.tokenCardRow}>
+            <span className={css.tokenCardLabel}>Permissions:</span>
+            <span className={css.tokenCardValue}>Repositories &gt; Discussions &gt; Access: Read and Write</span>
+          </div>
+        </div>
+
+        <a
+          className={css.tokenLink}
+          href="https://github.com/settings/personal-access-tokens/new"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Create a GitHub Fine-Grained Personal Access Token ↗
+        </a>
+
+        <hr className={css.dialogSeparator} />
+
+        <label className={css.dialogLabel}>Personal Access Token</label>
         <input
           className={css.dialogInput}
-          placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+          placeholder="github_pat_… or ghp_…"
           type="password"
           autoFocus
+          value={tokenValue}
+          onChange={e => setTokenValue(e.target.value)}
+          onKeyDown={handleKeyDown}
         />
+
+        <div className={css.warningBanner}>
+          <span className={css.warningIcon}>⚠️</span>
+          <span>Comments are an experimental feature and may be unstable.</span>
+        </div>
+
         <div className={css.dialogActions}>
           <button className={css.btnSecondary} onClick={onClose}>Cancel</button>
-          <button className={css.btnPrimary} onClick={onClose}>Connect</button>
+          <button className={css.btnPrimary} onClick={handleSignIn}>Sign in</button>
         </div>
       </div>
     </div>
@@ -422,7 +664,7 @@ export default function ViewfinderNew({
         {/* User profile / login */}
         <div className={css.sidebarFooter}>
           <button className={css.loginBtn} onClick={() => setShowPAT(true)}>
-            <span className={css.avatar}>👤</span>
+            <span className={css.avatar}><MarkGithubIcon size={16} /></span>
             <div>
               <div className={css.userName}>Sign in</div>
               <div className={css.userSub}>Connect with GitHub</div>
@@ -480,7 +722,7 @@ export default function ViewfinderNew({
       </main>
 
       {/* Modals */}
-      {showCreate && <CreateMenu onClose={() => setShowCreate(false)} />}
+      {showCreate && <CreateMenu onClose={() => setShowCreate(false)} basePath={basePath} />}
       <PATDialog open={showPAT} onClose={() => setShowPAT(false)} />
     </div>
   )

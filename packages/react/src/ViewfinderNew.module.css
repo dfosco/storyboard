@@ -251,13 +251,13 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 16px;
+  padding: 8px 20px;
   background: #1a1a1a;
   color: #fff;
   border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -397,6 +397,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-decoration: none;
 }
 
 .cardMeta {
@@ -517,6 +518,92 @@
   color: #999;
 }
 
+/* Create form styles */
+
+.createFormField {
+  margin-bottom: 14px;
+}
+
+.createFormLabel {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.createFormInput {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.createFormInput:focus {
+  outline: none;
+  border-color: #999;
+}
+
+.createFormCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.createFormActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.createFormBack {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 12px;
+}
+
+.createFormBack:hover {
+  color: #1a1a1a;
+}
+
+.createFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e5e5;
+}
+
+.createFooterDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+  flex-shrink: 0;
+}
+
+.createFooterText {
+  font-size: 11px;
+  color: #999;
+}
+
+.createFormError {
+  font-size: 12px;
+  color: #dc2626;
+  margin-top: 8px;
+}
+
 /* PAT Token dialog */
 
 .dialog {
@@ -524,21 +611,57 @@
   border-radius: 12px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
   padding: 28px;
-  width: 420px;
+  width: 480px;
   max-width: 90vw;
+  position: relative;
+}
+
+.dialogClose {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: #999;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.dialogClose:hover {
+  background: #f0f0f0;
+  color: #555;
 }
 
 .dialogTitle {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   color: #1a1a1a;
+  padding-right: 32px;
 }
 
 .dialogDesc {
   font-size: 13px;
-  color: #888;
-  margin-bottom: 20px;
+  color: #666;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.dialogSeparator {
+  border: none;
+  border-top: 1px solid #e5e5e5;
+  margin: 16px 0;
+}
+
+.dialogLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 6px;
 }
 
 .dialogInput {
@@ -547,7 +670,7 @@
   border: 1px solid #e5e5e5;
   border-radius: 6px;
   font-size: 13px;
-  font-family: monospace;
+  font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
   margin-bottom: 16px;
   box-sizing: border-box;
 }
@@ -561,6 +684,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  margin-top: 8px;
 }
 
 .btnSecondary {
@@ -590,6 +714,74 @@
 
 .btnPrimary:hover {
   background: #333;
+}
+
+/* Token config card */
+
+.tokenCard {
+  background: #f6f8fa;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.tokenCardTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 10px;
+}
+
+.tokenCardRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.tokenCardLabel {
+  color: #666;
+  flex-shrink: 0;
+}
+
+.tokenCardValue {
+  font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12px;
+  color: #1a1a1a;
+}
+
+.tokenLink {
+  display: inline-block;
+  font-size: 13px;
+  color: #0969da;
+  text-decoration: none;
+  margin-bottom: 4px;
+}
+
+.tokenLink:hover {
+  text-decoration: underline;
+}
+
+/* Warning banner */
+
+.warningBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fff8c5;
+  border: 1px solid #d4a72c;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #6a5300;
+  margin-bottom: 8px;
+}
+
+.warningIcon {
+  flex-shrink: 0;
+  font-size: 14px;
 }
 
 /* Muted thumbnail colors */

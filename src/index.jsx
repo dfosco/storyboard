@@ -13,7 +13,7 @@ import { installHashPreserver } from '@dfosco/storyboard-react/hash-preserver'
 import { mountStoryboardCore } from '@dfosco/storyboard-core'
 import '@dfosco/storyboard-core/comments/ui/comment-layout.css'
 import storyboardConfig from '../storyboard.config.json'
-import StoryboardCommandPalette from './components/CommandPalette/CommandPalette.jsx'
+import { StoryboardCommandPalette } from '@dfosco/storyboard-react'
 import BranchBar from './components/BranchBar/BranchBar.jsx'
 import AuthModal from './components/AuthModal/AuthModal.jsx'
 

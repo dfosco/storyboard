@@ -37,6 +37,9 @@ export { FormContext } from './context/FormContext.js'
 // Viewfinder dashboard
 export { default as Viewfinder } from './Viewfinder.jsx'
 
+// Command Palette
+export { default as StoryboardCommandPalette } from './CommandPalette/CommandPalette.jsx'
+
 // Canvas
 export { default as CanvasPage } from './canvas/CanvasPage.jsx'
 export { useCanvas } from './canvas/useCanvas.js'

@@ -55,8 +55,8 @@ const customIcons = {
   'flow': {
     viewBox: '0 0 24 24',
     strokePaths: [
-      'M5.5 5l5.5 7-5.5 7',
-      'M13 5l5.5 7-5.5 7',
+      'M13 19L22 12L13 5L13 19Z',
+      'M2 19L11 12L2 5L2 19Z',
     ],
   },
 }

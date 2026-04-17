@@ -109,11 +109,12 @@ function AvatarStack({ authors }) {
         <img
           key={username}
           className={css.avatarImg}
-          src={`https://github.com/${username}.png`}
+          src={`https://github.com/${username}.png?size=48`}
           alt={username}
           width={24}
           height={24}
           loading="lazy"
+          onError={(e) => { console.warn('[Viewfinder] avatar failed:', username); e.target.style.display = 'none' }}
         />
       ))}
     </div>
@@ -216,7 +217,7 @@ function FlowsDropdown({ flows, basePath }) {
         aria-label="See flows"
         title="See flows"
       >
-        <Icon name="feather/fast-forward" size={16} />
+        <Icon name="flow" size={16} />
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner className={css.flowsPositioner} side="bottom" align="end" sideOffset={4}>

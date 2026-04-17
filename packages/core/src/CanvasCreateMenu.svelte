@@ -81,6 +81,16 @@
     if (menuOpen) loadStories()
   })
 
+  // Focus the first menu item when the dropdown opens
+  $effect(() => {
+    if (menuOpen && view === 'menu') {
+      requestAnimationFrame(() => {
+        const item = document.querySelector('[data-bits-dropdown-menu-content] [data-bits-dropdown-menu-item]:not([data-disabled])') as HTMLElement
+        item?.focus()
+      })
+    }
+  })
+
   // Reset view when menu closes (but not during view transitions)
   $effect(() => {
     if (!menuOpen && view === 'menu') {

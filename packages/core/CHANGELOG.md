@@ -1,5 +1,15 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.46
+
+### Patch Changes
+
+-   Port BranchBar and AuthModal to @dfosco/storyboard-react
+
+    -   StoryboardCommandPalette auto-renders BranchBar and AuthModal
+    -   Hide branch bar in prototype/story embeds via \_sb_hide_branch_bar
+    -   SidePanel offset for branch bar height
+
 ## 4.0.0-beta.45
 
 ### Patch Changes

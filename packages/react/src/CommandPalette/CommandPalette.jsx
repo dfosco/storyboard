@@ -24,16 +24,15 @@ import './command-palette.css'
  * Check if a tool should be hidden from the command palette on the current route.
  * Uses the same pattern-matching logic as excludeRoutes.
  */
-function isHiddenInPalette(tool) {
+function isHiddenInPalette(tool, basePath) {
   const val = tool.hideInCommandPalette
   if (val === true) return true
   if (!val || !Array.isArray(val) || val.length === 0) return false
   if (typeof window === 'undefined') return false
   let pathname = window.location.pathname
-  const base = (typeof import.meta !== 'undefined' ? import.meta.env?.BASE_URL : '/') || '/'
-  const baseTrimmed = base.replace(/\/+$/, '')
-  if (baseTrimmed && pathname.startsWith(baseTrimmed)) {
-    pathname = pathname.slice(baseTrimmed.length) || '/'
+  const base = (basePath || '/').replace(/\/+$/, '')
+  if (base && pathname.startsWith(base)) {
+    pathname = pathname.slice(base.length) || '/'
   }
   return val.some(pattern => new RegExp(pattern).test(pathname))
 }
@@ -54,6 +53,7 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
   const groups = []
   const toolMenus = []
   const usedToolIds = new Set() // Track tools already listed by source:"tools" sections
+  const basePath = prefix || '/'
 
   for (const section of sections) {
     // Separator: id starts with "sep"
@@ -124,7 +124,7 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
       if (tool.disabled) continue
-      if (isHiddenInPalette(tool)) continue
+      if (isHiddenInPalette(tool, basePath)) continue
 
       const label = tool.label || tool.ariaLabel || toolId
       const excluded = isExcludedByRoute(tool)
@@ -429,6 +429,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
   const tools = toolbarConfig?.tools || {}
   const mode = getCurrentMode() || 'default'
   const actions = getActionsForMode(mode)
+  const basePath = prefix || '/'
 
   let entries = []
 
@@ -440,7 +441,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       if (!tool) continue
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
-      if (isHiddenInPalette(tool)) continue
+      if (isHiddenInPalette(tool, basePath)) continue
       entries.push({ toolId, tool, label: customLabel || tool.label || toolId })
     }
   } else {
@@ -448,7 +449,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       if (tool.surface !== 'command-list') continue
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
-      if (isHiddenInPalette(tool)) continue
+      if (isHiddenInPalette(tool, basePath)) continue
       entries.push({ toolId, tool, label: tool.label || toolId })
     }
   }

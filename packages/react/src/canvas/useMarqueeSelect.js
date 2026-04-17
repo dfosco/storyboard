@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
  * Returns the bounding-box list for all widgets on the canvas.
@@ -77,6 +77,9 @@ export default function useMarqueeSelect({
     }
   }, [scrollRef, zoomRef])
 
+  // Ref to track active drag listeners for cleanup on unmount
+  const cleanupRef = useRef(null)
+
   const handleMarqueeMouseDown = useCallback((e) => {
     if (!isLocalDev) return
     if (spaceHeld) return
@@ -107,18 +110,30 @@ export default function useMarqueeSelect({
       if (!el) return
       const containerRect = el.getBoundingClientRect()
 
-      // Screen-space rectangle (relative to scroll container)
-      const sx = Math.min(ms.startClientX, ev.clientX) - containerRect.left
-      const sy = Math.min(ms.startClientY, ev.clientY) - containerRect.top
+      // Content-space rectangle (accounts for scroll offset)
+      const sx = Math.min(ms.startClientX, ev.clientX) - containerRect.left + el.scrollLeft
+      const sy = Math.min(ms.startClientY, ev.clientY) - containerRect.top + el.scrollTop
       const sw = Math.abs(dx)
       const sh = Math.abs(dy)
 
       setMarqueeScreenRect({ x: sx, y: sy, w: sw, h: sh })
     }
 
-    function handleUp(ev) {
+    function removeListeners() {
       document.removeEventListener('mousemove', handleMove)
       document.removeEventListener('mouseup', handleUp)
+      window.removeEventListener('blur', handleCancel)
+      cleanupRef.current = null
+    }
+
+    function handleCancel() {
+      removeListeners()
+      marqueeState.current = null
+      setMarqueeScreenRect(null)
+    }
+
+    function handleUp(ev) {
+      removeListeners()
 
       const ms = marqueeState.current
       marqueeState.current = null
@@ -157,7 +172,14 @@ export default function useMarqueeSelect({
 
     document.addEventListener('mousemove', handleMove)
     document.addEventListener('mouseup', handleUp)
+    window.addEventListener('blur', handleCancel)
+    cleanupRef.current = removeListeners
   }, [isLocalDev, spaceHeld, clientToCanvas, scrollRef, setSelectedWidgetIds, widgets, componentEntries, fallbackSizes])
+
+  // Clean up listeners if component unmounts mid-drag
+  useEffect(() => {
+    return () => { cleanupRef.current?.() }
+  }, [])
 
   return { marqueeScreenRect, handleMarqueeMouseDown }
 }

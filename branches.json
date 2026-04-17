@@ -78,6 +78,7 @@
   {"folder":"branch--feat-widget-feature-prod-flag","branch":"feat-widget-feature-prod-flag"},
   {"folder":"branch--feat-widget-multi-select","branch":"feat-widget-multi-select"},
   {"folder":"branch--feature-flags","branch":"feature-flags"},
+  {"folder":"branch--fix-author-at-filter","branch":"fix-author-at-filter"},
   {"folder":"branch--fix-autosync-listchangedfiles","branch":"fix-autosync-listchangedfiles"},
   {"folder":"branch--fix-canvas-discovery-refresh","branch":"fix-canvas-discovery-refresh"},
   {"folder":"branch--fix-canvas-reload-guard","branch":"fix-canvas-reload-guard"},

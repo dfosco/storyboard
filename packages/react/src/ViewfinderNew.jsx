@@ -464,7 +464,7 @@ function PATDialog({ open, onClose }) {
 /* ─── Nav config ─── */
 
 const NAV_ITEMS = [
-  { id: 'all', label: 'All items', iconName: 'iconoir/key-command' },
+  { id: 'all', label: 'All items', iconName: 'iconoir/view-grid' },
   { id: 'prototypes', label: 'Prototypes', iconName: 'prototype' },
   { id: 'canvases', label: 'Canvas', iconName: 'canvas' },
   { id: 'components', label: 'Components', iconName: 'component' },
@@ -618,108 +618,110 @@ export default function ViewfinderNew({
 
   return (
     <div className={css.layout}>
-      {/* ─── Sidebar ─── */}
-      <aside className={css.sidebar}>
-        <div className={css.sidebarHeader}>
-          <div className={css.logo}>S</div>
+      {/* ─── Full-width Header ─── */}
+      <header className={css.topBar}>
+        <div className={css.topBarLeft}>
+          <div className={css.logo}><Icon name="iconoir/key-command" size={18} color="#fff" /></div>
           <div>
             <div className={css.appName}>{title}</div>
             {subtitle && <div className={css.appSubtitle}>{subtitle}</div>}
           </div>
         </div>
-
-        <nav className={css.navSection}>
-          {NAV_ITEMS.map(nav => (
-            <button
-              key={nav.id}
-              className={activeNav === nav.id ? css.navItemActive : css.navItem}
-              onClick={() => setActiveNav(nav.id)}
-            >
-              <span className={css.navIcon}><Icon name={nav.iconName} size={16} /></span>
-              {nav.label}
-              <span className={css.navCount}>{counts[nav.id]}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className={css.separator} />
-
-        <div className={css.sectionLabel}>Starred</div>
-        {starredItems.length === 0 && (
-          <div className={css.starredEmpty}>Star items to pin them here</div>
-        )}
-        {starredItems.map(s => (
-          <a
-            key={s.id}
-            className={css.starredItem}
-            href={s.isExternal ? s.externalUrl : withBase(basePath, s.route)}
-            {...(s.isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-            onClick={() => trackRecent(s.id)}
-          >
-            <span className={css.starredIcon}>{getTypeIcon(s.type)}</span>
-            {s.name}
-          </a>
-        ))}
-
-        {/* User profile / login */}
-        <div className={css.sidebarFooter}>
-          <button className={css.loginBtn} onClick={() => setShowPAT(true)}>
-            <span className={css.avatar}><MarkGithubIcon size={16} /></span>
-            <div>
-              <div className={css.userName}>Sign in</div>
-              <div className={css.userSub}>Connect with GitHub</div>
-            </div>
+        <div className={css.topActions}>
+          <button className={css.createBtn} onClick={() => setShowCreate(true)}>
+            + Create
           </button>
         </div>
-      </aside>
+      </header>
 
-      {/* ─── Main ─── */}
-      <main className={css.main}>
-        <div className={css.topBar}>
-          <h1 className={css.pageTitle}>{pageTitle}</h1>
-          <div className={css.topActions}>
-            <button className={css.createBtn} onClick={() => setShowCreate(true)}>
-              + Create
+      {/* ─── Body: Sidebar + Content ─── */}
+      <div className={css.body}>
+        {/* ─── Sidebar ─── */}
+        <aside className={css.sidebar}>
+          <nav className={css.navSection}>
+            {NAV_ITEMS.map(nav => (
+              <button
+                key={nav.id}
+                className={activeNav === nav.id ? css.navItemActive : css.navItem}
+                onClick={() => setActiveNav(nav.id)}
+              >
+                <span className={css.navIcon}><Icon name={nav.iconName} size={16} /></span>
+                {nav.label}
+                <span className={css.navCount}>{counts[nav.id]}</span>
+              </button>
+            ))}
+          </nav>
+
+          <div className={css.separator} />
+
+          <div className={css.sectionLabel}>Starred</div>
+          {starredItems.length === 0 && (
+            <div className={css.starredEmpty}>Star items to pin them here</div>
+          )}
+          {starredItems.map(s => (
+            <a
+              key={s.id}
+              className={css.starredItem}
+              href={s.isExternal ? s.externalUrl : withBase(basePath, s.route)}
+              {...(s.isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              onClick={() => trackRecent(s.id)}
+            >
+              <span className={css.starredIcon}>{getTypeIcon(s.type)}</span>
+              {s.name}
+            </a>
+          ))}
+
+          {/* User profile / login */}
+          <div className={css.sidebarFooter}>
+            <button className={css.loginBtn} onClick={() => setShowPAT(true)}>
+              <span className={css.avatar}><MarkGithubIcon size={16} /></span>
+              <div>
+                <div className={css.userName}>Sign in</div>
+                <div className={css.userSub}>Connect with GitHub</div>
+              </div>
             </button>
           </div>
-        </div>
+        </aside>
 
-        {/* Tabs */}
-        <div className={css.tabs}>
-          {TAB_FILTERS.map(t => (
-            <button
-              key={t}
-              className={activeTab === t ? css.tabActive : css.tab}
-              onClick={() => setActiveTab(t)}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+        {/* ─── Main ─── */}
+        <main className={css.main}>
+          {/* Tabs */}
+          <div className={css.tabs}>
+            {TAB_FILTERS.map(t => (
+              <button
+                key={t}
+                className={activeTab === t ? css.tabActive : css.tab}
+                onClick={() => setActiveTab(t)}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
 
-        {/* Grid */}
-        <div className={css.content}>
-          {items.length === 0 ? (
-            <div className={css.emptyState}>
-              {activeTab === 'Recent' && 'No recently opened items yet.'}
-              {activeTab === 'Starred' && 'No starred items. Click ☆ on a card to star it.'}
-              {activeTab === 'All' && 'No items found. Create a prototype, canvas, or component to get started.'}
-            </div>
-          ) : (
-            <div className={css.grid}>
-              {items.map(item => (
-                <ArtifactCard
-                  key={item.id}
-                  item={item}
-                  basePath={basePath}
-                  starred={starred.has(item.id)}
-                  onToggleStar={toggleStar}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
+          {/* Grid */}
+          <div className={css.content}>
+            {items.length === 0 ? (
+              <div className={css.emptyState}>
+                {activeTab === 'Recent' && 'No recently opened items yet.'}
+                {activeTab === 'Starred' && 'No starred items. Click ☆ on a card to star it.'}
+                {activeTab === 'All' && 'No items found. Create a prototype, canvas, or component to get started.'}
+              </div>
+            ) : (
+              <div className={css.grid}>
+                {items.map(item => (
+                  <ArtifactCard
+                    key={item.id}
+                    item={item}
+                    basePath={basePath}
+                    starred={starred.has(item.id)}
+                    onToggleStar={toggleStar}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
 
       {/* Modals */}
       {showCreate && <CreateMenu onClose={() => setShowCreate(false)} basePath={basePath} />}

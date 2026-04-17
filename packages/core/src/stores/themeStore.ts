@@ -172,6 +172,13 @@ function _dispatchEvent(theme: ThemeValue, resolved: string): void {
 }
 
 /**
+ * Return the current theme value (may be "system").
+ */
+export function getTheme(): ThemeValue {
+  return _current
+}
+
+/**
  * Set the active theme. Updates localStorage, the DOM attribute,
  * and dispatches a change event.
  */

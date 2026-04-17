@@ -34,7 +34,40 @@ Sanitize the branch name to avoid filesystem and subdomain issues:
 
 Use the slugified name for both the **branch name** and **worktree directory** throughout the rest of the workflow.
 
-### Step 1: Create the worktree
+### Preferred: Use `npx storyboard dev <branch>`
+
+The `storyboard` CLI handles the full worktree lifecycle in a single command:
+
+```bash
+npx storyboard dev <branch-name>
+```
+
+This will:
+
+1. **Create the worktree** at `.worktrees/<branch-name>` if it doesn't exist — creates the branch from HEAD if needed, or checks out an existing local/remote branch
+2. **Assign a dev-server port** (written to `.worktrees/ports.json`)
+3. **Install dependencies** (`npm install`) in the new worktree
+4. **Start the dev server** with the correct base path and Caddy proxy route
+5. **Print the URL** — `http://<domain>.localhost/branch--<branch-name>/storyboard/`
+
+```bash
+# From anywhere in the repo:
+npx storyboard dev my-feature       # creates worktree if needed, starts dev
+npx storyboard dev main             # start dev for repo root
+npx storyboard dev --no-create foo  # error if "foo" worktree doesn't exist
+```
+
+Use `--no-create` to disable auto-creation (strict mode — only targets existing worktrees).
+
+After the command runs, `cd` into the worktree for subsequent work:
+
+```bash
+cd .worktrees/<branch-name>
+```
+
+**Skip `npx storyboard dev` if the worktree skill was invoked from the ship skill** — ship runs the dev server as its own final step to avoid starting it twice. In that case, use the manual method below to create the worktree without starting the dev server.
+
+### Manual fallback (when you need a worktree without a dev server)
 
 **Always resolve the repository root first:**
 
@@ -56,51 +89,17 @@ If the branch does NOT exist yet, create it from the current HEAD:
 git worktree add "$REPO_ROOT/.worktrees/<branch-name>" -b <branch-name>
 ```
 
-### Step 2: Register a dev-server port
-
-Assign a unique port for this worktree so multiple dev servers can run simultaneously.
-
-If using `@dfosco/storyboard-core`:
+Then change into it:
 
 ```bash
-node -e "import('@dfosco/storyboard-core/worktree/port').then(m => console.log(m.getPort('<branch-name>')))"
+cd "$REPO_ROOT/.worktrees/<branch-name>"
 ```
 
-Or if the project has `scripts/worktree-port.js`:
-
-```bash
-node scripts/worktree-port.js <branch-name>
-```
-
-This writes to `.worktrees/ports.json` (gitignored). The dev server (`npx storyboard-dev`) reads from this file automatically.
-
-### Step 3: Change into the worktree directory
-
-```bash
-cd .worktrees/<branch-name>
-```
-
-All subsequent commands in the session should run from this directory.
-
-### Step 4: Confirm
-
-Print the current working directory, branch, and assigned port to confirm:
+Confirm with:
 
 ```bash
 pwd && git branch --show-current
 ```
-
-### Step 5: Start dev server
-
-Run the dev server in the worktree:
-
-```bash
-npx storyboard dev
-```
-
-The dev server automatically uses the port assigned in Step 2.
-
-**Skip this step if the worktree skill was invoked from the ship skill** — ship runs the dev server as its own final step to avoid starting it twice.
 
 ---
 
@@ -112,21 +111,3 @@ The dev server automatically uses the port assigned in Step 2.
 - If the worktree already exists, inform the user and `cd` into it instead of recreating it.
 - Port assignments are stable — once a worktree gets a port, it keeps it across restarts.
 - To see all assigned ports, check `.worktrees/ports.json`.
-
-## Shortcut: `storyboard dev <branch>`
-
-Instead of the full manual workflow above, you can use `storyboard dev <branch>` from any directory. This will:
-
-1. Auto-create the worktree if the branch exists but has no worktree yet
-2. Create both the branch and worktree if the branch doesn't exist (prompts in interactive mode, auto-creates in non-interactive/programmatic mode)
-3. Install dependencies in the new worktree
-4. Start the dev server targeting that worktree
-
-```bash
-# From anywhere in the repo:
-npx storyboard dev my-feature       # creates worktree if needed, starts dev
-npx storyboard dev main             # start dev for repo root
-npx storyboard dev --no-create foo  # error if "foo" worktree doesn't exist
-```
-
-Use `--no-create` to disable auto-creation (strict mode — only targets existing worktrees).

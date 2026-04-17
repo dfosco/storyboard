@@ -1,5 +1,16 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.45
+
+### Patch Changes
+
+-   Auto-render BranchBar and AuthModal from StoryboardCommandPalette
+
+    -   Port BranchBar and AuthModal from consumer app to @dfosco/storyboard-react
+    -   StoryboardCommandPalette now auto-renders BranchBar and AuthModal
+    -   Consumers mounting StoryboardCommandPalette get all three with zero extra setup
+    -   Both components also exported standalone for custom usage
+
 ## 4.0.0-beta.44
 
 ### Minor Changes

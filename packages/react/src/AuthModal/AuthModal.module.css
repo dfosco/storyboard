@@ -193,29 +193,30 @@
 
 .btnSecondary {
   padding: 8px 16px;
-  background: var(--bgColor-default);
-  border: 1px solid var(--borderColor-default);
+  background: transparent;
+  border: none;
   border-radius: 6px;
   font-size: 15px;
-  color: var(--fgColor-default);
+  color: var(--fgColor-muted);
   cursor: pointer;
 }
 
 .btnSecondary:hover {
+  color: var(--fgColor-default);
   background: var(--bgColor-neutral-muted);
 }
 
 .btnPrimary {
-  padding: 8px 16px;
-  background: var(--bgColor-btn-primary);
-  border: 1px solid var(--borderColor-btn-primary);
+  padding: 8px 20px;
+  background: var(--bgColor-accent-emphasis);
+  border: none;
   border-radius: 6px;
   font-size: 15px;
   font-weight: 600;
-  color: var(--fgColor-btn-primary);
+  color: var(--fgColor-onEmphasis);
   cursor: pointer;
 }
 
 .btnPrimary:hover {
-  background: var(--bgColor-btn-primary-hover);
+  background: var(--bgColor-accent-emphasis-hover, var(--bgColor-accent-emphasis));
 }

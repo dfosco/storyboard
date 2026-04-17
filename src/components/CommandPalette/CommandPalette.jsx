@@ -210,17 +210,23 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
             },
           })
         } else {
-          // Fallback for sidepanel, button, or any other render type
+          // Fallback: click toolbar button or execute action
           const action = actions.find(a => a.toolKey === toolId)
-          if (action) {
-            remainingItems.push({
-              id: `cfg:${section.id}:${toolId}`,
-              children: label,
-              keywords: [label, toolId].filter(Boolean),
-              showType: false,
-              onClick: () => executeAction(action.id),
-            })
-          }
+          const ariaLabel = tool.ariaLabel || tool.label || toolId
+          remainingItems.push({
+            id: `cfg:${section.id}:${toolId}`,
+            children: label,
+            keywords: [label, toolId].filter(Boolean),
+            showType: false,
+            onClick: action
+              ? () => executeAction(action.id)
+              : () => {
+                  setTimeout(() => {
+                    const btn = document.querySelector(`[aria-label="${ariaLabel}"]`)
+                    if (btn) btn.click()
+                  }, 100)
+                },
+          })
         }
       }
     }

@@ -57,19 +57,11 @@ function isInstalled(cmd) {
 
 p.intro('storyboard setup')
 
-// 1. Dependencies
-const depSpin = p.spinner()
+// 1. Check for node_modules (quick sanity check — full install runs at the end)
 if (!existsSync('node_modules')) {
-  depSpin.start('Installing dependencies...')
-  try {
-    run('npm install')
-    depSpin.stop('Dependencies installed')
-  } catch {
-    depSpin.stop('Failed to install dependencies')
-    p.log.error('Run `npm install` manually to debug.')
-  }
+  p.log.info('node_modules not found — will install at end of setup')
 } else {
-  p.log.success('Dependencies installed')
+  p.log.success('Dependencies present')
 }
 
 // 2. Homebrew
@@ -221,6 +213,13 @@ if (isCaddyInstalled()) {
     proxySpin.stop('Proxy started')
   }
 }
+
+// 9. Install / sync dependencies
+await withSpin(
+  'Installing dependencies...',
+  'Dependencies installed',
+  () => { run('npm install', { stdio: 'ignore' }) }
+)
 
 p.note(
   [

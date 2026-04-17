@@ -1,5 +1,15 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.39
+
+### Minor Changes
+
+-   Migrate BranchBar to React and fix embed visibility
+
+    -   Migrate BranchBar from vanilla JS to React with normalized branch switching
+    -   Hide BranchBar inside prototype and story embeds
+    -   Pre-bundle use-sync-external-store for @base-ui/react ESM compatibility
+
 ## 4.0.0-beta.38
 
 ### Minor Changes

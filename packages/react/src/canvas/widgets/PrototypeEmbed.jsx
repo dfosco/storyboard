@@ -81,7 +81,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     const base = hashIdx >= 0 ? rawSrc.slice(0, hashIdx) : rawSrc
     const hash = hashIdx >= 0 ? rawSrc.slice(hashIdx) : ''
     const sep = base.includes('?') ? '&' : '?'
-    return `${base}${sep}_sb_embed&_sb_theme_target=prototype&_sb_canvas_theme=${canvasTheme}${hash}`
+    return `${base}${sep}_sb_embed&_sb_hide_branch_bar&_sb_theme_target=prototype&_sb_canvas_theme=${canvasTheme}${hash}`
   }, [rawSrc, canvasTheme])
 
   const prototypeIndex = useMemo(() => {

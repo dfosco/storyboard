@@ -35,6 +35,7 @@ function resolveStoryUrl(storyId, exportName) {
   const params = new URLSearchParams()
   if (exportName) params.set('export', exportName)
   params.set('_sb_embed', '')
+  params.set('_sb_hide_branch_bar', '')
   return `${base}${story._route}?${params}`
 }
 

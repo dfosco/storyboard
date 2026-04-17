@@ -28,6 +28,7 @@
   let switchError: string | null = $state(null)
 
   const isLocalDev = typeof window !== 'undefined' && (window as any).__SB_LOCAL_DEV__ === true
+  const isHiddenByParam = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_hide_branch_bar')
 
   // Parse current branch from basePath
   const currentBranch = $derived(() => {
@@ -130,7 +131,7 @@
   }
 </script>
 
-{#if isOnBranch && !chromeHidden}
+{#if isOnBranch && !chromeHidden && !isHiddenByParam}
   <div class="branch-bar" bind:this={barEl}>
     <div class="branch-bar-inner">
       {#if switching}

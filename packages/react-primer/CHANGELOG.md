@@ -1,5 +1,11 @@
 # @dfosco/storyboard-react-primer
 
+## 4.0.0-beta.43
+
+### Patch Changes
+
+-   @dfosco/storyboard-react@4.0.0-beta.43
+
 ## 4.0.0-beta.42
 
 ### Patch Changes

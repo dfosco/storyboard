@@ -1,5 +1,13 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.43
+
+### Patch Changes
+
+-   99a84cb: Fix client build error caused by svelte/store imports in core stores
+
+    -   Replace svelte/store dependency in themeStore and sidePanelStore with inline framework-agnostic writable implementation
+
 ## 4.0.0-beta.42
 
 ### Minor Changes

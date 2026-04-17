@@ -13,6 +13,8 @@ import { isGitHubEmbedUrl } from './widgets/githubUrl.js'
 import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import useUndoRedo from './useUndoRedo.js'
+import useMarqueeSelect from './useMarqueeSelect.js'
+import MarqueeOverlay from './MarqueeOverlay.jsx'
 import {
   addWidget as addWidgetApi,
   checkGitHubCliAvailable,
@@ -1828,6 +1830,18 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   // Stable callback for deselecting all widgets
   const handleDeselectAll = useCallback(() => setSelectedWidgetIds(new Set()), [])
 
+  // Marquee (lasso) multi-select on canvas background drag
+  const { marqueeScreenRect, handleMarqueeMouseDown } = useMarqueeSelect({
+    scrollRef,
+    zoomRef: zoomRef,
+    setSelectedWidgetIds,
+    widgets: localWidgets,
+    componentEntries,
+    fallbackSizes: WIDGET_FALLBACK_SIZES,
+    spaceHeld,
+    isLocalDev,
+  })
+
   // Stable callback for widget removal + deselect
   const handleWidgetRemoveAndDeselect = useCallback((id) => {
     handleWidgetRemove(id)
@@ -1970,9 +1984,9 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           ...canvasThemeVars,
           ...(spaceHeld ? { cursor: panningActive ? 'grabbing' : 'grab' } : {}),
         }}
-        onClick={handleDeselectAll}
-        onMouseDown={handlePanStart}
+        onMouseDown={(e) => { handlePanStart(e); handleMarqueeMouseDown(e); }}
       >
+        <MarqueeOverlay rect={marqueeScreenRect} />
         <div
           ref={zoomElRef}
           data-storyboard-canvas-zoom

@@ -42,7 +42,16 @@
       "handler": "core:theme",
       "modes": ["*"],
       "prod": true,
-      "menuWidth": "260px"
+      "menuWidth": "260px",
+      "options": [
+        { "label": "System", "value": "system" },
+        { "label": "Light", "value": "light" },
+        { "label": "Light colorblind", "value": "light_colorblind" },
+        { "label": "Dark", "value": "dark" },
+        { "label": "Dark colorblind", "value": "dark_colorblind" },
+        { "label": "Dark high contrast", "value": "dark_high_contrast" },
+        { "label": "Dark Dimmed", "value": "dark_dimmed" }
+      ]
     },
     "comments": {
       "ariaLabel": "Comments",

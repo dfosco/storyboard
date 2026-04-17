@@ -94,5 +94,8 @@ export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comm
 export { initCanvasConfig, getPasteRules } from './canvasConfig.js'
 export { getCommandPaletteConfig } from './commandPaletteConfig.js'
 
+// Theme
+export { setTheme } from './stores/themeStore.js'
+
 // Recent artifacts (command palette recents)
 export { trackRecent, getRecent, clearRecent } from './recentArtifacts.js'

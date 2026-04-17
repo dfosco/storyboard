@@ -6,6 +6,51 @@
 import { useState, useCallback, useSyncExternalStore } from 'react'
 import css from './viewfinder-home.module.css'
 
+/* ─── Icons (matching widget title bars) ─── */
+
+function PrototypeIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <path d="M19.4 20H4.6C4.26863 20 4 19.7314 4 19.4V4.6C4 4.26863 4.26863 4 4.6 4H19.4C19.7314 4 20 4.26863 20 4.6V19.4C20 19.7314 19.7314 20 19.4 20Z" />
+      <path d="M11 12V4" />
+      <path d="M4 12H20" />
+    </svg>
+  )
+}
+
+function ComponentIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <path d="M5.21173 15.1113L2.52473 12.4243C2.29041 12.1899 2.29041 11.8101 2.52473 11.5757L5.21173 8.88873C5.44605 8.65442 5.82595 8.65442 6.06026 8.88873L8.74727 11.5757C8.98158 11.8101 8.98158 12.1899 8.74727 12.4243L6.06026 15.1113C5.82595 15.3456 5.44605 15.3456 5.21173 15.1113Z" />
+      <path d="M11.5757 21.475L8.88874 18.788C8.65443 18.5537 8.65443 18.1738 8.88874 17.9395L11.5757 15.2525C11.8101 15.0182 12.19 15.0182 12.4243 15.2525L15.1113 17.9395C15.3456 18.1738 15.3456 18.5537 15.1113 18.788L12.4243 21.475C12.19 21.7094 11.8101 21.7094 11.5757 21.475Z" />
+      <path d="M17.9395 15.1113L15.2525 12.4243C15.0182 12.1899 15.0182 11.8101 15.2525 11.5757L17.9395 8.88873C18.1738 8.65442 18.5537 8.65442 18.788 8.88873L21.475 11.5757C21.7094 11.8101 21.7094 12.1899 21.475 12.4243L18.788 15.1113C18.5537 15.3456 18.1738 15.3456 17.9395 15.1113Z" />
+      <path d="M11.5757 8.74727L8.88874 6.06026C8.65443 5.82595 8.65443 5.44605 8.88874 5.21173L11.5757 2.52473C11.8101 2.29041 12.19 2.29041 12.4243 2.52473L15.1113 5.21173C15.3456 5.44605 15.3456 5.82595 15.1113 6.06026L12.4243 8.74727C12.19 8.98158 11.8101 8.98158 11.5757 8.74727Z" />
+    </svg>
+  )
+}
+
+// Placeholder — user will choose a canvas icon
+function CanvasIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="M21 15l-5-5L5 21" />
+    </svg>
+  )
+}
+
+function AllItemsIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <rect x="3" y="3" width="8" height="8" rx="1" />
+      <rect x="13" y="3" width="8" height="8" rx="1" />
+      <rect x="3" y="13" width="8" height="8" rx="1" />
+      <rect x="13" y="13" width="8" height="8" rx="1" />
+    </svg>
+  )
+}
+
 /* ─── localStorage helpers ─── */
 
 const STARRED_KEY = 'sb-viewfinder-starred'
@@ -78,10 +123,10 @@ const ALL_ITEMS = [
 const ITEM_MAP = Object.fromEntries(ALL_ITEMS.map(i => [i.id, i]))
 
 const NAV_ITEMS = [
-  { id: 'all', label: 'All items', icon: '⊞' },
-  { id: 'prototypes', label: 'Prototypes', icon: '◇' },
-  { id: 'canvases', label: 'Canvases', icon: '▢' },
-  { id: 'components', label: 'Components', icon: '⬡' },
+  { id: 'all', label: 'All items', icon: <AllItemsIcon size={16} /> },
+  { id: 'prototypes', label: 'Prototypes', icon: <PrototypeIcon size={16} /> },
+  { id: 'canvases', label: 'Canvases', icon: <CanvasIcon size={16} /> },
+  { id: 'components', label: 'Components', icon: <ComponentIcon size={16} /> },
 ]
 
 const TAB_FILTERS = ['All', 'Recent', 'Starred']
@@ -143,9 +188,9 @@ function ArtifactCard({ id, name, author, updated, color, type, starred, onToggl
 
 function CreateMenu({ onClose }) {
   const items = [
-    { icon: '◇', title: 'Prototype', desc: 'Interactive page flow', bg: '#f0f0f0', fg: '#1a1a1a' },
-    { icon: '▢', title: 'Canvas', desc: 'Freeform board', bg: '#f0f0f0', fg: '#1a1a1a' },
-    { icon: '⬡', title: 'Component', desc: 'Reusable widget', bg: '#f0f0f0', fg: '#1a1a1a' },
+    { icon: <PrototypeIcon size={18} />, title: 'Prototype', desc: 'Interactive page flow' },
+    { icon: <CanvasIcon size={18} />, title: 'Canvas', desc: 'Freeform board' },
+    { icon: <ComponentIcon size={18} />, title: 'Component', desc: 'Reusable widget' },
   ]
 
   return (
@@ -155,7 +200,7 @@ function CreateMenu({ onClose }) {
         <div className={css.createMenuGrid}>
           {items.map(it => (
             <button key={it.title} className={css.createMenuItem} onClick={onClose}>
-              <div className={css.createMenuIcon} style={{ background: it.bg, color: it.fg }}>{it.icon}</div>
+              <div className={css.createMenuIcon}>{it.icon}</div>
               <div>
                 <div className={css.createMenuItemTitle}>{it.title}</div>
                 <div className={css.createMenuItemDesc}>{it.desc}</div>

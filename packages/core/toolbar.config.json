@@ -48,7 +48,7 @@
       "ariaLabel": "Comments",
       "icon": "primer/comment",
       "render": "button",
-      "surface": "main-toolbar",
+      "surface": "*",
       "handler": "core:comments",
       "modes": ["*"],
       "prod": true,

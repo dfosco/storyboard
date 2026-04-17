@@ -202,21 +202,33 @@ export function buildPrototypeIndex(knownRoutes = []) {
   // Build canvas entries — collapse grouped pages into a single entry per group
   const canvasEntries = []
   const seenGroups = new Map() // group name → index in canvasEntries
+  const toTitleCase = (s) => s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
   for (const canvasId of listCanvases()) {
     const data = getCanvasData(canvasId)
     if (!data) continue
     const meta = data._canvasMeta
     const group = data._group || null
 
+    // Page name: use title from data, or derive from the file segment
+    const fileSegment = canvasId.split('/').pop()
+    const pageName = data.title || toTitleCase(fileSegment)
+
     const pageEntry = {
-      name: meta?.title || data.title || canvasId.split('/').pop(),
+      name: pageName,
       route: data._route || `/canvas/${canvasId}`,
     }
 
     // If this canvas belongs to a group we've already seen, add as a page
     if (group && seenGroups.has(group)) {
       const idx = seenGroups.get(group)
-      if (!canvasEntries[idx].pages) canvasEntries[idx].pages = [{ name: canvasEntries[idx].name, route: canvasEntries[idx].route }]
+      if (!canvasEntries[idx].pages) {
+        // Retroactively add the first page
+        const firstId = canvasEntries[idx].dirName
+        const firstData = getCanvasData(firstId)
+        const firstSegment = firstId.split('/').pop()
+        const firstName = firstData?.title || toTitleCase(firstSegment)
+        canvasEntries[idx].pages = [{ name: firstName, route: canvasEntries[idx].route }]
+      }
       canvasEntries[idx].pages.push(pageEntry)
       continue
     }

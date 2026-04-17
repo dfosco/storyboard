@@ -584,6 +584,8 @@ function useBranches(basePath) {
 function BranchDropdown({ basePath }) {
   const { branches, currentBranch, branchBasePath, gitUser } = useBranches(basePath)
   const [showAll, setShowAll] = useState(false)
+  const [switching, setSwitching] = useState(null)
+  const [switchError, setSwitchError] = useState(null)
 
   if (!branches || branches.length === 0) return null
 
@@ -602,9 +604,6 @@ function BranchDropdown({ basePath }) {
     : otherBranches
         .filter(b => !b.lastModified || new Date(b.lastModified).getTime() > twoWeeksAgo)
         .sort((a, b) => (a.branch || '').localeCompare(b.branch || ''))
-
-  const [switching, setSwitching] = useState(null)
-  const [switchError, setSwitchError] = useState(null)
 
   const switchBranch = async (branch) => {
     setSwitching(branch)

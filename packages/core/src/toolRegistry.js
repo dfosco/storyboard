@@ -128,6 +128,7 @@ export function getToolsForToolbar(toolbar, mode, options = {}) {
   const results = []
 
   for (const [id, config] of Object.entries(_toolConfigs)) {
+    if (config.disabled) continue
     if (config.toolbar !== toolbar) continue
     if (!config.prod && !isLocalDev) continue
     if (!isToolVisibleInMode(config, mode)) continue

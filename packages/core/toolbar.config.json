@@ -68,6 +68,7 @@
       "shortcut": { "key": "i", "label": "⌘I" }
     },    
     "create": {
+      "disabled": true,
       "label": "Create",
       "ariaLabel": "Create",
       "icon": "iconoir/plus-circle",

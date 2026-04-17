@@ -2,12 +2,10 @@
  * Side Panel Store — manages the open/close state and active tab of the
  * side panel UI.
  *
- * Framework-agnostic state with a Svelte readable interface.
+ * Framework-agnostic state with a subscribe/set interface.
  * Toggles the `sb-sidepanel-open` class on `<html>` so CSS can react
  * to the panel being open (e.g. shifting the main content area).
  */
-
-import { writable, type Readable } from 'svelte/store'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,6 +18,38 @@ export interface SidePanelState {
   open: boolean
   /** The currently active tab */
   activeTab: SidePanelTab
+}
+
+type Subscriber<T> = (value: T) => void
+type Unsubscriber = () => void
+
+interface Readable<T> {
+  subscribe(run: Subscriber<T>): Unsubscriber
+}
+
+interface Writable<T> extends Readable<T> {
+  set(value: T): void
+  update(fn: (value: T) => T): void
+}
+
+function writable<T>(initial: T): Writable<T> {
+  let value = initial
+  const subs = new Set<Subscriber<T>>()
+  return {
+    set(v: T) {
+      value = v
+      subs.forEach((fn) => fn(value))
+    },
+    update(fn: (v: T) => T) {
+      value = fn(value)
+      subs.forEach((fn) => fn(value))
+    },
+    subscribe(run: Subscriber<T>): Unsubscriber {
+      subs.add(run)
+      run(value)
+      return () => { subs.delete(run) }
+    },
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -53,17 +83,7 @@ function _syncDomClass(open: boolean): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Readable Svelte store for the side panel state.
- *
- * ```svelte
- * <script>
- *   import { sidePanelState } from '@dfosco/storyboard-core/stores'
- * </script>
- *
- * {#if $sidePanelState.open}
- *   <SidePanel activeTab={$sidePanelState.activeTab} />
- * {/if}
- * ```
+ * Readable store for the side panel state.
  */
 export const sidePanelState: Readable<SidePanelState> = { subscribe: _store.subscribe }
 

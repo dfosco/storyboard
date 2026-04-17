@@ -4,15 +4,13 @@
  * Reads/writes `sb-color-scheme` in localStorage, sets Primer CSS attributes
  * (`data-color-mode`, `data-light-theme`, `data-dark-theme`) and the internal
  * `data-sb-theme` attribute on `<html>`, and dispatches a
- * `storyboard:theme:changed` custom event so that non-Svelte consumers
+ * `storyboard:theme:changed` custom event so that non-store consumers
  * (React ThemeProvider, etc.) can react.
  *
  * Supports a "system" value that follows the OS preference via
  * `prefers-color-scheme`, updating automatically when the user changes
  * their system theme.
  */
-
-import { writable, type Readable } from 'svelte/store'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -37,6 +35,33 @@ export interface ThemeState {
   theme: ThemeValue
   /** The resolved CSS theme value (never "system") */
   resolved: string
+}
+
+type Subscriber<T> = (value: T) => void
+type Unsubscriber = () => void
+
+interface Readable<T> {
+  subscribe(run: Subscriber<T>): Unsubscriber
+}
+
+interface Writable<T> extends Readable<T> {
+  set(value: T): void
+}
+
+function writable<T>(initial: T): Writable<T> {
+  let value = initial
+  const subs = new Set<Subscriber<T>>()
+  return {
+    set(v: T) {
+      value = v
+      subs.forEach((fn) => fn(value))
+    },
+    subscribe(run: Subscriber<T>): Unsubscriber {
+      subs.add(run)
+      run(value)
+      return () => { subs.delete(run) }
+    },
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -168,7 +193,7 @@ export function setTheme(value: ThemeValue): void {
 }
 
 /**
- * Readable Svelte store for the current theme state.
+ * Readable store for the current theme state.
  */
 export const themeState: Readable<ThemeState> = { subscribe: _store.subscribe }
 
@@ -248,7 +273,7 @@ export function setThemeSyncTarget(target: keyof ThemeSyncTargets, value: boolea
 }
 
 /**
- * Readable Svelte store for sync target state.
+ * Readable store for sync target state.
  */
 export const themeSyncState: Readable<ThemeSyncTargets> = { subscribe: _syncStore.subscribe }
 

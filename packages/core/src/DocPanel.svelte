@@ -104,7 +104,7 @@
     height: 100%;
     overflow: hidden;
     color: var(--fgColor-default, #e6edf3);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-family: "Mona Sans", -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
     font-size: 13px;
   }
 

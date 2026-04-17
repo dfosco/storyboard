@@ -301,7 +301,7 @@ function showToast(message, route, basePath, filePath) {
     background: 'var(--sb--color-popover, #fff)',
     color: 'var(--sb--color-foreground, #1e293b)',
     fontSize: '0.8125rem',
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
+    fontFamily: "'Mona Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
     boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
     border: '1px solid var(--sb--color-border, #cbd5e1)',
     display: 'flex',

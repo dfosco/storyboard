@@ -603,16 +603,38 @@ function BranchDropdown({ basePath }) {
         .filter(b => !b.lastModified || new Date(b.lastModified).getTime() > twoWeeksAgo)
         .sort((a, b) => (a.branch || '').localeCompare(b.branch || ''))
 
-  const navigate = (folder) => {
-    if (folder) window.location.href = `${branchBasePath}${folder}`
+  const [switching, setSwitching] = useState(null)
+  const [switchError, setSwitchError] = useState(null)
+
+  const switchBranch = async (branch) => {
+    setSwitching(branch)
+    setSwitchError(null)
+    const apiBase = (basePath || '/').replace(/\/$/, '')
+    try {
+      const res = await fetch(`${apiBase}/_storyboard/switch-branch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ branch }),
+      })
+      const data = await res.json()
+      if (res.ok && data.url) {
+        window.location.href = data.url
+      } else {
+        setSwitchError(data.error || 'Failed to switch')
+        setSwitching(null)
+      }
+    } catch (e) {
+      setSwitchError(e.message || 'Server not reachable')
+      setSwitching(null)
+    }
   }
 
   return (
     <Menu.Root>
-      <Menu.Trigger className={css.branchBtn}>
+      <Menu.Trigger className={css.branchBtn} disabled={!!switching}>
         <GitBranchIcon size={14} />
-        <span className={css.branchBtnText}>{currentBranch}</span>
-        <ChevronDownIcon size={12} />
+        <span className={css.branchBtnText}>{switching ? `Switching to ${switching}…` : currentBranch}</span>
+        {!switching && <ChevronDownIcon size={12} />}
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner className={css.branchPositioner} side="bottom" align="end" sideOffset={4}>
@@ -624,7 +646,7 @@ function BranchDropdown({ basePath }) {
                   <Menu.Item
                     key={b.branch}
                     className={`${css.branchItem}${b.branch === currentBranch ? ` ${css.branchItemActive}` : ''}`}
-                    onClick={() => navigate(b.folder)}
+                    onClick={() => switchBranch(b.branch)}
                   >
                     <GitBranchIcon size={12} />
                     {b.branch}
@@ -647,7 +669,7 @@ function BranchDropdown({ basePath }) {
                     <Menu.Item
                       key={b.branch}
                       className={`${css.branchItem}${b.branch === currentBranch ? ` ${css.branchItemActive}` : ''}`}
-                      onClick={() => navigate(b.folder)}
+                      onClick={() => switchBranch(b.branch)}
                     >
                       <GitBranchIcon size={12} />
                       {b.branch}

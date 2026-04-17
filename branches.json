@@ -57,6 +57,7 @@
   {"folder":"branch--4.0.0-widget-perf-snap-3","branch":"4.0.0-widget-perf-snap-3"},
   {"folder":"branch--4.0.0-widget-perf-snap","branch":"4.0.0-widget-perf-snap"},
   {"folder":"branch--4.0.0","branch":"4.0.0"},
+  {"folder":"branch--4.1.0","branch":"4.1.0"},
   {"folder":"branch--branch-links-fix","branch":"branch-links-fix"},
   {"folder":"branch--canvas-collision-detection","branch":"canvas-collision-detection"},
   {"folder":"branch--canvas-image-drag-drop","branch":"canvas-image-drag-drop"},

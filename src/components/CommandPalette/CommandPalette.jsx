@@ -527,6 +527,12 @@ export default function StoryboardCommandPalette({ basePath }) {
     [items, search]
   )
 
+  // Items without separators — used for keyboard navigation indexing
+  const navigableItems = useMemo(
+    () => filteredItems.filter(list => !list.id?.startsWith('cfg:sep')),
+    [filteredItems]
+  )
+
   const handleChangeSearch = useCallback((value) => {
     setSearch(value)
   }, [])
@@ -548,13 +554,13 @@ export default function StoryboardCommandPalette({ basePath }) {
         {filteredItems.length ? (
           filteredItems.map((list) => (
             list.id?.startsWith('cfg:sep') ? (
-              <hr key={list.id} style={{ border: 'none', borderTop: '1px solid var(--borderColor-muted, #e5e5e5)', margin: '4px 14px' }} />
+              !search && <hr key={list.id} style={{ border: 'none', borderTop: '1px solid var(--borderColor-muted, #e5e5e5)', margin: '4px 14px' }} />
             ) : (
               <CommandPalette.List key={list.id} heading={list.heading}>
                 {list.items.map(({ id, ...rest }) => (
                   <CommandPalette.ListItem
                     key={id}
-                    index={getItemIndex(filteredItems, id)}
+                    index={getItemIndex(navigableItems, id)}
                     {...rest}
                   />
                 ))}

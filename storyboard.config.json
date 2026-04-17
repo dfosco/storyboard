@@ -39,13 +39,22 @@
         "toolIds": [
           { "id": "viewfinder", "label": "Homepage" },
           { "id": "repository", "label": "Repository" },
-          { "id": "theme", "label": "Change theme" },
-          { "id": "docs", "label": "Documentation" },
-          "devtools",
-          "feature-flags"
+          { "id": "theme", "label": "Switch Theme" },
+          { "id": "docs", "label": "Storyboard Docs" }
         ]
       },
       { "id": "sep1", "items": [] },
+      {
+        "id": "tools2",
+        "title": "",
+        "source": "tools",
+        "toolIds": [
+          { "id": "docs", "label": "Documentation" },
+          { "id": "devtools", "label": "Devtools" },
+          { "id": "feature-flags", "label": "Feature Flags" }
+        ]
+      },      
+      { "id": "sep2", "items": [] },
       {
         "id": "recent",
         "title": "Recently opened",

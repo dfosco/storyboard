@@ -25,7 +25,7 @@
   const widgetTypes = [
     { type: 'sticky-note', label: 'Sticky Note' },
     { type: 'markdown', label: 'Markdown' },
-    { type: 'prototype', label: 'Prototype embed' },
+    { type: 'prototype', label: 'Prototype' },
   ]
 
   interface StoryEntry {

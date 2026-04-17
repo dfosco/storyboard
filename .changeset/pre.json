@@ -1,12 +1,12 @@
 {
-  "mode": "exit",
+  "mode": "pre",
   "tag": "beta",
   "initialVersions": {
-    "@dfosco/storyboard-core": "4.0.0-beta.33",
-    "@dfosco/storyboard-react": "4.0.0-beta.33",
-    "@dfosco/storyboard-react-primer": "4.0.0-beta.33",
-    "@dfosco/storyboard-react-reshaped": "4.0.0-beta.33",
-    "@dfosco/tiny-canvas": "4.0.0-beta.33"
+    "@dfosco/storyboard-core": "4.0.0-beta.34",
+    "@dfosco/storyboard-react": "4.0.0-beta.34",
+    "@dfosco/storyboard-react-primer": "4.0.0-beta.34",
+    "@dfosco/storyboard-react-reshaped": "4.0.0-beta.34",
+    "@dfosco/tiny-canvas": "4.0.0-beta.34"
   },
   "changesets": [
     "beta-5-release",
@@ -43,6 +43,7 @@
     "changeset-mo1ziy37",
     "changeset-mo2duobn",
     "changeset-mo2ejhe5",
-    "changeset-mo2f4u0h"
+    "changeset-mo2f4u0h",
+    "changeset-mo2i777i"
   ]
 }

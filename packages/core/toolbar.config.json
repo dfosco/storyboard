@@ -123,7 +123,8 @@
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
       "modes": ["*"],
-      "prod": true
+      "prod": true,
+      "hideInCommandPalette": [".*"]
     },
     "canvas-zoom-to-fit": {
       "ariaLabel": "Zoom to objects",
@@ -148,7 +149,8 @@
       "surface": "canvas-toolbar",
       "handler": "core:canvas-toolbar",
       "gridSize": 40,
-      "modes": ["*"]
+      "modes": ["*"],
+      "hideInCommandPalette": ["^(?!/canvas)"]
     },
     "canvas-undo-redo": {
       "ariaLabel": "Undo and redo",
@@ -204,11 +206,11 @@
     },
     "hide-toolbars": {
       "label": "Hide toolbars",
-      "render": "submenu",
+      "render": "button",
       "surface": "command-list",
       "modes": ["*"],
       "prod": true,
-      "handler": "core:hide-toolbars"
+      "inlineAction": "toggle-chrome"
     }
   }
 }

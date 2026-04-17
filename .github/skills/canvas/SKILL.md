@@ -348,3 +348,17 @@ view src/canvas/images/my-canvas--2026-04-13--10-30-00.png
 - Full path: `src/canvas/images/{props.src}`
 
 If multiple images exist, ask which one the user wants to view, or list them with their widget IDs.
+
+---
+
+## Story Components on Canvas
+
+When creating **story components** (`.story.jsx` files) for use on a canvas:
+
+1. **Always use Primer React components** from `@primer/react` for all UI elements — buttons, forms, layout, etc.
+2. **Always use Primer Octicons** from `@primer/octicons-react` for icons.
+3. **Use CSS Modules** (`*.module.css`) for any custom styling beyond Primer defaults.
+4. **Use the `create` skill** to scaffold the component — never create story files manually.
+5. **Use the `component-to-story` skill** if migrating an existing `.canvas.jsx` companion file into a standalone story.
+
+These rules ensure visual consistency across all canvas widgets and prototype pages.

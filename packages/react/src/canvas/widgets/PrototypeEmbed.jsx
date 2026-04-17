@@ -83,13 +83,20 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const scale = zoom / 100
 
   const [editing, setEditing] = useState(false)
-  const [interactive, setInteractive] = useState(false)
-  const [showIframe, setShowIframe] = useState(false)
-  const [iframeLoaded, setIframeLoaded] = useState(false)
+  const [interactive, _setInteractive] = useState(false)
+  const [showIframe, _setShowIframe] = useState(false)
+  const [iframeLoaded, _setIframeLoaded] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [filter, setFilter] = useState('')
-  const [canvasTheme, setCanvasTheme] = useState('light')
-  const [brokenSnaps, setBrokenSnaps] = useState({})
+  const [canvasTheme, _setCanvasTheme] = useState('light')
+  const [brokenSnaps, _setBrokenSnaps] = useState({})
+
+  // ── Debug logging wrappers ──
+  const setInteractive = (v) => { console.log(`[embed:${widgetId}] setInteractive →`, v); _setInteractive(v) }
+  const setShowIframe = (v) => { if (v) console.trace(`[embed:${widgetId}] setShowIframe → TRUE`); else console.log(`[embed:${widgetId}] setShowIframe → false`); _setShowIframe(v) }
+  const setIframeLoaded = (v) => { console.log(`[embed:${widgetId}] iframeLoaded →`, v); _setIframeLoaded(v) }
+  const setCanvasTheme = (v) => { console.log(`[embed:${widgetId}] canvasTheme →`, v); _setCanvasTheme(v) }
+  const setBrokenSnaps = (fn) => { console.log(`[embed:${widgetId}] setBrokenSnaps`); _setBrokenSnaps(fn) }
 
   const inputRef = useRef(null)
   const filterRef = useRef(null)
@@ -114,6 +121,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
   // Single snapshot — backward compat reads snapshotLight/snapshotDark if snapshot is missing
   const hasSnap = !isExternal && !!(snapshot && snapshot.includes(widgetId) && !brokenSnaps[snapshot])
+  console.log(`[embed:${widgetId}] render: hasSnap=${hasSnap}, showIframe=${showIframe}, interactive=${interactive}, canvasTheme=${canvasTheme}, snapshot=${snapshot ? snapshot.slice(0, 50) : 'null'}, broken=${!!brokenSnaps[snapshot]}`)
 
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''
@@ -243,6 +251,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   }, [editing, hasPicker])
 
   useEffect(() => {
+    console.log(`[embed:${widgetId}] effect:showIframe →`, showIframe)
     if (!showIframe) setIframeLoaded(false)
   }, [showIframe])
 
@@ -251,20 +260,24 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   // snapshots in the background with the iframe hidden but still mounted.
   useEffect(() => {
     if (!interactive || expanded) return
+    console.log(`[embed:${widgetId}] effect:exit-interactive listener attached`)
     function handlePointerDown(e) {
       if (embedRef.current && !embedRef.current.contains(e.target)) {
         const chromeEl = e.target.closest(`[data-widget-id="${widgetId}"]`)
         if (chromeEl) return
 
+        console.log(`[embed:${widgetId}] exit-interactive: pointerdown outside, iframeLoaded=${iframeLoaded}, hasContentWindow=${!!iframeRef.current?.contentWindow}`)
         setInteractive(false)
         if (onUpdate && !isExternal && iframeLoaded && iframeRef.current?.contentWindow) {
           if (iframeRef.current) iframeRef.current.style.visibility = 'hidden'
           const session = ++exitSessionRef.current
+          console.log(`[embed:${widgetId}] exit-interactive: starting capture, session=${session}`)
           setTimeout(() => {
-            if (exitSessionRef.current !== session) return
+            if (exitSessionRef.current !== session) { console.log(`[embed:${widgetId}] exit-interactive: stale session ${session}, current=${exitSessionRef.current}`); return }
             requestCapture({ force: true }).then((updates) => {
-              if (exitSessionRef.current !== session) return
+              if (exitSessionRef.current !== session) { console.log(`[embed:${widgetId}] exit-interactive: stale session after capture`); return }
               const snap = updates?.snapshot
+              console.log(`[embed:${widgetId}] exit-interactive: capture done, snap=${snap ? 'yes(' + snap.length + ')' : 'null'}`)
               if (snap) {
                 const img = new Image()
                 const done = () => {
@@ -310,13 +323,13 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const hasSnapRef = useRef(hasSnap)
   hasSnapRef.current = hasSnap
   useEffect(() => {
-    if (canvasThemeInitRef.current) { canvasThemeInitRef.current = false; return }
-    if (isExternal || !onUpdate || interactive || !hasSnap) return
+    if (canvasThemeInitRef.current) { canvasThemeInitRef.current = false; console.log(`[embed:${widgetId}] theme-effect: skip init`); return }
+    if (isExternal || !onUpdate || interactive || !hasSnap) { console.log(`[embed:${widgetId}] theme-effect: skip (ext=${isExternal}, noUpdate=${!onUpdate}, interactive=${interactive}, hasSnap=${hasSnap})`); return }
+    console.log(`[embed:${widgetId}] theme-effect: enqueue refresh, hasSnap=${hasSnap}, hasSnapRef=${hasSnapRef.current}`)
     const rect = embedRef.current?.getBoundingClientRect()
     enqueueRefresh(widgetId, ({ revealOrder, batchStart }) => {
-      // Re-check hasSnap at callback time — snapshot may have been
-      // marked broken (404) between enqueue and execution.
-      if (!hasSnapRef.current) return Promise.resolve(false)
+      console.log(`[embed:${widgetId}] refresh-callback: hasSnapRef=${hasSnapRef.current}`)
+      if (!hasSnapRef.current) { console.log(`[embed:${widgetId}] refresh-callback: ABORT, no snap`); return Promise.resolve(false) }
       return new Promise((resolve) => {
         refreshMetaRef.current = { revealOrder, batchStart, resolve }
         captureOnReadyRef.current = true
@@ -329,8 +342,10 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
   // Capture snapshot on first iframe ready (when no existing snapshot)
   useEffect(() => {
+    console.log(`[embed:${widgetId}] effect:iframeReady → ${iframeReady}, onUpdate=${!!onUpdate}, isExternal=${isExternal}, hasSnap=${hasSnap}`)
     if (!iframeReady || !onUpdate || isExternal) return
     if (!hasSnap) {
+      console.log(`[embed:${widgetId}] first-ready: requestCapture (no snap)`)
       requestCapture()
     }
   }, [iframeReady]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -339,8 +354,10 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   useEffect(() => {
     if (iframeReady && captureOnReadyRef.current) {
       captureOnReadyRef.current = false
+      console.log(`[embed:${widgetId}] captureOnReady: requestCapture`)
       requestCapture().then((updates) => {
         const meta = refreshMetaRef.current
+        console.log(`[embed:${widgetId}] captureOnReady: done, snap=${updates?.snapshot ? 'yes' : 'null'}, hasMeta=${!!meta}`)
         if (meta) {
           refreshMetaRef.current = null
           const snap = updates?.snapshot
@@ -444,6 +461,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const chromeVars = useMemo(() => getEmbedChromeVars(canvasTheme), [canvasTheme])
 
   const enterInteractive = useCallback(() => {
+    console.log(`[embed:${widgetId}] enterInteractive`)
     exitSessionRef.current++
     clearTimeout(teardownTimerRef.current)
     cancelRefresh(widgetId)
@@ -598,7 +616,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                   className={styles.snapshotImage}
                   alt={`${prototypeTitle} snapshot`}
                   draggable={false}
-                  onError={() => setBrokenSnaps(prev => ({ ...prev, [snapshot]: true }))}
+                  onError={() => { console.log(`[embed:${widgetId}] snapshot img onError: ${snapshot?.slice(0, 60)}`); setBrokenSnaps(prev => ({ ...prev, [snapshot]: true })) }}
                 />
               )}
 
@@ -616,7 +634,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                     transition: 'opacity 150ms ease',
                     ...(iframeLoaded ? {} : { opacity: 0 }),
                   }}
-                  onLoad={() => setIframeLoaded(true)}
+                  onLoad={() => { console.log(`[embed:${widgetId}] iframe onLoad`); setIframeLoaded(true) }}
                   title={`${prototypeTitle} prototype`}
                   sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
                 />

@@ -2031,7 +2031,9 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   return (
     <>
       <div className={styles.canvasTitle}>
-        <h1 className={styles.canvasTitleStatic}>{canvasMeta?.title || canvas?.title || canvasId.split('/').pop()}</h1>
+        {siblingPages.length > 1 && (
+          <h1 className={styles.canvasTitleStatic}>{canvasMeta?.title || canvas?.title || canvasId.split('/').pop()}</h1>
+        )}
         <PageSelector currentName={canvasId} pages={siblingPages} isLocalDev={isLocalDev} />
         {isLocalDev && (
           <span className={styles.localEditingLabel}>Local editing</span>

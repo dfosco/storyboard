@@ -14,6 +14,7 @@
   import './core-ui-colors.css'
   import CommandPalette from './CommandPalette.svelte'
   import * as Panel from './lib/components/ui/panel/index.js'
+  import BranchBar from './BranchBar.svelte'
   import PwaInstallBanner from './PwaInstallBanner.svelte'
   import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
   import * as Tooltip from './lib/components/ui/tooltip/index.js'
@@ -766,6 +767,7 @@
 
 {#if !isEmbed}
   <PwaInstallBanner />
+  <BranchBar {basePath} />
 {/if}
 
 <!-- Flow info panel (previously inside CommandMenu) -->

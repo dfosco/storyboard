@@ -1,0 +1,1046 @@
+/**
+ * ViewfinderNew — SaaS-style homescreen for Storyboard.
+ *
+ * Replaces the old list-based Viewfinder with a sidebar + grid layout.
+ * Wired to real data from buildPrototypeIndex and listStories.
+ */
+import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
+import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
+import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon } from '@primer/octicons-react'
+import { Menu } from '@base-ui/react/menu'
+import Icon from './Icon.jsx'
+import css from './ViewfinderNew.module.css'
+
+/* ─── localStorage helpers ─── */
+
+const STARRED_KEY = 'sb-viewfinder-starred'
+const RECENT_KEY = 'sb-viewfinder-recent'
+const MAX_RECENT = 30
+const GROUP_BY_FOLDERS_KEY = 'sb-viewfinder-group-folders'
+
+function readJSON(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) || fallback }
+  catch { return fallback }
+}
+
+function writeJSON(key, value) {
+  localStorage.setItem(key, JSON.stringify(value))
+  window.dispatchEvent(new StorageEvent('storage', { key }))
+}
+
+function createLocalStorageStore(key, fallback) {
+  const subscribe = (cb) => {
+    const handler = (e) => { if (!e.key || e.key === key) cb() }
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
+  }
+  const getSnapshot = () => localStorage.getItem(key) || JSON.stringify(fallback)
+  return { subscribe, getSnapshot }
+}
+
+const starredStore = createLocalStorageStore(STARRED_KEY, [])
+const recentStore = createLocalStorageStore(RECENT_KEY, [])
+
+function useStarred() {
+  const raw = useSyncExternalStore(starredStore.subscribe, starredStore.getSnapshot)
+  const ids = JSON.parse(raw)
+  const toggle = useCallback((id) => {
+    const current = readJSON(STARRED_KEY, [])
+    const next = current.includes(id) ? current.filter(x => x !== id) : [...current, id]
+    writeJSON(STARRED_KEY, next)
+  }, [])
+  return { starred: new Set(ids), toggle }
+}
+
+function useRecent() {
+  const raw = useSyncExternalStore(recentStore.subscribe, recentStore.getSnapshot)
+  return JSON.parse(raw)
+}
+
+function trackRecent(id) {
+  const current = readJSON(RECENT_KEY, [])
+  const next = [id, ...current.filter(x => x !== id)].slice(0, MAX_RECENT)
+  writeJSON(RECENT_KEY, next)
+}
+
+/* ─── URL helpers ─── */
+
+function withBase(basePath, route) {
+  const normalizedRoute = route.startsWith('/') ? route : `/${route}`
+  const normalizedBase = (basePath || '/').replace(/\/+$/, '')
+  if (!normalizedBase || normalizedBase === '/') return normalizedRoute
+  return `${normalizedBase}${normalizedRoute}`.replace(/\/+/g, '/')
+}
+
+/* ─── Thumbnail color from name hash ─── */
+
+const THUMB_CLASSES = ['thumbBlue', 'thumbAmber', 'thumbGreen', 'thumbPurple', 'thumbRose', 'thumbSlate']
+
+function thumbClass(name) {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) | 0
+  return css[THUMB_CLASSES[Math.abs(h) % THUMB_CLASSES.length]]
+}
+
+/* ─── Type helpers ─── */
+
+function getTypeLabel(type) {
+  if (type === 'prototype') return 'PROTOTYPE'
+  if (type === 'canvas') return 'CANVAS'
+  if (type === 'component') return 'COMPONENT'
+  return type?.toUpperCase() || ''
+}
+
+function getTypeIcon(type, size = 14) {
+  if (type === 'prototype') return <Icon name="prototype" size={size} />
+  if (type === 'canvas') return <Icon name="canvas" size={size} />
+  if (type === 'component') return <Icon name="component" size={size} />
+  return null
+}
+
+/* ─── Star Button ─── */
+
+function StarBtn({ active, onClick }) {
+  return (
+    <button
+      className={active ? css.starBtnActive : css.starBtn}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClick() }}
+      aria-label={active ? 'Unstar' : 'Star'}
+    >
+      {active ? '★' : '☆'}
+    </button>
+  )
+}
+
+/* ─── Artifact Card ─── */
+
+function ArtifactCard({ item, basePath, starred, onToggleStar }) {
+  const href = item.route ? withBase(basePath, item.route) : '#'
+  const isExternal = item.isExternal
+
+  const handleClick = () => {
+    trackRecent(item.id)
+  }
+
+  const Tag = isExternal ? 'a' : 'a'
+  const linkProps = isExternal
+    ? { href: item.externalUrl, target: '_blank', rel: 'noopener noreferrer' }
+    : { href }
+
+  return (
+    <Tag className={css.card} {...linkProps} onClick={handleClick}>
+      <div className={`${css.cardThumb} ${thumbClass(item.name)}`}>
+        <span className={css.cardBadge}>{getTypeLabel(item.type)}</span>
+        <StarBtn active={starred} onClick={() => onToggleStar(item.id)} />
+      </div>
+      <div className={css.cardBody}>
+        <div className={css.cardBodyContent}>
+          <div className={css.cardTitle}>
+            {item.name}
+            {isExternal && <span className={css.externalBadge}>↗</span>}
+          </div>
+          <div className={css.cardMeta}>
+            {item.author && <span>{Array.isArray(item.author) ? item.author.join(', ') : item.author}</span>}
+            {!item.author && item.gitAuthor && <span>{item.gitAuthor}</span>}
+            {(item.author || item.gitAuthor) && formatRelativeTime(item.lastModified) && <span className={css.cardMetaDot} />}
+            {formatRelativeTime(item.lastModified) && <span>{formatRelativeTime(item.lastModified)}</span>}
+          </div>
+        </div>
+        {item.flows?.length > 0 && <FlowsDropdown flows={item.flows} basePath={basePath} />}
+      </div>
+    </Tag>
+  )
+}
+
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return ''
+  const now = Date.now()
+  const diff = now - date.getTime()
+  if (diff < 0) return ''
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  if (days < 30) return `${Math.floor(days / 7)}w ago`
+  return date.toLocaleDateString()
+}
+
+/* ─── Flows Dropdown ─── */
+
+function FlowsDropdown({ flows, basePath }) {
+  if (!flows || flows.length === 0) return null
+  return (
+    <Menu.Root>
+      <Menu.Trigger
+        className={css.flowsBtn}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+      >
+        <ChevronDownIcon size={12} />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner className={css.flowsPositioner} side="bottom" align="end" sideOffset={4}>
+          <Menu.Popup className={css.flowsPopup}>
+            <div className={css.flowsTitle}>Flows</div>
+            {flows.map(flow => (
+              <Menu.Item
+                key={flow.key}
+                className={css.flowsItem}
+                onClick={(e) => {
+                  e.preventDefault()
+                  window.location.href = withBase(basePath, flow.route)
+                }}
+              >
+                {flow.meta?.title || flow.name}
+              </Menu.Item>
+            ))}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  )
+}
+
+/* ─── Folder Section ─── */
+
+function FolderSection({ folder, collapsed, onToggle, basePath, starred, onToggleStar }) {
+  return (
+    <section className={css.folderSection}>
+      <button className={css.folderHeader} onClick={onToggle}>
+        <FileDirectoryFillIcon size={16} className={css.folderIcon} />
+        <span className={css.folderName}>{folder.name}</span>
+        <span className={css.folderCount}>{folder.items.length}</span>
+        <ChevronRightIcon
+          size={14}
+          className={collapsed ? css.folderChevron : css.folderChevronExpanded}
+        />
+      </button>
+      {!collapsed && (
+        <div className={css.grid}>
+          {folder.items.map(item => (
+            <ArtifactCard
+              key={item.id}
+              item={item}
+              basePath={basePath}
+              starred={starred.has(item.id)}
+              onToggleStar={onToggleStar}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+/* ─── Create Footer ─── */
+
+function CreateFooter() {
+  return (
+    <div className={css.createFooter}>
+      <span className={css.createFooterDot} />
+      <span className={css.createFooterText}>Only available in dev environment</span>
+    </div>
+  )
+}
+
+/* ─── Create Form ─── */
+
+function CreateForm({ type, onBack, onClose, basePath }) {
+  const [name, setName] = useState('')
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [url, setUrl] = useState('')
+  const [isExternal, setIsExternal] = useState(false)
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!name.trim()) { setError('Name is required'); return }
+    setError('')
+    setSubmitting(true)
+
+    let endpoint, body
+    if (type === 'Canvas') {
+      endpoint = '/_storyboard/canvas/create'
+      body = { name: name.trim(), title: title.trim(), description: description.trim(), grid: true, gridSize: 24 }
+    } else if (type === 'Prototype') {
+      endpoint = '/_storyboard/workshop/prototypes'
+      body = { name: name.trim(), title: title.trim(), description: description.trim() }
+      if (isExternal) { body.external = true; body.url = url.trim() }
+    } else {
+      endpoint = '/_storyboard/canvas/create-story'
+      body = { name: name.trim(), location: 'src/components' }
+    }
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || `Request failed (${res.status})`)
+      }
+      const data = await res.json().catch(() => ({}))
+      const route = data.route || data.path || `/${name.trim()}`
+      window.location.href = withBase(basePath, route)
+    } catch (err) {
+      setError(err.message)
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <button type="button" className={css.createFormBack} onClick={onBack}>
+        ← Back
+      </button>
+      <div className={css.createMenuTitle}>New {type}</div>
+
+      <div className={css.createFormField}>
+        <label className={css.createFormLabel}>Name *</label>
+        <input
+          className={css.createFormInput}
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder={`my-${type.toLowerCase()}`}
+          autoFocus
+        />
+      </div>
+
+      {type !== 'Component' && (
+        <>
+          <div className={css.createFormField}>
+            <label className={css.createFormLabel}>Title</label>
+            <input
+              className={css.createFormInput}
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Optional display title"
+            />
+          </div>
+          <div className={css.createFormField}>
+            <label className={css.createFormLabel}>Description</label>
+            <input
+              className={css.createFormInput}
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Optional description"
+            />
+          </div>
+        </>
+      )}
+
+      {type === 'Prototype' && (
+        <>
+          <div className={css.createFormField}>
+            <label className={css.createFormCheckbox}>
+              <input
+                type="checkbox"
+                checked={isExternal}
+                onChange={e => setIsExternal(e.target.checked)}
+              />
+              External prototype
+            </label>
+          </div>
+          {isExternal && (
+            <div className={css.createFormField}>
+              <label className={css.createFormLabel}>URL</label>
+              <input
+                className={css.createFormInput}
+                value={url}
+                onChange={e => setUrl(e.target.value)}
+                placeholder="https://example.com"
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      {error && <div className={css.createFormError}>{error}</div>}
+
+      <div className={css.createFormActions}>
+        <button type="button" className={css.btnSecondary} onClick={onClose}>Cancel</button>
+        <button type="submit" className={css.btnPrimary} disabled={submitting}>
+          {submitting ? 'Creating…' : 'Create'}
+        </button>
+      </div>
+
+      <CreateFooter />
+    </form>
+  )
+}
+
+/* ─── Create Menu ─── */
+
+function CreateMenu({ onClose, basePath }) {
+  const [activeForm, setActiveForm] = useState(null)
+
+  const items = [
+    { icon: <Icon name="canvas" size={18} />, title: 'Canvas', desc: 'Interactive board for prototypes, components, and documents' },
+    { icon: <Icon name="prototype" size={18} />, title: 'Prototype', desc: 'Interactive page flow' },
+    { icon: <Icon name="component" size={18} />, title: 'Component', desc: 'Reusable component' },
+  ]
+
+  return (
+    <div className={css.createMenuOverlay} onClick={onClose}>
+      <div className={css.createMenu} onClick={e => e.stopPropagation()}>
+        {activeForm ? (
+          <CreateForm
+            type={activeForm}
+            onBack={() => setActiveForm(null)}
+            onClose={onClose}
+            basePath={basePath}
+          />
+        ) : (
+          <>
+            <div className={css.createMenuTitle}>Create new</div>
+            <div className={css.createMenuGrid}>
+              {items.map(it => (
+                <button key={it.title} className={css.createMenuItem} onClick={() => setActiveForm(it.title)}>
+                  <div className={css.createMenuIcon}>{it.icon}</div>
+                  <div>
+                    <div className={css.createMenuItemTitle}>{it.title}</div>
+                    <div className={css.createMenuItemDesc}>{it.desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <CreateFooter />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ─── PAT Dialog ─── */
+
+const COMMENTS_TOKEN_KEY = 'sb-comments-token'
+const REPO_OWNER = 'dfosco'
+const REPO_NAME = 'storyboard'
+
+function getRepoInfo() {
+  try {
+    const cfg = typeof __STORYBOARD_CONFIG__ !== 'undefined' ? __STORYBOARD_CONFIG__ : null
+    const repo = cfg?.repository
+    if (repo?.owner && repo?.name) return repo
+  } catch { /* ignore */ }
+  return { owner: REPO_OWNER, name: REPO_NAME }
+}
+
+function PATDialog({ open, onClose }) {
+  const [tokenValue, setTokenValue] = useState('')
+
+  if (!open) return null
+
+  const repo = getRepoInfo()
+
+  const handleSignIn = () => {
+    const trimmed = tokenValue.trim()
+    if (!trimmed) return
+
+    // Store token to localStorage
+    try { localStorage.setItem(COMMENTS_TOKEN_KEY, trimmed) } catch { /* ignore */ }
+
+    // Try the comments auth API if available
+    try {
+      import('@dfosco/storyboard-core/comments').then(({ setToken }) => {
+        setToken(trimmed)
+      }).catch(() => {})
+    } catch { /* comments module may not be initialized */ }
+
+    setTokenValue('')
+    onClose()
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleSignIn()
+  }
+
+  return (
+    <div className={css.createMenuOverlay} onClick={onClose}>
+      <div className={css.dialog} onClick={e => e.stopPropagation()}>
+        <button className={css.dialogClose} onClick={onClose} aria-label="Close">×</button>
+
+        <div className={css.dialogTitle}>Sign in for comments</div>
+        <div className={css.dialogDesc}>
+          Leave comments for other users to see and respond, and react to! Storyboard comments use Discussions as a back-end and require a GitHub PAT to be enabled.
+        </div>
+
+        <hr className={css.dialogSeparator} />
+
+        <div className={css.tokenCard}>
+          <div className={css.tokenCardTitle}>Fine-grained Personal Access Token</div>
+          <div className={css.tokenCardRow}>
+            <span className={css.tokenCardLabel}>Owner:</span>
+            <span className={css.tokenCardValue}>{repo.owner}</span>
+          </div>
+          <div className={css.tokenCardRow}>
+            <span className={css.tokenCardLabel}>Expiration:</span>
+            <span className={css.tokenCardValue}><strong>366 days</strong> (recommended)</span>
+          </div>
+          <div className={css.tokenCardRow}>
+            <span className={css.tokenCardLabel}>Repository access:</span>
+            <span className={css.tokenCardValue}>Only select repositories &gt; {repo.owner}/{repo.name}</span>
+          </div>
+          <div className={css.tokenCardRow}>
+            <span className={css.tokenCardLabel}>Permissions:</span>
+            <span className={css.tokenCardValue}>Repositories &gt; Discussions &gt; Access: Read and Write</span>
+          </div>
+        </div>
+
+        <a
+          className={css.tokenLink}
+          href="https://github.com/settings/personal-access-tokens/new"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Create a GitHub Fine-Grained Personal Access Token ↗
+        </a>
+
+        <hr className={css.dialogSeparator} />
+
+        <label className={css.dialogLabel}>Personal Access Token</label>
+        <input
+          className={css.dialogInput}
+          placeholder="github_pat_… or ghp_…"
+          type="password"
+          autoFocus
+          value={tokenValue}
+          onChange={e => setTokenValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+
+        <div className={css.warningBanner}>
+          <span className={css.warningIcon}>⚠️</span>
+          <span>Comments are an experimental feature and may be unstable.</span>
+        </div>
+
+        <div className={css.dialogActions}>
+          <button className={css.btnSecondary} onClick={onClose}>Cancel</button>
+          <button className={css.btnPrimary} onClick={handleSignIn}>Sign in</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Nav config ─── */
+
+const NAV_ITEMS = [
+  { id: 'all', label: 'All artifacts', iconName: 'iconoir/view-grid' },
+  { id: 'prototypes', label: 'Prototypes', iconName: 'prototype' },
+  { id: 'canvases', label: 'Canvas', iconName: 'canvas' },
+  { id: 'components', label: 'Components', iconName: 'component' },
+]
+
+const TAB_FILTERS = ['All', 'Recent', 'Starred']
+
+/* ─── Branch Dropdown ─── */
+
+function useBranches(basePath) {
+  const [branches, setBranches] = useState(() => {
+    if (typeof window !== 'undefined' && Array.isArray(window.__SB_BRANCHES__)) {
+      return window.__SB_BRANCHES__
+    }
+    return null
+  })
+
+  const [gitUser, setGitUser] = useState(null)
+
+  useEffect(() => {
+    const apiBase = (basePath || '/').replace(/\/$/, '')
+
+    // Fetch git user info for "my branches" filtering
+    fetch(`${apiBase}/_storyboard/git-user`).then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.name) setGitUser(data.name) })
+      .catch(() => {})
+
+    // If no branches from window global, fetch from server API
+    if (!branches) {
+      fetch(`${apiBase}/_storyboard/worktrees`).then(r => r.ok ? r.json() : null)
+        .then(data => { if (Array.isArray(data) && data.length > 0) setBranches(data) })
+        .catch(() => {})
+    }
+  }, [])
+
+  const currentBranch = useMemo(() => {
+    const m = (basePath || '').match(/\/branch--([^/]+)\/?$/)
+    return m ? m[1] : 'main'
+  }, [basePath])
+
+  const branchBasePath = (basePath || '/').replace(/\/branch--[^/]*\/$/, '/')
+
+  return { branches, currentBranch, branchBasePath, gitUser }
+}
+
+function BranchDropdown({ basePath }) {
+  const { branches, currentBranch, branchBasePath, gitUser } = useBranches(basePath)
+  const [showAll, setShowAll] = useState(false)
+  const [switching, setSwitching] = useState(null)
+  const [switchError, setSwitchError] = useState(null)
+
+  if (!branches || branches.length === 0) return null
+
+  const twoWeeksAgo = Date.now() - 14 * 24 * 60 * 60 * 1000
+
+  // Split into "my branches" vs others
+  const myBranches = gitUser
+    ? branches.filter(b => b.author === gitUser || b.branch === currentBranch)
+    : branches.filter(b => b.branch === currentBranch)
+
+  const otherBranches = branches.filter(b => !myBranches.some(m => m.branch === b.branch))
+
+  // Recent = last 2 weeks (or all if showAll)
+  const recentBranches = showAll
+    ? [...otherBranches].sort((a, b) => (a.branch || '').localeCompare(b.branch || ''))
+    : otherBranches
+        .filter(b => !b.lastModified || new Date(b.lastModified).getTime() > twoWeeksAgo)
+        .sort((a, b) => (a.branch || '').localeCompare(b.branch || ''))
+
+  const switchBranch = async (branch) => {
+    setSwitching(branch)
+    setSwitchError(null)
+    const apiBase = (basePath || '/').replace(/\/$/, '')
+    try {
+      const res = await fetch(`${apiBase}/_storyboard/switch-branch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ branch }),
+      })
+      const data = await res.json()
+      if (res.ok && data.url) {
+        window.location.href = data.url
+      } else {
+        setSwitchError(data.error || 'Failed to switch')
+        setSwitching(null)
+      }
+    } catch (e) {
+      setSwitchError(e.message || 'Server not reachable')
+      setSwitching(null)
+    }
+  }
+
+  return (
+    <Menu.Root>
+      <Menu.Trigger className={css.branchBtn} disabled={!!switching}>
+        <GitBranchIcon size={14} />
+        <span className={css.branchBtnText}>{switching ? `Switching to ${switching}…` : currentBranch}</span>
+        {!switching && <ChevronDownIcon size={12} />}
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner className={css.branchPositioner} side="bottom" align="end" sideOffset={4}>
+          <Menu.Popup className={css.branchPopup}>
+            {myBranches.length > 0 && (
+              <>
+                <div className={css.branchSectionLabel}>My branches</div>
+                {myBranches.map(b => (
+                  <Menu.Item
+                    key={b.branch}
+                    className={`${css.branchItem}${b.branch === currentBranch ? ` ${css.branchItemActive}` : ''}`}
+                    onClick={() => switchBranch(b.branch)}
+                  >
+                    <GitBranchIcon size={12} />
+                    {b.branch}
+                  </Menu.Item>
+                ))}
+              </>
+            )}
+
+            {myBranches.length > 0 && recentBranches.length > 0 && (
+              <div className={css.branchSeparator} />
+            )}
+
+            {recentBranches.length > 0 && (
+              <>
+                <div className={css.branchSectionLabel}>
+                  {showAll ? 'All branches' : 'Recent branches'}
+                </div>
+                <Menu.Viewport className={css.branchViewport}>
+                  {recentBranches.map(b => (
+                    <Menu.Item
+                      key={b.branch}
+                      className={`${css.branchItem}${b.branch === currentBranch ? ` ${css.branchItemActive}` : ''}`}
+                      onClick={() => switchBranch(b.branch)}
+                    >
+                      <GitBranchIcon size={12} />
+                      {b.branch}
+                    </Menu.Item>
+                  ))}
+                </Menu.Viewport>
+              </>
+            )}
+
+            {!showAll && otherBranches.length > recentBranches.length && (
+              <>
+                <div className={css.branchSeparator} />
+                <button
+                  className={css.branchShowAll}
+                  onClick={(e) => { e.stopPropagation(); setShowAll(true) }}
+                >
+                  See all branches ({otherBranches.length})
+                </button>
+              </>
+            )}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  )
+}
+
+/* ─── Main Component ─── */
+
+export default function ViewfinderNew({
+  pageModules = {},
+  basePath,
+  title = 'Storyboard',
+  subtitle,
+  hideDefaultFlow,
+  hideDefaultScene = false,
+}) {
+  const shouldHideDefault = hideDefaultFlow ?? hideDefaultScene
+
+  // Build data index from real prototype/canvas/story data
+  const knownRoutes = useMemo(() =>
+    Object.keys(pageModules)
+      .map(p => p.replace('/src/prototypes/', '').replace('.jsx', ''))
+      .filter(n => !n.startsWith('_') && n !== 'index' && n !== 'viewfinder'),
+    [pageModules],
+  )
+
+  const prototypeIndex = useMemo(() => buildPrototypeIndex(knownRoutes), [knownRoutes])
+
+  // Build unified items list from all sources
+  const allItems = useMemo(() => {
+    const items = []
+
+    // Prototypes (ungrouped + from folders)
+    const addProto = (proto) => {
+      // For prototypes with flows, use the first flow's route
+      const route = proto.flows?.length > 0
+        ? proto.flows[0].route
+        : `/${proto.dirName}`
+
+      items.push({
+        id: `proto:${proto.dirName}`,
+        name: proto.name,
+        type: 'prototype',
+        author: proto.author,
+        gitAuthor: proto.gitAuthor,
+        lastModified: proto.lastModified,
+        route,
+        isExternal: proto.isExternal,
+        externalUrl: proto.externalUrl,
+        folder: proto.folder,
+        description: proto.description,
+        flows: proto.flows || [],
+      })
+    }
+
+    for (const proto of prototypeIndex.prototypes || []) addProto(proto)
+    for (const folder of prototypeIndex.folders || []) {
+      for (const proto of folder.prototypes || []) addProto(proto)
+    }
+
+    // Canvases (ungrouped + from folders)
+    const addCanvas = (canvas) => {
+      items.push({
+        id: `canvas:${canvas.dirName}`,
+        name: canvas.name,
+        type: 'canvas',
+        author: canvas.author,
+        gitAuthor: canvas.gitAuthor,
+        lastModified: null,
+        route: canvas.route,
+        isExternal: false,
+        externalUrl: null,
+        folder: canvas.folder,
+        description: canvas.description,
+      })
+    }
+
+    for (const canvas of prototypeIndex.canvases || []) addCanvas(canvas)
+    for (const folder of prototypeIndex.folders || []) {
+      for (const canvas of folder.canvases || []) addCanvas(canvas)
+    }
+
+    // Components (stories)
+    const storyNames = listStories()
+    for (const name of storyNames) {
+      const data = getStoryData(name)
+      if (!data) continue
+      items.push({
+        id: `component:${name}`,
+        name: name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+        type: 'component',
+        author: null,
+        gitAuthor: null,
+        lastModified: null,
+        route: data._route || `/components/${name}`,
+        isExternal: false,
+        externalUrl: null,
+        folder: null,
+        description: null,
+      })
+    }
+
+    return items
+  }, [prototypeIndex])
+
+  const itemMap = useMemo(() => Object.fromEntries(allItems.map(i => [i.id, i])), [allItems])
+
+  // State
+  const [activeNav, setActiveNav] = useState('all')
+  const [activeTab, setActiveTab] = useState('All')
+  const [showCreate, setShowCreate] = useState(false)
+  const [showPAT, setShowPAT] = useState(false)
+  const [groupByFolders, setGroupByFolders] = useState(() => {
+    try { return localStorage.getItem(GROUP_BY_FOLDERS_KEY) !== 'false' } catch { return true }
+  })
+  const [collapsedFolders, setCollapsedFolders] = useState(new Set())
+  const { starred, toggle: toggleStar } = useStarred()
+  const recentIds = useRecent()
+
+  // Filter by nav category
+  const navFiltered = useMemo(() => {
+    if (activeNav === 'all') return allItems
+    const typeMap = { prototypes: 'prototype', canvases: 'canvas', components: 'component' }
+    return allItems.filter(i => i.type === typeMap[activeNav])
+  }, [allItems, activeNav])
+
+  // Filter by tab
+  const items = useMemo(() => {
+    if (activeTab === 'Recent') {
+      const ordered = recentIds.map(id => itemMap[id]).filter(Boolean)
+      if (activeNav !== 'all') {
+        const typeMap = { prototypes: 'prototype', canvases: 'canvas', components: 'component' }
+        return ordered.filter(i => i.type === typeMap[activeNav])
+      }
+      return ordered
+    }
+    const base = activeTab === 'Starred'
+      ? navFiltered.filter(i => starred.has(i.id))
+      : navFiltered
+    return [...base].sort((a, b) => {
+      const aTime = a.lastModified ? new Date(a.lastModified).getTime() : 0
+      const bTime = b.lastModified ? new Date(b.lastModified).getTime() : 0
+      return bTime - aTime
+    })
+  }, [activeTab, activeNav, navFiltered, recentIds, itemMap, starred])
+
+  // Grouped items for folder view
+  const grouped = useMemo(() => {
+    if (!groupByFolders) return null
+    const folderItems = {}
+    const ungrouped = []
+    for (const item of items) {
+      if (item.folder) {
+        if (!folderItems[item.folder]) folderItems[item.folder] = []
+        folderItems[item.folder].push(item)
+      } else {
+        ungrouped.push(item)
+      }
+    }
+    const folderMeta = {}
+    for (const f of prototypeIndex.folders || []) folderMeta[f.dirName] = f
+    const folders = Object.entries(folderItems).map(([dirName, fItems]) => ({
+      dirName,
+      name: folderMeta[dirName]?.name || dirName,
+      items: fItems,
+    }))
+    folders.sort((a, b) => {
+      const aMax = Math.max(0, ...a.items.map(i => i.lastModified ? new Date(i.lastModified).getTime() : 0))
+      const bMax = Math.max(0, ...b.items.map(i => i.lastModified ? new Date(i.lastModified).getTime() : 0))
+      return bMax - aMax
+    })
+    return { ungrouped, folders }
+  }, [items, groupByFolders, prototypeIndex])
+
+  const toggleGrouping = useCallback(() => {
+    setGroupByFolders(prev => {
+      const next = !prev
+      try { localStorage.setItem(GROUP_BY_FOLDERS_KEY, String(next)) } catch {}
+      return next
+    })
+  }, [])
+
+  const toggleFolder = useCallback((dirName) => {
+    setCollapsedFolders(prev => {
+      const next = new Set(prev)
+      if (next.has(dirName)) next.delete(dirName)
+      else next.add(dirName)
+      return next
+    })
+  }, [])
+
+  // Counts
+  const counts = useMemo(() => ({
+    all: allItems.length,
+    prototypes: allItems.filter(i => i.type === 'prototype').length,
+    canvases: allItems.filter(i => i.type === 'canvas').length,
+    components: allItems.filter(i => i.type === 'component').length,
+  }), [allItems])
+
+  // Starred items for sidebar
+  const starredItems = useMemo(() => allItems.filter(i => starred.has(i.id)), [allItems, starred])
+
+  const pageTitle = NAV_ITEMS.find(n => n.id === activeNav)?.label || 'All artifacts'
+
+  return (
+    <div className={css.layout}>
+      {/* ─── Full-width Header ─── */}
+      <header className={css.topBar}>
+        <div className={css.topBarLeft}>
+          <div className={css.logo}><Icon name="iconoir/key-command" size={18} color="#fff" /></div>
+          <div>
+            <div className={css.appName}>{title}</div>
+            {subtitle && <div className={css.appSubtitle}>{subtitle}</div>}
+          </div>
+        </div>
+        <div className={css.topActions}>
+          <BranchDropdown basePath={basePath} />
+          <button className={css.createBtn} onClick={() => setShowCreate(true)}>
+            Create Artifact
+          </button>
+        </div>
+      </header>
+
+      {/* ─── Body: Sidebar + Content ─── */}
+      <div className={css.body}>
+        {/* ─── Sidebar ─── */}
+        <aside className={css.sidebar}>
+          <nav className={css.navSection}>
+            {NAV_ITEMS.map(nav => (
+              <button
+                key={nav.id}
+                className={activeNav === nav.id ? css.navItemActive : css.navItem}
+                onClick={() => setActiveNav(nav.id)}
+              >
+                <span className={css.navIcon}><Icon name={nav.iconName} size={16} /></span>
+                {nav.label}
+                <span className={css.navCount}>{counts[nav.id]}</span>
+              </button>
+            ))}
+          </nav>
+
+          <div className={css.separator} />
+
+          <div className={css.sectionLabel}>Starred</div>
+          {starredItems.length === 0 && (
+            <div className={css.starredEmpty}>Star items to pin them here</div>
+          )}
+          {starredItems.map(s => (
+            <a
+              key={s.id}
+              className={css.starredItem}
+              href={s.isExternal ? s.externalUrl : withBase(basePath, s.route)}
+              {...(s.isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              onClick={() => trackRecent(s.id)}
+            >
+              <span className={css.starredIcon}>{getTypeIcon(s.type)}</span>
+              {s.name}
+            </a>
+          ))}
+
+          {/* User profile / login */}
+          <div className={css.sidebarFooter}>
+            <button className={css.loginBtn} onClick={() => setShowPAT(true)}>
+              <span className={css.avatar}><MarkGithubIcon size={16} /></span>
+              <div>
+                <div className={css.userName}>Sign in</div>
+                <div className={css.userSub}>Connect with GitHub</div>
+              </div>
+            </button>
+          </div>
+        </aside>
+
+        {/* ─── Main ─── */}
+        <main className={css.main}>
+          {/* Tabs */}
+          <div className={css.tabs}>
+            {TAB_FILTERS.map(t => (
+              <button
+                key={t}
+                className={activeTab === t ? css.tabActive : css.tab}
+                onClick={() => setActiveTab(t)}
+              >
+                {t}
+              </button>
+            ))}
+            <label className={css.groupByFolders}>
+              <input
+                type="checkbox"
+                className={css.groupByFoldersCheckbox}
+                checked={groupByFolders}
+                onChange={toggleGrouping}
+              />
+              Group by folders
+            </label>
+          </div>
+
+          {/* Grid */}
+          <div className={css.content}>
+            {items.length === 0 ? (
+              <div className={css.emptyState}>
+                {activeTab === 'Recent' && 'No recently opened items yet.'}
+                {activeTab === 'Starred' && 'No starred items. Click ☆ on a card to star it.'}
+                {activeTab === 'All' && 'No items found. Create a prototype, canvas, or component to get started.'}
+              </div>
+            ) : groupByFolders && grouped ? (
+              <>
+                {grouped.ungrouped.length > 0 && (
+                  <div className={css.grid}>
+                    {grouped.ungrouped.map(item => (
+                      <ArtifactCard
+                        key={item.id}
+                        item={item}
+                        basePath={basePath}
+                        starred={starred.has(item.id)}
+                        onToggleStar={toggleStar}
+                      />
+                    ))}
+                  </div>
+                )}
+                {grouped.folders.map(folder => (
+                  <FolderSection
+                    key={folder.dirName}
+                    folder={folder}
+                    collapsed={collapsedFolders.has(folder.dirName)}
+                    onToggle={() => toggleFolder(folder.dirName)}
+                    basePath={basePath}
+                    starred={starred}
+                    onToggleStar={toggleStar}
+                  />
+                ))}
+              </>
+            ) : (
+              <div className={css.grid}>
+                {items.map(item => (
+                  <ArtifactCard
+                    key={item.id}
+                    item={item}
+                    basePath={basePath}
+                    starred={starred.has(item.id)}
+                    onToggleStar={toggleStar}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+
+      {/* Modals */}
+      {showCreate && <CreateMenu onClose={() => setShowCreate(false)} basePath={basePath} />}
+      <PATDialog open={showPAT} onClose={() => setShowPAT(false)} />
+    </div>
+  )
+}

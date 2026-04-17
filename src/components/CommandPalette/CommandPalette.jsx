@@ -34,6 +34,7 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
   const sections = config?.sections || []
   const groups = []
   const toolMenus = []
+  const usedToolIds = new Set() // Track tools already listed by source:"tools" sections
 
   for (const section of sections) {
     // Separator: id starts with "sep"
@@ -48,9 +49,12 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
     }
 
     if (section.source) {
+      // Defer tool-subpages — needs usedToolIds from all other sections first
+      if (section.source === 'tool-subpages') continue
       const result = buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction)
       if (result?.group) groups.push(result.group)
       if (result?.subPages) toolMenus.push(...result.subPages)
+      if (result?.usedToolIds) result.usedToolIds.forEach(id => usedToolIds.add(id))
       continue
     }
 
@@ -85,16 +89,23 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
     }
   }
 
-  // Add tool-menu entries as a group with navigation
-  if (toolMenus.length > 0) {
-    const menuItems = toolMenus.map(menu => ({
-      id: `toolmenu:${menu.id}`,
-      children: menu.label || menu.id,
-      keywords: menu.keywords || [menu.label || menu.id],
-      onClick: () => onNavigateToPage?.(menu.id),
-      closeOnSelect: false,
-    }))
-    groups.push({ heading: 'Tools', id: 'cfg:tool-menus', items: menuItems })
+  // Resolve tool-subpages sections (deferred — needs complete usedToolIds)
+  for (const section of sections) {
+    if (section.source !== 'tool-subpages') continue
+    const remaining = toolMenus.filter(menu => !usedToolIds.has(menu.id?.replace('tool:', '')))
+    if (remaining.length === 0) continue
+    groups.push({
+      heading: section.title,
+      id: `cfg:${section.id}`,
+      items: remaining.map(menu => ({
+        id: `toolmenu:${menu.id}`,
+        children: menu.label || menu.id,
+        keywords: menu.keywords || [menu.label || menu.id],
+        showType: false,
+        onClick: () => onNavigateToPage?.(menu.id),
+        closeOnSelect: false,
+      })),
+    })
   }
 
   return { groups, toolMenus }
@@ -391,6 +402,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       items,
     },
     subPages,
+    usedToolIds: entries.map(e => e.toolId),
   }
 }
 

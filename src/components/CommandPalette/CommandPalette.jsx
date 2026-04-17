@@ -92,19 +92,113 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
   // Resolve tool-subpages sections (deferred — needs complete usedToolIds)
   for (const section of sections) {
     if (section.source !== 'tool-subpages') continue
-    const remaining = toolMenus.filter(menu => !usedToolIds.has(menu.id?.replace('tool:', '')))
-    if (remaining.length === 0) continue
-    groups.push({
-      heading: section.title,
-      id: `cfg:${section.id}`,
-      items: remaining.map(menu => ({
-        id: `toolmenu:${menu.id}`,
+    
+    // Scan all toolbar tools for sub-page candidates not already listed
+    const toolbarConfig = getToolbarConfig()
+    const allTools = toolbarConfig?.tools || {}
+    const mode = getCurrentMode() || 'default'
+    const actions = getActionsForMode(mode)
+    const remainingItems = []
+
+    for (const [toolId, tool] of Object.entries(allTools)) {
+      if (usedToolIds.has(toolId)) continue
+      const state = getToolbarToolState(toolId)
+      if (state === 'disabled' || state === 'hidden') continue
+      if (tool.disabled) continue
+
+      const label = tool.label || tool.ariaLabel || toolId
+
+      // Tools with submenu children
+      if (tool.render === 'submenu' || tool.render === 'menu') {
+        const action = actions.find(a => a.toolKey === toolId)
+        if (action?.type === 'submenu') {
+          const children = getActionChildren(action.id)
+          if (children.length > 0) {
+            const pageId = `tool:${toolId}`
+            toolMenus.push({
+              id: pageId, label, title: label,
+              keywords: [label, toolId].filter(Boolean),
+              options: children.map(child => ({ label: child.label, execute: child.execute })),
+            })
+            remainingItems.push({
+              id: `cfg:${section.id}:${toolId}`,
+              children: label,
+              keywords: [label, toolId].filter(Boolean),
+              showType: false,
+              onClick: () => onNavigateToPage?.(pageId),
+              closeOnSelect: false,
+            })
+            continue
+          }
+        }
+        // Declarative options
+        if (tool.options?.length > 0) {
+          const pageId = `tool:${toolId}`
+          toolMenus.push({
+            id: pageId, label, title: label,
+            keywords: [label, toolId].filter(Boolean),
+            options: tool.options.map(opt => ({ label: opt.label, toolHandler: tool.handler || `core:${toolId}`, value: opt.value })),
+          })
+          remainingItems.push({
+            id: `cfg:${section.id}:${toolId}`,
+            children: label,
+            keywords: [label, toolId].filter(Boolean),
+            showType: false,
+            onClick: () => onNavigateToPage?.(pageId),
+            closeOnSelect: false,
+          })
+          continue
+        }
+      }
+
+      // Sidepanel / button / link tools on command-list surface
+      if (tool.surface === 'command-list') {
+        if (tool.render === 'link' && tool.url) {
+          remainingItems.push({
+            id: `cfg:${section.id}:${toolId}`,
+            children: label,
+            keywords: [label, toolId].filter(Boolean),
+            showType: false,
+            onClick: () => {
+              const url = tool.url.startsWith('/') ? tool.url : tool.url
+              window.location.href = url
+            },
+          })
+        } else {
+          const action = actions.find(a => a.toolKey === toolId)
+          if (action) {
+            remainingItems.push({
+              id: `cfg:${section.id}:${toolId}`,
+              children: label,
+              keywords: [label, toolId].filter(Boolean),
+              showType: false,
+              onClick: () => executeAction(action.id),
+            })
+          }
+        }
+      }
+    }
+
+    // Also include any toolMenus sub-pages not yet listed
+    for (const menu of toolMenus) {
+      const menuToolId = menu.id?.replace('tool:', '')
+      if (usedToolIds.has(menuToolId)) continue
+      if (remainingItems.some(i => i.id === `cfg:${section.id}:${menuToolId}`)) continue
+      remainingItems.push({
+        id: `cfg:${section.id}:${menuToolId || menu.id}`,
         children: menu.label || menu.id,
         keywords: menu.keywords || [menu.label || menu.id],
         showType: false,
         onClick: () => onNavigateToPage?.(menu.id),
         closeOnSelect: false,
-      })),
+      })
+    }
+
+    if (remainingItems.length === 0) continue
+    groups.push({
+      heading: section.title,
+      id: `cfg:${section.id}`,
+      items: remainingItems,
     })
   }
 

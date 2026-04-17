@@ -17,6 +17,7 @@ import { getConfig } from '../configSchema.js'
 import { serverFeatures as workshopFeatures } from '../workshop/features/registry-server.js'
 import { docsHandler, collectFiles } from './docs-handler.js'
 import { createCanvasHandler } from '../canvas/server.js'
+import { setupSelectedWidgets } from '../canvas/selectedWidgets.js'
 import { createAutosyncHandler } from '../autosync/server.js'
 
 const API_PREFIX = '/_storyboard/'
@@ -198,6 +199,9 @@ export default function storyboardServer() {
 
       // Wire canvas API routes (always enabled — CRUD for .canvas.jsonl files)
       routeHandlers.set('canvas', createCanvasHandler({ root, sendJson }))
+
+      // Selected widgets bridge — writes .selectedwidgets.json for Copilot context
+      setupSelectedWidgets(server, root)
 
       // Ignore assets/canvas/ so image/snapshot writes don't trigger reloads
       server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'images'))

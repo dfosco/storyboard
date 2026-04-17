@@ -241,10 +241,11 @@ export default function storyboardServer() {
         }
         try {
           // Derive storyboard server port (same algorithm as server/index.js)
-          const devDomain = config.devDomain || 'storyboard'
+          // readDevDomain() returns "{devDomain}.localhost"
+          const domain = `${config.devDomain || 'storyboard'}.localhost`
           let h = 0
-          for (let i = 0; i < devDomain.length; i++) {
-            h = ((h << 5) - h + devDomain.charCodeAt(i)) | 0
+          for (let i = 0; i < domain.length; i++) {
+            h = ((h << 5) - h + domain.charCodeAt(i)) | 0
           }
           const serverPort = 4100 + (Math.abs(h) % 100)
 

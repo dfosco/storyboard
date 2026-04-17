@@ -227,111 +227,20 @@ export async function mountStoryboardCore(config = {}, options = {}) {
       window.addEventListener('hashchange', broadcastNavigation)
     }
 
-    // ── Snapshot capture infrastructure ──────────────────────────────
-    // Signal to parent that content is ready for snapshot capture.
-    // Dual strategy: explicit fast-path via window.__sbSnapshotReady()
-    // and a 1.5s fallback for pages that don't signal explicitly.
+    // Forward cmd+wheel events to parent so canvas zoom works while
+    // an iframe is focused. The parent's wheel handler on `document`
+    // can't see events fired inside the iframe's document.
     if (window.parent !== window) {
-      Promise.all([
-        document.fonts.ready,
-        new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))),
-      ]).then(() => {
-        const FALLBACK_DELAY = 1500
-        if (!window.__sbSnapshotReadySent) {
-          setTimeout(() => {
-            if (!window.__sbSnapshotReadySent) {
-              window.__sbSnapshotReadySent = true
-              window.parent.postMessage(
-                { type: 'storyboard:embed:snapshot-ready' },
-                '*'
-              )
-            }
-          }, FALLBACK_DELAY)
-        }
-      })
-
-      window.__sbSnapshotReady = () => {
-        if (!window.__sbSnapshotReadySent) {
-          window.__sbSnapshotReadySent = true
-          window.parent.postMessage(
-            { type: 'storyboard:embed:snapshot-ready' },
-            '*'
-          )
-        }
-      }
-
-      // Listen for capture requests from the parent canvas
-      window.addEventListener('message', async (e) => {
-        if (e.source !== window.parent) return
-
-        // Theme switch for dual-theme snapshot capture.
-        // Sets Primer data attributes on <html>, waits for repaint, responds.
-        if (e.data?.type === 'storyboard:embed:set-theme') {
-          const { theme, requestId: themeReqId } = e.data
-          const html = document.documentElement
-          if (theme?.startsWith('dark')) {
-            const darkTheme = theme === 'dark_dimmed' ? 'dark_dimmed' : 'dark'
-            html.setAttribute('data-color-mode', 'dark')
-            html.setAttribute('data-dark-theme', darkTheme)
-            html.setAttribute('data-light-theme', 'light')
-            html.setAttribute('data-sb-theme', darkTheme)
-            html.setAttribute('data-sb-toolbar-theme', darkTheme)
-            html.setAttribute('data-sb-code-theme', darkTheme)
-            html.setAttribute('data-sb-canvas-theme', darkTheme)
-          } else {
-            const lightTheme = theme || 'light'
-            html.setAttribute('data-color-mode', 'light')
-            html.setAttribute('data-dark-theme', 'dark')
-            html.setAttribute('data-light-theme', lightTheme)
-            html.setAttribute('data-sb-theme', lightTheme)
-            html.setAttribute('data-sb-toolbar-theme', lightTheme)
-            html.setAttribute('data-sb-code-theme', lightTheme)
-            html.setAttribute('data-sb-canvas-theme', lightTheme)
-          }
-          // Wait for repaint so CSS variables propagate
-          requestAnimationFrame(() => requestAnimationFrame(() => {
-            window.parent.postMessage(
-              { type: 'storyboard:embed:theme-applied', requestId: themeReqId },
-              '*'
-            )
-          }))
-          return
-        }
-
-        if (e.data?.type !== 'storyboard:embed:capture') return
-
-        const { requestId, width, height } = e.data
-        try {
-          const { toBlob } = await import('html-to-image')
-          const blob = await toBlob(document.body, {
-            type: 'image/webp',
-            quality: 0.85,
-            width: width || document.documentElement.clientWidth,
-            height: height || document.documentElement.clientHeight,
-            pixelRatio: 1,
-          })
-          const dataUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader()
-            reader.onload = () => resolve(reader.result)
-            reader.onerror = reject
-            reader.readAsDataURL(blob)
-          })
-          window.parent.postMessage(
-            { type: 'storyboard:embed:snapshot', requestId, dataUrl },
-            '*'
-          )
-        } catch (err) {
-          window.parent.postMessage(
-            { type: 'storyboard:embed:snapshot', requestId, error: err.message },
-            '*'
-          )
-        }
-      })
-
-      // Prewarm html-to-image import after fonts ready (~50ms saving on first capture)
-      document.fonts.ready.then(() => {
-        import('html-to-image').catch(() => {})
-      })
+      document.addEventListener('wheel', (e) => {
+        if (!e.metaKey && !e.ctrlKey) return
+        e.preventDefault()
+        window.parent.postMessage({
+          type: 'storyboard:embed:wheel',
+          deltaY: e.deltaY,
+          clientX: e.clientX,
+          clientY: e.clientY,
+        }, '*')
+      }, { passive: false })
     }
 
     return

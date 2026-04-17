@@ -1,5 +1,14 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.32
+
+### Patch Changes
+
+-   Fix iframe auto-mount when snapshot images are missing from disk
+
+    -   Use ref to check hasSnap at callback time instead of stale closure value
+    -   Prevents 404'd snapshots from triggering iframe mount cascade
+
 ## 4.0.0-beta.31
 
 ### Patch Changes

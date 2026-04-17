@@ -172,7 +172,7 @@
       "surface": "command-list",
       "modes": ["*"],
       "prod": true,
-      "url": "https://github.com/dfosco/storyboard"
+      "url": ""
     },
     "docs": {
       "label": "Documentation",

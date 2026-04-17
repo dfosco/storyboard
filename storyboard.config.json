@@ -45,9 +45,10 @@
           "feature-flags"
         ]
       },
+      { "id": "sep1", "items": [] },
       {
         "id": "recent",
-        "title": "Recent",
+        "title": "Recently opened",
         "source": "recent",
         "limit": 5
       },

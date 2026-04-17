@@ -36,6 +36,12 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
   const toolMenus = []
 
   for (const section of sections) {
+    // Separator: id starts with "sep"
+    if (section.id?.startsWith('sep')) {
+      groups.push({ id: `cfg:${section.id}`, items: [{ id: `cfg:${section.id}:sep`, children: '', keywords: ['*'] }] })
+      continue
+    }
+
     if (section.type === 'tool-menu') {
       toolMenus.push(section)
       continue
@@ -541,15 +547,19 @@ export default function StoryboardCommandPalette({ basePath }) {
       <CommandPalette.Page id="root">
         {filteredItems.length ? (
           filteredItems.map((list) => (
-            <CommandPalette.List key={list.id} heading={list.heading}>
-              {list.items.map(({ id, ...rest }) => (
-                <CommandPalette.ListItem
-                  key={id}
-                  index={getItemIndex(filteredItems, id)}
-                  {...rest}
-                />
-              ))}
-            </CommandPalette.List>
+            list.id?.startsWith('cfg:sep') ? (
+              <hr key={list.id} style={{ border: 'none', borderTop: '1px solid var(--borderColor-muted, #e5e5e5)', margin: '4px 14px' }} />
+            ) : (
+              <CommandPalette.List key={list.id} heading={list.heading}>
+                {list.items.map(({ id, ...rest }) => (
+                  <CommandPalette.ListItem
+                    key={id}
+                    index={getItemIndex(filteredItems, id)}
+                    {...rest}
+                  />
+                ))}
+              </CommandPalette.List>
+            )
           ))
         ) : (
           <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>

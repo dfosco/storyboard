@@ -29,13 +29,14 @@ function ComponentIcon({ size = 16 }) {
   )
 }
 
-// Placeholder — user will choose a canvas icon
+// Canvas icon from assets/icons/canvas.svg
 function CanvasIcon({ size = 16 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <circle cx="8.5" cy="8.5" r="1.5" />
-      <path d="M21 15l-5-5L5 21" />
+    <svg width={size} height={size} viewBox="0 0 33 23" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <rect x="1" y="1" width="31" height="21" rx="7" />
+      <path d="M13 13.5C13 13.5 14.5 15.5 17 15.5C19.5 15.5 21 13.5 21 13.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 8.5H14.01" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 8.5H20.01" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }

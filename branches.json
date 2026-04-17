@@ -36,6 +36,7 @@
   {"folder":"branch--4.0.0-fix-proxy-duplicate-routes","branch":"4.0.0-fix-proxy-duplicate-routes"},
   {"folder":"branch--4.0.0-fix-story-code-prod","branch":"4.0.0-fix-story-code-prod"},
   {"folder":"branch--4.0.0-gh-embeds","branch":"4.0.0-gh-embeds"},
+  {"folder":"branch--4.0.0-hubot-sans","branch":"4.0.0-hubot-sans"},
   {"folder":"branch--4.0.0-iframe-gating-and-ci-snapshots","branch":"4.0.0-iframe-gating-and-ci-snapshots"},
   {"folder":"branch--4.0.0-iframe-gating-and-snaps","branch":"4.0.0-iframe-gating-and-snaps"},
   {"folder":"branch--4.0.0-interact-plus","branch":"4.0.0-interact-plus"},

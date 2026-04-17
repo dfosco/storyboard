@@ -31,6 +31,7 @@ export const REVEAL_INTERVAL = 200
  * @param {{ x: number, y: number }} [pos] — spatial position for wave ordering
  */
 export function enqueueRefresh(widgetId, fn, pos) {
+  console.log(`[refreshQueue] enqueue: ${widgetId}, queueLen=${queue.length}`)
   const existing = queue.findIndex(item => item.widgetId === widgetId)
   if (existing !== -1) queue.splice(existing, 1)
 
@@ -69,11 +70,13 @@ function scheduleDrain() {
 
 function onTaskDone(success, item) {
   batchDone++
+  console.log(`[refreshQueue] taskDone: ${item.widgetId}, success=${success}, done=${batchDone}/${batchTotal}, retry=${item.isRetry}`)
   if (!success && !item.isRetry) {
     batchFailed.push(item)
   }
   // When batch is complete, re-enqueue failures for one retry
   if (batchDone >= batchTotal && batchFailed.length > 0) {
+    console.log(`[refreshQueue] batch complete, retrying ${batchFailed.length} failed`)
     const retries = batchFailed.splice(0)
     for (const failed of retries) {
       failed.isRetry = true

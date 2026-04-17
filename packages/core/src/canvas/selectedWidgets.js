@@ -105,6 +105,16 @@ function clearSelectedWidgets(root) {
 export function setupSelectedWidgets(server, root) {
   const resolvePath = createPathResolver(root)
 
+  // Ensure .storyboard/ directory and initial file exist at startup
+  const dirPath = path.join(root, DIR_NAME)
+  const filePath = path.join(dirPath, FILE_NAME)
+  if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true })
+  if (!fs.existsSync(filePath)) {
+    writeSelectedWidgets(root, {
+      canvasId: null, canvasFile: null, selectedWidgetIds: [], widgets: [],
+    })
+  }
+
   // Active tab state
   let activeTabId = null
   let activeClient = null

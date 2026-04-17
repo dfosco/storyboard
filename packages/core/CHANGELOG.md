@@ -1,5 +1,14 @@
 # @dfosco/storyboard-core
 
+## 4.0.0-beta.41
+
+### Minor Changes
+
+-   Declarative command palette config and create canvas form cleanup
+
+    -   feat: declarative commandPalette.sections config — static entries, dynamic lists, and tool-menu sub-pages
+    -   fix: remove redundant Title field from create canvas form
+
 ## 4.0.0-beta.40
 
 ### Minor Changes

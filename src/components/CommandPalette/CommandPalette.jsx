@@ -370,16 +370,6 @@ export default function StoryboardCommandPalette({ basePath }) {
     return () => console.log('[CommandPalette] unmounted')
   }, [])
 
-  function rebuildItems() {
-    console.log('[CommandPalette] rebuildItems called')
-    const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
-    console.log('[CommandPalette] built:', built.groups.length, 'groups,', built.toolMenus.length, 'toolMenus')
-    setItems(built.groups)
-    setToolMenus(built.toolMenus)
-    setSearch('')
-    setActivePage('root')
-  }
-
   // Listen for Cmd+K directly
   useEffect(() => {
     function handleKeyDown(e) {
@@ -387,7 +377,15 @@ export default function StoryboardCommandPalette({ basePath }) {
         e.preventDefault()
         console.log('[CommandPalette] Cmd+K detected')
         setOpen(prev => {
-          if (!prev) setTimeout(rebuildItems, 0)
+          if (!prev) {
+            // Build items synchronously before opening
+            const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
+            console.log('[CommandPalette] built:', built.groups.length, 'groups')
+            setItems(built.groups)
+            setToolMenus(built.toolMenus)
+            setSearch('')
+            setActivePage('root')
+          }
           return !prev
         })
       }
@@ -401,13 +399,23 @@ export default function StoryboardCommandPalette({ basePath }) {
   useEffect(() => {
     function handleToggle() {
       setOpen(prev => {
-        if (!prev) setTimeout(rebuildItems, 0)
+        if (!prev) {
+          const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
+          setItems(built.groups)
+          setToolMenus(built.toolMenus)
+          setSearch('')
+          setActivePage('root')
+        }
         return !prev
       })
     }
 
     function handleOpen() {
-      rebuildItems()
+      const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
+      setItems(built.groups)
+      setToolMenus(built.toolMenus)
+      setSearch('')
+      setActivePage('root')
       setOpen(true)
     }
 
@@ -420,6 +428,7 @@ export default function StoryboardCommandPalette({ basePath }) {
   }, [basePath])
 
   const handleChangeOpen = useCallback((value) => {
+    console.log('[CommandPalette] onChangeOpen:', value)
     if (!value) {
       setOpen(false)
       setActivePage('root')

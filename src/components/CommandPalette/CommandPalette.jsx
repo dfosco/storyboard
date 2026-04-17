@@ -203,6 +203,21 @@ export default function StoryboardCommandPalette({ basePath }) {
   const [search, setSearch] = useState('')
   const [items, setItems] = useState([])
 
+  // Listen for Cmd+K directly (in addition to custom events from CoreUIBar)
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        const built = buildPaletteItems(basePath)
+        setItems(built)
+        setSearch('')
+        setOpen(prev => !prev)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [basePath])
+
   // Listen for toggle events from Svelte CoreUIBar
   useEffect(() => {
     function handleToggle() {

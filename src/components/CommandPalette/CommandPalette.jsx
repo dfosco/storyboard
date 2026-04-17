@@ -175,16 +175,34 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
           onClick: () => { window.location.href = tool.url },
         })
       } else {
-        // Fallback for menu, sidepanel, button, or any other render type
-        const action = actions.find(a => a.toolKey === toolId)
-        if (action) {
+        // Menu tools: close palette and click the toolbar button to open the menu
+        if (tool.render === 'menu') {
+          const ariaLabel = tool.ariaLabel || tool.label || toolId
           remainingItems.push({
             id: `cfg:${section.id}:${toolId}`,
             children: label,
             keywords: [label, toolId].filter(Boolean),
             showType: false,
-            onClick: () => executeAction(action.id),
+            onClick: () => {
+              // Find and click the toolbar button
+              setTimeout(() => {
+                const btn = document.querySelector(`[aria-label="${ariaLabel}"]`)
+                if (btn) btn.click()
+              }, 100)
+            },
           })
+        } else {
+          // Fallback for sidepanel, button, or any other render type
+          const action = actions.find(a => a.toolKey === toolId)
+          if (action) {
+            remainingItems.push({
+              id: `cfg:${section.id}:${toolId}`,
+              children: label,
+              keywords: [label, toolId].filter(Boolean),
+              showType: false,
+              onClick: () => executeAction(action.id),
+            })
+          }
         }
       }
     }
@@ -468,16 +486,21 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
         continue
       }
 
-      if (action) {
-        items.push({
-          id: `cfg:${section.id}:${toolId}`,
-          children: label,
-          keywords: [label, toolId].filter(Boolean),
-          onClick: () => executeAction(action.id),
-          showType: false,
-        })
-        continue
-      }
+      // Menu tool without sub-items or options — click toolbar button
+      const ariaLabel = tool.ariaLabel || tool.label || toolId
+      items.push({
+        id: `cfg:${section.id}:${toolId}`,
+        children: label,
+        keywords: [label, toolId].filter(Boolean),
+        showType: false,
+        onClick: () => {
+          setTimeout(() => {
+            const btn = document.querySelector(`[aria-label="${ariaLabel}"]`)
+            if (btn) btn.click()
+          }, 100)
+        },
+      })
+      continue
     }
 
     if (tool.render === 'sidepanel' && tool.sidepanel) {

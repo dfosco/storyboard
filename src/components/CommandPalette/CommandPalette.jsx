@@ -187,15 +187,15 @@ function buildDynamicSection(section, prefix, onNavigateToPage) {
  *
  * toolIds format: ["theme", "flows"] or [{ id: "theme", label: "Change theme" }]
  */
-function buildToolsSection(section, prefix) {
+function buildToolsSection(section, prefix, onNavigateToPage) {
   const toolbarConfig = getToolbarConfig()
   const tools = toolbarConfig?.tools || {}
   const mode = getCurrentMode() || 'default'
+  const actions = getActionsForMode(mode)
 
   let entries = []
 
   if (section.toolIds && section.toolIds.length > 0) {
-    // Explicit tool list with order and optional custom labels
     for (const entry of section.toolIds) {
       const toolId = typeof entry === 'string' ? entry : entry.id
       const customLabel = typeof entry === 'object' ? entry.label : null
@@ -206,7 +206,6 @@ function buildToolsSection(section, prefix) {
       entries.push({ toolId, tool, label: customLabel || tool.label || toolId })
     }
   } else {
-    // All command-list surface tools
     for (const [toolId, tool] of Object.entries(tools)) {
       if (tool.surface !== 'command-list') continue
       const state = getToolbarToolState(toolId)
@@ -217,51 +216,85 @@ function buildToolsSection(section, prefix) {
 
   if (entries.length === 0) return null
 
-  const items = entries.map(({ toolId, tool }) => {
+  const items = []
+  const subPages = []
+
+  for (const { toolId, tool, label } of entries) {
     if (tool.render === 'link' && tool.url) {
-      return {
+      items.push({
         id: `cfg:${section.id}:${toolId}`,
-        children: tool.label || toolId,
-        keywords: [tool.label, toolId].filter(Boolean),
+        children: label,
+        keywords: [label, toolId].filter(Boolean),
         onClick: () => {
           const url = tool.url.startsWith('/') ? prefix + tool.url : tool.url
           window.location.href = url
         },
-      }
+      })
+      continue
     }
+
     if (tool.render === 'submenu' || tool.render === 'menu') {
-      const actions = getActionsForMode(mode)
       const action = actions.find(a => a.toolKey === toolId)
       if (action?.type === 'submenu') {
         const children = getActionChildren(action.id)
-        return children.map(child => ({
-          id: `cfg:${section.id}:${toolId}/${child.id || child.label}`,
-          children: child.label,
-          keywords: [tool.label, child.label, toolId].filter(Boolean),
-          onClick: () => { if (child.execute) child.execute() },
-        }))
-      }
-      if (action) {
-        return {
-          id: `cfg:${section.id}:${toolId}`,
-          children: tool.label || toolId,
-          keywords: [tool.label, toolId].filter(Boolean),
-          onClick: () => executeAction(action.id),
+        if (children.length > 0) {
+          const pageId = `tool:${toolId}`
+          subPages.push({
+            id: pageId,
+            label,
+            title: label,
+            keywords: [label, toolId].filter(Boolean),
+            options: children.map(child => ({
+              label: child.label,
+              execute: child.execute,
+            })),
+          })
+          items.push({
+            id: `cfg:${section.id}:${toolId}`,
+            children: `${label} →`,
+            keywords: [label, toolId].filter(Boolean),
+            onClick: () => onNavigateToPage?.(pageId),
+          })
+          continue
         }
       }
+      if (action) {
+        items.push({
+          id: `cfg:${section.id}:${toolId}`,
+          children: label,
+          keywords: [label, toolId].filter(Boolean),
+          onClick: () => executeAction(action.id),
+        })
+        continue
+      }
     }
-    return {
+
+    if (tool.render === 'sidepanel' && tool.sidepanel) {
+      const action = actions.find(a => a.toolKey === toolId)
+      items.push({
+        id: `cfg:${section.id}:${toolId}`,
+        children: label,
+        keywords: [label, toolId].filter(Boolean),
+        onClick: () => { if (action) executeAction(action.id) },
+      })
+      continue
+    }
+
+    items.push({
       id: `cfg:${section.id}:${toolId}`,
-      children: tool.label || toolId,
-      keywords: [tool.label, toolId].filter(Boolean),
+      children: label,
+      keywords: [label, toolId].filter(Boolean),
       onClick: () => executeAction(toolId),
-    }
-  }).flat()
+    })
+  }
 
   return {
-    heading: section.title || section.id,
-    id: `cfg:${section.id}`,
-    items,
+    group: {
+      heading: section.title || section.id,
+      id: `cfg:${section.id}`,
+      items,
+    },
+    subPages,
   }
 }
 
@@ -618,7 +651,8 @@ export default function StoryboardCommandPalette({ basePath }) {
                 key={`${menu.id}:${i}`}
                 index={i}
                 onClick={() => {
-                  if (opt.action) executeAction(opt.action, opt.value)
+                  if (opt.execute) opt.execute()
+                  else if (opt.action) executeAction(opt.action, opt.value)
                   setOpen(false)
                   setActivePage('root')
                 }}

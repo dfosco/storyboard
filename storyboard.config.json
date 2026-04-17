@@ -45,7 +45,9 @@
         "toolIds": [
           { "id": "viewfinder", "label": "Go to index page" },
           { "id": "theme", "label": "Change theme" },
-          { "id": "docs", "label": "Documentation" }
+          { "id": "docs", "label": "Documentation" },
+          "devtools",
+          "feature-flags"
         ]
       }
     ]

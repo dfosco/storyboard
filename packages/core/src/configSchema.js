@@ -25,6 +25,37 @@
  * @typedef {object} CommandPaletteConfig
  * @property {string[]} providers — provider IDs to enable
  * @property {string}   ranking   — result ranking strategy
+ * @property {CommandPaletteSection[]} [sections] — declarative palette sections
+ */
+
+/**
+ * @typedef {object} CommandPaletteSection
+ * @property {string}  id       — unique section identifier
+ * @property {string}  [title]  — section heading in the palette
+ * @property {string}  [type]   — "tool-menu" for sub-page entries
+ * @property {string}  [label]  — display label (for tool-menu entries)
+ * @property {string[]} [keywords] — search keywords
+ * @property {CommandPaletteSectionItem[]} [items]   — static entries
+ * @property {string}  [source] — dynamic data source: "canvases" | "prototypes" | "stories"
+ * @property {string}  [order]  — ordering: "recent" | "alphabetical" | "recent-changes"
+ * @property {number}  [limit]  — max items from dynamic source
+ * @property {CommandPaletteOption[]} [options] — sub-page options (for tool-menu type)
+ */
+
+/**
+ * @typedef {object} CommandPaletteSectionItem
+ * @property {string} type     — "link" | "action"
+ * @property {string} label    — display text
+ * @property {string} [url]    — navigation URL (for links)
+ * @property {string} [action] — command action ID (for actions)
+ * @property {string[]} [keywords] — search keywords
+ */
+
+/**
+ * @typedef {object} CommandPaletteOption
+ * @property {string} label   — display text
+ * @property {string} action  — command action ID
+ * @property {*}      [value] — action payload
  */
 
 /**
@@ -77,7 +108,8 @@ export const configDefaults = {
   },
   commandPalette: {
     providers: ['prototypes', 'flows', 'canvases', 'pages'],
-    ranking: 'frecency', // "recent" | "alphabetical" | "frecency"
+    ranking: 'frecency',
+    sections: [],
   },
 }
 

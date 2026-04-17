@@ -25,5 +25,7 @@
   },
   "featureFlags": {},
   "canvas": {},
-  "commandPalette": {}
+  "commandPalette": {
+    "sections": []
+  }
 }

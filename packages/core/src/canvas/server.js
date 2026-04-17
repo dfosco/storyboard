@@ -402,11 +402,13 @@ export function createCanvasHandler(ctx) {
     }
 
     // POST /create — create a new .canvas.jsonl file
+    // Supports `convertFrom` to convert a single-page canvas into a multi-page folder.
     if (routePath === '/create' && method === 'POST') {
       const {
         name,
         title,
         folder,
+        convertFrom,
         author,
         description,
         meta,
@@ -434,6 +436,137 @@ export function createCanvasHandler(ctx) {
         return
       }
 
+      // ── Convert single-page canvas to multi-page folder ──────────────
+      if (convertFrom && typeof convertFrom === 'string') {
+        // Only allow flat root canvases (no path segments, no proto:)
+        if (convertFrom.includes('/') || convertFrom.startsWith('proto:')) {
+          sendJson(res, 400, { error: 'convertFrom only supports flat root canvases (no path segments or proto: prefix)' })
+          return
+        }
+
+        const canvasDir = path.join(root, 'src', 'canvas')
+        const existingPath = findCanvasPath(root, convertFrom)
+        if (!existingPath) {
+          sendJson(res, 404, { error: `Canvas "${convertFrom}" not found` })
+          return
+        }
+
+        // Verify it's actually a flat file in src/canvas/ (not already in a folder)
+        const existingRel = path.relative(canvasDir, existingPath).replace(/\\/g, '/')
+        if (existingRel.includes('/')) {
+          sendJson(res, 400, { error: `Canvas "${convertFrom}" is already inside a folder` })
+          return
+        }
+
+        const newDir = path.join(canvasDir, convertFrom)
+        const dotFolderDir = path.join(canvasDir, `${convertFrom}.folder`)
+
+        // Preflight: check for collisions
+        if (fs.existsSync(newDir)) {
+          sendJson(res, 409, { error: `Directory "${convertFrom}" already exists in src/canvas/` })
+          return
+        }
+        if (fs.existsSync(dotFolderDir)) {
+          sendJson(res, 409, { error: `Directory "${convertFrom}.folder" already exists in src/canvas/` })
+          return
+        }
+
+        // Read the existing canvas to extract metadata for .meta.json
+        let existingData
+        try {
+          existingData = readCanvas(existingPath)
+        } catch (err) {
+          sendJson(res, 500, { error: `Failed to read existing canvas: ${err.message}` })
+          return
+        }
+
+        const existingBasename = path.basename(existingPath)
+
+        // Detect companion .canvas.jsx file
+        const jsxCompanionName = existingData?.jsx
+        let jsxCompanionPath = null
+        if (jsxCompanionName) {
+          const candidate = path.join(canvasDir, jsxCompanionName)
+          if (fs.existsSync(candidate)) {
+            jsxCompanionPath = candidate
+          }
+        }
+
+        // Also check for a same-name .canvas.jsx even without explicit jsx field
+        if (!jsxCompanionPath) {
+          const implicitJsx = path.join(canvasDir, existingBasename.replace('.canvas.jsonl', '.canvas.jsx'))
+          if (fs.existsSync(implicitJsx)) {
+            jsxCompanionPath = implicitJsx
+          }
+        }
+
+        const movedCanvasPath = path.join(newDir, existingBasename)
+        const newPagePath = path.join(newDir, `${kebab}.canvas.jsonl`)
+
+        if (existingBasename === `${kebab}.canvas.jsonl`) {
+          sendJson(res, 409, { error: `New page name "${kebab}" collides with existing canvas filename` })
+          return
+        }
+
+        // Perform the conversion with rollback on failure
+        const rollbackOps = []
+        try {
+          // 1. Create the directory
+          fs.mkdirSync(newDir, { recursive: true })
+          rollbackOps.push(() => { try { fs.rmdirSync(newDir) } catch { /* ignore */ } })
+
+          // 2. Move the existing canvas file
+          fs.renameSync(existingPath, movedCanvasPath)
+          rollbackOps.push(() => { try { fs.renameSync(movedCanvasPath, existingPath) } catch { /* ignore */ } })
+
+          // 3. Move companion .canvas.jsx if present
+          if (jsxCompanionPath) {
+            const jsxDest = path.join(newDir, path.basename(jsxCompanionPath))
+            fs.renameSync(jsxCompanionPath, jsxDest)
+            rollbackOps.push(() => { try { fs.renameSync(jsxDest, jsxCompanionPath) } catch { /* ignore */ } })
+          }
+
+          // 4. Write .meta.json with metadata from the existing canvas
+          const metaObj = { title: existingData?.title || convertFrom }
+          if (existingData?.description) metaObj.description = existingData.description
+          if (existingData?.author) metaObj.author = existingData.author
+          const metaPath = path.join(newDir, `${convertFrom}.meta.json`)
+          fs.writeFileSync(metaPath, JSON.stringify(metaObj, null, 2) + '\n', 'utf-8')
+          rollbackOps.push(() => { try { fs.unlinkSync(metaPath) } catch { /* ignore */ } })
+
+          // 5. Create the new page
+          const creationEvent = {
+            event: 'canvas_created',
+            timestamp: new Date().toISOString(),
+            title: title || kebab.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' '),
+            grid,
+            gridSize,
+            colorMode,
+            widgets: [],
+          }
+          writeNewCanvas(newPagePath, creationEvent)
+
+          const relPath = path.relative(root, newPagePath).replace(/\\/g, '/')
+          const canonicalName = toCanvasId(relPath) || kebab
+
+          sendJson(res, 201, {
+            success: true,
+            converted: true,
+            name: canonicalName,
+            path: relPath,
+            route: `/canvas/${canonicalName}`,
+          })
+        } catch (err) {
+          // Rollback in reverse order
+          for (let i = rollbackOps.length - 1; i >= 0; i--) {
+            rollbackOps[i]()
+          }
+          sendJson(res, 500, { error: `Failed to convert canvas to folder: ${err.message}` })
+        }
+        return
+      }
+
+      // ── Standard canvas creation ─────────────────────────────────────
       // Determine target directory
       const canvasDir = path.join(root, 'src', 'canvas')
       let targetDir = canvasDir

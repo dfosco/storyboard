@@ -10,7 +10,15 @@ import styles from './PageSelector.module.css'
  * @param {{ currentName: string, pages: Array<{ name: string, route: string, title: string }>, isLocalDev?: boolean }} props
  */
 export default function PageSelector({ currentName, pages: initialPages, isLocalDev = false }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(() => {
+    try {
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('sb-open-page-selector')) {
+        sessionStorage.removeItem('sb-open-page-selector')
+        return true
+      }
+    } catch { /* ignore */ }
+    return false
+  })
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
@@ -45,7 +53,13 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
     if (!trimmed || creating) return
     setCreating(true)
     try {
-      const result = await createCanvas({ name: trimmed, folder: folder || undefined })
+      // Single-page canvas (no folder) → convert to multi-page folder
+      const isSinglePage = !currentName.includes('/')
+      const createBody = isSinglePage
+        ? { name: trimmed, convertFrom: currentName }
+        : { name: trimmed, folder: folder || undefined }
+
+      const result = await createCanvas(createBody)
       if (result.error) {
         console.error('Failed to create canvas page:', result.error)
         setCreating(false)
@@ -65,6 +79,9 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
       setNewName('')
       setCreating(false)
 
+      // Stash a flag so the page selector opens automatically on the new page
+      try { sessionStorage.setItem('sb-open-page-selector', '1') } catch { /* ignore */ }
+
       // Navigate to the new page after Vite picks up the new file
       if (import.meta.hot) {
         const timer = setTimeout(() => {
@@ -81,7 +98,7 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
       console.error('Failed to create canvas page:', err)
       setCreating(false)
     }
-  }, [newName, folder, creating])
+  }, [newName, currentName, folder, creating])
 
   // Focus input when entering add mode
   useEffect(() => {

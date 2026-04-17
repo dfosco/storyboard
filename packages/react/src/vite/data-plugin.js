@@ -834,7 +834,7 @@ export default function storyboardDataPlugin() {
           // can't trace into its deps. Include the remark entry points so
           // Vite pre-bundles the full chain — covers all transitive CJS
           // packages (debug, extend, etc.) without whack-a-mole.
-          include: ['remark', 'remark-gfm', 'remark-html'],
+          include: ['remark', 'remark-gfm', 'remark-html', 'use-sync-external-store/shim', 'use-sync-external-store/shim/with-selector'],
           exclude: ['@dfosco/storyboard-react'],
         },
       }

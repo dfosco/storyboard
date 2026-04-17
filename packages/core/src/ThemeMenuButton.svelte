@@ -118,7 +118,7 @@
           checked={$themeSyncState.toolbar}
           onSelect={(e) => handleSyncToggle(e, 'toolbar')}
         >
-          Toolbar
+          Tools
         </DropdownMenu.CheckboxItem>
         <DropdownMenu.CheckboxItem
           checked={$themeSyncState.codeBoxes}

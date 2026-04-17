@@ -619,7 +619,6 @@
 .createMenuTitle {
   font-size: 18px;
   font-weight: 600;
-  margin-bottom: 16px;
   color: var(--fgColor-default, #1a1a1a);
 }
 
@@ -673,6 +672,31 @@
 
 /* Create form styles */
 
+.createFormHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.createFormClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--fgColor-muted, #888);
+  cursor: pointer;
+}
+
+.createFormClose:hover {
+  color: var(--fgColor-default, #1a1a1a);
+  background: var(--bgColor-neutral-muted, #f0f0f0);
+}
+
 .createFormField {
   margin-bottom: 14px;
 }
@@ -706,27 +730,29 @@
 }
 
 .createFormActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
+  margin-top: 20px;
 }
 
-.createFormBack {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
+.createFormSubmit {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--fgColor-default, #1a1a1a);
+  color: var(--bgColor-default, #fff);
   border: none;
-  color: var(--fgColor-muted, #888);
+  border-radius: 10px;
   font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  padding: 0;
-  margin-bottom: 12px;
+  transition: opacity 0.15s;
 }
 
-.createFormBack:hover {
-  color: var(--fgColor-default, #1a1a1a);
+.createFormSubmit:hover {
+  opacity: 0.85;
+}
+
+.createFormSubmit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .createFooter {

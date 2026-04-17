@@ -20,7 +20,6 @@
   let titleTouched = $state(false)
   let description = $state('')
   let folder = $state('')
-  let includeJsx = $state(false)
   let grid = $state(true)
 
   let folders: string[] = $state([])
@@ -82,7 +81,7 @@
     try {
       const res = await fetch(getApiUrl() + '/create', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: kebabName, title: displayTitle, description: description || undefined, folder: folder || undefined, grid, includeJsx }),
+        body: JSON.stringify({ name: kebabName, title: displayTitle, description: description || undefined, folder: folder || undefined, grid }),
       })
       const data = await res.json()
       if (!res.ok) { error = data.error || 'Failed to create canvas'; return }
@@ -128,11 +127,6 @@
   <div class="flex items-center gap-2">
     <Checkbox id="sb-canvas-grid" bind:checked={grid} />
     <Label for="sb-canvas-grid" class="text-sm font-normal cursor-pointer">Show grid</Label>
-  </div>
-
-  <div class="flex items-center gap-2">
-    <Checkbox id="sb-canvas-jsx" bind:checked={includeJsx} />
-    <Label for="sb-canvas-jsx" class="text-sm font-normal cursor-pointer">Include JSX companion file</Label>
   </div>
 
   {#if error}<Alert.Root variant="destructive"><Alert.Description>{error}</Alert.Description></Alert.Root>{/if}

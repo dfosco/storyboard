@@ -184,6 +184,20 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
         }
       }
 
+      // Inline actions (e.g. toggle-chrome for hide toolbars)
+      if (tool.inlineAction === 'toggle-chrome') {
+        remainingItems.push({
+          id: `cfg:${section.id}:${toolId}`,
+          children: label,
+          keywords: [label, toolId, 'hide', 'show', 'toolbar'].filter(Boolean),
+          showType: false,
+          onClick: () => {
+            document.documentElement.classList.toggle('storyboard-chrome-hidden')
+          },
+        })
+        continue
+      }
+
       // Any remaining tools (all surfaces)
       if (tool.render === 'link' && tool.url) {
         remainingItems.push({
@@ -445,6 +459,20 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
   const subPages = []
 
   for (const { toolId, tool, label } of entries) {
+    // Inline actions
+    if (tool.inlineAction === 'toggle-chrome') {
+      items.push({
+        id: `cfg:${section.id}:${toolId}`,
+        children: label,
+        keywords: [label, toolId, 'hide', 'show', 'toolbar'].filter(Boolean),
+        showType: false,
+        onClick: () => {
+          document.documentElement.classList.toggle('storyboard-chrome-hidden')
+        },
+      })
+      continue
+    }
+
     if (tool.render === 'link' && tool.url) {
       items.push({
         id: `cfg:${section.id}:${toolId}`,

@@ -38,8 +38,9 @@
         "source": "tools",
         "toolIds": [
           { "id": "viewfinder", "label": "Homepage" },
-          { "id": "repository", "label": "Go to repository", "feature": "github/storyboard" },
-          { "id": "theme", "label": "Switch Theme" }
+          { "id": "repository", "label": "Storyboard repository" },
+          { "id": "theme", "label": "Switch Theme" },
+          { "id": "hide-toolbars", "label": "Hide Toolbars" }
         ]
       },
       { "id": "sep1", "items": [] },

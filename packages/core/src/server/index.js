@@ -292,9 +292,20 @@ const server = http.createServer(async (req, res) => {
 export function startServer(port = SERVER_PORT) {
   server.listen(port, () => {
     console.log(`[storyboard-server] Listening on http://localhost:${port}`)
-    console.log(`[storyboard-server] API: http://localhost:${port}/_storyboard/`)
   })
   return server
 }
 
-export { SERVER_PORT, processes, routeHandlers }
+/** Public API for spawning Vite from CLI (with stdout piping) */
+export function spawnViteForBranch(branch, { pipeOutput = false } = {}) {
+  const entry = spawnVite(branch)
+
+  if (pipeOutput) {
+    entry.child.stdout.pipe(process.stdout)
+    entry.child.stderr.pipe(process.stderr)
+  }
+
+  return entry
+}
+
+export { SERVER_PORT, processes, routeHandlers, waitForPort, isPortReady }

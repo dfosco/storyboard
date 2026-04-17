@@ -1,6 +1,9 @@
 /**
  * storyboard dev [branch] — Start Vite with correct base path.
  *
+ * If the storyboard server is running, delegates to it via the
+ * switch-branch API instead of spawning Vite directly.
+ *
  * Usage:
  *   storyboard dev                 # detect worktree from cwd
  *   storyboard dev main            # start dev for repo root
@@ -12,6 +15,7 @@
  */
 
 import * as p from '@clack/prompts'
+import http from 'node:http'
 import { spawn, execFileSync } from 'child_process'
 import { existsSync } from 'fs'
 import { resolve } from 'path'
@@ -21,6 +25,7 @@ import { startRenameWatcher } from '../rename-watcher/watcher.js'
 import { parseFlags } from './flags.js'
 import { hasUncommittedChanges, localBranchExists, resolveDefaultBranch } from './dev-helpers.js'
 import { compactAll } from '../canvas/compact.js'
+import { SERVER_PORT } from '../server/index.js'
 
 const flagSchema = {
   port: { type: 'number', description: 'Override dev server port' },
@@ -198,6 +203,38 @@ async function resolveDevTarget(branchArg, { allowCreate = true } = {}) {
   return { worktreeName: branchArg, targetCwd: targetDir, created: true }
 }
 
+/** Check if the storyboard server is already running */
+function isServerRunning() {
+  return new Promise((resolve) => {
+    const req = http.get(`http://localhost:${SERVER_PORT}/health`, (res) => {
+      resolve(res.statusCode === 200)
+    })
+    req.on('error', () => resolve(false))
+    req.setTimeout(1000, () => { req.destroy(); resolve(false) })
+  })
+}
+
+/** Ask the running server to start a branch */
+function requestBranchFromServer(branch) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({ branch })
+    const req = http.request(`http://localhost:${SERVER_PORT}/_storyboard/switch-branch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    }, (res) => {
+      let data = ''
+      res.on('data', (chunk) => { data += chunk })
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)) }
+        catch { reject(new Error('Invalid server response')) }
+      })
+    })
+    req.on('error', reject)
+    req.write(body)
+    req.end()
+  })
+}
+
 async function main() {
   const { flags, positional } = parseFlags(process.argv.slice(3), flagSchema)
 
@@ -226,6 +263,32 @@ async function main() {
   const proxyUrl = `http://${domain}${basePath}`
   const directUrl = `http://localhost:${port}${basePath}`
 
+  // ── Check if storyboard server is already running ──
+  const serverRunning = await isServerRunning()
+
+  if (serverRunning) {
+    // Delegate to the running server — just ask it to start this branch
+    p.log.info('Storyboard server detected — delegating...')
+    try {
+      const result = await requestBranchFromServer(worktreeName)
+      if (result.url) {
+        p.log.success(result.url)
+        p.outro(result.status === 'already_running' ? 'Already running' : 'Started')
+      } else {
+        p.log.error(result.error || 'Failed to start branch')
+      }
+    } catch (err) {
+      p.log.error(`Server communication failed: ${err.message}`)
+    }
+    return
+  }
+
+  // ── No server running — start server + Vite together ──
+  p.log.info('Starting storyboard server...')
+
+  const { startServer, spawnViteForBranch, waitForPort: waitPort } = await import('../server/index.js')
+  startServer()
+
   // Compact bloated canvas JSONL files before starting Vite
   const compacted = compactAll(targetCwd)
   if (compacted.length > 0) {
@@ -234,29 +297,13 @@ async function main() {
     }
   }
 
-  // Resolve Vite binary relative to target worktree
-  const localVite = resolve(targetCwd, 'node_modules', '.bin', 'vite')
-  const useLocalVite = existsSync(localVite)
-
-  // Start Vite — let it find a free port if assigned one is busy.
-  // Capture stdout to detect actual port and update Caddy.
-  const viteArgs = ['--port', String(overridePort || port)]
-  const child = useLocalVite
-    ? spawn(localVite, viteArgs, {
-        cwd: targetCwd,
-        env: { ...process.env, VITE_BASE_PATH: basePath },
-        stdio: ['inherit', 'pipe', 'pipe'],
-      })
-    : spawn('npx', ['vite', ...viteArgs], {
-        cwd: targetCwd,
-        env: { ...process.env, VITE_BASE_PATH: basePath },
-        stdio: ['inherit', 'pipe', 'pipe'],
-      })
+  // Spawn Vite through the server (manages the child process)
+  const entry = spawnViteForBranch(worktreeName)
 
   // Start rename watcher in target directory
   const renameWatcher = startRenameWatcher(targetCwd)
 
-  // Auto-compact every 15 minutes while the dev server is running
+  // Auto-compact every 15 minutes
   const compactInterval = setInterval(() => {
     try {
       const results = compactAll(targetCwd)
@@ -266,85 +313,30 @@ async function main() {
     } catch { /* non-critical */ }
   }, 15 * 60 * 1000)
 
-  let caddyUpdated = false
-  let ready = false
-  let caddyRunning = null // cached result of isCaddyRunning()
+  // Wait for Vite to be ready
+  const ready = await waitPort(entry.port, 60_000)
 
-  function getCaddyRunning() {
-    if (caddyRunning === null) caddyRunning = isCaddyRunning()
-    return caddyRunning
+  if (ready) {
+    if (isCaddyRunning()) {
+      p.log.success(proxyUrl)
+    } else {
+      p.log.success(directUrl)
+      p.log.warning('Proxy not running — run `npx storyboard setup` for clean URLs')
+    }
+    p.outro('Ready — switch branches from the UI or run storyboard dev <branch>')
+
+    // Pipe Vite output for interactive use
+    entry.child.stdout.pipe(process.stdout)
+    entry.child.stderr.pipe(process.stderr)
+  } else {
+    p.log.warning(`Vite may still be starting — check ${proxyUrl}`)
+    p.outro('Server running')
   }
 
-  child.stdout.on('data', (data) => {
-    const text = data.toString()
-
-    // Detect Vite's actual listening port BEFORE filtering
-    const portMatch = text.match(/localhost:(\d+)/)
-    if (portMatch && !caddyUpdated) {
-      const actualPort = Number(portMatch[1])
-      caddyUpdated = true
-      try {
-        // Try admin API first (additive, doesn't wipe other repos' routes)
-        const routeConfig = generateRouteConfig({ [worktreeName]: actualPort })
-        if (getCaddyRunning() && upsertCaddyRoute(routeConfig)) {
-          // Also write Caddyfile for future cold starts
-          generateCaddyfile({ [worktreeName]: actualPort })
-        } else {
-          // Fall back to full Caddyfile reload
-          const caddyfilePath = generateCaddyfile({ [worktreeName]: actualPort })
-          if (getCaddyRunning()) {
-            reloadCaddy(caddyfilePath)
-          }
-        }
-      } catch {
-        // Caddy not available
-      }
-    }
-
-    // Suppress noisy Vite lines
-    if (text.includes('[vite-plugin-svelte]') && text.includes('no Svelte config')) return
-    if (text.includes('Port') && text.includes('is in use')) return
-    if (text.includes('Forced re-optimization')) return
-    if (text.includes('➜  Local:') || text.includes('➜  Network:')) return
-    if (text.includes('press h + enter')) return
-
-    if (text.includes('ready in') && !ready) {
-      ready = true
-      const timeMatch = text.match(/ready in (\d+)/i)
-      const ms = timeMatch ? timeMatch[1] : ''
-
-      if (getCaddyRunning()) {
-        p.log.success(proxyUrl)
-      } else {
-        p.log.success(directUrl)
-        p.log.warning('Proxy not running — run `npx storyboard setup` for clean URLs')
-      }
-      p.outro(`Ready${ms ? ` in ${ms}ms` : ''} — press h + enter for help`)
-
-      // After ready, pipe stdout directly so Vite keyboard shortcuts work
-      child.stdout.pipe(process.stdout)
-      child.stderr.pipe(process.stderr)
-      return
-    }
-
-    // Before ready, pass through other output (shouldn't happen but just in case)
-    if (!ready) return
-  })
-
-  child.stderr.on('data', (data) => {
-    if (ready) return // piped directly after ready
-    const text = data.toString()
-    // Suppress svelte warnings from stderr during startup
-    if (text.includes('[vite-plugin-svelte]')) return
-    if (text.includes('svelte.dev/e/')) return
-    if (text.includes('[generouted]')) return
-    process.stderr.write(data)
-  })
-
-  child.on('exit', (code) => {
+  entry.child.on('exit', (code) => {
     renameWatcher.close()
     clearInterval(compactInterval)
-    if (code && code !== 0 && !ready) {
+    if (code && code !== 0) {
       p.log.error(`Vite exited with code ${code}`)
     }
     process.exit(code ?? 0)

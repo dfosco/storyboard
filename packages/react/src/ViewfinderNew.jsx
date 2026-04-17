@@ -483,7 +483,7 @@ function CreateMenu({ onClose, basePath }) {
 
   if (activeForm) {
     return (
-      <div className={css.createDropdownForm}>
+      <div className={css.createDropdownForm} onKeyDown={e => e.stopPropagation()}>
         <CreateForm
           type={activeForm}
           onBack={() => setActiveForm(null)}

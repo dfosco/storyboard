@@ -14,7 +14,7 @@ import { loadFlow } from './loader.js'
 const STYLES = `
 .sb-scene-debug {
   padding: 16px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: "Mona Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 .sb-scene-debug-title {
   font-size: 20px;

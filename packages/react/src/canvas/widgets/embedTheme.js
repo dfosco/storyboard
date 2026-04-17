@@ -1,21 +1,19 @@
 /**
- * Resolve the effective canvas theme from localStorage + sync settings.
+ * Resolve the effective canvas theme from the core theme store.
  * Respects the canvas-specific theme sync toggle.
  */
+import { getTheme, getThemeSyncTargets } from '@dfosco/storyboard-core'
+
+function resolveSystem() {
+  if (typeof window === 'undefined') return 'light'
+  return window.matchMedia?.('(prefers-color-scheme: dark)')?.matches ? 'dark' : 'light'
+}
+
 export function resolveCanvasTheme() {
-  if (typeof localStorage === 'undefined') return 'light'
-  let sync = { prototype: true, toolbar: false, codeBoxes: true, canvas: true }
-  try {
-    const rawSync = localStorage.getItem('sb-theme-sync')
-    if (rawSync) sync = { ...sync, ...JSON.parse(rawSync) }
-  } catch { /* ignore */ }
+  const sync = getThemeSyncTargets()
   if (!sync.canvas) return 'light'
-  const attrTheme = document.documentElement.getAttribute('data-sb-canvas-theme')
-  if (attrTheme) return attrTheme
-  const stored = localStorage.getItem('sb-color-scheme') || 'system'
-  if (stored !== 'system') return stored
-  return typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  const theme = getTheme()
+  return theme === 'system' ? resolveSystem() : theme
 }
 
 /**

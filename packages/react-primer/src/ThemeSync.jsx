@@ -8,7 +8,7 @@
 
 import { useEffect } from 'react'
 import { useTheme } from '@primer/react'
-import { useThemeState } from '@dfosco/storyboard-react'
+import { useThemeState, useThemeSyncTargets } from '@dfosco/storyboard-react'
 
 function applyToPrimer(setColorMode, setDayScheme, setNightScheme, themeValue) {
   if (themeValue === 'system' || !themeValue) {
@@ -25,10 +25,13 @@ function applyToPrimer(setColorMode, setDayScheme, setNightScheme, themeValue) {
 export default function ThemeSync() {
   const { setColorMode, setDayScheme, setNightScheme } = useTheme()
   const { theme } = useThemeState()
+  const { prototype: protoSync } = useThemeSyncTargets()
+
+  const effectiveTheme = protoSync ? theme : 'light'
 
   useEffect(() => {
-    applyToPrimer(setColorMode, setDayScheme, setNightScheme, theme)
-  }, [theme, setColorMode, setDayScheme, setNightScheme])
+    applyToPrimer(setColorMode, setDayScheme, setNightScheme, effectiveTheme)
+  }, [effectiveTheme, setColorMode, setDayScheme, setNightScheme])
 
   return null
 }

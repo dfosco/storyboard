@@ -91,6 +91,7 @@
   {"folder":"branch--release-beta","branch":"release-beta"},
   {"folder":"branch--security-ux","branch":"security-ux"},
   {"folder":"branch--ship-skill-no-pr-mode","branch":"ship-skill-no-pr-mode"},
+  {"folder":"branch--theme-active-indicator","branch":"theme-active-indicator"},
   {"folder":"branch--viewfinder-branches","branch":"viewfinder-branches"},
   {"folder":"branch--viewfinder-canvas-authors","branch":"viewfinder-canvas-authors"},
   {"folder":"branch--widget-chrome-api","branch":"widget-chrome-api"},

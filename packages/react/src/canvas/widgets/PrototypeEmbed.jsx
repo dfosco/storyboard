@@ -2,11 +2,10 @@ import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImper
 import { createPortal } from 'react-dom'
 import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
+import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
-import { getEmbedChromeVars, subscribeCanvasTheme } from './embedTheme.js'
+import { getEmbedChromeVars } from './embedTheme.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
-import { useSnapshotCapture } from './useSnapshotCapture.js'
-import { enqueueRefresh, cancelRefresh, REVEAL_INTERVAL } from './refreshQueue.js'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -26,39 +25,20 @@ function formatName(name) {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-function listInternalPrototypes(index) {
-  const allProtos = []
-  const sortedFolders = index.sorted?.title?.folders
-  const sortedPrototypes = index.sorted?.title?.prototypes
-  const folderList = Array.isArray(sortedFolders) && sortedFolders.length > 0
-    ? sortedFolders
-    : (index.folders || [])
-  const standaloneList = Array.isArray(sortedPrototypes) && sortedPrototypes.length > 0
-    ? sortedPrototypes
-    : (index.prototypes || [])
-
-  for (const folder of folderList) {
-    for (const proto of folder.prototypes || []) {
-      if (!proto.isExternal) allProtos.push(proto)
-    }
-  }
-  for (const proto of standaloneList) {
-    if (!proto.isExternal) allProtos.push(proto)
-  }
-  return allProtos
-}
-
-function normalizeRoutePath(value, basePath = '') {
-  if (!value || /^https?:\/\//.test(value)) return ''
-  const noHash = value.split('#')[0]
-  let route = noHash.split('?')[0]
-  route = route.replace(/^\/branch--[^/]+/, '')
-  if (basePath && route.startsWith(basePath)) {
-    route = route.slice(basePath.length) || '/'
-  }
-  if (!route.startsWith('/')) route = `/${route}`
-  route = route.replace(/\/+$/, '')
-  return route || '/'
+function resolveCanvasThemeFromStorage() {
+  if (typeof localStorage === 'undefined') return 'light'
+  let sync = { prototype: true, toolbar: false, codeBoxes: true, canvas: false }
+  try {
+    const rawSync = localStorage.getItem('sb-theme-sync')
+    if (rawSync) sync = { ...sync, ...JSON.parse(rawSync) }
+  } catch { /* */ }
+  if (!sync.canvas) return 'light'
+  const attrTheme = document.documentElement.getAttribute('data-sb-canvas-theme')
+  if (attrTheme) return attrTheme
+  const stored = localStorage.getItem('sb-color-scheme') || 'system'
+  if (stored !== 'system') return stored
+  return typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
 export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdate, resizable }, ref) {
@@ -67,7 +47,6 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const height = readProp(props, 'height', prototypeEmbedSchema)
   const zoom = readProp(props, 'zoom', prototypeEmbedSchema)
   const label = readProp(props, 'label', prototypeEmbedSchema) || src
-  const snapshot = props?.snapshot || props?.snapshotLight || props?.snapshotDark || ''
 
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
   const baseSegment = basePath.replace(/^\//, '')
@@ -81,119 +60,63 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   }, [src, basePath, baseSegment])
 
   const scale = zoom / 100
+  const isExternal = /^https?:\/\//.test(src || '')
 
   const [editing, setEditing] = useState(false)
-  const [interactive, _setInteractive] = useState(false)
-  const [showIframe, _setShowIframe] = useState(false)
-  const [iframeLoaded, _setIframeLoaded] = useState(false)
+  const [interactive, setInteractive] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [filter, setFilter] = useState('')
-  const [canvasTheme, _setCanvasTheme] = useState('light')
-  const [brokenSnaps, _setBrokenSnaps] = useState({})
-
-  // ── Debug logging wrappers (temporary) ──
-  const setInteractive = (v) => { console.log(`[embed:${widgetId}] setInteractive →`, v); _setInteractive(v) }
-  const setShowIframe = (v) => { if (v) console.trace(`[embed:${widgetId}] setShowIframe → TRUE`); else console.log(`[embed:${widgetId}] setShowIframe → false`); _setShowIframe(v) }
-  const setIframeLoaded = (v) => { console.log(`[embed:${widgetId}] iframeLoaded →`, v); _setIframeLoaded(v) }
-  const setCanvasTheme = (v) => { console.log(`[embed:${widgetId}] canvasTheme →`, v); _setCanvasTheme(v) }
-  const setBrokenSnaps = (fn) => { console.log(`[embed:${widgetId}] setBrokenSnaps`); _setBrokenSnaps(fn) }
-
+  const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
   const inputRef = useRef(null)
   const filterRef = useRef(null)
   const embedRef = useRef(null)
   const iframeRef = useRef(null)
-  const captureOnReadyRef = useRef(false)
-  const exitSessionRef = useRef(0)
-  const teardownTimerRef = useRef(null)
   const inlineContainerRef = useRef(null)
   const modalContainerRef = useRef(null)
-  const resizeTimerRef = useRef(null)
-  const prevInteractiveRef = useRef(false)
-
-  // Snapshot capture hook — only active in dev mode (onUpdate present)
-  const isExternal = /^https?:\/\//.test(src || '')
-  const { iframeReady, requestCapture } = useSnapshotCapture({
-    iframeRef,
-    widgetId,
-    onUpdate: isExternal ? null : onUpdate,
-    showIframe,
-  })
-
-  // Single snapshot — backward compat reads snapshotLight/snapshotDark if snapshot is missing
-  const hasSnap = !isExternal && !!(snapshot && snapshot.includes(widgetId) && !brokenSnaps[snapshot])
-  console.log(`[embed:${widgetId}] render: hasSnap=${hasSnap}, showIframe=${showIframe}, interactive=${interactive}, canvasTheme=${canvasTheme}, snapshot=${snapshot ? snapshot.slice(0, 50) : 'null'}, broken=${!!brokenSnaps[snapshot]}`)
 
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''
-    // External URLs are embedded as-is — storyboard query params only apply to local prototypes
     if (/^https?:\/\//.test(rawSrc)) return rawSrc
     const hashIdx = rawSrc.indexOf('#')
     const base = hashIdx >= 0 ? rawSrc.slice(0, hashIdx) : rawSrc
     const hash = hashIdx >= 0 ? rawSrc.slice(hashIdx) : ''
     const sep = base.includes('?') ? '&' : '?'
-    return `${base}${sep}_sb_embed&_sb_theme_target=prototype${hash}`
-  }, [rawSrc])
+    return `${base}${sep}_sb_embed&_sb_theme_target=prototype&_sb_canvas_theme=${canvasTheme}${hash}`
+  }, [rawSrc, canvasTheme])
 
-  useIframeDevLogs({
-    widget: 'PrototypeEmbed',
-    loaded: showIframe && Boolean(iframeSrc),
-    src: iframeSrc,
-  })
-
-  // Build prototype index for the picker
   const prototypeIndex = useMemo(() => {
-    try {
-      return buildPrototypeIndex()
-    } catch {
-      return { folders: [], prototypes: [], globalFlows: [], sorted: { title: { prototypes: [], folders: [] } } }
-    }
+    try { return buildPrototypeIndex() }
+    catch { return { folders: [], prototypes: [], globalFlows: [], sorted: { title: { prototypes: [], folders: [] } } } }
   }, [])
 
-  // Build grouped picker entries from the prototype index
   const pickerGroups = useMemo(() => {
     const groups = []
     const idx = prototypeIndex
-
-    const allProtos = listInternalPrototypes(idx)
-
-    for (const proto of allProtos) {
-      if (proto.hideFlows && proto.flows.length === 1) {
-        groups.push({
-          label: proto.name,
-          items: [{ name: proto.name, route: proto.flows[0].route }],
-        })
-      } else if (proto.flows.length > 0) {
-        groups.push({
-          label: proto.name,
-          items: proto.flows.map((f) => ({
-            name: f.meta?.title || formatName(f.name),
-            route: f.route,
-          })),
-        })
-      } else {
-        groups.push({
-          label: proto.name,
-          items: [{ name: proto.name, route: `/${proto.dirName}` }],
-        })
+    const allProtos = []
+    for (const folder of (idx.sorted?.title?.folders || idx.folders || [])) {
+      for (const proto of folder.prototypes || []) {
+        if (!proto.isExternal) allProtos.push(proto)
       }
     }
-
-    // Global flows
+    for (const proto of (idx.sorted?.title?.prototypes || idx.prototypes || [])) {
+      if (!proto.isExternal) allProtos.push(proto)
+    }
+    for (const proto of allProtos) {
+      if (proto.hideFlows && proto.flows.length === 1) {
+        groups.push({ label: proto.name, items: [{ name: proto.name, route: proto.flows[0].route }] })
+      } else if (proto.flows.length > 0) {
+        groups.push({ label: proto.name, items: proto.flows.map((f) => ({ name: f.meta?.title || formatName(f.name), route: f.route })) })
+      } else {
+        groups.push({ label: proto.name, items: [{ name: proto.name, route: `/${proto.dirName}` }] })
+      }
+    }
     const gf = idx.globalFlows || []
     if (gf.length > 0) {
-      groups.push({
-        label: 'Other flows',
-        items: gf.map((f) => ({
-          name: f.meta?.title || formatName(f.name),
-          route: f.route,
-        })),
-      })
+      groups.push({ label: 'Other flows', items: gf.map((f) => ({ name: f.meta?.title || formatName(f.name), route: f.route })) })
     }
-
     return groups
   }, [prototypeIndex])
 
-  // Filter groups by search text
   const filteredGroups = useMemo(() => {
     if (!filter) return pickerGroups
     const q = filter.toLowerCase()
@@ -211,35 +134,25 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   }, [pickerGroups, filter])
 
   const prototypeName = useMemo(() => {
-    const currentRoute = normalizeRoutePath(src, basePath) || normalizeRoutePath(rawSrc, basePath)
-    if (!currentRoute) return ''
-
-    let bestMatchName = ''
-    let bestMatchLength = -1
-
-    for (const proto of listInternalPrototypes(prototypeIndex)) {
-      const candidateRoutes = [
-        `/${proto.dirName}`,
-        ...(proto.flows || []).map((flow) => flow.route),
-      ]
-      for (const candidate of candidateRoutes) {
-        const candidateRoute = normalizeRoutePath(candidate, basePath)
-        if (!candidateRoute || candidateRoute === '/') continue
-        if (currentRoute === candidateRoute || currentRoute.startsWith(`${candidateRoute}/`)) {
-          if (candidateRoute.length > bestMatchLength) {
-            bestMatchLength = candidateRoute.length
-            bestMatchName = proto.name || ''
-          }
-        }
+    if (!src) return ''
+    for (const group of pickerGroups) {
+      for (const item of group.items) {
+        const cleanRoute = item.route.replace(/^\/branch--[^/]+/, '')
+        const cleanSrc = src.replace(/^\/branch--[^/]+/, '')
+        if (cleanRoute === cleanSrc) return item.name
       }
     }
-
-    return bestMatchName
-  }, [prototypeIndex, src, rawSrc, basePath])
+    return ''
+  }, [src, pickerGroups])
 
   const prototypeTitle = prototypeName || label || 'Prototype'
-
   const hasPicker = pickerGroups.length > 0
+
+  useIframeDevLogs({
+    widget: 'PrototypeEmbed',
+    loaded: Boolean(iframeSrc && interactive),
+    src: iframeSrc,
+  })
 
   useEffect(() => {
     if (editing && hasPicker && filterRef.current) {
@@ -250,133 +163,27 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     }
   }, [editing, hasPicker])
 
-  useEffect(() => {
-    if (!showIframe) setIframeLoaded(false)
-  }, [showIframe])
-
-  // Exit interactive mode when clicking outside the embed.
-  // Captures a snapshot in the background, then unmounts the iframe.
+  // Exit interactive mode when clicking outside the embed
   useEffect(() => {
     if (!interactive || expanded) return
     function handlePointerDown(e) {
       if (embedRef.current && !embedRef.current.contains(e.target)) {
         const chromeEl = e.target.closest(`[data-widget-id="${widgetId}"]`)
         if (chromeEl) return
-
         setInteractive(false)
-        if (onUpdate && !isExternal && iframeLoaded && iframeRef.current?.contentWindow) {
-          if (iframeRef.current) iframeRef.current.style.visibility = 'hidden'
-          const session = ++exitSessionRef.current
-          setTimeout(() => {
-            if (exitSessionRef.current !== session) return
-            requestCapture({ force: true }).then((updates) => {
-              if (exitSessionRef.current !== session) return
-              const snap = updates?.snapshot
-              if (snap) {
-                const img = new Image()
-                const done = () => {
-                  if (exitSessionRef.current === session) setShowIframe(false)
-                }
-                img.onload = done
-                img.onerror = done
-                img.src = snap
-                setTimeout(done, 2000)
-              } else {
-                setShowIframe(false)
-              }
-            })
-          }, 0)
-        } else if (isExternal && showIframe) {
-          const session = ++exitSessionRef.current
-          clearTimeout(teardownTimerRef.current)
-          teardownTimerRef.current = setTimeout(() => {
-            if (exitSessionRef.current !== session) return
-            setShowIframe(false)
-          }, 2 * 60 * 1000)
-        } else {
-          setShowIframe(false)
-        }
       }
     }
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [interactive, expanded, onUpdate, isExternal, iframeLoaded, requestCapture])
+  }, [interactive, expanded, widgetId])
 
-  useEffect(() => subscribeCanvasTheme({
-    anchorRef: embedRef,
-    onTheme: setCanvasTheme,
-  }), [])
-
-  // On canvas theme change, enqueue a background snapshot refresh.
-  // Only fires for true user-initiated theme changes (not page load).
-  // Uses mountTime to ignore the initial theme resolution that happens
-  // within the first 3 seconds of mount.
-  const mountTimeRef = useRef(Date.now())
-  const refreshMetaRef = useRef(null)
-  const hasSnapRef = useRef(hasSnap)
-  hasSnapRef.current = hasSnap
   useEffect(() => {
-    // Ignore theme changes during initial page load (first 3 seconds)
-    const elapsed = Date.now() - mountTimeRef.current
-    if (elapsed < 3000) { console.log(`[embed:${widgetId}] theme-effect: skip page-load (${elapsed}ms)`); return }
-    if (isExternal || !onUpdate || interactive) { console.log(`[embed:${widgetId}] theme-effect: skip (ext=${isExternal}, noUpdate=${!onUpdate}, interactive=${interactive})`); return }
-    if (!hasSnapRef.current) { console.log(`[embed:${widgetId}] theme-effect: skip (no snap)`); return }
-    console.log(`[embed:${widgetId}] theme-effect: enqueue refresh, hasSnapRef=${hasSnapRef.current}`)
-    const rect = embedRef.current?.getBoundingClientRect()
-    enqueueRefresh(widgetId, ({ revealOrder, batchStart }) => {
-      if (!hasSnapRef.current) return Promise.resolve(false)
-      return new Promise((resolve) => {
-        refreshMetaRef.current = { revealOrder, batchStart, resolve }
-        captureOnReadyRef.current = true
-        setShowIframe(true)
-        setTimeout(() => { refreshMetaRef.current = null; resolve(false) }, 10000)
-      })
-    }, rect ? { x: rect.left, y: rect.top } : undefined)
-  }, [canvasTheme]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Capture snapshot on first iframe ready (when no existing snapshot)
-  useEffect(() => {
-    if (!iframeReady || !onUpdate || isExternal) return
-    if (!hasSnap) {
-      requestCapture()
+    function readToolbarTheme() {
+      setCanvasTheme(resolveCanvasThemeFromStorage())
     }
-  }, [iframeReady]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Capture when iframe becomes ready after refresh-thumbnail requested it
-  useEffect(() => {
-    if (iframeReady && captureOnReadyRef.current) {
-      captureOnReadyRef.current = false
-      requestCapture().then((updates) => {
-        const meta = refreshMetaRef.current
-        if (meta) {
-          refreshMetaRef.current = null
-          const snap = updates?.snapshot
-          const reveal = () => {
-            if (snap) {
-              const img = new Image()
-              const done = () => setShowIframe(false)
-              img.onload = done
-              img.onerror = done
-              img.src = snap
-              setTimeout(done, 2000)
-            } else {
-              setShowIframe(false)
-            }
-            meta.resolve(!!snap)
-          }
-          const elapsed = Date.now() - meta.batchStart
-          const targetTime = meta.revealOrder * REVEAL_INTERVAL
-          const wait = Math.max(0, targetTime - elapsed)
-          setTimeout(reveal, wait)
-        }
-      })
-    }
-  }, [iframeReady, requestCapture])
-
-  // Cleanup timers on unmount
-  useEffect(() => () => {
-    clearTimeout(resizeTimerRef.current)
-    clearTimeout(teardownTimerRef.current)
+    readToolbarTheme()
+    document.addEventListener('storyboard:theme:changed', readToolbarTheme)
+    return () => document.removeEventListener('storyboard:theme:changed', readToolbarTheme)
   }, [])
 
   // Close expanded modal on Escape
@@ -392,25 +199,18 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     return () => document.removeEventListener('keydown', handleKeyDown, true)
   }, [expanded])
 
-  // Reparent iframe DOM node between inline container and modal.
-  // Uses moveBefore() (Chrome 133+) which preserves the iframe's
-  // browsing context — no reload. Falls back to appendChild which
-  // will reload but still works functionally.
+  // Reparent iframe between inline and modal
   useEffect(() => {
     const iframe = iframeRef.current
     if (!iframe) return
-
     if (expanded && modalContainerRef.current) {
       iframe._savedClassName = iframe.className
       iframe._savedStyle = iframe.getAttribute('style') || ''
       iframe.className = styles.expandIframe
       iframe.removeAttribute('style')
       const target = modalContainerRef.current
-      if (target.moveBefore) {
-        target.moveBefore(iframe, target.firstChild)
-      } else {
-        target.prepend(iframe)
-      }
+      if (target.moveBefore) target.moveBefore(iframe, target.firstChild)
+      else target.prepend(iframe)
     } else if (!expanded && inlineContainerRef.current) {
       if (iframe._savedClassName !== undefined) {
         iframe.className = iframe._savedClassName
@@ -419,28 +219,20 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
         delete iframe._savedStyle
       }
       const target = inlineContainerRef.current
-      if (target.moveBefore) {
-        target.moveBefore(iframe, null)
-      } else {
-        target.appendChild(iframe)
-      }
+      if (target.moveBefore) target.moveBefore(iframe, null)
+      else target.appendChild(iframe)
     }
   }, [expanded])
 
-  // Listen for messages from the embedded prototype iframe
+  // Listen for navigation events from the embedded prototype iframe
   useEffect(() => {
     function handleMessage(e) {
-      if (!iframeRef.current?.contentWindow) return
-      if (e.source !== iframeRef.current.contentWindow) return
-
-      // Navigation events
-      if (e.data?.type === 'storyboard:embed:navigate') {
-        const newSrc = e.data.src
-        if (newSrc && newSrc !== src) {
-          const originalSrc = readProp(props, 'originalSrc', prototypeEmbedSchema)
-          onUpdate?.({ src: newSrc, originalSrc: originalSrc || src })
-        }
-        return
+      if (e.source !== iframeRef.current?.contentWindow) return
+      if (e.data?.type !== 'storyboard:embed:navigate') return
+      const newSrc = e.data.src
+      if (newSrc && newSrc !== src) {
+        const originalSrc = readProp(props, 'originalSrc', prototypeEmbedSchema)
+        onUpdate?.({ src: newSrc, originalSrc: originalSrc || src })
       }
     }
     window.addEventListener('message', handleMessage)
@@ -449,35 +241,25 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
   const chromeVars = useMemo(() => getEmbedChromeVars(canvasTheme), [canvasTheme])
 
-  const enterInteractive = useCallback(() => {
-    console.log(`[embed:${widgetId}] enterInteractive`)
-    exitSessionRef.current++
-    clearTimeout(teardownTimerRef.current)
-    cancelRefresh(widgetId)
-    setShowIframe(true)
-    setInteractive(true)
-  }, [widgetId])
+  const enterInteractive = useCallback(() => setInteractive(true), [])
 
-  // Expose imperative action handlers for WidgetChrome
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
       if (actionId === 'edit') {
         setEditing(true)
       } else if (actionId === 'expand') {
-        setShowIframe(true)
         setExpanded(true)
       } else if (actionId === 'open-external') {
         if (rawSrc) window.open(rawSrc, '_blank', 'noopener')
-      } else if (actionId === 'refresh-thumbnail') {
-        if (iframeReady && iframeRef.current?.contentWindow) {
-          requestCapture()
-        } else {
-          captureOnReadyRef.current = true
-          setShowIframe(true)
-        }
+      } else if (actionId === 'zoom-in') {
+        const step = zoom < 75 ? 5 : 25
+        onUpdate?.({ zoom: Math.min(200, zoom + step) })
+      } else if (actionId === 'zoom-out') {
+        const step = zoom <= 75 ? 5 : 25
+        onUpdate?.({ zoom: Math.max(25, zoom - step) })
       }
     },
-  }), [rawSrc, iframeReady, requestCapture])
+  }), [rawSrc, zoom, onUpdate])
 
   function handlePickRoute(route) {
     onUpdate?.({ src: route })
@@ -497,6 +279,10 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     setEditing(false)
     setFilter('')
   }
+
+  const handleResize = useCallback((w, h) => {
+    onUpdate?.({ width: w, height: h })
+  }, [onUpdate])
 
   return (
     <>
@@ -520,12 +306,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
               <>
                 <div className={styles.pickerHeader}>
                   <span className={styles.urlLabel}>Pick a prototype</span>
-                  <button
-                    type="button"
-                    className={styles.urlCancel}
-                    onClick={handleCancelEdit}
-                    aria-label="Cancel"
-                  >✕</button>
+                  <button type="button" className={styles.urlCancel} onClick={handleCancelEdit} aria-label="Cancel">✕</button>
                 </div>
                 <input
                   ref={filterRef}
@@ -540,23 +321,14 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                   {filteredGroups.map((group) => (
                     <div key={group.label} className={styles.pickerGroup}>
                       {group.items.length === 1 && group.items[0].name === group.label ? (
-                        <button
-                          className={styles.pickerItem}
-                          role="option"
-                          onClick={() => handlePickRoute(group.items[0].route)}
-                        >
+                        <button className={styles.pickerItem} role="option" onClick={() => handlePickRoute(group.items[0].route)}>
                           {group.label}
                         </button>
                       ) : (
                         <>
                           <div className={styles.pickerGroupLabel}>{group.label}</div>
                           {group.items.map((item) => (
-                            <button
-                              key={item.route}
-                              className={styles.pickerItem}
-                              role="option"
-                              onClick={() => handlePickRoute(item.route)}
-                            >
+                            <button key={item.route} className={styles.pickerItem} role="option" onClick={() => handlePickRoute(item.route)}>
                               {item.name}
                             </button>
                           ))}
@@ -564,30 +336,17 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                       )}
                     </div>
                   ))}
-                  {filteredGroups.length === 0 && (
-                    <div className={styles.pickerEmpty}>No matches</div>
-                  )}
+                  {filteredGroups.length === 0 && <div className={styles.pickerEmpty}>No matches</div>}
                 </div>
                 <div className={styles.pickerDivider} />
               </>
             )}
             <form className={styles.customUrlSection} onSubmit={handleSubmit}>
-              <label className={styles.urlLabel}>
-                {hasPicker ? 'Or enter a custom URL' : 'Prototype URL path'}
-              </label>
-              <input
-                ref={inputRef}
-                className={styles.urlInput}
-                type="text"
-                defaultValue={src}
-                placeholder="/MyPrototype/page"
-                onKeyDown={(e) => { if (e.key === 'Escape') handleCancelEdit() }}
-              />
+              <label className={styles.urlLabel}>{hasPicker ? 'Or enter a custom URL' : 'Prototype URL path'}</label>
+              <input ref={inputRef} className={styles.urlInput} type="text" defaultValue={src} placeholder="/MyPrototype/page" onKeyDown={(e) => { if (e.key === 'Escape') handleCancelEdit() }} />
               <div className={styles.urlActions}>
                 <button type="submit" className={styles.urlSave}>Save</button>
-                {!hasPicker && (
-                  <button type="button" className={styles.urlCancel} onClick={handleCancelEdit}>Cancel</button>
-                )}
+                {!hasPicker && <button type="button" className={styles.urlCancel} onClick={handleCancelEdit}>Cancel</button>}
               </div>
             </form>
           </div>
@@ -598,51 +357,20 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
               className={styles.iframeContainer}
               style={expanded ? { visibility: 'hidden' } : undefined}
             >
-              {/* Snapshot layer — single image */}
-              {hasSnap && (
-                <img
-                  src={snapshot}
-                  className={styles.snapshotImage}
-                  alt={`${prototypeTitle} snapshot`}
-                  draggable={false}
-                  onError={() => {
-                    console.log(`[embed:${widgetId}] snapshot img onError: ${snapshot?.slice(0, 60)}`)
-                    setBrokenSnaps(prev => ({ ...prev, [snapshot]: true }))
-                    // Clear the broken snapshot from widget data so we stop trying
-                    onUpdate?.({ snapshot: '' })
-                  }}
-                />
-              )}
-
-              {/* Iframe layer — on top, transparent until loaded */}
-              {showIframe && (
-                <iframe
-                  ref={iframeRef}
-                  src={iframeSrc}
-                  className={styles.iframe}
-                  style={{
-                    width: width / scale,
-                    height: height / scale,
-                    transform: `scale(${scale})`,
-                    transformOrigin: '0 0',
-                    transition: 'opacity 150ms ease',
-                    ...(iframeLoaded ? {} : { opacity: 0 }),
-                  }}
-                  onLoad={() => { console.log(`[embed:${widgetId}] iframe onLoad`); setIframeLoaded(true) }}
-                  title={`${prototypeTitle} prototype`}
-                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-                />
-              )}
-
-              {/* Placeholder — only when no snapshot and no iframe */}
-              {!hasSnap && !showIframe && (
-                <div className={styles.placeholder}>
-                  <CollageFrameIcon size={36} />
-                  <span className={styles.placeholderLabel}>{`${prototypeTitle} prototype`}</span>
-                </div>
-              )}
+              <iframe
+                ref={iframeRef}
+                src={iframeSrc}
+                className={styles.iframe}
+                style={{
+                  width: width / scale,
+                  height: height / scale,
+                  transform: `scale(${scale})`,
+                  transformOrigin: '0 0',
+                }}
+                title={`${prototypeTitle} prototype`}
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+              />
             </div>
-
             {!interactive && !expanded && (
               <div
                 className={overlayStyles.interactOverlay}
@@ -659,52 +387,20 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                     enterInteractive()
                   }
                 }}
-                aria-label={hasSnap ? 'Click to interact with prototype' : 'Click to open prototype'}
+                aria-label="Click to interact with prototype"
               >
-                <span className={overlayStyles.interactHint}>{hasSnap ? 'Click to interact' : 'Click to open'}</span>
+                <span className={overlayStyles.interactHint}>Click to interact</span>
               </div>
             )}
           </>
         ) : (
-          <div
-            className={styles.empty}
-            onDoubleClick={() => setEditing(true)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') setEditing(true) }}
-          >
-            <p>Double-click to set prototype URL</p>
+          <div className={styles.empty} onClick={() => onUpdate && setEditing(true)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setEditing(true) }}>
+            <CollageFrameIcon size={36} />
+            <p>Click to set prototype URL</p>
           </div>
         )}
       </div>
-      {resizable && (
-        <div
-          className={styles.resizeHandle}
-          onMouseDown={(e) => {
-            e.stopPropagation()
-            e.preventDefault()
-            const startX = e.clientX
-            const startY = e.clientY
-            const startW = width
-            const startH = height
-            function onMove(ev) {
-              const newW = Math.max(200, startW + ev.clientX - startX)
-              const newH = Math.max(150, startH + ev.clientY - startY)
-              onUpdate?.({ width: newW, height: newH })
-            }
-            function onUp() {
-              document.removeEventListener('mousemove', onMove)
-              document.removeEventListener('mouseup', onUp)
-              // Recapture snapshot after resize (debounced)
-              clearTimeout(resizeTimerRef.current)
-              resizeTimerRef.current = setTimeout(() => requestCapture(), 1500)
-            }
-            document.addEventListener('mousemove', onMove)
-            document.addEventListener('mouseup', onUp)
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-        />
-      )}
+      {resizable && <ResizeHandle width={width} height={height} onResize={handleResize} />}
     </WidgetWrapper>
     {createPortal(
       <div
@@ -712,26 +408,11 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
         style={expanded ? undefined : { display: 'none' }}
         onClick={() => setExpanded(false)}
         onPointerDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          e.stopPropagation()
-          if (e.key === 'Escape') setExpanded(false)
-        }}
+        onKeyDown={(e) => e.stopPropagation()}
         onWheel={(e) => e.stopPropagation()}
-        tabIndex={-1}
-        ref={(el) => { if (el && expanded) el.focus() }}
       >
-        <div
-          ref={modalContainerRef}
-          className={styles.expandContainer}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* iframe is reparented here via useEffect */}
-          <button
-            className={styles.expandClose}
-            onClick={() => setExpanded(false)}
-            aria-label="Close expanded view"
-            autoFocus
-          >✕</button>
+        <div ref={modalContainerRef} className={styles.expandContainer} onClick={(e) => e.stopPropagation()}>
+          <button className={styles.expandClose} onClick={() => setExpanded(false)} aria-label="Close expanded view" autoFocus>✕</button>
         </div>
       </div>,
       document.body

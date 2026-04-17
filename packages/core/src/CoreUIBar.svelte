@@ -12,7 +12,8 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte'
   import './core-ui-colors.css'
-  import CommandMenu from './CommandMenu.svelte'
+  import CommandPalette from './CommandPalette.svelte'
+  import * as Panel from './lib/components/ui/panel/index.js'
   import PwaInstallBanner from './PwaInstallBanner.svelte'
   import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
   import * as Tooltip from './lib/components/ui/tooltip/index.js'
@@ -750,7 +751,7 @@
       <div class={visible || commandMenuOpen ? '' : 'default-button-dimmed'}>
         <Tooltip.Root>
           <Tooltip.Trigger>
-            <CommandMenu {basePath} bind:open={commandMenuOpen} bind:flowDialogOpen {flowName} {flowJson} {flowError} shortcuts={shortcutsConfig} tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} />
+            <CommandPalette {basePath} bind:open={commandMenuOpen} shortcuts={shortcutsConfig} tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} />
           </Tooltip.Trigger>
           <Tooltip.Content side="top">Command Menu</Tooltip.Content>
         </Tooltip.Root>
@@ -766,6 +767,23 @@
 {#if !isEmbed}
   <PwaInstallBanner />
 {/if}
+
+<!-- Flow info panel (previously inside CommandMenu) -->
+<Panel.Root bind:open={flowDialogOpen}>
+  <Panel.Content>
+    <Panel.Header>
+      <Panel.Title>Flow: {flowName}</Panel.Title>
+      <Panel.Close />
+    </Panel.Header>
+    <Panel.Body>
+      {#if flowError}
+        <span class="text-destructive text-sm">{flowError}</span>
+      {:else}
+        <pre class="m-0 bg-transparent text-sm font-mono leading-relaxed whitespace-pre-wrap break-words">{flowJson}</pre>
+      {/if}
+    </Panel.Body>
+  </Panel.Content>
+</Panel.Root>
 
 <style>
   .toolbar-separator {

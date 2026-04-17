@@ -245,9 +245,9 @@ function FlowsDropdown({ flows, basePath }) {
 
 function FolderSection({ folder, collapsed, onToggle, basePath, starred, onToggleStar }) {
   return (
-    <section className={css.folderSection}>
+    <section className={collapsed ? css.folderSectionCollapsed : css.folderSection}>
       <button className={css.folderHeader} onClick={onToggle}>
-        <FileDirectoryFillIcon size={16} className={css.folderIcon} />
+        <Icon name={collapsed ? 'folder' : 'folder-open'} size={16} className={css.folderIcon} />
         <span className={css.folderName}>{folder.name}</span>
         <span className={css.folderCount}>{folder.items.length}</span>
         <ChevronRightIcon

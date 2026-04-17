@@ -22,6 +22,7 @@
     "src"
   ],
   "peerDependencies": {
+    "@primer/octicons-react": ">=19",
     "react": ">=18",
     "react-router-dom": ">=6",
     "vite": ">=5"

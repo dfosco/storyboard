@@ -25,8 +25,9 @@ import './command-palette.css'
  * Uses the same pattern-matching logic as excludeRoutes.
  */
 function isHiddenInPalette(tool) {
-  const patterns = tool.hideInCommandPalette
-  if (!patterns || !Array.isArray(patterns) || patterns.length === 0) return false
+  const val = tool.hideInCommandPalette
+  if (val === true) return true
+  if (!val || !Array.isArray(val) || val.length === 0) return false
   if (typeof window === 'undefined') return false
   let pathname = window.location.pathname
   const base = (typeof import.meta !== 'undefined' ? import.meta.env?.BASE_URL : '/') || '/'
@@ -34,7 +35,7 @@ function isHiddenInPalette(tool) {
   if (baseTrimmed && pathname.startsWith(baseTrimmed)) {
     pathname = pathname.slice(baseTrimmed.length) || '/'
   }
-  return patterns.some(pattern => new RegExp(pattern).test(pathname))
+  return val.some(pattern => new RegExp(pattern).test(pathname))
 }
 
 /**

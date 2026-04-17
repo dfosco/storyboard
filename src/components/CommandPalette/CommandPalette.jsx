@@ -41,8 +41,9 @@ function buildConfigSections(prefix, onNavigateToPage) {
     }
 
     if (section.source) {
-      const group = buildDynamicSection(section, prefix)
-      if (group) groups.push(group)
+      const result = buildDynamicSection(section, prefix, onNavigateToPage)
+      if (result?.group) groups.push(result.group)
+      if (result?.subPages) toolMenus.push(...result.subPages)
       continue
     }
 
@@ -91,10 +92,10 @@ function buildConfigSections(prefix, onNavigateToPage) {
   return { groups, toolMenus }
 }
 
-function buildDynamicSection(section, prefix) {
-  // --- Tools source: pull items from toolbar.config.json ---
+function buildDynamicSection(section, prefix, onNavigateToPage) {
+  // --- Tools source ---
   if (section.source === 'tools') {
-    return buildToolsSection(section, prefix)
+    return buildToolsSection(section, prefix, onNavigateToPage)
   }
 
   // --- Recent source: all artifact types from getRecent() ---
@@ -104,18 +105,20 @@ function buildDynamicSection(section, prefix) {
     let items = recent
     if (section.limit) items = items.slice(0, section.limit)
     return {
-      heading: section.title || 'Recent',
-      id: `cfg:${section.id}`,
-      items: items.map(entry => ({
-        id: `cfg:${section.id}:${entry.type}:${entry.key}`,
-        children: entry.label,
-        keywords: [entry.type, entry.key, entry.label],
-        onClick: () => {
-          trackRecent(entry.type, entry.key, entry.label)
-          const route = resolveRecentRoute(entry, prefix)
-          if (route) window.location.href = route
-        },
+      group: {
+        heading: section.title || 'Recent',
+        id: `cfg:${section.id}`,
+        items: items.map(entry => ({
+          id: `cfg:${section.id}:${entry.type}:${entry.key}`,
+          children: entry.label,
+          keywords: [entry.type, entry.key, entry.label],
+          onClick: () => {
+            trackRecent(entry.type, entry.key, entry.label)
+            const route = resolveRecentRoute(entry, prefix)
+            if (route) window.location.href = route
+          },
       })),
+      },
     }
   }
 
@@ -161,17 +164,19 @@ function buildDynamicSection(section, prefix) {
   if (section.limit) sourceItems = sourceItems.slice(0, section.limit)
 
   return {
-    heading: section.title || section.id,
-    id: `cfg:${section.id}`,
-    items: sourceItems.map(item => ({
-      id: `cfg:${section.id}:${item.id}`,
-      children: item.name,
-      keywords: [item.name, item.id, item.type],
-      onClick: () => {
-        trackRecent(item.type, item.id, item.name)
-        window.location.href = item.route
-      },
-    })),
+    group: {
+      heading: section.title || section.id,
+      id: `cfg:${section.id}`,
+      items: sourceItems.map(item => ({
+        id: `cfg:${section.id}:${item.id}`,
+        children: item.name,
+        keywords: [item.name, item.id, item.type],
+        onClick: () => {
+          trackRecent(item.type, item.id, item.name)
+          window.location.href = item.route
+        },
+      })),
+    },
   }
 }
 

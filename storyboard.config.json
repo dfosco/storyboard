@@ -33,11 +33,20 @@
   "commandPalette": {
     "sections": [
       {
-        "id": "recent-canvas",
-        "title": "Recent Canvas",
-        "source": "canvases",
-        "order": "recent",
+        "id": "recent",
+        "title": "Recent",
+        "source": "recent",
         "limit": 5
+      },
+      {
+        "id": "tools",
+        "title": "Tools",
+        "source": "tools",
+        "toolIds": [
+          { "id": "viewfinder", "label": "Go to index page" },
+          { "id": "theme", "label": "Change theme" },
+          { "id": "docs", "label": "Documentation" }
+        ]
       }
     ]
   }

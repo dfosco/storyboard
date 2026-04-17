@@ -13,6 +13,7 @@ import {
   getRecent,
   trackRecent,
   getCommandPaletteConfig,
+  getToolbarConfig,
 } from '@dfosco/storyboard-core'
 import CreateDialog from './CreateDialog.jsx'
 import './command-palette.css'
@@ -20,6 +21,12 @@ import './command-palette.css'
 /**
  * Build groups from commandPalette.sections config.
  * Returns { groups, toolMenus } where toolMenus are entries with sub-pages.
+ *
+ * Section types:
+ *   - Static items:  { items: [...] }
+ *   - Dynamic list:  { source: "canvases"|"prototypes"|"stories"|"recent" }
+ *   - Tool section:  { source: "tools", toolIds: ["theme", "flows"] }
+ *   - Tool-menu:     { type: "tool-menu", options: [...] }
  */
 function buildConfigSections(prefix, onNavigateToPage) {
   const config = getCommandPaletteConfig()
@@ -29,20 +36,17 @@ function buildConfigSections(prefix, onNavigateToPage) {
 
   for (const section of sections) {
     if (section.type === 'tool-menu') {
-      // Tool-menu entries appear in a dedicated group and open a sub-page
       toolMenus.push(section)
       continue
     }
 
     if (section.source) {
-      // Dynamic list from data source
       const group = buildDynamicSection(section, prefix)
       if (group) groups.push(group)
       continue
     }
 
     if (section.items && section.items.length > 0) {
-      // Static items
       groups.push({
         heading: section.title || section.id,
         id: `cfg:${section.id}`,
@@ -88,6 +92,34 @@ function buildConfigSections(prefix, onNavigateToPage) {
 }
 
 function buildDynamicSection(section, prefix) {
+  // --- Tools source: pull items from toolbar.config.json ---
+  if (section.source === 'tools') {
+    return buildToolsSection(section, prefix)
+  }
+
+  // --- Recent source: all artifact types from getRecent() ---
+  if (section.source === 'recent') {
+    const recent = getRecent()
+    if (recent.length === 0) return null
+    let items = recent
+    if (section.limit) items = items.slice(0, section.limit)
+    return {
+      heading: section.title || 'Recent',
+      id: `cfg:${section.id}`,
+      items: items.map(entry => ({
+        id: `cfg:${section.id}:${entry.type}:${entry.key}`,
+        children: entry.label,
+        keywords: [entry.type, entry.key, entry.label],
+        onClick: () => {
+          trackRecent(entry.type, entry.key, entry.label)
+          const route = resolveRecentRoute(entry, prefix)
+          if (route) window.location.href = route
+        },
+      })),
+    }
+  }
+
+  // --- Artifact sources: canvases, prototypes, stories ---
   const index = buildPrototypeIndex()
   let sourceItems = []
 
@@ -111,7 +143,6 @@ function buildDynamicSection(section, prefix) {
 
   if (sourceItems.length === 0) return null
 
-  // Order
   if (section.order === 'recent') {
     const recent = getRecent()
     const recentKeys = recent.map(r => r.key)
@@ -141,6 +172,107 @@ function buildDynamicSection(section, prefix) {
         window.location.href = item.route
       },
     })),
+  }
+}
+
+/**
+ * Build a section from toolbar.config.json tools.
+ * If toolIds is provided, only include those tools in that order (with optional custom labels).
+ * Otherwise include all command-list tools.
+ *
+ * toolIds format: ["theme", "flows"] or [{ id: "theme", label: "Change theme" }]
+ */
+function buildToolsSection(section, prefix) {
+  const toolbarConfig = getToolbarConfig()
+  const tools = toolbarConfig?.tools || {}
+  const mode = getCurrentMode() || 'default'
+
+  let entries = []
+
+  if (section.toolIds && section.toolIds.length > 0) {
+    // Explicit tool list with order and optional custom labels
+    for (const entry of section.toolIds) {
+      const toolId = typeof entry === 'string' ? entry : entry.id
+      const customLabel = typeof entry === 'object' ? entry.label : null
+      const tool = tools[toolId]
+      if (!tool) continue
+      const state = getToolbarToolState(toolId)
+      if (state === 'disabled' || state === 'hidden') continue
+      entries.push({ toolId, tool, label: customLabel || tool.label || toolId })
+    }
+  } else {
+    // All command-list surface tools
+    for (const [toolId, tool] of Object.entries(tools)) {
+      if (tool.surface !== 'command-list') continue
+      const state = getToolbarToolState(toolId)
+      if (state === 'disabled' || state === 'hidden') continue
+      entries.push({ toolId, tool, label: tool.label || toolId })
+    }
+  }
+
+  if (entries.length === 0) return null
+
+  const items = entries.map(({ toolId, tool }) => {
+    if (tool.render === 'link' && tool.url) {
+      return {
+        id: `cfg:${section.id}:${toolId}`,
+        children: tool.label || toolId,
+        keywords: [tool.label, toolId].filter(Boolean),
+        onClick: () => {
+          const url = tool.url.startsWith('/') ? prefix + tool.url : tool.url
+          window.location.href = url
+        },
+      }
+    }
+    if (tool.render === 'submenu' || tool.render === 'menu') {
+      const actions = getActionsForMode(mode)
+      const action = actions.find(a => a.toolKey === toolId)
+      if (action?.type === 'submenu') {
+        const children = getActionChildren(action.id)
+        return children.map(child => ({
+          id: `cfg:${section.id}:${toolId}/${child.id || child.label}`,
+          children: child.label,
+          keywords: [tool.label, child.label, toolId].filter(Boolean),
+          onClick: () => { if (child.execute) child.execute() },
+        }))
+      }
+      if (action) {
+        return {
+          id: `cfg:${section.id}:${toolId}`,
+          children: tool.label || toolId,
+          keywords: [tool.label, toolId].filter(Boolean),
+          onClick: () => executeAction(action.id),
+        }
+      }
+    }
+    return {
+      id: `cfg:${section.id}:${toolId}`,
+      children: tool.label || toolId,
+      keywords: [tool.label, toolId].filter(Boolean),
+      onClick: () => executeAction(toolId),
+    }
+  }).flat()
+
+  return {
+    heading: section.title || section.id,
+    id: `cfg:${section.id}`,
+    items,
+  }
+}
+
+function resolveRecentRoute(entry, prefix) {
+  switch (entry.type) {
+    case 'prototype':
+      return `${prefix}/${entry.key}`
+    case 'canvas':
+      return `${prefix}/canvas/${entry.key}`
+    case 'story': {
+      const data = getStoryData(entry.key)
+      const route = data?._route || `/components/${entry.key}`
+      return `${prefix}${route}`
+    }
+    default:
+      return null
   }
 }
 
@@ -324,22 +456,6 @@ function buildPaletteItems(basePath, onCreateAction, onNavigateToPage) {
   }
 
   return { groups: [...configGroups, ...groups], toolMenus }
-}
-
-function resolveRecentRoute(entry, prefix) {
-  switch (entry.type) {
-    case 'prototype':
-      return `${prefix}/${entry.key}`
-    case 'canvas':
-      return `${prefix}/canvas/${entry.key}`
-    case 'story': {
-      const data = getStoryData(entry.key)
-      const route = data?._route || `/components/${entry.key}`
-      return `${prefix}${route}`
-    }
-    default:
-      return null
-  }
 }
 
 /**

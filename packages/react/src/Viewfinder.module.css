@@ -458,7 +458,7 @@
 }
 
 .card:hover {
-  border-color: #ccc;
+  border-color: var(--borderColor-muted, rgba(128, 128, 128, 0.3));
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
   text-decoration: none !important;
 }

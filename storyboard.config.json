@@ -53,7 +53,7 @@
       },
       {
         "id": "create",
-        "title": "Create",
+        "title": "Create new",
         "source": "create"
       },
       {
@@ -63,7 +63,7 @@
       },
       {
         "id": "canvases",
-        "title": "Canvases",
+        "title": "Canvas",
         "source": "canvases"
       },
       {

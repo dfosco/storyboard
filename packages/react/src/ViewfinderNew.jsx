@@ -310,13 +310,14 @@ function CreateForm({ type, onBack, onClose, basePath }) {
 
   useEffect(() => {
     if (!needsPrototype) return
-    fetch('/_storyboard/workshop/flows')
+    const apiBase = (basePath || '/').replace(/\/+$/, '')
+    fetch(`${apiBase}/_storyboard/workshop/flows`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.prototypes) setPrototypes(data.prototypes)
       })
       .catch(() => {})
-  }, [needsPrototype])
+  }, [needsPrototype, basePath])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -325,22 +326,23 @@ function CreateForm({ type, onBack, onClose, basePath }) {
     setError('')
     setSubmitting(true)
 
+    const apiBase = (basePath || '/').replace(/\/+$/, '')
     let endpoint, body
     if (type === 'Canvas') {
-      endpoint = '/_storyboard/canvas/create'
+      endpoint = `${apiBase}/_storyboard/canvas/create`
       body = { name: name.trim(), title: title.trim(), description: description.trim(), grid: true, gridSize: 24 }
     } else if (type === 'Prototype') {
-      endpoint = '/_storyboard/workshop/prototypes'
+      endpoint = `${apiBase}/_storyboard/workshop/prototypes`
       body = { name: name.trim(), title: title.trim(), description: description.trim() }
       if (isExternal) { body.external = true; body.url = url.trim() }
     } else if (type === 'Flow') {
-      endpoint = '/_storyboard/workshop/flows'
+      endpoint = `${apiBase}/_storyboard/workshop/flows`
       body = { name: name.trim(), title: title.trim(), prototype, description: description.trim() }
     } else if (type === 'Page') {
-      endpoint = '/_storyboard/workshop/pages'
+      endpoint = `${apiBase}/_storyboard/workshop/pages`
       body = { name: name.trim(), prototype }
     } else {
-      endpoint = '/_storyboard/canvas/create-story'
+      endpoint = `${apiBase}/_storyboard/canvas/create-story`
       body = { name: name.trim(), location: 'src/components' }
     }
 

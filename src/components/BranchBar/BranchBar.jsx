@@ -26,6 +26,9 @@ export default function BranchBar({ basePath }) {
 
   if (!isOnBranch || hidden) return null
 
+  // Never render inside embeds (iframes) — prototypes and story previews
+  if (window.self !== window.top) return null
+
   function hideChrome() {
     window.dispatchEvent(new KeyboardEvent('keydown', {
       key: '.', metaKey: true, bubbles: true,

@@ -232,6 +232,36 @@ export default function storyboardServer() {
         } catch { sendJson(res, 200, []) }
       })
 
+      // Switch branch — proxy to storyboard server which manages worktree
+      // dev servers. The server port is derived from the devDomain.
+      routeHandlers.set('switch-branch', async (req, res, ctx) => {
+        if (ctx.method !== 'POST') {
+          sendJson(res, 405, { error: 'POST required' })
+          return
+        }
+        try {
+          // Derive storyboard server port (same algorithm as server/index.js)
+          const devDomain = config.devDomain || 'storyboard'
+          let h = 0
+          for (let i = 0; i < devDomain.length; i++) {
+            h = ((h << 5) - h + devDomain.charCodeAt(i)) | 0
+          }
+          const serverPort = 4100 + (Math.abs(h) % 100)
+
+          const proxyRes = await fetch(`http://localhost:${serverPort}/_storyboard/switch-branch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ctx.body),
+          })
+          const data = await proxyRes.json()
+          sendJson(res, proxyRes.status, data)
+        } catch {
+          sendJson(res, 502, {
+            error: 'Storyboard server not running. Start it with: npx storyboard server',
+          })
+        }
+      })
+
       // Watch toolbar.config.json for changes — trigger full reload so
       // CoreUIBar.svelte picks up menu/mode config changes during dev
       const toolbarConfigPath = path.resolve(

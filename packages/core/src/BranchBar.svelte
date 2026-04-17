@@ -125,12 +125,10 @@
     }
   }
 
-  function goToMain() {
-    switchToBranch('main')
-  }
-
   function hideChrome() {
-    document.documentElement.classList.add('storyboard-chrome-hidden')
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      key: '.', metaKey: true, bubbles: true,
+    }))
   }
 </script>
 
@@ -156,9 +154,6 @@
         {/if}
         <button class="branch-bar-action" onclick={hideChrome} aria-label="Hide UI" disabled={!!switching}>
           Hide
-        </button>
-        <button class="branch-bar-action" onclick={goToMain} aria-label="Switch to main" disabled={!!switching}>
-          Close
         </button>
       </div>
     </div>

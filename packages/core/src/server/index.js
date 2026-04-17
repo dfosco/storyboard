@@ -324,4 +324,4 @@ export function spawnViteForBranch(branch, { pipeOutput = false } = {}) {
   return entry
 }
 
-export { SERVER_PORT, processes, routeHandlers, waitForPort, isPortReady }
+export { processes, routeHandlers, waitForPort, isPortReady }

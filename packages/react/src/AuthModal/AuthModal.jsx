@@ -5,6 +5,7 @@
  *   - ViewfinderNew sidebar login button via same event
  */
 import { useState, useEffect, useCallback } from 'react'
+import { Dialog } from '@base-ui/react/dialog'
 import css from './AuthModal.module.css'
 
 const COMMENTS_TOKEN_KEY = 'sb-comments-token'
@@ -54,75 +55,79 @@ export default function AuthModal() {
     if (e.key === 'Enter') handleSignIn()
   }, [handleSignIn])
 
-  if (!open) return null
-
   const repo = getRepoInfo()
 
   return (
-    <div className={css.overlay} onClick={handleClose}>
-      <div className={css.dialog} onClick={e => e.stopPropagation()}>
-        <button className={css.closeBtn} onClick={handleClose} aria-label="Close">×</button>
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className={css.backdrop} />
+        <div className={css.popupWrap}>
+          <Dialog.Popup className={css.popup}>
+            <Dialog.Title className={css.title}>Sign in for comments</Dialog.Title>
+            <Dialog.Description className={css.desc}>
+              Leave comments for other users to see and respond, and react to! Storyboard
+              comments use Discussions as a back-end and require a GitHub PAT to be enabled.
+            </Dialog.Description>
+            <Dialog.Close className={css.closeBtn} aria-label="Close">×</Dialog.Close>
 
-        <div className={css.title}>Sign in for comments</div>
-        <div className={css.desc}>
-          Leave comments for other users to see and respond, and react to! Storyboard comments use Discussions as a back-end and require a GitHub PAT to be enabled.
+            <hr className={css.separator} />
+
+            <div className={css.tokenCard}>
+              <p className={css.tokenCardTitle}>Fine-grained Personal Access Token</p>
+              <div className={css.tokenCardRow}>
+                <span className={css.tokenCardLabel}>Owner:</span>
+                <code className={css.tokenCardCode}>{repo.owner}</code>
+              </div>
+              <div className={css.tokenCardRow}>
+                <span className={css.tokenCardLabel}>Expiration:</span>
+                <code className={css.tokenCardCode}>366 days</code>
+                <span className={css.tokenCardHint}>(recommended)</span>
+              </div>
+              <div className={css.tokenCardRow}>
+                <span className={css.tokenCardLabel}>Repository access:</span>
+                <code className={css.tokenCardCode}>Only select repositories &gt; {repo.owner}/{repo.name}</code>
+              </div>
+              <div className={css.tokenCardRow}>
+                <span className={css.tokenCardLabel}>Permissions:</span>
+                <code className={css.tokenCardCode}>Repositories &gt; Discussions &gt; Access: Read and Write</code>
+              </div>
+            </div>
+
+            <a
+              className={css.tokenLink}
+              href="https://github.com/settings/personal-access-tokens/new"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Create a GitHub Fine-Grained Personal Access Token ↗
+            </a>
+
+            <hr className={css.separator} />
+
+            <label className={css.label} htmlFor="auth-modal-token">Personal Access Token</label>
+            <input
+              id="auth-modal-token"
+              className={css.input}
+              placeholder="github_pat_… or ghp_…"
+              type="password"
+              autoFocus
+              value={tokenValue}
+              onChange={e => setTokenValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+
+            <div className={css.warning}>
+              <span className={css.warningIcon}>⚠️</span>
+              <span>Comments are an experimental feature and may be unstable.</span>
+            </div>
+
+            <div className={css.actions}>
+              <Dialog.Close className={css.btnSecondary}>Cancel</Dialog.Close>
+              <button className={css.btnPrimary} onClick={handleSignIn}>Sign in</button>
+            </div>
+          </Dialog.Popup>
         </div>
-
-        <hr className={css.separator} />
-
-        <div className={css.tokenCard}>
-          <div className={css.tokenCardTitle}>Fine-grained Personal Access Token</div>
-          <div className={css.tokenCardRow}>
-            <span className={css.tokenCardLabel}>Owner:</span>
-            <code className={css.tokenCardCode}>{repo.owner}</code>
-          </div>
-          <div className={css.tokenCardRow}>
-            <span className={css.tokenCardLabel}>Expiration:</span>
-            <code className={css.tokenCardCode}>366 days</code>
-            <span className={css.tokenCardHint}>(recommended)</span>
-          </div>
-          <div className={css.tokenCardRow}>
-            <span className={css.tokenCardLabel}>Repository access:</span>
-            <code className={css.tokenCardCode}>Only select repositories &gt; {repo.owner}/{repo.name}</code>
-          </div>
-          <div className={css.tokenCardRow}>
-            <span className={css.tokenCardLabel}>Permissions:</span>
-            <code className={css.tokenCardCode}>Repositories &gt; Discussions &gt; Access: Read and Write</code>
-          </div>
-        </div>
-
-        <a
-          className={css.tokenLink}
-          href="https://github.com/settings/personal-access-tokens/new"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Create a GitHub Fine-Grained Personal Access Token ↗
-        </a>
-
-        <hr className={css.separator} />
-
-        <label className={css.label}>Personal Access Token</label>
-        <input
-          className={css.input}
-          placeholder="github_pat_… or ghp_…"
-          type="password"
-          autoFocus
-          value={tokenValue}
-          onChange={e => setTokenValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-
-        <div className={css.warning}>
-          <span className={css.warningIcon}>⚠️</span>
-          <span>Comments are an experimental feature and may be unstable.</span>
-        </div>
-
-        <div className={css.actions}>
-          <button className={css.btnSecondary} onClick={handleClose}>Cancel</button>
-          <button className={css.btnPrimary} onClick={handleSignIn}>Sign in</button>
-        </div>
-      </div>
-    </div>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

@@ -1,24 +1,37 @@
-/* AuthModal — PAT entry dialog */
+/* AuthModal — PAT entry dialog (BaseUI Dialog) */
 
-.overlay {
+.backdrop {
   position: fixed;
   inset: 0;
   background: var(--overlay-backdrop-bgColor, rgba(0, 0, 0, 0.4));
-  display: flex;
-  align-items: center;
-  justify-content: center;
   z-index: 10000;
 }
 
-.dialog {
+.popupWrap {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.popupWrap > * {
+  pointer-events: auto;
+}
+
+.popup {
   background: var(--bgColor-default);
   border-radius: 12px;
   box-shadow: var(--shadow-overlay, 0 16px 48px rgba(0, 0, 0, 0.12));
   padding: 28px;
-  width: 480px;
+  width: 540px;
   max-width: 90vw;
-  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
   color: var(--fgColor-default);
+  position: relative;
 }
 
 .closeBtn {

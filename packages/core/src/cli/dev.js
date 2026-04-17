@@ -301,13 +301,9 @@ async function main() {
       }
     }
 
-    // Suppress noisy Vite lines
-    if (text.includes('[vite-plugin-svelte]') && text.includes('no Svelte config')) return
-    if (text.includes('Port') && text.includes('is in use')) return
-    if (text.includes('Forced re-optimization')) return
-    if (text.includes('➜  Local:') || text.includes('➜  Network:')) return
-    if (text.includes('press h + enter')) return
-
+    // Check for "ready in" BEFORE suppress filters — Vite may send the
+    // entire startup banner in a single data chunk, so a filter that
+    // matches another line in the same chunk would swallow the ready signal.
     if (text.includes('ready in') && !ready) {
       ready = true
       const timeMatch = text.match(/ready in (\d+)/i)

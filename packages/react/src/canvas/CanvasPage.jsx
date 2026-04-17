@@ -25,6 +25,7 @@ import {
   uploadImage,
 } from './canvasApi.js'
 import PageSelector from './PageSelector.jsx'
+import Icon from '../Icon.jsx'
 import { stories as storyIndex } from 'virtual:storyboard-data-index'
 import styles from './CanvasPage.module.css'
 
@@ -2031,6 +2032,9 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   return (
     <>
       <div className={styles.canvasTitle}>
+        <a href={(import.meta.env?.BASE_URL || '/').replace(/\/$/, '') || '/'} className={`${styles.canvasLogo} smooth-corners`} aria-label="Go to homepage">
+          <Icon name="iconoir/key-command" size={16} color="#fff" />
+        </a>
         {siblingPages.length > 1 && (
           <h1 className={styles.canvasTitleStatic}>{canvasMeta?.title || canvas?.title || canvasId.split('/').pop()}</h1>
         )}

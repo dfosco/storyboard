@@ -56,6 +56,7 @@ export default defineConfig(() => {
             '@dfosco/storyboard-core/config': path.resolve(__dirname, 'packages/core/src/configSchema.js'),
             '@dfosco/storyboard-core/modes.css': path.resolve(__dirname, 'packages/core/src/modes.css'),
             '@dfosco/storyboard-core/inspector/highlighter': path.resolve(__dirname, 'packages/core/src/inspector/highlighter.js'),
+            '@dfosco/storyboard-core/smooth-corners': path.resolve(__dirname, 'packages/core/src/smoothCorners.js'),
             '@dfosco/storyboard-core/comments': path.resolve(__dirname, 'packages/core/src/comments/index.js'),
             '@dfosco/storyboard-core': path.resolve(__dirname, 'packages/core/src/index.js'),
             '@dfosco/storyboard-react/Icon': path.resolve(__dirname, 'packages/react/src/Icon.jsx'),

@@ -13,7 +13,7 @@
   import { cn } from "../../../utils/index.js";
 
   // Register CSS Houdini paint worklet for superellipse masks.
-  import { registerSmoothCorners } from '../../../smoothCorners.js'
+  import { registerSmoothCorners } from '../../../../smoothCorners.js'
   registerSmoothCorners()
 </script>
 

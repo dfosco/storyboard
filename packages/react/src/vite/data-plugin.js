@@ -649,13 +649,6 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasA
               `[storyboard-data] Canvas "${name}" references JSX file "${parsed.jsx}" but it was not found at ${jsxPath}`
             )
           }
-        } else {
-          // Auto-detect a same-name .canvas.jsx companion
-          const autoJsx = absPath.replace(/\.canvas\.(jsonl|jsonc?)$/, '.canvas.jsx')
-          if (fs.existsSync(autoJsx)) {
-            const relJsx = '/' + path.relative(root, autoJsx).replace(/\\/g, '/')
-            parsed = { ...parsed, _jsxModule: relJsx }
-          }
         }
       }
 
@@ -858,7 +851,7 @@ export default function storyboardDataPlugin() {
       // ── Component isolate middleware ───────────────────────────────
       // Serves a minimal HTML shell for iframe-isolated component widgets.
       // The iframe loads componentIsolate.jsx which reads query params
-      // (module, export, theme) and renders a single canvas.jsx export.
+      // (module, export, theme) and renders a single story export.
       const isolateEntryPath = new URL('../canvas/componentIsolate.jsx', import.meta.url).pathname
       server.middlewares.use(async (req, res, next) => {
         if (!req.url) return next()

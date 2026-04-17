@@ -415,7 +415,6 @@ export function createCanvasHandler(ctx) {
         grid = true,
         gridSize = 24,
         colorMode = 'auto',
-        includeJsx = false,
       } = body
 
       if (!name || typeof name !== 'string') {
@@ -482,24 +481,6 @@ export function createCanvasHandler(ctx) {
 
         const existingBasename = path.basename(existingPath)
 
-        // Detect companion .canvas.jsx file
-        const jsxCompanionName = existingData?.jsx
-        let jsxCompanionPath = null
-        if (jsxCompanionName) {
-          const candidate = path.join(canvasDir, jsxCompanionName)
-          if (fs.existsSync(candidate)) {
-            jsxCompanionPath = candidate
-          }
-        }
-
-        // Also check for a same-name .canvas.jsx even without explicit jsx field
-        if (!jsxCompanionPath) {
-          const implicitJsx = path.join(canvasDir, existingBasename.replace('.canvas.jsonl', '.canvas.jsx'))
-          if (fs.existsSync(implicitJsx)) {
-            jsxCompanionPath = implicitJsx
-          }
-        }
-
         const movedCanvasPath = path.join(newDir, existingBasename)
         const newPagePath = path.join(newDir, `${kebab}.canvas.jsonl`)
 
@@ -519,14 +500,7 @@ export function createCanvasHandler(ctx) {
           fs.renameSync(existingPath, movedCanvasPath)
           rollbackOps.push(() => { try { fs.renameSync(movedCanvasPath, existingPath) } catch { /* ignore */ } })
 
-          // 3. Move companion .canvas.jsx if present
-          if (jsxCompanionPath) {
-            const jsxDest = path.join(newDir, path.basename(jsxCompanionPath))
-            fs.renameSync(jsxCompanionPath, jsxDest)
-            rollbackOps.push(() => { try { fs.renameSync(jsxDest, jsxCompanionPath) } catch { /* ignore */ } })
-          }
-
-          // 4. Write .meta.json with metadata from the existing canvas
+          // 3. Write .meta.json with metadata from the existing canvas
           const metaObj = { title: existingData?.title || convertFrom }
           if (existingData?.description) metaObj.description = existingData.description
           if (existingData?.author) metaObj.author = existingData.author
@@ -534,7 +508,7 @@ export function createCanvasHandler(ctx) {
           fs.writeFileSync(metaPath, JSON.stringify(metaObj, null, 2) + '\n', 'utf-8')
           rollbackOps.push(() => { try { fs.unlinkSync(metaPath) } catch { /* ignore */ } })
 
-          // 5. Create the new page
+          // 4. Create the new page
           const creationEvent = {
             event: 'canvas_created',
             timestamp: new Date().toISOString(),
@@ -622,10 +596,6 @@ export function createCanvasHandler(ctx) {
         creationEvent.description = description
       }
 
-      if (includeJsx) {
-        creationEvent.jsx = `${kebab}.canvas.jsx`
-      }
-
       try {
         fs.mkdirSync(targetDir, { recursive: true })
         writeNewCanvas(canvasPath, creationEvent)
@@ -638,28 +608,6 @@ export function createCanvasHandler(ctx) {
           name: canonicalName,
           path: relPath,
           route: `/canvas/${canonicalName}`,
-        }
-
-        // Optionally create starter JSX file
-        if (includeJsx) {
-          const jsxPath = path.join(targetDir, `${kebab}.canvas.jsx`)
-          const componentName = kebab.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')
-          const jsxContent = `/**
- * Canvas components for ${creationEvent.title}.
- * Each named export becomes a draggable widget on the canvas.
- */
-
-export function ${componentName}Example() {
-  return (
-    <div style={{ padding: '1rem', minWidth: 200 }}>
-      <h3>${creationEvent.title}</h3>
-      <p>Edit this component in the .canvas.jsx file.</p>
-    </div>
-  )
-}
-`
-          fs.writeFileSync(jsxPath, jsxContent, 'utf-8')
-          result.jsxPath = path.relative(root, jsxPath)
         }
 
         sendJson(res, 201, result)

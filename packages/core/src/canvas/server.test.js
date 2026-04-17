@@ -99,18 +99,6 @@ describe('POST /create with convertFrom', () => {
     expect(meta.description).toBe('A described canvas')
   })
 
-  it('moves companion .canvas.jsx file', async () => {
-    writeCanvas(canvasDir, 'with-jsx', { title: 'JSX Canvas', jsx: 'with-jsx.canvas.jsx' })
-    fs.writeFileSync(path.join(canvasDir, 'with-jsx.canvas.jsx'), 'export function Comp() {}', 'utf-8')
-
-    await invoke('/create', 'POST', { name: 'second', convertFrom: 'with-jsx' })
-
-    expect(lastResponse.status).toBe(201)
-    // Companion should be moved
-    expect(fs.existsSync(path.join(canvasDir, 'with-jsx.canvas.jsx'))).toBe(false)
-    expect(fs.existsSync(path.join(canvasDir, 'with-jsx', 'with-jsx.canvas.jsx'))).toBe(true)
-  })
-
   it('rejects convertFrom with path segments', async () => {
     await invoke('/create', 'POST', { name: 'page', convertFrom: 'folder/canvas' })
 

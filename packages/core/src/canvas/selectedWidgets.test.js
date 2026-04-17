@@ -40,7 +40,8 @@ function createMockServer() {
 }
 
 const ROOT = '/fake/project'
-const SELECTED_FILE = path.join(ROOT, '.selectedwidgets.json')
+const STORYBOARD_DIR = path.join(ROOT, '.storyboard')
+const SELECTED_FILE = path.join(STORYBOARD_DIR, '.selectedwidgets.json')
 const TMP_FILE = SELECTED_FILE + '.tmp'
 
 describe('selectedWidgets', () => {
@@ -73,6 +74,7 @@ describe('selectedWidgets', () => {
       renameSync: vi.spyOn(fs, 'renameSync').mockImplementation(() => {}),
       existsSync: vi.spyOn(fs, 'existsSync').mockReturnValue(false),
       unlinkSync: vi.spyOn(fs, 'unlinkSync').mockImplementation(() => {}),
+      mkdirSync: vi.spyOn(fs, 'mkdirSync').mockImplementation(() => {}),
     }
 
     server = createMockServer()
@@ -90,11 +92,10 @@ describe('selectedWidgets', () => {
     expect(server.hot.on).toHaveBeenCalledWith('storyboard:canvas-unfocused', expect.any(Function))
   })
 
-  it('unwatches .selectedwidgets.json and .tmp to prevent HMR loops', () => {
+  it('unwatches .storyboard directory to prevent HMR loops', () => {
     setupSelectedWidgets(server, ROOT)
 
-    expect(server.watcher.unwatch).toHaveBeenCalledWith(SELECTED_FILE)
-    expect(server.watcher.unwatch).toHaveBeenCalledWith(TMP_FILE)
+    expect(server.watcher.unwatch).toHaveBeenCalledWith(STORYBOARD_DIR)
   })
 
   it('writes .selectedwidgets.json on canvas focus', () => {

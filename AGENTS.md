@@ -2,7 +2,7 @@
 
 ## Selected Widgets Context
 
-**Before processing ANY user prompt**, read `.selectedwidgets.json` at the repository root. This file is updated in real-time by the Storyboard dev server and reflects which canvas the user is currently viewing and which widgets they have selected in the browser.
+**Before processing ANY user prompt**, read `.storyboard/.selectedwidgets.json` at the repository root. This file is updated in real-time by the Storyboard dev server and reflects which canvas the user is currently viewing and which widgets they have selected in the browser.
 
 **File format:**
 ```json

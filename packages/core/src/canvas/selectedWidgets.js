@@ -18,6 +18,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { toCanvasId } from './identity.js'
 
+const DIR_NAME = '.storyboard'
 const FILE_NAME = '.selectedwidgets.json'
 const CLEANUP_INTERVAL_MS = 10_000
 
@@ -73,9 +74,11 @@ function createPathResolver(root) {
  * Write `.selectedwidgets.json` atomically (tmp + rename).
  */
 function writeSelectedWidgets(root, data) {
-  const filePath = path.join(root, FILE_NAME)
+  const dirPath = path.join(root, DIR_NAME)
+  const filePath = path.join(dirPath, FILE_NAME)
   const tmpPath = filePath + '.tmp'
   try {
+    if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true })
     fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2) + '\n', 'utf-8')
     fs.renameSync(tmpPath, filePath)
   } catch (err) {
@@ -87,7 +90,7 @@ function writeSelectedWidgets(root, data) {
  * Clear `.selectedwidgets.json` on disk.
  */
 function clearSelectedWidgets(root) {
-  const filePath = path.join(root, FILE_NAME)
+  const filePath = path.join(root, DIR_NAME, FILE_NAME)
   try {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
   } catch { /* ignore — file may already be gone */ }
@@ -194,7 +197,6 @@ export function setupSelectedWidgets(server, root) {
     clearSelectedWidgets(root)
   })
 
-  // Unwatch the file to prevent HMR loops
-  server.watcher.unwatch(path.join(root, FILE_NAME))
-  server.watcher.unwatch(path.join(root, FILE_NAME + '.tmp'))
+  // Unwatch the directory to prevent HMR loops
+  server.watcher.unwatch(path.join(root, DIR_NAME))
 }

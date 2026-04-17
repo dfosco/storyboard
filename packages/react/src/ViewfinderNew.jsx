@@ -994,7 +994,7 @@ export default function ViewfinderNew({
           >
             {sidebarOpen ? <XIcon size={18} /> : <ThreeBarsIcon size={18} />}
           </button>
-          <div className={css.logo}><Icon name="iconoir/key-command" size={18} color="#fff" /></div>
+          <div className={`${css.logo} smooth-corners`}><Icon name="iconoir/key-command" size={22} color="#fff" /></div>
           <div>
             <div className={css.appName}>{title}</div>
             {subtitle && <div className={css.appSubtitle}>{subtitle}</div>}

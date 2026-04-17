@@ -2032,7 +2032,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   return (
     <>
       <div className={styles.canvasTitle}>
-        <a href={(import.meta.env?.BASE_URL || '/').replace(/\/$/, '') || '/'} className={`${styles.canvasLogo} smooth-corners`} aria-label="Go to homepage">
+        <a href={(import.meta.env?.BASE_URL || '/').replace(/\/$/, '') || '/'} className={styles.canvasLogo} aria-label="Go to homepage">
           <Icon name="iconoir/key-command" size={16} color="#fff" />
         </a>
         {siblingPages.length > 1 && (

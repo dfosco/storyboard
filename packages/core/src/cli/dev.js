@@ -207,7 +207,17 @@ async function resolveDevTarget(branchArg, { allowCreate = true } = {}) {
 function isServerRunning() {
   return new Promise((resolve) => {
     const req = http.get(`http://localhost:${SERVER_PORT}/health`, (res) => {
-      resolve(res.statusCode === 200)
+      if (res.statusCode !== 200) { resolve(false); return }
+      let data = ''
+      res.on('data', (chunk) => { data += chunk })
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data)
+          // Verify the server belongs to this repo's devDomain
+          const ourDomain = readDevDomain(process.cwd())
+          resolve(json.ok === true && json.devDomain === ourDomain)
+        } catch { resolve(false) }
+      })
     })
     req.on('error', () => resolve(false))
     req.setTimeout(1000, () => { req.destroy(); resolve(false) })

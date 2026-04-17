@@ -87,7 +87,7 @@
   border-radius: 4px;
   font-size: 12px;
   font-weight: 400;
-  font-family: "Ioskeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
 .preview ul {
@@ -169,7 +169,7 @@
   padding: 0;
   font-size: 12px;
   font-weight: 400;
-  font-family: "Ioskeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   white-space: pre;
   word-break: normal;
   overflow-wrap: normal;

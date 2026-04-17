@@ -42,7 +42,7 @@
     border-radius: 999px;
     padding: 4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    font-family: "Ioskeley Mono", -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-family: "Hubot Sans", -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   }
 
   :global(html.storyboard-mode-present) .sb-mode-switch,

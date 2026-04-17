@@ -634,7 +634,7 @@
 
 <style>
   .inspector-mono {
-    font-family: "Ioskeley Mono", ui-monospace, monospace;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
   }
 
   .inspector-pulse-dot {
@@ -710,7 +710,7 @@
     padding: 12px 0;
     font-size: 12px;
     line-height: 1.6;
-    font-family: "Ioskeley Mono", ui-monospace, monospace;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
     tab-size: 2;
     background: transparent !important;
     overflow-x: auto;

@@ -27,7 +27,7 @@
     },
     {
       "source": "scaffold/skills/",
-      "target": ".github/skills/",
+      "target": ".agents/skills/",
       "mode": "updateable",
       "directory": true
     },

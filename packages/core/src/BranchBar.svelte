@@ -43,17 +43,15 @@
   // Don't render if we're on main (no branch-- in path)
   const isOnBranch = $derived(!!currentBranch())
 
-  // Fetch branches from server if not provided
+  // Always fetch live branch list from server API
   let fetchedBranches: Array<{ branch: string; folder: string }> = $state([])
   
   onMount(() => {
-    if (branches.length === 0) {
-      const apiBase = (basePath || '/').replace(/\/$/, '')
-      fetch(`${apiBase}/_storyboard/worktrees`)
-        .then(r => r.ok ? r.json() : [])
-        .then(data => { if (Array.isArray(data)) fetchedBranches = data })
-        .catch(() => {})
-    }
+    const apiBase = (basePath || '/').replace(/\/$/, '')
+    fetch(`${apiBase}/_storyboard/worktrees`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) fetchedBranches = data })
+      .catch(() => {})
 
     // Listen for chrome hidden toggle
     const observer = new MutationObserver(() => {
@@ -76,7 +74,7 @@
   })
 
   const allBranches = $derived(
-    branches.length > 0 ? branches : fetchedBranches
+    fetchedBranches.length > 0 ? fetchedBranches : branches
   )
 
   // Sort: main first, then A-Z

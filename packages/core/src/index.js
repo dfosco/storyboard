@@ -92,6 +92,7 @@ export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comm
 
 // Canvas config (paste rules, canvas-level overrides)
 export { initCanvasConfig, getPasteRules } from './canvasConfig.js'
+export { getCommandPaletteConfig } from './commandPaletteConfig.js'
 
 // Recent artifacts (command palette recents)
 export { trackRecent, getRecent, clearRecent } from './recentArtifacts.js'

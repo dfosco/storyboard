@@ -30,5 +30,15 @@
     ]
   },
   "canvas": {},
-  "commandPalette": {}
+  "commandPalette": {
+    "sections": [
+      {
+        "id": "recent-canvas",
+        "title": "Recent Canvas",
+        "source": "canvases",
+        "order": "recent",
+        "limit": 5
+      }
+    ]
+  }
 }

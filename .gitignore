@@ -52,3 +52,4 @@ agent-browser.json
 src/canvas/images/_*
 assets/canvas/images/_*
 assets/canvas/snapshots/_*
+.sync-target

@@ -59,3 +59,23 @@ body[data-color-mode="dark"] .command-palette .border-t,
 body[data-color-mode="dark"] .command-palette .border-b {
   border-color: #444c56 !important;
 }
+
+/*
+ * Fix misaligned clear button in search input.
+ * react-cmdk's button is in normal flow, inflating the container height.
+ * Position it absolutely and use flexbox centering instead.
+ */
+.command-palette .flex-1.relative > button {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding-right: 0.75rem;
+}
+
+.command-palette .flex-1.relative > button > svg {
+  position: static;
+  transform: none;
+}

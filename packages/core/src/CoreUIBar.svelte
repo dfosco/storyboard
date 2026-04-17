@@ -12,7 +12,8 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte'
   import './core-ui-colors.css'
-  import CommandMenu from './CommandMenu.svelte'
+  import CommandPalette from './CommandPalette.svelte'
+  import BranchBar from './BranchBar.svelte'
   import * as Panel from './lib/components/ui/panel/index.js'
   import PwaInstallBanner from './PwaInstallBanner.svelte'
   import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
@@ -751,7 +752,7 @@
       <div class={visible ? '' : 'default-button-dimmed'}>
         <Tooltip.Root>
           <Tooltip.Trigger>
-            <CommandMenu tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} />
+            <CommandPalette tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} />
           </Tooltip.Trigger>
           <Tooltip.Content side="top">Command Menu</Tooltip.Content>
         </Tooltip.Root>
@@ -766,6 +767,10 @@
 
 {#if !isEmbed}
   <PwaInstallBanner />
+{/if}
+
+{#if !isEmbed}
+  <BranchBar {basePath} />
 {/if}
 
 <!-- Flow info panel (previously inside CommandMenu) -->

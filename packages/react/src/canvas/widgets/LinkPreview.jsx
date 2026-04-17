@@ -3,6 +3,7 @@ import { remark } from 'remark'
 import remarkGfm from 'remark-gfm'
 import remarkHtml from 'remark-html'
 import { MarkGithubIcon } from '@primer/octicons-react'
+import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, linkPreviewSchema } from './widgetProps.js'
 import styles from './LinkPreview.module.css'
@@ -206,13 +207,37 @@ function GitHubIssueCard({ url, title, github, width, collapsed, onUpdate }) {
   )
 }
 
-export default function LinkPreview({ id, props, onUpdate, resizable }) {
+export default function LinkPreview({ props, onUpdate, resizable }) {
   const url = readProp(props, 'url', linkPreviewSchema)
   const title = readProp(props, 'title', linkPreviewSchema)
   const github = props?.github && typeof props.github === 'object' ? props.github : null
 
   const width = typeof props?.width === 'number' ? props.width : null
   const height = typeof props?.height === 'number' ? props.height : null
+
+  // All hooks must be called before any early return
+  const ogImage = props?.ogImage || null
+  const description = props?.description || ''
+  const canEdit = typeof onUpdate === 'function'
+  const cardRef = useRef(null)
+  const inputRef = useRef(null)
+  const [editing, setEditing] = useState(false)
+
+  const startEditing = useCallback(() => {
+    if (!canEdit) return
+    setEditing(true)
+  }, [canEdit])
+
+  const handleTitleChange = useCallback((e) => {
+    onUpdate?.({ title: e.target.value })
+  }, [onUpdate])
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [editing])
 
   if (github) {
     return (
@@ -227,38 +252,6 @@ export default function LinkPreview({ id, props, onUpdate, resizable }) {
     )
   }
 
-  const ogImage = props?.ogImage || null
-  const description = props?.description || ''
-  const canEdit = typeof onUpdate === 'function'
-  const cardRef = useRef(null)
-  const inputRef = useRef(null)
-  const [editing, setEditing] = useState(false)
-  const [editValue, setEditValue] = useState(title)
-
-  // Sync editValue when title prop changes externally
-  useEffect(() => { setEditValue(title) }, [title])
-
-  const startEditing = useCallback(() => {
-    if (!canEdit) return
-    setEditValue(title)
-    setEditing(true)
-  }, [canEdit, title])
-
-  const commitEdit = useCallback(() => {
-    setEditing(false)
-    const trimmed = editValue.trim()
-    if (trimmed !== title) {
-      onUpdate?.({ title: trimmed })
-    }
-  }, [editValue, title, onUpdate])
-
-  useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
-    }
-  }, [editing])
-
   const sizeStyle = (width || height)
     ? { ...(width ? { width: `${width}px` } : {}), ...(height ? { minHeight: `${height}px` } : {}) }
     : undefined
@@ -269,56 +262,57 @@ export default function LinkPreview({ id, props, onUpdate, resizable }) {
   const handleResize = (w, h) => onUpdate?.({ width: w, height: h })
 
   return (
-    <div ref={cardRef} className={styles.card} style={sizeStyle}>
-      {ogImage && (
-        <img
-          className={styles.ogImage}
-          src={ogImage}
-          alt=""
-          loading="lazy"
-          onError={(e) => { e.target.style.display = 'none' }}
-        />
-      )}
-      <div className={styles.body}>
-        {editing ? (
-          <input
-            ref={inputRef}
-            className={styles.titleInput}
-            data-canvas-allow-text-selection
-            type="text"
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={commitEdit}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commitEdit()
-              if (e.key === 'Escape') setEditing(false)
-            }}
+    <div className={styles.container}>
+      <div ref={cardRef} className={styles.card} style={sizeStyle}>
+        {ogImage && (
+          <img
+            className={styles.ogImage}
+            src={ogImage}
+            alt=""
+            loading="lazy"
+            onError={(e) => { e.target.style.display = 'none' }}
+          />
+        )}
+        <div className={styles.body}>
+          {editing ? (
+            <input
+              ref={inputRef}
+              className={styles.titleInput}
+              data-canvas-allow-text-selection
+              type="text"
+              value={title}
+              onChange={handleTitleChange}
+              onBlur={() => setEditing(false)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === 'Escape') setEditing(false)
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <p
+              className={styles.title}
+              data-canvas-allow-text-selection={!canEdit ? '' : undefined}
+              onDoubleClick={startEditing}
+              role={canEdit ? 'button' : undefined}
+              tabIndex={canEdit ? 0 : undefined}
+              onKeyDown={canEdit ? (e) => { if (e.key === 'Enter') startEditing() } : undefined}
+            >
+              {title || hostname || url || 'Untitled'}
+            </p>
+          )}
+          {description && <p className={styles.description}>{description}</p>}
+          <a
+            href={url || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.url}
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
-          />
-        ) : (
-          <p
-            className={styles.title}
-            data-canvas-allow-text-selection={!canEdit ? '' : undefined}
-            onDoubleClick={startEditing}
-            role={canEdit ? 'button' : undefined}
-            tabIndex={canEdit ? 0 : undefined}
-            onKeyDown={canEdit ? (e) => { if (e.key === 'Enter') startEditing() } : undefined}
           >
-            {title || hostname || url || 'Untitled'}
-          </p>
-        )}
-        {description && <p className={styles.description}>{description}</p>}
-        <a
-          href={url || '#'}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.url}
-          onMouseDown={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          {hostname || url}
-        </a>
+            {hostname || url}
+          </a>
+        </div>
       </div>
       {resizable && <ResizeHandle targetRef={cardRef} width={width} height={height} onResize={handleResize} />}
     </div>

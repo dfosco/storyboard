@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
-import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, StarIcon, StarFillIcon } from '@primer/octicons-react'
+import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon } from '@primer/octicons-react'
 import { Menu } from '@base-ui/react/menu'
 import Icon from './Icon.jsx'
 import css from './ViewfinderNew.module.css'
@@ -889,6 +889,7 @@ export default function ViewfinderNew({
   const [activeTab, setActiveTab] = useState('All')
   const [showCreate, setShowCreate] = useState(false)
   const [showPAT, setShowPAT] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [groupByFolders, setGroupByFolders] = useState(() => {
     try { return localStorage.getItem(GROUP_BY_FOLDERS_KEY) !== 'false' } catch { return true }
   })
@@ -986,6 +987,13 @@ export default function ViewfinderNew({
       {/* ─── Full-width Header ─── */}
       <header className={css.topBar}>
         <div className={css.topBarLeft}>
+          <button
+            className={css.hamburgerBtn}
+            onClick={() => setSidebarOpen(prev => !prev)}
+            aria-label="Toggle menu"
+          >
+            {sidebarOpen ? <XIcon size={18} /> : <ThreeBarsIcon size={18} />}
+          </button>
           <div className={css.logo}><Icon name="iconoir/key-command" size={18} color="#fff" /></div>
           <div>
             <div className={css.appName}>{title}</div>
@@ -1012,13 +1020,13 @@ export default function ViewfinderNew({
       {/* ─── Body: Sidebar + Content ─── */}
       <div className={css.body}>
         {/* ─── Sidebar ─── */}
-        <aside className={css.sidebar}>
+        <aside className={`${css.sidebar}${sidebarOpen ? ` ${css.sidebarOpen}` : ''}`}>
           <nav className={css.navSection}>
             {NAV_ITEMS.map(nav => (
               <button
                 key={nav.id}
                 className={activeNav === nav.id ? css.navItemActive : css.navItem}
-                onClick={() => setActiveNav(nav.id)}
+                onClick={() => { setActiveNav(nav.id); setSidebarOpen(false) }}
               >
                 <span className={css.navIcon}><Icon name={nav.iconName} size={16} /></span>
                 {nav.label}

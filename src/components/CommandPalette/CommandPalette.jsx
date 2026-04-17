@@ -14,6 +14,7 @@ import {
   trackRecent,
   getCommandPaletteConfig,
   getToolbarConfig,
+  setTheme,
 } from '@dfosco/storyboard-core'
 import CreateDialog from './CreateDialog.jsx'
 import './command-palette.css'
@@ -313,16 +314,46 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
             keywords: [label, toolId].filter(Boolean),
             onClick: () => onNavigateToPage?.(pageId),
             closeOnSelect: false,
+            showType: false,
           })
           continue
         }
       }
+
+      // Declarative options from toolbar.config.json (e.g. theme options)
+      if (tool.options && tool.options.length > 0) {
+        const pageId = `tool:${toolId}`
+        const handlerId = tool.handler || `core:${toolId}`
+        subPages.push({
+          id: pageId,
+          label,
+          title: label,
+          keywords: [label, toolId].filter(Boolean),
+          options: tool.options.map(opt => ({
+            label: opt.label,
+            // Lazy-execute via the handler's action system
+            toolHandler: handlerId,
+            value: opt.value,
+          })),
+        })
+        items.push({
+          id: `cfg:${section.id}:${toolId}`,
+          children: `${label} →`,
+          keywords: [label, toolId].filter(Boolean),
+          onClick: () => onNavigateToPage?.(pageId),
+          closeOnSelect: false,
+          showType: false,
+        })
+        continue
+      }
+
       if (action) {
         items.push({
           id: `cfg:${section.id}:${toolId}`,
           children: label,
           keywords: [label, toolId].filter(Boolean),
           onClick: () => executeAction(action.id),
+          showType: false,
         })
         continue
       }
@@ -540,9 +571,15 @@ export default function StoryboardCommandPalette({ basePath }) {
               <CommandPalette.ListItem
                 key={`${menu.id}:${i}`}
                 index={i}
+                showType={false}
                 onClick={() => {
-                  if (opt.execute) opt.execute()
-                  else if (opt.action) executeAction(opt.action, opt.value)
+                  if (opt.execute) {
+                    opt.execute()
+                  } else if (opt.toolHandler === 'core:theme' && opt.value) {
+                    setTheme(opt.value)
+                  } else if (opt.action) {
+                    executeAction(opt.action, opt.value)
+                  }
                   setOpen(false)
                   setActivePage('root')
                 }}

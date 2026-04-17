@@ -49,7 +49,7 @@ function buildConfigSections(prefix, onNavigateToPage) {
 
     if (section.items && section.items.length > 0) {
       groups.push({
-        heading: section.title || section.id,
+        heading: section.title,
         id: `cfg:${section.id}`,
         items: section.items.map((item, i) => {
           const id = `cfg:${section.id}:${i}`
@@ -85,6 +85,7 @@ function buildConfigSections(prefix, onNavigateToPage) {
       children: menu.label || menu.id,
       keywords: menu.keywords || [menu.label || menu.id],
       onClick: () => onNavigateToPage?.(menu.id),
+      closeOnSelect: false,
     }))
     groups.push({ heading: 'Tools', id: 'cfg:tool-menus', items: menuItems })
   }
@@ -106,7 +107,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage) {
     if (section.limit) items = items.slice(0, section.limit)
     return {
       group: {
-        heading: section.title || 'Recent',
+        heading: section.title,
         id: `cfg:${section.id}`,
         items: items.map(entry => ({
           id: `cfg:${section.id}:${entry.type}:${entry.key}`,
@@ -165,7 +166,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage) {
 
   return {
     group: {
-      heading: section.title || section.id,
+      heading: section.title,
       id: `cfg:${section.id}`,
       items: sourceItems.map(item => ({
         id: `cfg:${section.id}:${item.id}`,
@@ -254,6 +255,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
             children: `${label} →`,
             keywords: [label, toolId].filter(Boolean),
             onClick: () => onNavigateToPage?.(pageId),
+            closeOnSelect: false,
           })
           continue
         }
@@ -290,7 +292,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
 
   return {
     group: {
-      heading: section.title || section.id,
+      heading: section.title,
       id: `cfg:${section.id}`,
       items,
     },

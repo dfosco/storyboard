@@ -33,23 +33,24 @@
   "commandPalette": {
     "sections": [
       {
-        "id": "recent",
-        "title": "Recent",
-        "source": "recent",
-        "limit": 5
-      },
-      {
         "id": "tools",
         "title": "",
         "source": "tools",
         "toolIds": [
-          { "id": "viewfinder", "label": "Go to index page" },
+          { "id": "viewfinder", "label": "Homepage" },
+          { "id": "repository", "label": "Repository" },
           { "id": "theme", "label": "Change theme" },
           { "id": "docs", "label": "Documentation" },
           "devtools",
           "feature-flags"
         ]
-      }
+      },
+      {
+        "id": "recent",
+        "title": "Recent",
+        "source": "recent",
+        "limit": 5
+      }      
     ]
   }
 }

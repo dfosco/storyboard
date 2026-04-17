@@ -137,7 +137,7 @@ export default defineConfig(() => {
         },
     },
     optimizeDeps: {
-        include: ['reshaped', '@primer/react', '@primer/octicons-react'],
+        include: ['reshaped', '@primer/react', '@primer/octicons-react', 'use-sync-external-store/shim', 'use-sync-external-store/shim/with-selector'],
     },
     esbuild: {
         // Preserve function names so the storyboard inspector shows

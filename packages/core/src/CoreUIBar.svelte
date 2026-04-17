@@ -70,6 +70,7 @@
   let origPushState: typeof history.pushState
   let origReplaceState: typeof history.replaceState
   let bumpNav: () => void
+  let chromeObserver: MutationObserver | null = null
   let SidePanel: any = $state(null)
   let toolbarEl: HTMLElement | null = $state(null)
   let canvasActive = $state(false)
@@ -348,6 +349,15 @@
     window.addEventListener('keydown', handleKeydown)
     setRoutingBasePath(basePath)
 
+    // Sync visible state when storyboard-chrome-hidden is toggled externally
+    // (e.g. from command palette or other UI)
+    chromeObserver = new MutationObserver(() => {
+      const hidden = document.documentElement.classList.contains('storyboard-chrome-hidden')
+      if (visible === !hidden) return
+      visible = !hidden
+    })
+    chromeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+
     // Re-evaluate action menus and prototype toolbar config on SPA navigation
     const { getPrototypeMetadata } = await import('./loader.js')
     const { setPrototypeToolbarConfig, clearPrototypeToolbarConfig } = await import('./toolbarConfigStore.js')
@@ -475,6 +485,7 @@
     if (origReplaceState) history.replaceState = origReplaceState
     if (unsubMobile) unsubMobile()
     clearDynamicActions('mobile-toolbar')
+    chromeObserver?.disconnect()
     document.removeEventListener('storyboard:canvas:mounted', handleCanvasMounted)
     document.removeEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
     document.removeEventListener('storyboard:canvas:zoom-changed', handleZoomChanged)

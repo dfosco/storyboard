@@ -307,7 +307,7 @@ const server = http.createServer(async (req, res) => {
 
 export function startServer(port = SERVER_PORT) {
   server.listen(port, () => {
-    console.log(`[storyboard-server] Listening on http://localhost:${port}`)
+    // port logged by CLI via onReady; suppress here to avoid duplicate output
   })
   return server
 }

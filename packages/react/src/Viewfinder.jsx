@@ -11,6 +11,40 @@ import { Menu } from '@base-ui/react/menu'
 import Icon from './Icon.jsx'
 import css from './Viewfinder.module.css'
 
+/* ─── Theme sync: read toolbar theme from DOM and apply to Primer/BaseUI ─── */
+
+function getToolbarThemeAttrs() {
+  const theme = document.documentElement.getAttribute('data-sb-toolbar-theme') || 'light'
+  if (theme === 'dark_dimmed') {
+    return { 'data-color-mode': 'dark', 'data-dark-theme': 'dark_dimmed', 'data-light-theme': 'light' }
+  }
+  if (theme.startsWith('dark')) {
+    return { 'data-color-mode': 'dark', 'data-dark-theme': 'dark', 'data-light-theme': 'light' }
+  }
+  return { 'data-color-mode': 'light', 'data-light-theme': 'light', 'data-dark-theme': 'dark' }
+}
+
+function useToolbarTheme() {
+  const [attrs, setAttrs] = useState(getToolbarThemeAttrs)
+
+  useEffect(() => {
+    const update = () => setAttrs(getToolbarThemeAttrs())
+    const observer = new MutationObserver(update)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-sb-toolbar-theme'] })
+    update()
+    return () => observer.disconnect()
+  }, [])
+
+  // Sync to document.body so BaseUI portals inherit Primer theme
+  useEffect(() => {
+    for (const [key, value] of Object.entries(attrs)) {
+      document.body.setAttribute(key, value)
+    }
+  }, [attrs])
+
+  return attrs
+}
+
 /* ─── localStorage helpers ─── */
 
 const STARRED_KEY = 'sb-viewfinder-starred'
@@ -693,6 +727,7 @@ export default function Viewfinder({
   hideDefaultScene = false,
 }) {
   const shouldHideDefault = hideDefaultFlow ?? hideDefaultScene
+  const themeAttrs = useToolbarTheme()
 
   // Build data index from real prototype/canvas/story data
   const knownRoutes = useMemo(() =>
@@ -881,7 +916,7 @@ export default function Viewfinder({
   const pageTitle = NAV_ITEMS.find(n => n.id === activeNav)?.label || 'All artifacts'
 
   return (
-    <div className={css.layout}>
+    <div className={css.layout} {...themeAttrs}>
       {/* ─── Full-width Header ─── */}
       <header className={css.topBar}>
         <div className={css.topBarLeft}>

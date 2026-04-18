@@ -841,10 +841,23 @@ export default function StoryboardCommandPalette({ basePath }) {
     return result
   }, [items, search, subPageGroups, authorIndex])
 
+  // Remove consecutive separators and leading/trailing separators
+  const deduplicatedItems = useMemo(() => {
+    const result = []
+    for (const item of filteredItems) {
+      const isSep = item.id?.startsWith('cfg:sep')
+      if (isSep && (result.length === 0 || result[result.length - 1].id?.startsWith('cfg:sep'))) continue
+      result.push(item)
+    }
+    // Remove trailing separator
+    while (result.length > 0 && result[result.length - 1].id?.startsWith('cfg:sep')) result.pop()
+    return result
+  }, [filteredItems])
+
   // Items without separators — used for keyboard navigation indexing
   const navigableItems = useMemo(
-    () => filteredItems.filter(list => !list.id?.startsWith('cfg:sep')),
-    [filteredItems]
+    () => deduplicatedItems.filter(list => !list.id?.startsWith('cfg:sep')),
+    [deduplicatedItems]
   )
 
   const handleChangeSearch = useCallback((value) => {
@@ -865,8 +878,8 @@ export default function StoryboardCommandPalette({ basePath }) {
       }
     >
       <CommandPalette.Page id="root">
-        {filteredItems.length ? (
-          filteredItems.map((list) => (
+        {deduplicatedItems.length ? (
+          deduplicatedItems.map((list) => (
             list.id?.startsWith('cfg:sep') ? (
               !search && <hr key={list.id} style={{ border: 'none', borderTop: '1px solid var(--borderColor-muted, #e5e5e5)', margin: '4px 14px' }} />
             ) : (

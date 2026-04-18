@@ -187,6 +187,30 @@ export function getAnchorState(type, anchor) {
 }
 
 /**
+ * Get the connector styling defaults from config.
+ * @returns {Object} connector default styles
+ */
+export function getConnectorDefaults() {
+  const defaults = widgetsConfig.connectorDefaults ?? {}
+  return {
+    controlOffset: defaults.controlOffset ?? 80,
+    stroke: defaults.stroke ?? 'var(--fgColor-accent, #0969da)',
+    strokeWidth: defaults.strokeWidth ?? 4,
+    hoverStroke: defaults.hoverStroke ?? 'var(--fgColor-danger, #cf222e)',
+    hoverStrokeWidth: defaults.hoverStrokeWidth ?? 5,
+    endpointRadius: defaults.endpointRadius ?? 6,
+    endpointFill: defaults.endpointFill ?? 'var(--fgColor-accent, #0969da)',
+    endpointStroke: defaults.endpointStroke ?? 'var(--bgColor-default, #ffffff)',
+    endpointStrokeWidth: defaults.endpointStrokeWidth ?? 3,
+    hitAreaStrokeWidth: defaults.hitAreaStrokeWidth ?? 16,
+    dragStroke: defaults.dragStroke ?? 'var(--fgColor-accent, #0969da)',
+    dragStrokeWidth: defaults.dragStrokeWidth ?? 2,
+    dragDasharray: defaults.dragDasharray ?? '6 4',
+    dragOpacity: defaults.dragOpacity ?? 0.7,
+  }
+}
+
+/**
  * Check if a connection from sourceType to targetType is allowed.
  * @param {string} targetType — widget type receiving the connection
  * @param {string} sourceType — widget type initiating the connection

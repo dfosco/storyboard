@@ -39,7 +39,7 @@ function calcDimensions(widthPx, heightPx) {
   // Approximate character cell size for 13px monospace
   const cellWidth = 7.8
   const cellHeight = 17
-  const padding = 16 // 8px each side
+  const padding = 24 // 12px each side
   const cols = Math.max(10, Math.floor((widthPx - padding) / cellWidth))
   const rows = Math.max(4, Math.floor((heightPx - padding) / cellHeight))
   return { cols, rows }

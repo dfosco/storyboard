@@ -735,6 +735,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
   const handleConnectorAdd = useCallback(async ({ startWidgetId, startAnchor, endWidgetId, endAnchor }) => {
     try {
+      undoRedo.snapshot(stateRef.current, 'connector-add')
       const result = await addConnectorApi(canvasId, { startWidgetId, startAnchor, endWidgetId, endAnchor })
       if (result.success && result.connector) {
         setLocalConnectors((prev) => [...prev, result.connector])
@@ -742,16 +743,17 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     } catch (err) {
       console.error('[canvas] Failed to add connector:', err)
     }
-  }, [canvasId])
+  }, [canvasId, undoRedo])
 
   const handleConnectorRemove = useCallback((connectorId) => {
+    undoRedo.snapshot(stateRef.current, 'connector-remove')
     setLocalConnectors((prev) => prev.filter((c) => c.id !== connectorId))
     queueWrite(() =>
       removeConnectorApi(canvasId, connectorId).catch((err) =>
         console.error('[canvas] Failed to remove connector:', err)
       )
     )
-  }, [canvasId])
+  }, [canvasId, undoRedo])
 
   // Connector drag state
   const [connectorDrag, setConnectorDrag] = useState(null)
@@ -2073,8 +2075,9 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     debouncedSourceSave.cancel()
     setLocalWidgets(previous.widgets)
     setLocalSources(previous.sources)
+    setLocalConnectors(previous.connectors ?? [])
     queueWrite(() =>
-      updateCanvas(canvasId, { widgets: previous.widgets, sources: previous.sources }).catch((err) =>
+      updateCanvas(canvasId, { widgets: previous.widgets, sources: previous.sources, connectors: previous.connectors }).catch((err) =>
         console.error('[canvas] Failed to persist undo:', err)
       )
     )
@@ -2087,8 +2090,9 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     debouncedSourceSave.cancel()
     setLocalWidgets(next.widgets)
     setLocalSources(next.sources)
+    setLocalConnectors(next.connectors ?? [])
     queueWrite(() =>
-      updateCanvas(canvasId, { widgets: next.widgets, sources: next.sources }).catch((err) =>
+      updateCanvas(canvasId, { widgets: next.widgets, sources: next.sources, connectors: next.connectors }).catch((err) =>
         console.error('[canvas] Failed to persist redo:', err)
       )
     )

@@ -67,6 +67,27 @@ function findCanvasMeta(root) {
 }
 
 /**
+ * Read .meta.json from a canvas folder directory.
+ */
+function readFolderMeta(folderDir) {
+  const dirName = path.basename(folderDir).replace(/\.folder$/, '')
+  const metaPath = path.join(folderDir, `${dirName}.meta.json`)
+  if (fs.existsSync(metaPath)) {
+    try { return JSON.parse(fs.readFileSync(metaPath, 'utf-8')) } catch { /* ignore */ }
+  }
+  return {}
+}
+
+/**
+ * Write .meta.json to a canvas folder directory.
+ */
+function writeFolderMeta(folderDir, meta) {
+  const dirName = path.basename(folderDir).replace(/\.folder$/, '')
+  const metaPath = path.join(folderDir, `${dirName}.meta.json`)
+  fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+}
+
+/**
  * Recursively find all .canvas.jsonl files in the project.
  */
 function findCanvasFiles(root) {
@@ -455,16 +476,16 @@ export function createCanvasHandler(ctx) {
           settings: { title: newTitle },
         })
 
-        // Update .page-order.json if it exists
-        const pageOrderPath = path.join(dir, '.page-order.json')
-        if (fs.existsSync(pageOrderPath)) {
+        // Update pageOrder in .meta.json if it exists
+        const metaForOrder = readFolderMeta(dir)
+        if (metaForOrder?.pageOrder) {
           try {
-            const order = JSON.parse(fs.readFileSync(pageOrderPath, 'utf-8'))
-            const updated = order.map((entry) =>
+            const updated = metaForOrder.pageOrder.map((entry) =>
               typeof entry === 'string' && entry === name ? newCanonicalId : entry
             )
-            fs.writeFileSync(pageOrderPath, JSON.stringify(updated, null, 2) + '\n', 'utf-8')
-          } catch { /* skip if page-order is invalid */ }
+            metaForOrder.pageOrder = updated
+            writeFolderMeta(dir, metaForOrder)
+          } catch { /* skip */ }
         }
 
         sendJson(res, 200, { success: true, name: newCanonicalId, route: '/canvas/' + newCanonicalId })
@@ -496,8 +517,9 @@ export function createCanvasHandler(ctx) {
       }
 
       try {
-        const pageOrderPath = path.join(folderDir, '.page-order.json')
-        fs.writeFileSync(pageOrderPath, JSON.stringify(order, null, 2) + '\n', 'utf-8')
+        const meta = readFolderMeta(folderDir)
+        meta.pageOrder = order
+        writeFolderMeta(folderDir, meta)
         sendJson(res, 200, { success: true })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to save page order: ${err.message}` })
@@ -528,13 +550,8 @@ export function createCanvasHandler(ctx) {
       }
 
       try {
-        const pageOrderPath = path.join(folderDir, '.page-order.json')
-        if (fs.existsSync(pageOrderPath)) {
-          const order = JSON.parse(fs.readFileSync(pageOrderPath, 'utf-8'))
-          sendJson(res, 200, { order })
-        } else {
-          sendJson(res, 200, { order: null })
-        }
+        const meta = readFolderMeta(folderDir)
+        sendJson(res, 200, { order: meta?.pageOrder || null })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to read page order: ${err.message}` })
       }
@@ -577,43 +594,34 @@ export function createCanvasHandler(ctx) {
       }
 
       try {
+        const meta = readFolderMeta(folderDir)
         const dirName = path.basename(folderDir).replace(/\.folder$/, '')
-
-        // Update .meta.json title
-        const metaPath = path.join(folderDir, `${dirName}.meta.json`)
-        let meta = {}
-        if (fs.existsSync(metaPath)) {
-          meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
-        }
         meta.title = title
 
         // Rename folder directory if the kebab name differs
         const needsRename = kebab !== dirName
-        let newFolderDir = folderDir
         let newDirName = dirName
 
         if (needsRename) {
           const suffix = isFolderSuffix ? '.folder' : ''
-          newFolderDir = path.join(canvasDir, `${kebab}${suffix}`)
+          const newFolderDir = path.join(canvasDir, `${kebab}${suffix}`)
           if (fs.existsSync(newFolderDir)) {
             sendJson(res, 409, { error: `A folder named "${kebab}" already exists` })
             return
           }
-          // Write updated meta first, then rename directory
-          fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n', 'utf-8')
-          // Rename the .meta.json file to match new dir name
+          // Write updated meta, rename file to match new dir name, rename dir
+          writeFolderMeta(folderDir, meta)
+          const metaPath = path.join(folderDir, `${dirName}.meta.json`)
           const newMetaPath = path.join(folderDir, `${kebab}.meta.json`)
           if (newMetaPath !== metaPath) {
             fs.renameSync(metaPath, newMetaPath)
           }
-          // Rename directory
           fs.renameSync(folderDir, newFolderDir)
           newDirName = kebab
         } else {
-          fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+          writeFolderMeta(folderDir, meta)
         }
 
-        // Return the new folder name so the client can navigate
         sendJson(res, 200, { success: true, folder: newDirName, renamed: needsRename })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to update folder meta: ${err.message}` })

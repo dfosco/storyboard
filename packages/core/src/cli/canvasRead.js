@@ -55,6 +55,10 @@ function getBounds(widget) {
   }
   return computeBounds(widget)
 }
+
+/**
+ * Extract the primary content from a widget based on its type.
+ */
 function getWidgetContent(widget) {
   const { type, props = {} } = widget
   switch (type) {
@@ -86,7 +90,7 @@ function getWidgetContent(widget) {
 function formatWidget(widget) {
   const { id, type, position = {} } = widget
   const { content, contentType, url, filePath } = getWidgetContent(widget)
-  const bounds = computeBounds(widget)
+  const bounds = getBounds(widget)
 
   const lines = []
   lines.push(`${bold(id)} ${dim(`(${type})`)}`)
@@ -197,7 +201,7 @@ async function canvasRead() {
       }
 
       if (outputJson) {
-        const enriched = { ...widget, ...getWidgetContent(widget), bounds: computeBounds(widget) }
+        const enriched = { ...widget, ...getWidgetContent(widget), bounds: getBounds(widget) }
         console.log(JSON.stringify(enriched, null, 2))
       } else {
         console.log('')
@@ -209,7 +213,7 @@ async function canvasRead() {
 
     // List all widgets
     if (outputJson) {
-      const enriched = widgets.map((w) => ({ ...w, ...getWidgetContent(w), bounds: computeBounds(w) }))
+      const enriched = widgets.map((w) => ({ ...w, ...getWidgetContent(w), bounds: getBounds(w) }))
       console.log(JSON.stringify({ ...data, widgets: enriched }, null, 2))
     } else {
       console.log(`\n${bold(data.title || canvasName)} ${dim(`(${widgets.length} widgets)`)}\n`)

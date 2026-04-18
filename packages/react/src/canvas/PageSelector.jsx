@@ -34,7 +34,7 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
   const [successMsg, setSuccessMsg] = useState(null)
   const [editingPage, setEditingPage] = useState(null)
   const [editValue, setEditValue] = useState('')
-  const [orderedItems, setOrderedItems] = useState([])
+  const [orderedItems, setOrderedItems] = useState(() => initialPages.map(p => ({ type: 'page', ...p })))
   const [dragIndex, setDragIndex] = useState(null)
   const [dropTarget, setDropTarget] = useState(null)
   const containerRef = useRef(null)
@@ -45,6 +45,15 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
 
   // Sync pages when prop changes (e.g. HMR reload)
   useEffect(() => { setPages(initialPages) }, [initialPages])
+
+  // Keep orderedItems in sync with pages when dropdown is closed
+  useEffect(() => {
+    setOrderedItems(prev => {
+      // If we have order with separators, preserve it but update page data
+      if (prev.some(i => i.type === 'separator')) return prev
+      return initialPages.map(p => ({ type: 'page', ...p }))
+    })
+  }, [initialPages])
 
   // Derive folder from currentName (e.g. "Examples/Design Overview" → "Examples")
   const folder = currentName.includes('/') ? currentName.split('/')[0] : ''
@@ -214,19 +223,24 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
         return
       }
       const route = result?.route
-      if (route) {
-        const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
-        const targetUrl = base + route
-        try { sessionStorage.setItem('sb-open-page-selector', '1') } catch { /* ignore */ }
-        if (import.meta.hot) {
-          const timer = setTimeout(() => { window.location.href = targetUrl }, 3000)
-          import.meta.hot.on('vite:beforeFullReload', () => {
-            clearTimeout(timer)
-            sessionStorage.setItem('sb-pending-navigate', targetUrl)
-          })
-        } else {
-          setTimeout(() => { window.location.href = targetUrl }, 1000)
-        }
+      const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+      const targetUrl = base + route
+
+      // Optimistically add the new page to the list
+      const pageName = result.name || copyTitle
+      setPages(prev => [...prev, { name: pageName, route, title: copyTitle }])
+      setSuccessMsg(`"${copyTitle}" created`)
+
+      try { sessionStorage.setItem('sb-open-page-selector', '1') } catch { /* ignore */ }
+
+      if (import.meta.hot) {
+        const timer = setTimeout(() => { window.location.href = targetUrl }, 3000)
+        import.meta.hot.on('vite:beforeFullReload', () => {
+          clearTimeout(timer)
+          sessionStorage.setItem('sb-pending-navigate', targetUrl)
+        })
+      } else {
+        setTimeout(() => { window.location.href = targetUrl }, 1000)
       }
     } catch (err) {
       console.error('Failed to duplicate page:', err)

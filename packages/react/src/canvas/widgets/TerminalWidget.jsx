@@ -3,10 +3,12 @@ import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './TerminalWidget.module.css'
-import overlayStyles from './embedOverlay.module.css'
 
 const terminalSchema = schemas['terminal']
 
+/**
+ * Lazy-load ghostty-web to avoid bundling WASM in prod.
+ */
 let ghosttyPromise = null
 function loadGhostty() {
   if (!ghosttyPromise) {
@@ -18,6 +20,10 @@ function loadGhostty() {
   return ghosttyPromise
 }
 
+/**
+ * Build the WebSocket URL for the terminal backend.
+ * Includes the base path (e.g. /branch--4.2.0/) so the proxy routes correctly.
+ */
 function getWsUrl(sessionId) {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
   const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
@@ -25,10 +31,14 @@ function getWsUrl(sessionId) {
   return `${protocol}//${location.host}${baseClean}_storyboard/terminal/${sessionId}`
 }
 
+/**
+ * Calculate terminal cols/rows from pixel dimensions.
+ */
 function calcDimensions(widthPx, heightPx) {
+  // Approximate character cell size for 13px monospace
   const cellWidth = 7.8
   const cellHeight = 17
-  const padding = 16
+  const padding = 16 // 8px each side
   const cols = Math.max(10, Math.floor((widthPx - padding) / cellWidth))
   const rows = Math.max(4, Math.floor((heightPx - padding) / cellHeight))
   return { cols, rows }
@@ -39,73 +49,14 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const height = readProp(props, 'height', terminalSchema)
 
   const containerRef = useRef(null)
-  const widgetRef = useRef(null)
   const termRef = useRef(null)
   const wsRef = useRef(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState(null)
-  const [interactive, setInteractive] = useState(false)
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
   }, [onUpdate])
-
-  const enterInteractive = useCallback(() => {
-    setInteractive(true)
-    // Focus ghostty-web's textarea after React re-render removes the overlay
-    requestAnimationFrame(() => {
-      const textarea = containerRef.current?.querySelector('textarea')
-      if (textarea) textarea.focus()
-      else termRef.current?.focus?.()
-    })
-  }, [])
-
-  // Exit interactive mode on click outside
-  useEffect(() => {
-    if (!interactive) return
-    function handlePointerDown(e) {
-      if (widgetRef.current && !widgetRef.current.contains(e.target)) {
-        setInteractive(false)
-      }
-    }
-    document.addEventListener('pointerdown', handlePointerDown)
-    return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [interactive])
-
-  // Block ALL keyboard events from reaching the canvas when interactive.
-  // We listen on document in capture phase — this fires before everything else.
-  // We only intercept events that originate from inside our widget.
-  useEffect(() => {
-    if (!interactive) return
-
-    function handleKey(e) {
-      // Only intercept events from inside our widget
-      if (!widgetRef.current?.contains(e.target)) return
-
-      // Escape exits interactive mode
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        e.stopPropagation()
-        setInteractive(false)
-        return
-      }
-
-      // Prevent Tab from moving browser focus
-      if (e.key === 'Tab') e.preventDefault()
-
-      // Stop propagation so canvas document-level handlers never see this event.
-      // The event still reaches the ghostty-web textarea (it's the target, and
-      // target-phase handlers fire regardless of stopPropagation in capture).
-      e.stopPropagation()
-    }
-
-    document.addEventListener('keydown', handleKey, true)
-    document.addEventListener('keyup', handleKey, true)
-    return () => {
-      document.removeEventListener('keydown', handleKey, true)
-      document.removeEventListener('keyup', handleKey, true)
-    }
-  }, [interactive])
 
   // Initialize terminal
   useEffect(() => {
@@ -156,6 +107,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         term.open(containerRef.current)
         termRef.current = term
 
+        // Connect WebSocket
         const url = getWsUrl(id)
         ws = new WebSocket(url)
         wsRef.current = ws
@@ -182,6 +134,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
           setError('Connection failed')
         }
 
+        // Terminal input → WebSocket
         term.onData((data) => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(data)
@@ -216,15 +169,19 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
     return () => clearTimeout(timer)
   }, [width, height])
 
+  const handleClick = useCallback(() => {
+    termRef.current?.focus()
+  }, [])
+
   return (
     <div className={styles.container}>
       <div
-        ref={widgetRef}
         className={styles.terminal}
         style={{
           ...(typeof width === 'number' ? { width: `${width}px` } : undefined),
           ...(typeof height === 'number' ? { height: `${height}px` } : undefined),
         }}
+        onClick={handleClick}
       >
         {error && (
           <div className={styles.error}>
@@ -235,31 +192,11 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         {!ready && !error && (
           <div className={styles.loading}>Connecting…</div>
         )}
-        {!interactive && ready && (
-          <div
-            className={overlayStyles.interactOverlay}
-            onClick={(e) => {
-              if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
-              enterInteractive()
-            }}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                e.stopPropagation()
-                enterInteractive()
-              }
-            }}
-            aria-label="Click to interact with terminal"
-          >
-            <span className={overlayStyles.interactHint}>Click to interact</span>
-          </div>
-        )}
       </div>
       {resizable && (
         <ResizeHandle
-          targetRef={widgetRef}
+          width={width}
+          height={height}
           onResize={handleResize}
           minWidth={300}
           minHeight={200}

@@ -7,9 +7,6 @@ import overlayStyles from './embedOverlay.module.css'
 
 const terminalSchema = schemas['terminal']
 
-/**
- * Lazy-load ghostty-web to avoid bundling WASM in prod.
- */
 let ghosttyPromise = null
 function loadGhostty() {
   if (!ghosttyPromise) {
@@ -21,10 +18,6 @@ function loadGhostty() {
   return ghosttyPromise
 }
 
-/**
- * Build the WebSocket URL for the terminal backend.
- * Includes the base path (e.g. /branch--4.2.0/) so the proxy routes correctly.
- */
 function getWsUrl(sessionId) {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
   const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
@@ -32,9 +25,6 @@ function getWsUrl(sessionId) {
   return `${protocol}//${location.host}${baseClean}_storyboard/terminal/${sessionId}`
 }
 
-/**
- * Calculate terminal cols/rows from pixel dimensions.
- */
 function calcDimensions(widthPx, heightPx) {
   const cellWidth = 7.8
   const cellHeight = 17
@@ -42,50 +32,6 @@ function calcDimensions(widthPx, heightPx) {
   const cols = Math.max(10, Math.floor((widthPx - padding) / cellWidth))
   const rows = Math.max(4, Math.floor((heightPx - padding) / cellHeight))
   return { cols, rows }
-}
-
-/**
- * Convert a KeyboardEvent to an ANSI escape sequence.
- * Used as a fallback when ghostty-web's textarea didn't receive the event
- * (e.g. focus was on the widget div instead of the textarea).
- */
-function keyToAnsi(e) {
-  // Ctrl+letter → control character (0x01–0x1a)
-  if (e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
-    const code = e.key.toLowerCase().charCodeAt(0)
-    if (code >= 97 && code <= 122) {
-      return String.fromCharCode(code - 96)
-    }
-  }
-
-  // Tab / Shift+Tab
-  if (e.key === 'Tab') return e.shiftKey ? '\x1b[Z' : '\t'
-
-  // Arrow keys (with shift/ctrl/alt modifiers)
-  const arrowMap = { ArrowUp: 'A', ArrowDown: 'B', ArrowRight: 'C', ArrowLeft: 'D' }
-  if (arrowMap[e.key]) {
-    const mod = (e.shiftKey ? 1 : 0) + (e.altKey ? 2 : 0) + (e.ctrlKey ? 4 : 0)
-    if (mod > 0) return `\x1b[1;${mod + 1}${arrowMap[e.key]}`
-    return `\x1b[${arrowMap[e.key]}`
-  }
-
-  // Other special keys
-  const specialMap = {
-    Enter: '\r',
-    Backspace: '\x7f',
-    Delete: '\x1b[3~',
-    Home: '\x1b[H',
-    End: '\x1b[F',
-    PageUp: '\x1b[5~',
-    PageDown: '\x1b[6~',
-    Insert: '\x1b[2~',
-  }
-  if (specialMap[e.key]) return specialMap[e.key]
-
-  // Printable character
-  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) return e.key
-
-  return null
 }
 
 export default function TerminalWidget({ id, props, onUpdate, resizable }) {
@@ -104,19 +50,15 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
     onUpdate?.({ width: w, height: h })
   }, [onUpdate])
 
-  const focusTerminal = useCallback(() => {
-    // Focus ghostty-web's internal textarea directly for reliable keyboard capture.
-    // term.focus() may not work in all cases, so fall back to querying the DOM.
-    const term = termRef.current
-    if (term?.focus) term.focus()
-    const textarea = containerRef.current?.querySelector('textarea')
-    if (textarea) textarea.focus()
-  }, [])
-
   const enterInteractive = useCallback(() => {
     setInteractive(true)
-    setTimeout(focusTerminal, 0)
-  }, [focusTerminal])
+    // Focus ghostty-web's textarea after React re-render removes the overlay
+    requestAnimationFrame(() => {
+      const textarea = containerRef.current?.querySelector('textarea')
+      if (textarea) textarea.focus()
+      else termRef.current?.focus?.()
+    })
+  }, [])
 
   // Exit interactive mode on click outside
   useEffect(() => {
@@ -130,22 +72,17 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive])
 
-  // Keyboard isolation for interactive mode.
-  // We use capture phase on the widget so we intercept events before any
-  // canvas-level handlers (which listen on document in bubble phase).
-  // For most keys, ghostty-web handles keydown→ANSI conversion internally
-  // on its textarea. We just need to stop propagation so canvas shortcuts
-  // (Delete, Ctrl+C copy-widget, etc.) don't fire, and preventDefault so
-  // the browser doesn't steal Tab/Shift+Tab for focus navigation.
-  //
-  // As a safety net, if ghostty-web doesn't produce onData for certain
-  // modifier combos, we send the ANSI sequence manually.
+  // Block ALL keyboard events from reaching the canvas when interactive.
+  // We listen on document in capture phase — this fires before everything else.
+  // We only intercept events that originate from inside our widget.
   useEffect(() => {
     if (!interactive) return
-    const el = widgetRef.current
-    if (!el) return
 
-    function handleKeyDown(e) {
+    function handleKey(e) {
+      // Only intercept events from inside our widget
+      if (!widgetRef.current?.contains(e.target)) return
+
+      // Escape exits interactive mode
       if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()
@@ -153,62 +90,22 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         return
       }
 
-      // Stop the event from reaching canvas handlers
+      // Prevent Tab from moving browser focus
+      if (e.key === 'Tab') e.preventDefault()
+
+      // Stop propagation so canvas document-level handlers never see this event.
+      // The event still reaches the ghostty-web textarea (it's the target, and
+      // target-phase handlers fire regardless of stopPropagation in capture).
       e.stopPropagation()
-
-      // Prevent browser defaults (Tab focus navigation, Ctrl+C copy, etc.)
-      // ghostty-web processes the key in its own handler on the textarea
-      // before this capture-phase handler fires on the parent, so this
-      // does not interfere with terminal input.
-      if (e.key === 'Tab' || (e.ctrlKey && e.key !== 'v')) {
-        e.preventDefault()
-      }
-
-      // Re-focus the terminal textarea if focus drifted to the widget div
-      const active = document.activeElement
-      const textarea = containerRef.current?.querySelector('textarea')
-      if (textarea && active !== textarea) {
-        textarea.focus()
-        // Manually send ANSI for this keystroke since the textarea missed it
-        const ansi = keyToAnsi(e)
-        if (ansi && wsRef.current?.readyState === WebSocket.OPEN) {
-          wsRef.current.send(ansi)
-        }
-      }
     }
 
-    function handleKeyUp(e) {
-      if (e.key !== 'Escape') {
-        e.stopPropagation()
-      }
-    }
-
-    el.addEventListener('keydown', handleKeyDown, true)
-    el.addEventListener('keyup', handleKeyUp, true)
+    document.addEventListener('keydown', handleKey, true)
+    document.addEventListener('keyup', handleKey, true)
     return () => {
-      el.removeEventListener('keydown', handleKeyDown, true)
-      el.removeEventListener('keyup', handleKeyUp, true)
+      document.removeEventListener('keydown', handleKey, true)
+      document.removeEventListener('keyup', handleKey, true)
     }
   }, [interactive])
-
-  // Re-focus terminal textarea when interactive mode is activated
-  // and periodically ensure it stays focused (e.g. after pointer clicks
-  // inside the terminal area that might move focus to the widget div).
-  useEffect(() => {
-    if (!interactive) return
-    focusTerminal()
-    function handleFocusIn(e) {
-      const textarea = containerRef.current?.querySelector('textarea')
-      if (textarea && e.target !== textarea && widgetRef.current?.contains(e.target)) {
-        textarea.focus()
-      }
-    }
-    const el = widgetRef.current
-    if (el) el.addEventListener('focusin', handleFocusIn)
-    return () => {
-      if (el) el.removeEventListener('focusin', handleFocusIn)
-    }
-  }, [interactive, focusTerminal])
 
   // Initialize terminal
   useEffect(() => {

@@ -3,6 +3,7 @@ import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './TerminalWidget.module.css'
+import overlayStyles from './embedOverlay.module.css'
 
 const terminalSchema = schemas['terminal']
 
@@ -35,10 +36,9 @@ function getWsUrl(sessionId) {
  * Calculate terminal cols/rows from pixel dimensions.
  */
 function calcDimensions(widthPx, heightPx) {
-  // Approximate character cell size for 13px monospace
   const cellWidth = 7.8
   const cellHeight = 17
-  const padding = 16 // 8px each side
+  const padding = 16
   const cols = Math.max(10, Math.floor((widthPx - padding) / cellWidth))
   const rows = Math.max(4, Math.floor((heightPx - padding) / cellHeight))
   return { cols, rows }
@@ -49,14 +49,57 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const height = readProp(props, 'height', terminalSchema)
 
   const containerRef = useRef(null)
+  const widgetRef = useRef(null)
   const termRef = useRef(null)
   const wsRef = useRef(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState(null)
+  const [interactive, setInteractive] = useState(false)
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
   }, [onUpdate])
+
+  const enterInteractive = useCallback(() => {
+    setInteractive(true)
+    setTimeout(() => termRef.current?.focus(), 0)
+  }, [])
+
+  // Exit interactive mode on click outside
+  useEffect(() => {
+    if (!interactive) return
+    function handlePointerDown(e) {
+      if (widgetRef.current && !widgetRef.current.contains(e.target)) {
+        setInteractive(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [interactive])
+
+  // Capture-phase keyboard listener — only active in interactive mode.
+  // Stops canvas shortcuts (Delete, Escape, Ctrl+C) from firing
+  // so all keys go to the PTY. Escape exits interactive mode.
+  useEffect(() => {
+    if (!interactive) return
+
+    function stopKeys(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        setInteractive(false)
+        return
+      }
+      e.stopPropagation()
+    }
+
+    document.addEventListener('keydown', stopKeys, true)
+    document.addEventListener('keyup', stopKeys, true)
+    return () => {
+      document.removeEventListener('keydown', stopKeys, true)
+      document.removeEventListener('keyup', stopKeys, true)
+    }
+  }, [interactive])
 
   // Initialize terminal
   useEffect(() => {
@@ -107,7 +150,6 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         term.open(containerRef.current)
         termRef.current = term
 
-        // Connect WebSocket
         const url = getWsUrl(id)
         ws = new WebSocket(url)
         wsRef.current = ws
@@ -134,7 +176,6 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
           setError('Connection failed')
         }
 
-        // Terminal input → WebSocket
         term.onData((data) => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(data)
@@ -169,19 +210,15 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
     return () => clearTimeout(timer)
   }, [width, height])
 
-  const handleClick = useCallback(() => {
-    termRef.current?.focus()
-  }, [])
-
   return (
     <div className={styles.container}>
       <div
-        className={styles.terminal}
+        ref={widgetRef}
+        className={`${styles.terminal} ${interactive ? styles.interactive : ''}`}
         style={{
           ...(typeof width === 'number' ? { width: `${width}px` } : undefined),
           ...(typeof height === 'number' ? { height: `${height}px` } : undefined),
         }}
-        onClick={handleClick}
       >
         {error && (
           <div className={styles.error}>
@@ -191,6 +228,27 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         <div ref={containerRef} className={styles.xtermContainer} />
         {!ready && !error && (
           <div className={styles.loading}>Connecting…</div>
+        )}
+        {!interactive && ready && (
+          <div
+            className={overlayStyles.interactOverlay}
+            onClick={(e) => {
+              if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+              enterInteractive()
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                e.stopPropagation()
+                enterInteractive()
+              }
+            }}
+            aria-label="Click to interact with terminal"
+          >
+            <span className={overlayStyles.interactHint}>Click to interact</span>
+          </div>
         )}
       </div>
       {resizable && (

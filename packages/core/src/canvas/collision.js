@@ -13,9 +13,11 @@ export const DEFAULT_SIZES = {
   'markdown': { width: 530, height: 240 },
   'prototype': { width: 800, height: 600 },
   'figma-embed': { width: 800, height: 450 },
+  'codepen-embed': { width: 800, height: 450 },
   'image': { width: 400, height: 300 },
-  'link-preview': { width: 400, height: 200 },
+  'link-preview': { width: 320, height: 200 },
   'component': { width: 300, height: 200 },
+  'story': { width: 780, height: 420 },
 }
 
 /**
@@ -54,17 +56,31 @@ export function rectsOverlap(a, b) {
  * @param {{ x: number, y: number, width: number, height: number }} rect - Proposed bounds
  * @param {object[]} widgets - Existing widgets array
  * @param {string} [excludeId] - Widget ID to exclude (for move operations)
- * @returns {object|null} - The first colliding widget, or null if no collision
+ * @returns {object[]} - All colliding widgets (empty array if none)
  */
-export function findCollision(rect, widgets, excludeId = null) {
+export function findCollisions(rect, widgets, excludeId = null) {
+  const colliders = []
   for (const widget of widgets) {
     if (excludeId && widget.id === excludeId) continue
     const bounds = getWidgetBounds(widget)
     if (rectsOverlap(rect, bounds)) {
-      return widget
+      colliders.push(widget)
     }
   }
-  return null
+  return colliders
+}
+
+/**
+ * Check if a proposed position collides with any existing widget.
+ * Returns the first colliding widget (for backwards compatibility).
+ * @param {{ x: number, y: number, width: number, height: number }} rect - Proposed bounds
+ * @param {object[]} widgets - Existing widgets array
+ * @param {string} [excludeId] - Widget ID to exclude (for move operations)
+ * @returns {object|null} - The first colliding widget, or null if no collision
+ */
+export function findCollision(rect, widgets, excludeId = null) {
+  const colliders = findCollisions(rect, widgets, excludeId)
+  return colliders.length > 0 ? colliders[0] : null
 }
 
 /**
@@ -82,9 +98,10 @@ export function snapToGrid(value, gridSize) {
  *
  * Strategy:
  * 1. Try the initial position
- * 2. If collision, move right by (collider.width + gap)
- * 3. If still colliding after maxIterations, try moving down instead
- * 4. Snap final position to grid
+ * 2. If collision, find the max endX among all colliders and move past it
+ * 3. Repeat until no collisions or maxIterations exhausted
+ * 4. If horizontal resolution exhausted, fall back to moving down
+ * 5. Snap final position to grid
  *
  * @param {object} options
  * @param {number} options.x - Initial X position
@@ -113,15 +130,13 @@ export function findFreePosition({
   let currentX = x
   let currentY = y
   let adjusted = false
-  let iteration = 0
 
-  // Phase 1: Try moving right
-  while (iteration < maxIterations) {
+  // Phase 1: Try moving right past all colliders
+  for (let i = 0; i < maxIterations; i++) {
     const rect = { x: currentX, y: currentY, width, height }
-    const collider = findCollision(rect, widgets, excludeId)
+    const colliders = findCollisions(rect, widgets, excludeId)
 
-    if (!collider) {
-      // No collision — snap and return
+    if (colliders.length === 0) {
       return {
         x: snapToGrid(currentX, gridSize),
         y: snapToGrid(currentY, gridSize),
@@ -129,22 +144,25 @@ export function findFreePosition({
       }
     }
 
-    // Move right past the collider
-    const colliderBounds = getWidgetBounds(collider)
-    currentX = colliderBounds.x + colliderBounds.width + spacing
+    // Jump past the rightmost edge of all colliders
+    let maxEndX = 0
+    for (const c of colliders) {
+      const b = getWidgetBounds(c)
+      const endX = b.x + b.width
+      if (endX > maxEndX) maxEndX = endX
+    }
+    currentX = maxEndX + spacing
     adjusted = true
-    iteration++
   }
 
   // Phase 2: Reset X, try moving down
   currentX = x
-  iteration = 0
 
-  while (iteration < maxIterations) {
+  for (let i = 0; i < maxIterations; i++) {
     const rect = { x: currentX, y: currentY, width, height }
-    const collider = findCollision(rect, widgets, excludeId)
+    const colliders = findCollisions(rect, widgets, excludeId)
 
-    if (!collider) {
+    if (colliders.length === 0) {
       return {
         x: snapToGrid(currentX, gridSize),
         y: snapToGrid(currentY, gridSize),
@@ -152,11 +170,15 @@ export function findFreePosition({
       }
     }
 
-    // Move down past the collider
-    const colliderBounds = getWidgetBounds(collider)
-    currentY = colliderBounds.y + colliderBounds.height + spacing
+    // Jump past the bottommost edge of all colliders
+    let maxEndY = 0
+    for (const c of colliders) {
+      const b = getWidgetBounds(c)
+      const endY = b.y + b.height
+      if (endY > maxEndY) maxEndY = endY
+    }
+    currentY = maxEndY + spacing
     adjusted = true
-    iteration++
   }
 
   // Fallback: return the last attempted position (snapped)

@@ -60,7 +60,7 @@ const { x, y, adjusted } = findFreePosition({
 })
 ```
 
-**Algorithm:** Tries the target position first. If collision, moves right. If still blocked, moves down. Returns the first free position, snapped to grid.
+**Algorithm:** Checks the target position against all widgets. If any overlap, jumps past the max right edge (endX) of all colliders + gridSize. Repeats until clear. If horizontal resolution is exhausted, falls back to moving down past the max bottom edge (endY). Returns a collision-free position, snapped to grid.
 
 ---
 
@@ -72,8 +72,11 @@ const { x, y, adjusted } = findFreePosition({
 | `markdown` | 530×240 | `content` (markdown) | `width` |
 | `prototype` | 800×600 | `src` (URL/path) | `label`, `zoom` (25–200), `width`, `height` |
 | `figma-embed` | 800×450 | `url` | `width`, `height` |
-| `image` | — | `src` (filename) | `width`, `height`, `private` |
-| `link-preview` | — | `url` | `title` |
+| `codepen-embed` | 800×450 | `url` | `width`, `height` |
+| `story` | 780×420 | `storyId` + `exportName` | `width`, `height`, `showCode` |
+| `image` | 400×300 | `src` (filename) | `width`, `height`, `private` |
+| `link-preview` | 320×200 | `url` | `title` |
+| `component` | 300×200 | — | `width`, `height` |
 
 ## Reference: Widget Content, URLs, and File Paths
 
@@ -115,7 +118,14 @@ npx storyboard canvas read my-canvas --json   # Output as JSON (for parsing)
 npx storyboard canvas read my-canvas --id sticky-note-abc123  # Get specific widget
 ```
 
-The CLI outputs widget ID, type, position, content, and file paths (for images). Use `--json` for machine-readable output that includes enriched `content`, `url`, and `filePath` fields.
+The CLI outputs widget ID, type, position, content, and file paths (for images). Use `--json` for machine-readable output that includes enriched `content`, `url`, `filePath`, and `bounds` fields.
+
+**Bounds:** Both human-readable and JSON output include computed bounds for each widget:
+- `bounds.width`, `bounds.height` — resolved from props or type defaults
+- `bounds.startX`, `bounds.startY` — top-left corner (same as position)
+- `bounds.endX`, `bounds.endY` — bottom-right corner (startX + width, startY + height)
+
+Use bounds to determine widget overlap and spatial relationships without manual size calculation.
 
 ## Reference: Server API
 

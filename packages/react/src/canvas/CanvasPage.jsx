@@ -793,6 +793,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       endPt: cursorPt,
       endAnchor: anchor,
     })
+    console.log('[devlog] connectorDrag set', { startPt, cursorPt })
 
     const handleMouseMove = (moveE) => {
       const pt = toCanvasPoint(moveE.clientX, moveE.clientY)

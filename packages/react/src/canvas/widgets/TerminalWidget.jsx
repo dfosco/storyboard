@@ -22,10 +22,13 @@ function loadGhostty() {
 
 /**
  * Build the WebSocket URL for the terminal backend.
+ * Includes the base path (e.g. /branch--4.2.0/) so the proxy routes correctly.
  */
 function getWsUrl(sessionId) {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${protocol}//${location.host}/_storyboard/terminal/${sessionId}`
+  const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
+  const baseClean = base.endsWith('/') ? base : base + '/'
+  return `${protocol}//${location.host}${baseClean}_storyboard/terminal/${sessionId}`
 }
 
 /**

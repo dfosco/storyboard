@@ -103,6 +103,12 @@ export function useCanvas(canvasId) {
     const handleCanvasFileChanged = ({ data }) => {
       const eventId = data?.canvasId || data?.name
       if (!data || eventId !== canvasId) return
+      // Use metadata from the HMR event directly if available (faster)
+      if (data.metadata?.widgets) {
+        setCanvas((prev) => ({ ...(prev || buildTimeCanvas), ...data.metadata }))
+        return
+      }
+      // Fallback: re-fetch from server
       fetchCanvasFromServer(canvasId).then((fresh) => {
         if (fresh) {
           setCanvas((prev) => ({ ...(prev || buildTimeCanvas), ...fresh }))

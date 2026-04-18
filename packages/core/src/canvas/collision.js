@@ -5,19 +5,47 @@
  * existing widgets and adjusts the position until no collisions remain.
  */
 
+import widgetsConfig from '../../widgets.config.json' with { type: 'json' }
+
+const FALLBACK_SIZE = { width: 270, height: 170 }
+
 /**
- * Default widget sizes by type (from widgets.config.json).
+ * Hardcoded fallbacks for widget types that don't specify defaults in config.
  */
-export const DEFAULT_SIZES = {
-  'sticky-note': { width: 270, height: 170 },
+const HARDCODED_DEFAULTS = {
   'markdown': { width: 530, height: 240 },
-  'prototype': { width: 800, height: 600 },
-  'figma-embed': { width: 800, height: 450 },
-  'codepen-embed': { width: 800, height: 450 },
   'image': { width: 400, height: 300 },
   'link-preview': { width: 320, height: 200 },
   'component': { width: 300, height: 200 },
   'story': { width: 780, height: 420 },
+}
+
+/**
+ * Default widget sizes derived from widgets.config.json prop defaults,
+ * with hardcoded fallbacks for types that don't specify both width+height.
+ */
+export const DEFAULT_SIZES = buildDefaultSizes()
+
+function buildDefaultSizes() {
+  const sizes = {}
+  const widgets = widgetsConfig.widgets || {}
+  for (const [type, config] of Object.entries(widgets)) {
+    const props = config.props || {}
+    const hardcoded = HARDCODED_DEFAULTS[type]
+    const w = props.width?.default ?? hardcoded?.width ?? FALLBACK_SIZE.width
+    const h = props.height?.default ?? hardcoded?.height ?? FALLBACK_SIZE.height
+    sizes[type] = { width: w, height: h }
+  }
+  return sizes
+}
+
+/**
+ * Get the default size for a widget type from widgets.config.json.
+ * @param {string} type - Widget type
+ * @returns {{ width: number, height: number }}
+ */
+export function getDefaultSize(type) {
+  return DEFAULT_SIZES[type] || FALLBACK_SIZE
 }
 
 /**
@@ -27,7 +55,7 @@ export const DEFAULT_SIZES = {
  */
 export function getWidgetBounds(widget) {
   const { position = { x: 0, y: 0 }, props = {}, type } = widget
-  const defaults = DEFAULT_SIZES[type] || { width: 270, height: 170 }
+  const defaults = getDefaultSize(type)
   return {
     x: position.x,
     y: position.y,
@@ -248,7 +276,7 @@ export function resolvePosition({
   excludeId = null,
   gridSize = 24,
 }) {
-  const defaults = DEFAULT_SIZES[type] || { width: 270, height: 170 }
+  const defaults = getDefaultSize(type)
   const width = props.width ?? defaults.width
   const height = props.height ?? defaults.height
 

@@ -425,7 +425,24 @@ function CanvasTitleEditable({ canvasId, canvasMeta, canvas, isLocalDev }) {
     try {
       if (canvasId.includes('/')) {
         const folder = canvasId.split('/')[0]
-        await updateFolderMeta(folder, trimmed)
+        const result = await updateFolderMeta(folder, trimmed)
+        if (result?.renamed && result?.folder) {
+          // Folder was renamed on disk — navigate to new route
+          const pageName = canvasId.split('/').slice(1).join('/')
+          const newCanvasId = `${result.folder}/${pageName}`
+          const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+          const targetUrl = `${base}/canvas/${newCanvasId}`
+          if (import.meta.hot) {
+            const timer = setTimeout(() => { window.location.href = targetUrl }, 3000)
+            import.meta.hot.on('vite:beforeFullReload', () => {
+              clearTimeout(timer)
+              sessionStorage.setItem('sb-pending-navigate', targetUrl)
+            })
+          } else {
+            setTimeout(() => { window.location.href = targetUrl }, 1000)
+          }
+          return
+        }
       } else {
         await updateCanvas(canvasId, { settings: { title: trimmed } })
       }

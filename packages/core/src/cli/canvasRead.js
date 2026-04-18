@@ -16,6 +16,7 @@
 
 import * as p from '@clack/prompts'
 import { getServerUrl } from './serverUrl.js'
+import { getWidgetBounds } from '../canvas/collision.js'
 
 const dim = (s) => `\x1b[2m${s}\x1b[0m`
 const bold = (s) => `\x1b[1m${s}\x1b[0m`
@@ -27,6 +28,21 @@ async function checkServer() {
     return true
   } catch {
     return false
+  }
+}
+
+/**
+ * Compute positional bounds for a widget.
+ */
+function computeBounds(widget) {
+  const { x, y, width, height } = getWidgetBounds(widget)
+  return {
+    width,
+    height,
+    startX: x,
+    startY: y,
+    endX: x + width,
+    endY: y + height,
   }
 }
 
@@ -64,10 +80,12 @@ function getWidgetContent(widget) {
 function formatWidget(widget) {
   const { id, type, position = {} } = widget
   const { content, contentType, url, filePath } = getWidgetContent(widget)
+  const bounds = computeBounds(widget)
 
   const lines = []
   lines.push(`${bold(id)} ${dim(`(${type})`)}`)
   lines.push(`  Position: ${position.x ?? 0}, ${position.y ?? 0}`)
+  lines.push(`  Bounds: ${bounds.startX},${bounds.startY} → ${bounds.endX},${bounds.endY} ${dim(`(${bounds.width}×${bounds.height})`)}`)
 
   if (contentType === 'image') {
     lines.push(`  File: ${cyan(filePath)}`)
@@ -173,7 +191,7 @@ async function canvasRead() {
       }
 
       if (outputJson) {
-        const enriched = { ...widget, ...getWidgetContent(widget) }
+        const enriched = { ...widget, ...getWidgetContent(widget), bounds: computeBounds(widget) }
         console.log(JSON.stringify(enriched, null, 2))
       } else {
         console.log('')
@@ -185,7 +203,7 @@ async function canvasRead() {
 
     // List all widgets
     if (outputJson) {
-      const enriched = widgets.map((w) => ({ ...w, ...getWidgetContent(w) }))
+      const enriched = widgets.map((w) => ({ ...w, ...getWidgetContent(w), bounds: computeBounds(w) }))
       console.log(JSON.stringify({ ...data, widgets: enriched }, null, 2))
     } else {
       console.log(`\n${bold(data.title || canvasName)} ${dim(`(${widgets.length} widgets)`)}\n`)

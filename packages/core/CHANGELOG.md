@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 4.1.0-beta.1
+
+### Patch Changes
+
+-   Re-release of canvas title bar and branch bar fixes for client deployments
+
 ## 4.1.0-beta.0
 
 ### Minor Changes

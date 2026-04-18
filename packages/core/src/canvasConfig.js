@@ -20,6 +20,7 @@
 // ---------------------------------------------------------------------------
 
 let _pasteRules = []
+let _terminal = {}
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -29,10 +30,11 @@ let _pasteRules = []
  * Initialize canvas config from storyboard.config.json's "canvas" key.
  * Called by mountStoryboardCore.
  *
- * @param {{ pasteRules?: object[] }} [config]
+ * @param {{ pasteRules?: object[], terminal?: object }} [config]
  */
 export function initCanvasConfig(config = {}) {
   _pasteRules = Array.isArray(config.pasteRules) ? config.pasteRules : []
+  _terminal = config.terminal && typeof config.terminal === 'object' ? config.terminal : {}
 }
 
 /**
@@ -44,6 +46,15 @@ export function getPasteRules() {
   return _pasteRules
 }
 
+/**
+ * Get terminal widget configuration.
+ *
+ * @returns {{ theme?: object, fontSize?: number, fontFamily?: string, prompt?: string }}
+ */
+export function getTerminalConfig() {
+  return _terminal
+}
+
 // ---------------------------------------------------------------------------
 // Test helpers
 // ---------------------------------------------------------------------------
@@ -53,4 +64,5 @@ export function getPasteRules() {
  */
 export function _resetCanvasConfig() {
   _pasteRules = []
+  _terminal = {}
 }

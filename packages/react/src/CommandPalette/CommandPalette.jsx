@@ -313,10 +313,47 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
     return { group: { heading: section.title, id: `cfg:${section.id}`, items } }
   }
 
-  // --- Starred source (placeholder for user-starred items) ---
+  // --- Starred source (reads from viewfinder localStorage) ---
   if (section.source === 'starred') {
-    // Future: read starred items from localStorage/config
+    const STARRED_KEY = 'sb-viewfinder-starred'
+    let starredIds = []
+    try { starredIds = JSON.parse(localStorage.getItem(STARRED_KEY)) || [] } catch {}
+    if (starredIds.length === 0) return null
+
+    const index = buildPrototypeIndex()
+    // Build a lookup map of all artifacts
+    const artifactMap = new Map()
+    const allProtos = [...index.prototypes]
+    for (const folder of index.folders) {
+      allProtos.push(...folder.prototypes)
+      if (folder.canvases) folder.canvases.forEach(c => artifactMap.set(`canvas:${c.dirName}`, { ...c, _type: 'canvas' }))
+    }
+    for (const c of index.canvases) artifactMap.set(`canvas:${c.dirName}`, { ...c, _type: 'canvas' })
+    for (const p of allProtos) artifactMap.set(`proto:${p.dirName}`, { ...p, _type: 'prototype' })
+
     const items = []
+    for (const id of starredIds) {
+      const artifact = artifactMap.get(id)
+      if (!artifact) continue
+      const route = artifact._type === 'canvas'
+        ? `${prefix}/canvas/${artifact.dirName}`
+        : artifact.isExternal
+          ? artifact.externalUrl
+          : `${prefix}/${artifact.dirName}`
+      items.push({
+        id: `starred:${id}`,
+        children: artifact.name,
+        keywords: ['starred', 'star', artifact.name.toLowerCase()],
+        showType: false,
+        onClick: () => {
+          if (artifact.isExternal) {
+            window.open(route, '_blank')
+          } else {
+            window.location.href = route
+          }
+        },
+      })
+    }
     if (items.length === 0) return null
     return { group: { heading: section.title, id: `cfg:${section.id}`, items } }
   }

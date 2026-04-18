@@ -10,6 +10,7 @@ export { StoryboardContext }
 
 const CanvasPageLazy = lazy(() => import('./canvas/CanvasPage.jsx'))
 const StoryPageLazy = lazy(() => import('./story/StoryPage.jsx'))
+const CommandPaletteLazy = lazy(() => import('./CommandPalette/CommandPalette.jsx'))
 
 // Build a map from canvas route paths → canvas names at module load time
 const canvasRouteMap = new Map()
@@ -115,6 +116,26 @@ function getPageFlowName(pathname) {
  * The matched record entry is injected under the "record" key in flow data.
  */
 export default function StoryboardProvider({ flowName, sceneName, recordName, recordParam, children }) {
+  const basePath = import.meta.env?.BASE_URL || '/'
+
+  return (
+    <>
+      <StoryboardProviderInner
+        flowName={flowName}
+        sceneName={sceneName}
+        recordName={recordName}
+        recordParam={recordParam}
+      >
+        {children}
+      </StoryboardProviderInner>
+      <Suspense fallback={null}>
+        <CommandPaletteLazy basePath={basePath} />
+      </Suspense>
+    </>
+  )
+}
+
+function StoryboardProviderInner({ flowName, sceneName, recordName, recordParam, children }) {
   const location = useLocation()
   const params = useParams()
 

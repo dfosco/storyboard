@@ -374,7 +374,7 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
               return (
                 <li
                   key={item.id}
-                  className={`${styles.separator} ${dragIndex === index ? styles.itemDragging : ''}`}
+                  className={`${styles.separatorRow} ${dragIndex === index ? styles.itemDragging : ''}`}
                   role="separator"
                   draggable={isLocalDev}
                   onDragStart={(e) => handleDragStart(index, e)}
@@ -383,6 +383,8 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
                   onDragEnd={handleDragEnd}
                 >
                   {dropTarget === index && dragIndex !== index && <div className={styles.dropIndicator} />}
+                  {isLocalDev && <DragGrip />}
+                  <div className={styles.separatorLine} />
                 </li>
               )
             }

@@ -15,6 +15,7 @@
   import CommandPalette from './CommandPalette.svelte'
   import * as Panel from './lib/components/ui/panel/index.js'
   import PwaInstallBanner from './PwaInstallBanner.svelte'
+  import BranchBar from './BranchBar.svelte'
   import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
   import * as Tooltip from './lib/components/ui/tooltip/index.js'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
@@ -776,6 +777,7 @@
 {/if}
 
 {#if !isEmbed}
+  <BranchBar {basePath} />
   <PwaInstallBanner />
 {/if}
 

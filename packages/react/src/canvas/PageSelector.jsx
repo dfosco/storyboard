@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, useEffect } from 'react'
-import { createCanvas, renamePage, reorderPages, getPageOrder } from './canvasApi.js'
+import { createCanvas, renamePage, reorderPages, getPageOrder, duplicateCanvas } from './canvasApi.js'
 import styles from './PageSelector.module.css'
 
 const DragGrip = () => (
@@ -191,6 +191,47 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
       console.error('Failed to rename page:', err)
     }
   }, [editValue, editingPage, realPages])
+
+  // Duplicate a page
+  const handleDuplicate = useCallback(async (page, e) => {
+    e.stopPropagation()
+    // Compute copy name: "Title Copy", "Title Copy 2", etc.
+    const baseTitle = page.title.replace(/ Copy( \d+)?$/, '')
+    const existingCopies = realPages
+      .filter(p => {
+        const t = p.title
+        return t === `${baseTitle} Copy` || /^.+ Copy \d+$/.test(t) && t.startsWith(baseTitle)
+      })
+      .length
+    const copyTitle = existingCopies === 0
+      ? `${baseTitle} Copy`
+      : `${baseTitle} Copy ${existingCopies + 1}`
+
+    try {
+      const result = await duplicateCanvas(page.name, copyTitle)
+      if (result?.error) {
+        console.error('Failed to duplicate page:', result.error)
+        return
+      }
+      const route = result?.route
+      if (route) {
+        const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+        const targetUrl = base + route
+        try { sessionStorage.setItem('sb-open-page-selector', '1') } catch { /* ignore */ }
+        if (import.meta.hot) {
+          const timer = setTimeout(() => { window.location.href = targetUrl }, 3000)
+          import.meta.hot.on('vite:beforeFullReload', () => {
+            clearTimeout(timer)
+            sessionStorage.setItem('sb-pending-navigate', targetUrl)
+          })
+        } else {
+          setTimeout(() => { window.location.href = targetUrl }, 1000)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to duplicate page:', err)
+    }
+  }, [realPages])
 
   // Drag and drop handlers
   const handleDragStart = useCallback((index, e) => {
@@ -430,14 +471,28 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
                     onBlur={handleRenameCommit}
                   />
                 ) : (
-                  <span className={styles.itemContent}>{page.title}</span>
+                  <>
+                    <span className={styles.itemContent}>{page.title}</span>
+                    {isLocalDev && (
+                      <button
+                        className={styles.duplicateBtn}
+                        onClick={(e) => handleDuplicate(page, e)}
+                        onDoubleClick={(e) => e.stopPropagation()}
+                        title="Duplicate page"
+                        aria-label="Duplicate page"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                          <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25ZM5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z" />
+                        </svg>
+                      </button>
+                    )}
+                  </>
                 )}
               </li>
             )
           })}
           {isLocalDev && (
             <>
-              <li className={styles.separator} role="separator" />
               {adding ? (
                 <li className={styles.addForm}>
                   <input

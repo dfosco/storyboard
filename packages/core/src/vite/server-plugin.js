@@ -206,7 +206,7 @@ export default function storyboardServer() {
 
       // Terminal WebSocket server — PTY backend for terminal canvas widgets
       if (server.httpServer) {
-        setupTerminalServer(server.httpServer)
+        setupTerminalServer(server.httpServer, base)
       }
 
       // Ignore assets/canvas/ so image/snapshot writes don't trigger reloads

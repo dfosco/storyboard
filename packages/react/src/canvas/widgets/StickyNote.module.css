@@ -12,6 +12,8 @@
   font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
   overflow: auto;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 :global([data-sb-canvas-theme^='dark']) .sticky {
@@ -35,6 +37,7 @@
   word-break: break-word;
   cursor: text;
   min-height: 60px;
+  flex: 1;
 }
 
 :global([data-sb-canvas-theme^='dark']) .text {

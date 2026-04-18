@@ -91,7 +91,7 @@ export { TOOL_STATES, initToolbarToolStates, setToolbarToolState, getToolbarTool
 export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comments/config.js'
 
 // Canvas config (paste rules, canvas-level overrides)
-export { initCanvasConfig, getPasteRules } from './canvasConfig.js'
+export { initCanvasConfig, getPasteRules, getTerminalConfig } from './canvasConfig.js'
 export { getCommandPaletteConfig } from './commandPaletteConfig.js'
 
 // Customer mode config

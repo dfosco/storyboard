@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
+import { getTerminalConfig } from '@dfosco/storyboard-core'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './TerminalWidget.module.css'
 
@@ -44,6 +45,29 @@ function calcDimensions(widthPx, heightPx) {
   return { cols, rows }
 }
 
+const DEFAULT_THEME = {
+  background: '#0d1117',
+  foreground: '#e6edf3',
+  cursor: '#e6edf3',
+  selectionBackground: '#264f78',
+  black: '#484f58',
+  red: '#ff7b72',
+  green: '#3fb950',
+  yellow: '#d29922',
+  blue: '#58a6ff',
+  magenta: '#bc8cff',
+  cyan: '#39d2c0',
+  white: '#b1bac4',
+  brightBlack: '#6e7681',
+  brightRed: '#ffa198',
+  brightGreen: '#56d364',
+  brightYellow: '#e3b341',
+  brightBlue: '#79c0ff',
+  brightMagenta: '#d2a8ff',
+  brightCyan: '#56d4dd',
+  brightWhite: '#f0f6fc',
+}
+
 export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const width = readProp(props, 'width', terminalSchema)
   const height = readProp(props, 'height', terminalSchema)
@@ -72,36 +96,16 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         if (disposed) return
 
         const dims = calcDimensions(width, height)
+        const cfg = getTerminalConfig()
 
         term = new ghostty.Terminal({
-          fontSize: 13,
-          fontFamily: "'Ghostty', 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
+          fontSize: cfg.fontSize ?? 13,
+          fontFamily: cfg.fontFamily ?? "'Ghostty', 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
           cursorBlink: true,
           cursorStyle: 'bar',
           cols: dims.cols,
           rows: dims.rows,
-          theme: {
-            background: '#0d1117',
-            foreground: '#e6edf3',
-            cursor: '#e6edf3',
-            selectionBackground: '#264f78',
-            black: '#484f58',
-            red: '#ff7b72',
-            green: '#3fb950',
-            yellow: '#d29922',
-            blue: '#58a6ff',
-            magenta: '#bc8cff',
-            cyan: '#39d2c0',
-            white: '#b1bac4',
-            brightBlack: '#6e7681',
-            brightRed: '#ffa198',
-            brightGreen: '#56d364',
-            brightYellow: '#e3b341',
-            brightBlue: '#79c0ff',
-            brightMagenta: '#d2a8ff',
-            brightCyan: '#56d4dd',
-            brightWhite: '#f0f6fc',
-          },
+          theme: { ...DEFAULT_THEME, ...cfg.theme },
         })
 
         term.open(containerRef.current)

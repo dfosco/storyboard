@@ -17,6 +17,8 @@
  */
 
 import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { WebSocketServer } from 'ws'
 
 let pty
@@ -37,6 +39,17 @@ try {
 
 const TMUX_PREFIX = 'sb-'
 const TERMINAL_PATH_PREFIX = '/_storyboard/terminal/'
+
+/** Read terminal config from storyboard.config.json */
+function readTerminalConfig() {
+  try {
+    const raw = readFileSync(resolve(process.cwd(), 'storyboard.config.json'), 'utf8')
+    const config = JSON.parse(raw)
+    return config?.canvas?.terminal ?? {}
+  } catch {
+    return {}
+  }
+}
 
 /** Active PTY processes keyed by sessionId (not tmux sessions — those persist independently) */
 const sessions = new Map()
@@ -112,6 +125,7 @@ function handleConnection(ws, sessionId) {
 
   const cwd = process.cwd()
   const shell = process.env.SHELL || '/bin/zsh'
+  const termCfg = readTerminalConfig()
   const env = {
     ...process.env,
     TERM: 'xterm-256color',
@@ -124,6 +138,8 @@ function handleConnection(ws, sessionId) {
     ZDOTDIR: '/var/empty',
     BASH_ENV: '',
     ENV: '',
+    // Custom prompt from config
+    ...(termCfg.prompt ? { PS1: termCfg.prompt } : { PS1: '\\$ ' }),
   }
   let ptyProcess
 

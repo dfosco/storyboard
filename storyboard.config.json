@@ -29,7 +29,13 @@
       }
     ]
   },
-  "canvas": {},
+  "canvas": {
+    "terminal": {
+      "fontSize": 13,
+      "fontFamily": "'Ghostty', 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
+      "prompt": "❯ "
+    }
+  },
   "customerMode": {
     "enabled": false,
     "hideChrome": false,

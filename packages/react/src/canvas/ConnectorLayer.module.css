@@ -6,7 +6,7 @@
   height: 100%;
   pointer-events: none;
   overflow: visible;
-  z-index: 0;
+  z-index: 1;
 }
 
 .connectorPath {

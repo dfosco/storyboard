@@ -129,6 +129,16 @@ Bounds are persisted in widget metadata and recalculated on every add, move, or 
 
 Use bounds to determine widget overlap and spatial relationships without manual size calculation.
 
+### Get widget bounds (CLI)
+```bash
+npx storyboard canvas bounds my-canvas                     # Bounds for all widgets
+npx storyboard canvas bounds my-canvas --id sticky-abc123  # Bounds for one widget
+npx storyboard canvas bounds my-canvas --json              # JSON output
+npx storyboard canvas bounds --type sticky-note            # Default size for a widget type
+```
+
+Returns only size and position data (no content): `id`, `type`, `width`, `height`, `startX`, `startY`, `endX`, `endY`. Useful for collision checks and spatial queries.
+
 ## Reference: Server API
 
 ### Read canvas state

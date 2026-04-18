@@ -126,20 +126,29 @@ function handleConnection(ws, sessionId) {
   const cwd = process.cwd()
   const shell = process.env.SHELL || '/bin/zsh'
   const termCfg = readTerminalConfig()
+  const prompt = termCfg.prompt || '$ '
+
+  // Create a minimal ZDOTDIR with .zshrc to override the default prompt.
+  // Load order: /etc/zshenv → .zshenv → /etc/zshrc → .zshrc
+  // Our .zshrc runs last, so PS1 wins over /etc/zshrc defaults.
+  const zdotdir = join(tmpdir(), 'storyboard-terminal')
+  try {
+    mkdirSync(zdotdir, { recursive: true })
+    writeFileSync(join(zdotdir, '.zshenv'), '')
+    writeFileSync(join(zdotdir, '.zshrc'), `export PS1='${prompt.replace(/'/g, "'\\''")}'\nunset RPS1\n`)
+  } catch { /* best effort */ }
+
   const env = {
     ...process.env,
     TERM: 'xterm-256color',
     TERM_PROGRAM: 'storyboard',
-    // Suppress shell theme frameworks (starship, oh-my-zsh, powerlevel10k)
+    ZDOTDIR: zdotdir,
     STARSHIP_CONFIG: '/dev/null',
     POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD: 'true',
     ZSH_THEME: '',
-    // Skip user shell rc files — launch a clean shell
-    ZDOTDIR: '/var/empty',
     BASH_ENV: '',
     ENV: '',
-    // Custom prompt from config
-    ...(termCfg.prompt ? { PS1: termCfg.prompt } : { PS1: '\\$ ' }),
+    PS1: prompt,
   }
   let ptyProcess
 

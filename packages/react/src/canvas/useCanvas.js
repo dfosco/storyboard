@@ -6,6 +6,8 @@ import { getCanvasData } from '@dfosco/storyboard-core'
  * Falls back to build-time data if the server is unavailable.
  */
 async function fetchCanvasFromServer(name) {
+  // Canvas server API is only available during local dev
+  if (import.meta.env?.PROD) return null
   try {
     const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
     const res = await fetch(`${base}/_storyboard/canvas/read?name=${encodeURIComponent(name)}`)

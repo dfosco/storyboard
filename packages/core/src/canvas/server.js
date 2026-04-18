@@ -18,6 +18,8 @@
  *   PUT    /update-folder-meta — update folder .meta.json title
  *   POST   /widget   — append a widget_added event
  *   DELETE /widget   — append a widget_removed event
+ *   POST   /connector — append a connector_added event
+ *   DELETE /connector — append a connector_removed event
  *   POST   /create   — create a new .canvas.jsonl file
  *   GET    /stories  — list all .story.{jsx,tsx} files with exports
  *   POST   /create-story — scaffold a new .story.{jsx,tsx} file
@@ -424,6 +426,105 @@ export function createCanvasHandler(ctx) {
         sendJson(res, 200, { success: true, removed: 1 })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to remove widget: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /connector — append a connector_added event
+    if (routePath === '/connector' && method === 'POST') {
+      const { name, startWidgetId, startAnchor, endWidgetId, endAnchor, connectorType = 'default' } = body
+
+      if (!name) {
+        sendJson(res, 400, { error: 'Canvas name is required' })
+        return
+      }
+      if (!startWidgetId || !endWidgetId) {
+        sendJson(res, 400, { error: 'startWidgetId and endWidgetId are required' })
+        return
+      }
+      const validAnchors = ['top', 'bottom', 'left', 'right']
+      if (!validAnchors.includes(startAnchor) || !validAnchors.includes(endAnchor)) {
+        sendJson(res, 400, { error: `Anchors must be one of: ${validAnchors.join(', ')}` })
+        return
+      }
+      if (startWidgetId === endWidgetId) {
+        sendJson(res, 400, { error: 'Cannot connect a widget to itself' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      try {
+        const data = readCanvas(filePath)
+        const widgetIds = new Set((data.widgets || []).map((w) => w.id))
+        if (!widgetIds.has(startWidgetId)) {
+          sendJson(res, 404, { error: `Widget "${startWidgetId}" not found` })
+          return
+        }
+        if (!widgetIds.has(endWidgetId)) {
+          sendJson(res, 404, { error: `Widget "${endWidgetId}" not found` })
+          return
+        }
+
+        const connectorId = generateWidgetId('connector')
+        const connector = {
+          id: connectorId,
+          type: 'connector',
+          connectorType,
+          start: { widgetId: startWidgetId, anchor: startAnchor },
+          end: { widgetId: endWidgetId, anchor: endAnchor },
+          meta: {},
+        }
+
+        appendEvent(filePath, {
+          event: 'connector_added',
+          timestamp: new Date().toISOString(),
+          connector,
+        })
+
+        sendJson(res, 201, { success: true, connector })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to add connector: ${err.message}` })
+      }
+      return
+    }
+
+    // DELETE /connector — append a connector_removed event
+    if (routePath === '/connector' && method === 'DELETE') {
+      const { name, connectorId } = body
+
+      if (!name || !connectorId) {
+        sendJson(res, 400, { error: 'Canvas name and connectorId are required' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      try {
+        const data = readCanvas(filePath)
+        const exists = (data.connectors || []).some((c) => c.id === connectorId)
+        if (!exists) {
+          sendJson(res, 404, { error: `Connector "${connectorId}" not found in canvas "${name}"` })
+          return
+        }
+
+        appendEvent(filePath, {
+          event: 'connector_removed',
+          timestamp: new Date().toISOString(),
+          connectorId,
+        })
+
+        sendJson(res, 200, { success: true, removed: 1 })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to remove connector: ${err.message}` })
       }
       return
     }

@@ -50,6 +50,18 @@ function getControlOffset(anchor) {
   }
 }
 
+const DOT_OUTSET = 8
+
+function getDotOffset(anchor) {
+  switch (anchor) {
+    case 'top':    return { dx: 0, dy: -DOT_OUTSET }
+    case 'bottom': return { dx: 0, dy: DOT_OUTSET }
+    case 'left':   return { dx: -DOT_OUTSET, dy: 0 }
+    case 'right':  return { dx: DOT_OUTSET, dy: 0 }
+    default:       return { dx: 0, dy: 0 }
+  }
+}
+
 /**
  * Build a cubic Bézier path string between two anchor points.
  * When `freeEnd` is true, the end control point is computed from
@@ -120,9 +132,9 @@ export default function ConnectorLayer({
               className={styles.connectorPath}
               onClick={(e) => handleClick(e, conn.id)}
             />
-            {/* Endpoint dots */}
-            <circle cx={startPt.x} cy={startPt.y} r={4} className={styles.connectorEndpoint} />
-            <circle cx={endPt.x} cy={endPt.y} r={4} className={styles.connectorEndpoint} />
+            {/* Endpoint dots — outset from widget edge */}
+            {(() => { const s = getDotOffset(conn.start.anchor); return <circle cx={startPt.x + s.dx} cy={startPt.y + s.dy} r={6} className={styles.connectorEndpoint} /> })()}
+            {(() => { const e2 = getDotOffset(conn.end.anchor); return <circle cx={endPt.x + e2.dx} cy={endPt.y + e2.dy} r={6} className={styles.connectorEndpoint} /> })()}
           </g>
         )
       })}

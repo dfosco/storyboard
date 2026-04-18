@@ -3,6 +3,7 @@ import {
   getWidgetBounds,
   rectsOverlap,
   findCollision,
+  findCollisions,
   snapToGrid,
   findFreePosition,
   resolvePosition,
@@ -55,6 +56,24 @@ describe('getWidgetBounds', () => {
       y: 20,
       width: 270,
       height: 170,
+    })
+  })
+
+  it('resolves story widget type from DEFAULT_SIZES', () => {
+    const widget = { type: 'story', position: { x: 0, y: 0 }, props: {} }
+    expect(getWidgetBounds(widget)).toEqual({
+      x: 0, y: 0,
+      width: DEFAULT_SIZES['story'].width,
+      height: DEFAULT_SIZES['story'].height,
+    })
+  })
+
+  it('resolves codepen-embed widget type from DEFAULT_SIZES', () => {
+    const widget = { type: 'codepen-embed', position: { x: 0, y: 0 }, props: {} }
+    expect(getWidgetBounds(widget)).toEqual({
+      x: 0, y: 0,
+      width: DEFAULT_SIZES['codepen-embed'].width,
+      height: DEFAULT_SIZES['codepen-embed'].height,
     })
   })
 })
@@ -114,6 +133,32 @@ describe('findCollision', () => {
     const rect = { x: 50, y: 50, width: 200, height: 100 }
     const collision = findCollision(rect, widgets, 'w1')
     expect(collision).toBeNull()
+  })
+})
+
+describe('findCollisions', () => {
+  const widgets = [
+    { id: 'w1', type: 'sticky-note', position: { x: 0, y: 0 }, props: { width: 270, height: 170 } },
+    { id: 'w2', type: 'sticky-note', position: { x: 200, y: 0 }, props: { width: 270, height: 170 } },
+  ]
+
+  it('returns all colliding widgets', () => {
+    const rect = { x: 100, y: 50, width: 270, height: 170 }
+    const colliders = findCollisions(rect, widgets)
+    expect(colliders).toHaveLength(2)
+    expect(colliders.map((w) => w.id).sort()).toEqual(['w1', 'w2'])
+  })
+
+  it('returns empty array when no collision', () => {
+    const rect = { x: 0, y: 200, width: 270, height: 170 }
+    expect(findCollisions(rect, widgets)).toEqual([])
+  })
+
+  it('excludes specified widget ID', () => {
+    const rect = { x: 100, y: 50, width: 270, height: 170 }
+    const colliders = findCollisions(rect, widgets, 'w1')
+    expect(colliders).toHaveLength(1)
+    expect(colliders[0].id).toBe('w2')
   })
 })
 

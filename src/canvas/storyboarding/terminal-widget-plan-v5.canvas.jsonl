@@ -22,3 +22,6 @@
 {"event":"connector_added","timestamp":"2026-04-18T14:55:20.929Z","connector":{"id":"connector-vqgufu","type":"connector","connectorType":"default","start":{"widgetId":"terminal-68rnj0","anchor":"bottom"},"end":{"widgetId":"story-az785a","anchor":"top"},"meta":{}}}
 {"event":"connector_added","timestamp":"2026-04-18T14:55:25.796Z","connector":{"id":"connector-0sb14h","type":"connector","connectorType":"default","start":{"widgetId":"story-az785a","anchor":"top"},"end":{"widgetId":"story-l94pgj","anchor":"top"},"meta":{}}}
 {"event":"connector_removed","timestamp":"2026-04-18T14:55:25.841Z","connectorId":"connector-vqgufu"}
+{"event":"widget_removed","timestamp":"2026-04-18T15:06:11.988Z","widgetId":"terminal-68rnj0"}
+{"event":"widget_removed","timestamp":"2026-04-18T15:06:13.948Z","widgetId":"terminal-ugdxgh"}
+{"event":"widget_added","timestamp":"2026-04-18T15:06:16.076Z","widget":{"id":"terminal-pfmshy","type":"terminal","position":{"x":4328,"y":253},"props":{"width":600,"height":400},"bounds":{"width":600,"height":400,"startX":4328,"startY":253,"endX":4928,"endY":653}}}

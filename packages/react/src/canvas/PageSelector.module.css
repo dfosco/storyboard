@@ -51,12 +51,12 @@
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
-  min-width: 180px;
-  max-width: 300px;
+  min-width: 260px;
+  max-width: 360px;
   max-height: 320px;
   overflow-y: auto;
   margin: 0;
-  padding: 4px;
+  padding: 6px;
   list-style: none;
   background: var(--bgColor-default, #fff);
   border: 1px solid var(--borderColor-default, rgba(0, 0, 0, 0.15));
@@ -65,13 +65,49 @@
 }
 
 .item {
-  padding: 6px 10px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px 8px 4px;
   border-radius: 4px;
   cursor: pointer;
-  white-space: nowrap;
+  color: var(--fgColor-default, #1f2328);
+}
+
+.itemContent {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--fgColor-default, #1f2328);
+  white-space: nowrap;
+}
+
+.dragHandle {
+  opacity: 0;
+  color: var(--fgColor-muted, #656d76);
+  cursor: grab;
+  flex-shrink: 0;
+  padding: 2px;
+}
+
+.item:hover .dragHandle {
+  opacity: 1;
+}
+
+.itemDragging {
+  opacity: 0.5;
+}
+
+.dropIndicator {
+  position: absolute;
+  top: -1px;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: var(--focus-outlineColor, #0969da);
+  border-radius: 1px;
+  pointer-events: none;
 }
 
 .item:hover {

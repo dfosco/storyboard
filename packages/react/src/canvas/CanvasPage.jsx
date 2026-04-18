@@ -318,7 +318,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
     return rawFeatures.map((f) => {
       // Toggle collapse label and hide when content is short (no github = no collapse)
       if (f.action === 'toggle-collapse') {
-        if (!isGitHub) return null
+        if (widget.type === 'link-preview' && !isGitHub) return null
         return {
           ...f,
           label: widget.props?.collapsed ? 'Expand height' : 'Collapse height',

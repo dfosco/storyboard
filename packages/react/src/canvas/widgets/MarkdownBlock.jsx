@@ -122,7 +122,14 @@ export default function MarkdownBlock({ props, onUpdate, resizable }) {
         setEditHeight(blockRef.current.offsetHeight)
       }
       if (textareaRef.current) {
-        textareaRef.current.focus()
+        // Place cursor at end and prevent scroll jump to top
+        const len = textareaRef.current.value.length
+        textareaRef.current.setSelectionRange(len, len)
+        textareaRef.current.focus({ preventScroll: true })
+        // Restore the block's scroll position (captured before React swapped the DOM)
+        if (blockRef.current) {
+          blockRef.current.scrollTop = blockRef.current.dataset.scrollTop || 0
+        }
       }
     } else {
       setEditHeight(null)
@@ -163,10 +170,19 @@ export default function MarkdownBlock({ props, onUpdate, resizable }) {
             data-canvas-allow-text-selection={!canEdit ? '' : undefined}
             onClick={!canEdit ? (e) => e.stopPropagation() : undefined}
             onCopy={!canEdit ? handleReadOnlyCopy : undefined}
-            onDoubleClick={canEdit ? () => setEditing(true) : undefined}
+            onDoubleClick={canEdit ? () => {
+              // Save scroll position before switching to editor
+              if (blockRef.current) blockRef.current.dataset.scrollTop = blockRef.current.scrollTop
+              setEditing(true)
+            } : undefined}
             role={canEdit ? 'button' : undefined}
             tabIndex={canEdit ? 0 : undefined}
-            onKeyDown={canEdit ? (e) => { if (e.key === 'Enter') setEditing(true) } : undefined}
+            onKeyDown={canEdit ? (e) => {
+              if (e.key === 'Enter') {
+                if (blockRef.current) blockRef.current.dataset.scrollTop = blockRef.current.scrollTop
+                setEditing(true)
+              }
+            } : undefined}
             dangerouslySetInnerHTML={{
               __html: renderedHtml || (canEdit
                 ? '<p class="placeholder">Double-click to edit…</p>'

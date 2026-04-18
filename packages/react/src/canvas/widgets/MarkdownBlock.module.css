@@ -10,6 +10,16 @@
   font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
 }
 
+.blockCollapsed {
+  max-height: 360px;
+  overflow: hidden;
+}
+
+.blockCollapsed .preview {
+  mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+}
+
 .preview {
   padding: 16px 20px;
   font-size: 14px;

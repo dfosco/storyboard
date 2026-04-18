@@ -68,6 +68,7 @@ export default function MarkdownBlock({ props, onUpdate, resizable }) {
   const content = readProp(props, 'content', markdownSchema)
   const width = readProp(props, 'width', markdownSchema)
   const height = props?.height
+  const collapsed = !!props?.collapsed
   const canEdit = typeof onUpdate === 'function'
   const [editing, setEditing] = useState(false)
   const editingActive = canEdit && editing
@@ -132,7 +133,7 @@ export default function MarkdownBlock({ props, onUpdate, resizable }) {
     <WidgetWrapper>
       <div
         ref={blockRef}
-        className={styles.block}
+        className={`${styles.block}${collapsed && !editingActive ? ` ${styles.blockCollapsed}` : ''}`}
         style={{
           width,
           ...(height ? { height, overflow: 'auto' } : {}),

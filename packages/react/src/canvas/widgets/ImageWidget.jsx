@@ -24,6 +24,9 @@ const ImageWidget = forwardRef(function ImageWidget({ props, onUpdate, resizable
 
   const src = readProp(props, 'src', imageSchema)
   const isPrivate = readProp(props, 'private', imageSchema)
+
+  // Private images are not included in production builds
+  const isHiddenInProd = isPrivate && import.meta.env?.PROD
   const width = readProp(props, 'width', imageSchema)
   const height = readProp(props, 'height', imageSchema)
 
@@ -77,7 +80,7 @@ const ImageWidget = forwardRef(function ImageWidget({ props, onUpdate, resizable
     }
   }), [src, onUpdate])
 
-  if (!src) return null
+  if (!src || isHiddenInProd) return null
 
   const sizeStyle = {}
   if (typeof width === 'number') sizeStyle.width = `${width}px`

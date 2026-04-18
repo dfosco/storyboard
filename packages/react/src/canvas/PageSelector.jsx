@@ -507,6 +507,13 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
           })}
           {isLocalDev && (
             <>
+              <li
+                className={styles.dropZoneEnd}
+                onDragOver={(e) => handleDragOver(orderedItems.length, e)}
+                onDrop={(e) => handleDrop(orderedItems.length, e)}
+              >
+                {dropTarget === orderedItems.length && dragIndex != null && <div className={styles.dropIndicator} />}
+              </li>
               {adding ? (
                 <li className={styles.addForm}>
                   <input

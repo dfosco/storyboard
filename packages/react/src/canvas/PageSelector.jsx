@@ -205,15 +205,15 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
   const handleDuplicate = useCallback(async (page, e) => {
     e.stopPropagation()
 
-    // Smart copy naming: if title ends with ` N`, `#N`, or `vN`, increment the number.
-    // Otherwise fall back to "Title Copy", "Title Copy 2", etc.
-    const numberedMatch = page.title.match(/^(.+?)(?:\s+|#|v)(\d+)$/)
+    // Smart copy naming: if title ends with ` N` or `vN`, increment the number.
+    // Skip `#N` (could be issue refs) and years (2000-2099).
+    const numberedMatch = page.title.match(/^(.+?)(\s+|v)(\d+)$/)
     let copyTitle
-    if (numberedMatch) {
-      const [, base, numStr] = numberedMatch
-      const sep = page.title.slice(base.length, -numStr.length) // extract separator: ' ', '#', 'v'
+    const num = numberedMatch ? parseInt(numberedMatch[3], 10) : null
+    const isYear = num !== null && num >= 2000 && num <= 2099
+    if (numberedMatch && !isYear) {
+      const [, base, sep, numStr] = numberedMatch
       let next = parseInt(numStr, 10) + 1
-      // Find the next available number
       const titles = new Set(realPages.map(p => p.title))
       while (titles.has(`${base}${sep}${next}`)) next++
       copyTitle = `${base}${sep}${next}`

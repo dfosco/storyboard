@@ -77,3 +77,7 @@ export function getPageOrder(folder) {
 export function updateFolderMeta(folder, title) {
   return request('/update-folder-meta', 'PUT', { folder, title })
 }
+
+export function duplicateCanvas(canvasId, newTitle) {
+  return request('/duplicate', 'POST', { name: canvasId, newTitle })
+}

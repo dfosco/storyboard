@@ -576,6 +576,78 @@ export function createCanvasHandler(ctx) {
       return
     }
 
+    // POST /duplicate — duplicate an existing canvas page with its widgets
+    if (routePath === '/duplicate' && method === 'POST') {
+      const { name, newTitle } = body
+
+      if (!name || !newTitle) {
+        sendJson(res, 400, { error: 'Canvas name and newTitle are required' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      const kebab = newTitle
+        .replace(/[^a-zA-Z0-9\s_-]/g, '')
+        .trim()
+        .replace(/[\s_]+/g, '-')
+        .toLowerCase()
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+
+      if (!kebab) {
+        sendJson(res, 400, { error: 'newTitle must contain at least one alphanumeric character' })
+        return
+      }
+
+      try {
+        const sourceData = readCanvas(filePath)
+        const dir = path.dirname(filePath)
+        const newFilename = `${kebab}.canvas.jsonl`
+        const newPath = path.join(dir, newFilename)
+
+        if (fs.existsSync(newPath)) {
+          sendJson(res, 409, { error: `A canvas file named "${newFilename}" already exists` })
+          return
+        }
+
+        // Re-ID all widgets to avoid collisions
+        const widgets = (sourceData.widgets || []).map(w => ({
+          ...w,
+          id: generateWidgetId(w.type || 'widget'),
+        }))
+
+        const creationEvent = {
+          event: 'canvas_created',
+          timestamp: new Date().toISOString(),
+          title: newTitle,
+          grid: sourceData.grid ?? true,
+          gridSize: sourceData.gridSize ?? 24,
+          colorMode: sourceData.colorMode ?? 'auto',
+          widgets,
+        }
+
+        writeNewCanvas(newPath, creationEvent)
+
+        const relPath = path.relative(root, newPath).replace(/\\/g, '/')
+        const canonicalName = toCanvasId(relPath) || kebab
+
+        sendJson(res, 201, {
+          success: true,
+          name: canonicalName,
+          path: relPath,
+          route: `/canvas/${canonicalName}`,
+        })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to duplicate canvas: ${err.message}` })
+      }
+      return
+    }
+
     // POST /create — create a new .canvas.jsonl file
     // Supports `convertFrom` to convert a single-page canvas into a multi-page folder.
     if (routePath === '/create' && method === 'POST') {

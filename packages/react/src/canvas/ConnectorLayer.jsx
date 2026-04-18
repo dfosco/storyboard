@@ -37,10 +37,23 @@ function getControlOffset(anchor) {
 
 /**
  * Build a cubic Bézier path string between two anchor points.
+ * When `freeEnd` is true, the end control point is computed from
+ * the direction vector (end→start) so the curve never bends in
+ * front of the cursor during drag.
  */
-function buildPath(startPt, startAnchor, endPt, endAnchor) {
+function buildPath(startPt, startAnchor, endPt, endAnchor, freeEnd = false) {
   const c1 = getControlOffset(startAnchor)
-  const c2 = getControlOffset(endAnchor)
+  let c2
+  if (freeEnd) {
+    // Point the end control toward the start so the curve approaches naturally
+    const dx = startPt.x - endPt.x
+    const dy = startPt.y - endPt.y
+    const dist = Math.hypot(dx, dy) || 1
+    const scale = Math.min(CONTROL_OFFSET, dist * 0.4)
+    c2 = { dx: (dx / dist) * scale, dy: (dy / dist) * scale }
+  } else {
+    c2 = getControlOffset(endAnchor)
+  }
   return `M ${startPt.x} ${startPt.y} C ${startPt.x + c1.dx} ${startPt.y + c1.dy}, ${endPt.x + c2.dx} ${endPt.y + c2.dy}, ${endPt.x} ${endPt.y}`
 }
 
@@ -108,6 +121,7 @@ export default function ConnectorLayer({
               dragPreview.startAnchor,
               dragPreview.endPt,
               dragPreview.endAnchor || dragPreview.startAnchor,
+              !dragPreview.snapTarget,
             )}
             className={dragPreview.snapTarget ? styles.connectorPath : styles.dragPreviewPath}
           />

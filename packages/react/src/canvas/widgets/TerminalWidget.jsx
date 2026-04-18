@@ -77,11 +77,15 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive])
 
-  // Capture-phase keyboard listener — only active in interactive mode.
-  // Stops canvas shortcuts (Delete, Escape, Ctrl+C) from firing
-  // so all keys go to the PTY. Escape exits interactive mode.
+  // Bubble-phase keyboard listener — only active in interactive mode.
+  // The canvas keydown handlers listen on document in bubble phase.
+  // We attach a bubble-phase listener on the widget element that stops
+  // propagation, preventing canvas shortcuts from firing while letting
+  // ghostty-web's internal handlers (on its own textarea) work normally.
   useEffect(() => {
     if (!interactive) return
+    const el = widgetRef.current
+    if (!el) return
 
     function stopKeys(e) {
       if (e.key === 'Escape') {
@@ -93,11 +97,11 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
       e.stopPropagation()
     }
 
-    document.addEventListener('keydown', stopKeys, true)
-    document.addEventListener('keyup', stopKeys, true)
+    el.addEventListener('keydown', stopKeys)
+    el.addEventListener('keyup', stopKeys)
     return () => {
-      document.removeEventListener('keydown', stopKeys, true)
-      document.removeEventListener('keyup', stopKeys, true)
+      el.removeEventListener('keydown', stopKeys)
+      el.removeEventListener('keyup', stopKeys)
     }
   }, [interactive])
 

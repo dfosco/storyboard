@@ -550,8 +550,22 @@ export function createCanvasHandler(ctx) {
         return
       }
 
+      const kebab = title
+        .replace(/[^a-zA-Z0-9\s_-]/g, '')
+        .trim()
+        .replace(/[\s_]+/g, '-')
+        .toLowerCase()
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+
+      if (!kebab) {
+        sendJson(res, 400, { error: 'title must contain at least one alphanumeric character' })
+        return
+      }
+
       const canvasDir = path.join(root, 'src', 'canvas')
-      const folderDir = fs.existsSync(path.join(canvasDir, `${folder}.folder`))
+      const isFolderSuffix = fs.existsSync(path.join(canvasDir, `${folder}.folder`))
+      const folderDir = isFolderSuffix
         ? path.join(canvasDir, `${folder}.folder`)
         : fs.existsSync(path.join(canvasDir, folder))
           ? path.join(canvasDir, folder)
@@ -564,14 +578,43 @@ export function createCanvasHandler(ctx) {
 
       try {
         const dirName = path.basename(folderDir).replace(/\.folder$/, '')
+
+        // Update .meta.json title
         const metaPath = path.join(folderDir, `${dirName}.meta.json`)
         let meta = {}
         if (fs.existsSync(metaPath)) {
           meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
         }
         meta.title = title
-        fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n', 'utf-8')
-        sendJson(res, 200, { success: true })
+
+        // Rename folder directory if the kebab name differs
+        const needsRename = kebab !== dirName
+        let newFolderDir = folderDir
+        let newDirName = dirName
+
+        if (needsRename) {
+          const suffix = isFolderSuffix ? '.folder' : ''
+          newFolderDir = path.join(canvasDir, `${kebab}${suffix}`)
+          if (fs.existsSync(newFolderDir)) {
+            sendJson(res, 409, { error: `A folder named "${kebab}" already exists` })
+            return
+          }
+          // Write updated meta first, then rename directory
+          fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+          // Rename the .meta.json file to match new dir name
+          const newMetaPath = path.join(folderDir, `${kebab}.meta.json`)
+          if (newMetaPath !== metaPath) {
+            fs.renameSync(metaPath, newMetaPath)
+          }
+          // Rename directory
+          fs.renameSync(folderDir, newFolderDir)
+          newDirName = kebab
+        } else {
+          fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+        }
+
+        // Return the new folder name so the client can navigate
+        sendJson(res, 200, { success: true, folder: newDirName, renamed: needsRename })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to update folder meta: ${err.message}` })
       }

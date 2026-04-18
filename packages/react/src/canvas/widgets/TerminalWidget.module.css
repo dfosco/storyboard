@@ -9,6 +9,12 @@
   background: #0d1117;
   border: 1px solid var(--borderColor-default, #30363d);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.terminal.interactive {
+  border-color: var(--borderColor-accent-emphasis, #58a6ff);
+  box-shadow: 0 0 0 1px var(--borderColor-accent-emphasis, #58a6ff), 0 1px 3px rgba(0, 0, 0, 0.24);
 }
 
 .xtermContainer {

@@ -160,3 +160,41 @@ export function getMenuWidgetTypes() {
     .filter(([type]) => type !== 'link-preview' && type !== 'image' && type !== 'figma-embed' && type !== 'codepen-embed' && type !== 'story')
     .map(([type, def]) => ({ type, label: def.label, icon: def.icon }))
 }
+
+/**
+ * Get the connector configuration for a widget type.
+ * @param {string} type — widget type string
+ * @returns {{ anchors: Record<string, string>, accept: string[], exclude: string[] }}
+ */
+export function getConnectorConfig(type) {
+  const def = widgetTypes[type]?.connectors
+  return {
+    anchors: def?.anchors ?? { top: 'available', bottom: 'available', left: 'available', right: 'available' },
+    accept: def?.accept ?? ['*'],
+    exclude: def?.exclude ?? [],
+  }
+}
+
+/**
+ * Check if a specific anchor is available on a widget type.
+ * @param {string} type — widget type string
+ * @param {string} anchor — anchor name (top/bottom/left/right)
+ * @returns {'available' | 'disabled' | 'unavailable'}
+ */
+export function getAnchorState(type, anchor) {
+  const config = getConnectorConfig(type)
+  return config.anchors[anchor] ?? 'available'
+}
+
+/**
+ * Check if a connection from sourceType to targetType is allowed.
+ * @param {string} targetType — widget type receiving the connection
+ * @param {string} sourceType — widget type initiating the connection
+ * @returns {boolean}
+ */
+export function canAcceptConnection(targetType, sourceType) {
+  const config = getConnectorConfig(targetType)
+  if (config.exclude.includes(sourceType)) return false
+  if (config.accept.includes('*')) return true
+  return config.accept.includes(sourceType)
+}

@@ -4,7 +4,6 @@
     "label:copy-link": "Copy widget link",
     "label:delete": "Delete",
     "label:open-ext": "Open in new tab",
-
     "label:edit": "Edit",
     "label:download": "Download image",
     "label:copy-png": "Copy as image",
@@ -16,7 +15,7 @@
   "widgets": {
     "sticky-note": {
       "label": "Sticky Note",
-      "icon": "📝",
+      "icon": "\ud83d\udcdd",
       "resize": {
         "enabled": true,
         "prod": false
@@ -100,11 +99,23 @@
           "icon": "trash",
           "menu": true
         }
-      ]
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
     },
     "markdown": {
       "label": "Markdown",
-      "icon": "📄",
+      "icon": "\ud83d\udcc4",
       "resize": {
         "enabled": true,
         "prod": false
@@ -176,11 +187,23 @@
           "icon": "trash",
           "menu": true
         }
-      ]
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
     },
     "prototype": {
       "label": "Prototype",
-      "icon": "🖥️",
+      "icon": "\ud83d\udda5\ufe0f",
       "resize": {
         "enabled": true,
         "prod": false
@@ -238,7 +261,6 @@
           "icon": "open-external",
           "prod": true
         },
-
         {
           "id": "edit-url",
           "type": "action",
@@ -282,11 +304,23 @@
           "icon": "trash",
           "menu": true
         }
-      ]
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
     },
     "figma-embed": {
       "label": "Figma Embed",
-      "icon": "🎨",
+      "icon": "\ud83c\udfa8",
       "resize": {
         "enabled": true,
         "prod": false
@@ -360,11 +394,23 @@
           "icon": "trash",
           "menu": true
         }
-      ]
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
     },
     "codepen-embed": {
       "label": "CodePen Embed",
-      "icon": "✏️",
+      "icon": "\u270f\ufe0f",
       "resize": {
         "enabled": true,
         "prod": false
@@ -438,11 +484,23 @@
           "icon": "trash",
           "menu": true
         }
-      ]
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
     },
     "link-preview": {
       "label": "Link Preview",
-      "icon": "🔗",
+      "icon": "\ud83d\udd17",
       "resize": {
         "enabled": false,
         "prod": false
@@ -547,11 +605,23 @@
           "icon": "trash",
           "menu": true
         }
-      ]
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
     },
     "component": {
       "label": "Component",
-      "icon": "⚛️",
+      "icon": "\u269b\ufe0f",
       "resize": {
         "enabled": true,
         "prod": false
@@ -584,11 +654,23 @@
             "action": "copy-widget-id"
           }
         }
-      ]
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
     },
     "story": {
       "label": "Story",
-      "icon": "📖",
+      "icon": "\ud83d\udcd6",
       "resize": {
         "enabled": true,
         "prod": false
@@ -679,11 +761,23 @@
           "icon": "trash",
           "menu": true
         }
-      ]
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
     },
     "image": {
       "label": "Image",
-      "icon": "🖼️",
+      "icon": "\ud83d\uddbc\ufe0f",
       "resize": {
         "enabled": true,
         "prod": false
@@ -772,7 +866,19 @@
           "icon": "trash",
           "menu": true
         }
-      ]
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
     }
   }
 }

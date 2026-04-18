@@ -37,6 +37,42 @@ export function getWidgetBounds(widget) {
 }
 
 /**
+ * Compute persistent bounds metadata for a widget.
+ * Returns { width, height, startX, startY, endX, endY }.
+ * @param {object} widget - Widget with position, props, and type
+ * @returns {{ width: number, height: number, startX: number, startY: number, endX: number, endY: number }}
+ */
+export function computeWidgetBounds(widget) {
+  const { x, y, width, height } = getWidgetBounds(widget)
+  return {
+    width,
+    height,
+    startX: x,
+    startY: y,
+    endX: x + width,
+    endY: y + height,
+  }
+}
+
+/**
+ * Stamp bounds metadata onto a widget, returning a new widget object.
+ * @param {object} widget
+ * @returns {object} Widget with `bounds` field
+ */
+export function stampBounds(widget) {
+  return { ...widget, bounds: computeWidgetBounds(widget) }
+}
+
+/**
+ * Stamp bounds on every widget in an array.
+ * @param {object[]} widgets
+ * @returns {object[]}
+ */
+export function stampBoundsAll(widgets) {
+  return widgets.map(stampBounds)
+}
+
+/**
  * Check if two rectangles overlap.
  * @param {{ x: number, y: number, width: number, height: number }} a
  * @param {{ x: number, y: number, width: number, height: number }} b

@@ -472,10 +472,6 @@ export default function WidgetChrome({
             e.stopPropagation()
             e.nativeEvent?.stopImmediatePropagation?.()
             e.preventDefault()
-          }}
-          onMouseDown={(e) => {
-            e.stopPropagation()
-            e.preventDefault()
             onConnectorDragStart(widgetId, anchor, e)
           }}
           data-anchor={anchor}

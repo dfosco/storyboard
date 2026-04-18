@@ -132,9 +132,9 @@ export default function ConnectorLayer({
               className={styles.connectorPath}
               onClick={(e) => handleClick(e, conn.id)}
             />
-            {/* Endpoint dots — outset from widget edge */}
-            {(() => { const s = getDotOffset(conn.start.anchor); return <circle cx={startPt.x + s.dx} cy={startPt.y + s.dy} r={6} className={styles.connectorEndpoint} /> })()}
-            {(() => { const e2 = getDotOffset(conn.end.anchor); return <circle cx={endPt.x + e2.dx} cy={endPt.y + e2.dy} r={6} className={styles.connectorEndpoint} /> })()}
+            {/* Endpoint dots */}
+            <circle cx={startPt.x} cy={startPt.y} r={6} className={styles.connectorEndpoint} />
+            <circle cx={endPt.x} cy={endPt.y} r={6} className={styles.connectorEndpoint} />
           </g>
         )
       })}

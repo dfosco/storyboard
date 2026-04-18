@@ -99,18 +99,22 @@ export default function ConnectorLayer({
         )
       })}
 
-      {/* Drag preview — dashed line following cursor */}
-      {dragPreview && console.log('[devlog] rendering drag preview', dragPreview.startPt, dragPreview.endPt)}
+      {/* Drag preview — dashed when free, solid when snapped to anchor */}
       {dragPreview && (
-        <path
-          d={buildPath(
-            dragPreview.startPt,
-            dragPreview.startAnchor,
-            dragPreview.endPt,
-            dragPreview.endAnchor || dragPreview.startAnchor,
+        <>
+          <path
+            d={buildPath(
+              dragPreview.startPt,
+              dragPreview.startAnchor,
+              dragPreview.endPt,
+              dragPreview.endAnchor || dragPreview.startAnchor,
+            )}
+            className={dragPreview.snapTarget ? styles.connectorPath : styles.dragPreviewPath}
+          />
+          {dragPreview.snapTarget && (
+            <circle cx={dragPreview.endPt.x} cy={dragPreview.endPt.y} r={6} className={styles.connectorEndpoint} />
           )}
-          className={styles.dragPreviewPath}
-        />
+        </>
       )}
     </svg>
   )

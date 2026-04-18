@@ -468,7 +468,14 @@ export default function WidgetChrome({
         <div
           key={anchor}
           className={`${styles.anchorPort} ${styles[`anchorPort${anchor[0].toUpperCase()}${anchor.slice(1)}`]}`}
+          onPointerDown={(e) => {
+            console.log('[devlog] anchor port pointerdown', anchor, widgetId)
+            e.stopPropagation()
+            e.stopImmediatePropagation()
+            e.preventDefault()
+          }}
           onMouseDown={(e) => {
+            console.log('[devlog] anchor port mousedown', anchor, widgetId)
             e.stopPropagation()
             e.preventDefault()
             onConnectorDragStart(widgetId, anchor, e)

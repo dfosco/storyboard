@@ -3,11 +3,6 @@
   "ranking": "frecency",
   "sections": [
     {
-      "id": "starred",
-      "title": "Starred",
-      "source": "starred"
-    },
-    {
       "id": "tools",
       "title": "",
       "source": "tools",
@@ -17,6 +12,12 @@
         { "id": "hide-toolbars", "label": "Hide Toolbars" }
       ]
     },
+    { "id": "sep0", "items": [] },
+    {
+      "id": "starred",
+      "title": "Starred",
+      "source": "starred"
+    },    
     { "id": "sep1", "items": [] },
     {
       "id": "tools2",

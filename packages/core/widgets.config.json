@@ -12,6 +12,22 @@
     "label:copy-id": "Copy widget ID",
     "label:copy-text": "Copy text"
   },
+  "connectorDefaults": {
+    "controlOffset": 120,
+    "stroke": "var(--fgColor-accent, #0969da)",
+    "strokeWidth": 4,
+    "hoverStroke": "var(--fgColor-danger, #cf222e)",
+    "hoverStrokeWidth": 5,
+    "endpointRadius": 6,
+    "endpointFill": "var(--fgColor-accent, #0969da)",
+    "endpointStroke": "var(--bgColor-default, #ffffff)",
+    "endpointStrokeWidth": 3,
+    "hitAreaStrokeWidth": 16,
+    "dragStroke": "var(--fgColor-accent, #0969da)",
+    "dragStrokeWidth": 2,
+    "dragDasharray": "6 4",
+    "dragOpacity": 0.7
+  },
   "widgets": {
     "sticky-note": {
       "label": "Sticky Note",

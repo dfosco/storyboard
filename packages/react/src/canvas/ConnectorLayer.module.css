@@ -25,6 +25,8 @@
 
 .connectorEndpoint {
   fill: var(--fgColor-accent, #0969da);
+  stroke: var(--bgColor-default, #ffffff);
+  stroke-width: 3;
   pointer-events: none;
 }
 

@@ -100,6 +100,7 @@ export default function ConnectorLayer({
       })}
 
       {/* Drag preview — dashed line following cursor */}
+      {dragPreview && console.log('[devlog] rendering drag preview', dragPreview.startPt, dragPreview.endPt)}
       {dragPreview && (
         <path
           d={buildPath(

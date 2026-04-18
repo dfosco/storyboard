@@ -506,16 +506,14 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
             )
           })}
           {isLocalDev && (
-            <>
-              <li
-                className={styles.dropZoneEnd}
-                onDragOver={(e) => handleDragOver(orderedItems.length, e)}
-                onDrop={(e) => handleDrop(orderedItems.length, e)}
-              >
-                {dropTarget === orderedItems.length && dragIndex != null && <div className={styles.dropIndicator} />}
-              </li>
+            <li
+              className={styles.dropZoneEnd}
+              onDragOver={(e) => handleDragOver(orderedItems.length, e)}
+              onDrop={(e) => handleDrop(orderedItems.length, e)}
+            >
+              {dropTarget === orderedItems.length && dragIndex != null && <div className={styles.dropIndicator} />}
               {adding ? (
-                <li className={styles.addForm}>
+                <div className={styles.addForm}>
                   <input
                     ref={inputRef}
                     className={styles.addInput}
@@ -538,9 +536,9 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
                   >
                     {creating ? '…' : 'Add'}
                   </button>
-                </li>
+                </div>
               ) : (
-                <li
+                <div
                   className={styles.addItem}
                   onClick={() => setAdding(true)}
                   tabIndex={0}
@@ -551,13 +549,13 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
                     }
                   }}
                 >
-                  + Add new page
-                </li>
+                  + Add page
+                </div>
               )}
               {successMsg && (
-                <li className={styles.successMsg}>✓ {successMsg}</li>
+                <div className={styles.successMsg}>✓ {successMsg}</div>
               )}
-            </>
+            </li>
           )}
         </ul>
       )}

@@ -6,7 +6,7 @@ import { shouldPreventCanvasTextSelection } from './textSelection.js'
 import { getCanvasThemeVars, getCanvasPrimerAttrs } from './canvasTheme.js'
 import { getWidgetComponent } from './widgets/index.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'
-import { getFeatures, isResizable } from './widgets/widgetConfig.js'
+import { getFeatures, isResizable, getAnchorState, canAcceptConnection } from './widgets/widgetConfig.js'
 import { createPasteContext, resolvePaste } from './widgets/pasteRules.js'
 import { getPasteRules } from '@dfosco/storyboard-core'
 import { registerSmoothCorners } from '@dfosco/storyboard-core/smooth-corners'
@@ -767,9 +767,19 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     const startWidget = widgets.find((w) => w.id === widgetId)
     if (!startWidget) return
 
+    // Don't start drag from a disabled/unavailable anchor
+    const srcAnchorState = getAnchorState(startWidget.type, anchor)
+    if (srcAnchorState !== 'available') return
+
     const computeAnchorPt = (widget, anch) => {
-      const ww = widget.props?.width ?? widget.bounds?.width ?? 270
-      const wh = widget.props?.height ?? widget.bounds?.height ?? 170
+      let ww, wh
+      const el = document.getElementById(widget.id)
+      if (el) {
+        const inner = el.querySelector('[data-widget-id]') || el.firstElementChild
+        if (inner) { ww = inner.offsetWidth; wh = inner.offsetHeight }
+      }
+      if (!ww) ww = widget.props?.width ?? widget.bounds?.width ?? 270
+      if (!wh) wh = widget.props?.height ?? widget.bounds?.height ?? 170
       const px = widget.position?.x ?? 0
       const py = widget.position?.y ?? 0
       switch (anch) {
@@ -790,13 +800,19 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
     // Find nearest anchor on any other widget within snap distance
     const SNAP_DIST = 40
+    const sourceType = startWidget.type
     const findNearestAnchor = (canvasPt) => {
       const currentWidgets = stateRef.current.widgets ?? []
       let best = null
       let bestDist = SNAP_DIST
       for (const w of currentWidgets) {
         if (w.id === widgetId) continue
+        // Check if this widget type accepts connections from the source type
+        if (!canAcceptConnection(w.type, sourceType)) continue
         for (const anch of ['top', 'bottom', 'left', 'right']) {
+          // Skip unavailable or disabled anchors
+          const anchorState = getAnchorState(w.type, anch)
+          if (anchorState !== 'available') continue
           const pt = computeAnchorPt(w, anch)
           const dist = Math.hypot(pt.x - canvasPt.x, pt.y - canvasPt.y)
           if (dist < bestDist) {

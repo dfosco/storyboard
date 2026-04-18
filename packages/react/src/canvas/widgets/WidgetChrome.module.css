@@ -52,6 +52,13 @@
   margin-top: -8px;
 }
 
+.anchorPortDisabled {
+  background: var(--fgColor-muted, #8b949e);
+  opacity: 0;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* Widget slot — contains the actual widget; selection outline targets this */
 .widgetSlot {
   position: relative;

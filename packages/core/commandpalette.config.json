@@ -57,7 +57,7 @@
     { "id": "sep5", "items": [] },
     {
       "id": "stories",
-      "title": "Stories",
+      "title": "Components",
       "source": "stories"
     },
     { "id": "sep6", "items": [] },

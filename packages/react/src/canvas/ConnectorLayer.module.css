@@ -7,6 +7,12 @@
   pointer-events: none;
   overflow: visible;
   z-index: 1;
+  transition: opacity 0.2s ease;
+}
+
+.connectorLayerHidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .connectorPath {

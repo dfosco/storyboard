@@ -1,50 +1,45 @@
 /**
- * Terminal Server — WebSocket PTY backend for terminal canvas widgets.
+ * Terminal Server — WebSocket shell backend for terminal canvas widgets.
  *
- * Spawns a PTY process per WebSocket connection using node-pty.
- * Handles resize messages and session lifecycle (create on connect,
- * destroy on disconnect).
+ * Spawns a shell process per WebSocket connection using child_process.
+ * Handles session lifecycle (create on connect, destroy on disconnect).
  *
  * Dev-only — this runs inside the Vite dev server, same trust model.
  *
- * Protocol (binary frames = PTY data, text frames = JSON control):
- *   Client → Server:  binary data (stdin to PTY)
+ * Protocol (all frames are text):
+ *   Client → Server:  raw text (stdin to shell)
  *   Client → Server:  JSON { type: "resize", cols, rows }
- *   Server → Client:  binary data (stdout from PTY)
+ *   Server → Client:  raw text (stdout/stderr from shell)
  */
 
 import { WebSocketServer } from 'ws'
-
-let pty
-try {
-  pty = await import('node-pty')
-} catch {
-  // node-pty is optional — terminal widgets won't work without it
-  pty = null
-}
+import { spawn } from 'node:child_process'
 
 const TERMINAL_PATH_PREFIX = '/_storyboard/terminal/'
 
-/** Active PTY sessions keyed by sessionId */
+/** Active shell sessions keyed by sessionId */
 const sessions = new Map()
 
 /**
  * Attach the terminal WebSocket server to a Vite HTTP server.
  * Call this from configureServer() in the server plugin.
  */
-export function setupTerminalServer(httpServer) {
-  if (!pty) {
-    console.warn('[storyboard] node-pty not available — terminal widgets disabled')
-    return
-  }
+export function setupTerminalServer(httpServer, base = '/') {
+  console.log('[storyboard] terminal server ready')
 
   const wss = new WebSocketServer({ noServer: true })
+  const baseNoTrail = (base || '/').replace(/\/$/, '')
 
   httpServer.on('upgrade', (req, socket, head) => {
-    const url = new URL(req.url, 'http://localhost')
-    if (!url.pathname.startsWith(TERMINAL_PATH_PREFIX)) return
+    let pathname = req.url || ''
+    // Strip base path prefix (e.g. /branch--4.2.0/)
+    if (baseNoTrail && pathname.startsWith(baseNoTrail)) {
+      pathname = pathname.slice(baseNoTrail.length) || '/'
+    }
 
-    const sessionId = url.pathname.slice(TERMINAL_PATH_PREFIX.length)
+    if (!pathname.startsWith(TERMINAL_PATH_PREFIX)) return
+
+    const sessionId = pathname.slice(TERMINAL_PATH_PREFIX.length)
     if (!sessionId) {
       socket.destroy()
       return
@@ -64,65 +59,77 @@ function handleConnection(ws, sessionId) {
     sessions.delete(sessionId)
   }
 
-  const shell = process.env.SHELL || '/bin/zsh'
+  // Use bash for pipe-based shell (zsh's ZLE doesn't work well over pipes)
+  const shell = '/bin/bash'
   const cwd = process.cwd()
 
-  const ptyProcess = pty.spawn(shell, [], {
-    name: 'xterm-256color',
-    cols: 80,
-    rows: 24,
+  const proc = spawn(shell, ['--norc', '-i'], {
     cwd,
-    env: { ...process.env, TERM: 'xterm-256color' },
+    env: { ...process.env, TERM: 'xterm-256color', PS1: '\\[\\033[32m\\]\\w\\[\\033[0m\\] $ ' },
+    stdio: ['pipe', 'pipe', 'pipe'],
   })
 
-  sessions.set(sessionId, ptyProcess)
+  sessions.set(sessionId, proc)
 
-  // PTY stdout → WebSocket
-  ptyProcess.onData((data) => {
+  // stdout → WebSocket
+  proc.stdout.on('data', (data) => {
     if (ws.readyState === ws.OPEN) {
-      ws.send(data)
+      ws.send(data.toString('utf-8'))
     }
   })
 
-  ptyProcess.onExit(() => {
+  // stderr → WebSocket (merged with stdout for terminal display)
+  proc.stderr.on('data', (data) => {
+    if (ws.readyState === ws.OPEN) {
+      ws.send(data.toString('utf-8'))
+    }
+  })
+
+  proc.on('exit', () => {
     sessions.delete(sessionId)
     if (ws.readyState === ws.OPEN) {
       ws.close()
     }
   })
 
-  // WebSocket → PTY stdin / control messages
-  ws.on('message', (msg, isBinary) => {
-    if (isBinary || typeof msg !== 'string') {
-      // Binary or Buffer — raw stdin
-      ptyProcess.write(typeof msg === 'string' ? msg : msg.toString('utf-8'))
-      return
+  proc.on('error', (err) => {
+    console.error('[storyboard] terminal process error:', err.message)
+    sessions.delete(sessionId)
+    if (ws.readyState === ws.OPEN) {
+      ws.close()
     }
+  })
 
-    // Text frame — try parsing as JSON control message
+  // WebSocket → shell stdin
+  ws.on('message', (msg) => {
     const str = typeof msg === 'string' ? msg : msg.toString('utf-8')
+
+    // Try parsing as JSON control message
     try {
       const parsed = JSON.parse(str)
-      if (parsed.type === 'resize' && parsed.cols && parsed.rows) {
-        ptyProcess.resize(parsed.cols, parsed.rows)
+      if (parsed.type === 'resize') {
+        // No resize support without a real PTY — ignored
         return
       }
     } catch {
-      // Not JSON — treat as stdin
+      // Not JSON — raw stdin
     }
-    ptyProcess.write(str)
+
+    if (proc.stdin.writable) {
+      proc.stdin.write(str)
+    }
   })
 
   ws.on('close', () => {
-    const proc = sessions.get(sessionId)
-    if (proc === ptyProcess) {
-      try { ptyProcess.kill() } catch {}
+    const p = sessions.get(sessionId)
+    if (p === proc) {
+      try { proc.kill() } catch {}
       sessions.delete(sessionId)
     }
   })
 
   ws.on('error', () => {
-    try { ptyProcess.kill() } catch {}
+    try { proc.kill() } catch {}
     sessions.delete(sessionId)
   })
 }

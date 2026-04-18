@@ -19,6 +19,7 @@ import { docsHandler, collectFiles } from './docs-handler.js'
 import { createCanvasHandler } from '../canvas/server.js'
 import { setupSelectedWidgets } from '../canvas/selectedWidgets.js'
 import { createAutosyncHandler } from '../autosync/server.js'
+import { setupTerminalServer } from '../canvas/terminal-server.js'
 
 const API_PREFIX = '/_storyboard/'
 
@@ -202,6 +203,11 @@ export default function storyboardServer() {
 
       // Selected widgets bridge — writes .selectedwidgets.json for Copilot context
       setupSelectedWidgets(server, root)
+
+      // Terminal WebSocket server — PTY backend for terminal canvas widgets
+      if (server.httpServer) {
+        setupTerminalServer(server.httpServer)
+      }
 
       // Ignore assets/canvas/ so image/snapshot writes don't trigger reloads
       server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'images'))

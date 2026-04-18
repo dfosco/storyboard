@@ -120,10 +120,12 @@ npx storyboard canvas read my-canvas --id sticky-note-abc123  # Get specific wid
 
 The CLI outputs widget ID, type, position, content, and file paths (for images). Use `--json` for machine-readable output that includes enriched `content`, `url`, `filePath`, and `bounds` fields.
 
-**Bounds:** Both human-readable and JSON output include computed bounds for each widget:
+**Bounds:** Both human-readable and JSON output include bounds for each widget:
 - `bounds.width`, `bounds.height` — resolved from props or type defaults
 - `bounds.startX`, `bounds.startY` — top-left corner (same as position)
 - `bounds.endX`, `bounds.endY` — bottom-right corner (startX + width, startY + height)
+
+Bounds are persisted in widget metadata and recalculated on every add, move, or resize. Legacy widgets without bounds will have them computed on-the-fly from position + size.
 
 Use bounds to determine widget overlap and spatial relationships without manual size calculation.
 

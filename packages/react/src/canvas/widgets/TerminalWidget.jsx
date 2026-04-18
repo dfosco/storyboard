@@ -74,6 +74,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
 
   const containerRef = useRef(null)
   const termRef = useRef(null)
+  const terminalRef = useRef(null)
   const wsRef = useRef(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState(null)
@@ -180,6 +181,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   return (
     <div className={styles.container}>
       <div
+        ref={terminalRef}
         className={styles.terminal}
         style={{
           ...(typeof width === 'number' ? { width: `${width}px` } : undefined),
@@ -199,8 +201,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
       </div>
       {resizable && (
         <ResizeHandle
-          width={width}
-          height={height}
+          targetRef={terminalRef}
           onResize={handleResize}
           minWidth={300}
           minHeight={200}

@@ -94,6 +94,10 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         setInteractive(false)
         return
       }
+      // Prevent browser focus navigation so Tab/Shift+Tab go to the PTY
+      if (e.key === 'Tab') {
+        e.preventDefault()
+      }
       e.stopPropagation()
     }
 

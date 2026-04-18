@@ -173,7 +173,17 @@ Returns `{ canvases: [{ name, title, path, widgetCount }] }`.
 POST /widget
 { "name": "{CANVAS}", "type": "{TYPE}", "position": { "x": 0, "y": 0 }, "props": {} }
 ```
-Or via CLI: `npx storyboard canvas add {TYPE} --canvas {NAME} --x {X} --y {Y} --props '{JSON}'`
+Or via CLI:
+```bash
+# Simple props (no special characters)
+npx storyboard canvas add {TYPE} --canvas {NAME} --x {X} --y {Y} --props '{JSON}'
+
+# Complex props (markdown, backticks, quotes) — use --props-file to avoid shell escaping
+echo '{"content":"# Hello\nSome **markdown**"}' > /tmp/widget-props.json
+npx storyboard canvas add {TYPE} --canvas {NAME} --x {X} --y {Y} --props-file /tmp/widget-props.json
+```
+
+**Always use `--props-file` for markdown widgets or any content with special characters.** Write the props JSON to a temp file first, then pass the path. This avoids all shell escaping issues with backticks, quotes, and newlines.
 
 ### Remove a widget
 ```

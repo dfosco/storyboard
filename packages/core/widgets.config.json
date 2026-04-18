@@ -133,6 +133,13 @@
       },
       "features": [
         {
+          "id": "toggle-collapse",
+          "type": "action",
+          "action": "toggle-collapse",
+          "label": "Collapse height",
+          "icon": "fold"
+        },
+        {
           "id": "copy",
           "type": "action",
           "action": "copy",

@@ -1,9 +1,12 @@
 /**
  * Terminal Server — WebSocket PTY backend for terminal canvas widgets.
  *
- * Spawns a PTY process per WebSocket connection using node-pty.
- * Handles resize messages and session lifecycle (create on connect,
- * destroy on disconnect).
+ * Uses tmux for session persistence across page refreshes. Each terminal
+ * widget gets a tmux session named `sb-{sessionId}`. On disconnect the
+ * pty process is killed (detaching from tmux) but the tmux session stays
+ * alive. On reconnect the existing tmux session is reattached.
+ *
+ * Falls back to direct shell spawn when tmux is not available.
  *
  * Dev-only — this runs inside the Vite dev server, same trust model.
  *
@@ -13,6 +16,7 @@
  *   Server → Client:  text (stdout from PTY)
  */
 
+import { execSync } from 'node:child_process'
 import { WebSocketServer } from 'ws'
 
 let pty
@@ -22,10 +26,30 @@ try {
   pty = null
 }
 
+/** Check if tmux is available on the system */
+let hasTmux = false
+try {
+  execSync('which tmux', { stdio: 'ignore' })
+  hasTmux = true
+} catch {
+  hasTmux = false
+}
+
+const TMUX_PREFIX = 'sb-'
 const TERMINAL_PATH_PREFIX = '/_storyboard/terminal/'
 
-/** Active PTY sessions keyed by sessionId */
+/** Active PTY processes keyed by sessionId (not tmux sessions — those persist independently) */
 const sessions = new Map()
+
+/** Check if a tmux session with the given name exists */
+function tmuxSessionExists(name) {
+  try {
+    execSync(`tmux has-session -t ${name} 2>/dev/null`, { stdio: 'ignore' })
+    return true
+  } catch {
+    return false
+  }
+}
 
 /**
  * Attach the terminal WebSocket server to a Vite HTTP server.
@@ -37,7 +61,8 @@ export function setupTerminalServer(httpServer, base = '/') {
     return
   }
 
-  console.log('[storyboard] terminal server ready (node-pty)')
+  const mode = hasTmux ? 'tmux (persistent sessions)' : 'node-pty (no persistence)'
+  console.log(`[storyboard] terminal server ready (${mode})`)
 
   const wss = new WebSocketServer({ noServer: true })
   const baseNoTrail = (base || '/').replace(/\/$/, '')
@@ -63,22 +88,45 @@ export function setupTerminalServer(httpServer, base = '/') {
 }
 
 function handleConnection(ws, sessionId) {
+  // Kill any existing pty process for this session (stale WebSocket)
   const existing = sessions.get(sessionId)
   if (existing) {
     try { existing.kill() } catch {}
     sessions.delete(sessionId)
   }
 
-  const shell = process.env.SHELL || '/bin/zsh'
   const cwd = process.cwd()
+  const env = { ...process.env, TERM: 'xterm-256color' }
+  let ptyProcess
 
-  const ptyProcess = pty.spawn(shell, [], {
-    name: 'xterm-256color',
-    cols: 80,
-    rows: 24,
-    cwd,
-    env: { ...process.env, TERM: 'xterm-256color' },
-  })
+  if (hasTmux) {
+    const tmuxName = `${TMUX_PREFIX}${sessionId}`
+    const reattach = tmuxSessionExists(tmuxName)
+
+    const cmd = reattach
+      ? 'tmux'
+      : 'tmux'
+    const args = reattach
+      ? ['attach-session', '-t', tmuxName]
+      : ['new-session', '-s', tmuxName]
+
+    ptyProcess = pty.spawn(cmd, args, {
+      name: 'xterm-256color',
+      cols: 80,
+      rows: 24,
+      cwd,
+      env,
+    })
+  } else {
+    const shell = process.env.SHELL || '/bin/zsh'
+    ptyProcess = pty.spawn(shell, [], {
+      name: 'xterm-256color',
+      cols: 80,
+      rows: 24,
+      cwd,
+      env,
+    })
+  }
 
   sessions.set(sessionId, ptyProcess)
 
@@ -109,6 +157,7 @@ function handleConnection(ws, sessionId) {
     ptyProcess.write(str)
   })
 
+  // On disconnect: kill the pty (detaches from tmux) but leave the tmux session alive
   ws.on('close', () => {
     const proc = sessions.get(sessionId)
     if (proc === ptyProcess) {

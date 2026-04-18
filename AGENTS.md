@@ -103,6 +103,9 @@ The `storyboard` CLI (`sb` alias) wraps dev tooling:
 | `storyboard setup` | Install deps, Caddy, `gh` check, start proxy |
 | `storyboard proxy` | Generate Caddyfile + start/reload Caddy |
 | `storyboard update:version [version]` | Update `@dfosco/storyboard-*` packages to latest (or specific version) |
+| `storyboard canvas read [name]` | Read canvas widgets with content, URLs, file paths, and bounds |
+| `storyboard canvas bounds [name]` | Get widget size and positional bounds (spatial queries) |
+| `storyboard canvas add <type>` | Add a widget to a canvas |
 
 ### Dev URLs
 

@@ -12,6 +12,10 @@
  *   GET    /list     — list all canvases
  *   GET    /folders  — list canvas folders
  *   PUT    /update   — append update events (widgets, sources, settings)
+ *   PUT    /rename-page — rename a canvas page file
+ *   PUT    /reorder-pages — save page order for a canvas folder
+ *   GET    /page-order — read page order for a folder
+ *   PUT    /update-folder-meta — update folder .meta.json title
  *   POST   /widget   — append a widget_added event
  *   DELETE /widget   — append a widget_removed event
  *   POST   /create   — create a new .canvas.jsonl file
@@ -397,6 +401,181 @@ export function createCanvasHandler(ctx) {
         sendJson(res, 200, { success: true, removed: 1 })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to remove widget: ${err.message}` })
+      }
+      return
+    }
+
+    // PUT /rename-page — rename a canvas page file
+    if (routePath === '/rename-page' && method === 'PUT') {
+      const { name, newTitle } = body
+
+      if (!name || !newTitle) {
+        sendJson(res, 400, { error: 'Canvas name and newTitle are required' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      const kebab = newTitle
+        .replace(/[^a-zA-Z0-9\s_-]/g, '')
+        .trim()
+        .replace(/[\s_]+/g, '-')
+        .toLowerCase()
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+
+      if (!kebab) {
+        sendJson(res, 400, { error: 'newTitle must contain at least one alphanumeric character' })
+        return
+      }
+
+      try {
+        const dir = path.dirname(filePath)
+        const newFilename = `${kebab}.canvas.jsonl`
+        const newPath = path.join(dir, newFilename)
+
+        if (newPath !== filePath && fs.existsSync(newPath)) {
+          sendJson(res, 409, { error: `A canvas file named "${newFilename}" already exists in this directory` })
+          return
+        }
+
+        fs.renameSync(filePath, newPath)
+
+        appendEvent(newPath, {
+          event: 'settings_updated',
+          timestamp: new Date().toISOString(),
+          settings: { title: newTitle },
+        })
+
+        // Update .page-order.json if it exists
+        const pageOrderPath = path.join(dir, '.page-order.json')
+        if (fs.existsSync(pageOrderPath)) {
+          try {
+            const order = JSON.parse(fs.readFileSync(pageOrderPath, 'utf-8'))
+            const oldBasename = path.basename(filePath, '.canvas.jsonl')
+            const updated = order.map((entry) =>
+              entry.type === 'page' && entry.name === oldBasename
+                ? { ...entry, name: kebab }
+                : entry
+            )
+            fs.writeFileSync(pageOrderPath, JSON.stringify(updated, null, 2) + '\n', 'utf-8')
+          } catch { /* skip if page-order is invalid */ }
+        }
+
+        const relPath = path.relative(path.join(root, 'src', 'canvas'), newPath)
+        const newCanonicalId = toCanvasId(path.join('src', 'canvas', relPath))
+
+        sendJson(res, 200, { success: true, name: newCanonicalId, route: '/canvas/' + newCanonicalId })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to rename page: ${err.message}` })
+      }
+      return
+    }
+
+    // PUT /reorder-pages — save page order for a canvas folder
+    if (routePath === '/reorder-pages' && method === 'PUT') {
+      const { folder, order } = body
+
+      if (!folder || !Array.isArray(order)) {
+        sendJson(res, 400, { error: 'folder (string) and order (array) are required' })
+        return
+      }
+
+      const canvasDir = path.join(root, 'src', 'canvas')
+      const folderDir = fs.existsSync(path.join(canvasDir, `${folder}.folder`))
+        ? path.join(canvasDir, `${folder}.folder`)
+        : fs.existsSync(path.join(canvasDir, folder))
+          ? path.join(canvasDir, folder)
+          : null
+
+      if (!folderDir) {
+        sendJson(res, 404, { error: `Folder "${folder}" not found` })
+        return
+      }
+
+      try {
+        const pageOrderPath = path.join(folderDir, '.page-order.json')
+        fs.writeFileSync(pageOrderPath, JSON.stringify(order, null, 2) + '\n', 'utf-8')
+        sendJson(res, 200, { success: true })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to save page order: ${err.message}` })
+      }
+      return
+    }
+
+    // GET /page-order?folder=... — read page order for a folder
+    if (routePath.startsWith('/page-order') && method === 'GET') {
+      const pageOrderUrl = new URL(routePath, 'http://localhost')
+      const folder = pageOrderUrl.searchParams.get('folder')
+
+      if (!folder) {
+        sendJson(res, 400, { error: 'folder query parameter is required' })
+        return
+      }
+
+      const canvasDir = path.join(root, 'src', 'canvas')
+      const folderDir = fs.existsSync(path.join(canvasDir, `${folder}.folder`))
+        ? path.join(canvasDir, `${folder}.folder`)
+        : fs.existsSync(path.join(canvasDir, folder))
+          ? path.join(canvasDir, folder)
+          : null
+
+      if (!folderDir) {
+        sendJson(res, 404, { error: `Folder "${folder}" not found` })
+        return
+      }
+
+      try {
+        const pageOrderPath = path.join(folderDir, '.page-order.json')
+        if (fs.existsSync(pageOrderPath)) {
+          const order = JSON.parse(fs.readFileSync(pageOrderPath, 'utf-8'))
+          sendJson(res, 200, { order })
+        } else {
+          sendJson(res, 200, { order: null })
+        }
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to read page order: ${err.message}` })
+      }
+      return
+    }
+
+    // PUT /update-folder-meta — update folder .meta.json title
+    if (routePath === '/update-folder-meta' && method === 'PUT') {
+      const { folder, title } = body
+
+      if (!folder || !title) {
+        sendJson(res, 400, { error: 'folder and title are required' })
+        return
+      }
+
+      const canvasDir = path.join(root, 'src', 'canvas')
+      const folderDir = fs.existsSync(path.join(canvasDir, `${folder}.folder`))
+        ? path.join(canvasDir, `${folder}.folder`)
+        : fs.existsSync(path.join(canvasDir, folder))
+          ? path.join(canvasDir, folder)
+          : null
+
+      if (!folderDir) {
+        sendJson(res, 404, { error: `Folder "${folder}" not found` })
+        return
+      }
+
+      try {
+        const dirName = path.basename(folderDir).replace(/\.folder$/, '')
+        const metaPath = path.join(folderDir, `${dirName}.meta.json`)
+        let meta = {}
+        if (fs.existsSync(metaPath)) {
+          meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
+        }
+        meta.title = title
+        fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+        sendJson(res, 200, { success: true })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to update folder meta: ${err.message}` })
       }
       return
     }

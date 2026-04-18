@@ -204,17 +204,31 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
   // Duplicate a page
   const handleDuplicate = useCallback(async (page, e) => {
     e.stopPropagation()
-    // Compute copy name: "Title Copy", "Title Copy 2", etc.
-    const baseTitle = page.title.replace(/ Copy( \d+)?$/, '')
-    const existingCopies = realPages
-      .filter(p => {
-        const t = p.title
-        return t === `${baseTitle} Copy` || /^.+ Copy \d+$/.test(t) && t.startsWith(baseTitle)
-      })
-      .length
-    const copyTitle = existingCopies === 0
-      ? `${baseTitle} Copy`
-      : `${baseTitle} Copy ${existingCopies + 1}`
+
+    // Smart copy naming: if title ends with ` N`, `#N`, or `vN`, increment the number.
+    // Otherwise fall back to "Title Copy", "Title Copy 2", etc.
+    const numberedMatch = page.title.match(/^(.+?)(?:\s+|#|v)(\d+)$/)
+    let copyTitle
+    if (numberedMatch) {
+      const [, base, numStr] = numberedMatch
+      const sep = page.title.slice(base.length, -numStr.length) // extract separator: ' ', '#', 'v'
+      let next = parseInt(numStr, 10) + 1
+      // Find the next available number
+      const titles = new Set(realPages.map(p => p.title))
+      while (titles.has(`${base}${sep}${next}`)) next++
+      copyTitle = `${base}${sep}${next}`
+    } else {
+      const baseTitle = page.title.replace(/ Copy( \d+)?$/, '')
+      const existingCopies = realPages
+        .filter(p => {
+          const t = p.title
+          return t === `${baseTitle} Copy` || (/^.+ Copy \d+$/.test(t) && t.startsWith(baseTitle))
+        })
+        .length
+      copyTitle = existingCopies === 0
+        ? `${baseTitle} Copy`
+        : `${baseTitle} Copy ${existingCopies + 1}`
+    }
 
     try {
       const result = await duplicateCanvas(page.name, copyTitle)

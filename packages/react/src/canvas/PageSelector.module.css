@@ -135,7 +135,7 @@
 
 .dropZoneEnd {
   position: relative;
-  min-height: 12px;
+  padding-top: 8px;
   list-style: none;
 }
 
@@ -192,10 +192,11 @@
   white-space: nowrap;
   color: var(--fgColor-muted, #656d76);
   font-size: 12px;
+  background: var(--bgColor-muted, #f6f8fa);
 }
 
 .addItem:hover {
-  background: var(--bgColor-muted, #f6f8fa);
+  background: var(--bgColor-neutral-muted, rgba(0, 0, 0, 0.08));
   color: var(--fgColor-default, #1f2328);
 }
 

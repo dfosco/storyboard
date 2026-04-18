@@ -445,6 +445,8 @@ export function createCanvasHandler(ctx) {
 
         fs.renameSync(filePath, newPath)
 
+        const newCanonicalId = toCanvasId(path.relative(root, newPath).replace(/\\/g, '/'))
+
         appendEvent(newPath, {
           event: 'settings_updated',
           timestamp: new Date().toISOString(),
@@ -456,18 +458,12 @@ export function createCanvasHandler(ctx) {
         if (fs.existsSync(pageOrderPath)) {
           try {
             const order = JSON.parse(fs.readFileSync(pageOrderPath, 'utf-8'))
-            const oldBasename = path.basename(filePath, '.canvas.jsonl')
             const updated = order.map((entry) =>
-              entry.type === 'page' && entry.name === oldBasename
-                ? { ...entry, name: kebab }
-                : entry
+              typeof entry === 'string' && entry === name ? newCanonicalId : entry
             )
             fs.writeFileSync(pageOrderPath, JSON.stringify(updated, null, 2) + '\n', 'utf-8')
           } catch { /* skip if page-order is invalid */ }
         }
-
-        const relPath = path.relative(path.join(root, 'src', 'canvas'), newPath)
-        const newCanonicalId = toCanvasId(path.join('src', 'canvas', relPath))
 
         sendJson(res, 200, { success: true, name: newCanonicalId, route: '/canvas/' + newCanonicalId })
       } catch (err) {

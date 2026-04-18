@@ -253,8 +253,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
       </div>
       {resizable && (
         <ResizeHandle
-          width={width}
-          height={height}
+          targetRef={widgetRef}
           onResize={handleResize}
           minWidth={300}
           minHeight={200}

@@ -47,23 +47,6 @@ function ContextTag({ label }) {
   return <span className={styles.contextTag}>{label}</span>
 }
 
-function ContextPanel({ widgets }) {
-  return (
-    <div className={styles.contextPanel}>
-      <div className={styles.contextHeader}><span>📋 Canvas Context</span></div>
-      <div className={styles.contextList}>
-        {widgets.map((w, i) => (
-          <div key={i} className={styles.contextItem}>
-            <span className={styles.contextIcon}>{w.icon}</span>
-            <span className={styles.contextLabel}>{w.label}</span>
-            {w.attached && <span className={styles.contextAttached}>✓</span>}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 
 /* ═══════════════════════════════════════════════
    Scene 1 — Empty terminal widget on canvas
@@ -165,102 +148,153 @@ Canvas context attached:
 
 
 /* ═══════════════════════════════════════════════
-   Scene 4 — Canvas context injection
+   Scene 4 — Connected widgets as context
    ═══════════════════════════════════════════════ */
 
 export function CanvasContext() {
   return (
-    <div className={styles.storyFrame}>
-      <div className={styles.storyLabel}>Scene 4 — Canvas Context</div>
+    <div className={styles.storyFrame} style={{ maxWidth: 960 }}>
+      <div className={styles.storyLabel}>Scene 4 — Widget Connectors</div>
       <p className={styles.storyCaption}>
-        When Copilot launches, widgets on the same canvas are serialized and
-        injected as context. Users can toggle which widgets to include.
+        Widgets are connected to the terminal via connector lines drawn on the canvas.
+        Connected widgets are automatically injected as context for the Copilot session.
+        Connections can be added or removed by dragging from a widget's connector port to the terminal.
       </p>
-      <div className={styles.storyRow}>
-        <Chrome
-          title="Terminal"
-          status="copilot"
-          actions={<CopilotBadge />}
-        >
-          <Line output={`Canvas context (3 widgets attached):`} />
-          <Line output={`  📝 sticky: "Fix the login redirect bug"`} />
-          <Line output={`  📄 markdown: Architecture notes (248 words)`} />
-          <Line output={`  🖼️ image: error-screenshot.png`} />
-          <Line output="" />
-          <Line output={`> Implement the fix described in the sticky note,`} />
-          <Line output={`  following the architecture in the markdown block.`} />
-          <Line output={`  The error screenshot shows the current behavior. ▋`} />
-        </Chrome>
-        <ContextPanel widgets={[
-          { icon: '📝', label: 'Fix the login redirect...', attached: true },
-          { icon: '📄', label: 'Architecture notes', attached: true },
-          { icon: '🖼️', label: 'error-screenshot.png', attached: true },
-          { icon: '🖥️', label: 'Login prototype', attached: false },
-          { icon: '📝', label: 'Nice-to-have ideas', attached: false },
-        ]} />
+
+      <div className={styles.storyRow} style={{ alignItems: 'center' }}>
+        {/* Connected widgets on the left */}
+        <div className={styles.connectedWidgets}>
+          <div className={styles.connectorRow}>
+            <div className={`${styles.miniWidget} ${styles.connected}`}>
+              <span className={styles.miniWidgetIcon}>📝</span>
+              <span className={styles.miniWidgetLabel}>Fix the login redirect bug</span>
+            </div>
+            <div className={styles.connectorLine} />
+          </div>
+          <div className={styles.connectorRow}>
+            <div className={`${styles.miniWidget} ${styles.connected}`}>
+              <span className={styles.miniWidgetIcon}>📄</span>
+              <span className={styles.miniWidgetLabel}>Architecture notes</span>
+            </div>
+            <div className={styles.connectorLine} />
+          </div>
+          <div className={styles.connectorRow}>
+            <div className={`${styles.miniWidget} ${styles.connected}`}>
+              <span className={styles.miniWidgetIcon}>🖼️</span>
+              <span className={styles.miniWidgetLabel}>error-screenshot.png</span>
+            </div>
+            <div className={styles.connectorLine} />
+          </div>
+          <div className={styles.connectorRow}>
+            <div className={`${styles.miniWidget} ${styles.disconnected}`}>
+              <span className={styles.miniWidgetIcon}>🖥️</span>
+              <span className={styles.miniWidgetLabel}>Login prototype</span>
+            </div>
+            <div className={`${styles.connectorLine} ${styles.dashed}`} />
+          </div>
+        </div>
+
+        {/* Terminal in the center */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Chrome
+            title="Terminal"
+            status="copilot"
+            actions={<CopilotBadge />}
+          >
+            <Line output={`3 connected widgets → context injected`} />
+            <Line output="" />
+            <Line output={`> Implement the fix described in the sticky note,`} />
+            <Line output={`  following the architecture in the markdown block.`} />
+            <Line output={`  The error screenshot shows the current behavior. ▋`} />
+          </Chrome>
+        </div>
       </div>
+
+      <p className={styles.storyCaption} style={{ marginTop: 8 }}>
+        <strong>Server-side:</strong> each terminal stores its connections in{' '}
+        <code>.storyboard/terminal-{'<id>'}.connectedWidgets.json</code>,
+        similar to <code>selectedWidgets.json</code>. Widget content is serialized
+        and passed to Copilot as context on every prompt.
+      </p>
     </div>
   )
 }
 
 
 /* ═══════════════════════════════════════════════
-   Scene 5 — Full flow: canvas → copilot → canvas
+   Scene 5 — Full flow: connected widgets ↔ copilot
    ═══════════════════════════════════════════════ */
 
 export function FullFlow() {
   return (
-    <div className={styles.storyFrame}>
-      <div className={styles.storyLabel}>Scene 5 — Full Loop</div>
+    <div className={styles.storyFrame} style={{ maxWidth: 960 }}>
+      <div className={styles.storyLabel}>Scene 5 — Bidirectional Flow</div>
       <p className={styles.storyCaption}>
-        Copilot output can be captured back to the canvas — code blocks
-        become markdown widgets, summaries become sticky notes. The canvas
-        becomes a persistent workspace for AI-assisted development.
+        Copilot reads from connected widgets and writes back to them.
+        Changes requested in the terminal are automatically applied to
+        the connected widgets — a sticky note gets updated text, a markdown
+        block gets new content, new widgets get created and auto-connected.
       </p>
-      <Chrome
-        title="Terminal"
-        status="copilot"
-        actions={<CopilotBadge />}
-      >
-        <Line output="✓ Changes applied to src/auth/redirect.js" />
-        <Line output="✓ Test added: src/auth/redirect.test.js" />
-        <Line output="" />
-        <Line output="Summary:" />
-        <Line output={`  Fixed login redirect by checking for a stored
-  returnUrl in sessionStorage before falling back
-  to the default route. Added test coverage for
-  the three redirect scenarios.`} />
-        <Line output="" />
-        <Line output={`[Add summary to canvas]  [Add diff to canvas]  [Done]`} />
-        <Line output="▋" />
-      </Chrome>
 
-      <div className={styles.arrow}>↓ output captured as new widgets ↓</div>
-
-      <div className={styles.storyRow}>
-        <div className={styles.chrome} style={{ maxWidth: 260, fontSize: 12 }}>
-          <div className={styles.titleBar}>
-            <span className={styles.titleIcon}>📝</span>
-            <span className={styles.titleText}>Copilot Summary</span>
+      <div className={styles.storyRow} style={{ alignItems: 'center' }}>
+        {/* Connected widgets — showing before/after state */}
+        <div className={styles.connectedWidgets}>
+          <div className={styles.connectorRow}>
+            <div className={`${styles.miniWidget} ${styles.connected}`}>
+              <span className={styles.miniWidgetIcon}>📝</span>
+              <span className={styles.miniWidgetLabel} style={{ textDecoration: 'line-through', opacity: 0.5 }}>Fix the login redirect bug</span>
+            </div>
+            <div className={styles.connectorLine} />
           </div>
-          <div style={{ padding: '12px 16px', fontSize: 13, color: 'var(--fgColor-default, #1f2328)', lineHeight: 1.5 }}>
-            Fixed login redirect by checking for a stored returnUrl in sessionStorage before falling back to the default route.
+          <div className={styles.connectorRow}>
+            <div className={`${styles.miniWidget} ${styles.connected}`} style={{ borderColor: '#1a7f37' }}>
+              <span className={styles.miniWidgetIcon}>📝</span>
+              <span className={styles.miniWidgetLabel}>✓ Login redirect fixed</span>
+            </div>
+            <div className={styles.connectorLine} style={{ background: '#1a7f37' }} />
+          </div>
+          <div className={styles.connectorRow}>
+            <div className={`${styles.miniWidget} ${styles.connected}`}>
+              <span className={styles.miniWidgetIcon}>📄</span>
+              <span className={styles.miniWidgetLabel}>Architecture notes</span>
+            </div>
+            <div className={styles.connectorLine} />
+          </div>
+          <div className={styles.connectorRow}>
+            <div className={`${styles.miniWidget} ${styles.connected}`} style={{ borderColor: '#1a7f37', borderStyle: 'dashed' }}>
+              <span className={styles.miniWidgetIcon}>📄</span>
+              <span className={styles.miniWidgetLabel} style={{ color: '#1a7f37' }}>+ Diff: redirect.js (new)</span>
+            </div>
+            <div className={styles.connectorLine} style={{ background: '#1a7f37' }} />
           </div>
         </div>
-        <div className={styles.chrome} style={{ maxWidth: 300, fontSize: 12 }}>
-          <div className={styles.titleBar}>
-            <span className={styles.titleIcon}>📄</span>
-            <span className={styles.titleText}>Diff: redirect.js</span>
-          </div>
-          <div style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6 }}>
-            <div style={{ color: '#1a7f37' }}>+ const returnUrl = sessionStorage.getItem('returnUrl')</div>
-            <div style={{ color: '#1a7f37' }}>+ if (returnUrl) {'{'}</div>
-            <div style={{ color: '#1a7f37' }}>+   sessionStorage.removeItem('returnUrl')</div>
-            <div style={{ color: '#1a7f37' }}>+   navigate(returnUrl)</div>
-            <div style={{ color: '#cf222e' }}>- navigate('/dashboard')</div>
-          </div>
+
+        {/* Terminal showing the completed operation */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Chrome
+            title="Terminal"
+            status="copilot"
+            actions={<CopilotBadge />}
+          >
+            <Line output="✓ Applied fix to src/auth/redirect.js" />
+            <Line output="✓ Updated sticky: 'Fix the login redirect bug' → '✓ Login redirect fixed'" />
+            <Line output="✓ Created widget: Diff: redirect.js" />
+            <Line output="  → auto-connected to this terminal" />
+            <Line output="" />
+            <Line output={`4 widgets connected · 2 modified · 1 created`} />
+            <Line prompt="~/storyboard $" command="" />
+          </Chrome>
         </div>
       </div>
+
+      <div className={styles.arrow}>↕ connected widgets are both input and output</div>
+
+      <p className={styles.storyCaption}>
+        The terminal acts as a command center. Connected widgets flow in as
+        context and get mutated by Copilot's actions. New widgets (diffs,
+        summaries) are created on the canvas and auto-connected back to
+        the terminal session.
+      </p>
     </div>
   )
 }

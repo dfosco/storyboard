@@ -155,6 +155,21 @@ Always trigger the publish workflow explicitly via `gh workflow run` — do **no
 gh workflow run release-publish.yml -f tag=@dfosco/storyboard-core@<version>
 ```
 
+### Step 12.5: Beta changelog (stable releases with preceding betas)
+
+If this is a **stable release** and there were preceding beta/alpha tags for the same major.minor version:
+
+1. List all beta tags: `git tag -l '@dfosco/storyboard-core@<version>-beta.*' --sort=version:refname`
+2. For each beta, get commits since the previous beta (or last stable): `git --no-pager log <prev-tag>..<beta-tag> --oneline --no-merges`
+3. Summarize each beta to 1–3 bullet points of user-facing improvements
+4. Group adjacent tiny betas that are clearly related (e.g. beta.16–18 for a series of build fixes)
+5. Skip betas with only version bumps, chore, or debug commits
+6. **Update all CHANGELOG.md files** (packages/core, react, react-primer, react-reshaped, tiny-canvas) — replace the auto-generated 4.x.0 section with a curated overview + "### Beta releases" sub-section containing the per-beta summaries
+7. **Update the GitHub Release body** with the same content using `gh release edit`
+8. Commit: `git commit -am "docs: rewrite <version> changelogs with beta-by-beta breakdown"` and push
+
+This ensures the changelog captures the full journey of the release, not just the final changeset summary.
+
 ### Step 13: Report success
 
 Print:

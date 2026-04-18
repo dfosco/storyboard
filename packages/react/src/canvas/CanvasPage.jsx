@@ -756,7 +756,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   const [connectorDrag, setConnectorDrag] = useState(null)
 
   const handleConnectorDragStart = useCallback((widgetId, anchor, e) => {
-    console.log('[devlog] handleConnectorDragStart', widgetId, anchor)
     e.stopPropagation()
     e.preventDefault()
     const scrollEl = scrollRef.current
@@ -764,61 +763,87 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     const scale = zoomRef.current / 100
     const rect = scrollEl.getBoundingClientRect()
 
-    const startWidget = (stateRef.current.widgets ?? []).find((w) => w.id === widgetId)
+    const widgets = stateRef.current.widgets ?? []
+    const startWidget = widgets.find((w) => w.id === widgetId)
     if (!startWidget) return
 
-    const w = startWidget.props?.width ?? startWidget.bounds?.width ?? 270
-    const h = startWidget.props?.height ?? startWidget.bounds?.height ?? 170
-    const wx = startWidget.position?.x ?? 0
-    const wy = startWidget.position?.y ?? 0
-    let startPt
-    switch (anchor) {
-      case 'top':    startPt = { x: wx + w / 2, y: wy }; break
-      case 'bottom': startPt = { x: wx + w / 2, y: wy + h }; break
-      case 'left':   startPt = { x: wx, y: wy + h / 2 }; break
-      case 'right':  startPt = { x: wx + w, y: wy + h / 2 }; break
-      default:       startPt = { x: wx + w / 2, y: wy + h / 2 }
+    const computeAnchorPt = (widget, anch) => {
+      const ww = widget.props?.width ?? widget.bounds?.width ?? 270
+      const wh = widget.props?.height ?? widget.bounds?.height ?? 170
+      const px = widget.position?.x ?? 0
+      const py = widget.position?.y ?? 0
+      switch (anch) {
+        case 'top':    return { x: px + ww / 2, y: py }
+        case 'bottom': return { x: px + ww / 2, y: py + wh }
+        case 'left':   return { x: px, y: py + wh / 2 }
+        case 'right':  return { x: px + ww, y: py + wh / 2 }
+        default:       return { x: px + ww / 2, y: py + wh / 2 }
+      }
     }
+
+    const startPt = computeAnchorPt(startWidget, anchor)
 
     const toCanvasPoint = (clientX, clientY) => ({
       x: (scrollEl.scrollLeft + clientX - rect.left) / scale,
       y: (scrollEl.scrollTop + clientY - rect.top) / scale,
     })
 
+    // Find nearest anchor on any other widget within snap distance
+    const SNAP_DIST = 40
+    const findNearestAnchor = (canvasPt) => {
+      const currentWidgets = stateRef.current.widgets ?? []
+      let best = null
+      let bestDist = SNAP_DIST
+      for (const w of currentWidgets) {
+        if (w.id === widgetId) continue
+        for (const anch of ['top', 'bottom', 'left', 'right']) {
+          const pt = computeAnchorPt(w, anch)
+          const dist = Math.hypot(pt.x - canvasPt.x, pt.y - canvasPt.y)
+          if (dist < bestDist) {
+            bestDist = dist
+            best = { widgetId: w.id, anchor: anch, pt }
+          }
+        }
+      }
+      return best
+    }
+
     const cursorPt = toCanvasPoint(e.clientX, e.clientY)
+    const snap = findNearestAnchor(cursorPt)
     setConnectorDrag({
       startWidgetId: widgetId,
       startAnchor: anchor,
       startPt,
-      endPt: cursorPt,
-      endAnchor: anchor,
+      endPt: snap ? snap.pt : cursorPt,
+      endAnchor: snap ? snap.anchor : anchor,
+      snapTarget: snap,
     })
-    console.log('[devlog] connectorDrag set', { startPt, cursorPt })
 
     const handlePointerMove = (moveE) => {
       const pt = toCanvasPoint(moveE.clientX, moveE.clientY)
-      setConnectorDrag((prev) => prev ? { ...prev, endPt: pt } : null)
+      const nearSnap = findNearestAnchor(pt)
+      setConnectorDrag((prev) => prev ? {
+        ...prev,
+        endPt: nearSnap ? nearSnap.pt : pt,
+        endAnchor: nearSnap ? nearSnap.anchor : prev.startAnchor,
+        snapTarget: nearSnap,
+      } : null)
     }
 
     const handlePointerUp = (upE) => {
       document.removeEventListener('pointermove', handlePointerMove)
       document.removeEventListener('pointerup', handlePointerUp)
 
-      // Check if we dropped on an anchor port
-      const target = document.elementFromPoint(upE.clientX, upE.clientY)
-      const anchorEl = target?.closest?.('[data-anchor]')
-      const chromeEl = anchorEl?.closest?.('[data-widget-id]')
-      if (anchorEl && chromeEl) {
-        const endWidgetId = chromeEl.getAttribute('data-widget-id')
-        const endAnchor = anchorEl.getAttribute('data-anchor')
-        if (endWidgetId && endAnchor && endWidgetId !== widgetId) {
-          handleConnectorAdd({
-            startWidgetId: widgetId,
-            startAnchor: anchor,
-            endWidgetId,
-            endAnchor,
-          })
-        }
+      const pt = toCanvasPoint(upE.clientX, upE.clientY)
+      const nearSnap = findNearestAnchor(pt)
+
+      if (nearSnap) {
+        handleConnectorAdd({
+          startWidgetId: widgetId,
+          startAnchor: anchor,
+          endWidgetId: nearSnap.widgetId,
+          endAnchor: nearSnap.anchor,
+        })
       }
       setConnectorDrag(null)
     }

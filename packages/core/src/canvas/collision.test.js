@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   getWidgetBounds,
+  computeWidgetBounds,
+  stampBounds,
+  stampBoundsAll,
   rectsOverlap,
   findCollision,
   findCollisions,
@@ -312,5 +315,57 @@ describe('resolvePosition', () => {
       gridSize: 24,
     })
     expect(result).toEqual({ x: 504, y: 504, adjusted: false })
+  })
+})
+
+describe('computeWidgetBounds', () => {
+  it('computes bounds from position and size', () => {
+    const widget = { type: 'sticky-note', position: { x: 100, y: 200 }, props: { width: 270, height: 170 } }
+    expect(computeWidgetBounds(widget)).toEqual({
+      width: 270, height: 170,
+      startX: 100, startY: 200,
+      endX: 370, endY: 370,
+    })
+  })
+
+  it('uses defaults when props missing', () => {
+    const widget = { type: 'sticky-note', position: { x: 0, y: 0 }, props: {} }
+    expect(computeWidgetBounds(widget)).toEqual({
+      width: 270, height: 170,
+      startX: 0, startY: 0,
+      endX: 270, endY: 170,
+    })
+  })
+})
+
+describe('stampBounds', () => {
+  it('adds bounds field to widget', () => {
+    const widget = { id: 'w1', type: 'sticky-note', position: { x: 48, y: 24 }, props: { width: 270, height: 170 } }
+    const stamped = stampBounds(widget)
+    expect(stamped.bounds).toEqual({
+      width: 270, height: 170,
+      startX: 48, startY: 24,
+      endX: 318, endY: 194,
+    })
+    expect(stamped.id).toBe('w1')
+  })
+
+  it('does not mutate original widget', () => {
+    const widget = { id: 'w1', type: 'sticky-note', position: { x: 0, y: 0 }, props: {} }
+    stampBounds(widget)
+    expect(widget.bounds).toBeUndefined()
+  })
+})
+
+describe('stampBoundsAll', () => {
+  it('stamps bounds on all widgets', () => {
+    const widgets = [
+      { id: 'w1', type: 'sticky-note', position: { x: 0, y: 0 }, props: { width: 270, height: 170 } },
+      { id: 'w2', type: 'markdown', position: { x: 300, y: 0 }, props: { width: 530, height: 240 } },
+    ]
+    const stamped = stampBoundsAll(widgets)
+    expect(stamped).toHaveLength(2)
+    expect(stamped[0].bounds.endX).toBe(270)
+    expect(stamped[1].bounds.endX).toBe(830)
   })
 })

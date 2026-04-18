@@ -2,931 +2,128 @@
 
 ## 4.0.0
 
-### Major Changes
-
--   [`da20c6c`](https://github.com/dfosco/storyboard/commit/da20c6c7d5ef09e29b8235731bbe725ccaf3de4a) Thanks [@dfosco](https://github.com/dfosco)! - Storyboard 4.0 — canvas system overhaul, CLI tooling, and production mode
-
-    -   **Canvas undo/redo** — full undo/redo queue for widget moves, resizes, copies, and deletes
-    -   **Canvas snap-to-grid** — toggle snap for widget positions and resize with configurable grid size
-    -   **Canvas multi-select & drag** — shift+click multi-select, group drag with preview
-    -   **Canvas widgets** — Figma embed, image paste, copy widget, expand modal, open-in-new-tab, config-driven dropdown menus and tools
-    -   **Canvas zoom** — zoom-to-fit, persistent viewport across sessions
-    -   **Canvas prototype embed** — persisted navigation with undo/redo, hash change tracking
-    -   **Autosync** — scope modes (canvas/prototype), branch worktree isolation, automatic commit/push, stash external edits during sync
-    -   **Storyboard CLI** — new `storyboard` CLI with Caddy proxy for clean dev URLs, worktree port registry, polished output with `@clack/prompts`, `storyboard exit` command
-    -   **Production mode** — `prodMode` URL param, devtools toggle, read-only canvas, local editing indicators
-    -   **Setup experience** — friendly welcome with mascot and getting started guide, turn-key setup (auto-install brew, caddy, gh)
-    -   **Default base URL** changed from `/storyboard/` to `/`
-    -   **Config-driven toolbar** — restructured `toolbar.config.json` with surfaces, tool entries, and widget configs
-    -   **Branch preview** — `branch--<name>` prefix for worktree URLs matching deploy convention
-
--   [`8a9e6d4`](https://github.com/dfosco/storyboard/commit/8a9e6d4057f8752aa3f1a26161c52bd1a9baad5a) Thanks [@dfosco](https://github.com/dfosco)! - Canvas paste and CLI update command
-
-    -   **Canvas paste** — pasting non-URL text on canvas creates a markdown widget
-    -   **CLI** — replaced `update:flag` with `update:version` to update storyboard packages in client repos
-
--   [`de24c60`](https://github.com/dfosco/storyboard/commit/de24c603f6a071441c3f2a5625597fa9c1b5fcc4) Thanks [@dfosco](https://github.com/dfosco)! - CLI update commands and dev domain config
-
-    -   **CLI update channels** — `storyboard update`, `update:beta`, `update:alpha`, and `update:<version>` shorthand
-    -   **Dev domain config** — `devDomain` key in storyboard.config.json to customize dev server domain
-    -   **Fix** — route any `update:*` command correctly instead of showing "Unknown command"
-
--   Storyboard 4.0.0
-
-    Major release — canvas system, command palette, toolbar tools, and customer mode.
-
-    -   Canvas system: multi-page canvases, marquee multi-select, widget snap/alignment, paste rules, prototype embeds with zoom, canvas theme sync across all Primer themes
-    -   Command palette: ported to @dfosco/storyboard-react, config extracted to commandpalette.config.json, author search, tool sub-pages, frecency ranking
-    -   Toolbar tools: declarative config-driven system (toolbar.config.json), tool registry, tool state store, surface/handler architecture, per-prototype overrides
-    -   Customer mode: new config for hiding chrome, homepage, and setting a prototype homepage redirect
-    -   BranchBar: ported to React, hidden in embeds, branch switching UI
-    -   AuthModal: ported to React with Primer theme support, BaseUI Dialog
-    -   Workshop: create actions for prototypes, flows, canvases
-    -   Selected widgets bridge for Copilot context
-    -   Smooth-corners paint worklet support
-    -   Inspector/highlighter system
-    -   Comments system with GitHub Discussions
-
-### Minor Changes
-
--   [`a2bd995`](https://github.com/dfosco/storyboard/commit/a2bd99516da112ea0478521d36189ca8e2b64770) Thanks [@dfosco](https://github.com/dfosco)! - ### Features
-
-    -   **cli**: Add optional branch argument to `storyboard dev` command
-
-    ### Fixes
-
-    -   **canvas**: Make "Copy file path" an alt of "Copy as PNG" on images
-    -   **canvas**: Prevent line breaks in widget overflow menu items
-    -   **dev**: Detect branch name for base path when not in a worktree
-    -   **autosync**: Fix string spread bug in `listChangedFiles`
-
--   [`e76ce7b`](https://github.com/dfosco/storyboard/commit/e76ce7b34fd799f4d055305fad67e3b0b817f328) Thanks [@dfosco](https://github.com/dfosco)! - Fix GH Pages 404s caused by CNAME deletion on deploy
-
-    -   Emit CNAME file during Vite build when `customDomain` is set in storyboard.config.json
-    -   Scaffold deploy.yml and customDomain config field for new client repos
-    -   Expanded CLI: create commands with flag support, canvas skill, getting-started help
-    -   Autosync refactored to direct commit strategy (no worktree)
-    -   Caddy proxy uses admin API for multi-repo route isolation
-    -   Rename watcher for canvas embed URL sync
-    -   Default hideFlows to true for flow files
-
--   [`4755cf5`](https://github.com/dfosco/storyboard/commit/4755cf58feb55d44317c2ee9bbd3e51ff764c4d2) Thanks [@dfosco](https://github.com/dfosco)! - Canvas CLI, component isolation, and GFM markdown
-
-    -   Add `storyboard canvas read` CLI to query widget IDs, content, URLs, and file paths
-    -   Iframe-isolate component widgets for better CSS/JS encapsulation
-    -   Switch markdown rendering to remark with GitHub Flavored Markdown
-    -   Auto-convert root branch to worktree when running `sb dev`
-    -   Fix stale Caddy proxy route cleanup
-
--   [`e57ae4d`](https://github.com/dfosco/storyboard/commit/e57ae4dfb6869dad0d681c7bf88ee40425c36c3a) Thanks [@dfosco](https://github.com/dfosco)! - Canvas collision detection, copy-path shortcut, and dev server fixes.
-
-    -   feat(canvas): add collision detection utility for widget positioning
-    -   feat(canvas): Shift+C copies file path for image widgets
-    -   fix(cli): resolve dev server port from Caddy instead of ports.json
-    -   fix(canvas): fix copy shortcut keybinding
-
--   [`dbfba29`](https://github.com/dfosco/storyboard/commit/dbfba290aafbd1d85ddcc3dc481e3bfa51447277) Thanks [@dfosco](https://github.com/dfosco)! - useFlowData optional flag, advanced copy-paste, and workshop branch-deploy fixes
-
-    -   feat: add { optional } flag to useFlowData to suppress missing-path warnings
-    -   feat: advanced copy-paste with canvasName/widgetId clipboard format
-    -   fix: workshop create forms now work on branch deploys (use **STORYBOARD_BASE_PATH**)
-    -   fix: snap-to-grid race condition between React and Svelte toolbar
-    -   fix: sync snapToGrid and gridSize when canvas data loads
-    -   fix: elevate stacking context of hovered/selected canvas widgets
-    -   refactor: remove redundant Shift+C shortcut
-
--   [`90dc50b`](https://github.com/dfosco/storyboard/commit/90dc50b4573559a329f619411aaaa5dc96260e9e) Thanks [@dfosco](https://github.com/dfosco)! - Workshop UX improvements and autocommit fix
-
-    -   feat: hide New Flow and New Page actions on canvas routes
-    -   feat: add optional description field to canvas creation
-    -   fix: autocommit in storyboard update stages files individually
-
--   [`f9b5de6`](https://github.com/dfosco/storyboard/commit/f9b5de6849fe984712362d69dd3d8ec9717919ff) Thanks [@dfosco](https://github.com/dfosco)! - Story widgets, canvas snapshots, and component menu
-
-    -   Story-format widget system with iframe embedding, snapshot lazy-loading, and code view
-    -   Canvas component menu with story picker and creation form
-    -   Multi-page canvas with path-based IDs and page selector
-    -   Config-driven paste rule engine
-    -   Canvas folder .meta.json support
-    -   Snapshot-to-iframe swap with delayed spinner and retina capture
-    -   Cmd+click to open flow in new tab
-    -   Persistent show-code state, resize handles on markdown widgets
-    -   Dynamic document.title reflecting current artifact
-    -   Numerous canvas widget, grid, zoom, and code view fixes
-
--   [`fc3fc05`](https://github.com/dfosco/storyboard/commit/fc3fc05347ab6fe2802853b5de4b47c2213d246d) Thanks [@dfosco](https://github.com/dfosco)! - Mobile experience and canvas improvements
-
-    -   **Mobile toolbar**: On viewports narrower than 500px, main-toolbar tools move into the ⌘ command menu (flows, theme, comments, inspector). Canvas toolbar stays visible.
-    -   **Pinch-to-zoom on canvas**: Two-finger pinch gesture zooms canvas widgets on mobile. Browser-level zoom is disabled so only the canvas responds.
-    -   **Pull-to-refresh prevention**: Added `overscroll-behavior-y: contain` to prevent pull-to-refresh interference.
-    -   **PWA install prompt**: Mobile-only "Add to Home Screen" banner using `beforeinstallprompt` API with localStorage dismiss.
-    -   **Canvas viewport persistence**: Zoom level and scroll position saved per-canvas in localStorage, with time-gated restore (15 min) and zoom-to-fit fallback.
-    -   **Figma embed snapshots**: Canvas Figma embeds now generate preview snapshots.
-    -   **Snapshots CLI**: New `storyboard snapshots` command for batch canvas preview generation.
-    -   **Setup improvements**: `storyboard setup` now scaffolds git hooks and installs Playwright for snapshot generation.
-    -   **Story source in prod**: Deploy story source as JSON endpoint for production builds.
-
--   [`cd65233`](https://github.com/dfosco/storyboard/commit/cd652339dca7e8b7384840dac3e638d288bed8e5) Thanks [@dfosco](https://github.com/dfosco)! - GitHub embeds, canvas snapshot improvements, and story route cleanup
-
-    -   **feat:** GitHub embed hydration — paste issue/PR/discussion/comment URLs for rich cards with full markdown, signed images, videos, author avatars
-    -   **feat:** Collapse/expand height for GitHub embeds with viewport pan
-    -   **feat:** Title bar with GitHub mark icon, clickable title and author links
-    -   **feat:** Pull Request URL support for embeds
-    -   **feat:** Widget chrome actions — refresh data, open in new tab, copy markdown
-    -   **feat:** Canvas embed snapshot wave-refresh with theme-aware captures
-    -   **feat:** Keep Figma embeds alive for 2min after deselect
-    -   **fix:** Signed image URLs via body_html (JWT tokens, no broken proxy)
-    -   **fix:** Video blinking, checkbox accent color, clickable links in body
-    -   **refactor:** Strip layout chrome from story routes
-
--   [`57a736a`](https://github.com/dfosco/storyboard/commit/57a736a0d546d04d5a3511bbbb75dbd67af397e1) Thanks [@dfosco](https://github.com/dfosco)! - Add CodePen embed widget for canvas
-
-    -   Paste any CodePen pen URL onto a canvas to create an interactive embed
-    -   Same behavior as Figma embeds: click-to-interact, expand modal, open-external
-    -   Header bar shows pen title and author name via CodePen oEmbed API
-    -   Paste rule matches codepen.io pen/full/details/embed URLs
-
--   [`f5aa193`](https://github.com/dfosco/storyboard/commit/f5aa193cfe307fad445856fa7b8b19efca12ebda) Thanks [@dfosco](https://github.com/dfosco)! - Remove snapshot capture system — iframes load directly like pre-beta.24
-
-    -   Removed useSnapshotCapture, refreshQueue, theme-change auto-refresh
-    -   741 → 421 lines in PrototypeEmbed (320 lines of complexity removed)
-    -   Eliminates iframe auto-mount cascades, re-render storms, and capture timeouts
-    -   Prototype embeds now load instantly on click with no intermediate states
-
--   [`5f637f6`](https://github.com/dfosco/storyboard/commit/5f637f6493d6b00727c47e67b92fb671282d9560) Thanks [@dfosco](https://github.com/dfosco)! - Multi-repo dev server support, branch switching API, and link-preview redesign
-
-    -   feat: scope storyboard server by devDomain — multiple repos can run simultaneously
-    -   feat: BranchBar uses switch-branch API in dev mode
-    -   feat: redesign plain link-preview card with editable title and OG image
-    -   fix: always fetch live branch list from API
-    -   fix: add @base-ui/react dependency to storyboard-react package
-    -   fix: duplicate SERVER_PORT export, add disabled tool support
-
--   [`d0fddac`](https://github.com/dfosco/storyboard/commit/d0fddac3ebf73894e5efd6bbb3b3f1e63b14bb69) Thanks [@dfosco](https://github.com/dfosco)! - Migrate BranchBar to React and fix embed visibility
-
-    -   Migrate BranchBar from vanilla JS to React with normalized branch switching
-    -   Hide BranchBar inside prototype and story embeds
-    -   Pre-bundle use-sync-external-store for @base-ui/react ESM compatibility
-
--   [`7e3fad5`](https://github.com/dfosco/storyboard/commit/7e3fad56f4552cdeb916e048a1b7668345c3473e) Thanks [@dfosco](https://github.com/dfosco)! - Multi-widget operations, PageSelector improvements, and branch deploy fixes
-
-    -   Multi-widget copy/paste on canvas
-    -   Add "Add new page" action to canvas PageSelector dropdown
-    -   Consolidate PAT auth into single React modal
-    -   Add agent-browser, ship, and canvas skills to scaffolding
-    -   Rename ViewfinderNew to Viewfinder
-    -   Use relative paths for font URLs (fixes 502 on branch deploys)
-    -   Offset canvas elements and viewfinder sidebar for BranchBar height
-    -   Respect `disabled: true` in toolbar tool config
-    -   Fix viewfinder sidebar styling (remove blue links, snap footer)
-    -   Add direct Cmd+K listener for command palette
-    -   Run npm install at end of storyboard setup
-    -   Fix switch-branch proxy port derivation and BranchBar body padding
-    -   Detect port collisions across repos in getPort
-
--   [`fad6e36`](https://github.com/dfosco/storyboard/commit/fad6e36f2f291016b575e41289b5f2392bbe5a0c) Thanks [@dfosco](https://github.com/dfosco)! - Declarative command palette config and create canvas form cleanup
-
-    -   feat: declarative commandPalette.sections config — static entries, dynamic lists, and tool-menu sub-pages
-    -   fix: remove redundant Title field from create canvas form
-
--   [`4d5961d`](https://github.com/dfosco/storyboard/commit/4d5961db0bad6e6b5ddfcb0e5e054dc71f27906a) Thanks [@dfosco](https://github.com/dfosco)! - Fully config-driven command palette, tool visibility controls, and Primer theming
-
-    -   feat: command palette sections fully declarative via commandPalette.sections config
-    -   feat: source types — tools, recent, create, commands, prototypes, canvases, stories, tool-subpages
-    -   feat: tool sub-pages with react-cmdk Page navigation (Escape/Backspace to return)
-    -   feat: declarative theme options in toolbar.config.json
-    -   feat: hideInCommandPalette property for route-aware tool visibility
-    -   feat: menu tools close palette and click toolbar button to open native menu
-    -   feat: separator sections, tool-subpages auto-discovery, route-excluded tools shown as disabled
-    -   feat: hide-toolbars inline action (toggle chrome, same as Cmd+.)
-    -   fix: Cmd+K double-toggle between Svelte and React handlers
-    -   fix: canvas tools hidden from palette on non-canvas routes
-    -   fix: Primer CSS variable theming for Viewfinder, cards, and dark mode
-    -   fix: repository tool URL dynamically injected from config
-
--   [`0e4e21f`](https://github.com/dfosco/storyboard/commit/0e4e21f3acbab433bd62e5269b3f42f27cb73371) Thanks [@dfosco](https://github.com/dfosco)! - Port CommandPalette to @dfosco/storyboard-react, canvas UX improvements, and embed fixes
-
-    -   Port CommandPalette from consumer app into @dfosco/storyboard-react so all consumers get it automatically
-    -   Add Storyboard logo as homepage link on canvas pages
-    -   Add canvas card Pages dropdown for multi-page canvases
-    -   Add marquee multi-select drag on canvas background
-    -   Add selected widgets bridge for Copilot context
-    -   Add npm sync script for local library testing
-    -   Convert single-page canvas to multi-page folder on add page
-    -   Hide branch bar in prototype and story embeds via \_sb_hide_branch_bar param
-    -   Fix SidePanel offset to account for branch bar height
-    -   Fix react-cmdk CJS/ESM compatibility and Vite pre-bundling
-    -   Fix smooth-corners worklet registration for React canvas pages
-    -   Remove deprecated .canvas.jsx companion support
-
--   [`da7cc80`](https://github.com/dfosco/storyboard/commit/da7cc80d27147ba80493a52f79290b99c08a98f1) Thanks [@dfosco](https://github.com/dfosco)! - Config restructuring and theme fixes
-
-    -   Extract commandPalette config into standalone commandpalette.config.json (like toolbar.config)
-    -   Add customerMode config object to storyboard.config.json
-    -   Canvas theme variables for all Primer themes including high contrast
-    -   Fix command palette dark mode rendering on light theme
-    -   Migrate AuthModal to BaseUI Dialog with Primer theme support
-    -   Fix CoreUIBar visible state sync when chrome-hidden toggled externally
-    -   Fix smooth-corners CSS variable alignment with paint worklet
-
-### Patch Changes
-
--   [`e29c420`](https://github.com/dfosco/storyboard/commit/e29c42005cdbf673c6368bbddcf738dac76a1f5d) Thanks [@dfosco](https://github.com/dfosco)! - Faster dev server startup (~14.5s → ~7s)
-
-    -   Batch git metadata calls into 1-2 subprocesses instead of per-file
-    -   Scope glob ignore to skip .worktrees/ and public/ during data file discovery
-
--   [`c468f9c`](https://github.com/dfosco/storyboard/commit/c468f9cfc332c77d4e11e6cd2b9d74196a219dce) Thanks [@dfosco](https://github.com/dfosco)! - Canvas widget copy shortcuts
-
-    -   Add ⌘/Ctrl+C to copy selected widget's URL/content to clipboard
-    -   Add ⌥⌘/Alt+Ctrl+C to copy selected widget's ID to clipboard
-
--   [`02dc1b7`](https://github.com/dfosco/storyboard/commit/02dc1b74bfdde27e13915165f623bec53c2f9836) Thanks [@dfosco](https://github.com/dfosco)! - Fix debug ESM/CJS interop error in dev mode.
-
-    -   fix: add `debug` to Vite `optimizeDeps.include` so micromark's development build resolves correctly
-
--   [`71bec3c`](https://github.com/dfosco/storyboard/commit/71bec3c2e8a24db3ba1dd85917d4fe5fd25c8b18) Thanks [@dfosco](https://github.com/dfosco)! - Canvas interaction and styling improvements
-
-    -   Embed click-to-interact overlay for better canvas UX
-    -   Primer CSS and ThemeProvider support in component iframes
-    -   Prod-flagged widget features now visible in production mode
-    -   Multi-select and space-pan conflict fixes
-    -   Remark ESM/CJS interop fix for Vite optimizeDeps
-
--   [`6fc8670`](https://github.com/dfosco/storyboard/commit/6fc867080cbf719f3cb1a3e8adf327065916c1a0) Thanks [@dfosco](https://github.com/dfosco)! - Canvas dark mode fixes, widget menu alignment, and HMR reliability improvements.
-
-    -   ComponentWidget now uses theme background color in dark mode
-    -   Overflow menu properly aligned to button edge
-    -   Fix nested $variable resolution in dropdown alt labels
-    -   Canvas file changes correctly invalidate for fresh page loads
-    -   Suppress noisy console errors (branches.json, smooth-corners)
-
--   [`6aaf930`](https://github.com/dfosco/storyboard/commit/6aaf93024232f67723b0e763511db41ac2be1df5) Thanks [@dfosco](https://github.com/dfosco)! - Fix broken monorepo-relative imports
-
-    -   Replace monorepo-relative imports with proper package imports for correct resolution in published packages
-
--   [`452421c`](https://github.com/dfosco/storyboard/commit/452421c494f404f38519501e4a653585760253da) Thanks [@dfosco](https://github.com/dfosco)! - Fixes highlight.js bundling for Vite consumers
-
-    -   Use highlight.js ESM entry points for Vite compatibility
-    -   Add highlight.js and html-to-image to core package dependencies
-
--   [`4136694`](https://github.com/dfosco/storyboard/commit/41366944e5e18e660f2bd74c22c93acf91879556) Thanks [@dfosco](https://github.com/dfosco)! - Fix highlight.js build failure in CI
-
-    -   Use highlight.js/lib/_ export specifiers instead of ./es/_ internal paths
-
--   [`e18ef18`](https://github.com/dfosco/storyboard/commit/e18ef188d0a5e124e8d4fe9a389ba09fd7fbd5bb) Thanks [@dfosco](https://github.com/dfosco)! - Fix story code view loading stuck in production builds
-
-    -   Fix source code loading effect getting stuck on "Loading…" under StrictMode double-mount
-    -   Install playwright as local devDependency for snapshot generation
-
--   [`d7cfae7`](https://github.com/dfosco/storyboard/commit/d7cfae7c9191a0e9dd82e4fce15135202c513172) Thanks [@dfosco](https://github.com/dfosco)! - Fix snapshot generation and add server-side widget filtering
-
-    -   Fix snapshot screenshots using unsupported webp format — now uses png
-    -   Add server-side widget filtering for canvas read API
-
--   [`3bcfbb0`](https://github.com/dfosco/storyboard/commit/3bcfbb0e7c278f6b4af565bf740e010e94ee2be3) Thanks [@dfosco](https://github.com/dfosco)! - Sequential iframe queue for canvas embeds and CI snapshot generation
-
-    -   Canvas embeds without snapshots now load one at a time via a sequential queue, preventing browser jams
-    -   Snapshot generation moved to CI with stable naming and dirty detection
-    -   Undo history cap reverted to 100
-
--   [`10dbadc`](https://github.com/dfosco/storyboard/commit/10dbadc4245f93a565963a58f3b784ceaa03e165) Thanks [@dfosco](https://github.com/dfosco)! - Dev logs toggle, click-to-jump-queue, and scaffold workflow fixes
-
-    -   Dev Logs toggle in Devtools toolbar — logs iframe queue and snapshot state transitions (gated behind feature flag)
-    -   Clicking to interact on a queued embed now immediately starts its iframe and releases the queue slot
-    -   Scaffold now includes preview.yml and snapshots.yml workflows for client repos
-    -   Scaffold workflows updated to match client repo patterns (actions v6, node 22, .nojekyll)
-
--   [`e7d32e1`](https://github.com/dfosco/storyboard/commit/e7d32e155ae7fd1e0d32c22b4459eb78cab054d3) Thanks [@dfosco](https://github.com/dfosco)! - Remove local snapshot generation from scaffold pre-push hook
-
-    -   Scaffold pre-push hook still had stage_snapshots in STAGES array, causing client repos to run local snapshot generation on push
-    -   Snapshot generation is now CI-only via snapshots.yml workflow
-
--   [`13a3a69`](https://github.com/dfosco/storyboard/commit/13a3a693c20df6777d0cad6589e52f44eec81112) Thanks [@dfosco](https://github.com/dfosco)! - Flash-free snapshot hotswap with dual-theme layering
-
-    -   Both themed snapshot images always in DOM, CSS-swapped for instant theme switching
-    -   Iframe stays mounted until snapshots captured and preloaded — no flash on exit
-    -   Intermediate snapshot publish before alt-theme capture prevents placeholder flash
-    -   Shared resolveCanvasTheme() fixes StoryWidget theme resolution
-    -   Exit session tracking prevents stale capture callbacks from closing reopened iframes
-
--   [`4e097fe`](https://github.com/dfosco/storyboard/commit/4e097fe1ae9b86f8d999bb8942e7ca10b2043de2) Thanks [@dfosco](https://github.com/dfosco)! - Performance: eliminate zoom re-render cascade and optimize snapshot capture
-
-    -   Replace `flushSync(setZoom)` with imperative DOM mutation for smooth canvas zoom
-    -   Pipeline dual-theme snapshot capture with non-blocking widget exit
-    -   Memoize widget subtrees to prevent unnecessary re-renders
-    -   Reduce snapshot pixelRatio from 2→1 for faster captures
-
--   [`80a5038`](https://github.com/dfosco/storyboard/commit/80a503871705ec4d79056258f1ee54594b50a4f7) Thanks [@dfosco](https://github.com/dfosco)! - Fix hooks ordering crash on canvas page (useCallback after early return)
-
--   [`3db91ff`](https://github.com/dfosco/storyboard/commit/3db91ffe7b301e42e3a4dbd721b89217e411f3a9) Thanks [@dfosco](https://github.com/dfosco)! - Canvas JSONL compaction to prevent performance degradation
-
-    -   `storyboard compact` command to compact bloated canvas JSONL files
-    -   Auto-compacts on `storyboard dev` startup and every 15 minutes
-    -   Threshold: 500KB — eliminates redundant `widgets_replaced` history
-
--   [`79af93e`](https://github.com/dfosco/storyboard/commit/79af93ea1e818cb218eb84db7ee56026a6c39ee8) Thanks [@dfosco](https://github.com/dfosco)! - Fix iframe auto-mount on canvas load when snapshots are missing
-
-    -   Don't auto-mount iframes for snapshot refresh when no snapshot exists
-    -   Hide rename-watcher startup notice from dev server output
-
--   [`207428d`](https://github.com/dfosco/storyboard/commit/207428d6e985199e17ad5d94e0ff9a8a298ab52c) Thanks [@dfosco](https://github.com/dfosco)! - Fix iframe auto-mount when snapshot images are missing from disk
-
-    -   Use ref to check hasSnap at callback time instead of stale closure value
-    -   Prevents 404'd snapshots from triggering iframe mount cascade
-
--   [`0aafaaf`](https://github.com/dfosco/storyboard/commit/0aafaaf59cfaa0251d2048da6b01b036ae903fcd) Thanks [@dfosco](https://github.com/dfosco)! - Add comprehensive iframe lifecycle logging for embed widget debugging
-
--   [`b8721d3`](https://github.com/dfosco/storyboard/commit/b8721d3917f3d68ccf3f1499e1a84b4a50af5754) Thanks [@dfosco](https://github.com/dfosco)! - Fix iframe auto-mount cascade on canvas page load
-
-    -   Replace double-mount-vulnerable canvasThemeInitRef with 3s mount-time guard
-    -   Clear broken snapshot URLs from widget data on 404
-    -   hasSnapRef defense-in-depth for stale closure protection
-
--   [`7f025e3`](https://github.com/dfosco/storyboard/commit/7f025e3064e781078c318e5c04029fe5300bfa35) Thanks [@dfosco](https://github.com/dfosco)! - Remove all snapshot code from StoryWidget, fix prototype titles
-
-    -   StoryWidget cleaned of snapshot system (490 → 276 lines)
-    -   Prototype titles show "PrototypeName · FlowName" instead of URLs
-    -   Removed refresh-thumbnail action from prototype and story configs
-    -   Deleted useSnapshotCapture.js and refreshQueue.js
-
--   [`7db7442`](https://github.com/dfosco/storyboard/commit/7db74420288c2f4520881874dc2660c7184d34d4) Thanks [@dfosco](https://github.com/dfosco)! - Viewfinder improvements — new SaaS-style homescreen
-
-    -   New Viewfinder with sidebar nav, artifact grid, folder grouping, flow dropdowns, avatar stacks, responsive layout, and create artifact dropdown
-    -   Text-only cards with description and GitHub avatar stacks
-    -   Base UI type scale (12/14/16/18/24px) across the Viewfinder
-    -   Create dropdown with Flow/Page sub-forms and prototype selector
-    -   Responsive: 4→3→2→1 columns, sidebar collapses to hamburger at 500px
-    -   Removed old Viewfinder component
-
--   [`99a84cb`](https://github.com/dfosco/storyboard/commit/99a84cb358d22bc3cec2563b1a0ef02f37a77180) Thanks [@dfosco](https://github.com/dfosco)! - Fix client build error caused by svelte/store imports in core stores
-
-    -   Replace svelte/store dependency in themeStore and sidePanelStore with inline framework-agnostic writable implementation
-
--   [`ae0ea97`](https://github.com/dfosco/storyboard/commit/ae0ea97580ab791293cae32d0650f66e2161638b) Thanks [@dfosco](https://github.com/dfosco)! - Auto-render BranchBar and AuthModal from StoryboardCommandPalette
-
-    -   Port BranchBar and AuthModal from consumer app to @dfosco/storyboard-react
-    -   StoryboardCommandPalette now auto-renders BranchBar and AuthModal
-    -   Consumers mounting StoryboardCommandPalette get all three with zero extra setup
-    -   Both components also exported standalone for custom usage
-
--   [`042a924`](https://github.com/dfosco/storyboard/commit/042a924575c41bbafdd30924792c6b2544dac31a) Thanks [@dfosco](https://github.com/dfosco)! - Port BranchBar and AuthModal to @dfosco/storyboard-react
-
-    -   StoryboardCommandPalette auto-renders BranchBar and AuthModal
-    -   Hide branch bar in prototype/story embeds via \_sb_hide_branch_bar
-    -   SidePanel offset for branch bar height
-
--   [`4897e29`](https://github.com/dfosco/storyboard/commit/4897e29c43fda644a2946a6089b81f9a6ed76e90) Thanks [@dfosco](https://github.com/dfosco)! - Fix React BranchBar showing in prototype embeds on branch deploys
-
-    -   Hide React BranchBar when `_sb_embed` or `_sb_hide_branch_bar` query params are present
-    -   Brings React BranchBar to parity with the Svelte BranchBar embed checks
-
-## 4.0.0-beta.48
-
-### Patch Changes
-
--   Fix React BranchBar showing in prototype embeds on branch deploys
-
-    -   Hide React BranchBar when `_sb_embed` or `_sb_hide_branch_bar` query params are present
-    -   Brings React BranchBar to parity with the Svelte BranchBar embed checks
-
-## 4.0.0-beta.47
-
-### Minor Changes
-
--   Config restructuring and theme fixes
-
-    -   Extract commandPalette config into standalone commandpalette.config.json (like toolbar.config)
-    -   Add customerMode config object to storyboard.config.json
-    -   Canvas theme variables for all Primer themes including high contrast
-    -   Fix command palette dark mode rendering on light theme
-    -   Migrate AuthModal to BaseUI Dialog with Primer theme support
-    -   Fix CoreUIBar visible state sync when chrome-hidden toggled externally
-    -   Fix smooth-corners CSS variable alignment with paint worklet
-
-## 4.0.0-beta.46
-
-### Patch Changes
-
--   Port BranchBar and AuthModal to @dfosco/storyboard-react
-
-    -   StoryboardCommandPalette auto-renders BranchBar and AuthModal
-    -   Hide branch bar in prototype/story embeds via \_sb_hide_branch_bar
-    -   SidePanel offset for branch bar height
-
-## 4.0.0-beta.45
-
-### Patch Changes
-
--   Auto-render BranchBar and AuthModal from StoryboardCommandPalette
-
-    -   Port BranchBar and AuthModal from consumer app to @dfosco/storyboard-react
-    -   StoryboardCommandPalette now auto-renders BranchBar and AuthModal
-    -   Consumers mounting StoryboardCommandPalette get all three with zero extra setup
-    -   Both components also exported standalone for custom usage
-
-## 4.0.0-beta.44
-
-### Minor Changes
-
--   Port CommandPalette to @dfosco/storyboard-react, canvas UX improvements, and embed fixes
-
-    -   Port CommandPalette from consumer app into @dfosco/storyboard-react so all consumers get it automatically
-    -   Add Storyboard logo as homepage link on canvas pages
-    -   Add canvas card Pages dropdown for multi-page canvases
-    -   Add marquee multi-select drag on canvas background
-    -   Add selected widgets bridge for Copilot context
-    -   Add npm sync script for local library testing
-    -   Convert single-page canvas to multi-page folder on add page
-    -   Hide branch bar in prototype and story embeds via \_sb_hide_branch_bar param
-    -   Fix SidePanel offset to account for branch bar height
-    -   Fix react-cmdk CJS/ESM compatibility and Vite pre-bundling
-    -   Fix smooth-corners worklet registration for React canvas pages
-    -   Remove deprecated .canvas.jsx companion support
-
-## 4.0.0-beta.43
-
-### Patch Changes
-
--   99a84cb: Fix client build error caused by svelte/store imports in core stores
-
-    -   Replace svelte/store dependency in themeStore and sidePanelStore with inline framework-agnostic writable implementation
-
-## 4.0.0-beta.42
-
-### Minor Changes
-
--   Fully config-driven command palette, tool visibility controls, and Primer theming
-
-    -   feat: command palette sections fully declarative via commandPalette.sections config
-    -   feat: source types — tools, recent, create, commands, prototypes, canvases, stories, tool-subpages
-    -   feat: tool sub-pages with react-cmdk Page navigation (Escape/Backspace to return)
-    -   feat: declarative theme options in toolbar.config.json
-    -   feat: hideInCommandPalette property for route-aware tool visibility
-    -   feat: menu tools close palette and click toolbar button to open native menu
-    -   feat: separator sections, tool-subpages auto-discovery, route-excluded tools shown as disabled
-    -   feat: hide-toolbars inline action (toggle chrome, same as Cmd+.)
-    -   fix: Cmd+K double-toggle between Svelte and React handlers
-    -   fix: canvas tools hidden from palette on non-canvas routes
-    -   fix: Primer CSS variable theming for Viewfinder, cards, and dark mode
-    -   fix: repository tool URL dynamically injected from config
-
-## 4.0.0-beta.41
-
-### Minor Changes
-
--   Declarative command palette config and create canvas form cleanup
-
-    -   feat: declarative commandPalette.sections config — static entries, dynamic lists, and tool-menu sub-pages
-    -   fix: remove redundant Title field from create canvas form
-
-## 4.0.0-beta.40
-
-### Minor Changes
-
--   Multi-widget operations, PageSelector improvements, and branch deploy fixes
-
-    -   Multi-widget copy/paste on canvas
-    -   Add "Add new page" action to canvas PageSelector dropdown
-    -   Consolidate PAT auth into single React modal
-    -   Add agent-browser, ship, and canvas skills to scaffolding
-    -   Rename ViewfinderNew to Viewfinder
-    -   Use relative paths for font URLs (fixes 502 on branch deploys)
-    -   Offset canvas elements and viewfinder sidebar for BranchBar height
-    -   Respect `disabled: true` in toolbar tool config
-    -   Fix viewfinder sidebar styling (remove blue links, snap footer)
-    -   Add direct Cmd+K listener for command palette
-    -   Run npm install at end of storyboard setup
-    -   Fix switch-branch proxy port derivation and BranchBar body padding
-    -   Detect port collisions across repos in getPort
-
-## 4.0.0-beta.39
-
-### Minor Changes
-
--   Migrate BranchBar to React and fix embed visibility
-
-    -   Migrate BranchBar from vanilla JS to React with normalized branch switching
-    -   Hide BranchBar inside prototype and story embeds
-    -   Pre-bundle use-sync-external-store for @base-ui/react ESM compatibility
-
-## 4.0.0-beta.38
-
-### Minor Changes
-
--   Multi-repo dev server support, branch switching API, and link-preview redesign
-
-    -   feat: scope storyboard server by devDomain — multiple repos can run simultaneously
-    -   feat: BranchBar uses switch-branch API in dev mode
-    -   feat: redesign plain link-preview card with editable title and OG image
-    -   fix: always fetch live branch list from API
-    -   fix: add @base-ui/react dependency to storyboard-react package
-    -   fix: duplicate SERVER_PORT export, add disabled tool support
-
-## 4.0.0-beta.37
-
-### Patch Changes
-
--   Viewfinder improvements — new SaaS-style homescreen
-
-    -   New Viewfinder with sidebar nav, artifact grid, folder grouping, flow dropdowns, avatar stacks, responsive layout, and create artifact dropdown
-    -   Text-only cards with description and GitHub avatar stacks
-    -   Base UI type scale (12/14/16/18/24px) across the Viewfinder
-    -   Create dropdown with Flow/Page sub-forms and prototype selector
-    -   Responsive: 4→3→2→1 columns, sidebar collapses to hamburger at 500px
-    -   Removed old Viewfinder component
-
-## 4.0.0-beta.36
-
-### Patch Changes
-
--   Remove all snapshot code from StoryWidget, fix prototype titles
-
-    -   StoryWidget cleaned of snapshot system (490 → 276 lines)
-    -   Prototype titles show "PrototypeName · FlowName" instead of URLs
-    -   Removed refresh-thumbnail action from prototype and story configs
-    -   Deleted useSnapshotCapture.js and refreshQueue.js
-
-## 4.0.0-beta.35
-
-### Minor Changes
-
--   Remove snapshot capture system — iframes load directly like pre-beta.24
-
-    -   Removed useSnapshotCapture, refreshQueue, theme-change auto-refresh
-    -   741 → 421 lines in PrototypeEmbed (320 lines of complexity removed)
-    -   Eliminates iframe auto-mount cascades, re-render storms, and capture timeouts
-    -   Prototype embeds now load instantly on click with no intermediate states
-
-## 4.0.0-beta.34
-
-### Patch Changes
-
--   Fix iframe auto-mount cascade on canvas page load
-
-    -   Replace double-mount-vulnerable canvasThemeInitRef with 3s mount-time guard
-    -   Clear broken snapshot URLs from widget data on 404
-    -   hasSnapRef defense-in-depth for stale closure protection
-
-## 4.0.0-beta.33
-
-### Patch Changes
-
--   Add comprehensive iframe lifecycle logging for embed widget debugging
-
-## 4.0.0-beta.32
-
-### Patch Changes
-
--   Fix iframe auto-mount when snapshot images are missing from disk
-
-    -   Use ref to check hasSnap at callback time instead of stale closure value
-    -   Prevents 404'd snapshots from triggering iframe mount cascade
-
-## 4.0.0-beta.31
-
-### Patch Changes
-
--   Fix iframe auto-mount on canvas load when snapshots are missing
-
-    -   Don't auto-mount iframes for snapshot refresh when no snapshot exists
-    -   Hide rename-watcher startup notice from dev server output
-
-## 4.0.0-beta.30
-
-### Patch Changes
-
--   Canvas JSONL compaction to prevent performance degradation
-
-    -   `storyboard compact` command to compact bloated canvas JSONL files
-    -   Auto-compacts on `storyboard dev` startup and every 15 minutes
-    -   Threshold: 500KB — eliminates redundant `widgets_replaced` history
-
-## 4.0.0-beta.29
-
-### Minor Changes
-
--   Add CodePen embed widget for canvas
-
-    -   Paste any CodePen pen URL onto a canvas to create an interactive embed
-    -   Same behavior as Figma embeds: click-to-interact, expand modal, open-external
-    -   Header bar shows pen title and author name via CodePen oEmbed API
-    -   Paste rule matches codepen.io pen/full/details/embed URLs
-
-## 4.0.0-beta.28
-
-### Minor Changes
-
--   GitHub embeds, canvas snapshot improvements, and story route cleanup
-
-    -   **feat:** GitHub embed hydration — paste issue/PR/discussion/comment URLs for rich cards with full markdown, signed images, videos, author avatars
-    -   **feat:** Collapse/expand height for GitHub embeds with viewport pan
-    -   **feat:** Title bar with GitHub mark icon, clickable title and author links
-    -   **feat:** Pull Request URL support for embeds
-    -   **feat:** Widget chrome actions — refresh data, open in new tab, copy markdown
-    -   **feat:** Canvas embed snapshot wave-refresh with theme-aware captures
-    -   **feat:** Keep Figma embeds alive for 2min after deselect
-    -   **fix:** Signed image URLs via body_html (JWT tokens, no broken proxy)
-    -   **fix:** Video blinking, checkbox accent color, clickable links in body
-    -   **refactor:** Strip layout chrome from story routes
-
-## 4.0.0-beta.27
-
-### Patch Changes
-
--   Fix hooks ordering crash on canvas page (useCallback after early return)
-
-## 4.0.0-beta.26
-
-### Patch Changes
-
--   Performance: eliminate zoom re-render cascade and optimize snapshot capture
-
-    -   Replace `flushSync(setZoom)` with imperative DOM mutation for smooth canvas zoom
-    -   Pipeline dual-theme snapshot capture with non-blocking widget exit
-    -   Memoize widget subtrees to prevent unnecessary re-renders
-    -   Reduce snapshot pixelRatio from 2→1 for faster captures
-
-## 4.0.0-beta.25
-
-### Patch Changes
-
--   Flash-free snapshot hotswap with dual-theme layering
-
-    -   Both themed snapshot images always in DOM, CSS-swapped for instant theme switching
-    -   Iframe stays mounted until snapshots captured and preloaded — no flash on exit
-    -   Intermediate snapshot publish before alt-theme capture prevents placeholder flash
-    -   Shared resolveCanvasTheme() fixes StoryWidget theme resolution
-    -   Exit session tracking prevents stale capture callbacks from closing reopened iframes
-
-## 4.0.0-beta.24
-
-### Patch Changes
-
--   Remove local snapshot generation from scaffold pre-push hook
-
-    -   Scaffold pre-push hook still had stage_snapshots in STAGES array, causing client repos to run local snapshot generation on push
-    -   Snapshot generation is now CI-only via snapshots.yml workflow
-
-## 4.0.0-beta.23
-
-### Patch Changes
-
--   Dev logs toggle, click-to-jump-queue, and scaffold workflow fixes
-
-    -   Dev Logs toggle in Devtools toolbar — logs iframe queue and snapshot state transitions (gated behind feature flag)
-    -   Clicking to interact on a queued embed now immediately starts its iframe and releases the queue slot
-    -   Scaffold now includes preview.yml and snapshots.yml workflows for client repos
-    -   Scaffold workflows updated to match client repo patterns (actions v6, node 22, .nojekyll)
-
-## 4.0.0-beta.22
-
-### Patch Changes
-
--   Sequential iframe queue for canvas embeds and CI snapshot generation
-
-    -   Canvas embeds without snapshots now load one at a time via a sequential queue, preventing browser jams
-    -   Snapshot generation moved to CI with stable naming and dirty detection
-    -   Undo history cap reverted to 100
-
-## 4.0.0-beta.21
-
-### Patch Changes
-
--   Fix snapshot generation and add server-side widget filtering
-
-    -   Fix snapshot screenshots using unsupported webp format — now uses png
-    -   Add server-side widget filtering for canvas read API
-
-## 4.0.0-beta.20
-
-### Patch Changes
-
--   Fix story code view loading stuck in production builds
-
-    -   Fix source code loading effect getting stuck on "Loading…" under StrictMode double-mount
-    -   Install playwright as local devDependency for snapshot generation
-
-## 4.0.0-beta.19
-
-### Minor Changes
-
--   Mobile experience and canvas improvements
-
-    -   **Mobile toolbar**: On viewports narrower than 500px, main-toolbar tools move into the ⌘ command menu (flows, theme, comments, inspector). Canvas toolbar stays visible.
-    -   **Pinch-to-zoom on canvas**: Two-finger pinch gesture zooms canvas widgets on mobile. Browser-level zoom is disabled so only the canvas responds.
-    -   **Pull-to-refresh prevention**: Added `overscroll-behavior-y: contain` to prevent pull-to-refresh interference.
-    -   **PWA install prompt**: Mobile-only "Add to Home Screen" banner using `beforeinstallprompt` API with localStorage dismiss.
-    -   **Canvas viewport persistence**: Zoom level and scroll position saved per-canvas in localStorage, with time-gated restore (15 min) and zoom-to-fit fallback.
-    -   **Figma embed snapshots**: Canvas Figma embeds now generate preview snapshots.
-    -   **Snapshots CLI**: New `storyboard snapshots` command for batch canvas preview generation.
-    -   **Setup improvements**: `storyboard setup` now scaffolds git hooks and installs Playwright for snapshot generation.
-    -   **Story source in prod**: Deploy story source as JSON endpoint for production builds.
-
-## 4.0.0-beta.18
-
-### Patch Changes
-
--   Fix highlight.js build failure in CI
-
-    -   Use highlight.js/lib/_ export specifiers instead of ./es/_ internal paths
-
-## 4.0.0-beta.17
-
-### Patch Changes
-
--   Fixes highlight.js bundling for Vite consumers
-
-    -   Use highlight.js ESM entry points for Vite compatibility
-    -   Add highlight.js and html-to-image to core package dependencies
-
-## 4.0.0-beta.16
-
-### Patch Changes
-
--   Fix broken monorepo-relative imports
-
-    -   Replace monorepo-relative imports with proper package imports for correct resolution in published packages
-
-## 4.0.0-beta.15
-
-### Minor Changes
-
--   Story widgets, canvas snapshots, and component menu
-
-    -   Story-format widget system with iframe embedding, snapshot lazy-loading, and code view
-    -   Canvas component menu with story picker and creation form
-    -   Multi-page canvas with path-based IDs and page selector
-    -   Config-driven paste rule engine
-    -   Canvas folder .meta.json support
-    -   Snapshot-to-iframe swap with delayed spinner and retina capture
-    -   Cmd+click to open flow in new tab
-    -   Persistent show-code state, resize handles on markdown widgets
-    -   Dynamic document.title reflecting current artifact
-    -   Numerous canvas widget, grid, zoom, and code view fixes
-
-## 4.0.0-beta.14
-
-### Minor Changes
-
--   Workshop UX improvements and autocommit fix
-
-    -   feat: hide New Flow and New Page actions on canvas routes
-    -   feat: add optional description field to canvas creation
-    -   fix: autocommit in storyboard update stages files individually
-
-## 4.0.0-beta.13
-
-### Minor Changes
-
--   useFlowData optional flag, advanced copy-paste, and workshop branch-deploy fixes
-
-    -   feat: add { optional } flag to useFlowData to suppress missing-path warnings
-    -   feat: advanced copy-paste with canvasName/widgetId clipboard format
-    -   fix: workshop create forms now work on branch deploys (use **STORYBOARD_BASE_PATH**)
-    -   fix: snap-to-grid race condition between React and Svelte toolbar
-    -   fix: sync snapToGrid and gridSize when canvas data loads
-    -   fix: elevate stacking context of hovered/selected canvas widgets
-    -   refactor: remove redundant Shift+C shortcut
-
-## 4.0.0-beta.12
-
-### Patch Changes
-
--   Canvas dark mode fixes, widget menu alignment, and HMR reliability improvements.
-
-    -   ComponentWidget now uses theme background color in dark mode
-    -   Overflow menu properly aligned to button edge
-    -   Fix nested $variable resolution in dropdown alt labels
-    -   Canvas file changes correctly invalidate for fresh page loads
-    -   Suppress noisy console errors (branches.json, smooth-corners)
-
-## 4.0.0-beta.11
-
-### Patch Changes
-
--   Canvas interaction and styling improvements
-
-    -   Embed click-to-interact overlay for better canvas UX
-    -   Primer CSS and ThemeProvider support in component iframes
-    -   Prod-flagged widget features now visible in production mode
-    -   Multi-select and space-pan conflict fixes
-    -   Remark ESM/CJS interop fix for Vite optimizeDeps
-
-## 4.0.0-beta.10
-
-## 4.0.0-beta.9
-
-### Patch Changes
-
--   Fix debug ESM/CJS interop error in dev mode.
-
-    -   fix: add `debug` to Vite `optimizeDeps.include` so micromark's development build resolves correctly
-
-## 4.0.0-beta.8
-
-### Minor Changes
-
--   Canvas collision detection, copy-path shortcut, and dev server fixes.
-
-    -   feat(canvas): add collision detection utility for widget positioning
-    -   feat(canvas): Shift+C copies file path for image widgets
-    -   fix(cli): resolve dev server port from Caddy instead of ports.json
-    -   fix(canvas): fix copy shortcut keybinding
-
-## 4.0.0-beta.7
-
-### Patch Changes
-
--   Canvas widget copy shortcuts
-
-    -   Add ⌘/Ctrl+C to copy selected widget's URL/content to clipboard
-    -   Add ⌥⌘/Alt+Ctrl+C to copy selected widget's ID to clipboard
-
-## 4.0.0-beta.6
-
-### Minor Changes
-
--   [`2022d2f`](https://github.com/dfosco/storyboard/commit/2022d2f4cb154fa6263415f21b5bc4a0e5391cd5) Thanks [@dfosco](https://github.com/dfosco)! - ### Features
-
-    -   **cli**: Add optional branch argument to `storyboard dev` command
-
-    ### Fixes
-
-    -   **canvas**: Make "Copy file path" an alt of "Copy as PNG" on images
-    -   **canvas**: Prevent line breaks in widget overflow menu items
-    -   **dev**: Detect branch name for base path when not in a worktree
-    -   **autosync**: Fix string spread bug in `listChangedFiles`
-
--   Canvas CLI, component isolation, and GFM markdown
-
-    -   Add `storyboard canvas read` CLI to query widget IDs, content, URLs, and file paths
-    -   Iframe-isolate component widgets for better CSS/JS encapsulation
-    -   Switch markdown rendering to remark with GitHub Flavored Markdown
-    -   Auto-convert root branch to worktree when running `sb dev`
-    -   Fix stale Caddy proxy route cleanup
-
-## 4.0.0-beta.4
-
-### Patch Changes
-
--   Faster dev server startup (~14.5s → ~7s)
-
-    -   Batch git metadata calls into 1-2 subprocesses instead of per-file
-    -   Scope glob ignore to skip .worktrees/ and public/ during data file discovery
-
-## 4.0.0-beta.3
-
-### Minor Changes
-
--   Fix GH Pages 404s caused by CNAME deletion on deploy
-
-    -   Emit CNAME file during Vite build when `customDomain` is set in storyboard.config.json
-    -   Scaffold deploy.yml and customDomain config field for new client repos
-    -   Expanded CLI: create commands with flag support, canvas skill, getting-started help
-    -   Autosync refactored to direct commit strategy (no worktree)
-    -   Caddy proxy uses admin API for multi-repo route isolation
-    -   Rename watcher for canvas embed URL sync
-    -   Default hideFlows to true for flow files
-
-## 4.0.0-beta.2
-
-### Major Changes
-
--   CLI update commands and dev domain config
-
-    -   **CLI update channels** — `storyboard update`, `update:beta`, `update:alpha`, and `update:<version>` shorthand
-    -   **Dev domain config** — `devDomain` key in storyboard.config.json to customize dev server domain
-    -   **Fix** — route any `update:*` command correctly instead of showing "Unknown command"
-
-## 4.0.0-beta.1
-
-### Major Changes
-
--   Canvas paste and CLI update command
-
-    -   **Canvas paste** — pasting non-URL text on canvas creates a markdown widget
-    -   **CLI** — replaced `update:flag` with `update:version` to update storyboard packages in client repos
-
-## 4.0.0-beta.0
-
-### Major Changes
-
--   Storyboard 4.0 — canvas system overhaul, CLI tooling, and production mode
-
-    -   **Canvas undo/redo** — full undo/redo queue for widget moves, resizes, copies, and deletes
-    -   **Canvas snap-to-grid** — toggle snap for widget positions and resize with configurable grid size
-    -   **Canvas multi-select & drag** — shift+click multi-select, group drag with preview
-    -   **Canvas widgets** — Figma embed, image paste, copy widget, expand modal, open-in-new-tab, config-driven dropdown menus and tools
-    -   **Canvas zoom** — zoom-to-fit, persistent viewport across sessions
-    -   **Canvas prototype embed** — persisted navigation with undo/redo, hash change tracking
-    -   **Autosync** — scope modes (canvas/prototype), branch worktree isolation, automatic commit/push, stash external edits during sync
-    -   **Storyboard CLI** — new `storyboard` CLI with Caddy proxy for clean dev URLs, worktree port registry, polished output with `@clack/prompts`, `storyboard exit` command
-    -   **Production mode** — `prodMode` URL param, devtools toggle, read-only canvas, local editing indicators
-    -   **Setup experience** — friendly welcome with mascot and getting started guide, turn-key setup (auto-install brew, caddy, gh)
-    -   **Default base URL** changed from `/storyboard/` to `/`
-    -   **Config-driven toolbar** — restructured `toolbar.config.json` with surfaces, tool entries, and widget configs
-    -   **Branch preview** — `branch--<name>` prefix for worktree URLs matching deploy convention
+Storyboard 4.0.0 — canvas system, command palette, toolbar tools, and customer mode.
+
+- **Canvas system**: multi-page canvases, marquee multi-select, widget snap/alignment, paste rules, prototype embeds with zoom, canvas theme sync across all Primer themes
+- **Command palette**: ported to @dfosco/storyboard-react, config extracted to commandpalette.config.json, author search, tool sub-pages, frecency ranking
+- **Toolbar tools**: declarative config-driven system (toolbar.config.json), tool registry, tool state store, surface/handler architecture, per-prototype overrides
+- **Customer mode**: new config for hiding chrome, homepage, and setting a prototype homepage redirect
+- **BranchBar**: ported to React, hidden in embeds, branch switching UI
+- **AuthModal**: ported to React with Primer theme support, BaseUI Dialog
+- **Workshop**: create actions for prototypes, flows, canvases
+- **Selected widgets bridge** for Copilot context
+- **Smooth-corners** paint worklet support
+- **Inspector/highlighter** system
+- **Comments system** with GitHub Discussions
+
+### Beta releases
+
+#### beta.0
+- Storyboard CLI with Caddy proxy for clean dev URLs, worktree port registry, and project scaffolding
+- Canvas multi-select, drag, snap-to-grid, undo/redo, zoom-to-fit, and config-driven widget resize
+- Widget chrome with toolbar, image paste, Figma embed, viewport persistence, and HMR guard
+
+#### beta.1–2
+- Paste non-URL text to create markdown widgets on canvas
+- Add `update`, `update:beta`, `update:alpha` CLI commands and `devDomain` config key
+
+#### beta.3
+- Canvas skill with rename watcher for embed URL sync
+- Caddy admin API for multi-repo route isolation; CNAME from `customDomain` config
+
+#### beta.4
+- Batch git calls and scope glob patterns for faster dev server startup
+
+#### beta.5–6
+- Canvas read CLI with widget query docs; iframe-isolate component widgets
+- Prompt-based root-to-worktree conversion and `sb code` command
+- Use remark with GitHub Flavored Markdown for markdown widgets
+
+#### beta.7–8
+- Copy widget URL/ID with keyboard shortcuts
+- Collision detection utility for widget positioning
+
+#### beta.10–11
+- Add image drag-and-drop from Finder to canvas
+- Embed click-to-interact overlay; fix multi-select and space-pan conflicts
+
+#### beta.12
+- Fix canvas image emission in production builds
+- Fix widget menu/toolbar alignment and HMR metadata merge
+
+#### beta.13
+- Advanced copy-paste with `canvasName/widgetId` clipboard format
+- Add `{ optional }` flag for `useFlowData`
+
+#### beta.15
+- Story widget system with multi-page canvas and page selector
+- Config-driven paste rule engine, Figma embed, and snapshot lazy-loading
+- Markdown code blocks with syntax highlighting; canvas folder `.meta.json` support
+
+#### beta.16–18
+- Fix highlight.js ESM/CJS compatibility for Vite builds
+
+#### beta.19
+- Mobile experience — toolbar in command menu, PWA install, pull-to-refresh prevention
+- Storyboard snapshots CLI for batch preview generation
+- Canvas viewport persistence with zoom-to-fit fallback
+
+#### beta.21–22
+- Server-side widget filtering for canvas read
+- CI-based snapshot generation with stable naming and dirty detection
+
+#### beta.25
+- In-browser iframe snapshot capture with dual-theme support
+- Gate iframe mounts behind interaction (load on click)
+- Migrate canvas identity to canonical path-based `canvasId`
+
+#### beta.26
+- Eliminate zoom re-render cascade and optimize snapshot capture
+
+#### beta.28–29
+- GitHub embed widget — issue/PR/discussion cards with full markdown, signed images, and videos
+- CodePen embed widget with header bar showing pen title and author
+- Canvas embed snapshot wave-refresh with theme-aware captures
+
+#### beta.30
+- JSONL compaction command and auto-compact on dev start
+
+#### beta.35–36
+- Remove entire snapshot system from prototype embeds — iframes load directly
+
+#### beta.37
+- Viewfinder redesign — SaaS homescreen with cards, folders, Base UI type scale
+- Standalone storyboard server with branch switching API
+- Command palette ported from Svelte to React with react-cmdk
+
+#### beta.38
+- Multi-repo dev server support scoped by `devDomain`
+- Link-preview card redesign with editable title and OG image
+
+#### beta.40
+- Multi-widget copy/paste on canvas
+- Consolidate PAT auth into single React modal
+- Scaffold agent-browser, ship, and canvas skills
+
+#### beta.41–42
+- Fully config-driven command palette with tool sub-pages, author search, and Primer theming
+- Hide-toolbars inline action and `hideInCommandPalette` property
+
+#### beta.44
+- Port CommandPalette to `@dfosco/storyboard-react` (auto-renders for all consumers)
+- Marquee multi-select drag on canvas background
+- Selected widgets bridge for Copilot context
+
+#### beta.45
+- Port AuthModal and BranchBar to `@dfosco/storyboard-react`
+
+#### beta.47
+- Extract command palette config to `commandpalette.config.json`
+- Add `customerMode` config and canvas theme vars for all Primer themes including high contrast
+- Fix command palette dark mode; migrate AuthModal to BaseUI Dialog
+
+#### beta.48
+- Hide React BranchBar in embeds via `_sb_embed` and `_sb_hide_branch_bar` params
 
 ## 3.11.0
 

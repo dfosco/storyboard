@@ -23,6 +23,7 @@ import {
   getCanvas as getCanvasApi,
   removeWidget as removeWidgetApi,
   updateCanvas,
+  updateFolderMeta,
   uploadImage,
 } from './canvasApi.js'
 import PageSelector from './PageSelector.jsx'
@@ -400,6 +401,72 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
     prev.onCopy === next.onCopy
   )
 })
+
+/**
+ * Editable canvas/folder title — always visible, double-click to edit in dev mode.
+ */
+function CanvasTitleEditable({ canvasId, canvasMeta, canvas, isLocalDev }) {
+  const [editing, setEditing] = useState(false)
+  const [titleValue, setTitleValue] = useState('')
+  const inputRef = useRef(null)
+  const displayTitle = canvasMeta?.title || canvas?.title || canvasId.split('/').pop()
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [editing])
+
+  const handleCommit = useCallback(async () => {
+    const trimmed = titleValue.trim()
+    setEditing(false)
+    if (!trimmed || trimmed === displayTitle) return
+    try {
+      if (canvasId.includes('/')) {
+        const folder = canvasId.split('/')[0]
+        await updateFolderMeta(folder, trimmed)
+      } else {
+        await updateCanvas(canvasId, { settings: { title: trimmed } })
+      }
+    } catch (err) {
+      console.error('Failed to update title:', err)
+    }
+  }, [titleValue, displayTitle, canvasId])
+
+  const handleDblClick = useCallback(() => {
+    if (!isLocalDev) return
+    setTitleValue(displayTitle)
+    setEditing(true)
+  }, [isLocalDev, displayTitle])
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        className={styles.canvasTitleEditing}
+        type="text"
+        value={titleValue}
+        onChange={(e) => setTitleValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); handleCommit() }
+          if (e.key === 'Escape') { e.preventDefault(); setEditing(false) }
+        }}
+        onBlur={handleCommit}
+      />
+    )
+  }
+
+  return (
+    <h1
+      className={styles.canvasTitleStatic}
+      onDoubleClick={handleDblClick}
+      style={isLocalDev ? { cursor: 'default' } : undefined}
+    >
+      {displayTitle}
+    </h1>
+  )
+}
 
 /**
  * Generic canvas page component.
@@ -2048,7 +2115,12 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         <a href={(import.meta.env?.BASE_URL || '/')} className={styles.canvasLogo} aria-label="Go to homepage">
           <Icon name="iconoir/key-command" size={16} color="#fff" />
         </a>
-        <h1 className={styles.canvasTitleStatic}>{canvasMeta?.title || canvas?.title || canvasId.split('/').pop()}</h1>
+        <CanvasTitleEditable
+          canvasId={canvasId}
+          canvasMeta={canvasMeta}
+          canvas={canvas}
+          isLocalDev={isLocalDev}
+        />
         <PageSelector currentName={canvasId} pages={siblingPages} isLocalDev={isLocalDev} />
         {isLocalDev && (
           <span className={styles.localEditingLabel}>Local editing</span>

@@ -16,6 +16,16 @@ Reads, manipulates, and arranges widgets on a Storyboard canvas. Supports absolu
 - The dev server **must** be running (`storyboard dev` or `npm run dev`)
 - The target canvas must already exist
 
+## Critical: Never Parse JSONL Directly
+
+**Always use the canvas server API or CLI to read canvas state.** Never manually parse `.canvas.jsonl` files.
+
+JSONL files are append-only event logs (`widget_added`, `widget_updated`, `widgets_replaced`, etc.) that require correct event replay to materialize the current state. Manually parsing them is error-prone — events like `widgets_replaced` update positions, props, and content in bulk, and naive parsing will miss these updates, producing stale/incorrect widget data.
+
+The server materializes the JSONL correctly. Use:
+- **CLI:** `npx storyboard canvas read {name} --json`
+- **API:** `GET /_storyboard/canvas/read?name={name}`
+
 ---
 
 ## Reference: Collision Detection

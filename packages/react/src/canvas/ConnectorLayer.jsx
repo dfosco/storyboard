@@ -1,7 +1,9 @@
 import { useMemo, useCallback } from 'react'
 import styles from './ConnectorLayer.module.css'
+import { getConnectorDefaults } from './widgets/widgetConfig.js'
 
-const CONTROL_OFFSET = 80
+const connectorConfig = getConnectorDefaults()
+const CONTROL_OFFSET = connectorConfig.controlOffset
 
 /**
  * Compute the anchor point on a widget's edge.
@@ -110,7 +112,25 @@ export default function ConnectorLayer({
   }, [onRemove])
 
   return (
-    <svg className={`${styles.connectorLayer} ${hidden ? styles.connectorLayerHidden : ''}`} style={{ width: '100000px', height: '100000px' }}>
+    <svg
+      className={`${styles.connectorLayer} ${hidden ? styles.connectorLayerHidden : ''}`}
+      style={{
+        width: '100000px',
+        height: '100000px',
+        '--connector-stroke': connectorConfig.stroke,
+        '--connector-stroke-width': `${connectorConfig.strokeWidth}px`,
+        '--connector-hover-stroke': connectorConfig.hoverStroke,
+        '--connector-hover-stroke-width': `${connectorConfig.hoverStrokeWidth}px`,
+        '--connector-endpoint-fill': connectorConfig.endpointFill,
+        '--connector-endpoint-stroke': connectorConfig.endpointStroke,
+        '--connector-endpoint-stroke-width': `${connectorConfig.endpointStrokeWidth}px`,
+        '--connector-hit-area-width': `${connectorConfig.hitAreaStrokeWidth}px`,
+        '--connector-drag-stroke': connectorConfig.dragStroke,
+        '--connector-drag-stroke-width': `${connectorConfig.dragStrokeWidth}px`,
+        '--connector-drag-dasharray': connectorConfig.dragDasharray,
+        '--connector-drag-opacity': connectorConfig.dragOpacity,
+      }}
+    >
       {connectors.map((conn) => {
         const startWidget = widgetMap.get(conn.start?.widgetId)
         const endWidget = widgetMap.get(conn.end?.widgetId)
@@ -135,10 +155,10 @@ export default function ConnectorLayer({
               onClick={(e) => handleClick(e, conn.id)}
             />
             {/* Endpoint dots — draggable to reconnect or remove */}
-            <circle cx={startPt.x} cy={startPt.y} r={6} className={styles.connectorEndpoint}
+            <circle cx={startPt.x} cy={startPt.y} r={connectorConfig.endpointRadius} className={styles.connectorEndpoint}
               onPointerDown={onEndpointDrag ? (e) => { e.stopPropagation(); e.preventDefault(); onEndpointDrag(conn, 'start', e) } : undefined}
             />
-            <circle cx={endPt.x} cy={endPt.y} r={6} className={styles.connectorEndpoint}
+            <circle cx={endPt.x} cy={endPt.y} r={connectorConfig.endpointRadius} className={styles.connectorEndpoint}
               onPointerDown={onEndpointDrag ? (e) => { e.stopPropagation(); e.preventDefault(); onEndpointDrag(conn, 'end', e) } : undefined}
             />
           </g>
@@ -159,7 +179,7 @@ export default function ConnectorLayer({
             className={dragPreview.snapTarget ? styles.connectorPath : styles.dragPreviewPath}
           />
           {dragPreview.snapTarget && (
-            <circle cx={dragPreview.endPt.x} cy={dragPreview.endPt.y} r={6} className={styles.connectorEndpoint} />
+            <circle cx={dragPreview.endPt.x} cy={dragPreview.endPt.y} r={connectorConfig.endpointRadius} className={styles.connectorEndpoint} />
           )}
         </>
       )}

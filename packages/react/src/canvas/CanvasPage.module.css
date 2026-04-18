@@ -100,10 +100,12 @@
   overflow: visible;
 }
 
-/* Elevate stacking context for hovered/selected widgets so their chrome
-   (toolbar, menus, selection outline) renders above sibling widgets. */
-:global(.tc-drag:has([data-tc-elevated])) {
-  z-index: 1;
+/* Each widget gets its own stacking context so internal z-index
+   (chrome toolbars, resize handles, overlays) never leaks to siblings.
+   Visual stacking between widgets is controlled by DOM order — selected
+   widgets are rendered last so they appear on top. */
+:global(.tc-drag) {
+  isolation: isolate;
 }
 
 .localEditingLabel {

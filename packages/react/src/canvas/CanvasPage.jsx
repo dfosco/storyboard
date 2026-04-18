@@ -732,6 +732,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       })
       if (result.success && result.widget) {
         setLocalWidgets((prev) => [...(prev || []), result.widget])
+        setSelectedWidgetIds(new Set([result.widget.id]))
       }
     } catch (err) {
       console.error('[canvas] Failed to copy widget:', err)
@@ -1280,6 +1281,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       if (result.success && result.widget) {
         undoRedo.snapshot(stateRef.current, 'add')
         setLocalWidgets((prev) => [...(prev || []), result.widget])
+        setSelectedWidgetIds(new Set([result.widget.id]))
       }
     } catch (err) {
       console.error('[canvas] Failed to add widget:', err)
@@ -1300,6 +1302,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       if (result.success && result.widget) {
         undoRedo.snapshot(stateRef.current, 'add')
         setLocalWidgets((prev) => [...(prev || []), result.widget])
+        setSelectedWidgetIds(new Set([result.widget.id]))
       }
     } catch (err) {
       console.error('[canvas] Failed to add story widget:', err)
@@ -1577,6 +1580,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         if (result.success && result.widget) {
           undoRedo.snapshot(stateRef.current, 'add')
           setLocalWidgets((prev) => [...(prev || []), result.widget])
+          setSelectedWidgetIds(new Set([result.widget.id]))
         }
         return true
       } catch (err) {
@@ -2097,7 +2101,13 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   }
 
   // 2. JSON-defined mutable widgets (selectable, wrapped in WidgetChrome)
-  for (const widget of (localWidgets ?? [])) {
+  // Sort so selected widgets render last (visually on top via DOM order)
+  const sortedWidgets = (localWidgets ?? []).slice().sort((a, b) => {
+    const aSelected = selectedWidgetIds.has(a.id) ? 1 : 0
+    const bSelected = selectedWidgetIds.has(b.id) ? 1 : 0
+    return aSelected - bSelected
+  })
+  for (const widget of sortedWidgets) {
     allChildren.push(
       <div
         key={widget.id}

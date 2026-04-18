@@ -133,14 +133,18 @@ export default function MarkdownBlock({ props, onUpdate, resizable }) {
       <div
         ref={blockRef}
         className={styles.block}
-        style={{ width, ...(height ? { height, overflow: 'auto' } : {}), minHeight: editHeight || undefined }}
+        style={{
+          width,
+          ...(height ? { height, overflow: 'auto' } : {}),
+          ...(editHeight ? { height: editHeight, display: 'flex', flexDirection: 'column' } : {}),
+        }}
       >
         {editingActive ? (
           <textarea
             ref={textareaRef}
             className={styles.editor}
             data-canvas-allow-text-selection
-            style={{ minHeight: editHeight ? editHeight - 2 : undefined }}
+            style={{ flex: 1 }}
             value={content}
             onChange={handleContentChange}
             onBlur={() => setEditing(false)}

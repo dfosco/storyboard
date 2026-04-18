@@ -47,8 +47,14 @@ function computeBounds(widget) {
 }
 
 /**
- * Extract the primary content from a widget based on its type.
+ * Get bounds for a widget — uses persisted bounds if available, computes otherwise.
  */
+function getBounds(widget) {
+  if (widget.bounds && typeof widget.bounds.startX === 'number') {
+    return widget.bounds
+  }
+  return computeBounds(widget)
+}
 function getWidgetContent(widget) {
   const { type, props = {} } = widget
   switch (type) {

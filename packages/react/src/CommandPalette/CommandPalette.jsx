@@ -20,6 +20,7 @@ import {
   getTheme,
   isExcludedByRoute,
 } from '@dfosco/storyboard-core'
+import { widgetTypes } from '../canvas/widgets/widgetConfig.js'
 import CreateDialog from './CreateDialog.jsx'
 import BranchBar from '../BranchBar/BranchBar.jsx'
 import AuthModal from '../AuthModal/AuthModal.jsx'
@@ -294,6 +295,30 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
       { id: 'create:page', children: 'New Prototype Page', keywords: ['create', 'page', 'new'], showType: false, onClick: () => onCreateAction?.('Page') },
     ]
     return { group: { heading: section.title, id: `cfg:${section.id}`, items: createItems } }
+  }
+
+  // --- Create widget source (all canvas widget types) ---
+  if (section.source === 'create-widget') {
+    const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
+    if (!isLocalDev) return null
+    const items = Object.entries(widgetTypes).map(([type, def]) => ({
+      id: `create-widget:${type}`,
+      children: `Add ${def.label}`,
+      keywords: ['add', 'widget', 'create', type, def.label.toLowerCase()],
+      showType: false,
+      onClick: () => {
+        document.dispatchEvent(new CustomEvent('storyboard:canvas:add-widget', { detail: { type } }))
+      },
+    }))
+    return { group: { heading: section.title, id: `cfg:${section.id}`, items } }
+  }
+
+  // --- Starred source (placeholder for user-starred items) ---
+  if (section.source === 'starred') {
+    // Future: read starred items from localStorage/config
+    const items = []
+    if (items.length === 0) return null
+    return { group: { heading: section.title, id: `cfg:${section.id}`, items } }
   }
 
   // --- Commands source (all registered toolbar actions) ---

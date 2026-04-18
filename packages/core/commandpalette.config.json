@@ -3,6 +3,11 @@
   "ranking": "frecency",
   "sections": [
     {
+      "id": "starred",
+      "title": "Starred",
+      "source": "starred"
+    },
+    {
       "id": "tools",
       "title": "",
       "source": "tools",
@@ -30,6 +35,12 @@
       "id": "create",
       "title": "Create new",
       "source": "create"
+    },
+    { "id": "sep3b", "items": [] },
+    {
+      "id": "create-widget",
+      "title": "Add widget to canvas",
+      "source": "create-widget"
     },
     { "id": "sep3", "items": [] },
     {

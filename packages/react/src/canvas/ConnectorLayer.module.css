@@ -29,11 +29,11 @@
   stroke-width: 3;
   pointer-events: auto;
   cursor: crosshair;
-  transition: transform 0.1s ease;
+  transition: filter 0.1s ease;
 }
 
 .connectorEndpoint:hover {
-  transform: scale(1.5);
+  filter: drop-shadow(0 0 4px var(--fgColor-accent, #0969da));
 }
 
 .connectorPathHitArea {

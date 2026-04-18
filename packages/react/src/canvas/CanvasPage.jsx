@@ -563,21 +563,24 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   }, [])
 
   if (canvas !== trackedCanvas) {
-    console.log('[viewport] canvas changed — resetting viewport init, loading new state')
+    const isCanvasSwitch = trackedCanvas && canvas && trackedCanvas._route !== canvas._route
+    console.log('[viewport] canvas changed —', isCanvasSwitch ? 'new canvas, resetting viewport' : 'same canvas, updating widgets only')
     setTrackedCanvas(canvas)
     setLocalWidgets(canvas?.widgets ?? null)
     setLocalSources(canvas?.sources ?? [])
     setSnapEnabled(canvas?.snapToGrid ?? false)
     setSnapGridSize(canvas?.gridSize || 40)
     undoRedo.reset()
-    // Block saves until the new canvas's viewport is fully restored.
-    viewportInitName.current = null
-    const newViewport = loadViewportState(canvasId)
-    pendingScrollRestore.current = newViewport
-    // Restore zoom from the new canvas's saved state
-    const newZoom = newViewport?.zoom ?? 100
-    zoomRef.current = newZoom
-    setZoom(newZoom)
+    // Only reset viewport state when switching to a different canvas,
+    // not when the same canvas refreshes with server data.
+    if (isCanvasSwitch) {
+      viewportInitName.current = null
+      const newViewport = loadViewportState(canvasId)
+      pendingScrollRestore.current = newViewport
+      const newZoom = newViewport?.zoom ?? 100
+      zoomRef.current = newZoom
+      setZoom(newZoom)
+    }
   }
 
   // Debounced save to server

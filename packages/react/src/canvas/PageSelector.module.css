@@ -135,6 +135,27 @@
   list-style: none;
 }
 
+.separatorRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px 6px 4px;
+  border-radius: 4px;
+  list-style: none;
+  cursor: default;
+}
+
+.separatorRow:hover .dragHandle {
+  opacity: 1;
+}
+
+.separatorLine {
+  flex: 1;
+  height: 1px;
+  background: var(--borderColor-default, rgba(0, 0, 0, 0.15));
+}
+
 .addItem {
   padding: 6px 10px;
   border-radius: 4px;

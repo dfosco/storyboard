@@ -109,3 +109,8 @@ html[data-color-mode="dark"] .command-palette .border-b {
 .command-palette .command-palette-list-item .text-gray-500.text-sm {
   display: none !important;
 }
+
+/* Medium weight for item text */
+.command-palette .command-palette-list-item {
+  font-weight: 500 !important;
+}

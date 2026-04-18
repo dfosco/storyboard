@@ -301,6 +301,8 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
   if (section.source === 'create-widget') {
     const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
     if (!isLocalDev) return null
+    const isCanvasRoute = typeof window !== 'undefined' && window.location.pathname.includes('/canvas/')
+    if (!isCanvasRoute) return null
     const items = Object.entries(widgetTypes).map(([type, def]) => ({
       id: `create-widget:${type}`,
       children: def.label,

@@ -1,5 +1,12 @@
 # @dfosco/storyboard-react-primer
 
+## 4.0.0
+
+### Patch Changes
+
+-   Updated dependencies [[`a2bd995`](https://github.com/dfosco/storyboard/commit/a2bd99516da112ea0478521d36189ca8e2b64770), [`4494873`](https://github.com/dfosco/storyboard/commit/449487341794f66018d782af3e376c7ae35e6846)]:
+    -   @dfosco/storyboard-react@4.0.0
+
 ## 4.0.0-beta.48
 
 ### Patch Changes

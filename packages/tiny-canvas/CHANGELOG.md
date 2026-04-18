@@ -1,5 +1,7 @@
 # @dfosco/tiny-canvas
 
+## 4.1.0-beta.0
+
 ## 4.0.0
 
 Version bump to match storyboard 4.0.0 release.

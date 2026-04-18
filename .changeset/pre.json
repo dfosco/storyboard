@@ -1,0 +1,14 @@
+{
+  "mode": "pre",
+  "tag": "beta",
+  "initialVersions": {
+    "@dfosco/storyboard-core": "4.0.0",
+    "@dfosco/storyboard-react": "4.0.0",
+    "@dfosco/storyboard-react-primer": "4.0.0",
+    "@dfosco/storyboard-react-reshaped": "4.0.0",
+    "@dfosco/tiny-canvas": "4.0.0"
+  },
+  "changesets": [
+    "changeset-mo4dex4n"
+  ]
+}

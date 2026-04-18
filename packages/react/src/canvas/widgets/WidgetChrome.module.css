@@ -7,13 +7,13 @@
 /* Connector anchor ports — positioned at widget edge centers */
 .anchorPort {
   position: absolute;
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: var(--bgColor-accent-emphasis, #2f81f7);
-  border: 2px solid var(--bgColor-default, #fff);
+  border: 3px solid var(--bgColor-default, #fff);
   opacity: 0;
-  transition: opacity 0.15s ease, transform 0.1s ease;
+  transition: opacity 0.15s ease, width 0.1s ease, height 0.1s ease, margin 0.1s ease;
   cursor: crosshair;
   z-index: 100;
   pointer-events: auto;
@@ -25,31 +25,48 @@
 
 .anchorPort:hover {
   opacity: 1;
-  transform: scale(1.4);
+  width: 18px;
+  height: 18px;
 }
 
 .anchorPortTop {
-  top: -8px;
+  top: -6px;
   left: 50%;
-  margin-left: -8px;
+  margin-left: -6px;
+}
+.anchorPortTop:hover {
+  margin-left: -9px;
+  top: -9px;
 }
 
 .anchorPortBottom {
-  bottom: -8px;
+  bottom: -6px;
   left: 50%;
-  margin-left: -8px;
+  margin-left: -6px;
+}
+.anchorPortBottom:hover {
+  margin-left: -9px;
+  bottom: -9px;
 }
 
 .anchorPortLeft {
-  left: -8px;
+  left: -6px;
   top: 50%;
-  margin-top: -8px;
+  margin-top: -6px;
+}
+.anchorPortLeft:hover {
+  margin-top: -9px;
+  left: -9px;
 }
 
 .anchorPortRight {
-  right: -8px;
+  right: -6px;
   top: 50%;
-  margin-top: -8px;
+  margin-top: -6px;
+}
+.anchorPortRight:hover {
+  margin-top: -9px;
+  right: -9px;
 }
 
 .anchorPortDisabled {

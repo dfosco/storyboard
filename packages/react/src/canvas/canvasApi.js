@@ -81,3 +81,18 @@ export function updateFolderMeta(folder, title) {
 export function duplicateCanvas(canvasId, newTitle) {
   return request('/duplicate', 'POST', { name: canvasId, newTitle })
 }
+
+export function addConnector(canvasId, { startWidgetId, startAnchor, endWidgetId, endAnchor, connectorType }) {
+  return request('/connector', 'POST', {
+    name: canvasId,
+    startWidgetId,
+    startAnchor,
+    endWidgetId,
+    endAnchor,
+    connectorType,
+  })
+}
+
+export function removeConnector(canvasId, connectorId) {
+  return request('/connector', 'DELETE', { name: canvasId, connectorId })
+}

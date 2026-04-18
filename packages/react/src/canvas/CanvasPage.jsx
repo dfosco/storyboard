@@ -25,11 +25,14 @@ import {
   updateCanvas,
   updateFolderMeta,
   uploadImage,
+  addConnector as addConnectorApi,
+  removeConnector as removeConnectorApi,
 } from './canvasApi.js'
 import PageSelector from './PageSelector.jsx'
 import Icon from '../Icon.jsx'
 import { stories as storyIndex } from 'virtual:storyboard-data-index'
 import styles from './CanvasPage.module.css'
+import ConnectorLayer from './ConnectorLayer.jsx'
 
 const ZOOM_MIN = 25
 const ZOOM_MAX = 200
@@ -307,6 +310,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
   onCopy,
   onRefreshGitHub,
   canRefreshGitHub,
+  onConnectorDragStart,
   readOnly,
 }) {
   const widgetRef = useRef(null)
@@ -377,6 +381,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
       onDeselect={onDeselect}
       onAction={handleAction}
       onUpdate={onUpdate ? handleWidgetFieldUpdate : undefined}
+      onConnectorDragStart={onConnectorDragStart}
       readOnly={readOnly}
     >
       <WidgetRenderer
@@ -398,7 +403,8 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
     prev.onDeselect === next.onDeselect &&
     prev.onUpdate === next.onUpdate &&
     prev.onRemove === next.onRemove &&
-    prev.onCopy === next.onCopy
+    prev.onCopy === next.onCopy &&
+    prev.onConnectorDragStart === next.onConnectorDragStart
   )
 })
 
@@ -505,6 +511,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
   // Local mutable copy of widgets for instant UI updates
   const [localWidgets, setLocalWidgets] = useState(canvas?.widgets ?? null)
+  const [localConnectors, setLocalConnectors] = useState(canvas?.connectors ?? [])
   const [trackedCanvas, setTrackedCanvas] = useState(canvas)
   const [selectedWidgetIds, setSelectedWidgetIds] = useState(() => new Set())
   const initialViewport = loadViewportState(canvasId)
@@ -559,10 +566,10 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
   // Undo/redo history — tracks both widgets and sources as a combined snapshot
   const undoRedo = useUndoRedo()
-  const stateRef = useRef({ widgets: localWidgets, sources: localSources })
+  const stateRef = useRef({ widgets: localWidgets, sources: localSources, connectors: localConnectors })
   useEffect(() => {
-    stateRef.current = { widgets: localWidgets, sources: localSources }
-  }, [localWidgets, localSources])
+    stateRef.current = { widgets: localWidgets, sources: localSources, connectors: localConnectors }
+  }, [localWidgets, localSources, localConnectors])
 
   // Serialized write queue — ensures JSONL events land in the right order
   const writeQueueRef = useRef(Promise.resolve())
@@ -658,6 +665,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     console.log('[viewport] canvas changed —', isCanvasSwitch ? 'new canvas, resetting viewport' : 'same canvas, updating widgets only')
     setTrackedCanvas(canvas)
     setLocalWidgets(canvas?.widgets ?? null)
+    setLocalConnectors(canvas?.connectors ?? [])
     setLocalSources(canvas?.sources ?? [])
     setSnapEnabled(canvas?.snapToGrid ?? false)
     setSnapGridSize(canvas?.gridSize || 40)
@@ -704,12 +712,118 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   const handleWidgetRemove = useCallback((widgetId) => {
     undoRedo.snapshot(stateRef.current, 'remove', widgetId)
     setLocalWidgets((prev) => prev ? prev.filter((w) => w.id !== widgetId) : prev)
+    // Cascade: remove connectors referencing this widget
+    setLocalConnectors((prev) => {
+      const orphaned = prev.filter((c) => c.start.widgetId === widgetId || c.end.widgetId === widgetId)
+      if (orphaned.length === 0) return prev
+      for (const c of orphaned) {
+        queueWrite(() =>
+          removeConnectorApi(canvasId, c.id).catch((err) =>
+            console.error('[canvas] Failed to remove orphaned connector:', err)
+          )
+        )
+      }
+      return prev.filter((c) => c.start.widgetId !== widgetId && c.end.widgetId !== widgetId)
+    })
     queueWrite(() =>
       removeWidgetApi(canvasId, widgetId).catch((err) =>
         console.error('[canvas] Failed to remove widget:', err)
       )
     )
   }, [canvasId, undoRedo])
+
+  const handleConnectorAdd = useCallback(async ({ startWidgetId, startAnchor, endWidgetId, endAnchor }) => {
+    try {
+      const result = await addConnectorApi(canvasId, { startWidgetId, startAnchor, endWidgetId, endAnchor })
+      if (result.success && result.connector) {
+        setLocalConnectors((prev) => [...prev, result.connector])
+      }
+    } catch (err) {
+      console.error('[canvas] Failed to add connector:', err)
+    }
+  }, [canvasId])
+
+  const handleConnectorRemove = useCallback((connectorId) => {
+    setLocalConnectors((prev) => prev.filter((c) => c.id !== connectorId))
+    queueWrite(() =>
+      removeConnectorApi(canvasId, connectorId).catch((err) =>
+        console.error('[canvas] Failed to remove connector:', err)
+      )
+    )
+  }, [canvasId])
+
+  // Connector drag state
+  const [connectorDrag, setConnectorDrag] = useState(null)
+
+  const handleConnectorDragStart = useCallback((widgetId, anchor, e) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const scrollEl = scrollRef.current
+    if (!scrollEl) return
+    const scale = zoomRef.current / 100
+    const rect = scrollEl.getBoundingClientRect()
+
+    const startWidget = (stateRef.current.widgets ?? []).find((w) => w.id === widgetId)
+    if (!startWidget) return
+
+    const w = startWidget.props?.width ?? startWidget.bounds?.width ?? 270
+    const h = startWidget.props?.height ?? startWidget.bounds?.height ?? 170
+    const wx = startWidget.position?.x ?? 0
+    const wy = startWidget.position?.y ?? 0
+    let startPt
+    switch (anchor) {
+      case 'top':    startPt = { x: wx + w / 2, y: wy }; break
+      case 'bottom': startPt = { x: wx + w / 2, y: wy + h }; break
+      case 'left':   startPt = { x: wx, y: wy + h / 2 }; break
+      case 'right':  startPt = { x: wx + w, y: wy + h / 2 }; break
+      default:       startPt = { x: wx + w / 2, y: wy + h / 2 }
+    }
+
+    const toCanvasPoint = (clientX, clientY) => ({
+      x: (scrollEl.scrollLeft + clientX - rect.left) / scale,
+      y: (scrollEl.scrollTop + clientY - rect.top) / scale,
+    })
+
+    const cursorPt = toCanvasPoint(e.clientX, e.clientY)
+    setConnectorDrag({
+      startWidgetId: widgetId,
+      startAnchor: anchor,
+      startPt,
+      endPt: cursorPt,
+      endAnchor: anchor,
+    })
+
+    const handleMouseMove = (moveE) => {
+      const pt = toCanvasPoint(moveE.clientX, moveE.clientY)
+      setConnectorDrag((prev) => prev ? { ...prev, endPt: pt } : null)
+    }
+
+    const handleMouseUp = (upE) => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+
+      // Check if we dropped on an anchor port
+      const target = document.elementFromPoint(upE.clientX, upE.clientY)
+      const anchorEl = target?.closest?.('[data-anchor]')
+      const chromeEl = anchorEl?.closest?.('[data-widget-id]')
+      if (anchorEl && chromeEl) {
+        const endWidgetId = chromeEl.getAttribute('data-widget-id')
+        const endAnchor = anchorEl.getAttribute('data-anchor')
+        if (endWidgetId && endAnchor && endWidgetId !== widgetId) {
+          handleConnectorAdd({
+            startWidgetId: widgetId,
+            startAnchor: anchor,
+            endWidgetId,
+            endAnchor,
+          })
+        }
+      }
+      setConnectorDrag(null)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }, [handleConnectorAdd])
 
   const handleWidgetCopy = useCallback(async (widget) => {
     // Find the next free offset — check how many copies already exist at +n*40
@@ -2135,6 +2249,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           onRemove={isLocalDev ? handleWidgetRemoveAndDeselect : undefined}
           onRefreshGitHub={isLocalDev ? handleRefreshGitHubWidget : undefined}
           canRefreshGitHub={isLocalDev}
+          onConnectorDragStart={isLocalDev ? handleConnectorDragStart : undefined}
           readOnly={!isLocalDev}
         />
       </div>
@@ -2186,6 +2301,12 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
             ...(spaceHeld ? { pointerEvents: 'none' } : {}),
           }}
         >
+          <ConnectorLayer
+            connectors={localConnectors}
+            widgets={localWidgets ?? []}
+            onRemove={isLocalDev ? handleConnectorRemove : undefined}
+            dragPreview={connectorDrag}
+          />
           <Canvas {...canvasProps} onDragStart={isLocalDev ? handleItemDragStart : undefined} onDrag={isLocalDev ? handleItemDrag : undefined} onDragEnd={isLocalDev ? handleItemDragEnd : undefined}>
             {allChildren}
           </Canvas>

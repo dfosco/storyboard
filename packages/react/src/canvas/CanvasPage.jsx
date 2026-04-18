@@ -429,6 +429,13 @@ function CanvasTitleEditable({ canvasId, canvasMeta, canvas, isLocalDev }) {
       } else {
         await updateCanvas(canvasId, { settings: { title: trimmed } })
       }
+      // Reload to pick up the updated metadata from the data plugin
+      if (import.meta.hot) {
+        const timer = setTimeout(() => { window.location.reload() }, 2000)
+        import.meta.hot.on('vite:beforeFullReload', () => clearTimeout(timer))
+      } else {
+        setTimeout(() => { window.location.reload() }, 1000)
+      }
     } catch (err) {
       console.error('Failed to update title:', err)
     }

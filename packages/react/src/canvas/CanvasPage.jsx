@@ -620,6 +620,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   const justDraggedRef = useRef(false)
 
   const handleItemDragStart = useCallback((dragId) => {
+    setWidgetDragging(true)
     const ids = selectedIdsRef.current
     peerArticlesRef.current.clear()
     if (ids.size <= 1 || !ids.has(dragId)) return
@@ -754,6 +755,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
   // Connector drag state
   const [connectorDrag, setConnectorDrag] = useState(null)
+  const [widgetDragging, setWidgetDragging] = useState(false)
 
   const handleConnectorDragStart = useCallback((widgetId, anchor, e) => {
     e.stopPropagation()
@@ -1088,6 +1090,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   }, [canvasId, debouncedSourceSave, undoRedo, snapEnabled, snapGridSize])
 
   const handleItemDragEnd = useCallback((dragId, position) => {
+    setWidgetDragging(false)
     if (!dragId || !position) {
       clearDragPreview()
       return
@@ -2464,6 +2467,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
             onRemove={isLocalDev ? handleConnectorRemove : undefined}
             onEndpointDrag={isLocalDev ? handleEndpointDrag : undefined}
             dragPreview={connectorDrag}
+            hidden={widgetDragging}
           />
           <Canvas {...canvasProps} onDragStart={isLocalDev ? handleItemDragStart : undefined} onDrag={isLocalDev ? handleItemDrag : undefined} onDragEnd={isLocalDev ? handleItemDragEnd : undefined}>
             {allChildren}

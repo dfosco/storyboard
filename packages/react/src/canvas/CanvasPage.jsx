@@ -795,14 +795,14 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     })
     console.log('[devlog] connectorDrag set', { startPt, cursorPt })
 
-    const handleMouseMove = (moveE) => {
+    const handlePointerMove = (moveE) => {
       const pt = toCanvasPoint(moveE.clientX, moveE.clientY)
       setConnectorDrag((prev) => prev ? { ...prev, endPt: pt } : null)
     }
 
-    const handleMouseUp = (upE) => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
+    const handlePointerUp = (upE) => {
+      document.removeEventListener('pointermove', handlePointerMove)
+      document.removeEventListener('pointerup', handlePointerUp)
 
       // Check if we dropped on an anchor port
       const target = document.elementFromPoint(upE.clientX, upE.clientY)
@@ -823,8 +823,8 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       setConnectorDrag(null)
     }
 
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
+    document.addEventListener('pointermove', handlePointerMove)
+    document.addEventListener('pointerup', handlePointerUp)
   }, [handleConnectorAdd])
 
   const handleWidgetCopy = useCallback(async (widget) => {

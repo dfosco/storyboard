@@ -1,5 +1,13 @@
 # @dfosco/storyboard-react
 
+## 4.1.0-beta.2
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.1.0-beta.2
+    -   @dfosco/tiny-canvas@4.1.0-beta.2
+
 ## 4.1.0-beta.1
 
 ### Patch Changes

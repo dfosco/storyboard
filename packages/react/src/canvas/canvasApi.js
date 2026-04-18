@@ -61,3 +61,19 @@ export function checkGitHubCliAvailable() {
 export function fetchGitHubEmbed(url) {
   return request('/github/embed', 'POST', { url })
 }
+
+export function renamePage(canvasId, newTitle) {
+  return request('/rename-page', 'PUT', { name: canvasId, newTitle })
+}
+
+export function reorderPages(folder, order) {
+  return request('/reorder-pages', 'PUT', { folder, order })
+}
+
+export function getPageOrder(folder) {
+  return request(`/page-order?folder=${encodeURIComponent(folder)}`, 'GET')
+}
+
+export function updateFolderMeta(folder, title) {
+  return request('/update-folder-meta', 'PUT', { folder, title })
+}

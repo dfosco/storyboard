@@ -76,6 +76,25 @@
   white-space: nowrap;
 }
 
+.canvasTitleEditing {
+  font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fgColor-default, #1f2328);
+  margin: 0;
+  padding: 3px 7px;
+  white-space: nowrap;
+  border: 1px solid var(--borderColor-default, rgba(0, 0, 0, 0.15));
+  border-radius: 4px;
+  background: var(--bgColor-default, #fff);
+  outline: none;
+}
+
+.canvasTitleEditing:focus {
+  border-color: var(--focus-outlineColor, #0969da);
+  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.3);
+}
+
 /* Remove tiny-canvas wrapper clipping — widgets handle their own overflow/radius */
 :global(.tc-draggable-inner) {
   overflow: visible;

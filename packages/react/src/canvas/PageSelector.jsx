@@ -1,6 +1,14 @@
 import { useCallback, useRef, useState, useEffect } from 'react'
-import { createCanvas } from './canvasApi.js'
+import { createCanvas, renamePage, reorderPages, getPageOrder } from './canvasApi.js'
 import styles from './PageSelector.module.css'
+
+const DragGrip = () => (
+  <svg className={styles.dragHandle} width="8" height="14" viewBox="0 0 8 14" fill="currentColor" aria-hidden="true">
+    <circle cx="2" cy="2" r="1.2" /><circle cx="6" cy="2" r="1.2" />
+    <circle cx="2" cy="7" r="1.2" /><circle cx="6" cy="7" r="1.2" />
+    <circle cx="2" cy="12" r="1.2" /><circle cx="6" cy="12" r="1.2" />
+  </svg>
+)
 
 /**
  * In-canvas page selector — shows sibling pages in the same canvas group.
@@ -24,33 +32,225 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
   const [creating, setCreating] = useState(false)
   const [pages, setPages] = useState(initialPages)
   const [successMsg, setSuccessMsg] = useState(null)
+  const [editingPage, setEditingPage] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const [orderedItems, setOrderedItems] = useState([])
+  const [dragIndex, setDragIndex] = useState(null)
+  const [dropTarget, setDropTarget] = useState(null)
   const containerRef = useRef(null)
   const inputRef = useRef(null)
+  const editInputRef = useRef(null)
+  const clickTimerRef = useRef(null)
+  const didDragRef = useRef(false)
 
   // Sync pages when prop changes (e.g. HMR reload)
   useEffect(() => { setPages(initialPages) }, [initialPages])
 
-  const currentPage = pages.find((p) => p.name === currentName)
-  const currentLabel = currentPage?.title || currentName.split('/').pop()
-  const currentIndex = pages.findIndex((p) => p.name === currentName)
-
   // Derive folder from currentName (e.g. "Examples/Design Overview" → "Examples")
   const folder = currentName.includes('/') ? currentName.split('/')[0] : ''
+
+  // Build ordered items from pages + saved order (with separators)
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    async function loadOrder() {
+      if (!folder) {
+        setOrderedItems(pages.map(p => ({ type: 'page', ...p })))
+        return
+      }
+      try {
+        const result = await getPageOrder(folder)
+        if (cancelled) return
+        if (result?.order) {
+          const items = []
+          const pageMap = new Map(pages.map(p => [p.name, p]))
+          const seen = new Set()
+          for (const entry of result.order) {
+            if (typeof entry === 'string' && entry.startsWith('sep-')) {
+              items.push({ type: 'separator', id: entry })
+            } else if (pageMap.has(entry)) {
+              items.push({ type: 'page', ...pageMap.get(entry) })
+              seen.add(entry)
+            }
+          }
+          // Append pages not in saved order
+          for (const p of pages) {
+            if (!seen.has(p.name)) items.push({ type: 'page', ...p })
+          }
+          setOrderedItems(items)
+        } else {
+          setOrderedItems(pages.map(p => ({ type: 'page', ...p })))
+        }
+      } catch {
+        setOrderedItems(pages.map(p => ({ type: 'page', ...p })))
+      }
+    }
+    loadOrder()
+    return () => { cancelled = true }
+  }, [open, pages, folder])
+
+  // Derived values from ordered items
+  const realPages = orderedItems.filter(i => i.type === 'page')
+  const currentPage = realPages.find(p => p.name === currentName)
+  const currentLabel = currentPage?.title || currentName.split('/').pop()
+  const currentIndex = realPages.findIndex(p => p.name === currentName)
+
+  const navigateTo = useCallback((page) => {
+    const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+    window.location.href = base + page.route
+  }, [])
 
   const handleSelect = useCallback(
     (page) => {
       if (page.name !== currentName) {
-        const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
-        window.location.href = base + page.route
+        navigateTo(page)
       }
       setOpen(false)
     },
-    [currentName],
+    [currentName, navigateTo],
   )
+
+  // Click handler with 300ms delay (mouse only) to distinguish from dblclick
+  const handleItemClick = useCallback((page, e) => {
+    if (didDragRef.current) {
+      didDragRef.current = false
+      return
+    }
+    if (editingPage) return
+    // Keyboard Enter/Space → navigate immediately
+    if (!e?.nativeEvent || e.nativeEvent instanceof KeyboardEvent) {
+      handleSelect(page)
+      return
+    }
+    // Mouse click → delay to allow dblclick
+    if (clickTimerRef.current) clearTimeout(clickTimerRef.current)
+    clickTimerRef.current = setTimeout(() => {
+      clickTimerRef.current = null
+      handleSelect(page)
+    }, 300)
+  }, [editingPage, handleSelect])
+
+  // Double-click to rename
+  const handleItemDblClick = useCallback((page) => {
+    if (!isLocalDev) return
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current)
+      clickTimerRef.current = null
+    }
+    setEditingPage(page.name)
+    setEditValue(page.title)
+  }, [isLocalDev])
+
+  // Focus edit input when entering edit mode
+  useEffect(() => {
+    if (editingPage && editInputRef.current) {
+      editInputRef.current.focus()
+      editInputRef.current.select()
+    }
+  }, [editingPage])
+
+  // Commit rename
+  const handleRenameCommit = useCallback(async () => {
+    const trimmed = editValue.trim()
+    const oldName = editingPage
+    setEditingPage(null)
+    if (!trimmed || !oldName) return
+
+    const oldPage = realPages.find(p => p.name === oldName)
+    if (!oldPage || trimmed === oldPage.title) return
+
+    // Validate no duplicates (case-insensitive)
+    const lower = trimmed.toLowerCase()
+    if (realPages.some(p => p.name !== oldName && p.title.toLowerCase() === lower)) {
+      console.warn('Duplicate page name:', trimmed)
+      return
+    }
+
+    try {
+      const result = await renamePage(oldName, trimmed)
+      if (result?.error) {
+        console.error('Failed to rename page:', result.error)
+        return
+      }
+      const route = result?.route
+      if (route) {
+        const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+        const targetUrl = base + route
+        try { sessionStorage.setItem('sb-open-page-selector', '1') } catch { /* ignore */ }
+        if (import.meta.hot) {
+          const timer = setTimeout(() => { window.location.href = targetUrl }, 3000)
+          import.meta.hot.on('vite:beforeFullReload', () => {
+            clearTimeout(timer)
+            sessionStorage.setItem('sb-pending-navigate', targetUrl)
+          })
+        } else {
+          setTimeout(() => { window.location.href = targetUrl }, 1000)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to rename page:', err)
+    }
+  }, [editValue, editingPage, realPages])
+
+  // Drag and drop handlers
+  const handleDragStart = useCallback((index, e) => {
+    didDragRef.current = true
+    setDragIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(index))
+  }, [])
+
+  const handleDragOver = useCallback((index, e) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDropTarget(index)
+  }, [])
+
+  const handleDragEnd = useCallback(() => {
+    setDragIndex(null)
+    setDropTarget(null)
+  }, [])
+
+  const handleDrop = useCallback(async (toIndex, e) => {
+    e.preventDefault()
+    const fromIndex = dragIndex
+    setDragIndex(null)
+    setDropTarget(null)
+    if (fromIndex == null || fromIndex === toIndex) return
+
+    const newItems = [...orderedItems]
+    const [moved] = newItems.splice(fromIndex, 1)
+    newItems.splice(toIndex, 0, moved)
+    setOrderedItems(newItems)
+
+    if (folder) {
+      const order = newItems.map(i => i.type === 'separator' ? i.id : i.name)
+      try { await reorderPages(folder, order) } catch (err) {
+        console.error('Failed to persist page order:', err)
+      }
+    }
+  }, [dragIndex, orderedItems, folder])
 
   const handleAddPage = useCallback(async () => {
     const trimmed = newName.trim()
     if (!trimmed || creating) return
+
+    // Separator shortcut
+    if (trimmed === '---') {
+      const sepId = `sep-${Date.now()}`
+      const newItems = [...orderedItems, { type: 'separator', id: sepId }]
+      setOrderedItems(newItems)
+      setAdding(false)
+      setNewName('')
+      if (folder) {
+        const order = newItems.map(i => i.type === 'separator' ? i.id : i.name)
+        try { await reorderPages(folder, order) } catch (err) {
+          console.error('Failed to persist separator:', err)
+        }
+      }
+      return
+    }
+
     setCreating(true)
     try {
       // Single-page canvas (no folder) → convert to multi-page folder
@@ -98,7 +298,7 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
       console.error('Failed to create canvas page:', err)
       setCreating(false)
     }
-  }, [newName, currentName, folder, creating])
+  }, [newName, currentName, folder, creating, orderedItems])
 
   // Focus input when entering add mode
   useEffect(() => {
@@ -114,6 +314,7 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
         setAdding(false)
         setNewName('')
         setSuccessMsg(null)
+        setEditingPage(null)
       }
     }
     document.addEventListener('mousedown', handleClick)
@@ -125,7 +326,9 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
     if (!open) return
     function handleKey(e) {
       if (e.key === 'Escape') {
-        if (adding) {
+        if (editingPage) {
+          setEditingPage(null)
+        } else if (adding) {
           setAdding(false)
           setNewName('')
         } else {
@@ -135,7 +338,7 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [open, adding])
+  }, [open, adding, editingPage])
 
   // Show selector when there are multiple pages, or in dev mode (to allow adding pages)
   if (!pages || (pages.length < 2 && !isLocalDev)) return null
@@ -151,7 +354,7 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
       >
         <span className={styles.label}>{currentLabel}</span>
         <span className={styles.badge}>
-          {currentIndex + 1}/{pages.length}
+          {currentIndex + 1}/{realPages.length}
         </span>
         <svg
           className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
@@ -166,24 +369,70 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
       </button>
       {open && (
         <ul className={styles.menu} role="listbox" aria-label="Canvas pages">
-          {pages.map((page) => (
-            <li
-              key={page.name}
-              role="option"
-              aria-selected={page.name === currentName}
-              className={`${styles.item} ${page.name === currentName ? styles.itemActive : ''}`}
-              onClick={() => handleSelect(page)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  handleSelect(page)
-                }
-              }}
-              tabIndex={0}
-            >
-              {page.title}
-            </li>
-          ))}
+          {orderedItems.map((item, index) => {
+            if (item.type === 'separator') {
+              return (
+                <li
+                  key={item.id}
+                  className={`${styles.separator} ${dragIndex === index ? styles.itemDragging : ''}`}
+                  role="separator"
+                  draggable={isLocalDev}
+                  onDragStart={(e) => handleDragStart(index, e)}
+                  onDragOver={(e) => handleDragOver(index, e)}
+                  onDrop={(e) => handleDrop(index, e)}
+                  onDragEnd={handleDragEnd}
+                >
+                  {dropTarget === index && dragIndex !== index && <div className={styles.dropIndicator} />}
+                </li>
+              )
+            }
+            const page = item
+            const isEditing = editingPage === page.name
+            return (
+              <li
+                key={page.name}
+                role="option"
+                aria-selected={page.name === currentName}
+                className={`${styles.item} ${page.name === currentName ? styles.itemActive : ''} ${dragIndex === index ? styles.itemDragging : ''}`}
+                onClick={(e) => handleItemClick(page, e)}
+                onDoubleClick={() => handleItemDblClick(page)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    handleSelect(page)
+                  }
+                }}
+                tabIndex={0}
+                draggable={isLocalDev && !isEditing}
+                onDragStart={(e) => handleDragStart(index, e)}
+                onDragOver={(e) => handleDragOver(index, e)}
+                onDrop={(e) => handleDrop(index, e)}
+                onDragEnd={handleDragEnd}
+              >
+                {dropTarget === index && dragIndex !== index && <div className={styles.dropIndicator} />}
+                {isLocalDev && <DragGrip />}
+                {isEditing ? (
+                  <input
+                    ref={editInputRef}
+                    className={styles.addInput}
+                    type="text"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); handleRenameCommit() }
+                      if (e.key === 'Escape') { e.preventDefault(); setEditingPage(null) }
+                      e.stopPropagation()
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => e.stopPropagation()}
+                    onBlur={handleRenameCommit}
+                  />
+                ) : (
+                  <span className={styles.itemContent}>{page.title}</span>
+                )}
+              </li>
+            )
+          })}
           {isLocalDev && (
             <>
               <li className={styles.separator} role="separator" />

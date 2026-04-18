@@ -17,44 +17,44 @@
 
 .connectorPath {
   fill: none;
-  stroke: var(--fgColor-accent, #0969da);
-  stroke-width: 4;
+  stroke: var(--connector-stroke, var(--fgColor-accent, #0969da));
+  stroke-width: var(--connector-stroke-width, 4px);
   pointer-events: stroke;
   cursor: pointer;
   transition: stroke 0.15s ease, stroke-width 0.15s ease;
 }
 
 .connectorPath:hover {
-  stroke: var(--fgColor-danger, #cf222e);
-  stroke-width: 5;
+  stroke: var(--connector-hover-stroke, var(--fgColor-danger, #cf222e));
+  stroke-width: var(--connector-hover-stroke-width, 5px);
 }
 
 .connectorEndpoint {
-  fill: var(--fgColor-accent, #0969da);
-  stroke: var(--bgColor-default, #ffffff);
-  stroke-width: 3;
+  fill: var(--connector-endpoint-fill, var(--fgColor-accent, #0969da));
+  stroke: var(--connector-endpoint-stroke, var(--bgColor-default, #ffffff));
+  stroke-width: var(--connector-endpoint-stroke-width, 3px);
   pointer-events: auto;
   cursor: crosshair;
   transition: filter 0.1s ease;
 }
 
 .connectorEndpoint:hover {
-  filter: drop-shadow(0 0 4px var(--fgColor-accent, #0969da));
+  filter: drop-shadow(0 0 4px var(--connector-endpoint-fill, var(--fgColor-accent, #0969da)));
 }
 
 .connectorPathHitArea {
   fill: none;
   stroke: transparent;
-  stroke-width: 16;
+  stroke-width: var(--connector-hit-area-width, 16px);
   pointer-events: stroke;
   cursor: pointer;
 }
 
 .dragPreviewPath {
   fill: none;
-  stroke: var(--fgColor-accent, #0969da);
-  stroke-width: 2;
-  stroke-dasharray: 6 4;
+  stroke: var(--connector-drag-stroke, var(--fgColor-accent, #0969da));
+  stroke-width: var(--connector-drag-stroke-width, 2px);
+  stroke-dasharray: var(--connector-drag-dasharray, 6 4);
   pointer-events: none;
-  opacity: 0.7;
+  opacity: var(--connector-drag-opacity, 0.7);
 }

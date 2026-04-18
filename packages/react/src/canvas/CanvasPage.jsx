@@ -563,6 +563,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   }, [])
 
   if (canvas !== trackedCanvas) {
+    console.log('[viewport] canvas changed — resetting viewport init, loading new state')
     setTrackedCanvas(canvas)
     setLocalWidgets(canvas?.widgets ?? null)
     setLocalSources(canvas?.sources ?? [])
@@ -954,6 +955,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   useEffect(() => {
     if (viewportInitName.current !== canvasId) return
     const el = scrollRef.current
+    console.log('[viewport] saving — zoom:', zoom, 'scroll:', el?.scrollLeft, el?.scrollTop)
     // Read current scroll so the zoom entry doesn't zero-out position,
     // but the authoritative scroll save comes from the scroll handler.
     saveViewportState(canvasId, {

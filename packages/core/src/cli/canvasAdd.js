@@ -10,6 +10,7 @@
  * The server accepts any type string — new widget types work automatically.
  */
 
+import fs from 'node:fs'
 import * as p from '@clack/prompts'
 import { parseFlags, hasFlags, formatFlagHelp } from './flags.js'
 import { widgetSchema } from './schemas.js'
@@ -96,7 +97,15 @@ async function canvasAdd() {
   const y = flags.y ?? 0
 
   let props = {}
-  if (flags.props) {
+  if (flags['props-file']) {
+    try {
+      const raw = fs.readFileSync(flags['props-file'], 'utf8')
+      props = JSON.parse(raw)
+    } catch (err) {
+      p.log.error(`--props-file: ${err.message}`)
+      process.exit(1)
+    }
+  } else if (flags.props) {
     try {
       props = JSON.parse(flags.props)
     } catch {

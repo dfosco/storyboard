@@ -113,51 +113,95 @@
   font-weight: 600;
 }
 
-/* Canvas context panel */
-.contextPanel {
-  border: 1px solid var(--borderColor-default, #d1d9e0);
-  border-radius: 8px;
-  overflow: hidden;
+/* Connected widget cards (miniature representations) */
+.connectedWidgets {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.connectorRow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.miniWidget {
+  border: 1.5px solid var(--borderColor-default, #d1d9e0);
+  border-radius: 6px;
+  padding: 8px 12px;
   background: var(--bgColor-default, #fff);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   font-size: 12px;
-  width: 220px;
-}
-
-.contextHeader {
-  padding: 8px 12px;
-  background: var(--bgColor-muted, #f6f8fa);
-  border-bottom: 1px solid var(--borderColor-default, #d1d9e0);
-  font-weight: 600;
   color: var(--fgColor-default, #1f2328);
-}
-
-.contextList {
-  padding: 4px 0;
-}
-
-.contextItem {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 12px;
-  color: var(--fgColor-muted, #656d76);
+  gap: 6px;
+  white-space: nowrap;
+  min-width: 160px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 }
 
-.contextIcon {
+.miniWidget.connected {
+  border-color: var(--borderColor-accent-emphasis, #0969da);
+  box-shadow: 0 0 0 1px var(--borderColor-accent-muted, #54aeff44), 0 1px 3px rgba(9,105,218,0.12);
+}
+
+.miniWidget.disconnected {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
+.miniWidgetIcon {
   font-size: 14px;
+  flex-shrink: 0;
 }
 
-.contextLabel {
-  flex: 1;
+.miniWidgetLabel {
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1;
 }
 
-.contextAttached {
-  color: var(--fgColor-success, #1a7f37);
-  font-size: 11px;
+.connectorLine {
+  width: 40px;
+  height: 2px;
+  background: var(--borderColor-accent-emphasis, #0969da);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.connectorLine::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--borderColor-accent-emphasis, #0969da);
+}
+
+.connectorLine.dashed {
+  background: none;
+  border-top: 2px dashed var(--borderColor-muted, #d1d9e0);
+}
+
+.connectorLine.dashed::after {
+  background: var(--borderColor-muted, #d1d9e0);
+}
+
+.connectorDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--borderColor-accent-emphasis, #0969da);
+  flex-shrink: 0;
+}
+
+.connectorDot.muted {
+  background: var(--borderColor-muted, #d1d9e0);
 }
 
 .contextTag {

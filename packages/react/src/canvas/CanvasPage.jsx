@@ -2382,6 +2382,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     return aSelected - bSelected
   })
   for (const widget of sortedWidgets) {
+    if (!isLocalDev && widget.type === 'terminal') continue
     allChildren.push(
       <div
         key={widget.id}
@@ -2417,6 +2418,14 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   }
 
   const scale = zoom / 100
+
+  const terminalWidgetIds = !isLocalDev 
+    ? new Set((localWidgets ?? []).filter(w => w.type === 'terminal').map(w => w.id))
+    : null
+
+  const filteredConnectors = terminalWidgetIds?.size
+    ? localConnectors.filter(c => !terminalWidgetIds.has(c.startWidgetId) && !terminalWidgetIds.has(c.endWidgetId))
+    : localConnectors
 
   return (
     <>
@@ -2462,7 +2471,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           }}
         >
           <ConnectorLayer
-            connectors={localConnectors}
+            connectors={filteredConnectors}
             widgets={localWidgets ?? []}
             onRemove={isLocalDev ? handleConnectorRemove : undefined}
             onEndpointDrag={isLocalDev ? handleEndpointDrag : undefined}

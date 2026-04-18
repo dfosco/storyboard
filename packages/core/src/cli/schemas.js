@@ -182,6 +182,11 @@ export const widgetSchema = {
     type: 'string',
     description: 'Widget props as JSON string',
   },
+  'props-file': {
+    type: 'string',
+    description: 'Path to a JSON file containing widget props (avoids shell escaping)',
+    aliases: ['pf'],
+  },
 }
 
 /** @type {FlagSchema} */

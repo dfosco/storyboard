@@ -1,3 +1,10 @@
 {
-  "title": "Storyboarding"
+  "title": "Storyboarding",
+  "pageOrder": [
+    "storyboarding/terminal-widget-prompts",
+    "sep-1776495825297",
+    "storyboarding/terminal-widget-plan-v1",
+    "storyboarding/terminal-widget-plan-v2",
+    "storyboarding/terminal-widget-plan-v3"
+  ]
 }

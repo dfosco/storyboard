@@ -402,6 +402,7 @@ export default function WidgetChrome({
   onDeselect, // eslint-disable-line no-unused-vars
   onAction,
   onUpdate,
+  onConnectorDragStart,
   children,
   readOnly = false,
 }) {
@@ -463,6 +464,18 @@ export default function WidgetChrome({
       <div className={`tc-drag-surface ${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''} ${multiSelected ? styles.widgetSlotMultiSelected : ''}`} data-widget-selected={selected || undefined}>
         {children}
       </div>
+      {!readOnly && onConnectorDragStart && ['top', 'bottom', 'left', 'right'].map((anchor) => (
+        <div
+          key={anchor}
+          className={`${styles.anchorPort} ${styles[`anchorPort${anchor[0].toUpperCase()}${anchor.slice(1)}`]}`}
+          onMouseDown={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            onConnectorDragStart(widgetId, anchor, e)
+          }}
+          data-anchor={anchor}
+        />
+      ))}
       <div
         className={styles.toolbar}
       >

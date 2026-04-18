@@ -13,6 +13,8 @@
  *   settings_updated — patch canvas-level settings
  *   source_updated   — replace the sources array
  *   widgets_replaced — replace the entire widgets array (bulk update)
+ *   connector_added  — append a connector between two widgets
+ *   connector_removed — remove a connector by id
  */
 
 /**
@@ -101,6 +103,7 @@ export function materialize(events) {
         const initial = { ...evt }
         delete initial.event
         delete initial.timestamp
+        if (!initial.connectors) initial.connectors = []
         state = initial
         break
       }
@@ -131,6 +134,12 @@ export function materialize(events) {
         state.widgets = (state.widgets || []).filter(
           (w) => w.id !== evt.widgetId,
         )
+        // Cascade: remove connectors referencing the deleted widget
+        if (state.connectors?.length) {
+          state.connectors = state.connectors.filter(
+            (c) => c.start.widgetId !== evt.widgetId && c.end.widgetId !== evt.widgetId,
+          )
+        }
         break
       }
 
@@ -150,11 +159,49 @@ export function materialize(events) {
 
       case 'widgets_replaced': {
         state.widgets = evt.widgets
+        // Orphan cleanup: remove connectors referencing deleted widgets
+        if (state.connectors?.length) {
+          const widgetIds = new Set((state.widgets || []).map((w) => w.id))
+          state.connectors = state.connectors.filter(
+            (c) => widgetIds.has(c.start.widgetId) && widgetIds.has(c.end.widgetId),
+          )
+        }
+        break
+      }
+
+      case 'connector_added': {
+        if (!state.connectors) state.connectors = []
+        state.connectors = [...state.connectors, evt.connector]
+        break
+      }
+
+      case 'connector_removed': {
+        state.connectors = (state.connectors || []).filter(
+          (c) => c.id !== evt.connectorId,
+        )
         break
       }
 
       // Unknown events are silently ignored (forward compatibility)
     }
+  }
+
+  // Derive connectorIds on widgets from the connectors array
+  if (state.connectors?.length && state.widgets?.length) {
+    // Build a map: widgetId → Set of connectorIds
+    const widgetConnMap = new Map()
+    for (const conn of state.connectors) {
+      for (const endpoint of [conn.start, conn.end]) {
+        if (!widgetConnMap.has(endpoint.widgetId)) {
+          widgetConnMap.set(endpoint.widgetId, new Set())
+        }
+        widgetConnMap.get(endpoint.widgetId).add(conn.id)
+      }
+    }
+    state.widgets = state.widgets.map((w) => {
+      const ids = widgetConnMap.get(w.id)
+      return ids ? { ...w, connectorIds: [...ids] } : w
+    })
   }
 
   return state

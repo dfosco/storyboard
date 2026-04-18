@@ -176,6 +176,110 @@ describe('materialize', () => {
   })
 })
 
+describe('connectors', () => {
+  const baseEvents = [
+    { event: 'canvas_created', timestamp: '1', title: 'Test', widgets: [
+      { id: 'w1', type: 'sticky-note', position: { x: 0, y: 0 }, props: {} },
+      { id: 'w2', type: 'markdown', position: { x: 200, y: 0 }, props: {} },
+      { id: 'w3', type: 'sticky-note', position: { x: 400, y: 0 }, props: {} },
+    ] },
+  ]
+
+  const connector = {
+    id: 'connector-001',
+    type: 'connector',
+    connectorType: 'default',
+    start: { widgetId: 'w1', anchor: 'right' },
+    end: { widgetId: 'w2', anchor: 'left' },
+    meta: {},
+  }
+
+  it('materializes connector_added events into connectors array', () => {
+    const state = materialize([
+      ...baseEvents,
+      { event: 'connector_added', timestamp: '2', connector },
+    ])
+    expect(state.connectors).toHaveLength(1)
+    expect(state.connectors[0].id).toBe('connector-001')
+  })
+
+  it('derives connectorIds on widgets from connectors', () => {
+    const state = materialize([
+      ...baseEvents,
+      { event: 'connector_added', timestamp: '2', connector },
+    ])
+    expect(state.widgets.find((w) => w.id === 'w1').connectorIds).toEqual(['connector-001'])
+    expect(state.widgets.find((w) => w.id === 'w2').connectorIds).toEqual(['connector-001'])
+    expect(state.widgets.find((w) => w.id === 'w3').connectorIds).toBeUndefined()
+  })
+
+  it('removes connectors with connector_removed', () => {
+    const state = materialize([
+      ...baseEvents,
+      { event: 'connector_added', timestamp: '2', connector },
+      { event: 'connector_removed', timestamp: '3', connectorId: 'connector-001' },
+    ])
+    expect(state.connectors).toHaveLength(0)
+    // connectorIds should not appear on widgets when no connectors reference them
+    expect(state.widgets.find((w) => w.id === 'w1').connectorIds).toBeUndefined()
+  })
+
+  it('cascades connector removal when widget is removed', () => {
+    const state = materialize([
+      ...baseEvents,
+      { event: 'connector_added', timestamp: '2', connector },
+      { event: 'widget_removed', timestamp: '3', widgetId: 'w1' },
+    ])
+    expect(state.connectors).toHaveLength(0)
+    expect(state.widgets).toHaveLength(2)
+  })
+
+  it('cleans orphaned connectors on widgets_replaced', () => {
+    const state = materialize([
+      ...baseEvents,
+      { event: 'connector_added', timestamp: '2', connector },
+      { event: 'widgets_replaced', timestamp: '3', widgets: [
+        { id: 'w2', type: 'markdown', position: { x: 200, y: 0 }, props: {} },
+        { id: 'w3', type: 'sticky-note', position: { x: 400, y: 0 }, props: {} },
+      ] },
+    ])
+    // w1 removed by replacement, so connector referencing w1 is orphaned
+    expect(state.connectors).toHaveLength(0)
+  })
+
+  it('supports multiple connectors on the same widget', () => {
+    const conn2 = {
+      id: 'connector-002',
+      type: 'connector',
+      connectorType: 'default',
+      start: { widgetId: 'w2', anchor: 'right' },
+      end: { widgetId: 'w3', anchor: 'left' },
+      meta: {},
+    }
+    const state = materialize([
+      ...baseEvents,
+      { event: 'connector_added', timestamp: '2', connector },
+      { event: 'connector_added', timestamp: '3', connector: conn2 },
+    ])
+    expect(state.connectors).toHaveLength(2)
+    expect(state.widgets.find((w) => w.id === 'w2').connectorIds).toEqual(
+      expect.arrayContaining(['connector-001', 'connector-002']),
+    )
+    expect(state.widgets.find((w) => w.id === 'w2').connectorIds).toHaveLength(2)
+  })
+
+  it('initializes connectors array when none existed', () => {
+    const state = materialize([
+      { event: 'canvas_created', timestamp: '1', title: 'Empty', widgets: [
+        { id: 'w1', type: 'sticky-note', position: { x: 0, y: 0 }, props: {} },
+        { id: 'w2', type: 'sticky-note', position: { x: 100, y: 0 }, props: {} },
+      ] },
+      { event: 'connector_added', timestamp: '2', connector },
+    ])
+    expect(state.connectors).toHaveLength(1)
+  })
+})
+
 describe('materializeFromText', () => {
   it('parses and materializes in one step', () => {
     const text = '{"event":"canvas_created","timestamp":"2026-01-01","title":"Test","widgets":[]}\n{"event":"widget_added","timestamp":"2026-01-02","widget":{"id":"w1","type":"sticky-note","position":{"x":0,"y":0},"props":{"text":"Hello"}}}\n'

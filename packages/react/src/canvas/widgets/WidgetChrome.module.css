@@ -4,6 +4,54 @@
   position: relative;
 }
 
+/* Connector anchor ports — positioned at widget edge centers */
+.anchorPort {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--bgColor-accent-emphasis, #2f81f7);
+  border: 2px solid var(--bgColor-default, #fff);
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+  cursor: crosshair;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.chromeContainer:hover .anchorPort,
+.anchorPort:hover {
+  opacity: 1;
+}
+
+.anchorPort:hover {
+  transform: scale(1.3);
+}
+
+.anchorPortTop {
+  top: -6px;
+  left: 50%;
+  margin-left: -6px;
+}
+
+.anchorPortBottom {
+  bottom: -6px;
+  left: 50%;
+  margin-left: -6px;
+}
+
+.anchorPortLeft {
+  left: -6px;
+  top: 50%;
+  margin-top: -6px;
+}
+
+.anchorPortRight {
+  right: -6px;
+  top: 50%;
+  margin-top: -6px;
+}
+
 /* Widget slot — contains the actual widget; selection outline targets this */
 .widgetSlot {
   position: relative;

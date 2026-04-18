@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Tooltip } from '@primer/react'
 import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode, UnwrapIcon as OcticonUnwrap, ImageIcon as OcticonImage, UnfoldIcon as OcticonUnfold, FoldIcon as OcticonFold } from '@primer/octicons-react'
+import { getConnectorConfig } from './widgetConfig.js'
 import styles from './WidgetChrome.module.css'
 
 const STICKY_NOTE_COLORS = {
@@ -393,6 +394,7 @@ function ColorPickerFeature({ currentColor, options, onColorChange }) {
  */
 export default function WidgetChrome({
   widgetId,
+  widgetType,
   features = [],
   selected = false,
   multiSelected = false,
@@ -464,19 +466,27 @@ export default function WidgetChrome({
       <div className={`tc-drag-surface ${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''} ${multiSelected ? styles.widgetSlotMultiSelected : ''}`} data-widget-selected={selected || undefined}>
         {children}
       </div>
-      {!readOnly && onConnectorDragStart && ['top', 'bottom', 'left', 'right'].map((anchor) => (
-        <div
-          key={anchor}
-          className={`${styles.anchorPort} ${styles[`anchorPort${anchor[0].toUpperCase()}${anchor.slice(1)}`]}`}
-          onPointerDown={(e) => {
-            e.stopPropagation()
-            e.nativeEvent?.stopImmediatePropagation?.()
-            e.preventDefault()
-            onConnectorDragStart(widgetId, anchor, e)
-          }}
-          data-anchor={anchor}
-        />
-      ))}
+      {!readOnly && onConnectorDragStart && (() => {
+        const connConfig = widgetType ? getConnectorConfig(widgetType) : null
+        return ['top', 'bottom', 'left', 'right']
+          .filter((a) => !connConfig || connConfig.anchors[a] !== 'unavailable')
+          .map((anchor) => {
+            const disabled = connConfig?.anchors[anchor] === 'disabled'
+            return (
+              <div
+                key={anchor}
+                className={`${styles.anchorPort} ${styles[`anchorPort${anchor[0].toUpperCase()}${anchor.slice(1)}`]} ${disabled ? styles.anchorPortDisabled : ''}`}
+                onPointerDown={disabled ? undefined : (e) => {
+                  e.stopPropagation()
+                  e.nativeEvent?.stopImmediatePropagation?.()
+                  e.preventDefault()
+                  onConnectorDragStart(widgetId, anchor, e)
+                }}
+                data-anchor={anchor}
+              />
+            )
+          })
+      })()}
       <div
         className={styles.toolbar}
       >

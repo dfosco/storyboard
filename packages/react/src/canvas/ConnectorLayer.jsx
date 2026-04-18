@@ -5,13 +5,28 @@ const CONTROL_OFFSET = 80
 
 /**
  * Compute the anchor point on a widget's edge.
- * Uses position + props dimensions (not bounds) for live accuracy.
+ * Reads actual DOM dimensions for accuracy (widgets like markdown auto-size).
+ * Falls back to props/bounds/defaults if DOM element isn't found.
  */
 function getAnchorPoint(widget, anchor) {
   const x = widget.position?.x ?? 0
   const y = widget.position?.y ?? 0
-  const w = widget.props?.width ?? widget.bounds?.width ?? 270
-  const h = widget.props?.height ?? widget.bounds?.height ?? 170
+
+  // Try to read actual rendered dimensions from DOM
+  let w, h
+  const el = document.getElementById(widget.id)
+  if (el) {
+    // The widget element uses CSS translate for positioning;
+    // its offsetWidth/Height give the actual rendered size
+    const firstChild = el.querySelector('[data-widget-id]') || el.firstElementChild
+    if (firstChild) {
+      w = firstChild.offsetWidth
+      h = firstChild.offsetHeight
+    }
+  }
+  // Fallback to data
+  if (!w) w = widget.props?.width ?? widget.bounds?.width ?? 270
+  if (!h) h = widget.props?.height ?? widget.bounds?.height ?? 170
 
   switch (anchor) {
     case 'top':    return { x: x + w / 2, y }

@@ -111,6 +111,8 @@ switch (command) {
       import('./canvasAdd.js')
     } else if (process.argv[3] === 'read' || !process.argv[3]) {
       import('./canvasRead.js')
+    } else if (process.argv[3] === 'bounds') {
+      import('./canvasBounds.js')
     } else {
       const version = getVersion()
       console.log(helpScreen(version))

@@ -51,6 +51,21 @@ function tmuxSessionExists(name) {
   }
 }
 
+/** Destroy a terminal session (pty + tmux). Called when a terminal widget is deleted. */
+export function killTerminalSession(sessionId) {
+  const proc = sessions.get(sessionId)
+  if (proc) {
+    try { proc.kill() } catch {}
+    sessions.delete(sessionId)
+  }
+  if (hasTmux) {
+    const tmuxName = `${TMUX_PREFIX}${sessionId}`
+    try {
+      execSync(`tmux kill-session -t ${tmuxName} 2>/dev/null`, { stdio: 'ignore' })
+    } catch {}
+  }
+}
+
 /**
  * Attach the terminal WebSocket server to a Vite HTTP server.
  * Call this from configureServer() in the server plugin.
@@ -96,7 +111,15 @@ function handleConnection(ws, sessionId) {
   }
 
   const cwd = process.cwd()
-  const env = { ...process.env, TERM: 'xterm-256color' }
+  const env = {
+    ...process.env,
+    TERM: 'xterm-256color',
+    TERM_PROGRAM: 'storyboard',
+    // Suppress shell theme frameworks (starship, oh-my-zsh, powerlevel10k)
+    STARSHIP_CONFIG: '/dev/null',
+    POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD: 'true',
+    ZSH_THEME: '',
+  }
   let ptyProcess
 
   if (hasTmux) {

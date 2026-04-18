@@ -1,5 +1,13 @@
 # @dfosco/storyboard-react
 
+## 4.1.0
+
+### Patch Changes
+
+-   Updated dependencies [[`eaa140a`](https://github.com/dfosco/storyboard/commit/eaa140a17ea26b9fc71dd3e662bd963b5874c8c3), [`bb07137`](https://github.com/dfosco/storyboard/commit/bb071379b888c793080b869679b0f405dd2a0cf3), [`eb1b084`](https://github.com/dfosco/storyboard/commit/eb1b084b577a69832eda08b6ae8c1a231cd8c65f), [`a51b237`](https://github.com/dfosco/storyboard/commit/a51b237037062bc6cb2502ef33dfc738b943155d)]:
+    -   @dfosco/storyboard-core@4.1.0
+    -   @dfosco/tiny-canvas@4.1.0
+
 ## 4.1.0-beta.3
 
 ### Patch Changes

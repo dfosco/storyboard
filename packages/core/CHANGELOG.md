@@ -1,5 +1,50 @@
 # @dfosco/storyboard-core
 
+## 4.1.0
+
+### Minor Changes
+
+-   [`eaa140a`](https://github.com/dfosco/storyboard/commit/eaa140a17ea26b9fc71dd3e662bd963b5874c8c3) Thanks [@dfosco](https://github.com/dfosco)! - Fix canvas title bar and branch bar not rendering on client deployments
+
+    -   Always show canvas title text regardless of sibling page count
+    -   Mount Svelte BranchBar from CoreUIBar so branch indicator renders in production builds
+
+-   [`eb1b084`](https://github.com/dfosco/storyboard/commit/eb1b084b577a69832eda08b6ae8c1a231cd8c65f) Thanks [@dfosco](https://github.com/dfosco)! - Remove Svelte BranchBar, auto-render React CommandPalette from StoryboardProvider
+
+    -   Delete BranchBar.svelte — moving toward React-only architecture
+    -   CommandPalette (including BranchBar) now auto-renders from StoryboardProvider
+    -   Client repos no longer need to manually import BranchBar or CommandPalette
+
+-   Canvas UI improvements, prod deployment fixes, and React-first architecture
+
+    -   Always show canvas title bar on client deployments
+    -   Auto-render BranchBar and CommandPalette from StoryboardProvider — client repos get them for free
+    -   Remove Svelte BranchBar in favor of React-only implementation
+    -   Fix prod 404s for fonts, canvas server API calls, and private images
+    -   Instant widget updates when adding via CLI/API (use HMR metadata directly)
+    -   Deduplicate consecutive separators in command palette
+    -   Fix viewport persistence — saved zoom/scroll no longer gets clobbered by canvas data refresh
+
+    ### Beta releases
+
+    **beta.0** — Show canvas title bar and branch bar on client deployments
+
+    **beta.1** — Re-release with corrected worktree
+
+    **beta.2** — Remove Svelte BranchBar, auto-render React CommandPalette from StoryboardProvider so client repos don't need extra imports
+
+    **beta.3** — Fix prod 404s: font paths, skip canvas server API in prod, hide private images in prod builds
+
+### Patch Changes
+
+-   [`bb07137`](https://github.com/dfosco/storyboard/commit/bb071379b888c793080b869679b0f405dd2a0cf3) Thanks [@dfosco](https://github.com/dfosco)! - Re-release of canvas title bar and branch bar fixes for client deployments
+
+-   [`a51b237`](https://github.com/dfosco/storyboard/commit/a51b237037062bc6cb2502ef33dfc738b943155d) Thanks [@dfosco](https://github.com/dfosco)! - Fix prod 404s for fonts, canvas API, and private images
+
+    -   Fix font paths to resolve from repo root assets/fonts/
+    -   Skip canvas server API fetch in production builds
+    -   Hide private images in prod (not included in dist)
+
 ## 4.1.0-beta.3
 
 ### Patch Changes

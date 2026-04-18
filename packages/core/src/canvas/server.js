@@ -411,8 +411,8 @@ export function createCanvasHandler(ctx) {
       try {
         // Verify the widget exists before appending the removal event
         const data = readCanvas(filePath)
-        const exists = (data.widgets || []).some((w) => w.id === widgetId)
-        if (!exists) {
+        const widget = (data.widgets || []).find((w) => w.id === widgetId)
+        if (!widget) {
           sendJson(res, 404, { error: `Widget "${widgetId}" not found in canvas "${name}"` })
           return
         }
@@ -422,6 +422,14 @@ export function createCanvasHandler(ctx) {
           timestamp: new Date().toISOString(),
           widgetId,
         })
+
+        // Clean up terminal tmux session when a terminal widget is deleted
+        if (widget.type === 'terminal') {
+          try {
+            const { killTerminalSession } = await import('./terminal-server.js')
+            killTerminalSession(widgetId)
+          } catch {}
+        }
 
         sendJson(res, 200, { success: true, removed: 1 })
       } catch (err) {

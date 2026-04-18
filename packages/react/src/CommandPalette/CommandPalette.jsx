@@ -303,7 +303,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
     if (!isLocalDev) return null
     const items = Object.entries(widgetTypes).map(([type, def]) => ({
       id: `create-widget:${type}`,
-      children: `Add ${def.label}`,
+      children: def.label,
       keywords: ['add', 'widget', 'create', type, def.label.toLowerCase()],
       showType: false,
       onClick: () => {

@@ -133,6 +133,12 @@
   pointer-events: none;
 }
 
+.dropZoneEnd {
+  position: relative;
+  min-height: 12px;
+  list-style: none;
+}
+
 .item:hover {
   background: var(--bgColor-muted, #f6f8fa);
 }

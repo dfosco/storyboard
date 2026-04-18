@@ -27,7 +27,13 @@
   fill: var(--fgColor-accent, #0969da);
   stroke: var(--bgColor-default, #ffffff);
   stroke-width: 3;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: crosshair;
+  transition: transform 0.1s ease;
+}
+
+.connectorEndpoint:hover {
+  transform: scale(1.5);
 }
 
 .connectorPathHitArea {

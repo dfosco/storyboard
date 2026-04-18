@@ -288,11 +288,11 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
     const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
     if (!isLocalDev) return null
     const createItems = [
-      { id: 'create:canvas', children: 'New Canvas', keywords: ['create', 'canvas', 'new', 'board'], showType: false, onClick: () => onCreateAction?.('Canvas') },
-      { id: 'create:prototype', children: 'New Prototype', keywords: ['create', 'prototype', 'new', 'page'], showType: false, onClick: () => onCreateAction?.('Prototype') },
-      { id: 'create:component', children: 'New Component', keywords: ['create', 'component', 'new', 'story'], showType: false, onClick: () => onCreateAction?.('Component') },
-      { id: 'create:flow', children: 'New Prototype Flow', keywords: ['create', 'flow', 'new', 'data'], showType: false, onClick: () => onCreateAction?.('Flow') },
-      { id: 'create:page', children: 'New Prototype Page', keywords: ['create', 'page', 'new'], showType: false, onClick: () => onCreateAction?.('Page') },
+      { id: 'create:canvas', children: 'Canvas', keywords: ['create', 'canvas', 'new', 'board'], showType: false, onClick: () => onCreateAction?.('Canvas') },
+      { id: 'create:prototype', children: 'Prototype', keywords: ['create', 'prototype', 'new', 'page'], showType: false, onClick: () => onCreateAction?.('Prototype') },
+      { id: 'create:component', children: 'Component', keywords: ['create', 'component', 'new', 'story'], showType: false, onClick: () => onCreateAction?.('Component') },
+      { id: 'create:flow', children: 'Prototype Flow', keywords: ['create', 'flow', 'new', 'data'], showType: false, onClick: () => onCreateAction?.('Flow') },
+      { id: 'create:page', children: 'Prototype Page', keywords: ['create', 'page', 'new'], showType: false, onClick: () => onCreateAction?.('Page') },
     ]
     return { group: { heading: section.title, id: `cfg:${section.id}`, items: createItems } }
   }

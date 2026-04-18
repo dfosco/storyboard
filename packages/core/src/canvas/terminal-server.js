@@ -111,6 +111,7 @@ function handleConnection(ws, sessionId) {
   }
 
   const cwd = process.cwd()
+  const shell = process.env.SHELL || '/bin/zsh'
   const env = {
     ...process.env,
     TERM: 'xterm-256color',
@@ -119,6 +120,10 @@ function handleConnection(ws, sessionId) {
     STARSHIP_CONFIG: '/dev/null',
     POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD: 'true',
     ZSH_THEME: '',
+    // Skip user shell rc files — launch a clean shell
+    ZDOTDIR: '/var/empty',
+    BASH_ENV: '',
+    ENV: '',
   }
   let ptyProcess
 
@@ -126,23 +131,31 @@ function handleConnection(ws, sessionId) {
     const tmuxName = `${TMUX_PREFIX}${sessionId}`
     const reattach = tmuxSessionExists(tmuxName)
 
-    const cmd = reattach
-      ? 'tmux'
-      : 'tmux'
+    // -f /dev/null skips user tmux.conf; 'set status off' hides the status bar
     const args = reattach
-      ? ['attach-session', '-t', tmuxName]
-      : ['new-session', '-s', tmuxName]
+      ? ['-f', '/dev/null', 'attach-session', '-t', tmuxName]
+      : ['-f', '/dev/null', 'new-session', '-s', tmuxName]
 
-    ptyProcess = pty.spawn(cmd, args, {
+    ptyProcess = pty.spawn('tmux', args, {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,
       cwd,
       env,
     })
+
+    // Hide status bar (works for both new and reattached sessions)
+    const hideStatus = () => {
+      try {
+        execSync(`tmux set-option -t ${tmuxName} status off 2>/dev/null`, { stdio: 'ignore' })
+      } catch { /* session may not be ready yet */ }
+    }
+    // Small delay to let tmux session initialize
+    setTimeout(hideStatus, 200)
   } else {
-    const shell = process.env.SHELL || '/bin/zsh'
-    ptyProcess = pty.spawn(shell, [], {
+    const noRcFlag = shell.endsWith('/zsh') ? '--no-rcs' : shell.endsWith('/bash') ? '--norc' : ''
+    const shellArgs = noRcFlag ? [noRcFlag] : []
+    ptyProcess = pty.spawn(shell, shellArgs, {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,

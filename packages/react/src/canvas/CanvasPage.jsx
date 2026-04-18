@@ -868,6 +868,120 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     document.addEventListener('pointerup', handlePointerUp)
   }, [handleConnectorAdd])
 
+  // Drag an existing connector endpoint to reconnect or remove
+  const handleEndpointDrag = useCallback((connector, endpoint, e) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const scrollEl = scrollRef.current
+    if (!scrollEl) return
+    const scale = zoomRef.current / 100
+    const rect = scrollEl.getBoundingClientRect()
+
+    // The fixed end stays put; the dragged end follows cursor
+    const fixedEnd = endpoint === 'start' ? 'end' : 'start'
+    const fixedSide = connector[fixedEnd]
+    const fixedWidget = (stateRef.current.widgets ?? []).find((w) => w.id === fixedSide.widgetId)
+    if (!fixedWidget) return
+
+    const computeAnchorPtLocal = (widget, anch) => {
+      let ww, wh
+      const el = document.getElementById(widget.id)
+      if (el) {
+        const inner = el.querySelector('[data-widget-id]') || el.firstElementChild
+        if (inner) { ww = inner.offsetWidth; wh = inner.offsetHeight }
+      }
+      if (!ww) ww = widget.props?.width ?? widget.bounds?.width ?? 270
+      if (!wh) wh = widget.props?.height ?? widget.bounds?.height ?? 170
+      const px = widget.position?.x ?? 0
+      const py = widget.position?.y ?? 0
+      switch (anch) {
+        case 'top':    return { x: px + ww / 2, y: py }
+        case 'bottom': return { x: px + ww / 2, y: py + wh }
+        case 'left':   return { x: px, y: py + wh / 2 }
+        case 'right':  return { x: px + ww, y: py + wh / 2 }
+        default:       return { x: px + ww / 2, y: py + wh / 2 }
+      }
+    }
+
+    const fixedPt = computeAnchorPtLocal(fixedWidget, fixedSide.anchor)
+    const fixedWidgetId = fixedSide.widgetId
+
+    const toCanvasPoint = (clientX, clientY) => ({
+      x: (scrollEl.scrollLeft + clientX - rect.left) / scale,
+      y: (scrollEl.scrollTop + clientY - rect.top) / scale,
+    })
+
+    const SNAP_DIST = 40
+    const sourceType = fixedWidget.type
+    const findNearestAnchorLocal = (canvasPt) => {
+      const currentWidgets = stateRef.current.widgets ?? []
+      let best = null
+      let bestDist = SNAP_DIST
+      for (const w of currentWidgets) {
+        if (w.id === fixedWidgetId) continue
+        if (!canAcceptConnection(w.type, sourceType)) continue
+        for (const anch of ['top', 'bottom', 'left', 'right']) {
+          const anchorState = getAnchorState(w.type, anch)
+          if (anchorState !== 'available') continue
+          const pt = computeAnchorPtLocal(w, anch)
+          const dist = Math.hypot(pt.x - canvasPt.x, pt.y - canvasPt.y)
+          if (dist < bestDist) {
+            bestDist = dist
+            best = { widgetId: w.id, anchor: anch, pt }
+          }
+        }
+      }
+      return best
+    }
+
+    const cursorPt = toCanvasPoint(e.clientX, e.clientY)
+    const snap = findNearestAnchorLocal(cursorPt)
+    setConnectorDrag({
+      startWidgetId: fixedWidgetId,
+      startAnchor: fixedSide.anchor,
+      startPt: fixedPt,
+      endPt: snap ? snap.pt : cursorPt,
+      endAnchor: snap ? snap.anchor : fixedSide.anchor,
+      snapTarget: snap,
+    })
+
+    const handlePointerMove = (moveE) => {
+      const pt = toCanvasPoint(moveE.clientX, moveE.clientY)
+      const nearSnap = findNearestAnchorLocal(pt)
+      setConnectorDrag((prev) => prev ? {
+        ...prev,
+        endPt: nearSnap ? nearSnap.pt : pt,
+        endAnchor: nearSnap ? nearSnap.anchor : prev.startAnchor,
+        snapTarget: nearSnap,
+      } : null)
+    }
+
+    const handlePointerUp = (upE) => {
+      document.removeEventListener('pointermove', handlePointerMove)
+      document.removeEventListener('pointerup', handlePointerUp)
+
+      const pt = toCanvasPoint(upE.clientX, upE.clientY)
+      const nearSnap = findNearestAnchorLocal(pt)
+
+      // Always remove the old connector
+      handleConnectorRemove(connector.id)
+
+      // If snapped to a new anchor, create a new connector
+      if (nearSnap) {
+        handleConnectorAdd({
+          startWidgetId: fixedWidgetId,
+          startAnchor: fixedSide.anchor,
+          endWidgetId: nearSnap.widgetId,
+          endAnchor: nearSnap.anchor,
+        })
+      }
+      setConnectorDrag(null)
+    }
+
+    document.addEventListener('pointermove', handlePointerMove)
+    document.addEventListener('pointerup', handlePointerUp)
+  }, [handleConnectorAdd, handleConnectorRemove])
+
   const handleWidgetCopy = useCallback(async (widget) => {
     // Find the next free offset — check how many copies already exist at +n*40
     const baseX = widget.position?.x ?? 0
@@ -2348,6 +2462,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
             connectors={localConnectors}
             widgets={localWidgets ?? []}
             onRemove={isLocalDev ? handleConnectorRemove : undefined}
+            onEndpointDrag={isLocalDev ? handleEndpointDrag : undefined}
             dragPreview={connectorDrag}
           />
           <Canvas {...canvasProps} onDragStart={isLocalDev ? handleItemDragStart : undefined} onDrag={isLocalDev ? handleItemDrag : undefined} onDragEnd={isLocalDev ? handleItemDragEnd : undefined}>

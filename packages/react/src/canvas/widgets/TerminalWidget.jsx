@@ -214,7 +214,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
     <div className={styles.container}>
       <div
         ref={widgetRef}
-        className={`${styles.terminal} ${interactive ? styles.interactive : ''}`}
+        className={styles.terminal}
         style={{
           ...(typeof width === 'number' ? { width: `${width}px` } : undefined),
           ...(typeof height === 'number' ? { height: `${height}px` } : undefined),

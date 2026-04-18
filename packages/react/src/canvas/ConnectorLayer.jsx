@@ -92,6 +92,7 @@ export default function ConnectorLayer({
   connectors = [],
   widgets = [],
   onRemove,
+  onEndpointDrag,
   dragPreview,
 }) {
   const widgetMap = useMemo(() => {
@@ -132,9 +133,13 @@ export default function ConnectorLayer({
               className={styles.connectorPath}
               onClick={(e) => handleClick(e, conn.id)}
             />
-            {/* Endpoint dots */}
-            <circle cx={startPt.x} cy={startPt.y} r={6} className={styles.connectorEndpoint} />
-            <circle cx={endPt.x} cy={endPt.y} r={6} className={styles.connectorEndpoint} />
+            {/* Endpoint dots — draggable to reconnect or remove */}
+            <circle cx={startPt.x} cy={startPt.y} r={6} className={styles.connectorEndpoint}
+              onPointerDown={onEndpointDrag ? (e) => { e.stopPropagation(); e.preventDefault(); onEndpointDrag(conn, 'start', e) } : undefined}
+            />
+            <circle cx={endPt.x} cy={endPt.y} r={6} className={styles.connectorEndpoint}
+              onPointerDown={onEndpointDrag ? (e) => { e.stopPropagation(); e.preventDefault(); onEndpointDrag(conn, 'end', e) } : undefined}
+            />
           </g>
         )
       })}

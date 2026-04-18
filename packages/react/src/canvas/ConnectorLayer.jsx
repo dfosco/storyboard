@@ -94,6 +94,7 @@ export default function ConnectorLayer({
   onRemove,
   onEndpointDrag,
   dragPreview,
+  hidden = false,
 }) {
   const widgetMap = useMemo(() => {
     const map = new Map()
@@ -109,7 +110,7 @@ export default function ConnectorLayer({
   }, [onRemove])
 
   return (
-    <svg className={styles.connectorLayer} style={{ width: '100000px', height: '100000px' }}>
+    <svg className={`${styles.connectorLayer} ${hidden ? styles.connectorLayerHidden : ''}`} style={{ width: '100000px', height: '100000px' }}>
       {connectors.map((conn) => {
         const startWidget = widgetMap.get(conn.start?.widgetId)
         const endWidget = widgetMap.get(conn.end?.widgetId)

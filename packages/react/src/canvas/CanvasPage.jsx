@@ -756,6 +756,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   const [connectorDrag, setConnectorDrag] = useState(null)
 
   const handleConnectorDragStart = useCallback((widgetId, anchor, e) => {
+    console.log('[devlog] handleConnectorDragStart', widgetId, anchor)
     e.stopPropagation()
     e.preventDefault()
     const scrollEl = scrollRef.current

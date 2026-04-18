@@ -40,6 +40,7 @@ import {
   isGhCliAvailable,
   isGitHubEmbedUrl,
 } from './githubEmbeds.js'
+import { stampBounds, stampBoundsAll } from './collision.js'
 
 /**
  * Scan src/canvas/ for directories containing .meta.json files.
@@ -306,7 +307,8 @@ export function createCanvasHandler(ctx) {
         const ts = new Date().toISOString()
 
         if (widgets) {
-          appendEvent(filePath, { event: 'widgets_replaced', timestamp: ts, widgets })
+          const stamped = stampBoundsAll(widgets)
+          appendEvent(filePath, { event: 'widgets_replaced', timestamp: ts, widgets: stamped })
         }
 
         if (sources) {
@@ -353,7 +355,7 @@ export function createCanvasHandler(ctx) {
 
       try {
         const widgetId = generateWidgetId(type)
-        const widget = { id: widgetId, type, position, props }
+        const widget = stampBounds({ id: widgetId, type, position, props })
 
         appendEvent(filePath, {
           event: 'widget_added',

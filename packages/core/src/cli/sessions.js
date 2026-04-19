@@ -65,15 +65,6 @@ function relativeTime(iso) {
   return `${days}d ago`
 }
 
-function statusLabel(status) {
-  switch (status) {
-    case 'live': return blue('Live      ')
-    case 'background': return orange('Background')
-    case 'archived': return dim('Archived  ')
-    default: return dim(status.padEnd(10))
-  }
-}
-
 function summaryText(entry) {
   const name = entry.name || entry.widgetId || 'unknown'
   const canvas = entry.canvasId && entry.canvasId !== 'unknown'
@@ -94,11 +85,25 @@ function getCurrentTmuxSession() {
   }
 }
 
+// Column widths (character count, must match between header and rows)
+const COL = { num: 6, status: 12, modified: 12, created: 12 }
+
+function truncate(str, len) {
+  if (str.length <= len) return str.padEnd(len)
+  return str.slice(0, len - 1) + '…'
+}
+
 function formatRow(idx, entry, isCurrent = false) {
-  const num = `${idx + 1}.`.padEnd(4)
-  const status = statusLabel(entry.status)
-  const modified = relativeTime(entry.lastConnectedAt).padEnd(10)
-  const created = relativeTime(entry.createdAt).padEnd(10)
+  const num = `${idx + 1}.`.padEnd(COL.num)
+  const status = truncate(
+    entry.status === 'live' ? 'Live' : entry.status === 'background' ? 'Background' : 'Archived',
+    COL.status
+  )
+  const statusColored = entry.status === 'live' ? blue(status)
+    : entry.status === 'background' ? orange(status)
+    : dim(status)
+  const modified = truncate(relativeTime(entry.lastConnectedAt), COL.modified)
+  const created = truncate(relativeTime(entry.createdAt), COL.created)
   const summary = summaryText(entry)
 
   let badges = ''
@@ -111,7 +116,7 @@ function formatRow(idx, entry, isCurrent = false) {
       ? orange(summary)
       : dim(summary)
 
-  return `  ${dim(num)} ${status}  ${dim(modified)} ${dim(created)} ${summaryColored}${badges}`
+  return `  ${dim(num)}${statusColored}${dim(modified)}${dim(created)}${summaryColored}${badges}`
 }
 
 async function main() {
@@ -156,15 +161,15 @@ async function main() {
       idx++
     }
 
-    // Header — offset by 2 chars to align with Clack's radio bullet prefix (● )
+    // Header — uses same COL widths, offset by 2 chars for Clack radio prefix
     const scope = flags.all ? 'All branches' : `Branch: ${cyan(worktreeName)}`
-    const header = dim('    #    Status       Modified    Created     Summary')
+    const header = dim(`    ${'#'.padEnd(COL.num)}${'Status'.padEnd(COL.status)}${'Modified'.padEnd(COL.modified)}${'Created'.padEnd(COL.created)}Summary`)
 
     const selected = await p.select({
       message: `Select a session ${dim('·')} ${scope} ${dim('·')} ${sessions.length} session${sessions.length !== 1 ? 's' : ''}\n\n${header}\n`,
       options: [
         ...options,
-        { value: '__back', label: dim('← Back to options') },
+        { value: '__back', label: `\n  ${dim('← Back to options')}` },
       ],
     })
 

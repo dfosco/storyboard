@@ -1,0 +1,333 @@
+/* Terminal Session Management Mockup Styles */
+
+/* ── Reuse terminal chrome from TerminalWidgetMock ── */
+
+.chrome {
+  border: 1px solid var(--borderColor-default, #d1d9e0);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bgColor-default, #fff);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  width: 100%;
+}
+
+.titleBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bgColor-muted, #f6f8fa);
+  border-bottom: 1px solid var(--borderColor-default, #d1d9e0);
+  font-size: 12px;
+  color: var(--fgColor-muted, #656d76);
+}
+
+.titleIcon { font-size: 10px; opacity: 0.6; }
+.titleText { font-weight: 600; color: var(--fgColor-default, #1f2328); }
+
+.status {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--bgColor-accent-muted, #ddf4ff);
+  color: var(--fgColor-accent, #0969da);
+}
+
+.spacer { flex: 1; }
+
+.actions { display: flex; gap: 4px; }
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--borderColor-default, #d1d9e0);
+  border-radius: 6px;
+  background: var(--bgColor-default, #fff);
+  color: var(--fgColor-muted, #656d76);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.actionBtn.active {
+  background: var(--bgColor-accent-muted, #ddf4ff);
+  color: var(--fgColor-accent, #0969da);
+  border-color: var(--borderColor-accent-muted, #54aeff66);
+}
+
+.terminal {
+  background: #0d1117;
+  color: #e6edf3;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 12px 16px;
+  min-height: 120px;
+}
+
+.line { margin-bottom: 2px; }
+.line.muted { opacity: 0.5; }
+.prompt { color: #7ee787; margin-right: 8px; }
+.command { color: #e6edf3; }
+
+.output {
+  color: #8b949e;
+  padding-left: 0;
+  white-space: pre-wrap;
+}
+
+/* ── Session picker (inside terminal area) ── */
+
+.sessionPicker {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 12px 0;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #e6edf3;
+}
+
+.pickerTitle {
+  padding: 0 16px 8px;
+  color: #e6edf3;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.pickerTabs {
+  padding: 0 16px 10px;
+  color: #8b949e;
+  font-size: 12px;
+}
+
+.pickerTabActive {
+  color: #58a6ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.pickerHeader {
+  padding: 0 16px;
+  color: #484f58;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  margin-bottom: 4px;
+}
+
+.pickerSeparator {
+  padding: 6px 16px 4px;
+  color: #484f58;
+  font-size: 11px;
+  border-top: 1px solid #21262d;
+  margin-top: 4px;
+}
+
+.pickerRow {
+  padding: 3px 16px;
+  display: flex;
+  gap: 0;
+  align-items: baseline;
+}
+
+.pickerRow.selected {
+  background: #1f6feb22;
+}
+
+.pickerCursor {
+  width: 16px;
+  flex-shrink: 0;
+  color: #58a6ff;
+}
+
+.pickerNum {
+  width: 24px;
+  flex-shrink: 0;
+  color: #8b949e;
+}
+
+.pickerStatus {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.statusLive { color: #3fb950; }
+.statusBackground { color: #8b949e; }
+.statusArchived { color: #d29922; }
+
+.pickerModified {
+  width: 90px;
+  flex-shrink: 0;
+  color: #8b949e;
+}
+
+.pickerCreated {
+  width: 90px;
+  flex-shrink: 0;
+  color: #8b949e;
+}
+
+.pickerSummary {
+  flex: 1;
+  color: #e6edf3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  display: inline;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 11px;
+  margin-left: 6px;
+  font-weight: 600;
+}
+
+.badgeLive {
+  background: #23883622;
+  color: #3fb950;
+}
+
+.badgeActive {
+  background: #d2992222;
+  color: #d29922;
+}
+
+.pickerFooter {
+  padding: 8px 16px 0;
+  border-top: 1px solid #21262d;
+  margin-top: 6px;
+  color: #484f58;
+  font-size: 11px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.pickerFooterKey {
+  color: #8b949e;
+}
+
+.pickerFooterTmux {
+  margin-left: auto;
+  color: #484f58;
+}
+
+/* ── Conflict dialog (inside terminal) ── */
+
+.conflictDialog {
+  background: #161b22;
+  border: 1px solid #d29922;
+  border-radius: 6px;
+  padding: 16px;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace;
+  font-size: 13px;
+  color: #e6edf3;
+  line-height: 1.6;
+}
+
+.conflictIcon {
+  color: #d29922;
+  font-size: 14px;
+}
+
+.conflictActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.conflictBtn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #e6edf3;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.conflictBtn.primary {
+  background: #1f6feb;
+  border-color: #1f6feb;
+  color: #fff;
+}
+
+/* ── Warm-start banner ── */
+
+.warmStart {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 16px;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace;
+  font-size: 13px;
+  color: #e6edf3;
+  line-height: 1.6;
+}
+
+.warmStartMeta {
+  color: #8b949e;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.warmStartActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.warmStartContext {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 4px;
+  color: #8b949e;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* ── Story layout helpers ── */
+
+.storyFrame {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 800px;
+}
+
+.storyLabel {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fgColor-muted, #656d76);
+  margin-bottom: 8px;
+}
+
+.storyCaption {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  color: var(--fgColor-muted, #656d76);
+  line-height: 1.5;
+  max-width: 600px;
+}
+
+.arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fgColor-muted, #656d76);
+  font-size: 20px;
+  padding: 4px 0;
+}

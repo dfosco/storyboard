@@ -101,13 +101,17 @@ function buildPath(startPt, startAnchor, endPt, endAnchor, freeEnd = false) {
 }
 
 /**
- * Render an endpoint shape (circle, arrow-in, arrow-out, or none) at the given point.
+ * Render an endpoint shape (circle, arrow-start, arrow-end, or none) at the given point.
  * - "circle" (default): filled dot
- * - "arrow-in": arrowhead pointing toward the widget (into the anchor)
- * - "arrow-out": arrowhead pointing away from the widget (out of the anchor)
+ * - "arrow-start": arrowhead pointing toward the start widget
+ * - "arrow-end": arrowhead pointing toward the end widget
  * - "none": invisible drag target only
+ *
+ * @param {number} x,y — position of this endpoint
+ * @param {Object} startPt — position of the connector's start endpoint
+ * @param {Object} endPt — position of the connector's end endpoint
  */
-function EndpointShape({ x, y, anchor, style, onPointerDown }) {
+function EndpointShape({ x, y, startPt, endPt, style, onPointerDown }) {
   if (style === 'none') {
     return (
       <circle cx={x} cy={y} r={connectorConfig.endpointRadius}
@@ -116,12 +120,14 @@ function EndpointShape({ x, y, anchor, style, onPointerDown }) {
       />
     )
   }
-  if (style === 'arrow-in' || style === 'arrow-out') {
+  if (style === 'arrow-start' || style === 'arrow-end') {
     const size = connectorConfig.endpointRadius * 2.2
-    // Base rotation: arrow tip points into the widget (toward the anchor)
-    const inwardRotation = { top: 0, bottom: 180, left: 90, right: -90 }
-    let rotation = inwardRotation[anchor] ?? 0
-    if (style === 'arrow-out') rotation += 180
+    // Determine which point the arrow should aim toward
+    const target = style === 'arrow-start' ? startPt : endPt
+    const dx = target.x - x
+    const dy = target.y - y
+    // atan2 gives angle from positive X axis; polygon tip points up (-Y), so offset by 90°
+    const rotation = (Math.atan2(dy, dx) * 180 / Math.PI) + 90
     return (
       <polygon
         points={`0,${-size} ${size * 0.6},${size * 0.5} ${-size * 0.6},${size * 0.5}`}
@@ -211,10 +217,10 @@ export default function ConnectorLayer({
               onClick={(e) => handleClick(e, conn.id)}
             />
             {/* Endpoint shapes — draggable to reconnect or remove */}
-            <EndpointShape x={startPt.x} y={startPt.y} anchor={conn.start.anchor} style={startStyle}
+            <EndpointShape x={startPt.x} y={startPt.y} startPt={startPt} endPt={endPt} style={startStyle}
               onPointerDown={onEndpointDrag ? (e) => { e.stopPropagation(); e.preventDefault(); onEndpointDrag(conn, 'start', e) } : undefined}
             />
-            <EndpointShape x={endPt.x} y={endPt.y} anchor={conn.end.anchor} style={endStyle}
+            <EndpointShape x={endPt.x} y={endPt.y} startPt={startPt} endPt={endPt} style={endStyle}
               onPointerDown={onEndpointDrag ? (e) => { e.stopPropagation(); e.preventDefault(); onEndpointDrag(conn, 'end', e) } : undefined}
             />
           </g>
@@ -235,7 +241,7 @@ export default function ConnectorLayer({
             className={dragPreview.snapTarget ? styles.connectorPath : styles.dragPreviewPath}
           />
           {dragPreview.snapTarget && (
-            <EndpointShape x={dragPreview.endPt.x} y={dragPreview.endPt.y} anchor={dragPreview.endAnchor || 'bottom'} style={connectorConfig.endEndpoint} />
+            <EndpointShape x={dragPreview.endPt.x} y={dragPreview.endPt.y} startPt={dragPreview.startPt} endPt={dragPreview.endPt} style={connectorConfig.endEndpoint} />
           )}
         </>
       )}

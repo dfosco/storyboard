@@ -5,8 +5,11 @@
  * In-memory Map is the source of truth; JSON file is durability only.
  *
  * Each session entry:
- *   { tmuxName, branch, canvasId, widgetId, createdAt, lastConnectedAt,
+ *   { tmuxName, name, branch, canvasId, widgetId, createdAt, lastConnectedAt,
  *     status, expiresAt, generation }
+ *
+ * `name` is a human-friendly identifier like "red-robin" or "blue-falcon",
+ * unique across all sessions. Internal systems use tmuxName/widgetId.
  *
  * Status values:
  *   "live"       — actively connected to a widget WebSocket
@@ -29,6 +32,61 @@ const sessions = new Map()
 let registryPath = null
 let orphanTimers = new Map()
 let defaultGracePeriod = 5 * 60 * 1000 // 5 minutes
+
+// ── Friendly name generation ──
+
+const COLORS = [
+  'red', 'blue', 'green', 'gold', 'violet', 'coral', 'cyan', 'amber',
+  'rose', 'teal', 'plum', 'sage', 'rust', 'jade', 'peach', 'slate',
+  'ivory', 'onyx', 'opal', 'ruby', 'moss', 'dusk', 'dawn', 'iron',
+  'silver', 'bronze', 'copper', 'cobalt', 'crimson', 'indigo', 'scarlet',
+  'pearl', 'ash', 'storm', 'sand', 'honey', 'maple', 'frost', 'ember', 'azure',
+]
+
+const BIRDS = [
+  'robin', 'falcon', 'wren', 'hawk', 'sparrow', 'crane', 'finch', 'heron',
+  'swift', 'lark', 'dove', 'raven', 'osprey', 'thrush', 'egret', 'magpie',
+  'condor', 'owl', 'tern', 'kite', 'merlin', 'oriole', 'ibis', 'jay',
+  'pipit', 'shrike', 'tanager', 'vireo', 'grouse', 'plover', 'avocet',
+  'bunting', 'dipper', 'gannet', 'harrier', 'martin', 'petrel', 'puffin',
+  'starling', 'warbler',
+]
+
+function generateFriendlyName() {
+  const usedNames = new Set()
+  for (const entry of sessions.values()) {
+    if (entry.name) usedNames.add(entry.name)
+  }
+
+  // Try random combinations first
+  for (let i = 0; i < 100; i++) {
+    const color = COLORS[Math.floor(Math.random() * COLORS.length)]
+    const bird = BIRDS[Math.floor(Math.random() * BIRDS.length)]
+    const name = `${color}-${bird}`
+    if (!usedNames.has(name)) return name
+  }
+
+  // Exhaustive fallback
+  for (const color of COLORS) {
+    for (const bird of BIRDS) {
+      const name = `${color}-${bird}`
+      if (!usedNames.has(name)) return name
+    }
+  }
+
+  // Shouldn't happen (1600 combinations), but just in case
+  return `session-${Date.now()}`
+}
+
+/**
+ * Find a session by its friendly name.
+ */
+export function findByName(name) {
+  for (const entry of sessions.values()) {
+    if (entry.name === name) return entry
+  }
+  return null
+}
 
 /**
  * Generate a stable, opaque tmux session name from metadata.
@@ -116,6 +174,7 @@ function reconcile() {
     if (name.startsWith(TMUX_PREFIX)) {
       sessions.set(name, {
         tmuxName: name,
+        name: generateFriendlyName(),
         branch: 'unknown',
         canvasId: 'unknown',
         widgetId: 'unknown',
@@ -168,6 +227,7 @@ export function registerSession({ branch, canvasId, widgetId }) {
 
   const entry = {
     tmuxName,
+    name: generateFriendlyName(),
     branch,
     canvasId,
     widgetId,

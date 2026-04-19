@@ -184,6 +184,7 @@ function handleConnection(ws, widgetId, canvasId) {
   sendJson(ws, {
     type: 'session-info',
     tmuxName: entry.tmuxName,
+    name: entry.name,
     branch: entry.branch,
     canvasId: entry.canvasId,
     status: entry.status,

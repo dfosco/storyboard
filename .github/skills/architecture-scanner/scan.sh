@@ -68,8 +68,8 @@ DISCOVERY_RULES=(
   "storyboard|medium|packages/tiny-canvas/src/*.jsx"
   "storyboard|medium|packages/tiny-canvas/src/*.js"
 
-  # Shared components
-  "component|low|src/components/[A-Z]*.jsx"
+  # Shared components (each in its own directory)
+  "component|low|src/components/*/[A-Z]*.jsx"
 
   # Page routes
   "page|low|src/pages/[A-Z]*.jsx"

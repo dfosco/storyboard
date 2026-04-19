@@ -20,7 +20,7 @@ import { createCanvasHandler } from '../canvas/server.js'
 import { setupSelectedWidgets } from '../canvas/selectedWidgets.js'
 import { createAutosyncHandler } from '../autosync/server.js'
 import { setupTerminalServer } from '../canvas/terminal-server.js'
-import { listSessions, detachSession, killSession } from '../canvas/terminal-registry.js'
+import { listSessions, detachSession, killSession, orphanSession } from '../canvas/terminal-registry.js'
 import { execSync as cpExecSync } from 'node:child_process'
 
 const API_PREFIX = '/_storyboard/'
@@ -246,6 +246,15 @@ export default function storyboardServer() {
             return
           }
           sendJson(res, 200, { success: true, session: entry })
+          return
+        }
+
+        // POST /sessions/:name/orphan — archive a session with grace timer
+        const orphanMatch = subpath.match(/^sessions\/(.+)\/orphan$/)
+        if (ctx.method === 'POST' && orphanMatch) {
+          const tmuxName = decodeURIComponent(orphanMatch[1])
+          orphanSession(tmuxName)
+          sendJson(res, 200, { success: true })
           return
         }
 

@@ -18,7 +18,7 @@ import { parseFlags } from './flags.js'
 import { dim, cyan, bold, yellow } from './intro.js'
 
 const blue = (s) => `\x1b[34m${s}\x1b[0m`
-const orange = (s) => `\x1b[38;5;208m${s}\x1b[0m`
+const orange = (s) => `\x1b[38;5;180m${s}\x1b[0m`
 
 const flagSchema = {
   all: { type: 'boolean', description: 'Show sessions from all branches' },
@@ -109,6 +109,13 @@ function formatRow(idx, entry, isCurrent = false, showCanvas = true) {
 
   let badges = ''
   if (isCurrent) badges += ' ' + cyan('(current)')
+
+  // Show removal countdown for archived sessions
+  if (entry.status === 'archived' && entry.expiresAt) {
+    const remaining = Math.max(0, entry.expiresAt - Date.now())
+    const mins = Math.ceil(remaining / 60000)
+    badges += ' ' + dim(`(removal in ${mins}m)`)
+  }
 
   const summaryColored = entry.status === 'live'
     ? blue(summary)

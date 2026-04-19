@@ -1,9 +1,23 @@
 import { useMemo, useCallback } from 'react'
 import styles from './ConnectorLayer.module.css'
-import { getConnectorDefaults } from './widgets/widgetConfig.js'
+import { getConnectorDefaults, getConnectorConfig } from './widgets/widgetConfig.js'
 
 const connectorConfig = getConnectorDefaults()
 const CONTROL_OFFSET = connectorConfig.controlOffset
+
+/**
+ * Get the effective endpoint style for a widget, merging per-widget-type
+ * connector overrides with global defaults.
+ * @param {string} widgetType — widget type string
+ * @param {'start'|'end'} side — which end of the connector
+ * @returns {string} endpoint style ('circle', 'arrow-in', 'arrow-out', 'none')
+ */
+function getEndpointStyle(widgetType, side) {
+  const key = side === 'start' ? 'startEndpoint' : 'endEndpoint'
+  const widgetConnectors = getConnectorConfig(widgetType)
+  if (widgetConnectors.defaults?.[key]) return widgetConnectors.defaults[key]
+  return connectorConfig[key]
+}
 
 /**
  * Compute the anchor point on a widget's edge.
@@ -87,6 +101,46 @@ function buildPath(startPt, startAnchor, endPt, endAnchor, freeEnd = false) {
 }
 
 /**
+ * Render an endpoint shape (circle, arrow-in, arrow-out, or none) at the given point.
+ * - "circle" (default): filled dot
+ * - "arrow-in": arrowhead pointing toward the widget (into the anchor)
+ * - "arrow-out": arrowhead pointing away from the widget (out of the anchor)
+ * - "none": invisible drag target only
+ */
+function EndpointShape({ x, y, anchor, style, onPointerDown }) {
+  if (style === 'none') {
+    return (
+      <circle cx={x} cy={y} r={connectorConfig.endpointRadius}
+        style={{ fill: 'transparent', stroke: 'none', pointerEvents: 'auto', cursor: 'crosshair' }}
+        onPointerDown={onPointerDown}
+      />
+    )
+  }
+  if (style === 'arrow-in' || style === 'arrow-out') {
+    const size = connectorConfig.endpointRadius * 2.2
+    // Base rotation: arrow tip points into the widget (toward the anchor)
+    const inwardRotation = { top: 0, bottom: 180, left: 90, right: -90 }
+    let rotation = inwardRotation[anchor] ?? 0
+    if (style === 'arrow-out') rotation += 180
+    return (
+      <polygon
+        points={`0,${-size} ${size * 0.6},${size * 0.5} ${-size * 0.6},${size * 0.5}`}
+        transform={`translate(${x},${y}) rotate(${rotation})`}
+        className={styles.connectorEndpoint}
+        onPointerDown={onPointerDown}
+      />
+    )
+  }
+  // Default: circle
+  return (
+    <circle cx={x} cy={y} r={connectorConfig.endpointRadius}
+      className={styles.connectorEndpoint}
+      onPointerDown={onPointerDown}
+    />
+  )
+}
+
+/**
  * SVG overlay that renders connector lines between widgets.
  * Must be placed inside the same zoom-transformed container as widgets.
  */
@@ -139,6 +193,8 @@ export default function ConnectorLayer({
         const startPt = getAnchorPoint(startWidget, conn.start.anchor)
         const endPt = getAnchorPoint(endWidget, conn.end.anchor)
         const d = buildPath(startPt, conn.start.anchor, endPt, conn.end.anchor)
+        const startStyle = getEndpointStyle(startWidget.type, 'start')
+        const endStyle = getEndpointStyle(endWidget.type, 'end')
 
         return (
           <g key={conn.id}>
@@ -154,11 +210,11 @@ export default function ConnectorLayer({
               className={styles.connectorPath}
               onClick={(e) => handleClick(e, conn.id)}
             />
-            {/* Endpoint dots — draggable to reconnect or remove */}
-            <circle cx={startPt.x} cy={startPt.y} r={connectorConfig.endpointRadius} className={styles.connectorEndpoint}
+            {/* Endpoint shapes — draggable to reconnect or remove */}
+            <EndpointShape x={startPt.x} y={startPt.y} anchor={conn.start.anchor} style={startStyle}
               onPointerDown={onEndpointDrag ? (e) => { e.stopPropagation(); e.preventDefault(); onEndpointDrag(conn, 'start', e) } : undefined}
             />
-            <circle cx={endPt.x} cy={endPt.y} r={connectorConfig.endpointRadius} className={styles.connectorEndpoint}
+            <EndpointShape x={endPt.x} y={endPt.y} anchor={conn.end.anchor} style={endStyle}
               onPointerDown={onEndpointDrag ? (e) => { e.stopPropagation(); e.preventDefault(); onEndpointDrag(conn, 'end', e) } : undefined}
             />
           </g>
@@ -179,7 +235,7 @@ export default function ConnectorLayer({
             className={dragPreview.snapTarget ? styles.connectorPath : styles.dragPreviewPath}
           />
           {dragPreview.snapTarget && (
-            <circle cx={dragPreview.endPt.x} cy={dragPreview.endPt.y} r={connectorConfig.endpointRadius} className={styles.connectorEndpoint} />
+            <EndpointShape x={dragPreview.endPt.x} y={dragPreview.endPt.y} anchor={dragPreview.endAnchor || 'bottom'} style={connectorConfig.endEndpoint} />
           )}
         </>
       )}

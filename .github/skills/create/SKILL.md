@@ -615,6 +615,7 @@ Create `<name>.record.json` with the generated entries. Always include at least 
 - **Data files must live inside the prototype folder.** Every prototype must contain its own copies of any `.record.json`, `.object.json`, or `.flow.json` files it needs — never reference or import data files from other prototypes. Each prototype is an independent sandbox.
 - **Records must be arrays** with each entry having a unique identifier field (default: `id`)
 - **Objects are plain JSON** — no special keys required, any shape works
+- **Widget URL verification:** Whenever this skill (or any process it triggers) adds a widget to a canvas, the response **must** include the widget ID. Provide a direct URL to the created widget: `{devURL}canvas/{canvasName}#{widgetId}`. If no widget ID is returned, treat it as a creation failure and retry. See the **canvas skill** Step 5 for URL format details.
 
 ---
 

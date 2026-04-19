@@ -620,7 +620,7 @@ Create `<name>.record.json` with the generated entries. Always include at least 
 
 ## Component Path
 
-> Triggered when user selects "Component" or says "create a component", "new component", "create story"
+> Triggered when user selects "Component" or says "create a component", "new component", "create story", "edit component", "edit a story", "add embeded component"
 
 ### Step C1: Ask for the component name
 

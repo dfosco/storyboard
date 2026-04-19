@@ -42,7 +42,6 @@ async function fetchSessions(worktreeName, port, branch = null) {
     ? `_storyboard/terminal/sessions?branch=${encodeURIComponent(branch)}`
     : `_storyboard/terminal/sessions`
 
-  // Try proxy first, then direct
   for (const base of [proxyBase, directBase]) {
     try {
       const res = await fetch(`${base}${suffix}`, { signal: AbortSignal.timeout(3000) })
@@ -231,7 +230,9 @@ async function main() {
     // Session detail loop — user can navigate back to session list
     let stayInDetail = true
     while (stayInDetail) {
-      const statusText = session.status === 'live' ? blue('Live')
+      const isCurrent = session.tmuxName === currentTmuxSession
+      const statusText = session.status === 'live'
+        ? (isCurrent ? blue('Live (current)') : blue('Live'))
         : session.status === 'background' ? orange('Background')
         : dim('Archived')
 
@@ -241,7 +242,9 @@ async function main() {
       const next = await p.select({
         message: 'What would you like to do?',
         options: [
-          { value: 'open', label: 'Open session', hint: 'switch to this session' },
+          ...(!isCurrent ? [
+            { value: 'open', label: 'Open session', hint: 'switch to this session' },
+          ] : []),
           { value: 'tmux', label: 'Open tmux session manager', hint: 'tmux choose-session' },
           { value: 'remove', label: yellow('Remove session'), hint: 'permanently destroy' },
           { value: 'back', label: dim('← Back to sessions') },

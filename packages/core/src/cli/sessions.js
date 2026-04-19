@@ -11,6 +11,7 @@
  */
 
 import * as p from '@clack/prompts'
+import { execSync as execSyncFn } from 'node:child_process'
 import { detectWorktreeName, getPort } from '../worktree/port.js'
 import { readDevDomain } from './proxy.js'
 import { parseFlags } from './flags.js'
@@ -75,16 +76,26 @@ function statusLabel(status) {
 }
 
 function summaryText(entry) {
-  const parts = []
-  if (entry.canvasId && entry.canvasId !== 'unknown') {
-    parts.push(entry.canvasId.split('/').pop())
-  }
-  parts.push(entry.widgetId || 'unknown')
-  return parts.join(' › ')
+  const name = entry.name || entry.widgetId || 'unknown'
+  const canvas = entry.canvasId && entry.canvasId !== 'unknown'
+    ? entry.canvasId.split('/').pop()
+    : null
+  return canvas ? `${canvas} › ${name}` : name
 }
 
-function formatRow(idx, entry, selected = false) {
-  const cursor = selected ? blue('❯') : ' '
+/** Detect the current tmux session name (the one running this CLI) */
+function getCurrentTmuxSession() {
+  try {
+    const result = execSyncFn('tmux display-message -p "#{session_name}" 2>/dev/null', {
+      encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'],
+    })
+    return result.trim()
+  } catch {
+    return null
+  }
+}
+
+function formatRow(idx, entry, isCurrent = false) {
   const num = `${idx + 1}.`.padEnd(4)
   const status = statusLabel(entry.status)
   const modified = relativeTime(entry.lastConnectedAt).padEnd(10)
@@ -92,7 +103,8 @@ function formatRow(idx, entry, selected = false) {
   const summary = summaryText(entry)
 
   let badges = ''
-  if (entry.status === 'live') badges = ' ' + blue('! Live')
+  if (isCurrent) badges += ' ' + cyan('(current)')
+  if (entry.status === 'live' && !isCurrent) badges += ' ' + blue('! Live')
 
   const summaryColored = entry.status === 'live'
     ? blue(summary)
@@ -100,12 +112,13 @@ function formatRow(idx, entry, selected = false) {
       ? orange(summary)
       : dim(summary)
 
-  return `${cursor} ${dim(num)} ${status}  ${dim(modified)} ${dim(created)} ${summaryColored}${badges}`
+  return `  ${dim(num)} ${status}  ${dim(modified)} ${dim(created)} ${summaryColored}${badges}`
 }
 
 async function main() {
   const worktreeName = detectWorktreeName()
   const port = getPort(worktreeName)
+  const currentTmuxSession = getCurrentTmuxSession()
 
   p.intro(bold('Terminal Sessions'))
 
@@ -163,9 +176,10 @@ async function main() {
       options.push({ value: `__sep_branch_${branch}`, label: dim(`── ${label} ──`), hint: '' })
 
       for (const s of branchSessions) {
+        const isCurrent = s.tmuxName === currentTmuxSession
         options.push({
           value: s.tmuxName,
-          label: formatRow(idx, s),
+          label: formatRow(idx, s, isCurrent),
         })
         idx++
       }
@@ -177,9 +191,10 @@ async function main() {
       options.push({ value: `__sep_${canvasId}`, label: dim(`── ${canvasLabel} ──`), hint: '' })
 
       for (const s of canvasSessions) {
+        const isCurrent = s.tmuxName === currentTmuxSession
         options.push({
           value: s.tmuxName,
-          label: formatRow(idx, s),
+          label: formatRow(idx, s, isCurrent),
         })
         idx++
       }
@@ -216,7 +231,7 @@ async function main() {
     : session.status === 'background' ? orange('Background')
     : dim('Archived')
 
-  p.log.success(`Selected: ${bold(session.tmuxName)}`)
+  p.log.success(`Selected: ${bold(session.name || session.tmuxName)}`)
   p.log.info(`Status: ${statusText} · Canvas: ${cyan(session.canvasId)} · Widget: ${dim(session.widgetId)}`)
 
   // If session is background or archived, offer to attach via tmux

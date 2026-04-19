@@ -633,13 +633,24 @@ The name must be **kebab-case** (e.g., `button-patterns`, `user-card`).
 
 **Every component must live in its own directory.** Create `src/components/<PascalName>/` containing:
 
-- `<PascalName>.jsx` — The component file
+- `<PascalName>.jsx` — The component file (atomic, self-contained)
 - `<PascalName>.module.css` — CSS Module styles
-- `<name>.story.jsx` — Story file with a `Default` named export that renders the component
+- `<name>.story.jsx` — Story file that **imports the local component** and exposes it as named exports
 
 Convert the kebab-case name to PascalCase for the directory and component files (e.g., `button-patterns` → `ButtonPatterns/ButtonPatterns.jsx`). The story file stays kebab-case.
 
 Each named export in the story becomes a renderable variant at the component's route URL.
+
+**Story files must import the component from the same directory** — never import Primer primitives directly as the story subject. Example:
+
+```jsx
+// src/components/UserCard/user-card.story.jsx
+import UserCard from './UserCard.jsx'
+
+export function Default() {
+  return <UserCard name="Jane Doe" role="admin" />
+}
+```
 
 **Never place component files flat in `src/components/` — always use a subdirectory.**
 

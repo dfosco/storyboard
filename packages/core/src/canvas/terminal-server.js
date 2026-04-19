@@ -93,10 +93,15 @@ function tmuxSessionExists(name) {
 export function orphanTerminalSession(widgetId) {
   const tmuxName = findTmuxNameForWidget(widgetId)
   if (!tmuxName) {
-    // Fallback: try to kill legacy sb-{widgetId} sessions
+    console.warn(`[storyboard] orphanTerminalSession: no registry entry for widget ${widgetId}`)
     legacyKillSession(widgetId)
     return
   }
+
+  console.log(`[storyboard] orphanTerminalSession: archiving ${tmuxName} (widget: ${widgetId})`)
+
+  // Set archived status FIRST (bumps generation so WS onclose won't override)
+  orphanSession(tmuxName)
 
   // Close the WS connection if any (notifies client)
   const ws = wsConnections.get(tmuxName)
@@ -111,8 +116,6 @@ export function orphanTerminalSession(widgetId) {
     try { proc.kill() } catch {}
     ptyProcesses.delete(tmuxName)
   }
-
-  orphanSession(tmuxName)
 }
 
 /** Kill legacy sb-{widgetId} sessions for backwards compat */

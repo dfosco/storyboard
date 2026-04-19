@@ -437,7 +437,9 @@ export function createCanvasHandler(ctx) {
           try {
             const { orphanTerminalSession } = await import('./terminal-server.js')
             orphanTerminalSession(widgetId)
-          } catch {}
+          } catch (err) {
+            console.warn(`[storyboard] Failed to orphan terminal session for ${widgetId}:`, err.message)
+          }
         }
 
         sendJson(res, 200, { success: true, removed: 1 })

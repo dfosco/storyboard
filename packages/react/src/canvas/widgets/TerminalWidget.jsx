@@ -84,7 +84,9 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const wsRef = useRef(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState(null)
-  const [sessionEnded, setSessionEnded] = useState(false)
+  // Persisted widgets (have prettyName) start disconnected — user must click to reconnect.
+  // New widgets (no prettyName yet) auto-connect immediately.
+  const [sessionEnded, setSessionEnded] = useState(!!prettyName)
   const [connectAttempt, setConnectAttempt] = useState(0)
 
   const handleResize = useCallback((w, h) => {
@@ -93,6 +95,8 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
 
   // Initialize terminal
   useEffect(() => {
+    // Don't auto-connect on mount for persisted widgets — wait for user click
+    if (connectAttempt === 0 && prettyName) return
     if (!containerRef.current) return
 
     let disposed = false

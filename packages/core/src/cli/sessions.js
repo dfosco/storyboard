@@ -180,7 +180,7 @@ async function main() {
       message: `Select a session ${dim('·')} ${scope} ${dim('·')} ${sessions.length} session${sessions.length !== 1 ? 's' : ''}\n\n${header}\n`,
       options: [
         ...options,
-        { value: '__sep', label: ' ', hint: ' ' },
+        { value: '__sep', label: '\u200B' },
         { value: '__back', label: dim('Back to options') },
       ],
     })

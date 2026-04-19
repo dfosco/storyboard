@@ -72,7 +72,7 @@ async function welcomeLoop() {
     if (action === 'sessions') {
       p.outro(dim('Loading sessions...'))
       try {
-        const child = spawn('storyboard', ['sessions'], { stdio: 'inherit' })
+        const child = spawn('storyboard', ['terminal'], { stdio: 'inherit' })
         await new Promise((resolve) => {
           child.on('close', resolve)
           child.on('error', resolve)

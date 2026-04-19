@@ -71,8 +71,9 @@ function helpScreen(version) {
     cmd('compact --all', 'Force compact all canvases'),
     '',
     `  ${bold(cyan('Terminal'))}`,
-    cmd('sessions', 'Browse and manage terminal sessions'),
-    cmd('sessions --all', 'Show sessions across all branches'),
+    cmd('terminal', 'Browse and manage terminal sessions'),
+    cmd('terminal start', 'Launch the terminal welcome prompt'),
+    cmd('terminal --all', 'Show sessions across all branches'),
     '',
     `  ${bold(cyan('Setup'))}`,
     cmd('setup', 'Install deps, Caddy proxy, start proxy'),
@@ -127,10 +128,20 @@ switch (command) {
   case 'exit':
     import('./exit.js')
     break
+  case 'terminal':
+    if (process.argv[3] === 'start') {
+      import('./terminal-welcome.js')
+    } else {
+      // Default: session browser (formerly `storyboard sessions`)
+      import('./sessions.js')
+    }
+    break
   case 'sessions':
+    // Backwards compat alias
     import('./sessions.js')
     break
   case 'terminal-welcome':
+    // Internal alias used by terminal-server
     import('./terminal-welcome.js')
     break
   case 'server':

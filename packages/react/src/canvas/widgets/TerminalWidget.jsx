@@ -130,6 +130,19 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
 
         ws.onmessage = (e) => {
           if (disposed) return
+          const data = typeof e.data === 'string' ? e.data : null
+          // Intercept JSON control messages from the server
+          if (data && data.startsWith('{')) {
+            try {
+              const msg = JSON.parse(data)
+              if (msg.type === 'session-info' || msg.type === 'conflict' || msg.type === 'detached') {
+                // Control message — don't render to terminal
+                return
+              }
+            } catch {
+              // Not valid JSON — pass through as terminal data
+            }
+          }
           term.write(typeof e.data === 'string' ? e.data : new Uint8Array(e.data))
         }
 
@@ -211,6 +224,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         {sessionEnded && (
           <div
             className={overlayStyles.interactOverlay}
+            style={{ backgroundColor: '#0d1117' }}
             onClick={handleStartSession}
             role="button"
             tabIndex={0}

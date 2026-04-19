@@ -180,31 +180,9 @@ function handleConnection(ws, widgetId, canvasId) {
   // Register in registry, check for conflicts
   const { entry, conflict } = registerSession({ branch, canvasId, widgetId })
 
-  // Send session info to client
-  sendJson(ws, {
-    type: 'session-info',
-    tmuxName: entry.tmuxName,
-    name: entry.name,
-    branch: entry.branch,
-    canvasId: entry.canvasId,
-    status: entry.status,
-    generation: entry.generation,
-  })
-
-  // Send conflict info if session was live on another branch
-  if (conflict) {
-    sendJson(ws, {
-      type: 'conflict',
-      currentBranch: conflict.currentBranch,
-      currentCanvas: conflict.currentCanvas,
-      sessionBranch: branch,
-    })
-  }
-
   // Close any existing WS for this session (one viewer at a time)
   const existingWs = wsConnections.get(tmuxName)
   if (existingWs && existingWs !== ws && existingWs.readyState <= 1) {
-    sendJson(existingWs, { type: 'detached', reason: 'Taken over by another widget' })
     try { existingWs.close() } catch {}
   }
   wsConnections.set(tmuxName, ws)

@@ -261,7 +261,12 @@ async function main() {
   }
 
   if (next === 'kill') {
-    const confirm = await p.confirm({ message: `Kill session ${bold(session.tmuxName)}?` })
+    const widgetNote = session.widgetId && session.widgetId !== 'unknown'
+      ? `\n  This will also ${yellow('remove the terminal widget')} from canvas ${cyan(session.canvasId)}.`
+      : ''
+    const confirm = await p.confirm({
+      message: `Kill session ${bold(session.tmuxName)}?${widgetNote}\n  The session and all running processes inside it will be permanently destroyed.`,
+    })
     if (p.isCancel(confirm) || !confirm) {
       p.outro(dim('Cancelled'))
       process.exit(0)
@@ -286,6 +291,25 @@ async function main() {
         const { execSync } = await import('node:child_process')
         execSync(`tmux kill-session -t "${session.tmuxName}" 2>/dev/null`, { stdio: 'ignore' })
         p.log.success('Session killed via tmux')
+      }
+
+      // Remove the terminal widget from the canvas
+      if (session.widgetId && session.widgetId !== 'unknown' && session.canvasId && session.canvasId !== 'unknown') {
+        let removed = false
+        for (const base of [proxyBase, directBase]) {
+          try {
+            const res = await fetch(`${base}_storyboard/canvas/widget`, {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: session.canvasId, widgetId: session.widgetId }),
+              signal: AbortSignal.timeout(3000),
+            })
+            if (res.ok) { removed = true; break }
+          } catch { continue }
+        }
+        if (removed) {
+          p.log.success(`Widget ${dim(session.widgetId)} removed from canvas ${cyan(session.canvasId)}`)
+        }
       }
     } catch {
       p.log.error('Failed to kill session')

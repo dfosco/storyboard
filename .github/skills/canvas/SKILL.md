@@ -351,6 +351,45 @@ If multiple images exist, ask which one the user wants to view, or list them wit
 
 ---
 
-## Story Components on Canvas
+## Creating Widgets
 
-When creating story components for use on a canvas, use the **`create` skill** to scaffold the component. This ensures the correct directory structure (`ComponentName/ComponentName.jsx` + story), Primer conventions, and CSS Module patterns. Never create story files manually.
+Canvas widgets come in two categories: **content widgets** you can add directly, and **story widgets** that require scaffolding a component first.
+
+### Content widgets (add directly via API/CLI)
+
+These widgets are created inline — just call the add widget API with the type and props:
+
+| Type | What it does | Key props |
+|------|-------------|-----------|
+| `sticky-note` | Text note with color | `text`, `color` |
+| `markdown` | Rich markdown block | `content` |
+| `prototype` | Embedded prototype iframe | `src` (URL/path), `label`, `zoom` |
+| `figma-embed` | Figma frame embed | `url` |
+| `codepen-embed` | CodePen embed | `url` |
+| `link-preview` | URL preview card | `url`, `title`, `description` |
+| `image` | Uploaded image | `src` (filename), `private` |
+
+### Story widgets (scaffold first, then add)
+
+A **story widget** embeds a React component (`.story.jsx`) directly on the canvas. To add one:
+
+1. **Scaffold the component** — invoke the **`create` skill** with type "Component". This creates the correct directory structure (`ComponentName/ComponentName.jsx` + `name.story.jsx`), Primer conventions, and CSS Module patterns. Never create story files manually.
+2. **Add the story widget to the canvas** — use the add widget API with type `story`:
+   ```json
+   {
+     "type": "story",
+     "props": {
+       "storyId": "text-input",
+       "exportName": "Default",
+       "width": 400,
+       "height": 300
+     }
+   }
+   ```
+   - `storyId` — the kebab-case component name (matches the story file stem)
+   - `exportName` — which named export to render (e.g. `Default`, `WithValidation`)
+
+3. **Or use the CLI**:
+   ```bash
+   storyboard canvas add story --canvas my-canvas
+   ```

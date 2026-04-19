@@ -254,7 +254,7 @@ function handleConnection(ws, widgetId, canvasId) {
     // -f /dev/null skips user tmux.conf; 'set status off' hides the status bar
     const args = (reattach || hasLegacy)
       ? ['-f', '/dev/null', 'attach-session', '-t', actualName]
-      : ['-f', '/dev/null', 'new-session', '-s', tmuxName]
+      : ['-f', '/dev/null', 'new-session', '-s', tmuxName, '-c', cwd]
 
     // If migrating from legacy, rename the tmux session
     if (hasLegacy) {
@@ -285,8 +285,9 @@ function handleConnection(ws, widgetId, canvasId) {
     if (isNewSession) {
       const canvasShort = canvasId === 'unknown' ? '' : canvasId.split('/').pop()
       setTimeout(() => {
+        // Clear screen via ANSI escape (not shell command) and show welcome
+        const clearScreen = '\x1b[2J\x1b[H'
         const welcome = [
-          '',
           `\x1b[2m─── storyboard terminal ───\x1b[0m`,
           `\x1b[2mbranch:\x1b[0m \x1b[34m${branch}\x1b[0m  \x1b[2mcanvas:\x1b[0m \x1b[34m${canvasShort || 'unknown'}\x1b[0m`,
           '',
@@ -294,15 +295,12 @@ function handleConnection(ws, widgetId, canvasId) {
           `  \x1b[1m2\x1b[0m  Start a new terminal session   \x1b[2m(opens shell)\x1b[0m`,
           `  \x1b[1m3\x1b[0m  Browse existing sessions       \x1b[2m(runs: storyboard sessions)\x1b[0m`,
           '',
+          `\x1b[2mPress 1, 2, or 3:\x1b[0m `,
         ].join('\r\n')
-        ptyProcess.write(`clear\r`)
-        setTimeout(() => {
-          // Write the welcome text to the terminal display (not as commands)
-          if (ws.readyState === ws.OPEN) {
-            ws.send(welcome)
-          }
-        }, 100)
-      }, 500)
+        if (ws.readyState === ws.OPEN) {
+          ws.send(clearScreen + welcome)
+        }
+      }, 800)
     }
 
     // Write conflict warning if session was live elsewhere
@@ -335,10 +333,12 @@ function handleConnection(ws, widgetId, canvasId) {
   const generation = entry.generation
   ptyProcesses.set(tmuxName, ptyProcess)
 
-  // Welcome mode: intercept first keypress for new sessions
+  // Welcome mode: suppress PTY output and intercept first keypress for new sessions
   let welcomeMode = isNewSession
 
   ptyProcess.onData((data) => {
+    // Suppress shell initialization output while welcome prompt is showing
+    if (welcomeMode) return
     if (ws.readyState === ws.OPEN) {
       ws.send(data)
     }
@@ -367,6 +367,10 @@ function handleConnection(ws, widgetId, canvasId) {
     if (welcomeMode) {
       welcomeMode = false
       const key = str.trim()
+      // Clear the welcome screen
+      if (ws.readyState === ws.OPEN) {
+        ws.send('\x1b[2J\x1b[H')
+      }
       if (key === '1') {
         // Start Copilot session
         ptyProcess.write('copilot\r')
@@ -376,7 +380,7 @@ function handleConnection(ws, widgetId, canvasId) {
         ptyProcess.write('storyboard sessions\r')
         return
       }
-      // key === '2' or anything else: just start normal shell (do nothing, let shell prompt appear)
+      // key === '2' or anything else: just show the shell prompt
       ptyProcess.write('\r')
       return
     }

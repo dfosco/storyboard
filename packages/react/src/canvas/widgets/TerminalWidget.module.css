@@ -90,3 +90,94 @@
   pointer-events: none;
   user-select: none;
 }
+
+/* ── Terminal Buddy Face ── */
+
+.buddyFace {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace;
+  pointer-events: none;
+  user-select: none;
+  position: relative;
+}
+
+.buddyEyes {
+  display: flex;
+  gap: 32px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.buddyEyeClosed {
+  color: #d29922;
+  font-size: 18px;
+}
+
+.buddyEyeOpen {
+  color: #58a6ff;
+  font-size: 16px;
+  letter-spacing: 2px;
+}
+
+.buddyMouth {
+  color: #d29922;
+  font-size: 16px;
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
+/* Awake mouth is blue */
+.buddyFace:has(.buddyEyeOpen) .buddyMouth {
+  color: #58a6ff;
+}
+
+.buddyZzz {
+  position: absolute;
+  top: -28px;
+  right: -40px;
+  display: flex;
+  gap: 4px;
+  font-size: 14px;
+  color: #d29922;
+}
+
+.z1 {
+  animation: zFloat 2.4s ease-in-out infinite;
+  animation-delay: 0s;
+  opacity: 0;
+}
+
+.z2 {
+  animation: zFloat 2.4s ease-in-out infinite;
+  animation-delay: 0.8s;
+  opacity: 0;
+  font-size: 12px;
+}
+
+.z3 {
+  animation: zFloat 2.4s ease-in-out infinite;
+  animation-delay: 1.6s;
+  opacity: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+@keyframes zFloat {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  15% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(12px, -20px);
+  }
+}

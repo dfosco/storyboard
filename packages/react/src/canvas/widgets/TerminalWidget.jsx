@@ -242,30 +242,13 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
             aria-label="Start terminal session"
             onKeyDown={(e) => { if (e.key === 'Enter') handleStartSession() }}
           >
-            <div className={styles.buddyFace}>
-              {waking ? (
-                <>
-                  <div className={styles.buddyEyes}>
-                    <span className={styles.buddyEyeOpen}>{'( )'}</span>
-                    <span className={styles.buddyEyeOpen}>{'( )'}</span>
-                  </div>
-                  <div className={styles.buddyMouth}>{'\\___/'}</div>
-                </>
-              ) : (
-                <>
-                  <div className={styles.buddyZzz}>
-                    <span className={styles.z1}>z</span>
-                    <span className={styles.z2}>z</span>
-                    <span className={styles.z3}>Z</span>
-                  </div>
-                  <div className={styles.buddyEyes}>
-                    <span className={styles.buddyEyeClosed}>^</span>
-                    <span className={styles.buddyEyeClosed}>^</span>
-                  </div>
-                  <div className={styles.buddyMouth}>{'\\___/'}</div>
-                </>
-              )}
-            </div>
+            {!waking && (
+              <div className={styles.buddyZzz}>
+                <span className={styles.z1}>z</span>
+                <span className={styles.z2}>z</span>
+                <span className={styles.z3}>z</span>
+              </div>
+            )}
             <span className={overlayStyles.interactHint}>
               {waking ? 'Waking up...' : 'Start terminal session'}
             </span>

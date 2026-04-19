@@ -474,11 +474,12 @@ export function WarmStartBanner() {
 export function OrphanRecovery() {
   return (
     <div className={styles.storyFrame}>
-      <div className={styles.storyLabel}>Scene 6 — Widget Deleted → Archived → Recovered</div>
+      <div className={styles.storyLabel}>Scene 6 — Widget Deleted → Archived → Undo Recovery</div>
       <p className={styles.storyCaption}>
         User accidentally deletes a terminal widget that had an active Copilot session.
-        The session is archived (not killed). User undoes the deletion — the widget
-        reconnects automatically to the preserved session.
+        The session is archived (not killed). A toast prompts ⌘Z to undo — if they do,
+        the widget is restored and reconnects automatically. Otherwise the session
+        remains archived and can be found later in the sessions list.
       </p>
 
       {/* Step 1: Before delete */}
@@ -514,8 +515,7 @@ export function OrphanRecovery() {
         Session <span style={{ color: '#e6edf3' }}>archived</span> for 5 minutes.
         <br />
         <span style={{ fontSize: 11 }}>
-          Undo to reconnect, or find it in{' '}
-          <span style={{ color: '#58a6ff' }}>Sessions → This canvas</span>
+          Hit <span style={{ color: '#e6edf3' }}>⌘Z</span> to undo and reconnect.
         </span>
       </div>
 

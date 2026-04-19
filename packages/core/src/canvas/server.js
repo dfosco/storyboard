@@ -378,6 +378,15 @@ export function createCanvasHandler(ctx) {
 
       try {
         const widgetId = generateWidgetId(type)
+
+        // Auto-assign a pretty name for terminal widgets
+        if (type === 'terminal' && !props.prettyName) {
+          try {
+            const { generateFriendlyName } = await import('./terminal-registry.js')
+            props.prettyName = generateFriendlyName()
+          } catch { /* registry not initialized yet — will get a name on session connect */ }
+        }
+
         const widget = stampBounds({ id: widgetId, type, position, props })
 
         appendEvent(filePath, {

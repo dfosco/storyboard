@@ -241,6 +241,7 @@ function handleConnection(ws, widgetId, canvasId) {
     PS1: prompt,
   }
   let ptyProcess
+  let isNewSession = false
 
   if (hasTmux) {
     const reattach = tmuxSessionExists(tmuxName)
@@ -272,12 +273,53 @@ function handleConnection(ws, widgetId, canvasId) {
 
     // Hide status bar
     const targetName = (reattach || hasLegacy) ? actualName : tmuxName
+    isNewSession = !(reattach || hasLegacy)
     const hideStatus = () => {
       try {
         execSync(`tmux set-option -t "${targetName}" status off 2>/dev/null`, { stdio: 'ignore' })
       } catch {}
     }
     setTimeout(hideStatus, 200)
+
+    // Write welcome prompt for new sessions after shell is ready
+    if (isNewSession) {
+      const canvasShort = canvasId === 'unknown' ? '' : canvasId.split('/').pop()
+      setTimeout(() => {
+        const welcome = [
+          '',
+          `\x1b[2m─── storyboard terminal ───\x1b[0m`,
+          `\x1b[2mbranch:\x1b[0m \x1b[34m${branch}\x1b[0m  \x1b[2mcanvas:\x1b[0m \x1b[34m${canvasShort || 'unknown'}\x1b[0m`,
+          '',
+          `  \x1b[1m1\x1b[0m  Start a new Copilot session    \x1b[2m(runs: copilot)\x1b[0m`,
+          `  \x1b[1m2\x1b[0m  Start a new terminal session   \x1b[2m(opens shell)\x1b[0m`,
+          `  \x1b[1m3\x1b[0m  Browse existing sessions       \x1b[2m(runs: storyboard sessions)\x1b[0m`,
+          '',
+        ].join('\r\n')
+        ptyProcess.write(`clear\r`)
+        setTimeout(() => {
+          // Write the welcome text to the terminal display (not as commands)
+          if (ws.readyState === ws.OPEN) {
+            ws.send(welcome)
+          }
+        }, 100)
+      }, 500)
+    }
+
+    // Write conflict warning if session was live elsewhere
+    if (conflict) {
+      setTimeout(() => {
+        const warning = [
+          '',
+          `\x1b[33m⚠ Session conflict\x1b[0m`,
+          `\x1b[2mThis session was\x1b[0m \x1b[34mLive\x1b[0m \x1b[2mon branch\x1b[0m \x1b[34m${conflict.currentBranch}\x1b[0m \x1b[2m(canvas: ${conflict.currentCanvas})\x1b[0m`,
+          `\x1b[2mDetached from there and attached here.\x1b[0m`,
+          '',
+        ].join('\r\n')
+        if (ws.readyState === ws.OPEN) {
+          ws.send(warning)
+        }
+      }, 300)
+    }
   } else {
     const noRcFlag = shell.endsWith('/zsh') ? '--no-rcs' : shell.endsWith('/bash') ? '--norc' : ''
     const shellArgs = noRcFlag ? [noRcFlag] : []
@@ -292,6 +334,9 @@ function handleConnection(ws, widgetId, canvasId) {
 
   const generation = entry.generation
   ptyProcesses.set(tmuxName, ptyProcess)
+
+  // Welcome mode: intercept first keypress for new sessions
+  let welcomeMode = isNewSession
 
   ptyProcess.onData((data) => {
     if (ws.readyState === ws.OPEN) {
@@ -317,6 +362,25 @@ function handleConnection(ws, widgetId, canvasId) {
     } catch {
       // Not JSON — raw stdin
     }
+
+    // Intercept welcome prompt keypress
+    if (welcomeMode) {
+      welcomeMode = false
+      const key = str.trim()
+      if (key === '1') {
+        // Start Copilot session
+        ptyProcess.write('copilot\r')
+        return
+      } else if (key === '3') {
+        // Browse existing sessions
+        ptyProcess.write('storyboard sessions\r')
+        return
+      }
+      // key === '2' or anything else: just start normal shell (do nothing, let shell prompt appear)
+      ptyProcess.write('\r')
+      return
+    }
+
     ptyProcess.write(str)
   })
 

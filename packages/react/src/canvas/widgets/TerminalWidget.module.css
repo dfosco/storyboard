@@ -1,6 +1,12 @@
 .container {
   position: relative;
   padding-bottom: 0;
+  border-radius: var(--base-size-16, 16px);
+}
+
+/* Match selection outline border-radius to terminal's rounded corners */
+:global(.tc-drag-surface):has(.container) {
+  border-radius: calc(var(--base-size-16, 16px) + 2px);
 }
 
 .titleBar {

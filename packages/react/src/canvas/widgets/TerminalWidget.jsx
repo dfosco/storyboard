@@ -83,6 +83,26 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const [error, setError] = useState(null)
   const [sessionEnded, setSessionEnded] = useState(false)
   const [connectAttempt, setConnectAttempt] = useState(0)
+  const [sessionName, setSessionName] = useState(null)
+
+  // Fetch session pretty-name from the sessions API
+  useEffect(() => {
+    const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
+    const baseClean = base.endsWith('/') ? base : base + '/'
+    const apiUrl = `${location.origin}${baseClean}_storyboard/terminal/sessions`
+
+    let cancelled = false
+    fetch(apiUrl)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled || !data) return
+        const list = data.sessions || data || []
+        const entry = list.find(s => s.widgetId === id)
+        if (entry?.name) setSessionName(entry.name)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [id, connectAttempt])
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -206,6 +226,9 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
 
   return (
     <div className={styles.container}>
+      <div className={styles.titleBar}>
+        terminal · {sessionName || '...'}
+      </div>
       <div
         ref={terminalRef}
         className={styles.terminal}

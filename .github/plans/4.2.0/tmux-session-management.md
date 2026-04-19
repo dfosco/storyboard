@@ -9,6 +9,34 @@ Terminal widgets use TMUX sessions named `sb-{widgetId}` with no awareness of wh
 3. **Orphan accumulation** — sessions pile up with no way to discover, browse, or reattach them
 4. **No session mobility** — users can't move a session from one widget to another, or recover a session after accidentally deleting a widget
 
+---
+
+## Phases
+
+### Phase 0 — Conceptual Overview
+_This document._ Defines the problem, approach, file changes, and design decisions.
+
+### Phase 1 — Prototyping (Story Components)
+Interactive mock stories showing how the session management UI looks and behaves inside a terminal widget. Built as `TerminalSessionMock` story component with 7 scenes:
+
+1. **Session Picker (This Canvas)** — default view, scoped to current canvas
+2. **Session Picker (All Canvases)** — all sessions on current branch
+3. **Session Picker (All Branches)** — cross-branch view with branch separators
+4. **Cross-Worktree Conflict** — dialog when session is live on another branch
+5. **Warm-Start Banner** — colleague opens canvas with committed `.session.md`
+6. **Orphan Recovery** — delete widget → archived → undo → reconnected
+7. **Full Lifecycle** — the complete journey from create to colleague handoff
+
+Stories live at: `src/components/TerminalSessionMock/terminal-session-mock.story.jsx`
+
+### Phase 2 — Implementation (Backend)
+Server-side changes: session registry, scoped naming, orphan handling, HTTP API, conflict detection.
+
+### Phase 3 — Implementation (Frontend + Context Files)
+Client-side changes: session picker UI, conflict dialog, warm-start banner, `.session.md` generation.
+
+---
+
 ## Approach
 
 ### 1. Scoped Session Naming
@@ -101,8 +129,23 @@ Sessions: This canvas   All canvases   All branches (tab to cycle)
   ── Other canvases (this branch) ─────────────────────
   3.  Background   20m ago     2h ago      design-system › Copilot: refactor Dialog
   4.  Archived     1h ago      3h ago      design-system › Shell: debugging canvas perf
-  ── Other branches ───────────────────────────────────
-  5.  Archived     2h ago      1d ago      4.1.0 › Copilot: fix viewfinder routing ! Active processes
+
+↑↓ navigate · Enter select · Esc cancel · / search · t open tmux (advanced)
+```
+
+When the user tabs to **All branches**, cross-branch sessions appear grouped horizontally by branch:
+
+```
+Sessions: This canvas   All canvases  [All branches] (tab to cycle)
+
+  #   Status       Modified    Created     Summary
+  ── 4.2.0 (current) ─────────────────────────────────
+  ... (same as "All canvases" view)
+  ── 4.1.0 ────────────────────────────────────────────
+  5.  Archived     2h ago      1d ago      design-system › Copilot: fix viewfinder routing ! Active processes
+  6.  Background   3h ago      2d ago      test › Shell: npm audit
+  ── main ─────────────────────────────────────────────
+  7.  Archived     1d ago      3d ago      examples › Shell: setup demo data
 
 ↑↓ navigate · Enter select · Esc cancel · / search · t open tmux (advanced)
 ```
@@ -272,8 +315,8 @@ This session was migrating components from sx to CSS Modules. To continue:
 - `packages/react/src/canvas/widgets/TerminalWidget.jsx` — show warm-start UI when context file exists but no local session
 - `packages/react/src/canvas/widgets/TerminalSessionContext.jsx` (new) — the warm-start banner/viewer component
 
-## Open Questions
+## Resolved Questions
 
-- Grace period duration: 5 minutes default? Configurable in `storyboard.config.json`?
-- Should the session browser show sessions from ALL branches or only the current branch by default?
-- Max TMUX session name length is 256 chars — need to truncate/hash long branch names
+- **Grace period:** 5 minutes default, configurable via `storyboard.config.json` (e.g. `terminal.orphanGracePeriod: 300`)
+- **Default session filter:** This canvas (current branch only). Cross-branch sessions only shown when user tabs to "All branches"
+- **TMUX session name length:** Max 256 chars. Truncate branch names and hash if the full `sb-{branch}--{canvasId}--{widgetId}` exceeds the limit (e.g. `sb-{hash8}--{canvasId}--{widgetId}`)

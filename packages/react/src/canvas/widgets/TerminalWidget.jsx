@@ -4,6 +4,7 @@ import { schemas } from './widgetProps.js'
 import { getTerminalConfig } from '@dfosco/storyboard-core'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './TerminalWidget.module.css'
+import overlayStyles from './embedOverlay.module.css'
 
 const terminalSchema = schemas['terminal']
 
@@ -24,12 +25,16 @@ function loadGhostty() {
 /**
  * Build the WebSocket URL for the terminal backend.
  * Includes the base path (e.g. /branch--4.2.0/) so the proxy routes correctly.
+ * Passes canvasId as a query parameter for session scoping.
  */
-function getWsUrl(sessionId) {
+function getWsUrl(sessionId, prettyName) {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
   const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
   const baseClean = base.endsWith('/') ? base : base + '/'
-  return `${protocol}//${location.host}${baseClean}_storyboard/terminal/${sessionId}`
+  const canvasId = window.__storyboardCanvasBridgeState?.canvasId || 'unknown'
+  let url = `${protocol}//${location.host}${baseClean}_storyboard/terminal/${sessionId}?canvas=${encodeURIComponent(canvasId)}`
+  if (prettyName) url += `&name=${encodeURIComponent(prettyName)}`
+  return url
 }
 
 /**
@@ -71,6 +76,7 @@ const DEFAULT_THEME = {
 export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const width = readProp(props, 'width', terminalSchema)
   const height = readProp(props, 'height', terminalSchema)
+  const prettyName = props?.prettyName || null
 
   const containerRef = useRef(null)
   const termRef = useRef(null)
@@ -78,6 +84,8 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const wsRef = useRef(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState(null)
+  const [sessionEnded, setSessionEnded] = useState(false)
+  const [connectAttempt, setConnectAttempt] = useState(0)
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -113,7 +121,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         termRef.current = term
 
         // Connect WebSocket
-        const url = getWsUrl(id)
+        const url = getWsUrl(id, prettyName)
         ws = new WebSocket(url)
         wsRef.current = ws
 
@@ -125,18 +133,32 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
 
         ws.onmessage = (e) => {
           if (disposed) return
+          const data = typeof e.data === 'string' ? e.data : null
+          // Intercept JSON control messages from the server
+          if (data && data.startsWith('{')) {
+            try {
+              const msg = JSON.parse(data)
+              if (msg.type === 'session-info' || msg.type === 'conflict' || msg.type === 'detached') {
+                // Control message — don't render to terminal
+                return
+              }
+            } catch {
+              // Not valid JSON — pass through as terminal data
+            }
+          }
           term.write(typeof e.data === 'string' ? e.data : new Uint8Array(e.data))
         }
 
         ws.onclose = () => {
           if (disposed) return
-          term.write('\r\n\x1b[90m[session ended]\x1b[0m\r\n')
           setReady(false)
+          setSessionEnded(true)
         }
 
         ws.onerror = () => {
           if (disposed) return
-          setError('Connection failed')
+          setReady(false)
+          setSessionEnded(true)
         }
 
         // Terminal input → WebSocket
@@ -159,7 +181,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
       termRef.current = null
       wsRef.current = null
     }
-  }, [id])
+  }, [id, connectAttempt])
 
   // Resize terminal on dimension changes
   useEffect(() => {
@@ -175,11 +197,27 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   }, [width, height])
 
   const handleClick = useCallback(() => {
+    if (sessionEnded) return
     termRef.current?.focus()
+  }, [sessionEnded])
+
+  const [waking, setWaking] = useState(false)
+
+  const handleStartSession = useCallback(() => {
+    setWaking(true)
+    setTimeout(() => {
+      setWaking(false)
+      setSessionEnded(false)
+      setError(null)
+      setConnectAttempt(c => c + 1)
+    }, 1500)
   }, [])
+
+  const titleLabel = `terminal · ${prettyName || '...'}`
 
   return (
     <div className={styles.container}>
+      <div className={styles.titleBar}>{titleLabel}</div>
       <div
         ref={terminalRef}
         className={styles.terminal}
@@ -189,13 +227,35 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         }}
         onClick={handleClick}
       >
-        {error && (
+        {error && !sessionEnded && (
           <div className={styles.error}>
             <span>⚠ {error}</span>
           </div>
         )}
         <div ref={containerRef} className={styles.xtermContainer} />
-        {!ready && !error && (
+        {sessionEnded && (
+          <div
+            className={overlayStyles.interactOverlay}
+            style={{ backgroundColor: '#0d1117', flexDirection: 'column', gap: 0 }}
+            onClick={handleStartSession}
+            role="button"
+            tabIndex={0}
+            aria-label="Start terminal session"
+            onKeyDown={(e) => { if (e.key === 'Enter') handleStartSession() }}
+          >
+            {!waking && (
+              <div className={styles.buddyZzz}>
+                <span className={styles.z1}>z</span>
+                <span className={styles.z2}>z</span>
+                <span className={styles.z3}>z</span>
+              </div>
+            )}
+            <span className={overlayStyles.interactHint}>
+              {waking ? 'Waking up...' : 'Start terminal session'}
+            </span>
+          </div>
+        )}
+        {!ready && !error && !sessionEnded && (
           <div className={styles.loading}>Connecting…</div>
         )}
       </div>

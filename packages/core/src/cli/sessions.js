@@ -173,7 +173,7 @@ async function main() {
       message: `Select a session ${dim('·')} ${scope} ${dim('·')} ${sessions.length} session${sessions.length !== 1 ? 's' : ''}\n\n${header}\n`,
       options: [
         ...options,
-        { value: '__back', label: `\n  ${dim('← Back to options')}` },
+        { value: '__back', label: `\n${dim('← Back to options')}` },
       ],
     })
 

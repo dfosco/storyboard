@@ -224,13 +224,14 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         {sessionEnded && (
           <div
             className={overlayStyles.interactOverlay}
-            style={{ backgroundColor: '#0d1117' }}
+            style={{ backgroundColor: '#0d1117', flexDirection: 'column', gap: 0 }}
             onClick={handleStartSession}
             role="button"
             tabIndex={0}
             aria-label="Start terminal session"
             onKeyDown={(e) => { if (e.key === 'Enter') handleStartSession() }}
           >
+            <span className={styles.mutedPrompt}>❯ </span>
             <span className={overlayStyles.interactHint}>Start terminal session</span>
           </div>
         )}

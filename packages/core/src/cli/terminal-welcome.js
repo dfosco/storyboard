@@ -35,7 +35,7 @@ async function welcomeLoop() {
     const action = await p.select({
       message: 'How would you like to start?',
       options: [
-        { value: 'copilot', label: '✦ Start a new Copilot session', hint: 'runs: copilot' },
+        { value: 'copilot', label: '✦ Start a new Copilot session' },
         { value: 'shell', label: '▸ Start a new terminal session', hint: 'opens shell' },
         { value: 'sessions', label: '⊞ Browse existing sessions', hint: 'runs: storyboard sessions' },
       ],

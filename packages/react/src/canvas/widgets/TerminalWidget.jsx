@@ -220,7 +220,8 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const titleLabel = `terminal · ${prettyName || '...'}`
 
   return (
-    <div className={styles.container} data-terminal-label={titleLabel}>
+    <div className={styles.container}>
+      <div className={styles.titleBar}>{titleLabel}</div>
       <div
         ref={terminalRef}
         className={styles.terminal}

@@ -27,12 +27,14 @@ function loadGhostty() {
  * Includes the base path (e.g. /branch--4.2.0/) so the proxy routes correctly.
  * Passes canvasId as a query parameter for session scoping.
  */
-function getWsUrl(sessionId) {
+function getWsUrl(sessionId, prettyName) {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
   const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
   const baseClean = base.endsWith('/') ? base : base + '/'
   const canvasId = window.__storyboardCanvasBridgeState?.canvasId || 'unknown'
-  return `${protocol}//${location.host}${baseClean}_storyboard/terminal/${sessionId}?canvas=${encodeURIComponent(canvasId)}`
+  let url = `${protocol}//${location.host}${baseClean}_storyboard/terminal/${sessionId}?canvas=${encodeURIComponent(canvasId)}`
+  if (prettyName) url += `&name=${encodeURIComponent(prettyName)}`
+  return url
 }
 
 /**
@@ -74,6 +76,7 @@ const DEFAULT_THEME = {
 export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const width = readProp(props, 'width', terminalSchema)
   const height = readProp(props, 'height', terminalSchema)
+  const prettyName = props?.prettyName || null
 
   const containerRef = useRef(null)
   const termRef = useRef(null)
@@ -83,26 +86,6 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const [error, setError] = useState(null)
   const [sessionEnded, setSessionEnded] = useState(false)
   const [connectAttempt, setConnectAttempt] = useState(0)
-  const [sessionName, setSessionName] = useState(null)
-
-  // Fetch session pretty-name from the sessions API
-  useEffect(() => {
-    const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
-    const baseClean = base.endsWith('/') ? base : base + '/'
-    const apiUrl = `${location.origin}${baseClean}_storyboard/terminal/sessions`
-
-    let cancelled = false
-    fetch(apiUrl)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (cancelled || !data) return
-        const list = data.sessions || data || []
-        const entry = list.find(s => s.widgetId === id)
-        if (entry?.name) setSessionName(entry.name)
-      })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [id, connectAttempt])
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -138,7 +121,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         termRef.current = term
 
         // Connect WebSocket
-        const url = getWsUrl(id)
+        const url = getWsUrl(id, prettyName)
         ws = new WebSocket(url)
         wsRef.current = ws
 
@@ -224,11 +207,10 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
     setConnectAttempt(c => c + 1)
   }, [])
 
+  const titleLabel = `terminal · ${prettyName || '...'}`
+
   return (
-    <div className={styles.container}>
-      <div className={styles.titleBar}>
-        terminal · {sessionName || '...'}
-      </div>
+    <div className={styles.container} data-terminal-label={titleLabel}>
       <div
         ref={terminalRef}
         className={styles.terminal}

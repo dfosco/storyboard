@@ -166,19 +166,20 @@ export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') 
 
     const params = new URLSearchParams(queryStr || '')
     const canvasId = params.get('canvas') || 'unknown'
+    const prettyName = params.get('name') || null
 
     wss.handleUpgrade(req, socket, head, (ws) => {
-      handleConnection(ws, sessionId, canvasId)
+      handleConnection(ws, sessionId, canvasId, prettyName)
     })
   })
 }
 
-function handleConnection(ws, widgetId, canvasId) {
+function handleConnection(ws, widgetId, canvasId, prettyName) {
   const branch = currentBranch
   const tmuxName = generateTmuxName(branch, canvasId, widgetId)
 
   // Register in registry, check for conflicts
-  const { entry, conflict } = registerSession({ branch, canvasId, widgetId })
+  const { entry, conflict } = registerSession({ branch, canvasId, widgetId, prettyName })
 
   // Close any existing WS for this session (one viewer at a time)
   const existingWs = wsConnections.get(tmuxName)

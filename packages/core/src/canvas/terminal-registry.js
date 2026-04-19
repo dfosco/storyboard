@@ -52,7 +52,7 @@ const BIRDS = [
   'starling', 'warbler',
 ]
 
-function generateFriendlyName() {
+export function generateFriendlyName() {
   const usedNames = new Set()
   for (const entry of sessions.values()) {
     if (entry.name) usedNames.add(entry.name)
@@ -195,7 +195,7 @@ function reconcile() {
  * Returns { entry, conflict } where conflict is set if the session
  * was live on a different branch.
  */
-export function registerSession({ branch, canvasId, widgetId }) {
+export function registerSession({ branch, canvasId, widgetId, prettyName }) {
   const tmuxName = generateTmuxName(branch, canvasId, widgetId)
   const existing = sessions.get(tmuxName)
   let conflict = null
@@ -216,6 +216,7 @@ export function registerSession({ branch, canvasId, widgetId }) {
     existing.branch = branch
     existing.canvasId = canvasId
     existing.widgetId = widgetId
+    if (prettyName) existing.name = prettyName
     existing.lastConnectedAt = new Date().toISOString()
     existing.status = 'live'
     existing.expiresAt = null
@@ -227,7 +228,7 @@ export function registerSession({ branch, canvasId, widgetId }) {
 
   const entry = {
     tmuxName,
-    name: generateFriendlyName(),
+    name: prettyName || generateFriendlyName(),
     branch,
     canvasId,
     widgetId,

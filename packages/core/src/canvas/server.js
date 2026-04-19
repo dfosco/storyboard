@@ -423,11 +423,11 @@ export function createCanvasHandler(ctx) {
           widgetId,
         })
 
-        // Clean up terminal tmux session when a terminal widget is deleted
+        // Orphan terminal session when a terminal widget is deleted (not killed)
         if (widget.type === 'terminal') {
           try {
-            const { killTerminalSession } = await import('./terminal-server.js')
-            killTerminalSession(widgetId)
+            const { orphanTerminalSession } = await import('./terminal-server.js')
+            orphanTerminalSession(widgetId)
           } catch {}
         }
 

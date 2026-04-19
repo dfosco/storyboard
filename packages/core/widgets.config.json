@@ -26,7 +26,9 @@
     "dragStroke": "var(--fgColor-accent, #0969da)",
     "dragStrokeWidth": 2,
     "dragDasharray": "6 4",
-    "dragOpacity": 0.7
+    "dragOpacity": 0.7,
+    "startEndpoint": "circle",
+    "endEndpoint": "circle"
   },
   "widgets": {
     "sticky-note": {

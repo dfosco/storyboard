@@ -164,7 +164,7 @@ export function getMenuWidgetTypes() {
 /**
  * Get the connector configuration for a widget type.
  * @param {string} type — widget type string
- * @returns {{ anchors: Record<string, string>, accept: string[], exclude: string[] }}
+ * @returns {{ anchors: Record<string, string>, accept: string[], exclude: string[], defaults: Object|undefined }}
  */
 export function getConnectorConfig(type) {
   const def = widgetTypes[type]?.connectors
@@ -172,6 +172,7 @@ export function getConnectorConfig(type) {
     anchors: def?.anchors ?? { top: 'available', bottom: 'available', left: 'available', right: 'available' },
     accept: def?.accept ?? ['*'],
     exclude: def?.exclude ?? [],
+    defaults: def?.defaults,
   }
 }
 
@@ -207,6 +208,8 @@ export function getConnectorDefaults() {
     dragStrokeWidth: defaults.dragStrokeWidth ?? 2,
     dragDasharray: defaults.dragDasharray ?? '6 4',
     dragOpacity: defaults.dragOpacity ?? 0.7,
+    startEndpoint: defaults.startEndpoint ?? 'circle',
+    endEndpoint: defaults.endEndpoint ?? 'circle',
   }
 }
 

@@ -295,6 +295,22 @@ curl -X DELETE http://localhost:{PORT}/_storyboard/canvas/widget \
 
 After the operation, tell the user what changed. For relational positioning, confirm the calculated coordinates. For bulk operations, summarize the layout.
 
+**For every widget added**, provide a direct URL to the widget on the canvas. The URL format is:
+
+```
+{devURL}canvas/{canvasName}#{widgetId}
+```
+
+Where:
+- `{devURL}` is the dev server URL from `session_state` (e.g. `http://storyboard.localhost/storyboard/`) or the proxy URL
+- `{canvasName}` is the canvas name (e.g. `storyboarding/terminal-widget-plan-v6`)
+- `{widgetId}` is the widget ID returned by the server (e.g. `sticky-note-abc123`)
+
+**If you cannot generate the URL** (no widget ID in the response, or the add command failed silently), this means creation likely failed — **retry the operation** before reporting success. A successful widget add always returns a widget ID.
+
+Example confirmation:
+> Added sticky note to design-system: http://storyboard.localhost/storyboard/canvas/design-system#sticky-note-f3k2m1
+
 ---
 
 ## Examples

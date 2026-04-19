@@ -180,11 +180,12 @@ async function main() {
       message: `Select a session ${dim('·')} ${scope} ${dim('·')} ${sessions.length} session${sessions.length !== 1 ? 's' : ''}\n\n${header}\n`,
       options: [
         ...options,
-        { value: '__back', label: `\n${dim('← Back to options')}` },
+        { value: '__sep', label: ' ', hint: ' ' },
+        { value: '__back', label: dim('Back to options') },
       ],
     })
 
-    if (p.isCancel(selected) || selected === '__back') {
+    if (p.isCancel(selected) || selected === '__back' || selected === '__sep') {
       p.outro(dim('Done'))
       process.exit(0)
     }
@@ -216,7 +217,7 @@ async function main() {
           ] : []),
           { value: 'tmux', label: 'Open tmux session manager', hint: 'tmux choose-session' },
           { value: 'remove', label: yellow('Remove session'), hint: 'permanently destroy' },
-          { value: 'back', label: dim('← Back to sessions') },
+          { value: 'back', label: dim('Back to sessions') },
         ],
       })
 

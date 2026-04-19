@@ -37,8 +37,8 @@ async function welcomeLoop() {
       message: 'How would you like to start?',
       options: [
         { value: 'copilot', label: '✦ Start a new Copilot session' },
-        { value: 'shell', label: '▸ Start a new terminal session', hint: 'opens shell' },
-        { value: 'sessions', label: '⊞ Browse existing sessions', hint: 'runs: storyboard terminal' },
+        { value: 'shell', label: '▸ Start a new terminal session' },
+        { value: 'sessions', label: '⊞ Browse existing sessions' },
       ],
     })
 

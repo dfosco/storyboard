@@ -1,9 +1,9 @@
 import { Text, Button, ButtonGroup, FormControl } from '@primer/react'
 import { useOverride, useFlow } from '@dfosco/storyboard-react'
-import ColorModeSwitcher from '@/components/ColorModeSwitcher.jsx'
-import StoryboardForm from '@/components/StoryboardForm.jsx'
-import TextInput from '@/components/TextInput.jsx'
-import Textarea from '@/components/Textarea.jsx'
+import ColorModeSwitcher from '@/components/ColorModeSwitcher/ColorModeSwitcher.jsx'
+import StoryboardForm from '@/components/StoryboardForm/StoryboardForm.jsx'
+import TextInput from '@/components/TextInput/TextInput.jsx'
+import Textarea from '@/components/Textarea/Textarea.jsx'
 import styles from './Example.module.css'
 
 function Example() {

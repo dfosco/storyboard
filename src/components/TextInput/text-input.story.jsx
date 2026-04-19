@@ -1,15 +1,16 @@
 /**
  * TextInput component stories.
- * Showcases Primer TextInput variants used in Storyboard prototypes.
+ * Showcases the Storyboard TextInput wrapper that integrates with StoryboardForm.
  */
-import { TextInput as PrimerTextInput, FormControl } from '@primer/react'
+import { FormControl } from '@primer/react'
+import TextInput from './TextInput.jsx'
 
 export function Default() {
   return (
     <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 320 }}>
       <FormControl>
         <FormControl.Label>Username</FormControl.Label>
-        <PrimerTextInput placeholder="Enter username" block />
+        <TextInput placeholder="Enter username" block />
       </FormControl>
     </div>
   )
@@ -20,12 +21,12 @@ export function WithValidation() {
     <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 320 }}>
       <FormControl>
         <FormControl.Label>Email</FormControl.Label>
-        <PrimerTextInput placeholder="you@example.com" type="email" block />
+        <TextInput placeholder="you@example.com" type="email" block />
         <FormControl.Caption>We&apos;ll never share your email.</FormControl.Caption>
       </FormControl>
       <FormControl>
         <FormControl.Label>Password</FormControl.Label>
-        <PrimerTextInput placeholder="Min 8 characters" type="password" block />
+        <TextInput placeholder="Min 8 characters" type="password" block />
         <FormControl.Validation variant="error">Password is too short</FormControl.Validation>
       </FormControl>
     </div>
@@ -35,9 +36,9 @@ export function WithValidation() {
 export function Sizes() {
   return (
     <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 320 }}>
-      <PrimerTextInput size="small" placeholder="Small" block />
-      <PrimerTextInput size="medium" placeholder="Medium (default)" block />
-      <PrimerTextInput size="large" placeholder="Large" block />
+      <TextInput size="small" placeholder="Small" block />
+      <TextInput size="medium" placeholder="Medium (default)" block />
+      <TextInput size="large" placeholder="Large" block />
     </div>
   )
 }

@@ -378,6 +378,15 @@ export function createCanvasHandler(ctx) {
 
       try {
         const widgetId = generateWidgetId(type)
+
+        // Auto-assign a pretty name for terminal widgets
+        if (type === 'terminal' && !props.prettyName) {
+          try {
+            const { generateFriendlyName } = await import('./terminal-registry.js')
+            props.prettyName = generateFriendlyName()
+          } catch { /* registry not initialized yet — will get a name on session connect */ }
+        }
+
         const widget = stampBounds({ id: widgetId, type, position, props })
 
         appendEvent(filePath, {
@@ -423,12 +432,14 @@ export function createCanvasHandler(ctx) {
           widgetId,
         })
 
-        // Clean up terminal tmux session when a terminal widget is deleted
+        // Orphan terminal session when a terminal widget is deleted (not killed)
         if (widget.type === 'terminal') {
           try {
-            const { killTerminalSession } = await import('./terminal-server.js')
-            killTerminalSession(widgetId)
-          } catch {}
+            const { orphanTerminalSession } = await import('./terminal-server.js')
+            orphanTerminalSession(widgetId)
+          } catch (err) {
+            console.warn(`[storyboard] Failed to orphan terminal session for ${widgetId}:`, err.message)
+          }
         }
 
         sendJson(res, 200, { success: true, removed: 1 })

@@ -70,6 +70,14 @@ function helpScreen(version) {
     cmd('compact [name]', 'Compact canvas JSONL files (removes bloat)'),
     cmd('compact --all', 'Force compact all canvases'),
     '',
+    `  ${bold(cyan('Terminal'))}`,
+    cmd('terminal', 'Browse and manage terminal sessions'),
+    cmd('terminal start', 'Launch the terminal welcome prompt'),
+    cmd('terminal close --id <name>', 'Archive a session ' + dim('(alias: archive)')),
+    cmd('terminal open --id <name>', 'Attach to a session'),
+    cmd('terminal remove --id <name>', 'Permanently destroy a session'),
+    cmd('terminal --all', 'Show sessions across all branches'),
+    '',
     `  ${bold(cyan('Setup'))}`,
     cmd('setup', 'Install deps, Caddy proxy, start proxy'),
     cmd('proxy', 'Generate Caddyfile + start/reload Caddy'),
@@ -122,6 +130,28 @@ switch (command) {
     break
   case 'exit':
     import('./exit.js')
+    break
+  case 'terminal':
+    if (process.argv[3] === 'start') {
+      import('./terminal-welcome.js')
+    } else if (process.argv[3] === 'close' || process.argv[3] === 'archive') {
+      import('./terminal-commands.js')
+    } else if (process.argv[3] === 'open') {
+      import('./terminal-commands.js')
+    } else if (process.argv[3] === 'remove') {
+      import('./terminal-commands.js')
+    } else {
+      // Default: session browser (formerly `storyboard sessions`)
+      import('./sessions.js')
+    }
+    break
+  case 'sessions':
+    // Backwards compat alias
+    import('./sessions.js')
+    break
+  case 'terminal-welcome':
+    // Internal alias used by terminal-server
+    import('./terminal-welcome.js')
     break
   case 'server':
     import('./server.js')

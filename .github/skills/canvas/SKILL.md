@@ -295,6 +295,21 @@ curl -X DELETE http://localhost:{PORT}/_storyboard/canvas/widget \
 
 After the operation, tell the user what changed. For relational positioning, confirm the calculated coordinates. For bulk operations, summarize the layout.
 
+**For every widget added**, provide a direct URL to the widget on the canvas. The URL is constructed as:
+
+1. **Get the base URL**: Use the proxy URL if Caddy is running, otherwise the direct URL:
+   - Proxy: `http://{devDomain}.localhost/branch--{worktreeName}/` (where `devDomain` comes from `storyboard.config.json`, default `storyboard`)
+   - Direct: `http://localhost:{port}/branch--{worktreeName}/`
+   - For `main`: no `branch--` prefix, just `http://{devDomain}.localhost/` or `http://localhost:{port}/`
+2. **Append the canvas path**: `canvas/{canvasName}`
+3. **Append the widget anchor**: `#{widgetId}`
+
+Full URL: `{baseURL}canvas/{canvasName}#{widgetId}`
+
+Example: `http://storyboard-core.localhost/branch--4.2.0--tmux-management/canvas/design-system#sticky-note-f3k2m1`
+
+**If you cannot generate the URL** (no widget ID in the response, or the add command failed silently), this means creation likely failed — **retry the operation** before reporting success. A successful widget add always returns a widget ID.
+
 ---
 
 ## Examples

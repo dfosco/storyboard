@@ -20,6 +20,8 @@ import { createCanvasHandler } from '../canvas/server.js'
 import { setupSelectedWidgets } from '../canvas/selectedWidgets.js'
 import { createAutosyncHandler } from '../autosync/server.js'
 import { setupTerminalServer } from '../canvas/terminal-server.js'
+import { listSessions, detachSession, killSession, orphanSession } from '../canvas/terminal-registry.js'
+import { execSync as cpExecSync } from 'node:child_process'
 
 const API_PREFIX = '/_storyboard/'
 
@@ -206,7 +208,11 @@ export default function storyboardServer() {
 
       // Terminal WebSocket server — PTY backend for terminal canvas widgets
       if (server.httpServer) {
-        setupTerminalServer(server.httpServer, base)
+        let branch = 'unknown'
+        try {
+          branch = cpExecSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
+        } catch {}
+        setupTerminalServer(server.httpServer, base, branch)
       }
 
       // Ignore assets/canvas/ so image/snapshot writes don't trigger reloads
@@ -215,6 +221,54 @@ export default function storyboardServer() {
 
       // Wire autosync API routes (always enabled — git automation for dev)
       routeHandlers.set('autosync', createAutosyncHandler({ root, sendJson }))
+
+      // Terminal sessions API — list, detach, kill sessions
+      routeHandlers.set('terminal', async (req, res, ctx) => {
+        // Strip query string and leading slash from path
+        const rawPath = (ctx.path || '/').replace(/^\//, '')
+        const subpath = rawPath.split('?')[0]
+
+        // GET /sessions — list all sessions (optional ?branch= filter)
+        if (ctx.method === 'GET' && (subpath === 'sessions' || subpath === 'sessions/')) {
+          const url = new URL(req.url, 'http://localhost')
+          const filterBranch = url.searchParams.get('branch') || null
+          sendJson(res, 200, { sessions: listSessions(filterBranch) })
+          return
+        }
+
+        // POST /sessions/:name/detach — detach a session
+        const detachMatch = subpath.match(/^sessions\/(.+)\/detach$/)
+        if (ctx.method === 'POST' && detachMatch) {
+          const tmuxName = decodeURIComponent(detachMatch[1])
+          const entry = detachSession(tmuxName)
+          if (!entry) {
+            sendJson(res, 404, { error: 'Session not found' })
+            return
+          }
+          sendJson(res, 200, { success: true, session: entry })
+          return
+        }
+
+        // POST /sessions/:name/orphan — archive a session with grace timer
+        const orphanMatch = subpath.match(/^sessions\/(.+)\/orphan$/)
+        if (ctx.method === 'POST' && orphanMatch) {
+          const tmuxName = decodeURIComponent(orphanMatch[1])
+          orphanSession(tmuxName)
+          sendJson(res, 200, { success: true })
+          return
+        }
+
+        // DELETE /sessions/:name — kill a session immediately
+        const deleteMatch = subpath.match(/^sessions\/(.+)$/)
+        if (ctx.method === 'DELETE' && deleteMatch) {
+          const tmuxName = decodeURIComponent(deleteMatch[1])
+          killSession(tmuxName)
+          sendJson(res, 200, { success: true })
+          return
+        }
+
+        sendJson(res, 404, { error: 'Not found' })
+      })
 
       // Worktrees API — lists available worktrees/branches from ports.json
       routeHandlers.set('worktrees', async (req, res) => {

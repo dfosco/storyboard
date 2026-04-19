@@ -120,216 +120,237 @@ async function main() {
   const port = getPort(worktreeName)
   const currentTmuxSession = getCurrentTmuxSession()
 
-  p.intro(bold('Terminal Sessions'))
+  // Session list loop — user can navigate back here after actions
+  while (true) {
+    p.intro(bold('Terminal Sessions'))
 
-  // Fetch sessions
-  const filterBranch = flags.all ? null : (flags.branch || worktreeName)
-  const sessions = await fetchSessions(worktreeName, port, filterBranch)
+    // Fetch sessions
+    const filterBranch = flags.all ? null : (flags.branch || worktreeName)
+    const sessions = await fetchSessions(worktreeName, port, filterBranch)
 
-  if (sessions === null) {
-    p.log.error('Could not connect to dev server. Is it running?')
-    p.log.info(`Expected at: ${dim(`http://localhost:${port}`)}`)
-    p.outro('')
-    process.exit(1)
-  }
-
-  if (sessions.length === 0) {
-    p.log.info('No terminal sessions found.')
-    if (!flags.all) {
-      p.log.info(`Showing sessions for branch ${cyan(worktreeName)}. Use ${bold('--all')} to see all branches.`)
-    }
-    p.outro('')
-    process.exit(0)
-  }
-
-  // Group sessions by canvas
-  const byCanvas = new Map()
-  for (const s of sessions) {
-    const key = s.canvasId || 'unknown'
-    if (!byCanvas.has(key)) byCanvas.set(key, [])
-    byCanvas.get(key).push(s)
-  }
-
-  // Build options for clack select
-  const options = []
-  let idx = 0
-
-  if (flags.all) {
-    // Group by branch then canvas
-    const byBranch = new Map()
-    for (const s of sessions) {
-      const b = s.branch || 'unknown'
-      if (!byBranch.has(b)) byBranch.set(b, [])
-      byBranch.get(b).push(s)
+    if (sessions === null) {
+      p.log.error('Could not connect to dev server. Is it running?')
+      p.log.info(`Expected at: ${dim(`http://localhost:${port}`)}`)
+      p.outro('')
+      process.exit(1)
     }
 
-    // Current branch first
-    const branches = [...byBranch.keys()].sort((a, b) => {
-      if (a === worktreeName) return -1
-      if (b === worktreeName) return 1
-      return a.localeCompare(b)
-    })
-
-    for (const branch of branches) {
-      const branchSessions = byBranch.get(branch)
-      const label = branch === worktreeName ? `${branch} (current)` : branch
-      options.push({ value: `__sep_branch_${branch}`, label: dim(`── ${label} ──`), hint: '' })
-
-      for (const s of branchSessions) {
-        const isCurrent = s.tmuxName === currentTmuxSession
-        options.push({
-          value: s.tmuxName,
-          label: formatRow(idx, s, isCurrent),
-        })
-        idx++
+    if (sessions.length === 0) {
+      p.log.info('No terminal sessions found.')
+      if (!flags.all) {
+        p.log.info(`Showing sessions for branch ${cyan(worktreeName)}. Use ${bold('--all')} to see all branches.`)
       }
-    }
-  } else {
-    // Group by canvas within current branch
-    for (const [canvasId, canvasSessions] of byCanvas) {
-      const canvasLabel = canvasId === 'unknown' ? 'Unknown canvas' : canvasId
-      options.push({ value: `__sep_${canvasId}`, label: dim(`── ${canvasLabel} ──`), hint: '' })
-
-      for (const s of canvasSessions) {
-        const isCurrent = s.tmuxName === currentTmuxSession
-        options.push({
-          value: s.tmuxName,
-          label: formatRow(idx, s, isCurrent),
-        })
-        idx++
-      }
-    }
-  }
-
-  // Header
-  const scope = flags.all ? 'All branches' : `Branch: ${cyan(worktreeName)}`
-  p.log.info(`${scope} · ${sessions.length} session${sessions.length !== 1 ? 's' : ''}`)
-  console.log(dim('  #    Status       Modified    Created     Summary'))
-  console.log('')
-
-  const selected = await p.select({
-    message: 'Select a session',
-    options: options.filter(o => !o.value.startsWith('__sep_')).length > 0
-      ? options
-      : [{ value: '__none', label: dim('No sessions available') }],
-  })
-
-  if (p.isCancel(selected) || selected === '__none' || selected?.startsWith('__sep_')) {
-    p.outro(dim('Cancelled'))
-    process.exit(0)
-  }
-
-  // Find the selected session
-  const session = sessions.find(s => s.tmuxName === selected)
-  if (!session) {
-    p.log.error('Session not found')
-    process.exit(1)
-  }
-
-  // Show what was selected
-  const statusText = session.status === 'live' ? blue('Live')
-    : session.status === 'background' ? orange('Background')
-    : dim('Archived')
-
-  p.log.success(`Selected: ${bold(session.name || session.tmuxName)}`)
-  p.log.info(`Status: ${statusText} · Canvas: ${cyan(session.canvasId)} · Widget: ${dim(session.widgetId)}`)
-
-  // If session is background or archived, offer to attach via tmux
-  if (session.status !== 'live') {
-    p.log.info(`\nTo attach: ${cyan(`tmux attach-session -t "${session.tmuxName}"`)}`)
-  }
-
-  // Offer tmux native management
-  const next = await p.select({
-    message: 'What would you like to do?',
-    options: [
-      ...(session.status !== 'live' ? [
-        { value: 'attach', label: 'Attach to this session', hint: `tmux attach -t ${session.tmuxName}` },
-      ] : []),
-      { value: 'tmux', label: 'Open tmux session manager', hint: 'tmux choose-session' },
-      { value: 'kill', label: yellow('Kill this session'), hint: 'Permanently destroy' },
-      { value: 'cancel', label: dim('Cancel') },
-    ],
-  })
-
-  if (p.isCancel(next) || next === 'cancel') {
-    p.outro(dim('Done'))
-    process.exit(0)
-  }
-
-  if (next === 'attach') {
-    p.outro(`Attaching to ${bold(session.tmuxName)}...`)
-    const { execSync } = await import('node:child_process')
-    try {
-      execSync(`tmux attach-session -t "${session.tmuxName}"`, { stdio: 'inherit' })
-    } catch {}
-    process.exit(0)
-  }
-
-  if (next === 'tmux') {
-    p.outro('Opening tmux session manager...')
-    const { execSync } = await import('node:child_process')
-    try {
-      execSync('tmux choose-session', { stdio: 'inherit' })
-    } catch {}
-    process.exit(0)
-  }
-
-  if (next === 'kill') {
-    const widgetNote = session.widgetId && session.widgetId !== 'unknown'
-      ? `\n  This will also ${yellow('remove the terminal widget')} from canvas ${cyan(session.canvasId)}.`
-      : ''
-    const confirm = await p.confirm({
-      message: `Kill session ${bold(session.tmuxName)}?${widgetNote}\n  The session and all running processes inside it will be permanently destroyed.`,
-    })
-    if (p.isCancel(confirm) || !confirm) {
-      p.outro(dim('Cancelled'))
+      p.outro('')
       process.exit(0)
     }
 
-    try {
-      const { proxyBase, directBase } = getBaseUrl(worktreeName, port)
-      let killed = false
-      for (const base of [proxyBase, directBase]) {
-        try {
-          const res = await fetch(
-            `${base}_storyboard/terminal/sessions/${encodeURIComponent(session.tmuxName)}`,
-            { method: 'DELETE', signal: AbortSignal.timeout(3000) }
-          )
-          if (res.ok) { killed = true; break }
-        } catch { continue }
-      }
-      if (killed) {
-        p.log.success('Session killed')
-      } else {
-        p.log.error('Failed to kill session via API, trying tmux directly...')
-        const { execSync } = await import('node:child_process')
-        execSync(`tmux kill-session -t "${session.tmuxName}" 2>/dev/null`, { stdio: 'ignore' })
-        p.log.success('Session killed via tmux')
+    // Group sessions by canvas
+    const byCanvas = new Map()
+    for (const s of sessions) {
+      const key = s.canvasId || 'unknown'
+      if (!byCanvas.has(key)) byCanvas.set(key, [])
+      byCanvas.get(key).push(s)
+    }
+
+    // Build options for clack select
+    const options = []
+    let idx = 0
+
+    if (flags.all) {
+      const byBranch = new Map()
+      for (const s of sessions) {
+        const b = s.branch || 'unknown'
+        if (!byBranch.has(b)) byBranch.set(b, [])
+        byBranch.get(b).push(s)
       }
 
-      // Remove the terminal widget from the canvas
-      if (session.widgetId && session.widgetId !== 'unknown' && session.canvasId && session.canvasId !== 'unknown') {
-        let removed = false
-        for (const base of [proxyBase, directBase]) {
-          try {
-            const res = await fetch(`${base}_storyboard/canvas/widget`, {
-              method: 'DELETE',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ name: session.canvasId, widgetId: session.widgetId }),
-              signal: AbortSignal.timeout(3000),
-            })
-            if (res.ok) { removed = true; break }
-          } catch { continue }
-        }
-        if (removed) {
-          p.log.success(`Widget ${dim(session.widgetId)} removed from canvas ${cyan(session.canvasId)}`)
+      const branches = [...byBranch.keys()].sort((a, b) => {
+        if (a === worktreeName) return -1
+        if (b === worktreeName) return 1
+        return a.localeCompare(b)
+      })
+
+      for (const branch of branches) {
+        const branchSessions = byBranch.get(branch)
+        const label = branch === worktreeName ? `${branch} (current)` : branch
+        options.push({ value: `__sep_branch_${branch}`, label: dim(`── ${label} ──`), hint: '' })
+
+        for (const s of branchSessions) {
+          const isCurrent = s.tmuxName === currentTmuxSession
+          options.push({
+            value: s.tmuxName,
+            label: formatRow(idx, s, isCurrent),
+          })
+          idx++
         }
       }
-    } catch {
-      p.log.error('Failed to kill session')
+    } else {
+      for (const [canvasId, canvasSessions] of byCanvas) {
+        const canvasLabel = canvasId === 'unknown' ? 'Unknown canvas' : canvasId
+        options.push({ value: `__sep_${canvasId}`, label: dim(`── ${canvasLabel} ──`), hint: '' })
+
+        for (const s of canvasSessions) {
+          const isCurrent = s.tmuxName === currentTmuxSession
+          options.push({
+            value: s.tmuxName,
+            label: formatRow(idx, s, isCurrent),
+          })
+          idx++
+        }
+      }
     }
-    p.outro('')
+
+    // Header
+    const scope = flags.all ? 'All branches' : `Branch: ${cyan(worktreeName)}`
+    p.log.info(`${scope} · ${sessions.length} session${sessions.length !== 1 ? 's' : ''}`)
+    console.log(dim('  #    Status       Modified    Created     Summary'))
+    console.log('')
+
+    const selected = await p.select({
+      message: 'Select a session',
+      options: [
+        ...options,
+        { value: '__back', label: dim('← Back to options') },
+      ],
+    })
+
+    if (p.isCancel(selected) || selected === '__back') {
+      p.outro(dim('Done'))
+      process.exit(0)
+    }
+
+    if (selected === '__none' || selected?.startsWith('__sep_')) continue
+
+    // Find the selected session
+    const session = sessions.find(s => s.tmuxName === selected)
+    if (!session) {
+      p.log.error('Session not found')
+      continue
+    }
+
+    // Session detail loop — user can navigate back to session list
+    let stayInDetail = true
+    while (stayInDetail) {
+      const statusText = session.status === 'live' ? blue('Live')
+        : session.status === 'background' ? orange('Background')
+        : dim('Archived')
+
+      p.log.success(`Selected: ${bold(session.name || session.tmuxName)}`)
+      p.log.info(`Status: ${statusText} · Canvas: ${cyan(session.canvasId)} · Widget: ${dim(session.widgetId)}`)
+
+      const next = await p.select({
+        message: 'What would you like to do?',
+        options: [
+          { value: 'open', label: 'Open session', hint: 'switch to this session' },
+          { value: 'tmux', label: 'Open tmux session manager', hint: 'tmux choose-session' },
+          { value: 'remove', label: yellow('Remove session'), hint: 'permanently destroy' },
+          { value: 'back', label: dim('← Back to sessions') },
+        ],
+      })
+
+      if (p.isCancel(next) || next === 'back') {
+        stayInDetail = false
+        continue
+      }
+
+      if (next === 'open') {
+        // Warn if session is already live on another widget
+        if (session.status === 'live' && session.tmuxName !== currentTmuxSession) {
+          p.log.warn(
+            `Session ${cyan(session.name || session.tmuxName)} is currently ${blue('Live')} on widget ${dim(session.widgetId)} ` +
+            `in canvas ${cyan(session.canvasId)}.`
+          )
+          const confirm = await p.confirm({
+            message: 'Open anyway? This may cause conflicts with the live widget.',
+          })
+          if (p.isCancel(confirm) || !confirm) continue
+        }
+
+        // Switch or attach
+        if (currentTmuxSession) {
+          p.outro(`Switching to ${bold(session.name || session.tmuxName)}...`)
+          try {
+            execSyncFn(`tmux switch-client -t "${session.tmuxName}"`, { stdio: 'inherit' })
+          } catch {
+            p.log.error('Failed to switch tmux client')
+          }
+        } else {
+          p.outro(`Opening ${bold(session.name || session.tmuxName)}...`)
+          try {
+            execSyncFn(`tmux attach-session -t "${session.tmuxName}"`, { stdio: 'inherit' })
+          } catch {
+            p.log.error('Failed to open tmux session')
+          }
+        }
+        process.exit(0)
+      }
+
+      if (next === 'tmux') {
+        p.outro('Opening tmux session manager...')
+        try {
+          execSyncFn('tmux choose-session', { stdio: 'inherit' })
+        } catch {}
+        process.exit(0)
+      }
+
+      if (next === 'remove') {
+        const label = session.name || session.tmuxName
+        const widgetNote = session.widgetId && session.widgetId !== 'unknown'
+          ? `\n  This will also ${yellow('remove the terminal widget')} from canvas ${cyan(session.canvasId)}.`
+          : ''
+        const confirm = await p.confirm({
+          message: `Permanently remove session ${bold(label)}?${widgetNote}\n  The session and all running processes inside it will be destroyed.`,
+        })
+        if (p.isCancel(confirm) || !confirm) continue
+
+        try {
+          const { proxyBase, directBase } = getBaseUrl(worktreeName, port)
+          let removed = false
+          for (const base of [proxyBase, directBase]) {
+            try {
+              const res = await fetch(
+                `${base}_storyboard/terminal/sessions/${encodeURIComponent(session.tmuxName)}`,
+                { method: 'DELETE', signal: AbortSignal.timeout(3000) }
+              )
+              if (res.ok) { removed = true; break }
+            } catch { continue }
+          }
+          if (removed) {
+            p.log.success(`Session ${cyan(label)} removed`)
+          } else {
+            p.log.warn('API call failed, removing tmux session directly...')
+            try {
+              execSyncFn(`tmux kill-session -t "${session.tmuxName}" 2>/dev/null`, { stdio: 'ignore' })
+            } catch {}
+            p.log.success(`Session ${cyan(label)} removed via tmux`)
+          }
+
+          // Remove widget from canvas
+          if (session.widgetId && session.widgetId !== 'unknown' && session.canvasId && session.canvasId !== 'unknown') {
+            for (const base of [proxyBase, directBase]) {
+              try {
+                const res = await fetch(`${base}_storyboard/canvas/widget`, {
+                  method: 'DELETE',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ name: session.canvasId, widgetId: session.widgetId }),
+                  signal: AbortSignal.timeout(3000),
+                })
+                if (res.ok) {
+                  p.log.success(`Widget ${dim(session.widgetId)} removed from canvas ${cyan(session.canvasId)}`)
+                  break
+                }
+              } catch { continue }
+            }
+          }
+        } catch {
+          p.log.error('Failed to remove session')
+        }
+
+        // Go back to session list (re-fetches to show updated list)
+        stayInDetail = false
+        continue
+      }
+    }
   }
 }
 

@@ -224,7 +224,9 @@ export default function storyboardServer() {
 
       // Terminal sessions API — list, detach, kill sessions
       routeHandlers.set('terminal', async (req, res, ctx) => {
-        const subpath = (ctx.path || '/').replace(/^\//, '')
+        // Strip query string and leading slash from path
+        const rawPath = (ctx.path || '/').replace(/^\//, '')
+        const subpath = rawPath.split('?')[0]
 
         // GET /sessions — list all sessions (optional ?branch= filter)
         if (ctx.method === 'GET' && (subpath === 'sessions' || subpath === 'sessions/')) {

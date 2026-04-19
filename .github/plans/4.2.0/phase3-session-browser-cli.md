@@ -1,47 +1,47 @@
 # Phase 3: Session Browser UI — `storyboard sessions`
 
-## Approach
+## Status: ✅ Implemented
 
-Terminal-native Clack CLI that runs **inside** the tmux session. Triggered by:
-- Toolbar "Sessions" button (writes `storyboard sessions\n` to the PTY)
-- User typing `storyboard sessions` manually
+### What was built
 
-Uses `@clack/prompts` (already a dependency in `packages/core`).
+**`storyboard sessions` CLI** (`packages/core/src/cli/sessions.js`):
+- Interactive Clack picker listing sessions from registry API
+- Grouped by canvas, with status colors (Live=blue, Background=orange, Archived=dim)
+- Actions: attach to background session, open tmux native manager, kill session
+- Resolves dev server URL via Caddy proxy → direct port fallback
+- Flags: `--all` for cross-branch, `--branch <name>` to filter
 
-## Implementation
+**Terminal API fix** (`packages/core/src/vite/server-plugin.js`):
+- Fixed query string parsing in `/_storyboard/terminal/sessions?branch=` route
 
-### 1. New CLI subcommand: `packages/core/src/cli/sessions.js`
+**CLI dispatcher** (`packages/core/src/cli/index.js`):
+- Added `case 'sessions'` routing
+
+## Remaining frontend work
+
+### 1. New Terminal Prompt (Scene 0)
+
+When a terminal widget connects and the session is new (no tmux session exists yet), the server should send a welcome message to the PTY that presents options:
 
 ```
-storyboard sessions [--all]
+storyboard terminal · branch: 4.2.0--tmux-management · canvas: terminal-widget-plan-v6
+
+  [1] Start a new Copilot session    (runs: copilot)
+  [2] Start a new terminal session   (opens shell)
+  [3] Browse existing sessions       (runs: storyboard sessions)
+
+Press 1, 2, or 3:
 ```
 
-**Flow:**
-1. Detect current worktree port from `.worktrees/ports.json`
-2. Fetch sessions from `GET http://localhost:{port}/_storyboard/terminal/sessions`
-3. Group by scope: this canvas sessions first, then other canvases on this branch
-4. Render Clack interactive select with formatted session rows
-5. On selection: tell the server to attach the selected session to the current widget
+This is implemented server-side by writing to the PTY after tmux session creation.
 
-**Display (matching mockups):**
-- Columns: #, Status (Live/Background/Archived), Modified, Created, Summary
-- Colors: Live=blue, Background=orange, Archived=dim
-- Grouped by canvas with separators
-- Tab to cycle: This canvas → All canvases → All branches
-- Footer: `↑↓ navigate · Enter select · Esc cancel · t open tmux`
+### 2. Conflict handling
 
-### 2. Wire into CLI dispatcher: `packages/core/src/cli/index.js`
+When the server detects a conflict (session live on another branch), it already sends a `{ type: "conflict" }` WS message. The TerminalWidget should display this as a banner or write a message to the terminal. For now, the server can write a warning directly to the PTY.
 
-Add `case 'sessions':` → `import('./sessions.js')`.
-
-### 3. Toolbar button: `packages/react/src/canvas/widgets/TerminalWidget.jsx`
-
-Add "Sessions" action button in TerminalWidget that writes `storyboard sessions\n` to the WebSocket (PTY stdin).
-
-## Files
+### Files
 
 | File | Change |
 |------|--------|
-| `packages/core/src/cli/sessions.js` | New — Clack session picker CLI |
-| `packages/core/src/cli/index.js` | Add `case 'sessions'` to switch |
-| `packages/react/src/canvas/widgets/TerminalWidget.jsx` | Add Sessions toolbar button |
+| `packages/core/src/canvas/terminal-server.js` | Write welcome prompt on new session, write conflict warning on reattach |
+

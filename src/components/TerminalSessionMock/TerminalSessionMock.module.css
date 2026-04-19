@@ -154,9 +154,9 @@
   flex-shrink: 0;
 }
 
-.statusLive { color: #3fb950; }
-.statusBackground { color: #8b949e; }
-.statusArchived { color: #d29922; }
+.statusLive { color: #58a6ff; }
+.statusBackground { color: #d29922; }
+.statusArchived { color: #484f58; }
 
 .pickerModified {
   width: 90px;
@@ -178,6 +178,10 @@
   white-space: nowrap;
 }
 
+.pickerSummary.summaryLive { color: #58a6ff; }
+.pickerSummary.summaryBackground { color: #d29922; }
+.pickerSummary.summaryArchived { color: #484f58; }
+
 .badge {
   display: inline;
   padding: 0 4px;
@@ -188,8 +192,8 @@
 }
 
 .badgeLive {
-  background: #23883622;
-  color: #3fb950;
+  background: #1f6feb22;
+  color: #58a6ff;
 }
 
 .badgeActive {

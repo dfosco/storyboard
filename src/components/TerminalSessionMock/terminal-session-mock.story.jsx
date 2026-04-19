@@ -1,10 +1,58 @@
 /**
  * Terminal Session Management — visual storyboard of the TMUX session
- * management experience: session picker, conflict resolution, warm-start,
- * orphan recovery, and the full lifecycle flow.
+ * management experience: new terminal prompt, session picker, conflict
+ * resolution, orphan recovery, and the full lifecycle flow.
+ *
+ * Future development (not in scope for Phase 2/3):
+ * - Warm-start banner / session context files (.session.md)
+ * - "Continue with Copilot" from committed context
+ * - Cross-user session handover
  */
 import styles from './TerminalSessionMock.module.css'
 import { Chrome, Line, Btn } from './TerminalSessionMock'
+
+
+/* ═══════════════════════════════════════════════
+   Scene 0 — New Terminal Prompt
+   ═══════════════════════════════════════════════ */
+
+export function NewTerminalPrompt() {
+  return (
+    <div className={styles.storyFrame}>
+      <div className={styles.storyLabel}>Scene 0 — New Terminal Widget</div>
+      <p className={styles.storyCaption}>
+        When a new terminal widget is added to the canvas (or an existing one has no session),
+        the user sees a prompt to choose how to start. This replaces the blank shell.
+      </p>
+      <Chrome
+        title="Terminal"
+        status="new"
+        actions={<Btn icon="⊞" label="Sessions" />}
+      >
+        <div className={styles.sessionPicker} style={{ textAlign: 'center', padding: '24px 16px' }}>
+          <div style={{ color: '#e6edf3', fontWeight: 600, fontSize: 14, marginBottom: 16 }}>
+            How would you like to start?
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+            <button className={`${styles.conflictBtn} ${styles.primary}`} style={{ width: 280, padding: '8px 16px', fontSize: 13 }}>
+              ✦ Start a new Copilot session
+            </button>
+            <button className={styles.conflictBtn} style={{ width: 280, padding: '8px 16px', fontSize: 13 }}>
+              ▸ Start a new terminal session
+            </button>
+            <button className={styles.conflictBtn} style={{ width: 280, padding: '8px 16px', fontSize: 13 }}>
+              ⊞ Select an existing session
+            </button>
+          </div>
+          <div style={{ color: '#484f58', fontSize: 11, marginTop: 12 }}>
+            Sessions are scoped to this branch and canvas.
+          </div>
+        </div>
+      </Chrome>
+    </div>
+  )
+}
+
 
 /* ═══════════════════════════════════════════════
    Scene 1 — Session Picker (This Canvas)
@@ -46,7 +94,7 @@ export function SessionPickerThisCanvas() {
             <span className={`${styles.pickerStatus} ${styles.statusLive}`}>Live</span>
             <span className={styles.pickerModified}>2m ago</span>
             <span className={styles.pickerCreated}>30m ago</span>
-            <span className={styles.pickerSummary}>
+            <span className={`${styles.pickerSummary} ${styles.summaryLive}`}>
               Copilot: migrate Button to CSS Modules
               <span className={`${styles.badge} ${styles.badgeLive}`}>! Live</span>
             </span>
@@ -58,7 +106,7 @@ export function SessionPickerThisCanvas() {
             <span className={`${styles.pickerStatus} ${styles.statusBackground}`}>Background</span>
             <span className={styles.pickerModified}>15m ago</span>
             <span className={styles.pickerCreated}>1h ago</span>
-            <span className={styles.pickerSummary}>Shell: npm run build → tests</span>
+            <span className={`${styles.pickerSummary} ${styles.summaryBackground}`}>Shell: npm run build → tests</span>
           </div>
 
           <div className={styles.pickerRow}>
@@ -67,7 +115,7 @@ export function SessionPickerThisCanvas() {
             <span className={`${styles.pickerStatus} ${styles.statusArchived}`}>Archived</span>
             <span className={styles.pickerModified}>1h ago</span>
             <span className={styles.pickerCreated}>3h ago</span>
-            <span className={styles.pickerSummary}>Shell: debugging canvas perf</span>
+            <span className={`${styles.pickerSummary} ${styles.summaryArchived}`}>Shell: debugging canvas perf</span>
           </div>
 
           <div className={styles.pickerFooter}>
@@ -127,7 +175,7 @@ export function SessionPickerAllCanvases() {
             <span className={`${styles.pickerStatus} ${styles.statusLive}`}>Live</span>
             <span className={styles.pickerModified}>2m ago</span>
             <span className={styles.pickerCreated}>30m ago</span>
-            <span className={styles.pickerSummary}>
+            <span className={`${styles.pickerSummary} ${styles.summaryLive}`}>
               Copilot: migrate Button to CSS Modules
               <span className={`${styles.badge} ${styles.badgeLive}`}>! Live</span>
             </span>
@@ -139,7 +187,7 @@ export function SessionPickerAllCanvases() {
             <span className={`${styles.pickerStatus} ${styles.statusBackground}`}>Background</span>
             <span className={styles.pickerModified}>15m ago</span>
             <span className={styles.pickerCreated}>1h ago</span>
-            <span className={styles.pickerSummary}>Shell: npm run build → tests</span>
+            <span className={`${styles.pickerSummary} ${styles.summaryBackground}`}>Shell: npm run build → tests</span>
           </div>
 
           <div className={styles.pickerSeparator}>── design-system ──</div>
@@ -150,7 +198,7 @@ export function SessionPickerAllCanvases() {
             <span className={`${styles.pickerStatus} ${styles.statusBackground}`}>Background</span>
             <span className={styles.pickerModified}>20m ago</span>
             <span className={styles.pickerCreated}>2h ago</span>
-            <span className={styles.pickerSummary}>Copilot: refactor Dialog component</span>
+            <span className={`${styles.pickerSummary} ${styles.summaryBackground}`}>Copilot: refactor Dialog component</span>
           </div>
 
           <div className={styles.pickerRow}>
@@ -159,7 +207,7 @@ export function SessionPickerAllCanvases() {
             <span className={`${styles.pickerStatus} ${styles.statusArchived}`}>Archived</span>
             <span className={styles.pickerModified}>1h ago</span>
             <span className={styles.pickerCreated}>3h ago</span>
-            <span className={styles.pickerSummary}>Shell: debugging canvas perf</span>
+            <span className={`${styles.pickerSummary} ${styles.summaryArchived}`}>Shell: debugging canvas perf</span>
           </div>
 
           <div className={styles.pickerSeparator}>── button-patterns ──</div>
@@ -170,7 +218,7 @@ export function SessionPickerAllCanvases() {
             <span className={`${styles.pickerStatus} ${styles.statusBackground}`}>Background</span>
             <span className={styles.pickerModified}>45m ago</span>
             <span className={styles.pickerCreated}>4h ago</span>
-            <span className={styles.pickerSummary}>Shell: npm run lint → fixes</span>
+            <span className={`${styles.pickerSummary} ${styles.summaryBackground}`}>Shell: npm run lint → fixes</span>
           </div>
 
           <div className={styles.pickerFooter}>
@@ -230,7 +278,7 @@ export function SessionPickerAllBranches() {
             <span className={`${styles.pickerStatus} ${styles.statusLive}`}>Live</span>
             <span className={styles.pickerModified}>2m ago</span>
             <span className={styles.pickerCreated}>30m ago</span>
-            <span className={styles.pickerSummary}>
+            <span className={`${styles.pickerSummary} ${styles.summaryLive}`}>
               plan-v6 › Copilot: migrate Button
               <span className={`${styles.badge} ${styles.badgeLive}`}>! Live</span>
             </span>
@@ -242,7 +290,7 @@ export function SessionPickerAllBranches() {
             <span className={`${styles.pickerStatus} ${styles.statusBackground}`}>Background</span>
             <span className={styles.pickerModified}>20m ago</span>
             <span className={styles.pickerCreated}>2h ago</span>
-            <span className={styles.pickerSummary}>design-system › Copilot: refactor Dialog</span>
+            <span className={`${styles.pickerSummary} ${styles.summaryBackground}`}>design-system › Copilot: refactor Dialog</span>
           </div>
 
           <div className={styles.pickerSeparator}>── 4.1.0 ──</div>
@@ -253,7 +301,7 @@ export function SessionPickerAllBranches() {
             <span className={`${styles.pickerStatus} ${styles.statusArchived}`}>Archived</span>
             <span className={styles.pickerModified}>2h ago</span>
             <span className={styles.pickerCreated}>1d ago</span>
-            <span className={styles.pickerSummary}>
+            <span className={`${styles.pickerSummary} ${styles.summaryArchived}`}>
               design-system › Copilot: fix viewfinder routing
               <span className={`${styles.badge} ${styles.badgeActive}`}>! Active processes</span>
             </span>
@@ -265,7 +313,7 @@ export function SessionPickerAllBranches() {
             <span className={`${styles.pickerStatus} ${styles.statusArchived}`}>Archived</span>
             <span className={styles.pickerModified}>3h ago</span>
             <span className={styles.pickerCreated}>2d ago</span>
-            <span className={styles.pickerSummary}>test › Shell: npm audit</span>
+            <span className={`${styles.pickerSummary} ${styles.summaryArchived}`}>test › Shell: npm audit</span>
           </div>
 
           <div className={styles.pickerSeparator}>── main ──</div>
@@ -276,7 +324,7 @@ export function SessionPickerAllBranches() {
             <span className={`${styles.pickerStatus} ${styles.statusArchived}`}>Archived</span>
             <span className={styles.pickerModified}>1d ago</span>
             <span className={styles.pickerCreated}>3d ago</span>
-            <span className={styles.pickerSummary}>examples › Shell: setup demo data</span>
+            <span className={`${styles.pickerSummary} ${styles.summaryArchived}`}>examples › Shell: setup demo data</span>
           </div>
 
           <div className={styles.pickerFooter}>
@@ -340,9 +388,13 @@ export function ConflictDialog() {
             <button className={styles.conflictBtn}>
               Start new session
             </button>
-            <button className={styles.conflictBtn}>
-              Cancel
+            <button className={styles.conflictBtn} style={{ color: '#f85149', borderColor: '#f8514966' }}>
+              Delete widget
             </button>
+          </div>
+          <div style={{ color: '#484f58', fontSize: 11, marginTop: 8 }}>
+            Deleting the widget will not stop the session — it will be archived
+            and recoverable from the session picker.
           </div>
         </div>
       </Chrome>
@@ -358,11 +410,12 @@ export function ConflictDialog() {
 export function WarmStartBanner() {
   return (
     <div className={styles.storyFrame}>
-      <div className={styles.storyLabel}>Scene 5 — Warm-Start (Session Context)</div>
+      <div className={styles.storyLabel}>Scene 5 — Warm-Start (Session Context) · FUTURE DEVELOPMENT</div>
       <p className={styles.storyCaption}>
-        A colleague opens a canvas with a terminal widget. No local TMUX session exists,
-        but a <code>.session.md</code> context file was committed by the previous author.
-        The widget shows a warm-start banner instead of a blank shell.
+        <strong>Not in scope for initial implementation.</strong> Future feature:
+        when a colleague opens a canvas with a terminal widget and no local session exists,
+        a committed <code>.session.md</code> context file provides a warm-start banner
+        to help them pick up where the previous author left off.
       </p>
       <Chrome
         title="Terminal"
@@ -513,11 +566,11 @@ export function FullLifecycle() {
         {/* Left column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ background: '#0d1117', border: '1px solid #30363d', borderRadius: 6, padding: 12 }}>
-            <div style={{ color: '#3fb950', fontWeight: 600, marginBottom: 4 }}>1. Create</div>
+            <div style={{ color: '#58a6ff', fontWeight: 600, marginBottom: 4 }}>1. Create</div>
             <div style={{ color: '#8b949e' }}>
               Add terminal widget to canvas
               <br />→ TMUX session: <span style={{ color: '#e6edf3' }}>sb-4.2.0--plan-v6--terminal-abc</span>
-              <br />→ Registry: status = <span style={{ color: '#3fb950' }}>Live</span>
+              <br />→ Registry: status = <span style={{ color: '#58a6ff' }}>Live</span>
             </div>
           </div>
 
@@ -534,8 +587,8 @@ export function FullLifecycle() {
             <div style={{ color: '#58a6ff', fontWeight: 600, marginBottom: 4 }}>3. Switch</div>
             <div style={{ color: '#8b949e' }}>
               Open session picker → select #3
-              <br />→ Old session: <span style={{ color: '#8b949e' }}>Background</span>
-              <br />→ New session: <span style={{ color: '#3fb950' }}>Live</span>
+              <br />→ Old session: <span style={{ color: '#d29922' }}>Background</span>
+              <br />→ New session: <span style={{ color: '#58a6ff' }}>Live</span>
             </div>
           </div>
         </div>
@@ -547,28 +600,28 @@ export function FullLifecycle() {
             <div style={{ color: '#8b949e' }}>
               Widget removed from canvas
               <br />→ Session NOT killed
-              <br />→ Registry: status = <span style={{ color: '#d29922' }}>Archived</span>
+              <br />→ Registry: status = <span style={{ color: '#484f58' }}>Archived</span>
               <br />→ Grace timer: 5 min
             </div>
           </div>
 
-          <div style={{ background: '#0d1117', border: '1px solid #30363d', borderRadius: 6, padding: 12 }}>
-            <div style={{ color: '#d29922', fontWeight: 600, marginBottom: 4 }}>5. Context Saved</div>
-            <div style={{ color: '#8b949e' }}>
+          <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 6, padding: 12, opacity: 0.5 }}>
+            <div style={{ color: '#484f58', fontWeight: 600, marginBottom: 4 }}>5. Context Saved · FUTURE</div>
+            <div style={{ color: '#484f58' }}>
               On archive, capture:
               <br />→ Last commit + canvas state
               <br />→ Planned / implemented / interrupted
-              <br />→ Write to <span style={{ color: '#e6edf3' }}>assets/terminal-sessions/</span>
+              <br />→ Write to <span style={{ color: '#8b949e' }}>assets/terminal-sessions/</span>
               <br />→ Committed to git
             </div>
           </div>
 
-          <div style={{ background: '#0d1117', border: '1px solid #30363d', borderRadius: 6, padding: 12 }}>
-            <div style={{ color: '#bc8cff', fontWeight: 600, marginBottom: 4 }}>6. Colleague Picks Up</div>
-            <div style={{ color: '#8b949e' }}>
+          <div style={{ background: '#0d1117', border: '1px solid #21262d', borderRadius: 6, padding: 12, opacity: 0.5 }}>
+            <div style={{ color: '#484f58', fontWeight: 600, marginBottom: 4 }}>6. Colleague Picks Up · FUTURE</div>
+            <div style={{ color: '#484f58' }}>
               Opens canvas → terminal widget
               <br />→ No local session found
-              <br />→ Reads <span style={{ color: '#e6edf3' }}>.session.md</span>
+              <br />→ Reads <span style={{ color: '#8b949e' }}>.session.md</span>
               <br />→ Warm-start: "Continue with Copilot"
             </div>
           </div>

@@ -32,8 +32,11 @@ Stories live at: `src/components/TerminalSessionMock/terminal-session-mock.story
 ### Phase 2 — Implementation (Backend)
 Server-side changes: session registry, scoped naming, orphan handling, HTTP API, conflict detection.
 
-### Phase 3 — Implementation (Frontend + Context Files)
-Client-side changes: session picker UI, conflict dialog, warm-start banner, `.session.md` generation.
+### Phase 3 — Implementation (Frontend)
+Client-side changes: session picker UI, conflict dialog, new terminal prompt.
+
+### Phase 4 — Future Development (Session Context & Handover)
+_Not in scope for initial implementation._ Session context files (`.session.md`), warm-start banner, cross-user handover.
 
 ---
 

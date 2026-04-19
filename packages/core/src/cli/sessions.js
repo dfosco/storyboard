@@ -143,70 +143,25 @@ async function main() {
       process.exit(0)
     }
 
-    // Group sessions by canvas
-    const byCanvas = new Map()
-    for (const s of sessions) {
-      const key = s.canvasId || 'unknown'
-      if (!byCanvas.has(key)) byCanvas.set(key, [])
-      byCanvas.get(key).push(s)
-    }
-
-    // Build options for clack select
+    // Build options for clack select — flat list, no separators
     const options = []
     let idx = 0
 
-    if (flags.all) {
-      const byBranch = new Map()
-      for (const s of sessions) {
-        const b = s.branch || 'unknown'
-        if (!byBranch.has(b)) byBranch.set(b, [])
-        byBranch.get(b).push(s)
-      }
-
-      const branches = [...byBranch.keys()].sort((a, b) => {
-        if (a === worktreeName) return -1
-        if (b === worktreeName) return 1
-        return a.localeCompare(b)
+    for (const s of sessions) {
+      const isCurrent = s.tmuxName === currentTmuxSession
+      options.push({
+        value: s.tmuxName,
+        label: formatRow(idx, s, isCurrent),
       })
-
-      for (const branch of branches) {
-        const branchSessions = byBranch.get(branch)
-        const label = branch === worktreeName ? `${branch} (current)` : branch
-        options.push({ value: `__sep_branch_${branch}`, label: dim(`── ${label} ──`), hint: '' })
-
-        for (const s of branchSessions) {
-          const isCurrent = s.tmuxName === currentTmuxSession
-          options.push({
-            value: s.tmuxName,
-            label: formatRow(idx, s, isCurrent),
-          })
-          idx++
-        }
-      }
-    } else {
-      for (const [canvasId, canvasSessions] of byCanvas) {
-        const canvasLabel = canvasId === 'unknown' ? 'Unknown canvas' : canvasId
-        options.push({ value: `__sep_${canvasId}`, label: dim(`── ${canvasLabel} ──`), hint: '' })
-
-        for (const s of canvasSessions) {
-          const isCurrent = s.tmuxName === currentTmuxSession
-          options.push({
-            value: s.tmuxName,
-            label: formatRow(idx, s, isCurrent),
-          })
-          idx++
-        }
-      }
+      idx++
     }
 
-    // Header
+    // Header line for column alignment (shown as part of the select message)
     const scope = flags.all ? 'All branches' : `Branch: ${cyan(worktreeName)}`
-    p.log.info(`${scope} · ${sessions.length} session${sessions.length !== 1 ? 's' : ''}`)
-    console.log(dim('  #    Status       Modified    Created     Summary'))
-    console.log('')
+    const header = dim('  #    Status       Modified    Created     Summary')
 
     const selected = await p.select({
-      message: 'Select a session',
+      message: `Select a session ${dim('·')} ${scope} ${dim('·')} ${sessions.length} session${sessions.length !== 1 ? 's' : ''}\n${header}`,
       options: [
         ...options,
         { value: '__back', label: dim('← Back to options') },
@@ -217,8 +172,6 @@ async function main() {
       p.outro(dim('Done'))
       process.exit(0)
     }
-
-    if (selected === '__none' || selected?.startsWith('__sep_')) continue
 
     // Find the selected session
     const session = sessions.find(s => s.tmuxName === selected)

@@ -23,3 +23,5 @@
 {"event":"widget_added","timestamp":"2026-04-19T13:14:32.986Z","widget":{"id":"terminal-xhq92x","type":"terminal","position":{"x":9909,"y":5310},"props":{"width":600,"height":400},"bounds":{"width":600,"height":400,"startX":9909,"startY":5310,"endX":10509,"endY":5710}}}
 {"event":"widget_removed","timestamp":"2026-04-19T13:31:05.306Z","widgetId":"terminal-xhq92x"}
 {"event":"widget_added","timestamp":"2026-04-19T13:31:09.176Z","widget":{"id":"terminal-3txmrv","type":"terminal","position":{"x":9796,"y":5364},"props":{"width":600,"height":400},"bounds":{"width":600,"height":400,"startX":9796,"startY":5364,"endX":10396,"endY":5764}}}
+{"event":"widget_removed","timestamp":"2026-04-19T13:41:28.210Z","widgetId":"terminal-3txmrv"}
+{"event":"widget_added","timestamp":"2026-04-19T13:41:32.994Z","widget":{"id":"terminal-ha44td","type":"terminal","position":{"x":9796,"y":5364},"props":{"width":600,"height":400},"bounds":{"width":600,"height":400,"startX":9796,"startY":5364,"endX":10396,"endY":5764}}}

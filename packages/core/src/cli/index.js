@@ -70,6 +70,10 @@ function helpScreen(version) {
     cmd('compact [name]', 'Compact canvas JSONL files (removes bloat)'),
     cmd('compact --all', 'Force compact all canvases'),
     '',
+    `  ${bold(cyan('Terminal'))}`,
+    cmd('sessions', 'Browse and manage terminal sessions'),
+    cmd('sessions --all', 'Show sessions across all branches'),
+    '',
     `  ${bold(cyan('Setup'))}`,
     cmd('setup', 'Install deps, Caddy proxy, start proxy'),
     cmd('proxy', 'Generate Caddyfile + start/reload Caddy'),
@@ -125,6 +129,9 @@ switch (command) {
     break
   case 'sessions':
     import('./sessions.js')
+    break
+  case 'terminal-welcome':
+    import('./terminal-welcome.js')
     break
   case 'server':
     import('./server.js')

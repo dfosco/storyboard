@@ -4,6 +4,7 @@ import { schemas } from './widgetProps.js'
 import { getTerminalConfig } from '@dfosco/storyboard-core'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './TerminalWidget.module.css'
+import overlayStyles from './embedOverlay.module.css'
 
 const terminalSchema = schemas['terminal']
 
@@ -80,6 +81,8 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const wsRef = useRef(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState(null)
+  const [sessionEnded, setSessionEnded] = useState(false)
+  const [connectAttempt, setConnectAttempt] = useState(0)
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -132,13 +135,14 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
 
         ws.onclose = () => {
           if (disposed) return
-          term.write('\r\n\x1b[90m[session ended]\x1b[0m\r\n')
           setReady(false)
+          setSessionEnded(true)
         }
 
         ws.onerror = () => {
           if (disposed) return
-          setError('Connection failed')
+          setReady(false)
+          setSessionEnded(true)
         }
 
         // Terminal input → WebSocket
@@ -161,7 +165,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
       termRef.current = null
       wsRef.current = null
     }
-  }, [id])
+  }, [id, connectAttempt])
 
   // Resize terminal on dimension changes
   useEffect(() => {
@@ -177,7 +181,14 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   }, [width, height])
 
   const handleClick = useCallback(() => {
+    if (sessionEnded) return
     termRef.current?.focus()
+  }, [sessionEnded])
+
+  const handleStartSession = useCallback(() => {
+    setSessionEnded(false)
+    setError(null)
+    setConnectAttempt(c => c + 1)
   }, [])
 
   return (
@@ -191,13 +202,25 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         }}
         onClick={handleClick}
       >
-        {error && (
+        {error && !sessionEnded && (
           <div className={styles.error}>
             <span>⚠ {error}</span>
           </div>
         )}
         <div ref={containerRef} className={styles.xtermContainer} />
-        {!ready && !error && (
+        {sessionEnded && (
+          <div
+            className={overlayStyles.interactOverlay}
+            onClick={handleStartSession}
+            role="button"
+            tabIndex={0}
+            aria-label="Start terminal session"
+            onKeyDown={(e) => { if (e.key === 'Enter') handleStartSession() }}
+          >
+            <span className={overlayStyles.interactHint}>Start terminal session</span>
+          </div>
+        )}
+        {!ready && !error && !sessionEnded && (
           <div className={styles.loading}>Connecting…</div>
         )}
       </div>

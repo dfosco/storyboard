@@ -65,8 +65,9 @@ function relativeTime(iso) {
   return `${days}d ago`
 }
 
-function summaryText(entry) {
+function summaryText(entry, showCanvas = true) {
   const name = entry.name || entry.widgetId || 'unknown'
+  if (!showCanvas) return name
   const canvas = entry.canvasId && entry.canvasId !== 'unknown'
     ? entry.canvasId.split('/').pop()
     : null
@@ -93,7 +94,7 @@ function truncate(str, len) {
   return str.slice(0, len - 1) + '…'
 }
 
-function formatRow(idx, entry, isCurrent = false) {
+function formatRow(idx, entry, isCurrent = false, showCanvas = true) {
   const num = `${idx + 1}.`.padEnd(COL.num)
   const status = truncate(
     entry.status === 'live' ? 'Live' : entry.status === 'background' ? 'Background' : 'Archived',
@@ -104,11 +105,10 @@ function formatRow(idx, entry, isCurrent = false) {
     : dim(status)
   const modified = truncate(relativeTime(entry.lastConnectedAt), COL.modified)
   const created = truncate(relativeTime(entry.createdAt), COL.created)
-  const summary = summaryText(entry)
+  const summary = summaryText(entry, showCanvas)
 
   let badges = ''
   if (isCurrent) badges += ' ' + cyan('(current)')
-  if (entry.status === 'live' && !isCurrent) badges += ' ' + blue('! Live')
 
   const summaryColored = entry.status === 'live'
     ? blue(summary)
@@ -148,6 +148,10 @@ async function main() {
       process.exit(0)
     }
 
+    // Determine if all sessions are from the same canvas (hide canvas name if so)
+    const canvasIds = new Set(sessions.map(s => s.canvasId).filter(c => c && c !== 'unknown'))
+    const showCanvas = canvasIds.size > 1
+
     // Build options for clack select — flat list, no separators
     const options = []
     let idx = 0
@@ -156,7 +160,7 @@ async function main() {
       const isCurrent = s.tmuxName === currentTmuxSession
       options.push({
         value: s.tmuxName,
-        label: formatRow(idx, s, isCurrent),
+        label: formatRow(idx, s, isCurrent, showCanvas),
       })
       idx++
     }

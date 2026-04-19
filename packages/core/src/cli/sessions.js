@@ -156,12 +156,12 @@ async function main() {
       idx++
     }
 
-    // Header line for column alignment (shown as part of the select message)
+    // Header — offset by 2 chars to align with Clack's radio bullet prefix (● )
     const scope = flags.all ? 'All branches' : `Branch: ${cyan(worktreeName)}`
-    const header = dim('  #    Status       Modified    Created     Summary')
+    const header = dim('    #    Status       Modified    Created     Summary')
 
     const selected = await p.select({
-      message: `Select a session ${dim('·')} ${scope} ${dim('·')} ${sessions.length} session${sessions.length !== 1 ? 's' : ''}\n${header}`,
+      message: `Select a session ${dim('·')} ${scope} ${dim('·')} ${sessions.length} session${sessions.length !== 1 ? 's' : ''}\n\n${header}\n`,
       options: [
         ...options,
         { value: '__back', label: dim('← Back to options') },

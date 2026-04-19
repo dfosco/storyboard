@@ -266,7 +266,8 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
       const canvasArg = canvasId !== 'unknown' ? canvasId : ''
       setTimeout(() => {
         // Send the welcome command to the shell inside tmux
-        const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"\r`
+        const nameArg = prettyName ? ` --name "${prettyName}"` : ''
+        const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}\r`
         ptyProcess.write(cmd)
       }, 600)
     }

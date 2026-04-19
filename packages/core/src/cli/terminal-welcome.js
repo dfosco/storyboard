@@ -19,33 +19,41 @@ const blue = (s) => `\x1b[34m${s}\x1b[0m`
 const flagSchema = {
   branch: { type: 'string', description: 'Current branch name' },
   canvas: { type: 'string', description: 'Current canvas name' },
+  name: { type: 'string', description: 'Terminal pretty name' },
 }
 
 const { flags } = parseFlags(process.argv.slice(3), flagSchema)
 const branch = flags.branch || 'unknown'
 const canvas = flags.canvas || 'unknown'
+const prettyName = flags.name || null
 const canvasShort = canvas === 'unknown' ? canvas : canvas.split('/').pop()
 
 async function welcomeLoop() {
   while (true) {
     console.clear()
     p.intro(`${bold('storyboard terminal')}`)
-    p.log.info(`branch: ${blue(branch)}  canvas: ${blue(canvasShort)}`)
 
     const action = await p.select({
       message: 'How would you like to start?',
       options: [
         { value: 'copilot', label: '✦ Start a new Copilot session' },
         { value: 'shell', label: '▸ Start a new terminal session', hint: 'opens shell' },
-        { value: 'sessions', label: '⊞ Browse existing sessions', hint: 'runs: storyboard sessions' },
+        { value: 'sessions', label: '⊞ Browse existing sessions', hint: 'runs: storyboard terminal' },
       ],
     })
 
     if (p.isCancel(action)) {
-      // User hit Escape/Ctrl+C — just open shell
       p.outro(dim('Opening shell...'))
       break
     }
+
+    // Show metadata after selection
+    const meta = [
+      prettyName ? `${dim('name:')} ${blue(prettyName)}` : null,
+      `${dim('branch:')} ${blue(branch)}`,
+      `${dim('canvas:')} ${blue(canvasShort)}`,
+    ].filter(Boolean).join('  ')
+    p.log.info(meta)
 
     if (action === 'shell') {
       p.outro(dim('Opening shell...'))

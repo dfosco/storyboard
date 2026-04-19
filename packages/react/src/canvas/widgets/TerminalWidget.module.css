@@ -66,3 +66,14 @@
   background: #0d1117;
   z-index: 1;
 }
+
+.mutedPrompt {
+  color: #484f58;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace;
+  font-size: 16px;
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  pointer-events: none;
+  user-select: none;
+}

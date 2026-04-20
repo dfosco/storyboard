@@ -1,5 +1,15 @@
 # @dfosco/storyboard-core
 
+## 4.2.0-alpha.7
+
+### Patch Changes
+
+-   Deterministic server URL for terminal agents and setup scaffolding
+
+    -   Terminal server uses actual httpServer port instead of ports.json
+    -   `storyboard setup` scaffolds .storyboard/terminals/ and .github/agents/
+    -   ghostty-web moved from optional peer dep to regular dependency
+
 ## 4.2.0-alpha.6
 
 ### Patch Changes

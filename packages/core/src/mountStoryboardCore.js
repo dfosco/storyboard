@@ -165,11 +165,18 @@ export async function mountStoryboardCore(config = {}, options = {}) {
 
   // Load and merge command palette config.
   // Core defaults come from commandpalette.config.json (bundled).
-  // Client can provide overrides via config.commandPalette (legacy) or a commandpalette.config.json at repo root.
+  // Client can provide overrides via config.commandPalette.
+  // Sections are merged by `id` — client sections override matching defaults,
+  // default sections not in the client config are preserved (e.g. create-widget).
   const defaultCmdPaletteConfig = (await import('../commandpalette.config.json')).default
   if (config.commandPalette) {
-    const { deepMerge: deepMergeCp } = await import('./loader.js')
-    initCommandPaletteConfig(deepMergeCp(defaultCmdPaletteConfig, config.commandPalette))
+    const merged = { ...defaultCmdPaletteConfig, ...config.commandPalette }
+    if (config.commandPalette.sections && defaultCmdPaletteConfig.sections) {
+      const clientIds = new Set(config.commandPalette.sections.map(s => s.id))
+      const preserved = defaultCmdPaletteConfig.sections.filter(s => !clientIds.has(s.id))
+      merged.sections = [...config.commandPalette.sections, ...preserved]
+    }
+    initCommandPaletteConfig(merged)
   } else {
     initCommandPaletteConfig({ ...defaultCmdPaletteConfig })
   }

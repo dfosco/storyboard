@@ -11,7 +11,7 @@
  * from the materialized canvas state at read time to stay fresh.
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, symlinkSync, unlinkSync, lstatSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { createHash } from 'node:crypto'
 import { execSync } from 'node:child_process'
@@ -103,6 +103,15 @@ export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = n
   }
 
   atomicWrite(fp, config)
+
+  // Create a widgetId-named symlink so agents can find their config directly
+  const hashName = `${configKey(branch, canvasId, widgetId)}.json`
+  const symPath = join(dir, `${widgetId}.json`)
+  try {
+    if (existsSync(symPath)) unlinkSync(symPath)
+    symlinkSync(hashName, symPath)
+  } catch { /* symlink creation is best-effort */ }
+
   return config
 }
 

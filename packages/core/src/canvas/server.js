@@ -267,6 +267,23 @@ export function createCanvasHandler(ctx) {
     appendEventRaw(filePath, event)
   }
 
+  /**
+   * Push live canvas update to connected clients via Vite HMR.
+   * Reads the full materialized state from disk and sends it as a custom
+   * event so useCanvas can update in-place without a page refresh.
+   */
+  function pushCanvasUpdate(canvasName, filePath, viteWs) {
+    if (!viteWs) return
+    try {
+      const data = readCanvas(filePath)
+      viteWs.send({
+        type: 'custom',
+        event: 'storyboard:canvas-file-changed',
+        data: { canvasId: canvasName, name: canvasName, metadata: data },
+      })
+    } catch { /* best effort — watcher will catch it eventually */ }
+  }
+
   // Write a new JSONL file with a single creation event.
   // New files are detected naturally by Vite's watcher as an `add` event,
   // which correctly triggers a full reload to register new routes.
@@ -437,6 +454,7 @@ export function createCanvasHandler(ctx) {
         }
 
         sendJson(res, 200, { success: true, name })
+        pushCanvasUpdate(name, filePath, __viteWs)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to update canvas: ${err.message}` })
       }
@@ -482,6 +500,7 @@ export function createCanvasHandler(ctx) {
         })
 
         sendJson(res, 201, { success: true, widget })
+        pushCanvasUpdate(name, filePath, __viteWs)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to add widget: ${err.message}` })
       }
@@ -529,6 +548,7 @@ export function createCanvasHandler(ctx) {
         }
 
         sendJson(res, 200, { success: true, removed: 1 })
+        pushCanvasUpdate(name, filePath, __viteWs)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to remove widget: ${err.message}` })
       }
@@ -589,6 +609,7 @@ export function createCanvasHandler(ctx) {
           position: position || widget.position,
         }
         sendJson(res, 200, { success: true, widget: merged })
+        pushCanvasUpdate(name, filePath, __viteWs)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to update widget: ${err.message}` })
       }
@@ -655,6 +676,7 @@ export function createCanvasHandler(ctx) {
         updateTerminalConnectionsForCanvas(root, name, data, [...(data.connectors || []), connector])
 
         sendJson(res, 201, { success: true, connector })
+        pushCanvasUpdate(name, filePath, __viteWs)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to add connector: ${err.message}` })
       }
@@ -695,6 +717,7 @@ export function createCanvasHandler(ctx) {
         updateTerminalConnectionsForCanvas(root, name, data, remainingConnectors)
 
         sendJson(res, 200, { success: true, removed: 1 })
+        pushCanvasUpdate(name, filePath, __viteWs)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to remove connector: ${err.message}` })
       }

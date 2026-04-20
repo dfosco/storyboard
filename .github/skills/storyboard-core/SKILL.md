@@ -207,3 +207,43 @@ Menus can be hidden via:
 | `comments` | custom | *(none)* | Auth-aware comments toggle |
 | `docs` | sidepanel | `sidepanel: "docs"` | Toggles docs side panel |
 | `inspector` | sidepanel | `sidepanel: "inspector"` | Toggles inspector side panel |
+
+## Optional & Heavy Dependencies in Published Packages
+
+The `packages/react` and `packages/core` directories are published to npm as `@dfosco/storyboard-react` and `@dfosco/storyboard-core`. Consumers may not install every optional dependency (e.g. `ghostty-web` for terminal widgets, WASM modules).
+
+**When adding an import for a package that isn't a hard dependency:**
+
+1. **Use `@vite-ignore` on dynamic imports** — `import(/* @vite-ignore */ 'pkg')` prevents Vite's import analysis from throwing a pre-transform error when the package isn't installed.
+2. **Always `.catch()` and return `null`** — the feature should degrade gracefully, not crash the entire app.
+3. **Null-guard all usage** — after `await loadSomething()`, check for `null` before accessing any module exports.
+4. **Declare as optional peerDependency** — add the package to `peerDependencies` and mark it optional in `peerDependenciesMeta`:
+
+```json
+{
+  "peerDependencies": {
+    "some-heavy-pkg": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "some-heavy-pkg": { "optional": true }
+  }
+}
+```
+
+**Example pattern (from TerminalWidget.jsx):**
+
+```js
+let promise = null
+function loadOptionalDep() {
+  if (!promise) {
+    promise = import(/* @vite-ignore */ 'ghostty-web')
+      .then(async (mod) => { if (mod.init) await mod.init(); return mod })
+      .catch((err) => { promise = null; console.warn('[Widget] not available:', err.message); return null })
+  }
+  return promise
+}
+
+// Usage:
+const mod = await loadOptionalDep()
+if (!mod) return // graceful degradation
+```

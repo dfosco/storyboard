@@ -484,13 +484,15 @@ export default function WidgetChrome({
 
   // Exit interact mode when deselected
   useEffect(() => {
-    if (!selected && interacting) setInteracting(false)
-  }, [selected, interacting])
+    if (!selected && !hovered && interacting) setInteracting(false)
+  }, [selected, hovered, interacting])
 
   const handleGateClick = useCallback((e) => {
     e.stopPropagation()
     setInteracting(true)
-  }, [])
+    // Also trigger selection so the widget gets selected
+    onSelect?.()
+  }, [onSelect])
 
   return (
     <div

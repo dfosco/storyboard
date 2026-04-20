@@ -66,6 +66,7 @@ function helpScreen(version) {
     `  ${bold(cyan('Canvas'))}`,
     cmd('canvas add <type>', 'Add widget to a canvas'),
     `                              ${dim('types: sticky-note, markdown, prototype')}`,
+    cmd('canvas update <id>', 'Update a widget\'s props or position'),
     cmd('canvas read [name]', 'Read canvas state and list widgets'),
     cmd('compact [name]', 'Compact canvas JSONL files (removes bloat)'),
     cmd('compact --all', 'Force compact all canvases'),
@@ -117,6 +118,8 @@ switch (command) {
   case 'canvas':
     if (process.argv[3] === 'add') {
       import('./canvasAdd.js')
+    } else if (process.argv[3] === 'update') {
+      import('./canvasUpdate.js')
     } else if (process.argv[3] === 'read' || !process.argv[3]) {
       import('./canvasRead.js')
     } else if (process.argv[3] === 'bounds') {

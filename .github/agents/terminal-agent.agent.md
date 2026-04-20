@@ -58,7 +58,42 @@ The `connectedWidgets` array contains the FULL props of every widget connected t
 
 Interpret the user's prompt in light of these connected widgets.
 
-## Step 3: Signal completion
+## Step 3: Prefer CLI commands for canvas operations
+
+**Always prefer `npx storyboard` CLI commands over HTTP API calls.** CLI commands run directly in the worktree and resolve the dev server automatically — no port numbers or URLs needed.
+
+### Reading canvas state
+```bash
+npx storyboard canvas read <canvas-name> --json
+npx storyboard canvas read <canvas-name> --id <widget-id> --json
+```
+
+### Updating a widget
+```bash
+# Update text on a sticky note
+npx storyboard canvas update <widget-id> --canvas <canvas-name> --text "New text"
+
+# Update markdown content
+npx storyboard canvas update <widget-id> --canvas <canvas-name> --content "# New heading"
+
+# Update arbitrary props
+npx storyboard canvas update <widget-id> --canvas <canvas-name> --props '{"key":"value"}'
+
+# Move a widget
+npx storyboard canvas update <widget-id> --canvas <canvas-name> --x 100 --y 200
+
+# Shorthand flags: --text, --content, --src, --url, --color
+```
+
+### Adding a widget
+```bash
+npx storyboard canvas add sticky-note --canvas <canvas-name> --props '{"text":"Hello"}'
+npx storyboard canvas add markdown --canvas <canvas-name> --x 100 --y 200
+```
+
+**Why CLI over API:** The CLI resolves the correct dev server port automatically via the Caddy proxy or ports.json. You never need to know the port number. All commands work from any worktree directory.
+
+## Step 4: Signal completion
 
 When your task is complete:
 ```bash
@@ -72,6 +107,6 @@ npx storyboard agent signal --status error --message "What went wrong"
 
 **IMPORTANT:**
 - NEVER write directly to `.canvas.jsonl` files — use the canvas CLI or server API
-- The `serverUrl` in the config file is the correct dev server URL — use it for all API calls
-- The canvas API is at `{serverUrl}/_storyboard/canvas/`
+- **Prefer CLI commands** (`npx storyboard canvas ...`) over direct HTTP calls — they resolve ports automatically
+- Only fall back to HTTP API (`{serverUrl}/_storyboard/canvas/`) if the CLI doesn't support the operation
 - Environment variables `$STORYBOARD_WIDGET_ID`, `$STORYBOARD_CANVAS_ID`, `$STORYBOARD_BRANCH`, `$STORYBOARD_SERVER_URL` are also available in the shell

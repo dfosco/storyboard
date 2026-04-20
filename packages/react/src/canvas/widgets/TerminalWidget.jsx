@@ -207,7 +207,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
     termRef.current?.focus()
   }, [sessionEnded, interacting])
 
-  // Escape exits interact mode
+  // Escape exits interact mode; click outside exits interact mode
   useEffect(() => {
     if (!interacting) return
     const handleKeyDown = (e) => {
@@ -217,10 +217,18 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         termRef.current?.blur?.()
       }
     }
-    // Listen on the terminal container to catch Escape before it propagates
+    const handleMouseDown = (e) => {
+      if (terminalRef.current && !terminalRef.current.contains(e.target)) {
+        setInteracting(false)
+      }
+    }
     const el = terminalRef.current
     if (el) el.addEventListener('keydown', handleKeyDown, true)
-    return () => { if (el) el.removeEventListener('keydown', handleKeyDown, true) }
+    document.addEventListener('mousedown', handleMouseDown, true)
+    return () => {
+      if (el) el.removeEventListener('keydown', handleKeyDown, true)
+      document.removeEventListener('mousedown', handleMouseDown, true)
+    }
   }, [interacting])
 
   const [waking, setWaking] = useState(false)

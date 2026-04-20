@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 4.2.0-beta.2
+
+### Patch Changes
+
+-   Add node-pty as optionalDependency so client repos get terminal widget support on `npm install`.
+
 ## 4.2.0-beta.1
 
 ### Patch Changes

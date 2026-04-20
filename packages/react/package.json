@@ -27,7 +27,11 @@
     "@primer/octicons-react": ">=19",
     "react": ">=18",
     "react-router-dom": ">=6",
-    "vite": ">=5"
+    "vite": ">=5",
+    "ghostty-web": ">=0.4.0"
+  },
+  "peerDependenciesMeta": {
+    "ghostty-web": { "optional": true }
   },
   "exports": {
     ".": "./src/index.js",

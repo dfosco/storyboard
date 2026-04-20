@@ -444,7 +444,7 @@ export function createCanvasHandler(ctx) {
         if (settings) {
           const filtered = {}
           for (const [key, value] of Object.entries(settings)) {
-            if (['title', 'description', 'grid', 'gridSize', 'colorMode', 'dotted', 'centered', 'author', 'snapToGrid'].includes(key)) {
+            if (['title', 'description', 'grid', 'gridSize', 'colorMode', 'dotted', 'centered', 'author', 'snapToGrid', 'performanceMode'].includes(key)) {
               filtered[key] = value
             }
           }

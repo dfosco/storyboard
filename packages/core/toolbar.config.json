@@ -217,7 +217,7 @@
       "inlineAction": "toggle-chrome"
     },
     "pause-embeds": {
-      "label": "Pause embed refreshes",
+      "label": "Performance mode",
       "render": "submenu",
       "surface": "command-list",
       "handler": "core:pause-embeds",

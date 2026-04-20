@@ -1533,8 +1533,8 @@ export function Default() {
         // Launch copilot in autopilot mode
         // Use send-keys -l for safe literal input
         const copilotCmd = autopilot
-          ? `copilot --allow-all -p "${prompt.replace(/"/g, '\\"')}"`
-          : `copilot --allow-all`
+          ? `copilot -p "${prompt.replace(/"/g, '\\"')}"`
+          : `copilot`
         setTimeout(() => {
           try {
             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })
@@ -1542,6 +1542,13 @@ export function Default() {
           } catch (err) {
             console.warn(`[storyboard] Failed to launch copilot:`, err.message)
           }
+          // Pre-type /autopilot once copilot prompt is ready
+          setTimeout(() => {
+            try {
+              execSync(`tmux send-keys -t "${tmuxName}" -l "/autopilot"`, { stdio: 'ignore' })
+              execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+            } catch {}
+          }, 3000)
         }, 500)
 
         // Set up idle timeout (5 minutes)

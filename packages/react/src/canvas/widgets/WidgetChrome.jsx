@@ -474,7 +474,9 @@ export default function WidgetChrome({
       if (e.key === 'Escape') {
         const now = Date.now()
         if (now - lastEscapeRef.current < 500) {
-          // Double-Escape: exit interact mode
+          // Double-Escape: exit interact mode but keep widget selected
+          e.stopPropagation()
+          e.preventDefault()
           setInteracting(false)
           lastEscapeRef.current = 0
         } else {

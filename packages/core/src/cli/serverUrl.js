@@ -11,6 +11,11 @@ import { readDevDomain } from './proxy.js'
 import { execSync } from 'child_process'
 
 export function getServerUrl() {
+  // Prefer explicit env var (set by terminal agent sessions)
+  if (process.env.STORYBOARD_SERVER_URL) {
+    return process.env.STORYBOARD_SERVER_URL.replace(/\/$/, '')
+  }
+
   const name = detectWorktreeName()
 
   // Try Caddy admin API for the real port

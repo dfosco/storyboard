@@ -62,12 +62,45 @@ async function welcomeLoop() {
 
     if (action === 'copilot') {
       p.outro(dim('Starting Copilot...'))
-      // Run copilot as a child process, wait for it to exit, then loop back
+      // Run copilot with terminal-agent, then pre-type /autopilot via tmux
       try {
-        const child = spawn('copilot', [], { stdio: 'inherit' })
+        const agentArgs = ['--agent', 'terminal-agent']
+        const child = spawn('copilot', agentArgs, { stdio: 'inherit' })
+
+        // Poll for copilot readiness, then pre-type /autopilot once
+        let autopilotSent = false
+        const pollInterval = setInterval(() => {
+          if (autopilotSent) { clearInterval(pollInterval); return }
+          try {
+            // Capture the current pane content and check for copilot's input prompt
+            const paneContent = execSync(`tmux capture-pane -p`, { encoding: 'utf8', timeout: 1000 })
+            // Copilot shows ">" or "❯" at the prompt when ready for input
+            // Also check for "Environment loaded" which appears right before the prompt
+            if (paneContent.includes('Environment loaded:') || paneContent.match(/^[>❯]\s*$/m)) {
+              autopilotSent = true
+              clearInterval(pollInterval)
+              // Small delay to ensure the prompt is fully rendered
+              setTimeout(() => {
+                try {
+                  execSync(`tmux send-keys -l "/allow-all on"`, { stdio: 'ignore' })
+                  execSync(`tmux send-keys Enter`, { stdio: 'ignore' })
+                } catch {}
+              }, 500)
+            }
+          } catch {}
+        }, 1000)
+
+        // Safety: stop polling after 15s no matter what
+        setTimeout(() => {
+          if (!autopilotSent) {
+            autopilotSent = true
+            clearInterval(pollInterval)
+          }
+        }, 15000)
+
         await new Promise((resolve) => {
-          child.on('close', resolve)
-          child.on('error', resolve)
+          child.on('close', () => { clearInterval(pollInterval); resolve() })
+          child.on('error', () => { clearInterval(pollInterval); resolve() })
         })
       } catch {
         p.log.error('Failed to start Copilot. Is it installed?')

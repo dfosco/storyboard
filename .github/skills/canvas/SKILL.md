@@ -191,6 +191,28 @@ DELETE /widget
 { "name": "{CANVAS}", "widgetId": "{WIDGET_ID}" }
 ```
 
+### Update a single widget
+```
+PATCH /widget
+{ "name": "{CANVAS}", "widgetId": "{WIDGET_ID}", "props": { ... }, "position": { "x": 0, "y": 0 } }
+```
+Or via CLI:
+```bash
+# Update sticky note text
+npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --text "New text"
+
+# Update markdown content
+npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --content "# Heading"
+
+# Arbitrary props as JSON
+npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --props '{"key":"value"}'
+
+# Move a widget
+npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --x 100 --y 200
+
+# Shorthand flags: --text, --content, --src, --url, --color
+```
+
 ### Bulk update (move, resize, reorder, update props)
 ```
 PUT /update

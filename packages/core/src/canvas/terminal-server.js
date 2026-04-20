@@ -38,11 +38,16 @@ import {
   registerSession,
   disconnectSession,
   orphanSession,
-  getSession,
   generateTmuxName,
   findTmuxNameForWidget,
   killSession,
 } from './terminal-registry.js'
+import {
+  writeTerminalConfig as writeTermConfig,
+  initTerminalConfig,
+} from './terminal-config.js'
+import { findByWorktree } from '../worktree/serverRegistry.js'
+import { detectWorktreeName } from '../worktree/port.js'
 
 let pty
 try {
@@ -81,6 +86,9 @@ const wsConnections = new Map()
 
 /** Branch name for this worktree, set during setup */
 let currentBranch = 'unknown'
+
+/** Actual server port, resolved from httpServer at setup time */
+let actualServerPort = null
 
 /** Check if a tmux session with the given name exists */
 function tmuxSessionExists(name) {
@@ -147,10 +155,23 @@ export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') 
 
   currentBranch = branch
 
-  // Initialize registry
+  // Capture the actual port from the running HTTP server
+  try {
+    const addr = httpServer.address()
+    if (addr && addr.port) actualServerPort = addr.port
+  } catch {}
+
+  // Ensure node-pty spawn-helper has execute permission (npm install can strip it)
+  try {
+    const nodePtyDir = resolve(process.cwd(), 'node_modules/node-pty/prebuilds')
+    execSync(`chmod +x "${nodePtyDir}"/darwin-*/spawn-helper 2>/dev/null || true`, { stdio: 'ignore' })
+  } catch {}
+
+  // Initialize registry and terminal config
   const root = process.cwd()
   const termCfg = readTerminalConfig()
   initRegistry(root, { gracePeriod: termCfg.orphanGracePeriod })
+  initTerminalConfig(root)
 
   const mode = hasTmux ? 'tmux (persistent sessions)' : 'node-pty (no persistence)'
   console.log(`[storyboard] terminal server ready (${mode}) [branch: ${branch}]`)
@@ -191,6 +212,24 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
   // Register in registry, check for conflicts
   const { entry, conflict } = registerSession({ branch, canvasId, widgetId, prettyName })
 
+  // Resolve server URL deterministically:
+  // 1. Use the actual port from httpServer (set at setup time)
+  // 2. Fall back to server registry (tracks running dev servers)
+  // 3. Last resort: default port 1234
+  let serverPort = actualServerPort
+  if (!serverPort) {
+    try {
+      const name = detectWorktreeName()
+      const servers = findByWorktree(name)
+      if (servers.length > 0) serverPort = servers[0].port
+    } catch {}
+  }
+  if (!serverPort) serverPort = 1234
+  const serverUrl = `http://localhost:${serverPort}`
+
+  // Write terminal config for agent context
+  writeTermConfig({ branch, canvasId, widgetId, serverUrl })
+
   // Close any existing WS for this session (one viewer at a time)
   const existingWs = wsConnections.get(tmuxName)
   if (existingWs && existingWs !== ws && existingWs.readyState <= 1) {
@@ -229,10 +268,15 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
     BASH_ENV: '',
     ENV: '',
     PS1: prompt,
+    STORYBOARD_WIDGET_ID: widgetId,
+    STORYBOARD_CANVAS_ID: canvasId,
+    STORYBOARD_BRANCH: branch,
+    STORYBOARD_SERVER_URL: serverUrl,
   }
   let ptyProcess
   let isNewSession = false
 
+  try {
   if (hasTmux) {
     const reattach = tmuxSessionExists(tmuxName)
 
@@ -280,6 +324,14 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
         const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}\r`
         ptyProcess.write(cmd)
       }, 600)
+
+      // Execute startup sequence if configured (after welcome completes)
+      const startupSeq = termCfg.defaultStartupSequence
+      if (startupSeq?.steps?.length) {
+        setTimeout(() => {
+          executeStartupSequence(tmuxName, ws, startupSeq)
+        }, 1500)
+      }
     }
 
     // Write conflict warning if session was live elsewhere
@@ -307,6 +359,15 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
       cwd,
       env,
     })
+  }
+  } catch (spawnErr) {
+    console.error(`[storyboard] terminal spawn failed: ${spawnErr.message}`)
+    if (ws.readyState === ws.OPEN) {
+      ws.send(`\r\n\x1b[31m✖ Terminal failed to start: ${spawnErr.message}\x1b[0m\r\n`)
+      ws.send(`\x1b[2mTry: chmod +x node_modules/node-pty/prebuilds/darwin-*/spawn-helper\x1b[0m\r\n`)
+      ws.close()
+    }
+    return
   }
 
   const generation = entry.generation
@@ -367,6 +428,95 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
 function sendJson(ws, data) {
   if (ws.readyState === ws.OPEN) {
     ws.send(JSON.stringify(data))
+  }
+}
+
+/**
+ * Execute a startup sequence for a new terminal session.
+ * Runs server-side via tmux send-keys. Only called for new sessions.
+ *
+ * Step types:
+ *   command   — send text + \n to the shell
+ *   keystroke — send raw keys (e.g. {enter}, {tab})
+ *   wait      — pause for ms or until output matches a pattern
+ *   tmux      — run a tmux command against the session
+ *   env       — set env var (must be before shell starts, so this is a pre-step)
+ *
+ * @param {string} tmuxName — tmux session name
+ * @param {object} ws — WebSocket connection
+ * @param {object} sequence — { steps: [], renderAfterStep?: number }
+ */
+async function executeStartupSequence(tmuxName, ws, sequence) {
+  if (!sequence?.steps?.length) return
+  if (!hasTmux) return
+
+  const { steps, renderAfterStep } = sequence
+  const shouldGateRender = typeof renderAfterStep === 'number' && renderAfterStep >= 0
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i]
+
+    try {
+      switch (step.type) {
+        case 'command':
+          // Use -l for literal text to avoid shell interpretation issues
+          execSync(
+            `tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(step.value)}`,
+            { stdio: 'ignore' }
+          )
+          execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+          break
+
+        case 'keystroke': {
+          const keyMap = { '{enter}': 'Enter', '{tab}': 'Tab', '{escape}': 'Escape', '{space}': 'Space' }
+          const key = keyMap[step.value] || step.value
+          execSync(`tmux send-keys -t "${tmuxName}" ${key}`, { stdio: 'ignore' })
+          break
+        }
+
+        case 'wait':
+          if (step.until === 'ready' || step.until === 'output') {
+            const timeout = step.timeout || 10000
+            const start = Date.now()
+            const match = step.match || null
+            while (Date.now() - start < timeout) {
+              await new Promise(r => setTimeout(r, 500))
+              if (match) {
+                try {
+                  const capture = execSync(
+                    `tmux capture-pane -t "${tmuxName}" -p`,
+                    { encoding: 'utf8', timeout: 2000 }
+                  )
+                  if (capture.includes(match)) break
+                } catch { /* continue waiting */ }
+              }
+            }
+          } else {
+            await new Promise(r => setTimeout(r, step.ms || 1000))
+          }
+          break
+
+        case 'tmux':
+          execSync(`tmux ${step.value}`, { stdio: 'ignore' })
+          break
+
+        default:
+          console.warn(`[storyboard] Unknown startup step type: ${step.type}`)
+      }
+    } catch (err) {
+      console.warn(`[storyboard] Startup sequence step ${i} (${step.type}) failed:`, err.message)
+      // Non-fatal — continue to next step
+    }
+
+    // Send render signal after the specified step
+    if (shouldGateRender && i === renderAfterStep) {
+      sendJson(ws, { type: 'render' })
+    }
+  }
+
+  // If renderAfterStep was beyond all steps, send it now
+  if (shouldGateRender && renderAfterStep >= steps.length) {
+    sendJson(ws, { type: 'render' })
   }
 }
 

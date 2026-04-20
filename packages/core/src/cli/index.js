@@ -53,6 +53,10 @@ function helpScreen(version) {
     `  ${bold(cyan('Development'))}`,
     cmd('dev', 'Start Vite dev server + update proxy'),
     cmd('dev [branch]', 'Start dev for a specific worktree/branch'),
+    cmd('server list', 'List running dev servers'),
+    cmd('server start [wt]', 'Start dev server for a worktree'),
+    cmd('server stop <wt|ID>', 'Stop a dev server'),
+    cmd('server stop-proxy', 'Stop Caddy proxy (no sudo)'),
     cmd('code [branch]', 'Open a worktree in VS Code'),
     cmd('exit', 'Stop all dev servers and proxy'),
     '',
@@ -66,6 +70,7 @@ function helpScreen(version) {
     `  ${bold(cyan('Canvas'))}`,
     cmd('canvas add <type>', 'Add widget to a canvas'),
     `                              ${dim('types: sticky-note, markdown, prototype')}`,
+    cmd('canvas update <id>', 'Update a widget\'s props or position'),
     cmd('canvas read [name]', 'Read canvas state and list widgets'),
     cmd('compact [name]', 'Compact canvas JSONL files (removes bloat)'),
     cmd('compact --all', 'Force compact all canvases'),
@@ -117,6 +122,8 @@ switch (command) {
   case 'canvas':
     if (process.argv[3] === 'add') {
       import('./canvasAdd.js')
+    } else if (process.argv[3] === 'update') {
+      import('./canvasUpdate.js')
     } else if (process.argv[3] === 'read' || !process.argv[3]) {
       import('./canvasRead.js')
     } else if (process.argv[3] === 'bounds') {
@@ -155,6 +162,9 @@ switch (command) {
     break
   case 'server':
     import('./server.js')
+    break
+  case 'agent':
+    import('./agent.js')
     break
   case 'code':
     import('./code.js')

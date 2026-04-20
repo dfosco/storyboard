@@ -33,7 +33,8 @@
     "terminal": {
       "fontSize": 13,
       "fontFamily": "'Ghostty', 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
-      "prompt": "❯ "
+      "prompt": "❯ ",
+      "defaultStartupSequence": null
     }
   },
   "customerMode": {

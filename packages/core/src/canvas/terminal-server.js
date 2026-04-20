@@ -212,6 +212,21 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
   // Register in registry, check for conflicts
   const { entry, conflict } = registerSession({ branch, canvasId, widgetId, prettyName })
 
+  // Resolve server URL deterministically:
+  // 1. Use the actual port from httpServer (set at setup time)
+  // 2. Fall back to server registry (tracks running dev servers)
+  // 3. Last resort: default port 1234
+  let serverPort = actualServerPort
+  if (!serverPort) {
+    try {
+      const name = detectWorktreeName()
+      const servers = findByWorktree(name)
+      if (servers.length > 0) serverPort = servers[0].port
+    } catch {}
+  }
+  if (!serverPort) serverPort = 1234
+  const serverUrl = `http://localhost:${serverPort}`
+
   // Write terminal config for agent context
   writeTermConfig({ branch, canvasId, widgetId, serverUrl })
 
@@ -241,21 +256,6 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
     writeFileSync(join(zdotdir, '.zshenv'), '')
     writeFileSync(join(zdotdir, '.zshrc'), `export PS1='${prompt.replace(/'/g, "'\\''")}'\nunset RPS1\n`)
   } catch { /* best effort */ }
-
-  // Resolve server URL deterministically:
-  // 1. Use the actual port from httpServer (set at setup time)
-  // 2. Fall back to server registry (tracks running dev servers)
-  // 3. Last resort: default port 1234
-  let serverPort = actualServerPort
-  if (!serverPort) {
-    try {
-      const name = detectWorktreeName()
-      const servers = findByWorktree(name)
-      if (servers.length > 0) serverPort = servers[0].port
-    } catch {}
-  }
-  if (!serverPort) serverPort = 1234
-  const serverUrl = `http://localhost:${serverPort}`
 
   const env = {
     ...process.env,

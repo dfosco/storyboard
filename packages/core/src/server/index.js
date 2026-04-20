@@ -19,6 +19,7 @@ import { resolve, join, dirname } from 'node:path'
 import { getPort, portsFilePath, repoRoot, worktreeDir, listWorktrees } from '../worktree/port.js'
 import { generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, reloadCaddy, readDevDomain } from '../cli/proxy.js'
 import { compactAll } from '../canvas/compact.js'
+import { register, unregister, generateId } from '../worktree/serverRegistry.js'
 
 const SERVER_PORT_BASE = 4100
 
@@ -117,8 +118,11 @@ function spawnVite(branch) {
         stdio: ['ignore', 'pipe', 'pipe'],
       })
 
-  const entry = { child, port, status: 'starting', cwd, branch }
+  const entry = { child, port, status: 'starting', cwd, branch, serverId: generateId() }
   processes.set(branch, entry)
+
+  // Register in persistent server registry
+  register({ id: entry.serverId, worktree: branch, pid: child.pid, port, background: true })
 
   // Detect ready state from stdout
   child.stdout.on('data', (data) => {
@@ -138,6 +142,7 @@ function spawnVite(branch) {
   child.on('exit', (code) => {
     entry.status = 'stopped'
     processes.delete(branch)
+    unregister(entry.serverId)
   })
 
   return entry

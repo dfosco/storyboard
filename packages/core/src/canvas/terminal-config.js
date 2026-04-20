@@ -15,7 +15,8 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, symlink
 import { join, dirname } from 'node:path'
 import { createHash } from 'node:crypto'
 import { execSync } from 'node:child_process'
-import { getPort, detectWorktreeName } from '../worktree/port.js'
+import { findByWorktree } from '../worktree/serverRegistry.js'
+import { detectWorktreeName } from '../worktree/port.js'
 
 const TERMINALS_DIR = '.storyboard/terminals'
 
@@ -70,7 +71,7 @@ function atomicWrite(filePath, data) {
  * Write or update a terminal config file.
  * Called when a terminal widget is created or reconnected.
  */
-export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = null }) {
+export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = null, serverUrl = null }) {
   const fp = configPath(branch, canvasId, widgetId)
   const dir = dirname(fp)
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
@@ -82,9 +83,16 @@ export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = n
 
   const worktree = getWorktreeName()
   const devDomain = readDevDomain()
-  let serverPort = 1234
-  try { serverPort = getPort(detectWorktreeName()) } catch {}
-  const serverUrl = `http://localhost:${serverPort}`
+
+  // Resolve server URL: use passed value, or query server registry, or default
+  if (!serverUrl) {
+    try {
+      const name = detectWorktreeName()
+      const servers = findByWorktree(name)
+      if (servers.length > 0) serverUrl = `http://localhost:${servers[0].port}`
+    } catch {}
+  }
+  if (!serverUrl) serverUrl = 'http://localhost:1234'
 
   const config = {
     ...existing,

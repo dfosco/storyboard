@@ -46,7 +46,8 @@ import {
   writeTerminalConfig as writeTermConfig,
   initTerminalConfig,
 } from './terminal-config.js'
-import { getPort, detectWorktreeName } from '../worktree/port.js'
+import { findByWorktree } from '../worktree/serverRegistry.js'
+import { detectWorktreeName } from '../worktree/port.js'
 
 let pty
 try {
@@ -85,6 +86,9 @@ const wsConnections = new Map()
 
 /** Branch name for this worktree, set during setup */
 let currentBranch = 'unknown'
+
+/** Actual server port, resolved from httpServer at setup time */
+let actualServerPort = null
 
 /** Check if a tmux session with the given name exists */
 function tmuxSessionExists(name) {
@@ -151,6 +155,12 @@ export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') 
 
   currentBranch = branch
 
+  // Capture the actual port from the running HTTP server
+  try {
+    const addr = httpServer.address()
+    if (addr && addr.port) actualServerPort = addr.port
+  } catch {}
+
   // Initialize registry and terminal config
   const root = process.cwd()
   const termCfg = readTerminalConfig()
@@ -197,7 +207,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
   const { entry, conflict } = registerSession({ branch, canvasId, widgetId, prettyName })
 
   // Write terminal config for agent context
-  writeTermConfig({ branch, canvasId, widgetId })
+  writeTermConfig({ branch, canvasId, widgetId, serverUrl })
 
   // Close any existing WS for this session (one viewer at a time)
   const existingWs = wsConnections.get(tmuxName)
@@ -226,9 +236,19 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
     writeFileSync(join(zdotdir, '.zshrc'), `export PS1='${prompt.replace(/'/g, "'\\''")}'\nunset RPS1\n`)
   } catch { /* best effort */ }
 
-  // Derive server URL for agents to call back
-  let serverPort = '1234'
-  try { serverPort = String(getPort(detectWorktreeName())) } catch {}
+  // Resolve server URL deterministically:
+  // 1. Use the actual port from httpServer (set at setup time)
+  // 2. Fall back to server registry (tracks running dev servers)
+  // 3. Last resort: default port 1234
+  let serverPort = actualServerPort
+  if (!serverPort) {
+    try {
+      const name = detectWorktreeName()
+      const servers = findByWorktree(name)
+      if (servers.length > 0) serverPort = servers[0].port
+    } catch {}
+  }
+  if (!serverPort) serverPort = 1234
   const serverUrl = `http://localhost:${serverPort}`
 
   const env = {

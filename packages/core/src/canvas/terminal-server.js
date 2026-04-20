@@ -308,10 +308,12 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
           setTimeout(() => {
             ptyProcess.write(`copilot --agent terminal-agent\r`)
           }, 300)
-          // Wait for copilot to fully load before sending /autopilot
-          // Copilot needs ~5s to load environment, MCP servers, skills, agents
+          // Wait for copilot to fully load, then pre-type /autopilot WITHOUT submitting
+          // Use tmux send-keys -l to insert text literally, no Enter
           setTimeout(() => {
-            ptyProcess.write(`/autopilot\r`)
+            try {
+              execSync(`tmux send-keys -t "${tmuxName}" -l "/autopilot"`, { stdio: 'ignore' })
+            } catch {}
           }, 6000)
         }, 2000)
       }

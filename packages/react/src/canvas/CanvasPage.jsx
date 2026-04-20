@@ -802,21 +802,51 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       y: (scrollEl.scrollTop + clientY - rect.top) / scale,
     })
 
-    // Find nearest anchor on any other widget within snap distance
-    const SNAP_DIST = 40
+    // Find nearest anchor on any other widget within a rectangular snap zone.
+    // Each anchor has a 30px-wide strip (15px each side) extending from the widget edge.
+    const SNAP_EXTEND = 15
+    const SNAP_DEPTH = 40
     const sourceType = startWidget.type
     const findNearestAnchor = (canvasPt) => {
       const currentWidgets = stateRef.current.widgets ?? []
       let best = null
-      let bestDist = SNAP_DIST
+      let bestDist = Infinity
       for (const w of currentWidgets) {
         if (w.id === widgetId) continue
-        // Check if this widget type accepts connections from the source type
         if (!canAcceptConnection(w.type, sourceType)) continue
+
+        let ww, wh
+        const el = document.getElementById(w.id)
+        if (el) {
+          const inner = el.querySelector('[data-widget-id]') || el.firstElementChild
+          if (inner) { ww = inner.offsetWidth; wh = inner.offsetHeight }
+        }
+        if (!ww) ww = w.props?.width ?? w.bounds?.width ?? 270
+        if (!wh) wh = w.props?.height ?? w.bounds?.height ?? 170
+        const wx = w.position?.x ?? 0
+        const wy = w.position?.y ?? 0
+
         for (const anch of ['top', 'bottom', 'left', 'right']) {
-          // Skip unavailable or disabled anchors
           const anchorState = getAnchorState(w.type, anch)
           if (anchorState !== 'available') continue
+
+          // Build a rectangular hit zone for this anchor
+          let inZone = false
+          if (anch === 'top') {
+            inZone = canvasPt.x >= wx - SNAP_EXTEND && canvasPt.x <= wx + ww + SNAP_EXTEND &&
+                     canvasPt.y >= wy - SNAP_DEPTH && canvasPt.y <= wy + SNAP_EXTEND
+          } else if (anch === 'bottom') {
+            inZone = canvasPt.x >= wx - SNAP_EXTEND && canvasPt.x <= wx + ww + SNAP_EXTEND &&
+                     canvasPt.y >= wy + wh - SNAP_EXTEND && canvasPt.y <= wy + wh + SNAP_DEPTH
+          } else if (anch === 'left') {
+            inZone = canvasPt.x >= wx - SNAP_DEPTH && canvasPt.x <= wx + SNAP_EXTEND &&
+                     canvasPt.y >= wy - SNAP_EXTEND && canvasPt.y <= wy + wh + SNAP_EXTEND
+          } else if (anch === 'right') {
+            inZone = canvasPt.x >= wx + ww - SNAP_EXTEND && canvasPt.x <= wx + ww + SNAP_DEPTH &&
+                     canvasPt.y >= wy - SNAP_EXTEND && canvasPt.y <= wy + wh + SNAP_EXTEND
+          }
+          if (!inZone) continue
+
           const pt = computeAnchorPt(w, anch)
           const dist = Math.hypot(pt.x - canvasPt.x, pt.y - canvasPt.y)
           if (dist < bestDist) {

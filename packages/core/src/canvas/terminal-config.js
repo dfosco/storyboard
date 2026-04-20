@@ -14,6 +14,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { createHash } from 'node:crypto'
+import { execSync } from 'node:child_process'
 
 const TERMINALS_DIR = '.storyboard/terminals'
 
@@ -26,6 +27,24 @@ export function initTerminalConfig(root) {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true })
   }
+}
+
+/** Read storyboard.config.json for devDomain */
+function readDevDomain() {
+  try {
+    const raw = readFileSync(join(rootDir, 'storyboard.config.json'), 'utf8')
+    return JSON.parse(raw).devDomain || 'storyboard'
+  } catch { return 'storyboard' }
+}
+
+/** Detect worktree name */
+function getWorktreeName() {
+  try {
+    // Check if we're in a .worktrees/ directory
+    const cwd = rootDir
+    const match = cwd.match(/\.worktrees\/([^/]+)/)
+    return match ? match[1] : 'main'
+  } catch { return 'main' }
 }
 
 /** Generate a stable filename from branch + canvasId + widgetId */
@@ -60,14 +79,20 @@ export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = n
     existing = JSON.parse(readFileSync(fp, 'utf8'))
   } catch { /* new file */ }
 
+  const worktree = getWorktreeName()
+  const devDomain = readDevDomain()
+
   const config = {
     ...existing,
     widgetId,
     canvasId,
     canvasFile: canvasFile || existing.canvasFile || null,
     branch,
+    worktree,
+    devDomain,
+    workingDirectory: rootDir,
     deleted: false,
-    connectedWidgetIds: existing.connectedWidgetIds || [],
+    connectedWidgets: existing.connectedWidgets || [],
     agentStatus: existing.agentStatus || null,
     updatedAt: new Date().toISOString(),
   }
@@ -77,18 +102,19 @@ export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = n
 }
 
 /**
- * Update connected widget IDs for a terminal.
+ * Update connected widgets for a terminal.
  * Called when connectors are added/removed.
- * Only stores widget IDs — full data resolved at read time.
+ * Stores full widget objects (id, type, props, position) so agents
+ * can read context directly without additional API calls.
  */
-export function updateTerminalConnections({ branch, canvasId, widgetId, connectedWidgetIds }) {
+export function updateTerminalConnections({ branch, canvasId, widgetId, connectedWidgets }) {
   const fp = configPath(branch, canvasId, widgetId)
   let config = {}
   try {
     config = JSON.parse(readFileSync(fp, 'utf8'))
   } catch { /* file may not exist yet */ }
 
-  config.connectedWidgetIds = connectedWidgetIds
+  config.connectedWidgets = connectedWidgets || []
   config.updatedAt = new Date().toISOString()
 
   atomicWrite(fp, config)
@@ -124,27 +150,13 @@ export function unmarkTerminalDeleted({ branch, canvasId, widgetId }) {
 }
 
 /**
- * Read a terminal config, optionally resolving connected widget data
- * from the materialized canvas state.
- *
- * @param {object} opts
- * @param {function} [opts.resolveWidgets] — fn(canvasName, widgetIds) => widget objects
+ * Read a terminal config. Connected widgets are already inline —
+ * no additional resolution needed.
  */
-export function readTerminalConfig({ branch, canvasId, widgetId, resolveWidgets = null }) {
+export function readTerminalConfig({ branch, canvasId, widgetId }) {
   const fp = configPath(branch, canvasId, widgetId)
   try {
-    const config = JSON.parse(readFileSync(fp, 'utf8'))
-
-    // Resolve full widget data if resolver provided
-    if (resolveWidgets && config.connectedWidgetIds?.length > 0) {
-      try {
-        config.connectedWidgets = resolveWidgets(canvasId, config.connectedWidgetIds)
-      } catch {
-        config.connectedWidgets = []
-      }
-    }
-
-    return config
+    return JSON.parse(readFileSync(fp, 'utf8'))
   } catch {
     return null
   }

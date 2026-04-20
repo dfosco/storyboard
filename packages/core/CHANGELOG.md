@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 4.2.0-alpha.13
+
+### Patch Changes
+
+-   Enable mouse scrolling in terminal tmux sessions
+
 ## 4.2.0-alpha.12
 
 ### Minor Changes

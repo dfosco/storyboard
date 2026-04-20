@@ -14,10 +14,16 @@ const terminalSchema = schemas['terminal']
 let ghosttyPromise = null
 function loadGhostty() {
   if (!ghosttyPromise) {
-    ghosttyPromise = import('ghostty-web').then(async (mod) => {
-      if (mod.init) await mod.init()
-      return mod
-    })
+    ghosttyPromise = import(/* @vite-ignore */ 'ghostty-web')
+      .then(async (mod) => {
+        if (mod.init) await mod.init()
+        return mod
+      })
+      .catch((err) => {
+        ghosttyPromise = null
+        console.warn('[TerminalWidget] ghostty-web not available:', err.message)
+        return null
+      })
   }
   return ghosttyPromise
 }
@@ -102,7 +108,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
     async function setup() {
       try {
         const ghostty = await loadGhostty()
-        if (disposed) return
+        if (disposed || !ghostty) return
 
         const dims = calcDimensions(width, height)
         const cfg = getTerminalConfig()

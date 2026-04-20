@@ -1619,6 +1619,7 @@ export function Default() {
         try {
           execSync(`tmux new-session -d -s "${tmuxName}" -c "${root}"`, { stdio: 'ignore' })
           execSync(`tmux set-option -t "${tmuxName}" status off`, { stdio: 'ignore' })
+          execSync(`tmux set-option -t "${tmuxName}" mouse on`, { stdio: 'ignore' })
         } catch (err) {
           // Session may already exist
           console.warn(`[storyboard] tmux session create:`, err.message)

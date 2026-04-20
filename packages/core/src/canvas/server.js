@@ -1533,8 +1533,8 @@ export function Default() {
         // Launch copilot in autopilot mode
         // Use send-keys -l for safe literal input
         const copilotCmd = autopilot
-          ? `copilot -p "${prompt.replace(/"/g, '\\"')}"`
-          : `copilot`
+          ? `copilot --allow-all -p "${prompt.replace(/"/g, '\\"')}"`
+          : `copilot --allow-all`
         setTimeout(() => {
           try {
             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })

@@ -1542,13 +1542,25 @@ export function Default() {
           } catch (err) {
             console.warn(`[storyboard] Failed to launch copilot:`, err.message)
           }
-          // Pre-type /autopilot once copilot prompt is ready
-          setTimeout(() => {
+          // Poll for copilot readiness, then send /autopilot + Enter once
+          let sent = false
+          const poll = setInterval(() => {
+            if (sent) { clearInterval(poll); return }
             try {
-              execSync(`tmux send-keys -t "${tmuxName}" -l "/autopilot "`, { stdio: 'ignore' })
-              execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+              const pane = execSync(`tmux capture-pane -t "${tmuxName}" -p`, { encoding: 'utf8', timeout: 1000 })
+              if (pane.includes('Environment loaded:')) {
+                sent = true
+                clearInterval(poll)
+                setTimeout(() => {
+                  try {
+                    execSync(`tmux send-keys -t "${tmuxName}" -l "/autopilot "`, { stdio: 'ignore' })
+                    execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+                  } catch {}
+                }, 500)
+              }
             } catch {}
-          }, 3000)
+          }, 1000)
+          setTimeout(() => { if (!sent) { sent = true; clearInterval(poll) } }, 15000)
         }, 500)
 
         // Set up idle timeout (5 minutes)

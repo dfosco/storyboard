@@ -1,5 +1,15 @@
 # @dfosco/storyboard-core
 
+## 4.2.0-beta.3
+
+### Patch Changes
+
+-   Fix ghostty-web import crash for consumers without the package
+
+    -   Add @vite-ignore to dynamic import to prevent Vite pre-transform errors
+    -   Catch import failures gracefully instead of crashing
+    -   Declare ghostty-web as optional peerDependency
+
 ## 4.2.0-beta.2
 
 ### Patch Changes

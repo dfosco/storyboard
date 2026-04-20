@@ -14,7 +14,7 @@ const terminalSchema = schemas['terminal']
 let ghosttyPromise = null
 function loadGhostty() {
   if (!ghosttyPromise) {
-    ghosttyPromise = import(/* @vite-ignore */ 'ghostty-web')
+    ghosttyPromise = import('ghostty-web')
       .then(async (mod) => {
         if (mod.init) await mod.init()
         return mod

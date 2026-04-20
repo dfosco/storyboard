@@ -222,6 +222,15 @@ export function startCaddy(caddyfilePath) {
   }
 }
 
+export function stopCaddy() {
+  try {
+    execSync('curl -sf -X POST http://localhost:2019/stop', { timeout: 5000, stdio: 'ignore' })
+    return true
+  } catch {
+    return false
+  }
+}
+
 // When run directly as `storyboard proxy` (not imported by setup.js)
 const isDirectRun = process.argv[2] === 'proxy'
 if (isDirectRun) {

@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback, useState } from 'react'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
 import { getTerminalConfig } from '@dfosco/storyboard-core'
+import { getInteractGate } from './widgetConfig.js'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './TerminalWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
@@ -77,6 +78,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const width = readProp(props, 'width', terminalSchema)
   const height = readProp(props, 'height', terminalSchema)
   const prettyName = props?.prettyName || null
+  const interactGate = getInteractGate('terminal')
 
   const containerRef = useRef(null)
   const termRef = useRef(null)
@@ -245,7 +247,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   }, [])
 
   // Show interact gate when session is ready but not interacting
-  const showInteractGate = ready && !sessionEnded && !interacting
+  const showInteractGate = ready && !sessionEnded && !interacting && interactGate.enabled
 
   const titleLabel = `terminal · ${prettyName || '...'}`
 
@@ -272,9 +274,9 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
             className={overlayStyles.interactOverlay}
             role="button"
             tabIndex={0}
-            aria-label="Click to start terminal"
+            aria-label={interactGate.label}
           >
-            <span className={overlayStyles.interactHint}>Click to start terminal</span>
+            <span className={overlayStyles.interactHint}>{interactGate.label}</span>
           </div>
         )}
         {sessionEnded && (

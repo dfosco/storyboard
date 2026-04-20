@@ -228,22 +228,29 @@ export function createCanvasHandler(ctx) {
       } catch {}
 
       const widgets = canvasData.widgets || []
+      const widgetMap = new Map(widgets.map(w => [w.id, w]))
       const terminalWidgets = widgets.filter((w) => w.type === 'terminal')
 
       for (const tw of terminalWidgets) {
-        const connected = new Set()
+        const connectedIds = new Set()
         for (const conn of connectors) {
-          if (conn.start?.widgetId === tw.id) connected.add(conn.end?.widgetId)
-          if (conn.end?.widgetId === tw.id) connected.add(conn.start?.widgetId)
+          if (conn.start?.widgetId === tw.id) connectedIds.add(conn.end?.widgetId)
+          if (conn.end?.widgetId === tw.id) connectedIds.add(conn.start?.widgetId)
         }
-        connected.delete(undefined)
-        connected.delete(null)
+        connectedIds.delete(undefined)
+        connectedIds.delete(null)
+
+        // Resolve full widget objects for connected widgets
+        const connectedWidgets = [...connectedIds]
+          .map(id => widgetMap.get(id))
+          .filter(Boolean)
+          .map(w => ({ id: w.id, type: w.type, props: w.props, position: w.position }))
 
         updateTerminalConnections({
           branch,
           canvasId: canvasName,
           widgetId: tw.id,
-          connectedWidgetIds: [...connected],
+          connectedWidgets,
         })
       }
     } catch (err) {

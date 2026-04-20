@@ -14,56 +14,61 @@ Before processing ANY user prompt, read the terminal config file for this sessio
 
 ## Step 1: Read terminal config
 
-The config file is in `.storyboard/terminals/`. Find it using:
+Find your config file:
 ```bash
-ls .storyboard/terminals/*.json
+cat .storyboard/terminals/*.json
 ```
 
-Or use environment variables to identify your session:
-- `$STORYBOARD_WIDGET_ID` — your terminal widget ID
-- `$STORYBOARD_CANVAS_ID` — the canvas you're on
-- `$STORYBOARD_BRANCH` — the current git branch
-- `$STORYBOARD_SERVER_URL` — the dev server base URL
+The config file contains everything you need — no additional API calls required:
 
-## Step 2: Resolve connected widgets
-
-The config file's `connectedWidgetIds` array lists widgets explicitly connected to this terminal via canvas connectors. These are your HIGHEST PRIORITY context.
-
-To get full widget data, read the canvas:
-```bash
-npx storyboard canvas read {canvasId} --json
+```json
+{
+  "widgetId": "terminal-abc123",
+  "canvasId": "storyboarding/my-canvas",
+  "branch": "4.2.0--terminal-agents",
+  "worktree": "4.2.0--terminal-agents",
+  "devDomain": "storyboard-core",
+  "workingDirectory": "/path/to/worktree",
+  "connectedWidgets": [
+    {
+      "id": "sticky-def456",
+      "type": "sticky-note",
+      "props": { "text": "Build a login form", "color": "yellow" }
+    },
+    {
+      "id": "markdown-ghi789",
+      "type": "markdown",
+      "props": { "content": "# Requirements\n- Email + password\n- OAuth support" }
+    }
+  ]
+}
 ```
 
-Then filter for your connected widget IDs.
+## Step 2: Use connected widget context
 
-### Widget type operations:
-- **image**: Load the image file at `assets/canvas/images/{props.src}` for visual context
-- **sticky-note**: Read `props.text` — these are instructions, notes, or requirements
-- **markdown**: Read `props.content` — documentation, specs, or prose
-- **story**: The story source is a component to review, edit, or iterate on
-- **prototype**: Reference the prototype at `src/prototypes/{path}` — UI context
-- **link-preview**: Read `props.url` — external reference to fetch/summarize
+The `connectedWidgets` array contains the FULL props of every widget connected to this terminal. This is your highest priority context:
 
-## Step 3: Use context
+- **sticky-note**: `props.text` — instructions, notes, or requirements
+- **markdown**: `props.content` — documentation, specs, or prose
+- **image**: `props.src` — image filename at `assets/canvas/images/{props.src}`
+- **story**: `props.storyId` + `props.exportName` — component to work with
+- **link-preview**: `props.url` — external reference
+- **prototype**: `props.src` — prototype path
 
-- Connected sticky notes and markdown are likely instructions or requirements
-- Connected images are likely designs, screenshots, or references
-- Connected stories/components are likely code to modify or iterate on
-- The user's prompt should be interpreted in light of these connected widgets
+Interpret the user's prompt in light of these connected widgets.
 
-## Step 4: Signal completion
+## Step 3: Signal completion
 
-When your task is complete, signal the canvas:
+When your task is complete:
 ```bash
-npx storyboard agent signal --status done --message "Brief summary of what was done"
+npx storyboard agent signal --status done --message "Brief summary"
 ```
 
 On failure:
 ```bash
-npx storyboard agent signal --status error --message "Description of what went wrong"
+npx storyboard agent signal --status error --message "What went wrong"
 ```
 
 **IMPORTANT:**
-- Always call the signal command when done — the canvas widget is waiting for it
-- NEVER write directly to `.canvas.jsonl` files — use the canvas CLI or server API instead
-- Use `$STORYBOARD_SERVER_URL` for all API calls to the dev server
+- NEVER write directly to `.canvas.jsonl` files — use the canvas CLI or server API
+- Environment variables `$STORYBOARD_WIDGET_ID`, `$STORYBOARD_CANVAS_ID`, `$STORYBOARD_BRANCH`, `$STORYBOARD_SERVER_URL` are available in the shell

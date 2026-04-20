@@ -10,6 +10,7 @@
  */
 import { forwardRef, useImperativeHandle, useRef, useCallback, useState, useEffect, useMemo } from 'react'
 import { getStoryData } from '@dfosco/storyboard-core'
+import { useEmbedsPaused } from './useEmbedsPaused.js'
 import { createInspectorHighlighter } from '@dfosco/storyboard-core/inspector/highlighter'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
@@ -65,6 +66,8 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const [highlightedHtml, setHighlightedHtml] = useState(null)
   const [sourceLoading, setSourceLoading] = useState(false)
   const [storyIndexKey, setStoryIndexKey] = useState(0)
+  const embedsPaused = useEmbedsPaused()
+  const frozenSrcRef = useRef(null)
 
   // Re-resolve story URL when the story index is live-patched
   useEffect(() => {
@@ -171,10 +174,21 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     [storyId, exportName, storyIndexKey],
   )
 
+  // When paused and not interactive, freeze the iframe src to prevent reloads
+  const effectiveSrc = (() => {
+    if (!embedsPaused || interactive) {
+      frozenSrcRef.current = iframeSrc
+      return iframeSrc
+    }
+    // Paused & not interactive — use frozen src (or current if first time)
+    if (frozenSrcRef.current == null) frozenSrcRef.current = iframeSrc
+    return frozenSrcRef.current
+  })()
+
   useIframeDevLogs({
     widget: 'StoryWidget',
-    loaded: interactive && !showCode && Boolean(iframeSrc),
-    src: iframeSrc,
+    loaded: interactive && !showCode && Boolean(effectiveSrc),
+    src: effectiveSrc,
   })
 
   const displayName = exportName ? `${storyId} / ${exportName}` : storyId
@@ -192,7 +206,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     )
   }
 
-  if (!iframeSrc) {
+  if (!effectiveSrc) {
     return (
       <WidgetWrapper>
         <div className={styles.container} ref={containerRef}>
@@ -212,7 +226,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   return (
     <WidgetWrapper>
       <div ref={containerRef} className={styles.container} style={sizeStyle}>
-        <div className={styles.header}>
+        <div className={`${styles.header}${embedsPaused && !interactive ? ` ${styles.headerPaused}` : ''}`}>
           <span className={styles.headerIcon}><ComponentIcon size={16} /></span>
           <span className={styles.headerTitle}>{displayName}</span>
         </div>
@@ -241,7 +255,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
             <div className={styles.content}>
               <iframe
                 ref={iframeRef}
-                src={iframeSrc}
+                src={effectiveSrc}
                 className={styles.iframe}
                 title={displayName}
               />

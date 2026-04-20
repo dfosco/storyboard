@@ -215,6 +215,14 @@
       "modes": ["*"],
       "prod": true,
       "inlineAction": "toggle-chrome"
+    },
+    "pause-embeds": {
+      "label": "Pause embed refreshes",
+      "render": "submenu",
+      "surface": "command-list",
+      "handler": "core:pause-embeds",
+      "modes": ["*"],
+      "hideInCommandPalette": ["^(?!/canvas)"]
     }
   }
 }

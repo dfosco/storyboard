@@ -461,7 +461,8 @@ export default function WidgetChrome({
   const [interacting, setInteracting] = useState(false)
   const slotRef = useRef(null)
 
-  // Exit interact mode on click outside or deselect
+  // Exit interact mode on click outside or double-Escape
+  const lastEscapeRef = useRef(0)
   useEffect(() => {
     if (!gate.enabled || !interacting) return
     const handleMouseDown = (e) => {
@@ -471,7 +472,15 @@ export default function WidgetChrome({
     }
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        setInteracting(false)
+        const now = Date.now()
+        if (now - lastEscapeRef.current < 500) {
+          // Double-Escape: exit interact mode
+          setInteracting(false)
+          lastEscapeRef.current = 0
+        } else {
+          // First Escape: let it pass to widget, record timestamp
+          lastEscapeRef.current = now
+        }
       }
     }
     document.addEventListener('mousedown', handleMouseDown, true)

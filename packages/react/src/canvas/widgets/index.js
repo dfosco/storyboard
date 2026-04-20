@@ -7,6 +7,7 @@ import FigmaEmbed from './FigmaEmbed.jsx'
 import CodePenEmbed from './CodePenEmbed.jsx'
 import StoryWidget from './StoryWidget.jsx'
 import TerminalWidget from './TerminalWidget.jsx'
+import ActionWidget from './ActionWidget.jsx'
 
 /**
  * Maps widget type strings to their React components.
@@ -22,6 +23,7 @@ export const widgetRegistry = {
   'codepen-embed': CodePenEmbed,
   'story': StoryWidget,
   'terminal': TerminalWidget,
+  'action': ActionWidget,
 }
 
 /**

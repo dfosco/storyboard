@@ -1586,23 +1586,23 @@ export function Default() {
           console.warn(`[storyboard] tmux session create:`, err.message)
         }
 
-        // Set environment variables inside the tmux session
-        const envVars = [
-          `STORYBOARD_WIDGET_ID=${widgetId}`,
-          `STORYBOARD_CANVAS_ID=${canvasId}`,
-          `STORYBOARD_BRANCH=${branch}`,
-          `STORYBOARD_SERVER_URL=${serverUrl}`,
-        ]
-        for (const envVar of envVars) {
-          execSync(`tmux send-keys -t "${tmuxName}" -l "export ${envVar}"`, { stdio: 'ignore' })
-          execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+        // Set environment variables at tmux session level (inherited by all panes)
+        const envMap = {
+          STORYBOARD_WIDGET_ID: widgetId,
+          STORYBOARD_CANVAS_ID: canvasId,
+          STORYBOARD_BRANCH: branch,
+          STORYBOARD_SERVER_URL: serverUrl,
+        }
+        for (const [key, val] of Object.entries(envMap)) {
+          execSync(`tmux setenv -t "${tmuxName}" ${key} "${val}"`, { stdio: 'ignore' })
         }
 
-        // Launch copilot in autopilot mode
-        // Use send-keys -l for safe literal input
-        const copilotCmd = autopilot
+        // Launch copilot with env vars inline so the process inherits them immediately
+        const envPrefix = Object.entries(envMap).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')
+        const copilotBase = autopilot
           ? `copilot -p "${prompt.replace(/"/g, '\\"')}"`
           : `copilot`
+        const copilotCmd = `${envPrefix} ${copilotBase}`
         setTimeout(() => {
           try {
             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })

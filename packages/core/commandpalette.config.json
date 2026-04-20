@@ -10,7 +10,7 @@
         { "id": "viewfinder", "label": "Homepage" },
         { "id": "theme", "label": "Switch Theme" },
         { "id": "hide-toolbars", "label": "Hide Toolbars" },
-        { "id": "pause-embeds", "label": "Pause Embed Refreshes" }
+        { "id": "pause-embeds", "label": "Performance Mode" }
       ]
     },
     { "id": "sep0", "items": [] },

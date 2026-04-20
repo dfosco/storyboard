@@ -6,7 +6,7 @@ import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
-import { useEmbedsPaused } from './useEmbedsPaused.js'
+import { useEmbedActive } from './useEmbedController.jsx'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -68,8 +68,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const [expanded, setExpanded] = useState(false)
   const [filter, setFilter] = useState('')
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
-  const embedsPaused = useEmbedsPaused()
-  const frozenSrcRef = useRef(null)
+  const { active: embedActive, activate: activateEmbed, performanceMode, tooMany } = useEmbedActive(widgetId, embedRef)
   const inputRef = useRef(null)
   const filterRef = useRef(null)
   const embedRef = useRef(null)
@@ -87,15 +86,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     return `${base}${sep}_sb_embed&_sb_hide_branch_bar&_sb_theme_target=prototype&_sb_canvas_theme=${canvasTheme}${hash}`
   }, [rawSrc, canvasTheme])
 
-  // When paused and not interactive, freeze the iframe src to prevent reloads
-  const effectiveSrc = (() => {
-    if (!embedsPaused || interactive) {
-      frozenSrcRef.current = iframeSrc
-      return iframeSrc
-    }
-    if (frozenSrcRef.current == null) frozenSrcRef.current = iframeSrc
-    return frozenSrcRef.current
-  })()
+  const inactive = !embedActive
 
   const prototypeIndex = useMemo(() => {
     try { return buildPrototypeIndex() }
@@ -166,8 +157,8 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
   useIframeDevLogs({
     widget: 'PrototypeEmbed',
-    loaded: Boolean(effectiveSrc && interactive),
-    src: effectiveSrc,
+    loaded: Boolean(iframeSrc && interactive),
+    src: iframeSrc,
   })
 
   useEffect(() => {
@@ -308,7 +299,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
         className={styles.embed}
         style={{ width, height, ...chromeVars }}
       >
-        <div className={`${styles.header}${embedsPaused && !interactive ? ` ${styles.headerPaused}` : ''}`}>
+        <div className={`${styles.header}${inactive ? ` ${styles.headerPaused}` : ''}`}>
           <span className={styles.headerIcon}><CollageFrameIcon size={16} /></span>
           <span className={styles.headerTitle}>{prototypeTitle}</span>
         </div>
@@ -366,6 +357,17 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
               </div>
             </form>
           </div>
+        ) : iframeSrc && inactive ? (
+          <div
+            className={overlayStyles.interactOverlay}
+            onClick={() => { activateEmbed(); enterInteractive() }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter') { activateEmbed(); enterInteractive() } }}
+            aria-label="Click to refresh"
+          >
+            <span className={overlayStyles.interactHint}>Click to refresh</span>
+          </div>
         ) : iframeSrc ? (
           <>
             <div
@@ -375,7 +377,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
             >
               <iframe
                 ref={iframeRef}
-                src={effectiveSrc}
+                src={iframeSrc}
                 className={styles.iframe}
                 style={{
                   width: width / scale,

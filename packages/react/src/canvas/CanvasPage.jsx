@@ -12,6 +12,7 @@ import { getPasteRules } from '@dfosco/storyboard-core'
 import { registerSmoothCorners } from '@dfosco/storyboard-core/smooth-corners'
 import { isGitHubEmbedUrl } from './widgets/githubUrl.js'
 import WidgetChrome from './widgets/WidgetChrome.jsx'
+import { EmbedControllerProvider } from './widgets/useEmbedController.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import useUndoRedo from './useUndoRedo.js'
 import useMarqueeSelect from './useMarqueeSelect.js'
@@ -530,6 +531,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
   const [snapEnabled, setSnapEnabled] = useState(canvas?.snapToGrid ?? false)
   const [snapGridSize, setSnapGridSize] = useState(canvas?.gridSize || 40)
+  const [perfMode, setPerfMode] = useState(canvas?.performanceMode ?? false)
   const [showGhInstallBanner, setShowGhInstallBanner] = useState(false)
 
   // Refs for snap settings (used by drop handler inside effect closure)
@@ -670,6 +672,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     setLocalSources(canvas?.sources ?? [])
     setSnapEnabled(canvas?.snapToGrid ?? false)
     setSnapGridSize(canvas?.gridSize || 40)
+    setPerfMode(canvas?.performanceMode ?? false)
     undoRedo.reset()
     // Only reset viewport state when switching to a different canvas,
     // not when the same canvas refreshes with server data.
@@ -1549,6 +1552,21 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     return () => document.removeEventListener('storyboard:canvas:toggle-snap', handleSnapToggle)
   }, [canvasId])
 
+  // Listen for performance mode toggle from command palette
+  useEffect(() => {
+    function handlePerfToggle() {
+      setPerfMode((prev) => {
+        const next = !prev
+        updateCanvas(canvasId, { settings: { performanceMode: next } }).catch((err) =>
+          console.error('[canvas] Failed to persist performance mode:', err)
+        )
+        return next
+      })
+    }
+    document.addEventListener('storyboard:canvas:toggle-performance-mode', handlePerfToggle)
+    return () => document.removeEventListener('storyboard:canvas:toggle-performance-mode', handlePerfToggle)
+  }, [canvasId])
+
   // Broadcast snap state to Svelte toolbar
   useEffect(() => {
     document.dispatchEvent(new CustomEvent('storyboard:canvas:snap-state', {
@@ -2411,9 +2429,11 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
             dragPreview={connectorDrag}
             hidden={widgetDragging}
           />
+          <EmbedControllerProvider performanceMode={perfMode} scrollRef={scrollRef}>
           <Canvas {...canvasProps} onDragStart={isLocalDev ? handleItemDragStart : undefined} onDrag={isLocalDev ? handleItemDrag : undefined} onDragEnd={isLocalDev ? handleItemDragEnd : undefined}>
             {allChildren}
           </Canvas>
+          </EmbedControllerProvider>
         </div>
       </div>
       {showGhInstallBanner && (

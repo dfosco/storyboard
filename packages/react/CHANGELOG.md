@@ -1,5 +1,15 @@
 # @dfosco/storyboard-react
 
+## 4.2.0-alpha.14
+
+### Patch Changes
+
+-   Fix TDZ crash in PrototypeEmbed and prevent scroll jump on terminal click
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.14
+    -   @dfosco/tiny-canvas@4.2.0-alpha.14
+
 ## 4.2.0-alpha.13
 
 ### Patch Changes

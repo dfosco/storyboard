@@ -135,26 +135,59 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const termRef = useRef(null)
   const terminalRef = useRef(null)
   const wsRef = useRef(null)
-  const [ready, setReady] = useState(false)
-  const [error, setError] = useState(null)
-  const [sessionEnded, setSessionEnded] = useState(false)
+
+  // State machine: dormant → connecting → live → ended
+  //                                    ↘ error
+  const [phase, setPhase] = useState('dormant') // dormant | connecting | live | error | ended
+  const [errorMsg, setErrorMsg] = useState(null)
+  const [interactive, setInteractive] = useState(false)
   const [connectAttempt, setConnectAttempt] = useState(0)
   const [expanded, setExpanded] = useState(false)
+  const [waking, setWaking] = useState(false)
   const expandContainerRef = useRef(null)
+
+  // Activate: transition from dormant to connecting
+  const activate = useCallback(() => {
+    if (phase === 'dormant') setPhase('connecting')
+  }, [phase])
+
+  const enterInteractive = useCallback(() => {
+    if (phase === 'dormant') {
+      setPhase('connecting')
+    }
+    setInteractive(true)
+  }, [phase])
+
+  // Exit interactive on click outside
+  useEffect(() => {
+    if (!interactive) return
+    function handlePointerDown(e) {
+      if (terminalRef.current && !terminalRef.current.contains(e.target)) {
+        const chromeEl = e.target.closest(`[data-widget-id="${id}"]`)
+        if (chromeEl) return
+        setInteractive(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [interactive, id])
 
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
-      if (actionId === 'expand') setExpanded(true)
+      if (actionId === 'expand') {
+        if (phase === 'dormant') setPhase('connecting')
+        setExpanded(true)
+      }
     },
-  }), [])
+  }), [phase])
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
   }, [onUpdate])
 
-  // Initialize terminal
+  // Connect terminal + WebSocket only when phase is 'connecting'
   useEffect(() => {
-    if (!containerRef.current) return
+    if (phase !== 'connecting' || !containerRef.current) return
 
     let disposed = false
     let term = null
@@ -181,55 +214,46 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         term.open(containerRef.current)
         termRef.current = term
 
-        // Connect WebSocket
         const url = getWsUrl(id, prettyName)
         ws = new WebSocket(url)
         wsRef.current = ws
 
         ws.onopen = () => {
           if (disposed) return
-          setReady(true)
+          setPhase('live')
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
         }
 
         ws.onmessage = (e) => {
           if (disposed) return
           const data = typeof e.data === 'string' ? e.data : null
-          // Intercept JSON control messages from the server
           if (data && data.startsWith('{')) {
             try {
               const msg = JSON.parse(data)
-              if (msg.type === 'session-info' || msg.type === 'conflict' || msg.type === 'detached') {
-                // Control message — don't render to terminal
-                return
-              }
-            } catch {
-              // Not valid JSON — pass through as terminal data
-            }
+              if (msg.type === 'session-info' || msg.type === 'conflict' || msg.type === 'detached') return
+            } catch { /* not JSON */ }
           }
           term.write(typeof e.data === 'string' ? e.data : new Uint8Array(e.data))
         }
 
         ws.onclose = () => {
           if (disposed) return
-          setReady(false)
-          setSessionEnded(true)
+          setPhase('ended')
         }
 
         ws.onerror = () => {
           if (disposed) return
-          setReady(false)
-          setSessionEnded(true)
+          setPhase('ended')
         }
 
-        // Terminal input → WebSocket
         term.onData((data) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(data)
-          }
+          if (ws.readyState === WebSocket.OPEN) ws.send(data)
         })
       } catch (err) {
-        if (!disposed) setError(err.message || 'Failed to load terminal')
+        if (!disposed) {
+          setErrorMsg(err.message || 'Failed to load terminal')
+          setPhase('error')
+        }
       }
     }
 
@@ -242,7 +266,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
       termRef.current = null
       wsRef.current = null
     }
-  }, [id, connectAttempt])
+  }, [id, phase === 'connecting', connectAttempt])
 
   // Resize terminal on dimension changes
   useEffect(() => {
@@ -298,18 +322,16 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   }, [expanded])
 
   const handleClick = useCallback(() => {
-    if (sessionEnded) return
-    termRef.current?.focus()
-  }, [sessionEnded])
-
-  const [waking, setWaking] = useState(false)
+    if (phase === 'ended') return
+    if (phase === 'live') termRef.current?.focus()
+  }, [phase])
 
   const handleStartSession = useCallback(() => {
     setWaking(true)
     setTimeout(() => {
       setWaking(false)
-      setSessionEnded(false)
-      setError(null)
+      setErrorMsg(null)
+      setPhase('connecting')
       setConnectAttempt(c => c + 1)
     }, 1500)
   }, [])
@@ -320,6 +342,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const connectedEmbed = expanded ? findConnectedEmbed(id) : null
   const embedUrl = expanded ? buildEmbedUrl(connectedEmbed) : null
   const hasSplit = Boolean(embedUrl)
+  const isDormant = phase === 'dormant'
 
   return (
     <>
@@ -334,13 +357,51 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         }}
         onClick={handleClick}
       >
-        {error && !sessionEnded && (
+        {phase === 'error' && (
           <div className={styles.error}>
-            <span>⚠ {error}</span>
+            <span>⚠ {errorMsg}</span>
           </div>
         )}
         {!expanded && <div ref={containerRef} className={styles.xtermContainer} />}
-        {sessionEnded && (
+
+        {/* Dormant: not yet activated */}
+        {isDormant && (
+          <div
+            className={overlayStyles.interactOverlay}
+            style={{ backgroundColor: '#0d1117' }}
+            onClick={(e) => {
+              if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+              enterInteractive()
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter') enterInteractive() }}
+            aria-label="Click to interact"
+          >
+            <span className={overlayStyles.interactHint}>Click to interact</span>
+          </div>
+        )}
+
+        {/* Live but not interactive: gated overlay */}
+        {phase === 'live' && !interactive && (
+          <div
+            className={overlayStyles.interactOverlay}
+            style={{ backgroundColor: 'transparent' }}
+            onClick={(e) => {
+              if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+              enterInteractive()
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter') enterInteractive() }}
+            aria-label="Click to interact"
+          >
+            <span className={overlayStyles.interactHint}>Click to interact</span>
+          </div>
+        )}
+
+        {/* Session ended */}
+        {phase === 'ended' && (
           <div
             className={overlayStyles.interactOverlay}
             style={{ backgroundColor: '#0d1117', flexDirection: 'column', gap: 0 }}
@@ -362,7 +423,9 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
             </span>
           </div>
         )}
-        {!ready && !error && !sessionEnded && (
+
+        {/* Connecting */}
+        {phase === 'connecting' && (
           <div className={styles.loading}>Connecting…</div>
         )}
       </div>

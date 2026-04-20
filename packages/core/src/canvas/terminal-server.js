@@ -298,8 +298,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
         ptyProcess.write(cmd)
       }, 600)
 
-      // Launch copilot with terminal agent instructions after welcome
-      // Uses .github/agents/terminal-agent.agent.md (auto-discovered by copilot CLI)
+      // Launch copilot with terminal agent, then pre-type /autopilot
       const agentFile = join(process.cwd(), '.github', 'agents', 'terminal-agent.agent.md')
       const hasAgent = (() => { try { readFileSync(agentFile); return true } catch { return false } })()
 
@@ -309,10 +308,11 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
           setTimeout(() => {
             ptyProcess.write(`copilot --agent terminal-agent\r`)
           }, 300)
-          // Pre-type /autopilot once copilot prompt is ready
+          // Wait for copilot to fully load before sending /autopilot
+          // Copilot needs ~5s to load environment, MCP servers, skills, agents
           setTimeout(() => {
             ptyProcess.write(`/autopilot\r`)
-          }, 2500)
+          }, 6000)
         }, 2000)
       }
 

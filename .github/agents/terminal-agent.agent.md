@@ -28,6 +28,7 @@ The config file contains everything you need — no additional API calls require
   "branch": "4.2.0--terminal-agents",
   "worktree": "4.2.0--terminal-agents",
   "devDomain": "storyboard-core",
+  "serverUrl": "http://localhost:1269",
   "workingDirectory": "/path/to/worktree",
   "connectedWidgets": [
     {
@@ -71,4 +72,6 @@ npx storyboard agent signal --status error --message "What went wrong"
 
 **IMPORTANT:**
 - NEVER write directly to `.canvas.jsonl` files — use the canvas CLI or server API
-- Environment variables `$STORYBOARD_WIDGET_ID`, `$STORYBOARD_CANVAS_ID`, `$STORYBOARD_BRANCH`, `$STORYBOARD_SERVER_URL` are available in the shell
+- The `serverUrl` in the config file is the correct dev server URL — use it for all API calls
+- The canvas API is at `{serverUrl}/_storyboard/canvas/`
+- Environment variables `$STORYBOARD_WIDGET_ID`, `$STORYBOARD_CANVAS_ID`, `$STORYBOARD_BRANCH`, `$STORYBOARD_SERVER_URL` are also available in the shell

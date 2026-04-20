@@ -211,6 +211,46 @@ function generateWidgetId(type) {
 export function createCanvasHandler(ctx) {
   const { root, sendJson } = ctx
 
+  /**
+   * Update terminal configs when connectors change.
+   * Finds all terminal widgets in the canvas, computes their connected widget IDs
+   * from the current connector list, and updates their config files.
+   */
+  async function updateTerminalConnectionsForCanvas(root, canvasName, canvasData, connectors) {
+    try {
+      const { updateTerminalConnections, initTerminalConfig } = await import('./terminal-config.js')
+      const { execSync } = await import('node:child_process')
+      initTerminalConfig(root)
+
+      let branch = 'unknown'
+      try {
+        branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
+      } catch {}
+
+      const widgets = canvasData.widgets || []
+      const terminalWidgets = widgets.filter((w) => w.type === 'terminal')
+
+      for (const tw of terminalWidgets) {
+        const connected = new Set()
+        for (const conn of connectors) {
+          if (conn.start?.widgetId === tw.id) connected.add(conn.end?.widgetId)
+          if (conn.end?.widgetId === tw.id) connected.add(conn.start?.widgetId)
+        }
+        connected.delete(undefined)
+        connected.delete(null)
+
+        updateTerminalConnections({
+          branch,
+          canvasId: canvasName,
+          widgetId: tw.id,
+          connectedWidgetIds: [...connected],
+        })
+      }
+    } catch (err) {
+      console.warn(`[storyboard] Failed to update terminal connections: ${err.message}`)
+    }
+  }
+
   // Append an event to an existing canvas file.
   // The data plugin already skips .canvas.jsonl `change` events to avoid
   // a save → reload → lost-editing-state feedback loop, so we just write
@@ -226,7 +266,7 @@ export function createCanvasHandler(ctx) {
     fs.writeFileSync(filePath, serializeEvent(event) + '\n', 'utf-8')
   }
 
-  return async (req, res, { body, path: routePath, method }) => {
+  return async (req, res, { body, path: routePath, method, __viteWs }) => {
     // GET /folders — list available canvas folders
     if (routePath === '/folders' && method === 'GET') {
       const canvasDir = path.join(root, 'src', 'canvas')
@@ -528,6 +568,9 @@ export function createCanvasHandler(ctx) {
           connector,
         })
 
+        // Update terminal configs if a terminal widget is involved
+        updateTerminalConnectionsForCanvas(root, name, data, [...(data.connectors || []), connector])
+
         sendJson(res, 201, { success: true, connector })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to add connector: ${err.message}` })
@@ -563,6 +606,10 @@ export function createCanvasHandler(ctx) {
           timestamp: new Date().toISOString(),
           connectorId,
         })
+
+        // Update terminal configs — rebuild connections without the removed connector
+        const remainingConnectors = (data.connectors || []).filter((c) => c.id !== connectorId)
+        updateTerminalConnectionsForCanvas(root, name, data, remainingConnectors)
 
         sendJson(res, 200, { success: true, removed: 1 })
       } catch (err) {
@@ -1345,6 +1392,223 @@ export function Default() {
         sendJson(res, 200, { success: true, filename: newFilename, private: !isPrivate })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to toggle private: ${err.message}` })
+      }
+      return
+    }
+
+    // ── Agent Signal API ──────────────────────────────────────────────────
+
+    // POST /agent/signal — agent signals status (done/error/running)
+    if (routePath === '/agent/signal' && method === 'POST') {
+      const { widgetId, canvasId, branch, status, message, data: payload } = body
+
+      if (!widgetId || !status) {
+        sendJson(res, 400, { error: 'widgetId and status are required' })
+        return
+      }
+
+      const validStatuses = ['done', 'error', 'running']
+      if (!validStatuses.includes(status)) {
+        sendJson(res, 400, { error: `status must be one of: ${validStatuses.join(', ')}` })
+        return
+      }
+
+      try {
+        const { updateAgentStatus, initTerminalConfig } = await import('./terminal-config.js')
+        initTerminalConfig(root)
+        updateAgentStatus({
+          branch: branch || 'unknown',
+          canvasId: canvasId || 'unknown',
+          widgetId,
+          status,
+          message: message || null,
+          data: payload || null,
+        })
+
+        // Push status to canvas clients via Vite WS custom event
+        if (__viteWs) {
+          __viteWs.send({
+            type: 'custom',
+            event: 'storyboard:agent-status',
+            data: { widgetId, canvasId, status, message, timestamp: new Date().toISOString() },
+          })
+        }
+
+        sendJson(res, 200, { success: true, status })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to update agent status: ${err.message}` })
+      }
+      return
+    }
+
+    // GET /agent/status — poll agent status for a widget
+    if (routePath === '/agent/status' && method === 'GET') {
+      const url = new URL(req.url, 'http://localhost')
+      const widgetId = url.searchParams.get('widgetId')
+      const canvasId = url.searchParams.get('canvasId') || 'unknown'
+      const branch = url.searchParams.get('branch') || 'unknown'
+
+      if (!widgetId) {
+        sendJson(res, 400, { error: 'widgetId query parameter is required' })
+        return
+      }
+
+      try {
+        const { readTerminalConfig, initTerminalConfig } = await import('./terminal-config.js')
+        initTerminalConfig(root)
+        const config = readTerminalConfig({ branch, canvasId, widgetId })
+        sendJson(res, 200, { agentStatus: config?.agentStatus || null })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to read agent status: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /agent/spawn — spawn a headless agent session
+    if (routePath === '/agent/spawn' && method === 'POST') {
+      const { canvasId, widgetId, prompt, autopilot = true, branch: reqBranch } = body
+
+      if (!canvasId || !widgetId || !prompt) {
+        sendJson(res, 400, { error: 'canvasId, widgetId, and prompt are required' })
+        return
+      }
+
+      try {
+        const { execSync } = await import('node:child_process')
+        const { writeTerminalConfig, updateAgentStatus, initTerminalConfig } = await import('./terminal-config.js')
+        const { generateTmuxName, registerSession } = await import('./terminal-registry.js')
+        const fsModule = await import('node:fs')
+
+        initTerminalConfig(root)
+
+        let branch = reqBranch || 'unknown'
+        try {
+          branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
+        } catch {}
+
+        const tmuxName = generateTmuxName(branch, canvasId, widgetId)
+
+        // Register in session registry
+        registerSession({ branch, canvasId, widgetId, prettyName: null })
+
+        // Write terminal config with connected widget context
+        writeTerminalConfig({ branch, canvasId, widgetId })
+
+        // Mark as running
+        updateAgentStatus({ branch, canvasId, widgetId, status: 'running', message: 'Agent spawning...' })
+
+        // Push running status to clients
+        if (__viteWs) {
+          __viteWs.send({
+            type: 'custom',
+            event: 'storyboard:agent-status',
+            data: { widgetId, canvasId, status: 'running', timestamp: new Date().toISOString() },
+          })
+        }
+
+        // Build server URL for agent env vars
+        const serverUrl = `http://localhost:${req.socket?.localPort || 1234}`
+
+        // Create headless tmux session
+        try {
+          execSync(`tmux new-session -d -s "${tmuxName}" -c "${root}"`, { stdio: 'ignore' })
+          execSync(`tmux set-option -t "${tmuxName}" status off`, { stdio: 'ignore' })
+        } catch (err) {
+          // Session may already exist
+          console.warn(`[storyboard] tmux session create:`, err.message)
+        }
+
+        // Set environment variables inside the tmux session
+        const envVars = [
+          `STORYBOARD_WIDGET_ID=${widgetId}`,
+          `STORYBOARD_CANVAS_ID=${canvasId}`,
+          `STORYBOARD_BRANCH=${branch}`,
+          `STORYBOARD_SERVER_URL=${serverUrl}`,
+        ]
+        for (const envVar of envVars) {
+          execSync(`tmux send-keys -t "${tmuxName}" -l "export ${envVar}"`, { stdio: 'ignore' })
+          execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+        }
+
+        // Launch copilot in autopilot mode
+        // Use send-keys -l for safe literal input
+        const copilotCmd = autopilot
+          ? `copilot -p "${prompt.replace(/"/g, '\\"')}"`
+          : `copilot`
+        setTimeout(() => {
+          try {
+            execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })
+            execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+          } catch (err) {
+            console.warn(`[storyboard] Failed to launch copilot:`, err.message)
+          }
+        }, 500)
+
+        // Set up idle timeout (5 minutes)
+        const IDLE_TIMEOUT = 5 * 60 * 1000
+        setTimeout(async () => {
+          try {
+            const { readTerminalConfig } = await import('./terminal-config.js')
+            const config = readTerminalConfig({ branch, canvasId, widgetId })
+            if (config?.agentStatus?.status === 'running') {
+              updateAgentStatus({ branch, canvasId, widgetId, status: 'error', message: 'Agent timed out (5 min idle)' })
+              if (__viteWs) {
+                __viteWs.send({
+                  type: 'custom',
+                  event: 'storyboard:agent-status',
+                  data: { widgetId, canvasId, status: 'error', message: 'Agent timed out', timestamp: new Date().toISOString() },
+                })
+              }
+            }
+          } catch {}
+        }, IDLE_TIMEOUT)
+
+        sendJson(res, 200, { success: true, tmuxName, status: 'running' })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to spawn agent: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /agent/peek — reconnect a headless agent session to a visible terminal widget
+    if (routePath === '/agent/peek' && method === 'POST') {
+      const { widgetId, canvasId } = body
+
+      if (!widgetId) {
+        sendJson(res, 400, { error: 'widgetId is required' })
+        return
+      }
+
+      try {
+        const { execSync } = await import('node:child_process')
+        const { generateTmuxName } = await import('./terminal-registry.js')
+
+        let branch = 'unknown'
+        try {
+          branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
+        } catch {}
+
+        const tmuxName = generateTmuxName(branch, canvasId || 'unknown', widgetId)
+
+        // Check if the tmux session exists
+        try {
+          execSync(`tmux has-session -t "${tmuxName}"`, { stdio: 'ignore' })
+        } catch {
+          sendJson(res, 404, { error: `No tmux session found for widget ${widgetId}` })
+          return
+        }
+
+        // The session exists — return info so the client can create a terminal widget
+        // that connects to it
+        sendJson(res, 200, {
+          success: true,
+          tmuxName,
+          widgetId,
+          canvasId: canvasId || 'unknown',
+          message: 'Session is alive. Create a terminal widget to connect.',
+        })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to peek agent session: ${err.message}` })
       }
       return
     }

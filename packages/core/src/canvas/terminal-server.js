@@ -38,11 +38,14 @@ import {
   registerSession,
   disconnectSession,
   orphanSession,
-  getSession,
   generateTmuxName,
   findTmuxNameForWidget,
   killSession,
 } from './terminal-registry.js'
+import {
+  writeTerminalConfig as writeTermConfig,
+  initTerminalConfig,
+} from './terminal-config.js'
 
 let pty
 try {
@@ -147,10 +150,11 @@ export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') 
 
   currentBranch = branch
 
-  // Initialize registry
+  // Initialize registry and terminal config
   const root = process.cwd()
   const termCfg = readTerminalConfig()
   initRegistry(root, { gracePeriod: termCfg.orphanGracePeriod })
+  initTerminalConfig(root)
 
   const mode = hasTmux ? 'tmux (persistent sessions)' : 'node-pty (no persistence)'
   console.log(`[storyboard] terminal server ready (${mode}) [branch: ${branch}]`)
@@ -191,6 +195,9 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
   // Register in registry, check for conflicts
   const { entry, conflict } = registerSession({ branch, canvasId, widgetId, prettyName })
 
+  // Write terminal config for agent context
+  writeTermConfig({ branch, canvasId, widgetId })
+
   // Close any existing WS for this session (one viewer at a time)
   const existingWs = wsConnections.get(tmuxName)
   if (existingWs && existingWs !== ws && existingWs.readyState <= 1) {
@@ -218,6 +225,10 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
     writeFileSync(join(zdotdir, '.zshrc'), `export PS1='${prompt.replace(/'/g, "'\\''")}'\nunset RPS1\n`)
   } catch { /* best effort */ }
 
+  // Derive server URL for agents to call back
+  const port = process.env.STORYBOARD_PORT || '1234'
+  const serverUrl = `http://localhost:${port}`
+
   const env = {
     ...process.env,
     TERM: 'xterm-256color',
@@ -229,6 +240,10 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
     BASH_ENV: '',
     ENV: '',
     PS1: prompt,
+    STORYBOARD_WIDGET_ID: widgetId,
+    STORYBOARD_CANVAS_ID: canvasId,
+    STORYBOARD_BRANCH: branch,
+    STORYBOARD_SERVER_URL: serverUrl,
   }
   let ptyProcess
   let isNewSession = false
@@ -280,6 +295,14 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
         const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}\r`
         ptyProcess.write(cmd)
       }, 600)
+
+      // Execute startup sequence if configured (after welcome completes)
+      const startupSeq = termCfg.defaultStartupSequence
+      if (startupSeq?.steps?.length) {
+        setTimeout(() => {
+          executeStartupSequence(tmuxName, ws, startupSeq)
+        }, 1500)
+      }
     }
 
     // Write conflict warning if session was live elsewhere
@@ -367,6 +390,95 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
 function sendJson(ws, data) {
   if (ws.readyState === ws.OPEN) {
     ws.send(JSON.stringify(data))
+  }
+}
+
+/**
+ * Execute a startup sequence for a new terminal session.
+ * Runs server-side via tmux send-keys. Only called for new sessions.
+ *
+ * Step types:
+ *   command   — send text + \n to the shell
+ *   keystroke — send raw keys (e.g. {enter}, {tab})
+ *   wait      — pause for ms or until output matches a pattern
+ *   tmux      — run a tmux command against the session
+ *   env       — set env var (must be before shell starts, so this is a pre-step)
+ *
+ * @param {string} tmuxName — tmux session name
+ * @param {object} ws — WebSocket connection
+ * @param {object} sequence — { steps: [], renderAfterStep?: number }
+ */
+async function executeStartupSequence(tmuxName, ws, sequence) {
+  if (!sequence?.steps?.length) return
+  if (!hasTmux) return
+
+  const { steps, renderAfterStep } = sequence
+  const shouldGateRender = typeof renderAfterStep === 'number' && renderAfterStep >= 0
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i]
+
+    try {
+      switch (step.type) {
+        case 'command':
+          // Use -l for literal text to avoid shell interpretation issues
+          execSync(
+            `tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(step.value)}`,
+            { stdio: 'ignore' }
+          )
+          execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+          break
+
+        case 'keystroke': {
+          const keyMap = { '{enter}': 'Enter', '{tab}': 'Tab', '{escape}': 'Escape', '{space}': 'Space' }
+          const key = keyMap[step.value] || step.value
+          execSync(`tmux send-keys -t "${tmuxName}" ${key}`, { stdio: 'ignore' })
+          break
+        }
+
+        case 'wait':
+          if (step.until === 'ready' || step.until === 'output') {
+            const timeout = step.timeout || 10000
+            const start = Date.now()
+            const match = step.match || null
+            while (Date.now() - start < timeout) {
+              await new Promise(r => setTimeout(r, 500))
+              if (match) {
+                try {
+                  const capture = execSync(
+                    `tmux capture-pane -t "${tmuxName}" -p`,
+                    { encoding: 'utf8', timeout: 2000 }
+                  )
+                  if (capture.includes(match)) break
+                } catch { /* continue waiting */ }
+              }
+            }
+          } else {
+            await new Promise(r => setTimeout(r, step.ms || 1000))
+          }
+          break
+
+        case 'tmux':
+          execSync(`tmux ${step.value}`, { stdio: 'ignore' })
+          break
+
+        default:
+          console.warn(`[storyboard] Unknown startup step type: ${step.type}`)
+      }
+    } catch (err) {
+      console.warn(`[storyboard] Startup sequence step ${i} (${step.type}) failed:`, err.message)
+      // Non-fatal — continue to next step
+    }
+
+    // Send render signal after the specified step
+    if (shouldGateRender && i === renderAfterStep) {
+      sendJson(ws, { type: 'render' })
+    }
+  }
+
+  // If renderAfterStep was beyond all steps, send it now
+  if (shouldGateRender && renderAfterStep >= steps.length) {
+    sendJson(ws, { type: 'render' })
   }
 }
 

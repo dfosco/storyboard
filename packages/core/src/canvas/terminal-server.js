@@ -299,16 +299,15 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
       }, 600)
 
       // Launch copilot with terminal agent instructions after welcome
-      // The agent reads connected widget context from .storyboard/terminals/
-      const agentMdPath = join(process.cwd(), 'packages', 'core', 'src', 'canvas', 'terminal-agent-instructions.md')
-      const agentFileExists = (() => { try { readFileSync(agentMdPath); return true } catch { return false } })()
+      // Uses .github/agents/terminal-agent.agent.md (auto-discovered by copilot CLI)
+      const agentFile = join(process.cwd(), '.github', 'agents', 'terminal-agent.agent.md')
+      const hasAgent = (() => { try { readFileSync(agentFile); return true } catch { return false } })()
 
-      if (agentFileExists) {
+      if (hasAgent) {
         setTimeout(() => {
-          // Clear the welcome output first, then launch copilot with agent context
           ptyProcess.write(`clear\r`)
           setTimeout(() => {
-            ptyProcess.write(`copilot --agent "${agentMdPath}" --allow-all\r`)
+            ptyProcess.write(`copilot --agent terminal-agent --allow-all\r`)
           }, 300)
         }, 2000)
       }

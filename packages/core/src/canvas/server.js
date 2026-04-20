@@ -17,6 +17,7 @@
  *   GET    /page-order — read page order for a folder
  *   PUT    /update-folder-meta — update folder .meta.json title
  *   POST   /widget   — append a widget_added event
+ *   PATCH  /widget   — update a single widget's props/position
  *   DELETE /widget   — append a widget_removed event
  *   POST   /connector — append a connector_added event
  *   DELETE /connector — append a connector_removed event
@@ -515,6 +516,66 @@ export function createCanvasHandler(ctx) {
         sendJson(res, 200, { success: true, removed: 1 })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to remove widget: ${err.message}` })
+      }
+      return
+    }
+
+    // PATCH /widget — update a single widget's props
+    if (routePath === '/widget' && method === 'PATCH') {
+      const { name, widgetId, props, position } = body
+
+      if (!name || !widgetId) {
+        sendJson(res, 400, { error: 'Canvas name and widgetId are required' })
+        return
+      }
+      if (!props && !position) {
+        sendJson(res, 400, { error: 'At least one of props or position is required' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      try {
+        const data = readCanvas(filePath)
+        const widget = (data.widgets || []).find((w) => w.id === widgetId)
+        if (!widget) {
+          sendJson(res, 404, { error: `Widget "${widgetId}" not found in canvas "${name}"` })
+          return
+        }
+
+        const ts = new Date().toISOString()
+
+        if (props) {
+          appendEvent(filePath, {
+            event: 'widget_updated',
+            timestamp: ts,
+            widgetId,
+            props,
+          })
+        }
+
+        if (position) {
+          appendEvent(filePath, {
+            event: 'widget_moved',
+            timestamp: ts,
+            widgetId,
+            position,
+          })
+        }
+
+        // Return the merged widget for convenience
+        const merged = {
+          ...widget,
+          props: { ...widget.props, ...(props || {}) },
+          position: position || widget.position,
+        }
+        sendJson(res, 200, { success: true, widget: merged })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to update widget: ${err.message}` })
       }
       return
     }

@@ -58,9 +58,9 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
   // Derive folder from currentName (e.g. "Examples/Design Overview" → "Examples")
   const folder = currentName.includes('/') ? currentName.split('/')[0] : ''
 
-  // Build ordered items from pages + saved order (with separators)
+  // Build ordered items from pages + saved order (with separators).
+  // Load eagerly (not just when open) so the trigger badge shows correct index.
   useEffect(() => {
-    if (!open) return
     let cancelled = false
     async function loadOrder() {
       if (!folder) {
@@ -96,7 +96,7 @@ export default function PageSelector({ currentName, pages: initialPages, isLocal
     }
     loadOrder()
     return () => { cancelled = true }
-  }, [open, pages, folder])
+  }, [pages, folder])
 
   // Derived values from ordered items
   const realPages = orderedItems.filter(i => i.type === 'page')

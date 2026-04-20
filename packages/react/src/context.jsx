@@ -30,6 +30,21 @@ for (const [name, data] of Object.entries(canvases || {})) {
     })
   }
 }
+// Sort each group's pages by pageOrder from .meta.json (if available)
+for (const [, pages] of canvasGroupMap) {
+  const pageOrder = pages[0]?._canvasMeta?.pageOrder
+  if (Array.isArray(pageOrder)) {
+    const orderMap = new Map()
+    pageOrder.forEach((entry, idx) => {
+      if (typeof entry === 'string' && !entry.startsWith('sep-')) orderMap.set(entry, idx)
+    })
+    pages.sort((a, b) => {
+      const ai = orderMap.has(a.name) ? orderMap.get(a.name) : Infinity
+      const bi = orderMap.has(b.name) ? orderMap.get(b.name) : Infinity
+      return ai - bi
+    })
+  }
+}
 
 // Build a map from story route paths → story names at module load time
 const storyRouteMap = new Map()

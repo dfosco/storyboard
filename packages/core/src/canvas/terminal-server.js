@@ -26,7 +26,13 @@ import { execSync } from 'node:child_process'
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { WebSocketServer } from 'ws'
+
+let WebSocketServer
+try {
+  WebSocketServer = (await import('ws')).WebSocketServer
+} catch {
+  WebSocketServer = null
+}
 import {
   initRegistry,
   registerSession,
@@ -133,8 +139,9 @@ function legacyKillSession(widgetId) {
  * @param {string} branch — current git branch name
  */
 export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') {
-  if (!pty) {
-    console.warn('[storyboard] node-pty not available — terminal widgets disabled')
+  if (!pty || !WebSocketServer) {
+    if (!pty) console.warn('[storyboard] node-pty not available — terminal widgets disabled')
+    if (!WebSocketServer) console.warn('[storyboard] ws not available — terminal widgets disabled')
     return
   }
 

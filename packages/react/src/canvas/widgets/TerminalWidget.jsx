@@ -323,7 +323,18 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
   const handleClick = useCallback(() => {
     if (phase === 'ended') return
-    if (phase === 'live') termRef.current?.focus()
+    if (phase === 'live') {
+      // Save canvas scroll position — terminal focus can trigger browser scroll
+      const scrollEl = terminalRef.current?.closest('[class*="canvasScroll"]')
+      const scrollTop = scrollEl?.scrollTop
+      const scrollLeft = scrollEl?.scrollLeft
+      termRef.current?.focus({ preventScroll: true })
+      // Restore if browser scrolled anyway
+      if (scrollEl && (scrollEl.scrollTop !== scrollTop || scrollEl.scrollLeft !== scrollLeft)) {
+        scrollEl.scrollTop = scrollTop
+        scrollEl.scrollLeft = scrollLeft
+      }
+    }
   }, [phase])
 
   const handleStartSession = useCallback(() => {

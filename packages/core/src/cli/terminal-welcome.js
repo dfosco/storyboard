@@ -62,9 +62,22 @@ async function welcomeLoop() {
 
     if (action === 'copilot') {
       p.outro(dim('Starting Copilot...'))
-      // Run copilot as a child process, wait for it to exit, then loop back
+      // Run copilot with terminal-agent, then pre-type /autopilot via tmux
       try {
-        const child = spawn('copilot', [], { stdio: 'inherit' })
+        const agentArgs = ['--agent', 'terminal-agent']
+        const child = spawn('copilot', agentArgs, { stdio: 'inherit' })
+
+        // Pre-type /autopilot once copilot is ready (~5s to load)
+        setTimeout(() => {
+          try {
+            // Find our tmux session and send literal text (no Enter)
+            const tmuxSession = process.env.TMUX?.split(',')[2] || ''
+            if (tmuxSession) {
+              execSync(`tmux send-keys -l "/autopilot "`, { stdio: 'ignore' })
+            }
+          } catch {}
+        }, 6000)
+
         await new Promise((resolve) => {
           child.on('close', resolve)
           child.on('error', resolve)

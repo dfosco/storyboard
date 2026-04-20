@@ -161,6 +161,12 @@ export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') 
     if (addr && addr.port) actualServerPort = addr.port
   } catch {}
 
+  // Ensure node-pty spawn-helper has execute permission (npm install can strip it)
+  try {
+    const nodePtyDir = resolve(process.cwd(), 'node_modules/node-pty/prebuilds')
+    execSync(`chmod +x "${nodePtyDir}"/darwin-*/spawn-helper 2>/dev/null || true`, { stdio: 'ignore' })
+  } catch {}
+
   // Initialize registry and terminal config
   const root = process.cwd()
   const termCfg = readTerminalConfig()
@@ -270,6 +276,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
   let ptyProcess
   let isNewSession = false
 
+  try {
   if (hasTmux) {
     const reattach = tmuxSessionExists(tmuxName)
 
@@ -352,6 +359,15 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
       cwd,
       env,
     })
+  }
+  } catch (spawnErr) {
+    console.error(`[storyboard] terminal spawn failed: ${spawnErr.message}`)
+    if (ws.readyState === ws.OPEN) {
+      ws.send(`\r\n\x1b[31m✖ Terminal failed to start: ${spawnErr.message}\x1b[0m\r\n`)
+      ws.send(`\x1b[2mTry: chmod +x node_modules/node-pty/prebuilds/darwin-*/spawn-helper\x1b[0m\r\n`)
+      ws.close()
+    }
+    return
   }
 
   const generation = entry.generation

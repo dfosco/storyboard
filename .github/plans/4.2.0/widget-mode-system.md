@@ -81,7 +81,8 @@ Replace ad-hoc per-widget mode state with a shared declarative mode system that 
 view ──click──→ interact  (gated by overlay if configured)
 view ──dblclick──→ edit
 edit ──Escape/blur──→ view
-interact ──Escape──→ view
+interact ──double-Escape──→ view  (first Escape goes to widget, second within 500ms exits)
+interact ──click-outside──→ view
 ```
 
 ### Interact gate overlay

@@ -1,5 +1,7 @@
 # @dfosco/storyboard-core
 
+## 4.2.0-alpha.11
+
 ## 4.2.0-alpha.10
 
 ### Minor Changes

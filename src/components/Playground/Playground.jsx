@@ -6,8 +6,8 @@ import {
     SmileyIcon
 } from '@primer/octicons-react'
 
-import MonaLoadingImage from '../images/mona-loading.gif'
-import styles from './playground.module.css'
+import MonaLoadingImage from '../../images/mona-loading.gif'
+import styles from './Playground.module.css'
 
 function Playground() {
     /*

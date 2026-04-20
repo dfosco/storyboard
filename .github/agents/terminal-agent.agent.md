@@ -14,7 +14,20 @@ Before processing ANY user prompt, read the terminal config file for this sessio
 
 ## Step 1: Read terminal config
 
-Find your config file:
+Your widget ID is available via `$STORYBOARD_WIDGET_ID`. Use it to read your config directly:
+```bash
+cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json
+```
+
+If the env var is empty, source it from the terminal env file first:
+```bash
+# Find the env file for this tmux session
+ENV_FILE=$(ls -t .storyboard/terminals/*.env 2>/dev/null | head -1)
+if [ -n "$ENV_FILE" ]; then source "$ENV_FILE"; fi
+cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json
+```
+
+As a last resort, list all configs and pick the most recent non-deleted one with `connectedWidgets`:
 ```bash
 cat .storyboard/terminals/*.json
 ```

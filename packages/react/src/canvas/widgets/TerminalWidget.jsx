@@ -2,7 +2,6 @@ import { useRef, useEffect, useCallback, useState } from 'react'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
 import { getTerminalConfig } from '@dfosco/storyboard-core'
-import { getInteractGate } from './widgetConfig.js'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './TerminalWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
@@ -78,7 +77,6 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const width = readProp(props, 'width', terminalSchema)
   const height = readProp(props, 'height', terminalSchema)
   const prettyName = props?.prettyName || null
-  const interactGate = getInteractGate('terminal')
 
   const containerRef = useRef(null)
   const termRef = useRef(null)
@@ -88,7 +86,6 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const [error, setError] = useState(null)
   const [sessionEnded, setSessionEnded] = useState(false)
   const [connectAttempt, setConnectAttempt] = useState(0)
-  const [interacting, setInteracting] = useState(false)
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -201,37 +198,8 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
 
   const handleClick = useCallback(() => {
     if (sessionEnded) return
-    if (!interacting) {
-      setInteracting(true)
-      termRef.current?.focus()
-      return
-    }
     termRef.current?.focus()
-  }, [sessionEnded, interacting])
-
-  // Escape exits interact mode; click outside exits interact mode
-  useEffect(() => {
-    if (!interacting) return
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        setInteracting(false)
-        termRef.current?.blur?.()
-      }
-    }
-    const handleMouseDown = (e) => {
-      if (terminalRef.current && !terminalRef.current.contains(e.target)) {
-        setInteracting(false)
-      }
-    }
-    const el = terminalRef.current
-    if (el) el.addEventListener('keydown', handleKeyDown, true)
-    document.addEventListener('mousedown', handleMouseDown, true)
-    return () => {
-      if (el) el.removeEventListener('keydown', handleKeyDown, true)
-      document.removeEventListener('mousedown', handleMouseDown, true)
-    }
-  }, [interacting])
+  }, [sessionEnded])
 
   const [waking, setWaking] = useState(false)
 
@@ -241,13 +209,11 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
       setWaking(false)
       setSessionEnded(false)
       setError(null)
-      setInteracting(false)
       setConnectAttempt(c => c + 1)
     }, 1500)
   }, [])
 
   // Show interact gate when session is ready but not interacting
-  const showInteractGate = ready && !sessionEnded && !interacting && interactGate.enabled
 
   const titleLabel = `terminal · ${prettyName || '...'}`
 
@@ -269,16 +235,6 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
           </div>
         )}
         <div ref={containerRef} className={styles.xtermContainer} />
-        {showInteractGate && (
-          <div
-            className={overlayStyles.interactOverlay}
-            role="button"
-            tabIndex={0}
-            aria-label={interactGate.label}
-          >
-            <span className={overlayStyles.interactHint}>{interactGate.label}</span>
-          </div>
-        )}
         {sessionEnded && (
           <div
             className={overlayStyles.interactOverlay}

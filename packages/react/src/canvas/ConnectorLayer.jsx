@@ -112,35 +112,35 @@ function buildPath(startPt, startAnchor, endPt, endAnchor, freeEnd = false) {
  * @param {Object} endPt — position of the connector's end endpoint
  */
 function EndpointShape({ x, y, startPt, endPt, style, onPointerDown }) {
+  const passThrough = !onPointerDown ? { pointerEvents: 'none' } : {}
   if (style === 'none') {
     return (
       <circle cx={x} cy={y} r={connectorConfig.endpointRadius}
-        style={{ fill: 'transparent', stroke: 'none', pointerEvents: 'auto', cursor: 'crosshair' }}
+        style={{ fill: 'transparent', stroke: 'none', ...(onPointerDown ? { pointerEvents: 'auto', cursor: 'crosshair' } : { pointerEvents: 'none' }) }}
         onPointerDown={onPointerDown}
       />
     )
   }
   if (style === 'arrow-start' || style === 'arrow-end') {
     const size = connectorConfig.endpointRadius * 2.2
-    // Determine which point the arrow should aim toward
     const target = style === 'arrow-start' ? startPt : endPt
     const dx = target.x - x
     const dy = target.y - y
-    // atan2 gives angle from positive X axis; polygon tip points up (-Y), so offset by 90°
     const rotation = (Math.atan2(dy, dx) * 180 / Math.PI) + 90
     return (
       <polygon
         points={`0,${-size} ${size * 0.6},${size * 0.5} ${-size * 0.6},${size * 0.5}`}
         transform={`translate(${x},${y}) rotate(${rotation})`}
         className={styles.connectorEndpoint}
+        style={passThrough}
         onPointerDown={onPointerDown}
       />
     )
   }
-  // Default: circle
   return (
     <circle cx={x} cy={y} r={connectorConfig.endpointRadius}
       className={styles.connectorEndpoint}
+      style={passThrough}
       onPointerDown={onPointerDown}
     />
   )
@@ -216,7 +216,7 @@ export default function ConnectorLayer({
               className={styles.connectorPath}
               onClick={(e) => handleClick(e, conn.id)}
             />
-            {/* Endpoint shapes — draggable to reconnect or remove */}
+            {/* Endpoint shapes — visual only, pointer events pass through to anchor dots */}
             <EndpointShape x={startPt.x} y={startPt.y} startPt={startPt} endPt={endPt} style={startStyle}
               onPointerDown={onEndpointDrag ? (e) => { e.stopPropagation(); e.preventDefault(); onEndpointDrag(conn, 'start', e) } : undefined}
             />

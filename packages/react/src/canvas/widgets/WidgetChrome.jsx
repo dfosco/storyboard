@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Tooltip } from '@primer/react'
 import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode, UnwrapIcon as OcticonUnwrap, ImageIcon as OcticonImage, UnfoldIcon as OcticonUnfold, FoldIcon as OcticonFold } from '@primer/octicons-react'
-import { getConnectorConfig } from './widgetConfig.js'
+import { getConnectorConfig, getInteractGate } from './widgetConfig.js'
 import styles from './WidgetChrome.module.css'
+import overlayStyles from './embedOverlay.module.css'
 
 const STICKY_NOTE_COLORS = {
   yellow: { bg: '#fff8c5', border: '#d4a72c', dot: '#e8c846' },
@@ -455,6 +456,55 @@ export default function WidgetChrome({
   const showFeatures = showToolbar && !multiSelected
   const menuFeatures = features.filter((f) => f.menu)
 
+  // Interact gate — declarative overlay from widgets.config.json
+  const gate = widgetType ? getInteractGate(widgetType) : { enabled: false }
+  const [interacting, setInteracting] = useState(false)
+  const slotRef = useRef(null)
+
+  // Exit interact mode on click outside or double-Escape
+  const lastEscapeRef = useRef(0)
+  useEffect(() => {
+    if (!gate.enabled || !interacting) return
+    const handleMouseDown = (e) => {
+      if (slotRef.current && !slotRef.current.contains(e.target)) {
+        setInteracting(false)
+      }
+    }
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        const now = Date.now()
+        if (now - lastEscapeRef.current < 500) {
+          // Double-Escape: exit interact mode but keep widget selected
+          e.stopPropagation()
+          e.preventDefault()
+          setInteracting(false)
+          lastEscapeRef.current = 0
+        } else {
+          // First Escape: let it pass to widget, record timestamp
+          lastEscapeRef.current = now
+        }
+      }
+    }
+    document.addEventListener('mousedown', handleMouseDown, true)
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown, true)
+      document.removeEventListener('keydown', handleKeyDown, true)
+    }
+  }, [gate.enabled, interacting])
+
+  // Exit interact mode when deselected
+  useEffect(() => {
+    if (!selected && !hovered && interacting) setInteracting(false)
+  }, [selected, hovered, interacting])
+
+  const handleGateClick = useCallback((e) => {
+    e.stopPropagation()
+    setInteracting(true)
+    // Also trigger selection so the widget gets selected
+    onSelect?.()
+  }, [onSelect])
+
   return (
     <div
       className={styles.chromeContainer}
@@ -463,8 +513,19 @@ export default function WidgetChrome({
       onMouseEnter={(readOnly && !hasFeatures) ? undefined : handleMouseEnter}
       onMouseLeave={(readOnly && !hasFeatures) ? undefined : handleMouseLeave}
     >
-      <div className={`tc-drag-surface ${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''} ${multiSelected ? styles.widgetSlotMultiSelected : ''}`} data-widget-selected={selected || undefined}>
+      <div ref={slotRef} className={`tc-drag-surface ${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''} ${multiSelected ? styles.widgetSlotMultiSelected : ''}`} data-widget-selected={selected || undefined} data-widget-interacting={interacting || undefined}>
         {children}
+        {gate.enabled && !interacting && (
+          <div
+            className={overlayStyles.interactOverlay}
+            onClick={handleGateClick}
+            role="button"
+            tabIndex={0}
+            aria-label={gate.label}
+          >
+            <span className={overlayStyles.interactHint}>{gate.label}</span>
+          </div>
+        )}
       </div>
       {!readOnly && onConnectorDragStart && (() => {
         const connConfig = widgetType ? getConnectorConfig(widgetType) : null

@@ -213,6 +213,8 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
     }, 1500)
   }, [])
 
+  // Show interact gate when session is ready but not interacting
+
   const titleLabel = `terminal · ${prettyName || '...'}`
 
   return (

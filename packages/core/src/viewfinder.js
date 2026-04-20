@@ -249,6 +249,21 @@ export function buildPrototypeIndex(knownRoutes = []) {
     canvasEntries.push(entry)
   }
 
+  // Sort grouped canvas pages by pageOrder from .meta.json
+  for (const entry of canvasEntries) {
+    if (!entry.pages || !entry._canvasMeta?.pageOrder) continue
+    const orderMap = new Map()
+    entry._canvasMeta.pageOrder.forEach((p, idx) => {
+      const key = typeof p === 'string' ? p : p?.name
+      if (key) orderMap.set(key, idx)
+    })
+    entry.pages.sort((a, b) => {
+      const aIdx = orderMap.has(a.name) ? orderMap.get(a.name) : Infinity
+      const bIdx = orderMap.has(b.name) ? orderMap.get(b.name) : Infinity
+      return aIdx - bIdx
+    })
+  }
+
   // Add canvases to their folders or to ungrouped
   for (const canvas of canvasEntries) {
     if (canvas.folder && folderMap[canvas.folder]) {

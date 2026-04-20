@@ -187,6 +187,11 @@ The fix was a one-line compaction (4MB → 9KB). Everything the user reported �
 - **Always use the `create` skill** when creating new components or stories — don't manually create files.
 - **Every piece of data consumed in a page must gracefully handle `null` or `undefined` without crashing.** Since flow data, records, and overrides can all be partial, incomplete, or missing, components must never assume a field exists. Use optional chaining, fallback values, or conditional rendering for every data access.
 - **Branch URL support is required for any feature involving URL fragments or URL matching.** Branch deploys use `VITE_BASE_PATH=/branch--{branch-name}/` which changes `import.meta.env.BASE_URL`. Any URL matching, same-origin detection, or src resolution must account for branch-prefixed paths (e.g. `/branch--my-feature/MyPrototype`). When implementing URL-related features, ask the user about branch URL support — if they're unavailable, build for it by default.
+- **Optional/heavy dependencies must use resilient dynamic imports.** Packages in `packages/react` and `packages/core` are published to npm — consumers may not have every optional dependency installed. When importing an optional or heavy package (e.g. `ghostty-web`, WASM modules, large visualization libs):
+  1. Use `import(/* @vite-ignore */ 'package-name')` to prevent Vite's import analysis from erroring at pre-transform time
+  2. Always `.catch()` the dynamic import and return `null` (or a no-op fallback) so the feature degrades gracefully
+  3. Guard all usage of the loaded module with a null check
+  4. Declare the package as an **optional peerDependency** in the consuming package's `package.json` (with `peerDependenciesMeta: { "pkg": { "optional": true } }`)
 
 ---
 

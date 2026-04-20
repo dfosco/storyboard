@@ -152,6 +152,19 @@ export function getWidgetMeta(type) {
 }
 
 /**
+ * Get the interact gate config for a widget type.
+ * @returns {{ enabled: boolean, label: string }} 
+ */
+export function getInteractGate(type) {
+  const def = widgetTypes[type]
+  if (!def || !def.interactGate) return { enabled: false, label: 'Click to interact' }
+  return {
+    enabled: true,
+    label: def.interactGateLabel || 'Click to interact',
+  }
+}
+
+/**
  * Get all widget types as an array of { type, label, icon } for menus.
  * Excludes link-preview, image, and figma-embed which are created via paste only.
  */

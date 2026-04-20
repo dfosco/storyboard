@@ -33,7 +33,7 @@
   "widgets": {
     "sticky-note": {
       "label": "Sticky Note",
-      "icon": "\ud83d\udcdd",
+      "icon": "📝",
       "resize": {
         "enabled": true,
         "prod": false
@@ -133,7 +133,7 @@
     },
     "markdown": {
       "label": "Markdown",
-      "icon": "\ud83d\udcc4",
+      "icon": "📄",
       "resize": {
         "enabled": true,
         "prod": false
@@ -221,7 +221,7 @@
     },
     "prototype": {
       "label": "Prototype",
-      "icon": "\ud83d\udda5\ufe0f",
+      "icon": "🖥️",
       "resize": {
         "enabled": true,
         "prod": false
@@ -338,7 +338,7 @@
     },
     "figma-embed": {
       "label": "Figma Embed",
-      "icon": "\ud83c\udfa8",
+      "icon": "🎨",
       "resize": {
         "enabled": true,
         "prod": false
@@ -428,7 +428,7 @@
     },
     "codepen-embed": {
       "label": "CodePen Embed",
-      "icon": "\u270f\ufe0f",
+      "icon": "✏️",
       "resize": {
         "enabled": true,
         "prod": false
@@ -518,7 +518,7 @@
     },
     "link-preview": {
       "label": "Link Preview",
-      "icon": "\ud83d\udd17",
+      "icon": "🔗",
       "resize": {
         "enabled": false,
         "prod": false
@@ -639,7 +639,7 @@
     },
     "component": {
       "label": "Component",
-      "icon": "\u269b\ufe0f",
+      "icon": "⚛️",
       "resize": {
         "enabled": true,
         "prod": false
@@ -688,7 +688,7 @@
     },
     "story": {
       "label": "Story",
-      "icon": "\ud83d\udcd6",
+      "icon": "📖",
       "resize": {
         "enabled": true,
         "prod": false
@@ -795,7 +795,7 @@
     },
     "image": {
       "label": "Image",
-      "icon": "\ud83d\uddbc\ufe0f",
+      "icon": "🖼️",
       "resize": {
         "enabled": true,
         "prod": false
@@ -911,14 +911,14 @@
           "label": "Width",
           "category": "size",
           "min": 300,
-          "default": 600
+          "default": 800
         },
         "height": {
           "type": "number",
           "label": "Height",
           "category": "size",
           "min": 200,
-          "default": 400
+          "default": 450
         }
       },
       "features": [
@@ -961,7 +961,9 @@
           "*"
         ],
         "exclude": []
-      }
+      },
+      "interactGate": true,
+      "interactGateLabel": "Click to start terminal"
     }
   }
 }

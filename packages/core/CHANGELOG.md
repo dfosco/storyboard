@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 4.2.0-alpha.9
+
+### Patch Changes
+
+-   Fix TDZ crash in terminal server — serverUrl was used before declaration
+
 ## 4.2.0-alpha.8
 
 ### Patch Changes

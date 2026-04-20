@@ -86,6 +86,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const [error, setError] = useState(null)
   const [sessionEnded, setSessionEnded] = useState(false)
   const [connectAttempt, setConnectAttempt] = useState(0)
+  const [interacting, setInteracting] = useState(false)
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -198,8 +199,29 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
 
   const handleClick = useCallback(() => {
     if (sessionEnded) return
+    if (!interacting) {
+      setInteracting(true)
+      termRef.current?.focus()
+      return
+    }
     termRef.current?.focus()
-  }, [sessionEnded])
+  }, [sessionEnded, interacting])
+
+  // Escape exits interact mode
+  useEffect(() => {
+    if (!interacting) return
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setInteracting(false)
+        termRef.current?.blur?.()
+      }
+    }
+    // Listen on the terminal container to catch Escape before it propagates
+    const el = terminalRef.current
+    if (el) el.addEventListener('keydown', handleKeyDown, true)
+    return () => { if (el) el.removeEventListener('keydown', handleKeyDown, true) }
+  }, [interacting])
 
   const [waking, setWaking] = useState(false)
 
@@ -209,9 +231,13 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
       setWaking(false)
       setSessionEnded(false)
       setError(null)
+      setInteracting(false)
       setConnectAttempt(c => c + 1)
     }, 1500)
   }, [])
+
+  // Show interact gate when session is ready but not interacting
+  const showInteractGate = ready && !sessionEnded && !interacting
 
   const titleLabel = `terminal · ${prettyName || '...'}`
 
@@ -233,6 +259,16 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
           </div>
         )}
         <div ref={containerRef} className={styles.xtermContainer} />
+        {showInteractGate && (
+          <div
+            className={overlayStyles.interactOverlay}
+            role="button"
+            tabIndex={0}
+            aria-label="Click to start terminal"
+          >
+            <span className={overlayStyles.interactHint}>Click to start terminal</span>
+          </div>
+        )}
         {sessionEnded && (
           <div
             className={overlayStyles.interactOverlay}

@@ -307,8 +307,12 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
         setTimeout(() => {
           ptyProcess.write(`clear\r`)
           setTimeout(() => {
-            ptyProcess.write(`copilot --agent terminal-agent --allow-all\r`)
+            ptyProcess.write(`copilot --agent terminal-agent\r`)
           }, 300)
+          // Pre-type /autopilot once copilot prompt is ready
+          setTimeout(() => {
+            ptyProcess.write(`/autopilot\r`)
+          }, 2500)
         }, 2000)
       }
 

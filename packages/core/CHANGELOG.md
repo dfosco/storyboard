@@ -1,5 +1,14 @@
 # @dfosco/storyboard-core
 
+## 4.2.0-beta.4
+
+### Patch Changes
+
+-   Fix command palette losing library-provided sections (like add-widget) when client overrides config
+
+    -   Sections are now merged by `id` instead of replaced wholesale
+    -   Client sections take priority, default sections not in client config are preserved
+
 ## 4.2.0-beta.3
 
 ### Patch Changes

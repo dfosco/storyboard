@@ -14,7 +14,7 @@
  *   // Inside a widget:
  *   const { active, activate } = useEmbedActive(widgetId, containerRef)
  */
-import { createContext, useContext, useCallback, useEffect, useRef, useSyncExternalStore } from 'react'
+import { createContext, useContext, useCallback, useEffect, useRef, useState } from 'react'
 
 const DEACTIVATE_DELAY = 5000
 const MAX_VISIBLE_EMBEDS = 7
@@ -147,31 +147,15 @@ export function useEmbedActive(widgetId, containerRef) {
   const scrollRef = useContext(EmbedControllerContext)
   const deactivateTimerRef = useRef(null)
 
-  // Subscribe to state changes
-  const snapshot = useSyncExternalStore(subscribe, () => ({
-    active: isActive(widgetId),
-    performanceMode: getPerformanceMode(),
-    tooMany: isTooManyVisible(),
-  }), () => ({
-    active: false,
-    performanceMode: false,
-    tooMany: false,
-  }))
-
-  // Need a stable reference check since useSyncExternalStore compares by reference
-  const activeRef = useRef(false)
-  const perfRef = useRef(false)
-  const tooManyRef = useRef(false)
+  // Track state with useState + subscribe (avoids useSyncExternalStore object identity issues)
+  const [, forceUpdate] = useState(0)
+  useEffect(() => {
+    return subscribe(() => forceUpdate(c => c + 1))
+  }, [])
 
   const active = isActive(widgetId)
   const perf = getPerformanceMode()
   const tooMany = isTooManyVisible()
-
-  if (activeRef.current !== active || perfRef.current !== perf || tooManyRef.current !== tooMany) {
-    activeRef.current = active
-    perfRef.current = perf
-    tooManyRef.current = tooMany
-  }
 
   // Register/unregister
   useEffect(() => {

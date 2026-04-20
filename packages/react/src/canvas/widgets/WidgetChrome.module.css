@@ -19,6 +19,16 @@
   pointer-events: auto;
 }
 
+/* Invisible expanded hit area — 15px padding around the visible dot */
+.anchorPort::before {
+  content: '';
+  position: absolute;
+  top: -15px;
+  left: -15px;
+  right: -15px;
+  bottom: -15px;
+}
+
 .chromeContainer:hover .anchorPort {
   opacity: 0.6;
 }

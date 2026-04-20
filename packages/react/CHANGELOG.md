@@ -1,5 +1,15 @@
 # @dfosco/storyboard-react
 
+## 4.2.0-alpha.15
+
+### Patch Changes
+
+-   Fix infinite render loop in embed controller
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.15
+    -   @dfosco/tiny-canvas@4.2.0-alpha.15
+
 ## 4.2.0-alpha.14
 
 ### Patch Changes

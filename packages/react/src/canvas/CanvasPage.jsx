@@ -806,6 +806,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     // Each anchor has a 30px-wide strip (15px each side) extending from the widget edge.
     const SNAP_EXTEND = 15
     const SNAP_DEPTH = 40
+    const SNAP_CROSS = 20 // perpendicular expansion so you can approach from any direction
     const sourceType = startWidget.type
     const findNearestAnchor = (canvasPt) => {
       const currentWidgets = stateRef.current.widgets ?? []
@@ -833,17 +834,17 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           // Build a rectangular hit zone for this anchor
           let inZone = false
           if (anch === 'top') {
-            inZone = canvasPt.x >= wx - SNAP_EXTEND && canvasPt.x <= wx + ww + SNAP_EXTEND &&
+            inZone = canvasPt.x >= wx - SNAP_CROSS && canvasPt.x <= wx + ww + SNAP_CROSS &&
                      canvasPt.y >= wy - SNAP_DEPTH && canvasPt.y <= wy + SNAP_EXTEND
           } else if (anch === 'bottom') {
-            inZone = canvasPt.x >= wx - SNAP_EXTEND && canvasPt.x <= wx + ww + SNAP_EXTEND &&
+            inZone = canvasPt.x >= wx - SNAP_CROSS && canvasPt.x <= wx + ww + SNAP_CROSS &&
                      canvasPt.y >= wy + wh - SNAP_EXTEND && canvasPt.y <= wy + wh + SNAP_DEPTH
           } else if (anch === 'left') {
             inZone = canvasPt.x >= wx - SNAP_DEPTH && canvasPt.x <= wx + SNAP_EXTEND &&
-                     canvasPt.y >= wy - SNAP_EXTEND && canvasPt.y <= wy + wh + SNAP_EXTEND
+                     canvasPt.y >= wy - SNAP_CROSS && canvasPt.y <= wy + wh + SNAP_CROSS
           } else if (anch === 'right') {
             inZone = canvasPt.x >= wx + ww - SNAP_EXTEND && canvasPt.x <= wx + ww + SNAP_DEPTH &&
-                     canvasPt.y >= wy - SNAP_EXTEND && canvasPt.y <= wy + wh + SNAP_EXTEND
+                     canvasPt.y >= wy - SNAP_CROSS && canvasPt.y <= wy + wh + SNAP_CROSS
           }
           if (!inZone) continue
 

@@ -1,5 +1,63 @@
 # @dfosco/storyboard-react
 
+## 4.2.0-alpha.11
+
+### Patch Changes
+
+-   Fix live canvas updates — HMR handler was silently dropping all events due to wrong destructuring
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.11
+    -   @dfosco/tiny-canvas@4.2.0-alpha.11
+
+## 4.2.0-alpha.10
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.10
+    -   @dfosco/tiny-canvas@4.2.0-alpha.10
+
+## 4.2.0-alpha.9
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.9
+    -   @dfosco/tiny-canvas@4.2.0-alpha.9
+
+## 4.2.0-alpha.8
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.8
+    -   @dfosco/tiny-canvas@4.2.0-alpha.8
+
+## 4.2.0-alpha.7
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.7
+    -   @dfosco/tiny-canvas@4.2.0-alpha.7
+
+## 4.2.0-alpha.6
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.6
+    -   @dfosco/tiny-canvas@4.2.0-alpha.6
+
+## 4.2.0-alpha.5
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.5
+    -   @dfosco/tiny-canvas@4.2.0-alpha.5
+
 ## 4.2.0-beta.4
 
 ### Patch Changes

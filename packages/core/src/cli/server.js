@@ -1,35 +1,76 @@
 /**
- * storyboard server [branch] — Start the persistent Storyboard dev server.
- *
- * Manages Vite child processes and serves the /_storyboard/ API.
- * If a branch is given, also starts Vite for that branch immediately.
+ * storyboard server — Dev server lifecycle management.
  *
  * Usage:
- *   storyboard server              # start server, detect branch from cwd
- *   storyboard server main         # start server + dev for main
- *   storyboard server my-feature   # start server + dev for my-feature
+ *   storyboard server              List running dev servers
+ *   storyboard server list         List running dev servers
+ *   storyboard server start [wt]   Start the persistent server + Vite for a worktree
+ *   storyboard server stop <id>    Stop a dev server by worktree name or ID
+ *   storyboard server stop-proxy   Stop the Caddy proxy (no sudo required)
  */
 
 import * as p from '@clack/prompts'
 import { startServer, SERVER_PORT, spawnViteForBranch } from '../server/index.js'
 import { parseFlags } from './flags.js'
-import { readDevDomain, generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning } from './proxy.js'
-import { detectWorktreeName, getPort } from '../worktree/port.js'
+import { readDevDomain, generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, stopCaddy } from './proxy.js'
+import { detectWorktreeName, getPort, repoRoot } from '../worktree/port.js'
+import {
+  list,
+  findByWorktree,
+  findById,
+  unregister,
+  prune,
+} from '../worktree/serverRegistry.js'
 
 const flagSchema = {
   port: { type: 'number', description: 'Server port (default: 4100)' },
+  background: { type: 'boolean', default: false, description: 'Run in background (--bg alias)' },
+  bg: { type: 'boolean', default: false, description: 'Run in background' },
+  multiple: { type: 'boolean', default: false, description: 'Allow multiple servers per worktree' },
 }
 
-async function main() {
-  const { flags, positional } = parseFlags(process.argv.slice(3), flagSchema)
-  const port = flags.port || SERVER_PORT
-  const branchArg = positional[0] || undefined
+// ─── Commands ────────────────────────────────────────────
 
-  p.intro('storyboard server')
+function serverList() {
+  const servers = list()
+  if (servers.length === 0) {
+    p.log.info('No dev servers running.')
+    return
+  }
 
   const devDomain = readDevDomain()
 
-  // Register server itself with Caddy so it's reachable at the dev domain
+  p.log.info('Running dev servers:\n')
+  for (const s of servers) {
+    const isMain = s.worktree === 'main'
+    const basePath = isMain ? '/' : `/branch--${s.worktree}/`
+    const proxyUrl = `http://${devDomain}${basePath}`
+    const bg = s.background ? ' (bg)' : ''
+    console.log(`  ${s.id}  ${s.worktree.padEnd(32)}  :${String(s.port).padEnd(5)}  PID ${String(s.pid).padEnd(7)}  ${proxyUrl}${bg}`)
+  }
+  console.log()
+}
+
+async function serverStart(branchArg, flags) {
+  const { background, bg, multiple } = flags
+  const isBackground = background || bg
+  const worktreeName = branchArg || detectWorktreeName()
+
+  // Check for duplicate worktree servers
+  if (!multiple) {
+    const existing = findByWorktree(worktreeName)
+    if (existing.length > 0) {
+      p.log.error(`A dev server is already running for "${worktreeName}" (ID: ${existing[0].id}, PID: ${existing[0].pid}).`)
+      p.log.info(`To stop it:  npx storyboard server stop ${existing[0].id}`)
+      p.log.info(`To allow multiple:  npx storyboard server start ${worktreeName} --multiple`)
+      process.exit(1)
+    }
+  }
+
+  const devDomain = readDevDomain()
+  const port = flags.port || SERVER_PORT
+
+  // Register server itself with Caddy
   try {
     const serverRoute = generateRouteConfig({ __server__: port })
     if (isCaddyRunning()) {
@@ -39,31 +80,112 @@ async function main() {
 
   const server = startServer(port)
 
-  // Determine initial branch to start
-  const initialBranch = branchArg || detectWorktreeName()
-  const isMain = initialBranch === 'main'
-  const basePath = isMain ? '/' : `/branch--${initialBranch}/`
+  const isMain = worktreeName === 'main'
+  const basePath = isMain ? '/' : `/branch--${worktreeName}/`
   const proxyUrl = `http://${devDomain}${basePath}`
 
-  p.log.step(`Starting dev session for ${initialBranch}...`)
+  p.log.step(`Starting dev session for ${worktreeName}...`)
 
   try {
-    const entry = spawnViteForBranch(initialBranch)
-
-    // Wait for ready
+    const entry = spawnViteForBranch(worktreeName)
     const { waitForPort } = await import('../server/index.js')
     const ready = await waitForPort(entry.port)
 
     if (ready) {
-      p.log.success(proxyUrl)
+      p.log.success(`[${entry.serverId}] ${proxyUrl}`)
     } else {
       p.log.warning(`Vite started but may not be ready yet — check ${proxyUrl}`)
     }
   } catch (err) {
-    p.log.error(`Failed to start dev for ${initialBranch}: ${err.message}`)
+    p.log.error(`Failed to start dev for ${worktreeName}: ${err.message}`)
   }
 
   p.outro('Server running')
+}
+
+function serverStop(target) {
+  if (!target) {
+    p.log.error('Usage: storyboard server stop <worktree|ID>')
+    process.exit(1)
+  }
+
+  // Try by ID first
+  let entry = findById(target)
+
+  // Then by worktree name
+  if (!entry) {
+    const matches = findByWorktree(target)
+    if (matches.length === 0) {
+      p.log.error(`No server found for "${target}".`)
+      p.log.info('Run `npx storyboard server list` to see running servers.')
+      process.exit(1)
+    }
+    if (matches.length > 1) {
+      p.log.error(`Multiple servers running for worktree "${target}":`)
+      for (const s of matches) {
+        console.log(`  ${s.id}  PID: ${s.pid}  Port: ${s.port}`)
+      }
+      p.log.info('Specify an ID: npx storyboard server stop <ID>')
+      process.exit(1)
+    }
+    entry = matches[0]
+  }
+
+  try {
+    process.kill(entry.pid, 'SIGTERM')
+    p.log.success(`Stopped server ${entry.id} (PID: ${entry.pid}, worktree: "${entry.worktree}")`)
+  } catch (err) {
+    if (err.code === 'ESRCH') {
+      p.log.info(`Server ${entry.id} (PID: ${entry.pid}) was already dead.`)
+    } else {
+      p.log.error(`Failed to kill PID ${entry.pid}: ${err.message}`)
+    }
+  }
+
+  unregister(entry.id)
+}
+
+function serverStopProxy() {
+  if (!isCaddyRunning()) {
+    p.log.info('Caddy proxy is not running.')
+    return
+  }
+
+  if (stopCaddy()) {
+    p.log.success('Caddy proxy stopped.')
+  } else {
+    p.log.error('Failed to stop Caddy proxy.')
+    process.exit(1)
+  }
+}
+
+// ─── Dispatch ────────────────────────────────────────────
+
+async function main() {
+  const { flags, positional } = parseFlags(process.argv.slice(3), flagSchema)
+  const subcommand = positional[0]
+
+  p.intro('storyboard server')
+
+  switch (subcommand) {
+    case undefined:
+    case 'list':
+      serverList()
+      break
+    case 'start':
+      await serverStart(positional[1], flags)
+      break
+    case 'stop':
+      serverStop(positional[1])
+      break
+    case 'stop-proxy':
+      serverStopProxy()
+      break
+    default:
+      // Legacy behavior: treat argument as branch name (storyboard server <branch>)
+      await serverStart(subcommand, flags)
+      break
+  }
 }
 
 main()

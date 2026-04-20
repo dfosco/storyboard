@@ -1,5 +1,64 @@
 # @dfosco/storyboard-core
 
+## 4.2.0-alpha.11
+
+## 4.2.0-alpha.10
+
+### Minor Changes
+
+-   Live canvas updates from CLI/API — no more page refresh needed
+
+    Canvas API endpoints now push real-time updates to the browser via HMR after every write. Widget adds, updates, deletes, and connector changes all propagate instantly without requiring a page refresh.
+
+## 4.2.0-alpha.9
+
+### Patch Changes
+
+-   Fix TDZ crash in terminal server — serverUrl was used before declaration
+
+## 4.2.0-alpha.8
+
+### Patch Changes
+
+-   Fix terminal crash on posix_spawnp failure
+
+    -   Catch pty.spawn errors so they don't crash the dev server
+    -   Auto-chmod node-pty spawn-helper at terminal server setup time
+
+## 4.2.0-alpha.7
+
+### Patch Changes
+
+-   Deterministic server URL for terminal agents and setup scaffolding
+
+    -   Terminal server uses actual httpServer port instead of ports.json
+    -   `storyboard setup` scaffolds .storyboard/terminals/ and .github/agents/
+    -   ghostty-web moved from optional peer dep to regular dependency
+
+## 4.2.0-alpha.6
+
+### Patch Changes
+
+-   Fix terminal widgets not connecting in client repos
+
+    -   Move ghostty-web from optional peerDependency to regular dependency in @dfosco/storyboard-react
+    -   Remove @vite-ignore from dynamic import so Vite resolves ghostty-web normally
+    -   Terminal widgets now work out of the box without clients manually installing ghostty-web
+
+## 4.2.0-alpha.5
+
+### Minor Changes
+
+-   Terminal agents: context awareness, auto-launch copilot, canvas update CLI
+
+    -   Terminal agents with context awareness, signal bus, and action widgets
+    -   Auto-launch copilot with agent instructions on new terminal sessions
+    -   Canvas update CLI command and PATCH /widget API endpoint
+    -   Inline full widget data in terminal config for zero-latency context
+    -   Fix: prevent accidental canvas wipes from PUT /update endpoint
+    -   Fix: reliable env var passing to terminal agents
+    -   Several fixes for copilot launch flow (pre-type, agent flag, env vars)
+
 ## 4.2.0-beta.4
 
 ### Patch Changes

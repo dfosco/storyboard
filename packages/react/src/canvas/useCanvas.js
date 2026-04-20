@@ -100,7 +100,7 @@ export function useCanvas(canvasId) {
   useEffect(() => {
     if (!import.meta.hot || !buildTimeCanvas) return
 
-    const handleCanvasFileChanged = ({ data }) => {
+    const handleCanvasFileChanged = (data) => {
       const eventId = data?.canvasId || data?.name
       if (!data || eventId !== canvasId) return
       // Use metadata from the HMR event directly if available (faster)

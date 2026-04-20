@@ -6,6 +6,7 @@ import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
+import { useEmbedsPaused } from './useEmbedsPaused.js'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -67,6 +68,8 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const [expanded, setExpanded] = useState(false)
   const [filter, setFilter] = useState('')
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
+  const embedsPaused = useEmbedsPaused()
+  const frozenSrcRef = useRef(null)
   const inputRef = useRef(null)
   const filterRef = useRef(null)
   const embedRef = useRef(null)
@@ -83,6 +86,16 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     const sep = base.includes('?') ? '&' : '?'
     return `${base}${sep}_sb_embed&_sb_hide_branch_bar&_sb_theme_target=prototype&_sb_canvas_theme=${canvasTheme}${hash}`
   }, [rawSrc, canvasTheme])
+
+  // When paused and not interactive, freeze the iframe src to prevent reloads
+  const effectiveSrc = (() => {
+    if (!embedsPaused || interactive) {
+      frozenSrcRef.current = iframeSrc
+      return iframeSrc
+    }
+    if (frozenSrcRef.current == null) frozenSrcRef.current = iframeSrc
+    return frozenSrcRef.current
+  })()
 
   const prototypeIndex = useMemo(() => {
     try { return buildPrototypeIndex() }
@@ -153,8 +166,8 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
   useIframeDevLogs({
     widget: 'PrototypeEmbed',
-    loaded: Boolean(iframeSrc && interactive),
-    src: iframeSrc,
+    loaded: Boolean(effectiveSrc && interactive),
+    src: effectiveSrc,
   })
 
   useEffect(() => {
@@ -295,7 +308,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
         className={styles.embed}
         style={{ width, height, ...chromeVars }}
       >
-        <div className={styles.header}>
+        <div className={`${styles.header}${embedsPaused && !interactive ? ` ${styles.headerPaused}` : ''}`}>
           <span className={styles.headerIcon}><CollageFrameIcon size={16} /></span>
           <span className={styles.headerTitle}>{prototypeTitle}</span>
         </div>
@@ -362,7 +375,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
             >
               <iframe
                 ref={iframeRef}
-                src={iframeSrc}
+                src={effectiveSrc}
                 className={styles.iframe}
                 style={{
                   width: width / scale,

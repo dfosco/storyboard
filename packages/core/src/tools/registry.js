@@ -17,6 +17,7 @@ export const coreHandlers = {
   'canvas-add-widget':  () => import('./handlers/canvasAddWidget.js'),
   'canvas-toolbar':     () => import('./handlers/canvasToolbar.js'),
   'hide-toolbars':      () => import('./handlers/hideToolbars.js'),
+  'pause-embeds':       () => import('./handlers/pauseEmbeds.js'),
 }
 
 // Keep legacy export name for backward compatibility

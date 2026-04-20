@@ -123,3 +123,22 @@ npx storyboard agent signal --status error --message "What went wrong"
 - **Prefer CLI commands** (`npx storyboard canvas ...`) over direct HTTP calls — they resolve ports automatically
 - Only fall back to HTTP API (`{serverUrl}/_storyboard/canvas/`) if the CLI doesn't support the operation
 - Environment variables `$STORYBOARD_WIDGET_ID`, `$STORYBOARD_CANVAS_ID`, `$STORYBOARD_BRANCH`, `$STORYBOARD_SERVER_URL` are also available in the shell
+
+## HTTP API Reference (fallback only)
+
+If the CLI fails, use these endpoints. The `serverUrl` is in your terminal config or `$STORYBOARD_SERVER_URL`.
+
+### Safe: Update a single widget (PATCH)
+```bash
+curl -s -X PATCH "${STORYBOARD_SERVER_URL}/_storyboard/canvas/widget" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"<canvasId>","widgetId":"<widgetId>","props":{"text":"new value"}}'
+```
+
+### Safe: Read canvas state (GET)
+```bash
+curl -s "${STORYBOARD_SERVER_URL}/_storyboard/canvas/<canvasId>"
+```
+
+### ⚠️ NEVER use `PUT /_storyboard/canvas/update` with a `widgets` array
+That endpoint **replaces ALL widgets** in the canvas. Sending one widget = deleting everything else.

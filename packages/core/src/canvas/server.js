@@ -401,6 +401,21 @@ export function createCanvasHandler(ctx) {
         const ts = new Date().toISOString()
 
         if (widgets) {
+          // Guard against accidental canvas wipes: if the incoming widget count
+          // is much smaller than the current canvas, reject unless explicitly confirmed.
+          // This protects against agents/scripts that accidentally send a partial widget
+          // array to the widgets_replaced endpoint (which replaces ALL widgets).
+          const current = readCanvas(filePath)
+          const currentCount = (current.widgets || []).length
+          if (currentCount > 1 && widgets.length < currentCount * 0.5 && body.replaceAll !== true) {
+            sendJson(res, 400, {
+              error: `Refusing to replace ${currentCount} widgets with ${widgets.length}. `
+                + `This would delete ${currentCount - widgets.length} widgets. `
+                + `Use PATCH /_storyboard/canvas/widget to update individual widgets, `
+                + `or pass "replaceAll": true to confirm full replacement.`,
+            })
+            return
+          }
           const stamped = stampBoundsAll(widgets)
           appendEvent(filePath, { event: 'widgets_replaced', timestamp: ts, widgets: stamped })
         }

@@ -82,7 +82,8 @@ async function welcomeLoop() {
               // Small delay to ensure the prompt is fully rendered
               setTimeout(() => {
                 try {
-                  execSync(`tmux send-keys -l "/autopilot "`, { stdio: 'ignore' })
+                  execSync(`tmux send-keys -l "/allow-all on"`, { stdio: 'ignore' })
+                  execSync(`tmux send-keys Enter`, { stdio: 'ignore' })
                 } catch {}
               }, 500)
             }

@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 4.2.0-beta.1
+
+### Patch Changes
+
+-   Fix client repo crash: make `ws` import graceful (try/catch like node-pty) and add as explicit dependency.
+
 ## 4.2.0-beta.0
 
 ### Minor Changes

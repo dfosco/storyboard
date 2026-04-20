@@ -34,14 +34,48 @@ Then filter for your connected widget IDs.
 - **prototype**: Reference the prototype at `src/prototypes/{path}` — UI context
 - **link-preview**: Read `props.url` — external reference to fetch/summarize
 
-## Step 3: Use context
+## Step 3: Prefer CLI commands for canvas operations
+
+**Always prefer `npx storyboard` CLI commands over HTTP API calls.** CLI commands resolve the dev server port automatically — no URL/port guessing needed.
+
+### Reading canvas state
+```bash
+npx storyboard canvas read {canvasId} --json
+npx storyboard canvas read {canvasId} --id {widgetId} --json
+```
+
+### Updating a widget
+```bash
+# Sticky note text
+npx storyboard canvas update {widgetId} --canvas {canvasId} --text "New text"
+
+# Markdown content
+npx storyboard canvas update {widgetId} --canvas {canvasId} --content "# Heading"
+
+# Arbitrary props as JSON
+npx storyboard canvas update {widgetId} --canvas {canvasId} --props '{"key":"val"}'
+
+# Move widget position
+npx storyboard canvas update {widgetId} --canvas {canvasId} --x 100 --y 200
+
+# Shorthand flags: --text, --content, --src, --url, --color
+```
+
+### Adding a widget
+```bash
+npx storyboard canvas add sticky-note --canvas {canvasId} --props '{"text":"Hello"}'
+```
+
+**Why CLI over API:** The CLI resolves the correct dev server port automatically via the Caddy proxy or ports.json. You never need to know the port number.
+
+## Step 4: Use context
 
 - Connected sticky notes and markdown are likely instructions or requirements
 - Connected images are likely designs, screenshots, or references
 - Connected stories/components are likely code to modify or iterate on
 - The user's prompt should be interpreted in light of these connected widgets
 
-## Step 4: Signal completion
+## Step 5: Signal completion
 
 When your task is complete, signal the canvas:
 ```bash
@@ -55,5 +89,7 @@ npx storyboard agent signal --status error --message "Description of what went w
 
 **IMPORTANT:**
 - Always call the signal command when done — the canvas widget is waiting for it
-- NEVER write directly to `.canvas.jsonl` files — use the canvas server API instead
-- Use `$STORYBOARD_SERVER_URL` for all API calls to the dev server
+- NEVER write directly to `.canvas.jsonl` files — use the canvas CLI or server API
+- **Prefer CLI commands** (`npx storyboard canvas ...`) over direct HTTP calls
+- Only fall back to HTTP API (`$STORYBOARD_SERVER_URL/_storyboard/canvas/`) if CLI doesn't support the operation
+- Use `$STORYBOARD_SERVER_URL` for any API calls that require the server URL

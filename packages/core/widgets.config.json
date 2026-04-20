@@ -923,6 +923,13 @@
       },
       "features": [
         {
+          "id": "expand",
+          "type": "action",
+          "action": "expand",
+          "label": "$label:expand",
+          "icon": "expand"
+        },
+        {
           "id": "copy",
           "type": "action",
           "action": "copy",

@@ -1649,6 +1649,14 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     }))
   }, [canvasId, zoom])
 
+  // Keep bridge in sync with widgets/connectors for expand features
+  useEffect(() => {
+    const bridge = window[CANVAS_BRIDGE_STATE_KEY] || {}
+    bridge.widgets = localWidgets
+    bridge.connectors = localConnectors
+    window[CANVAS_BRIDGE_STATE_KEY] = bridge
+  }, [localWidgets, localConnectors])
+
   // Delete selected widget on Delete/Backspace key
   useEffect(() => {
     function handleSelectStart(e) {

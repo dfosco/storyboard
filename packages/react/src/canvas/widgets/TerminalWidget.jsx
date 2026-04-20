@@ -1,4 +1,5 @@
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react'
+import { createPortal } from 'react-dom'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
 import { getTerminalConfig } from '@dfosco/storyboard-core'
@@ -56,6 +57,52 @@ function calcDimensions(widthPx, heightPx) {
   return { cols, rows }
 }
 
+const EMBED_TYPES = new Set(['prototype', 'story'])
+
+/**
+ * Find the first connected embed (prototype or story) widget via the canvas bridge.
+ */
+function findConnectedEmbed(widgetId) {
+  const bridge = window.__storyboardCanvasBridgeState
+  if (!bridge?.connectors || !bridge?.widgets) return null
+  const connectedIds = new Set()
+  for (const c of bridge.connectors) {
+    if (c.startWidgetId === widgetId) connectedIds.add(c.endWidgetId)
+    if (c.endWidgetId === widgetId) connectedIds.add(c.startWidgetId)
+  }
+  for (const w of bridge.widgets) {
+    if (connectedIds.has(w.id) && EMBED_TYPES.has(w.type)) return w
+  }
+  return null
+}
+
+/**
+ * Build an iframe URL for a connected embed widget.
+ */
+function buildEmbedUrl(widget) {
+  if (!widget) return null
+  const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
+  const baseClean = base.endsWith('/') ? base.slice(0, -1) : base
+  if (widget.type === 'prototype') {
+    const src = widget.props?.src
+    if (!src) return null
+    if (/^https?:\/\//.test(src)) return src
+    return `${baseClean}${src.startsWith('/') ? '' : '/'}${src}?_sb_embed&_sb_hide_branch_bar`
+  }
+  if (widget.type === 'story') {
+    const storyId = widget.props?.storyId
+    const exportName = widget.props?.exportName
+    if (!storyId) return null
+    const storyData = typeof window !== 'undefined' && window.__storyboardStoryIndex?.[storyId]
+    if (storyData?._route) {
+      const route = exportName ? `${storyData._route}?export=${exportName}` : storyData._route
+      return `${baseClean}${route}`
+    }
+    return null
+  }
+  return null
+}
+
 const DEFAULT_THEME = {
   background: '#0d1117',
   foreground: '#e6edf3',
@@ -79,7 +126,7 @@ const DEFAULT_THEME = {
   brightWhite: '#f0f6fc',
 }
 
-export default function TerminalWidget({ id, props, onUpdate, resizable }) {
+export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizable }, ref) {
   const width = readProp(props, 'width', terminalSchema)
   const height = readProp(props, 'height', terminalSchema)
   const prettyName = props?.prettyName || null
@@ -92,6 +139,14 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   const [error, setError] = useState(null)
   const [sessionEnded, setSessionEnded] = useState(false)
   const [connectAttempt, setConnectAttempt] = useState(0)
+  const [expanded, setExpanded] = useState(false)
+  const expandContainerRef = useRef(null)
+
+  useImperativeHandle(ref, () => ({
+    handleAction(actionId) {
+      if (actionId === 'expand') setExpanded(true)
+    },
+  }), [])
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -202,6 +257,46 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
     return () => clearTimeout(timer)
   }, [width, height])
 
+  // Resize terminal to fill the expand container
+  useEffect(() => {
+    if (!expanded || !termRef.current || !expandContainerRef.current) return
+    const timer = setTimeout(() => {
+      const el = expandContainerRef.current
+      if (!el) return
+      const dims = calcDimensions(el.clientWidth, el.clientHeight - 40)
+      termRef.current?.resize?.(dims.cols, dims.rows)
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
+      }
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [expanded])
+
+  // Restore terminal size when collapsing
+  useEffect(() => {
+    if (expanded) return
+    if (!termRef.current) return
+    const timer = setTimeout(() => {
+      const dims = calcDimensions(width, height)
+      termRef.current?.resize?.(dims.cols, dims.rows)
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
+      }
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [expanded, width, height])
+
+  // Reparent terminal DOM node between inline and expand
+  useEffect(() => {
+    const xtermEl = containerRef.current
+    if (!xtermEl) return
+    if (expanded && expandContainerRef.current) {
+      expandContainerRef.current.appendChild(xtermEl)
+    } else if (!expanded && terminalRef.current) {
+      terminalRef.current.appendChild(xtermEl)
+    }
+  }, [expanded])
+
   const handleClick = useCallback(() => {
     if (sessionEnded) return
     termRef.current?.focus()
@@ -222,8 +317,12 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
   // Show interact gate when session is ready but not interacting
 
   const titleLabel = `terminal · ${prettyName || '...'}`
+  const connectedEmbed = expanded ? findConnectedEmbed(id) : null
+  const embedUrl = expanded ? buildEmbedUrl(connectedEmbed) : null
+  const hasSplit = Boolean(embedUrl)
 
   return (
+    <>
     <div className={styles.container}>
       <div className={styles.titleBar}>{titleLabel}</div>
       <div
@@ -240,7 +339,7 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
             <span>⚠ {error}</span>
           </div>
         )}
-        <div ref={containerRef} className={styles.xtermContainer} />
+        {!expanded && <div ref={containerRef} className={styles.xtermContainer} />}
         {sessionEnded && (
           <div
             className={overlayStyles.interactOverlay}
@@ -276,5 +375,34 @@ export default function TerminalWidget({ id, props, onUpdate, resizable }) {
         />
       )}
     </div>
+    {createPortal(
+      <div
+        className={styles.expandBackdrop}
+        style={expanded ? undefined : { display: 'none' }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => { if (e.key === 'Escape') setExpanded(false) }}
+        onWheel={(e) => e.stopPropagation()}
+      >
+        <div className={styles.expandTopBar}>
+          <span className={styles.expandTitle}>{titleLabel}</span>
+          {hasSplit && connectedEmbed && (
+            <span className={styles.expandEmbedLabel}>
+              {connectedEmbed.type === 'story' ? connectedEmbed.props?.storyId : connectedEmbed.props?.src || 'Prototype'}
+            </span>
+          )}
+          <button className={styles.expandClose} onClick={() => setExpanded(false)} aria-label="Close expanded view" autoFocus>✕</button>
+        </div>
+        <div className={`${styles.expandBody}${hasSplit ? ` ${styles.expandSplit}` : ''}`}>
+          <div ref={expandContainerRef} className={styles.expandTerminal} />
+          {hasSplit && (
+            <div className={styles.expandEmbed}>
+              <iframe src={embedUrl} className={styles.expandIframe} title="Connected embed" />
+            </div>
+          )}
+        </div>
+      </div>,
+      document.body
+    )}
+    </>
   )
-}
+})

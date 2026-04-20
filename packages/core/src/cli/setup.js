@@ -188,7 +188,7 @@ if (isInstalled('code')) {
 
 // 7. Asset directories
 {
-  const dirs = ['assets/canvas/images', '.storyboard']
+  const dirs = ['assets/canvas/images', '.storyboard', '.storyboard/terminals']
   for (const dir of dirs) {
     if (!existsSync(dir)) {
       try { mkdirSync(dir, { recursive: true }) } catch { /* ignore */ }
@@ -209,6 +209,30 @@ if (isInstalled('code')) {
   }
 
   p.log.success('Canvas asset directories ready')
+}
+
+// 7b. Copilot agents
+{
+  const agentsDir = '.github/agents'
+  if (!existsSync(agentsDir)) {
+    try { mkdirSync(agentsDir, { recursive: true }) } catch { /* ignore */ }
+  }
+
+  const scaffoldAgents = path.resolve(import.meta.dirname, '..', '..', 'scaffold', 'agents')
+  if (existsSync(scaffoldAgents)) {
+    try {
+      const agentFiles = execSync(`ls "${scaffoldAgents}"`, { encoding: 'utf8' }).trim().split('\n').filter(Boolean)
+      for (const file of agentFiles) {
+        const dest = path.join(agentsDir, file)
+        if (!existsSync(dest)) {
+          run(`cp "${path.join(scaffoldAgents, file)}" "${dest}"`)
+        }
+      }
+      if (agentFiles.length > 0) {
+        p.log.success('Copilot agents scaffolded (.github/agents/)')
+      }
+    } catch { /* ignore */ }
+  }
 }
 
 // 8. Proxy

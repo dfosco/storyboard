@@ -15,6 +15,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from '
 import { join, dirname } from 'node:path'
 import { createHash } from 'node:crypto'
 import { execSync } from 'node:child_process'
+import { getPort, detectWorktreeName } from '../worktree/port.js'
 
 const TERMINALS_DIR = '.storyboard/terminals'
 
@@ -81,6 +82,9 @@ export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = n
 
   const worktree = getWorktreeName()
   const devDomain = readDevDomain()
+  let serverPort = 1234
+  try { serverPort = getPort(detectWorktreeName()) } catch {}
+  const serverUrl = `http://localhost:${serverPort}`
 
   const config = {
     ...existing,
@@ -90,6 +94,7 @@ export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = n
     branch,
     worktree,
     devDomain,
+    serverUrl,
     workingDirectory: rootDir,
     deleted: false,
     connectedWidgets: existing.connectedWidgets || [],

@@ -772,10 +772,15 @@ export default function StoryboardCommandPalette({ basePath }) {
 
     function handleKeyDown(e) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        console.log('[palette] Cmd+K detected')
         e.preventDefault()
         toggledByEvent = false
         requestAnimationFrame(() => {
-          if (toggledByEvent) return
+          if (toggledByEvent) {
+            console.log('[palette] skipped — toggle event already fired')
+            return
+          }
+          console.log('[palette] toggling open state')
           const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
           setItems(built.groups)
           setToolMenus(built.toolMenus)
@@ -833,23 +838,35 @@ export default function StoryboardCommandPalette({ basePath }) {
   }, [basePath])
 
   const handleChangeOpen = useCallback((value) => {
+    console.log('[palette] onChangeOpen:', value)
     if (!value) {
       setOpen(false)
       setActivePage('root')
     }
   }, [])
 
-  // Force-focus the search input when the palette opens.
-  // headlessui's initialFocus + autoFocus can race with rAF/setTimeout open paths.
-  const focusRafRef = useRef(0)
+  // Debug: track focus changes while palette is open
   useEffect(() => {
-    cancelAnimationFrame(focusRafRef.current)
-    if (!open) return
-    focusRafRef.current = requestAnimationFrame(() => {
-      const input = document.getElementById('command-palette-search-input')
-      if (input) input.focus()
-    })
-    return () => cancelAnimationFrame(focusRafRef.current)
+    if (!open) {
+      console.log('[palette] closed')
+      return
+    }
+    console.log('[palette] opened — tracking focus changes')
+    const handleFocusIn = (e) => {
+      console.log('[palette] focusin:', e.target?.tagName, e.target?.id, e.target?.className?.slice?.(0, 60))
+    }
+    const handleFocusOut = (e) => {
+      console.log('[palette] focusout:', e.target?.tagName, e.target?.id, e.target?.className?.slice?.(0, 60))
+      setTimeout(() => {
+        console.log('[palette] activeElement after focusout:', document.activeElement?.tagName, document.activeElement?.id)
+      }, 0)
+    }
+    document.addEventListener('focusin', handleFocusIn)
+    document.addEventListener('focusout', handleFocusOut)
+    return () => {
+      document.removeEventListener('focusin', handleFocusIn)
+      document.removeEventListener('focusout', handleFocusOut)
+    }
   }, [open])
 
   // Flatten sub-page options into searchable groups so they appear in root search
@@ -938,6 +955,7 @@ export default function StoryboardCommandPalette({ basePath }) {
   )
 
   const handleChangeSearch = useCallback((value) => {
+    console.log('[palette] search changed:', value)
     setSearch(value)
   }, [])
 

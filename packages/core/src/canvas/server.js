@@ -1545,7 +1545,7 @@ export function Default() {
           // Pre-type /autopilot once copilot prompt is ready
           setTimeout(() => {
             try {
-              execSync(`tmux send-keys -t "${tmuxName}" -l "/autopilot"`, { stdio: 'ignore' })
+              execSync(`tmux send-keys -t "${tmuxName}" -l "/autopilot "`, { stdio: 'ignore' })
               execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
             } catch {}
           }, 3000)

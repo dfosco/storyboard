@@ -406,7 +406,7 @@ export default function storyboardServer() {
           if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH' || req.method === 'DELETE') {
             body = await parseJsonBody(req)
           }
-          await handler(req, res, { body, path: restPath, method: req.method })
+          await handler(req, res, { body, path: restPath, method: req.method, __viteWs: server.ws })
         } catch (err) {
           console.error(`[storyboard-server] Error in ${prefix}:`, err)
           sendJson(res, 500, { error: err.message || 'Internal server error' })

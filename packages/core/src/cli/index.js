@@ -160,6 +160,9 @@ switch (command) {
   case 'server':
     import('./server.js')
     break
+  case 'agent':
+    import('./agent.js')
+    break
   case 'code':
     import('./code.js')
     break

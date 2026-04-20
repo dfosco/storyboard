@@ -63,6 +63,7 @@
   {"folder":"branch--4.1.0","branch":"4.1.0"},
   {"folder":"branch--4.1.5-component-refoldering","branch":"4.1.5-component-refoldering"},
   {"folder":"branch--4.2.0-canvas-and-terminal-papercuts","branch":"4.2.0-canvas-and-terminal-papercuts"},
+  {"folder":"branch--4.2.0-pause-embed-refreshes","branch":"4.2.0-pause-embed-refreshes"},
   {"folder":"branch--4.2.0-server-api","branch":"4.2.0-server-api"},
   {"folder":"branch--4.2.0-terminal-agents","branch":"4.2.0-terminal-agents"},
   {"folder":"branch--4.2.0-terminal-and-server","branch":"4.2.0-terminal-and-server"},

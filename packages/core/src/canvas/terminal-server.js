@@ -308,7 +308,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
           // Clear the welcome output first, then launch copilot with agent context
           ptyProcess.write(`clear\r`)
           setTimeout(() => {
-            ptyProcess.write(`copilot --agent "${agentMdPath}"\r`)
+            ptyProcess.write(`copilot --agent "${agentMdPath}" --allow-all\r`)
           }, 300)
         }, 2000)
       }

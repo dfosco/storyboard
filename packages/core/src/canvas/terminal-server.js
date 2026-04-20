@@ -311,6 +311,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
     const hideStatus = () => {
       try {
         execSync(`tmux set-option -t "${targetName}" status off 2>/dev/null`, { stdio: 'ignore' })
+        execSync(`tmux set-option -t "${targetName}" mouse on 2>/dev/null`, { stdio: 'ignore' })
       } catch {}
     }
     setTimeout(hideStatus, 200)

@@ -46,6 +46,7 @@ import {
   writeTerminalConfig as writeTermConfig,
   initTerminalConfig,
 } from './terminal-config.js'
+import { getPort, detectWorktreeName } from '../worktree/port.js'
 
 let pty
 try {
@@ -226,8 +227,9 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
   } catch { /* best effort */ }
 
   // Derive server URL for agents to call back
-  const port = process.env.STORYBOARD_PORT || '1234'
-  const serverUrl = `http://localhost:${port}`
+  let serverPort = '1234'
+  try { serverPort = String(getPort(detectWorktreeName())) } catch {}
+  const serverUrl = `http://localhost:${serverPort}`
 
   const env = {
     ...process.env,
@@ -296,12 +298,27 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
         ptyProcess.write(cmd)
       }, 600)
 
-      // Execute startup sequence if configured (after welcome completes)
+      // Launch copilot with terminal agent instructions after welcome
+      // The agent reads connected widget context from .storyboard/terminals/
+      const agentMdPath = join(process.cwd(), 'packages', 'core', 'src', 'canvas', 'terminal-agent-instructions.md')
+      const agentFileExists = (() => { try { readFileSync(agentMdPath); return true } catch { return false } })()
+
+      if (agentFileExists) {
+        setTimeout(() => {
+          // Clear the welcome output first, then launch copilot with agent context
+          ptyProcess.write(`clear\r`)
+          setTimeout(() => {
+            ptyProcess.write(`copilot --agent "${agentMdPath}"\r`)
+          }, 300)
+        }, 2000)
+      }
+
+      // Execute startup sequence if configured (after agent launch)
       const startupSeq = termCfg.defaultStartupSequence
       if (startupSeq?.steps?.length) {
         setTimeout(() => {
           executeStartupSequence(tmuxName, ws, startupSeq)
-        }, 1500)
+        }, 3500)
       }
     }
 

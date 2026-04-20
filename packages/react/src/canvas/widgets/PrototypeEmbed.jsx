@@ -68,13 +68,13 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   const [expanded, setExpanded] = useState(false)
   const [filter, setFilter] = useState('')
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
-  const { active: embedActive, activate: activateEmbed, performanceMode, tooMany } = useEmbedActive(widgetId, embedRef)
   const inputRef = useRef(null)
   const filterRef = useRef(null)
   const embedRef = useRef(null)
   const iframeRef = useRef(null)
   const inlineContainerRef = useRef(null)
   const modalContainerRef = useRef(null)
+  const { active: embedActive, activate: activateEmbed, performanceMode, tooMany } = useEmbedActive(widgetId, embedRef)
 
   const iframeSrc = useMemo(() => {
     if (!rawSrc) return ''

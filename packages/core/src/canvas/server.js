@@ -307,6 +307,29 @@ export function createCanvasHandler(ctx) {
         }
       }).filter(Boolean)
       const groups = findCanvasMeta(root)
+
+      // Sort canvases within each group by saved pageOrder from .meta.json
+      const groupOrderMaps = new Map()
+      for (const [groupName, meta] of Object.entries(groups)) {
+        if (Array.isArray(meta.pageOrder)) {
+          const orderMap = new Map()
+          meta.pageOrder.forEach((entry, idx) => {
+            if (typeof entry === 'string' && !entry.startsWith('sep-')) orderMap.set(entry, idx)
+          })
+          groupOrderMaps.set(groupName, orderMap)
+        }
+      }
+      if (groupOrderMaps.size > 0) {
+        canvases.sort((a, b) => {
+          if (a.group !== b.group) return 0
+          const orderMap = a.group ? groupOrderMaps.get(a.group) : null
+          if (!orderMap) return 0
+          const ai = orderMap.has(a.name) ? orderMap.get(a.name) : Infinity
+          const bi = orderMap.has(b.name) ? orderMap.get(b.name) : Infinity
+          return ai - bi
+        })
+      }
+
       sendJson(res, 200, { canvases, groups })
       return
     }

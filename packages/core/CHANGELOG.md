@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 4.2.0-alpha.12
+
+### Patch Changes
+
+-   Revert performance mode (broken), keep pause-embeds, terminal state machine, tmux mouse, scroll fix
+
 ## 4.2.0-alpha.11
 
 ## 4.2.0-alpha.10

@@ -317,23 +317,57 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
     }
     setTimeout(hideStatus, 200)
 
-    // For new sessions, run the welcome prompt script inside tmux
+    // For new sessions, run the welcome prompt script inside tmux.
+    // Wait for the shell prompt to appear before sending the command,
+    // instead of a fixed timeout that races with shell initialization.
     if (isNewSession) {
       const canvasArg = canvasId !== 'unknown' ? canvasId : ''
-      setTimeout(() => {
-        // Send the welcome command to the shell inside tmux
-        const nameArg = prettyName ? ` --name "${prettyName}"` : ''
-        const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}\r`
-        ptyProcess.write(cmd)
-      }, 600)
+      const nameArg = prettyName ? ` --name "${prettyName}"` : ''
+      const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}\r`
 
-      // Execute startup sequence if configured (after welcome completes)
-      const startupSeq = termCfg.defaultStartupSequence
-      if (startupSeq?.steps?.length) {
-        setTimeout(() => {
-          executeStartupSequence(tmuxName, ws, startupSeq)
-        }, 1500)
-      }
+      let promptDetected = false
+      const maxWait = 5000
+      const start = Date.now()
+      const pollInterval = setInterval(() => {
+        if (promptDetected || Date.now() - start > maxWait) {
+          clearInterval(pollInterval)
+          if (!promptDetected) {
+            // Timed out waiting for prompt — send anyway
+            ptyProcess.write(cmd)
+          }
+          return
+        }
+        try {
+          const pane = execSync(
+            `tmux capture-pane -t "${targetName}" -p 2>/dev/null`,
+            { encoding: 'utf8', timeout: 1000 }
+          ).trim()
+          // Shell is ready when we see a prompt-like character at the end
+          if (pane && (pane.endsWith('$') || pane.endsWith('%') || pane.endsWith('❯') || pane.endsWith('>') || pane.endsWith('#') || pane.includes(prompt.trim()))) {
+            promptDetected = true
+            clearInterval(pollInterval)
+            ptyProcess.write(cmd)
+
+            // Execute startup sequence if configured (after welcome completes)
+            const startupSeq = termCfg.defaultStartupSequence
+            if (startupSeq?.steps?.length) {
+              setTimeout(() => {
+                executeStartupSequence(tmuxName, ws, startupSeq)
+              }, 900)
+            }
+          }
+        } catch { /* tmux not ready yet */ }
+      }, 150)
+
+      // Fallback: if prompt never detected, still run startup sequence
+      setTimeout(() => {
+        if (!promptDetected) {
+          const startupSeq = termCfg.defaultStartupSequence
+          if (startupSeq?.steps?.length) {
+            executeStartupSequence(tmuxName, ws, startupSeq)
+          }
+        }
+      }, maxWait + 500)
     }
 
     // Write conflict warning if session was live elsewhere

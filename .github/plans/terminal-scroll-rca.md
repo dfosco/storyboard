@@ -16,6 +16,8 @@ Four previous fix attempts targeted the wrong layer (tmux configuration). The co
 | 2 | `tmux bind-key -T root WheelUpPane ...` | tmux | Didn't suppress tmux's built-in mouse-on passthrough — both copy-mode AND arrow keys fired |
 | 3 | `tmux set-option alternate-screen off` | tmux | Made tmux unaware of alternate screen, but the dual scroll was **browser-side** not tmux-side. Both layers still scrolled. |
 | 4 | React `onWheel={stopPropagation}` | React/browser | React synthetic events fire in **bubble phase**, but the canvas scroll container processes the native wheel event before React's synthetic handler runs. Also, React 19 registers wheel handlers as passive by default. |
+| 5 | Native capture-phase `stopPropagation` | browser | Fired before ghostty-web's own capture handler, preventing terminal from scrolling at all. |
+| 6 | Native bubble-phase `stopPropagation` (passive) | browser | `stopPropagation` doesn't prevent native scrolling — scrolling the nearest overflow ancestor is the **default action** of wheel events, not a propagation-dependent behavior. |
 
 ---
 
@@ -73,28 +75,30 @@ The key insight: **the `.canvasScroll` div scrolls natively** — no JS handler 
 
 ### Primary Fix (Implemented)
 
-Attach a **native** `wheel` event listener on the terminal wrapper `div` in the **capture phase**, which stops propagation before it can reach the canvas scroll container:
+Attach a **native** `wheel` event listener on the terminal wrapper `div` in the **bubble phase** with `passive: false`, calling `preventDefault()` to cancel the browser's native scroll action:
 
 ```js
 // TerminalWidget.jsx
 useEffect(() => {
   const el = terminalRef.current
   if (!el) return
-  function captureWheel(e) {
+  function stopNativeScroll(e) {
     if (phaseRef.current === 'interacting') {
+      e.preventDefault()
       e.stopPropagation()
     }
   }
-  el.addEventListener('wheel', captureWheel, { capture: true, passive: true })
-  return () => el.removeEventListener('wheel', captureWheel, { capture: true })
+  el.addEventListener('wheel', stopNativeScroll, { passive: false })
+  return () => el.removeEventListener('wheel', stopNativeScroll)
 }, [])
 ```
 
 **Why this works:**
-- `capture: true` fires _before_ ghostty-web's own capture handler (which is on a _child_ element)
-- `stopPropagation()` prevents the event from reaching any other handlers or the canvas scroll container
-- `passive: true` is fine — we only need `stopPropagation()`, not `preventDefault()`
-- Gated on `phase === 'interacting'` so normal canvas scrolling works when the terminal isn't focused
+- `preventDefault()` cancels the browser's default scroll action (scrolling the nearest overflow ancestor)
+- `passive: false` is required for `preventDefault()` to work
+- ghostty-web reads `deltaY` directly from the event and sends it to WASM — it doesn't rely on native scroll, so `preventDefault()` doesn't affect terminal scrolling
+- Fires in bubble phase so ghostty-web's capture-phase handler processes the event first
+- Gated on `phase === 'interacting'` so normal canvas scrolling works when terminal isn't focused
 
 ### Fallback: CSS `overscroll-behavior` (if capture listener proves insufficient)
 

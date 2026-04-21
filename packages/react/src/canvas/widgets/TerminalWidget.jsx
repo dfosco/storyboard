@@ -431,7 +431,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         {isDormant && (
           <div
             className={overlayStyles.interactOverlay}
-            style={{ backgroundColor: '#0d1117' }}
+            style={{ backgroundColor: '#0d1117', flexDirection: 'column', gap: 0 }}
             onClick={(e) => {
               if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
               enterInteractive()
@@ -439,9 +439,14 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
             role="button"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter') enterInteractive() }}
-            aria-label="Click to interact"
+            aria-label="Start terminal session"
           >
-            <span className={overlayStyles.interactHint}>Click to interact</span>
+            <div className={styles.buddyZzz}>
+              <span className={styles.z1}>z</span>
+              <span className={styles.z2}>z</span>
+              <span className={styles.z3}>z</span>
+            </div>
+            <span className={overlayStyles.interactHint}>Start terminal session</span>
           </div>
         )}
 

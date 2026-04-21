@@ -232,6 +232,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           if (disposed) return
           setPhase('interacting')
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
+          // Focus immediately so keyboard input works without extra click
+          requestAnimationFrame(() => term.focus({ preventScroll: true }))
         }
 
         ws.onmessage = (e) => {
@@ -372,6 +374,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           ...(typeof height === 'number' ? { height: `${height}px` } : undefined),
         }}
         onClick={handleClick}
+        onWheel={phase === 'interacting' ? (e) => e.stopPropagation() : undefined}
       >
         {phase === 'error' && (
           <div className={styles.error}>

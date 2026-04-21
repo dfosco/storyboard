@@ -146,17 +146,23 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const [waking, setWaking] = useState(false)
   const expandContainerRef = useRef(null)
 
+  // Start a new connection attempt (sets phase + bumps the trigger)
+  const startConnection = useCallback(() => {
+    setPhase('connecting')
+    setConnectAttempt(c => c + 1)
+  }, [])
+
   // Activate: transition from dormant to connecting
   const activate = useCallback(() => {
-    if (phase === 'dormant') setPhase('connecting')
-  }, [phase])
+    if (phase === 'dormant') startConnection()
+  }, [phase, startConnection])
 
   const enterInteractive = useCallback(() => {
     if (phase === 'dormant') {
-      setPhase('connecting')
+      startConnection()
     }
     setInteractive(true)
-  }, [phase])
+  }, [phase, startConnection])
 
   // Exit interactive on click outside
   useEffect(() => {
@@ -175,19 +181,19 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
       if (actionId === 'expand') {
-        if (phase === 'dormant') setPhase('connecting')
+        if (phase === 'dormant') startConnection()
         setExpanded(true)
       }
     },
-  }), [phase])
+  }), [phase, startConnection])
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
   }, [onUpdate])
 
-  // Connect terminal + WebSocket only when phase is 'connecting'
+  // Connect terminal + WebSocket when connectAttempt bumps
   useEffect(() => {
-    if (phase !== 'connecting' || !containerRef.current) return
+    if (connectAttempt === 0 || !containerRef.current) return
 
     let disposed = false
     let term = null
@@ -266,7 +272,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
       termRef.current = null
       wsRef.current = null
     }
-  }, [id, phase === 'connecting', connectAttempt])
+  }, [id, connectAttempt])
 
   // Resize terminal on dimension changes
   useEffect(() => {
@@ -342,10 +348,9 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     setTimeout(() => {
       setWaking(false)
       setErrorMsg(null)
-      setPhase('connecting')
-      setConnectAttempt(c => c + 1)
+      startConnection()
     }, 1500)
-  }, [])
+  }, [startConnection])
 
   // Show interact gate when session is ready but not interacting
 

@@ -311,8 +311,12 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
     const hideStatus = () => {
       try {
         execSync(`tmux set-option -t "${targetName}" status off 2>/dev/null`, { stdio: 'ignore' })
-        execSync(`tmux set-option -t "${targetName}" mouse on 2>/dev/null`, { stdio: 'ignore' })
         execSync(`tmux set-option -t "${targetName}" set-clipboard off 2>/dev/null`, { stdio: 'ignore' })
+        // Only enable mouse for reattach sessions. For new sessions, mouse on
+        // is deferred — tmux mouse events crash Clack prompts in the welcome script.
+        if (!isNewSession) {
+          execSync(`tmux set-option -t "${targetName}" mouse on 2>/dev/null`, { stdio: 'ignore' })
+        }
       } catch {}
     }
     setTimeout(hideStatus, 200)
@@ -321,9 +325,11 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
     if (isNewSession) {
       const canvasArg = canvasId !== 'unknown' ? canvasId : ''
       setTimeout(() => {
-        // Send the welcome command to the shell inside tmux
         const nameArg = prettyName ? ` --name "${prettyName}"` : ''
-        const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}\r`
+        // Enable mouse AFTER welcome exits: welcome script runs, user picks
+        // an option, shell takes over, then mouse on activates.
+        const mouseCmd = `tmux set-option mouse on 2>/dev/null`
+        const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}; ${mouseCmd}\r`
         ptyProcess.write(cmd)
       }, 600)
 

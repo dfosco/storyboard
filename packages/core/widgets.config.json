@@ -969,8 +969,7 @@
         ],
         "exclude": []
       },
-      "interactGate": true,
-      "interactGateLabel": "Click to start terminal"
+      "interactGate": false
     },
     "action": {
       "label": "Action",

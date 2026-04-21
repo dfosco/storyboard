@@ -145,6 +145,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const [expanded, setExpanded] = useState(false)
   const [waking, setWaking] = useState(false)
   const expandContainerRef = useRef(null)
+  const reconnectCount = useRef(0)
+  const MAX_RECONNECTS = 3
 
   // Activate: transition from dormant to connecting
   const activate = useCallback(() => {
@@ -241,6 +243,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
         ws.onopen = () => {
           if (disposed) return
+          reconnectCount.current = 0
           setPhase('live')
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
         }
@@ -258,7 +261,16 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         }
 
         ws.onclose = () => {
-          setPhase('ended')
+          if (disposed) return
+          // Auto-reconnect — tmux session survives PTY/WS drops (HMR, etc)
+          if (reconnectCount.current < MAX_RECONNECTS) {
+            reconnectCount.current++
+            setTimeout(() => {
+              if (!disposed) setConnectAttempt(c => c + 1)
+            }, 500)
+          } else {
+            setPhase('ended')
+          }
         }
 
         ws.onerror = () => {
@@ -382,6 +394,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   }, [interactive])
 
   const handleStartSession = useCallback(() => {
+    reconnectCount.current = 0
     setWaking(true)
     setTimeout(() => {
       setWaking(false)

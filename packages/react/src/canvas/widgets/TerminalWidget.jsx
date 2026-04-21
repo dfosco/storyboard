@@ -204,38 +204,42 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
     async function setup() {
       try {
-        const ghostty = await loadGhostty()
-        if (disposed || !ghostty) return
-
         const dims = calcDimensions(width, height)
-        const cfg = getTerminalConfig()
 
-        term = new ghostty.Terminal({
-          fontSize: cfg.fontSize ?? 13,
-          fontFamily: cfg.fontFamily ?? "'Ghostty', 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
-          cursorBlink: true,
-          cursorStyle: 'bar',
-          cols: dims.cols,
-          rows: dims.rows,
-          theme: { ...DEFAULT_THEME, ...cfg.theme },
-        })
+        // Reuse existing ghostty terminal if available (reconnect scenario)
+        term = termRef.current
+        if (!term) {
+          const ghostty = await loadGhostty()
+          if (disposed || !ghostty) return
 
-        term.open(containerRef.current)
-        termRef.current = term
+          const cfg = getTerminalConfig()
+          term = new ghostty.Terminal({
+            fontSize: cfg.fontSize ?? 13,
+            fontFamily: cfg.fontFamily ?? "'Ghostty', 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
+            cursorBlink: true,
+            cursorStyle: 'bar',
+            cols: dims.cols,
+            rows: dims.rows,
+            theme: { ...DEFAULT_THEME, ...cfg.theme },
+          })
 
-        // Send SGR mouse wheel sequences to PTY for tmux scroll in alternate screen
-        term.attachCustomWheelEventHandler((e) => {
-          if (!(term.wasmTerm?.isAlternateScreen?.() ?? false)) return false
-          const sock = wsRef.current
-          if (!sock || sock.readyState !== WebSocket.OPEN) return true
-          const btn = e.deltaY < 0 ? 64 : 65
-          const lines = Math.max(1, Math.min(5, Math.ceil(Math.abs(e.deltaY) / 33)))
-          for (let i = 0; i < lines; i++) {
-            sock.send(`\x1b[<${btn};1;1M`)
-            sock.send(`\x1b[<${btn};1;1m`)
-          }
-          return true
-        })
+          term.open(containerRef.current)
+          termRef.current = term
+
+          // Send SGR mouse wheel sequences to PTY for tmux scroll in alternate screen
+          term.attachCustomWheelEventHandler((e) => {
+            if (!(term.wasmTerm?.isAlternateScreen?.() ?? false)) return false
+            const sock = wsRef.current
+            if (!sock || sock.readyState !== WebSocket.OPEN) return true
+            const btn = e.deltaY < 0 ? 64 : 65
+            const lines = Math.max(1, Math.min(5, Math.ceil(Math.abs(e.deltaY) / 33)))
+            for (let i = 0; i < lines; i++) {
+              sock.send(`\x1b[<${btn};1;1M`)
+              sock.send(`\x1b[<${btn};1;1m`)
+            }
+            return true
+          })
+        }
 
         const url = getWsUrl(id, prettyName)
         ws = new WebSocket(url)
@@ -294,11 +298,22 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     return () => {
       disposed = true
       if (ws && ws.readyState <= WebSocket.OPEN) ws.close()
-      if (term) term.dispose()
-      termRef.current = null
+      // Don't dispose the ghostty terminal on reconnect — keep the canvas
+      // alive so content stays visible. Only dispose if this is a full
+      // teardown (component unmount or id change, not connectAttempt bump).
       wsRef.current = null
     }
   }, [id, connectAttempt])
+
+  // Dispose ghostty terminal on unmount only
+  useEffect(() => {
+    return () => {
+      if (termRef.current) {
+        termRef.current.dispose()
+        termRef.current = null
+      }
+    }
+  }, [id])
 
   // Resize terminal on dimension changes
   useEffect(() => {

@@ -148,12 +148,16 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
   // Activate: transition from dormant to connecting
   const activate = useCallback(() => {
-    if (phase === 'dormant') setPhase('connecting')
+    if (phase === 'dormant') {
+      setPhase('connecting')
+      setConnectAttempt(c => c + 1)
+    }
   }, [phase])
 
   const enterInteractive = useCallback(() => {
     if (phase === 'dormant') {
       setPhase('connecting')
+      setConnectAttempt(c => c + 1)
     }
     setInteractive(true)
   }, [phase])
@@ -175,7 +179,10 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
       if (actionId === 'expand') {
-        if (phase === 'dormant') setPhase('connecting')
+        if (phase === 'dormant') {
+          setPhase('connecting')
+          setConnectAttempt(c => c + 1)
+        }
         setExpanded(true)
       }
     },

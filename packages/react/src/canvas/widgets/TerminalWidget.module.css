@@ -34,7 +34,6 @@
   border: 1px solid var(--borderColor-default, #30363d);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
   padding: 8px;
-  overscroll-behavior: contain;
 }
 
 .xtermContainer {
@@ -52,7 +51,6 @@
 
 .xtermContainer :global(.xterm-viewport) {
   overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .xtermContainer :global(.xterm-viewport::-webkit-scrollbar) {

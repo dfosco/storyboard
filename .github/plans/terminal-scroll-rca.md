@@ -18,6 +18,9 @@ Four previous fix attempts targeted the wrong layer (tmux configuration). The co
 | 4 | React `onWheel={stopPropagation}` | React/browser | React synthetic events fire in **bubble phase**, but the canvas scroll container processes the native wheel event before React's synthetic handler runs. Also, React 19 registers wheel handlers as passive by default. |
 | 5 | Native capture-phase `stopPropagation` | browser | Fired before ghostty-web's own capture handler, preventing terminal from scrolling at all. |
 | 6 | Native bubble-phase `stopPropagation` (passive) | browser | `stopPropagation` doesn't prevent native scrolling — scrolling the nearest overflow ancestor is the **default action** of wheel events, not a propagation-dependent behavior. |
+| 7 | Native bubble-phase `preventDefault` (non-passive) | browser | Killed ALL scrolling — ghostty-web already calls `preventDefault` before custom handler, so redundant; also blocked ghostty's viewport scroll. |
+| 8 | CSS `overscroll-behavior: contain` | CSS | `.terminal` has `overflow: hidden` (not scrollable — property has no effect). ghostty renders to `<canvas>`, no `.xterm-viewport` exists. |
+| 9 | ✅ `attachCustomWheelEventHandler` + `scrollLines()` | ghostty-web API | Uses ghostty's own API to override alternate-screen arrow-key behavior. Returns `true` to skip default handling, calls `scrollLines()` for viewport scroll. ghostty still calls `preventDefault+stopPropagation` before the custom handler → canvas never scrolls. |
 
 ---
 

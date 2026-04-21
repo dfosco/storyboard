@@ -317,57 +317,23 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
     }
     setTimeout(hideStatus, 200)
 
-    // For new sessions, run the welcome prompt script inside tmux.
-    // Listen for the shell prompt in PTY output before sending the command,
-    // instead of polling with blocking execSync (which can stall the event loop
-    // and cause WebSocket connections to drop).
+    // For new sessions, run the welcome prompt script inside tmux
     if (isNewSession) {
       const canvasArg = canvasId !== 'unknown' ? canvasId : ''
-      const nameArg = prettyName ? ` --name "${prettyName}"` : ''
-      const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}\r`
-
-      let welcomeSent = false
-      const promptChars = ['$', '%', '❯', '>', '#']
-      const promptStr = prompt.trim()
-
-      // Listen for prompt in PTY output
-      const onPtyData = (data) => {
-        if (welcomeSent) return
-        const str = typeof data === 'string' ? data : data.toString('utf-8')
-        const trimmed = str.trim()
-        if (trimmed && (promptChars.some(c => trimmed.endsWith(c)) || trimmed.includes(promptStr))) {
-          welcomeSent = true
-          ptyProcess.off?.('data', onPtyData)
-          ptyProcess.write(cmd)
-
-          // Execute startup sequence if configured (after welcome completes)
-          const startupSeq = termCfg.defaultStartupSequence
-          if (startupSeq?.steps?.length) {
-            setTimeout(() => {
-              executeStartupSequence(tmuxName, ws, startupSeq)
-            }, 900)
-          }
-        }
-      }
-
-      // node-pty uses onData, not 'data' event
-      const disposeListener = ptyProcess.onData(onPtyData)
-
-      // Fallback timeout: send welcome after 3s regardless
       setTimeout(() => {
-        if (!welcomeSent) {
-          welcomeSent = true
-          if (disposeListener?.dispose) disposeListener.dispose()
-          ptyProcess.write(cmd)
+        // Send the welcome command to the shell inside tmux
+        const nameArg = prettyName ? ` --name "${prettyName}"` : ''
+        const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}\r`
+        ptyProcess.write(cmd)
+      }, 600)
 
-          const startupSeq = termCfg.defaultStartupSequence
-          if (startupSeq?.steps?.length) {
-            setTimeout(() => {
-              executeStartupSequence(tmuxName, ws, startupSeq)
-            }, 900)
-          }
-        }
-      }, 3000)
+      // Execute startup sequence if configured (after welcome completes)
+      const startupSeq = termCfg.defaultStartupSequence
+      if (startupSeq?.steps?.length) {
+        setTimeout(() => {
+          executeStartupSequence(tmuxName, ws, startupSeq)
+        }, 1500)
+      }
     }
 
     // Write conflict warning if session was live elsewhere

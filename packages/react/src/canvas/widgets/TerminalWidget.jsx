@@ -147,26 +147,9 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const [waking, setWaking] = useState(false)
   const expandContainerRef = useRef(null)
 
-  // Prevent wheel events from scrolling the canvas scroll container.
-  // ghostty-web reads deltaY directly and sends scroll to the terminal via
-  // WASM — it doesn't rely on native browser scroll. But the browser also
-  // performs its own native scroll on the nearest scrollable ancestor
-  // (canvasScroll). We must preventDefault() to stop that native scroll,
-  // which requires a non-passive listener.
+  // Track phase in a ref for native event listeners
   const phaseRef = useRef(phase)
   phaseRef.current = phase
-  useEffect(() => {
-    const el = terminalRef.current
-    if (!el) return
-    function stopNativeScroll(e) {
-      if (phaseRef.current === 'interacting') {
-        e.preventDefault()
-        e.stopPropagation()
-      }
-    }
-    el.addEventListener('wheel', stopNativeScroll, { passive: false })
-    return () => el.removeEventListener('wheel', stopNativeScroll)
-  }, [])
 
   // Auto-connect on first mount
   const hasMounted = useRef(false)

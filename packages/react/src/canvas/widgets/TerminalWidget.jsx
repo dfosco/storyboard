@@ -280,7 +280,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
       termRef.current = null
       wsRef.current = null
     }
-  }, [id, phase === 'connecting', connectAttempt])
+  }, [id, connectAttempt])
 
   // Resize terminal on dimension changes
   useEffect(() => {

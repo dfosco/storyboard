@@ -136,11 +136,10 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const terminalRef = useRef(null)
   const wsRef = useRef(null)
 
-  // State machine: connecting → live → ended
+  // State machine: connecting → interacting ⇄ live → ended
   //                          ↘ error
-  const [phase, setPhase] = useState('connecting') // connecting | live | error | ended
+  const [phase, setPhase] = useState('connecting') // connecting | interacting | live | error | ended
   const [errorMsg, setErrorMsg] = useState(null)
-  const [interactive, setInteractive] = useState(false)
   const [connectAttempt, setConnectAttempt] = useState(1)
   const [expanded, setExpanded] = useState(false)
   const [waking, setWaking] = useState(false)
@@ -153,22 +152,22 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   }, [])
 
   const enterInteractive = useCallback(() => {
-    setInteractive(true)
+    setPhase('interacting')
   }, [])
 
-  // Exit interactive on click outside
+  // Exit interacting on click outside → back to live
   useEffect(() => {
-    if (!interactive) return
+    if (phase !== 'interacting') return
     function handlePointerDown(e) {
       if (terminalRef.current && !terminalRef.current.contains(e.target)) {
         const chromeEl = e.target.closest(`[data-widget-id="${id}"]`)
         if (chromeEl) return
-        setInteractive(false)
+        setPhase('live')
       }
     }
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [interactive, id])
+  }, [phase, id])
 
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
@@ -217,7 +216,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
         ws.onopen = () => {
           if (disposed) return
-          setPhase('live')
+          setPhase('interacting')
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
         }
 
@@ -320,7 +319,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
   const handleClick = useCallback(() => {
     if (phase === 'ended') return
-    if (phase === 'live') {
+    if (phase === 'interacting') {
       // Save canvas scroll position — terminal focus can trigger browser scroll
       const scrollEl = terminalRef.current?.closest('[class*="canvasScroll"]')
       const scrollTop = scrollEl?.scrollTop
@@ -370,8 +369,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         )}
         {!expanded && <div ref={containerRef} className={styles.xtermContainer} />}
 
-        {/* Live but not interactive: gated overlay */}
-        {phase === 'live' && !interactive && (
+        {/* Live: click to re-enter interacting */}
+        {phase === 'live' && (
           <div
             className={overlayStyles.interactOverlay}
             style={{ backgroundColor: 'transparent' }}

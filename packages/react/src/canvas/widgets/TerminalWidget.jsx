@@ -158,6 +158,15 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
   const enterInteractive = useCallback(() => {
     setPhase('interacting')
+    // Focus terminal so keyboard input goes to the PTY immediately
+    const scrollEl = terminalRef.current?.closest('[class*="canvasScroll"]')
+    const scrollTop = scrollEl?.scrollTop
+    const scrollLeft = scrollEl?.scrollLeft
+    termRef.current?.focus({ preventScroll: true })
+    if (scrollEl && (scrollEl.scrollTop !== scrollTop || scrollEl.scrollLeft !== scrollLeft)) {
+      scrollEl.scrollTop = scrollTop
+      scrollEl.scrollLeft = scrollLeft
+    }
   }, [])
 
   // Exit interacting on click outside → back to live

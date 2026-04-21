@@ -312,6 +312,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
       try {
         execSync(`tmux set-option -t "${targetName}" status off 2>/dev/null`, { stdio: 'ignore' })
         execSync(`tmux set-option -t "${targetName}" mouse on 2>/dev/null`, { stdio: 'ignore' })
+        execSync(`tmux set-option -t "${targetName}" set-clipboard off 2>/dev/null`, { stdio: 'ignore' })
       } catch {}
     }
     setTimeout(hideStatus, 200)

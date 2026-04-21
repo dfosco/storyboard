@@ -147,24 +147,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const [waking, setWaking] = useState(false)
   const expandContainerRef = useRef(null)
 
-  // Track phase in a ref for native event listeners
-  const phaseRef = useRef(phase)
-  phaseRef.current = phase
-
-  // [devlog] Instrument wheel events to diagnose scroll issue
-  useEffect(() => {
-    const el = terminalRef.current
-    if (!el) return
-    function debugWheel(e) {
-      const target = e.target
-      const classes = target?.className || ''
-      const tag = target?.tagName || ''
-      console.log(`[devlog][TerminalWidget] wheel phase=${phaseRef.current} target=${tag}.${classes} defaultPrevented=${e.defaultPrevented}`)
-    }
-    el.addEventListener('wheel', debugWheel, { passive: true })
-    return () => el.removeEventListener('wheel', debugWheel)
-  }, [])
-
   // Auto-connect on first mount
   const hasMounted = useRef(false)
   useEffect(() => {
@@ -255,6 +237,19 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
         term.open(containerRef.current)
         termRef.current = term
+
+        // Override ghostty-web's default wheel behavior for alternate screen.
+        // By default, ghostty converts wheel events to arrow keys (Up/Down)
+        // when an alternate screen app (e.g. Copilot CLI) is running. This
+        // scrolls the app's input history instead of the terminal scrollback.
+        // We override this to always scroll ghostty's viewport (like iTerm2).
+        // ghostty still calls preventDefault+stopPropagation before this
+        // handler, so the canvas scroll container is never affected.
+        term.attachCustomWheelEventHandler((e) => {
+          const lines = Math.ceil(Math.abs(e.deltaY) / 33)
+          term.scrollLines(e.deltaY > 0 ? lines : -lines)
+          return true
+        })
 
         const url = getWsUrl(id, prettyName)
         ws = new WebSocket(url)

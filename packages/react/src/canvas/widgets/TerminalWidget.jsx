@@ -136,82 +136,58 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const terminalRef = useRef(null)
   const wsRef = useRef(null)
 
-  // State machine: connecting → interacting ⇄ live → ended
-  //                          ↘ error
-  // Connects on mount. Goes to interacting immediately on WS open.
-  // Click outside → live. Click on live → interacting. WS close → ended.
-  const [phase, setPhase] = useState('connecting') // connecting | interacting | live | error | ended
+  // State machine: dormant → connecting → live → ended
+  //                                    ↘ error
+  const [phase, setPhase] = useState('dormant') // dormant | connecting | live | error | ended
   const [errorMsg, setErrorMsg] = useState(null)
+  const [interactive, setInteractive] = useState(false)
   const [connectAttempt, setConnectAttempt] = useState(0)
   const [expanded, setExpanded] = useState(false)
   const [waking, setWaking] = useState(false)
   const expandContainerRef = useRef(null)
 
-  // Auto-connect on first mount
-  const hasMounted = useRef(false)
-  useEffect(() => {
-    if (!hasMounted.current) {
-      hasMounted.current = true
-      setConnectAttempt(1)
-    }
-  }, [])
+  // Activate: transition from dormant to connecting
+  const activate = useCallback(() => {
+    if (phase === 'dormant') setPhase('connecting')
+  }, [phase])
 
   const enterInteractive = useCallback(() => {
-    setPhase('interacting')
-    // Focus terminal so keyboard input goes to the PTY immediately
-    const scrollEl = terminalRef.current?.closest('[class*="canvasScroll"]')
-    const scrollTop = scrollEl?.scrollTop
-    const scrollLeft = scrollEl?.scrollLeft
-    termRef.current?.focus({ preventScroll: true })
-    if (scrollEl && (scrollEl.scrollTop !== scrollTop || scrollEl.scrollLeft !== scrollLeft)) {
-      scrollEl.scrollTop = scrollTop
-      scrollEl.scrollLeft = scrollLeft
+    if (phase === 'dormant') {
+      setPhase('connecting')
     }
-  }, [])
+    setInteractive(true)
+  }, [phase])
 
-  // Exit interacting on click outside → back to live
-  // Also: focus terminal whenever entering interacting phase
+  // Exit interactive on click outside
   useEffect(() => {
-    if (phase !== 'interacting') return
-
-    // Focus the terminal (with scroll prevention)
-    if (termRef.current) {
-      const scrollEl = terminalRef.current?.closest('[class*="canvasScroll"]')
-      const scrollTop = scrollEl?.scrollTop
-      const scrollLeft = scrollEl?.scrollLeft
-      termRef.current.focus({ preventScroll: true })
-      if (scrollEl && (scrollEl.scrollTop !== scrollTop || scrollEl.scrollLeft !== scrollLeft)) {
-        scrollEl.scrollTop = scrollTop
-        scrollEl.scrollLeft = scrollLeft
-      }
-    }
-
+    if (!interactive) return
     function handlePointerDown(e) {
       if (terminalRef.current && !terminalRef.current.contains(e.target)) {
         const chromeEl = e.target.closest(`[data-widget-id="${id}"]`)
         if (chromeEl) return
-        setPhase('live')
+        setInteractive(false)
       }
     }
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [phase, id])
+  }, [interactive, id])
 
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
       if (actionId === 'expand') {
+        if (phase === 'dormant') setPhase('connecting')
         setExpanded(true)
       }
     },
-  }), [])
+  }), [phase])
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
   }, [onUpdate])
 
-  // Connect terminal + WebSocket when connectAttempt changes
+  // Connect terminal + WebSocket only when phase is 'connecting'
   useEffect(() => {
-    if (connectAttempt === 0 || !containerRef.current) return
+    if (phase !== 'connecting' || !containerRef.current) return
 
     let disposed = false
     let term = null
@@ -238,17 +214,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         term.open(containerRef.current)
         termRef.current = term
 
-        // ghostty-web doesn't implement terminal mouse reporting (SGR 1006),
-        // so tmux `mouse on` never receives wheel events. In alternate screen
-        // mode, ghostty's default sends arrow keys which scrolls app input
-        // history instead of tmux scrollback.
-        //
-        // Fix: intercept wheel events and send SGR mouse wheel escape
-        // sequences directly to the PTY. tmux's `mouse on` recognizes these
-        // and enters copy-mode for scrollback navigation.
-        //
-        // SGR encoding: \x1b[<btn;col;rowM (press) / \x1b[<btn;col;rowm (release)
-        // Button 64 = wheel up, 65 = wheel down
+        // Send SGR mouse wheel sequences to PTY for tmux scroll in alternate screen
         term.attachCustomWheelEventHandler((e) => {
           if (!(term.wasmTerm?.isAlternateScreen?.() ?? false)) return false
           const sock = wsRef.current
@@ -268,7 +234,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
         ws.onopen = () => {
           if (disposed) return
-          setPhase('interacting')
+          setPhase('live')
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
         }
 
@@ -314,7 +280,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
       termRef.current = null
       wsRef.current = null
     }
-  }, [id, connectAttempt])
+  }, [id, phase === 'connecting', connectAttempt])
 
   // Resize terminal on dimension changes
   useEffect(() => {
@@ -371,7 +337,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
   const handleClick = useCallback(() => {
     if (phase === 'ended') return
-    if (phase === 'interacting') {
+    if (phase === 'live') {
       const scrollEl = terminalRef.current?.closest('[class*="canvasScroll"]')
       const scrollTop = scrollEl?.scrollTop
       const scrollLeft = scrollEl?.scrollLeft
@@ -387,12 +353,9 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const dragHintTimer = useRef(null)
 
   const handleTerminalPointerDown = useCallback((e) => {
-    if (phase !== 'interacting') return
-    // Allow the select handle itself to still initiate drag
+    if (!interactive) return
     if (e.target.closest('.tc-drag-handle')) return
     e.stopPropagation()
-
-    // Detect drag gesture: if pointer moves >5px before releasing, show hint
     const startX = e.clientX
     const startY = e.clientY
     let moved = false
@@ -410,7 +373,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     }
     document.addEventListener('pointermove', onMove)
     document.addEventListener('pointerup', onUp)
-  }, [phase])
+  }, [interactive])
 
   const handleStartSession = useCallback(() => {
     setWaking(true)
@@ -422,10 +385,13 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     }, 1500)
   }, [])
 
+  // Show interact gate when session is ready but not interacting
+
   const titleLabel = `terminal · ${prettyName || '...'}`
   const connectedEmbed = expanded ? findConnectedEmbed(id) : null
   const embedUrl = expanded ? buildEmbedUrl(connectedEmbed) : null
   const hasSplit = Boolean(embedUrl)
+  const isDormant = phase === 'dormant'
 
   return (
     <>
@@ -440,7 +406,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         }}
         onClick={handleClick}
         onPointerDown={handleTerminalPointerDown}
-        onKeyDown={phase === 'interacting' ? (e) => e.stopPropagation() : undefined}
+        onKeyDown={interactive ? (e) => e.stopPropagation() : undefined}
       >
         {showDragHint && (
           <div className={styles.dragHint}>
@@ -454,8 +420,26 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         )}
         {!expanded && <div ref={containerRef} className={styles.xtermContainer} />}
 
-        {/* Live: click to re-enter interacting */}
-        {phase === 'live' && (
+        {/* Dormant: not yet activated */}
+        {isDormant && (
+          <div
+            className={overlayStyles.interactOverlay}
+            style={{ backgroundColor: '#0d1117' }}
+            onClick={(e) => {
+              if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+              enterInteractive()
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter') enterInteractive() }}
+            aria-label="Click to interact"
+          >
+            <span className={overlayStyles.interactHint}>Click to interact</span>
+          </div>
+        )}
+
+        {/* Live but not interactive: gated overlay */}
+        {phase === 'live' && !interactive && (
           <div
             className={overlayStyles.interactOverlay}
             style={{ backgroundColor: 'transparent' }}

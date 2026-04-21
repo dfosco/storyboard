@@ -138,7 +138,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
   // State machine: dormant → connecting → live → ended
   //                                    ↘ error
-  const [phase, setPhase] = useState('connecting') // dormant | connecting | live | error | ended
+  const [phase, setPhase] = useState('dormant') // dormant | connecting | live | error | ended
   const [errorMsg, setErrorMsg] = useState(null)
   const [interactive, setInteractive] = useState(false)
   const [connectAttempt, setConnectAttempt] = useState(0)

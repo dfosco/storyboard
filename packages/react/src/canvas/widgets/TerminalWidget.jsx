@@ -138,17 +138,22 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
   // State machine: connecting → interacting ⇄ live → ended
   //                          ↘ error
+  // Connects on mount. Goes to interacting immediately on WS open.
+  // Click outside → live. Click on live → interacting. WS close → ended.
   const [phase, setPhase] = useState('connecting') // connecting | interacting | live | error | ended
   const [errorMsg, setErrorMsg] = useState(null)
-  const [connectAttempt, setConnectAttempt] = useState(1)
+  const [connectAttempt, setConnectAttempt] = useState(0)
   const [expanded, setExpanded] = useState(false)
   const [waking, setWaking] = useState(false)
   const expandContainerRef = useRef(null)
 
-  // Start a new connection attempt (sets phase + bumps the trigger)
-  const startConnection = useCallback(() => {
-    setPhase('connecting')
-    setConnectAttempt(c => c + 1)
+  // Auto-connect on first mount
+  const hasMounted = useRef(false)
+  useEffect(() => {
+    if (!hasMounted.current) {
+      hasMounted.current = true
+      setConnectAttempt(1)
+    }
   }, [])
 
   const enterInteractive = useCallback(() => {
@@ -181,7 +186,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     onUpdate?.({ width: w, height: h })
   }, [onUpdate])
 
-  // Connect terminal + WebSocket when connectAttempt bumps
+  // Connect terminal + WebSocket when connectAttempt changes
   useEffect(() => {
     if (connectAttempt === 0 || !containerRef.current) return
 
@@ -320,12 +325,10 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const handleClick = useCallback(() => {
     if (phase === 'ended') return
     if (phase === 'interacting') {
-      // Save canvas scroll position — terminal focus can trigger browser scroll
       const scrollEl = terminalRef.current?.closest('[class*="canvasScroll"]')
       const scrollTop = scrollEl?.scrollTop
       const scrollLeft = scrollEl?.scrollLeft
       termRef.current?.focus({ preventScroll: true })
-      // Restore if browser scrolled anyway
       if (scrollEl && (scrollEl.scrollTop !== scrollTop || scrollEl.scrollLeft !== scrollLeft)) {
         scrollEl.scrollTop = scrollTop
         scrollEl.scrollLeft = scrollLeft
@@ -338,11 +341,10 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     setTimeout(() => {
       setWaking(false)
       setErrorMsg(null)
-      startConnection()
+      setPhase('connecting')
+      setConnectAttempt(c => c + 1)
     }, 1500)
-  }, [startConnection])
-
-  // Show interact gate when session is ready but not interacting
+  }, [])
 
   const titleLabel = `terminal · ${prettyName || '...'}`
   const connectedEmbed = expanded ? findConnectedEmbed(id) : null

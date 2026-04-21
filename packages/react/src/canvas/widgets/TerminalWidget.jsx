@@ -9,9 +9,6 @@ import overlayStyles from './embedOverlay.module.css'
 
 const terminalSchema = schemas['terminal']
 
-/**
- * Lazy-load ghostty-web to avoid bundling WASM in prod.
- */
 let ghosttyPromise = null
 function loadGhostty() {
   if (!ghosttyPromise) {
@@ -29,11 +26,6 @@ function loadGhostty() {
   return ghosttyPromise
 }
 
-/**
- * Build the WebSocket URL for the terminal backend.
- * Includes the base path (e.g. /branch--4.2.0/) so the proxy routes correctly.
- * Passes canvasId as a query parameter for session scoping.
- */
 function getWsUrl(sessionId, prettyName) {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
   const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
@@ -44,14 +36,10 @@ function getWsUrl(sessionId, prettyName) {
   return url
 }
 
-/**
- * Calculate terminal cols/rows from pixel dimensions.
- */
 function calcDimensions(widthPx, heightPx) {
-  // Approximate character cell size for 13px monospace
   const cellWidth = 7.8
   const cellHeight = 17
-  const padding = 24 // 12px each side
+  const padding = 24
   const cols = Math.max(10, Math.floor((widthPx - padding) / cellWidth))
   const rows = Math.max(4, Math.floor((heightPx - padding) / cellHeight))
   return { cols, rows }
@@ -59,9 +47,6 @@ function calcDimensions(widthPx, heightPx) {
 
 const EMBED_TYPES = new Set(['prototype', 'story'])
 
-/**
- * Find the first connected embed (prototype or story) widget via the canvas bridge.
- */
 function findConnectedEmbed(widgetId) {
   const bridge = window.__storyboardCanvasBridgeState
   if (!bridge?.connectors || !bridge?.widgets) return null
@@ -76,9 +61,6 @@ function findConnectedEmbed(widgetId) {
   return null
 }
 
-/**
- * Build an iframe URL for a connected embed widget.
- */
 function buildEmbedUrl(widget) {
   if (!widget) return null
   const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
@@ -136,33 +118,22 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const terminalRef = useRef(null)
   const wsRef = useRef(null)
 
-  // State machine: dormant → connecting → live → ended
-  //                                    ↘ error
-  const [phase, setPhase] = useState('dormant') // dormant | connecting | live | error | ended
-  const [errorMsg, setErrorMsg] = useState(null)
-  const [interactive, setInteractive] = useState(false)
+  const [ready, setReady] = useState(false)
+  const [error, setError] = useState(null)
+  const [sessionEnded, setSessionEnded] = useState(false)
   const [connectAttempt, setConnectAttempt] = useState(0)
+  const [interactive, setInteractive] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [waking, setWaking] = useState(false)
+  const [showDragHint, setShowDragHint] = useState(false)
   const expandContainerRef = useRef(null)
-  const reconnectCount = useRef(0)
-  const MAX_RECONNECTS = 3
+  const dragHintTimer = useRef(null)
 
-  // Activate: transition from dormant to connecting
-  const activate = useCallback(() => {
-    if (phase === 'dormant') {
-      setPhase('connecting')
-      setConnectAttempt(c => c + 1)
-    }
-  }, [phase])
-
-  const enterInteractive = useCallback(() => {
-    if (phase === 'dormant') {
-      setPhase('connecting')
-      setConnectAttempt(c => c + 1)
-    }
-    setInteractive(true)
-  }, [phase])
+  useImperativeHandle(ref, () => ({
+    handleAction(actionId) {
+      if (actionId === 'expand') setExpanded(true)
+    },
+  }), [])
 
   // Exit interactive on click outside
   useEffect(() => {
@@ -178,25 +149,13 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive, id])
 
-  useImperativeHandle(ref, () => ({
-    handleAction(actionId) {
-      if (actionId === 'expand') {
-        if (phase === 'dormant') {
-          setPhase('connecting')
-          setConnectAttempt(c => c + 1)
-        }
-        setExpanded(true)
-      }
-    },
-  }), [phase])
-
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
   }, [onUpdate])
 
-  // Connect terminal + WebSocket only when phase is 'connecting'
+  // Connect terminal + WebSocket
   useEffect(() => {
-    if (phase !== 'connecting' || !containerRef.current) return
+    if (!containerRef.current) return
 
     let disposed = false
     let term = null
@@ -204,42 +163,38 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
     async function setup() {
       try {
+        const ghostty = await loadGhostty()
+        if (disposed || !ghostty) return
+
         const dims = calcDimensions(width, height)
+        const cfg = getTerminalConfig()
 
-        // Reuse existing ghostty terminal if available (reconnect scenario)
-        term = termRef.current
-        if (!term) {
-          const ghostty = await loadGhostty()
-          if (disposed || !ghostty) return
+        term = new ghostty.Terminal({
+          fontSize: cfg.fontSize ?? 13,
+          fontFamily: cfg.fontFamily ?? "'Ghostty', 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
+          cursorBlink: true,
+          cursorStyle: 'bar',
+          cols: dims.cols,
+          rows: dims.rows,
+          theme: { ...DEFAULT_THEME, ...cfg.theme },
+        })
 
-          const cfg = getTerminalConfig()
-          term = new ghostty.Terminal({
-            fontSize: cfg.fontSize ?? 13,
-            fontFamily: cfg.fontFamily ?? "'Ghostty', 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
-            cursorBlink: true,
-            cursorStyle: 'bar',
-            cols: dims.cols,
-            rows: dims.rows,
-            theme: { ...DEFAULT_THEME, ...cfg.theme },
-          })
+        term.open(containerRef.current)
+        termRef.current = term
 
-          term.open(containerRef.current)
-          termRef.current = term
-
-          // Send SGR mouse wheel sequences to PTY for tmux scroll in alternate screen
-          term.attachCustomWheelEventHandler((e) => {
-            if (!(term.wasmTerm?.isAlternateScreen?.() ?? false)) return false
-            const sock = wsRef.current
-            if (!sock || sock.readyState !== WebSocket.OPEN) return true
-            const btn = e.deltaY < 0 ? 64 : 65
-            const lines = Math.max(1, Math.min(5, Math.ceil(Math.abs(e.deltaY) / 33)))
-            for (let i = 0; i < lines; i++) {
-              sock.send(`\x1b[<${btn};1;1M`)
-              sock.send(`\x1b[<${btn};1;1m`)
-            }
-            return true
-          })
-        }
+        // SGR mouse wheel for tmux scroll in alternate screen
+        term.attachCustomWheelEventHandler((e) => {
+          if (!(term.wasmTerm?.isAlternateScreen?.() ?? false)) return false
+          const sock = wsRef.current
+          if (!sock || sock.readyState !== WebSocket.OPEN) return true
+          const btn = e.deltaY < 0 ? 64 : 65
+          const lines = Math.max(1, Math.min(5, Math.ceil(Math.abs(e.deltaY) / 33)))
+          for (let i = 0; i < lines; i++) {
+            sock.send(`\x1b[<${btn};1;1M`)
+            sock.send(`\x1b[<${btn};1;1m`)
+          }
+          return true
+        })
 
         const url = getWsUrl(id, prettyName)
         ws = new WebSocket(url)
@@ -247,8 +202,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
         ws.onopen = () => {
           if (disposed) return
-          reconnectCount.current = 0
-          setPhase('live')
+          setReady(true)
+          setInteractive(true)
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
         }
 
@@ -266,30 +221,21 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
         ws.onclose = () => {
           if (disposed) return
-          // Auto-reconnect — tmux session survives PTY/WS drops (HMR, etc)
-          if (reconnectCount.current < MAX_RECONNECTS) {
-            reconnectCount.current++
-            setTimeout(() => {
-              if (!disposed) setConnectAttempt(c => c + 1)
-            }, 500)
-          } else {
-            setPhase('ended')
-          }
+          setReady(false)
+          setSessionEnded(true)
         }
 
         ws.onerror = () => {
           if (disposed) return
-          setPhase('ended')
+          setReady(false)
+          setSessionEnded(true)
         }
 
         term.onData((data) => {
           if (ws.readyState === WebSocket.OPEN) ws.send(data)
         })
       } catch (err) {
-        if (!disposed) {
-          setErrorMsg(err.message || 'Failed to load terminal')
-          setPhase('error')
-        }
+        if (!disposed) setError(err.message || 'Failed to load terminal')
       }
     }
 
@@ -298,22 +244,11 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     return () => {
       disposed = true
       if (ws && ws.readyState <= WebSocket.OPEN) ws.close()
-      // Don't dispose the ghostty terminal on reconnect — keep the canvas
-      // alive so content stays visible. Only dispose if this is a full
-      // teardown (component unmount or id change, not connectAttempt bump).
+      if (term) term.dispose()
+      termRef.current = null
       wsRef.current = null
     }
   }, [id, connectAttempt])
-
-  // Dispose ghostty terminal on unmount only
-  useEffect(() => {
-    return () => {
-      if (termRef.current) {
-        termRef.current.dispose()
-        termRef.current = null
-      }
-    }
-  }, [id])
 
   // Resize terminal on dimension changes
   useEffect(() => {
@@ -328,7 +263,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     return () => clearTimeout(timer)
   }, [width, height])
 
-  // Resize terminal to fill the expand container
+  // Resize for expand
   useEffect(() => {
     if (!expanded || !termRef.current || !expandContainerRef.current) return
     const timer = setTimeout(() => {
@@ -343,10 +278,9 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     return () => clearTimeout(timer)
   }, [expanded])
 
-  // Restore terminal size when collapsing
+  // Restore size on collapse
   useEffect(() => {
-    if (expanded) return
-    if (!termRef.current) return
+    if (expanded || !termRef.current) return
     const timer = setTimeout(() => {
       const dims = calcDimensions(width, height)
       termRef.current?.resize?.(dims.cols, dims.rows)
@@ -357,7 +291,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     return () => clearTimeout(timer)
   }, [expanded, width, height])
 
-  // Reparent terminal DOM node between inline and expand
+  // Reparent terminal DOM between inline and expand
   useEffect(() => {
     const xtermEl = containerRef.current
     if (!xtermEl) return
@@ -369,8 +303,9 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   }, [expanded])
 
   const handleClick = useCallback(() => {
-    if (phase === 'ended') return
-    if (phase === 'live') {
+    if (sessionEnded) return
+    if (ready) {
+      setInteractive(true)
       const scrollEl = terminalRef.current?.closest('[class*="canvasScroll"]')
       const scrollTop = scrollEl?.scrollTop
       const scrollLeft = scrollEl?.scrollLeft
@@ -380,10 +315,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         scrollEl.scrollLeft = scrollLeft
       }
     }
-  }, [phase])
-
-  const [showDragHint, setShowDragHint] = useState(false)
-  const dragHintTimer = useRef(null)
+  }, [sessionEnded, ready])
 
   const handleTerminalPointerDown = useCallback((e) => {
     if (!interactive) return
@@ -409,23 +341,19 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   }, [interactive])
 
   const handleStartSession = useCallback(() => {
-    reconnectCount.current = 0
     setWaking(true)
     setTimeout(() => {
       setWaking(false)
-      setErrorMsg(null)
-      setPhase('connecting')
+      setSessionEnded(false)
+      setError(null)
       setConnectAttempt(c => c + 1)
     }, 1500)
   }, [])
-
-  // Show interact gate when session is ready but not interacting
 
   const titleLabel = `terminal · ${prettyName || '...'}`
   const connectedEmbed = expanded ? findConnectedEmbed(id) : null
   const embedUrl = expanded ? buildEmbedUrl(connectedEmbed) : null
   const hasSplit = Boolean(embedUrl)
-  const isDormant = phase === 'dormant'
 
   return (
     <>
@@ -447,48 +375,26 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
             <span className={styles.dragHintArrow}>←</span> Drag here to move widget
           </div>
         )}
-        {phase === 'error' && (
+        {error && !sessionEnded && (
           <div className={styles.error}>
-            <span>⚠ {errorMsg}</span>
+            <span>⚠ {error}</span>
           </div>
         )}
         {!expanded && <div ref={containerRef} className={styles.xtermContainer} />}
 
-        {/* Dormant: not yet activated */}
-        {isDormant && (
-          <div
-            className={overlayStyles.interactOverlay}
-            style={{ backgroundColor: '#0d1117', flexDirection: 'column', gap: 0 }}
-            onClick={(e) => {
-              if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
-              enterInteractive()
-            }}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') enterInteractive() }}
-            aria-label="Start terminal session"
-          >
-            <div className={styles.buddyZzz}>
-              <span className={styles.z1}>z</span>
-              <span className={styles.z2}>z</span>
-              <span className={styles.z3}>z</span>
-            </div>
-            <span className={overlayStyles.interactHint}>Start terminal session</span>
-          </div>
-        )}
-
-        {/* Live but not interactive: gated overlay */}
-        {phase === 'live' && !interactive && (
+        {/* Live but not interactive */}
+        {ready && !interactive && !sessionEnded && (
           <div
             className={overlayStyles.interactOverlay}
             style={{ backgroundColor: 'transparent' }}
             onClick={(e) => {
               if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
-              enterInteractive()
+              setInteractive(true)
+              termRef.current?.focus({ preventScroll: true })
             }}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') enterInteractive() }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { setInteractive(true); termRef.current?.focus({ preventScroll: true }) } }}
             aria-label="Click to interact"
           >
             <span className={overlayStyles.interactHint}>Click to interact</span>
@@ -496,7 +402,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         )}
 
         {/* Session ended */}
-        {phase === 'ended' && (
+        {sessionEnded && (
           <div
             className={overlayStyles.interactOverlay}
             style={{ backgroundColor: '#0d1117', flexDirection: 'column', gap: 0 }}
@@ -520,7 +426,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         )}
 
         {/* Connecting */}
-        {phase === 'connecting' && (
+        {!ready && !error && !sessionEnded && (
           <div className={styles.loading}>Connecting…</div>
         )}
       </div>

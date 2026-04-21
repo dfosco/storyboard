@@ -147,6 +147,24 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const [waking, setWaking] = useState(false)
   const expandContainerRef = useRef(null)
 
+  // Prevent wheel events from bubbling to the canvas scroll container.
+  // ghostty-web registers its own wheel handler (capture phase) but doesn't
+  // stopPropagation, so the canvas scrolls simultaneously. We attach a native
+  // capture-phase listener that stops propagation when interacting.
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
+  useEffect(() => {
+    const el = terminalRef.current
+    if (!el) return
+    function captureWheel(e) {
+      if (phaseRef.current === 'interacting') {
+        e.stopPropagation()
+      }
+    }
+    el.addEventListener('wheel', captureWheel, { capture: true, passive: true })
+    return () => el.removeEventListener('wheel', captureWheel, { capture: true })
+  }, [])
+
   // Auto-connect on first mount
   const hasMounted = useRef(false)
   useEffect(() => {
@@ -170,8 +188,22 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   }, [])
 
   // Exit interacting on click outside → back to live
+  // Also: focus terminal whenever entering interacting phase
   useEffect(() => {
     if (phase !== 'interacting') return
+
+    // Focus the terminal (with scroll prevention)
+    if (termRef.current) {
+      const scrollEl = terminalRef.current?.closest('[class*="canvasScroll"]')
+      const scrollTop = scrollEl?.scrollTop
+      const scrollLeft = scrollEl?.scrollLeft
+      termRef.current.focus({ preventScroll: true })
+      if (scrollEl && (scrollEl.scrollTop !== scrollTop || scrollEl.scrollLeft !== scrollLeft)) {
+        scrollEl.scrollTop = scrollTop
+        scrollEl.scrollLeft = scrollLeft
+      }
+    }
+
     function handlePointerDown(e) {
       if (terminalRef.current && !terminalRef.current.contains(e.target)) {
         const chromeEl = e.target.closest(`[data-widget-id="${id}"]`)
@@ -232,8 +264,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           if (disposed) return
           setPhase('interacting')
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
-          // Focus immediately so keyboard input works without extra click
-          requestAnimationFrame(() => term.focus({ preventScroll: true }))
         }
 
         ws.onmessage = (e) => {
@@ -374,7 +404,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           ...(typeof height === 'number' ? { height: `${height}px` } : undefined),
         }}
         onClick={handleClick}
-        onWheel={phase === 'interacting' ? (e) => e.stopPropagation() : undefined}
+        onKeyDown={phase === 'interacting' ? (e) => e.stopPropagation() : undefined}
       >
         {phase === 'error' && (
           <div className={styles.error}>

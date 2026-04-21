@@ -151,6 +151,20 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const phaseRef = useRef(phase)
   phaseRef.current = phase
 
+  // [devlog] Instrument wheel events to diagnose scroll issue
+  useEffect(() => {
+    const el = terminalRef.current
+    if (!el) return
+    function debugWheel(e) {
+      const target = e.target
+      const classes = target?.className || ''
+      const tag = target?.tagName || ''
+      console.log(`[devlog][TerminalWidget] wheel phase=${phaseRef.current} target=${tag}.${classes} defaultPrevented=${e.defaultPrevented}`)
+    }
+    el.addEventListener('wheel', debugWheel, { passive: true })
+    return () => el.removeEventListener('wheel', debugWheel)
+  }, [])
+
   // Auto-connect on first mount
   const hasMounted = useRef(false)
   useEffect(() => {

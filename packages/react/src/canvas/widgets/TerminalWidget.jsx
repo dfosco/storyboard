@@ -150,19 +150,20 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   // Prevent wheel events from bubbling to the canvas scroll container.
   // ghostty-web registers its own wheel handler (capture phase) but doesn't
   // stopPropagation, so the canvas scrolls simultaneously. We attach a native
-  // capture-phase listener that stops propagation when interacting.
+  // bubble-phase listener that stops propagation AFTER ghostty-web processes
+  // the event, preventing it from reaching the canvas scroll container.
   const phaseRef = useRef(phase)
   phaseRef.current = phase
   useEffect(() => {
     const el = terminalRef.current
     if (!el) return
-    function captureWheel(e) {
+    function stopWheelBubble(e) {
       if (phaseRef.current === 'interacting') {
         e.stopPropagation()
       }
     }
-    el.addEventListener('wheel', captureWheel, { capture: true, passive: true })
-    return () => el.removeEventListener('wheel', captureWheel, { capture: true })
+    el.addEventListener('wheel', stopWheelBubble, { passive: true })
+    return () => el.removeEventListener('wheel', stopWheelBubble)
   }, [])
 
   // Auto-connect on first mount

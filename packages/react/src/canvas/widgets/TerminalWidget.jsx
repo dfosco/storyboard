@@ -258,7 +258,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         }
 
         ws.onclose = () => {
-          if (disposed) return
           setPhase('ended')
         }
 

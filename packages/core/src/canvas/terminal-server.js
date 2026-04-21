@@ -313,10 +313,11 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
         execSync(`tmux set-option -t "${targetName}" status off 2>/dev/null`, { stdio: 'ignore' })
         execSync(`tmux set-option -t "${targetName}" mouse on 2>/dev/null`, { stdio: 'ignore' })
         execSync(`tmux set-option -t "${targetName}" set-clipboard off 2>/dev/null`, { stdio: 'ignore' })
-        // Force scroll-up to enter copy-mode even in alternate screen (TUI apps
-        // like Copilot CLI), so scrolling browses tmux scrollback instead of
-        // sending arrow keys to the application's input history.
-        execSync(`tmux bind-key -T root WheelUpPane if-shell -Ft= "#{pane_in_mode}" "send-keys -M" "copy-mode -e" 2>/dev/null`, { stdio: 'ignore' })
+        // Disable alternate-screen detection so tmux always enters copy-mode
+        // on scroll-up, even when a TUI app (Copilot CLI) is running.
+        // Without this, mouse-on sends wheel events as arrow keys in alternate
+        // screen, scrolling the app's input history instead of tmux scrollback.
+        execSync(`tmux set-option -t "${targetName}" alternate-screen off 2>/dev/null`, { stdio: 'ignore' })
       } catch {}
     }
     setTimeout(hideStatus, 200)

@@ -989,6 +989,9 @@ export default function storyboardDataPlugin() {
         // Also invalidate when files are added/removed inside .folder/ directories
         const inFolder = normalized.includes('.folder/')
         if (!parsed && !inFolder) return
+        // Source files inside .folder/ dirs (jsx, css, etc.) are handled by
+        // Vite's built-in HMR / React Fast Refresh — don't full-reload for them.
+        if (!parsed && inFolder) return
         // Rebuild index and invalidate virtual module
         buildResult = null
         const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
@@ -1002,6 +1005,9 @@ export default function storyboardDataPlugin() {
         const parsed = parseDataFile(filePath)
         const inFolder = filePath.replace(/\\/g, '/').includes('.folder/')
         if (!parsed && !inFolder) return
+        // Source files (jsx, css, etc.) inside .folder/ dirs are handled by
+        // Vite's built-in HMR — don't trigger a full-reload for them.
+        if (!parsed && inFolder) return
 
         // Canvas writers/editors can emit unlink+add for an in-place save.
         // Treat canvas add/unlink as runtime data updates and never full-reload

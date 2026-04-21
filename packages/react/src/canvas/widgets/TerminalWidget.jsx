@@ -136,12 +136,12 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const terminalRef = useRef(null)
   const wsRef = useRef(null)
 
-  // State machine: dormant → connecting → live → ended
-  //                                    ↘ error
-  const [phase, setPhase] = useState('dormant') // dormant | connecting | live | error | ended
+  // State machine: connecting → live → ended
+  //                          ↘ error
+  const [phase, setPhase] = useState('connecting') // connecting | live | error | ended
   const [errorMsg, setErrorMsg] = useState(null)
   const [interactive, setInteractive] = useState(false)
-  const [connectAttempt, setConnectAttempt] = useState(0)
+  const [connectAttempt, setConnectAttempt] = useState(1)
   const [expanded, setExpanded] = useState(false)
   const [waking, setWaking] = useState(false)
   const expandContainerRef = useRef(null)
@@ -152,17 +152,9 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     setConnectAttempt(c => c + 1)
   }, [])
 
-  // Activate: transition from dormant to connecting
-  const activate = useCallback(() => {
-    if (phase === 'dormant') startConnection()
-  }, [phase, startConnection])
-
   const enterInteractive = useCallback(() => {
-    if (phase === 'dormant') {
-      startConnection()
-    }
     setInteractive(true)
-  }, [phase, startConnection])
+  }, [])
 
   // Exit interactive on click outside
   useEffect(() => {
@@ -181,11 +173,10 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
       if (actionId === 'expand') {
-        if (phase === 'dormant') startConnection()
         setExpanded(true)
       }
     },
-  }), [phase, startConnection])
+  }), [])
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -358,7 +349,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const connectedEmbed = expanded ? findConnectedEmbed(id) : null
   const embedUrl = expanded ? buildEmbedUrl(connectedEmbed) : null
   const hasSplit = Boolean(embedUrl)
-  const isDormant = phase === 'dormant'
 
   return (
     <>
@@ -379,24 +369,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           </div>
         )}
         {!expanded && <div ref={containerRef} className={styles.xtermContainer} />}
-
-        {/* Dormant: not yet activated */}
-        {isDormant && (
-          <div
-            className={overlayStyles.interactOverlay}
-            style={{ backgroundColor: '#0d1117' }}
-            onClick={(e) => {
-              if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
-              enterInteractive()
-            }}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') enterInteractive() }}
-            aria-label="Click to interact"
-          >
-            <span className={overlayStyles.interactHint}>Click to interact</span>
-          </div>
-        )}
 
         {/* Live but not interactive: gated overlay */}
         {phase === 'live' && !interactive && (

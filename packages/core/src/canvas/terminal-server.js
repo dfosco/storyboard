@@ -318,56 +318,56 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
     setTimeout(hideStatus, 200)
 
     // For new sessions, run the welcome prompt script inside tmux.
-    // Wait for the shell prompt to appear before sending the command,
-    // instead of a fixed timeout that races with shell initialization.
+    // Listen for the shell prompt in PTY output before sending the command,
+    // instead of polling with blocking execSync (which can stall the event loop
+    // and cause WebSocket connections to drop).
     if (isNewSession) {
       const canvasArg = canvasId !== 'unknown' ? canvasId : ''
       const nameArg = prettyName ? ` --name "${prettyName}"` : ''
       const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}\r`
 
-      let promptDetected = false
-      const maxWait = 5000
-      const start = Date.now()
-      const pollInterval = setInterval(() => {
-        if (promptDetected || Date.now() - start > maxWait) {
-          clearInterval(pollInterval)
-          if (!promptDetected) {
-            // Timed out waiting for prompt — send anyway
-            ptyProcess.write(cmd)
-          }
-          return
-        }
-        try {
-          const pane = execSync(
-            `tmux capture-pane -t "${targetName}" -p 2>/dev/null`,
-            { encoding: 'utf8', timeout: 1000 }
-          ).trim()
-          // Shell is ready when we see a prompt-like character at the end
-          if (pane && (pane.endsWith('$') || pane.endsWith('%') || pane.endsWith('❯') || pane.endsWith('>') || pane.endsWith('#') || pane.includes(prompt.trim()))) {
-            promptDetected = true
-            clearInterval(pollInterval)
-            ptyProcess.write(cmd)
+      let welcomeSent = false
+      const promptChars = ['$', '%', '❯', '>', '#']
+      const promptStr = prompt.trim()
 
-            // Execute startup sequence if configured (after welcome completes)
-            const startupSeq = termCfg.defaultStartupSequence
-            if (startupSeq?.steps?.length) {
-              setTimeout(() => {
-                executeStartupSequence(tmuxName, ws, startupSeq)
-              }, 900)
-            }
-          }
-        } catch { /* tmux not ready yet */ }
-      }, 150)
+      // Listen for prompt in PTY output
+      const onPtyData = (data) => {
+        if (welcomeSent) return
+        const str = typeof data === 'string' ? data : data.toString('utf-8')
+        const trimmed = str.trim()
+        if (trimmed && (promptChars.some(c => trimmed.endsWith(c)) || trimmed.includes(promptStr))) {
+          welcomeSent = true
+          ptyProcess.off?.('data', onPtyData)
+          ptyProcess.write(cmd)
 
-      // Fallback: if prompt never detected, still run startup sequence
-      setTimeout(() => {
-        if (!promptDetected) {
+          // Execute startup sequence if configured (after welcome completes)
           const startupSeq = termCfg.defaultStartupSequence
           if (startupSeq?.steps?.length) {
-            executeStartupSequence(tmuxName, ws, startupSeq)
+            setTimeout(() => {
+              executeStartupSequence(tmuxName, ws, startupSeq)
+            }, 900)
           }
         }
-      }, maxWait + 500)
+      }
+
+      // node-pty uses onData, not 'data' event
+      const disposeListener = ptyProcess.onData(onPtyData)
+
+      // Fallback timeout: send welcome after 3s regardless
+      setTimeout(() => {
+        if (!welcomeSent) {
+          welcomeSent = true
+          if (disposeListener?.dispose) disposeListener.dispose()
+          ptyProcess.write(cmd)
+
+          const startupSeq = termCfg.defaultStartupSequence
+          if (startupSeq?.steps?.length) {
+            setTimeout(() => {
+              executeStartupSequence(tmuxName, ws, startupSeq)
+            }, 900)
+          }
+        }
+      }, 3000)
     }
 
     // Write conflict warning if session was live elsewhere

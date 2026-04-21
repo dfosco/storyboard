@@ -238,16 +238,27 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         term.open(containerRef.current)
         termRef.current = term
 
-        // Override ghostty-web's default wheel behavior for alternate screen.
-        // By default, ghostty converts wheel events to arrow keys (Up/Down)
-        // when an alternate screen app (e.g. Copilot CLI) is running. This
-        // scrolls the app's input history instead of the terminal scrollback.
-        // We override this to always scroll ghostty's viewport (like iTerm2).
-        // ghostty still calls preventDefault+stopPropagation before this
-        // handler, so the canvas scroll container is never affected.
+        // ghostty-web doesn't implement terminal mouse reporting (SGR 1006),
+        // so tmux `mouse on` never receives wheel events. In alternate screen
+        // mode, ghostty's default sends arrow keys which scrolls app input
+        // history instead of tmux scrollback.
+        //
+        // Fix: intercept wheel events and send SGR mouse wheel escape
+        // sequences directly to the PTY. tmux's `mouse on` recognizes these
+        // and enters copy-mode for scrollback navigation.
+        //
+        // SGR encoding: \x1b[<btn;col;rowM (press) / \x1b[<btn;col;rowm (release)
+        // Button 64 = wheel up, 65 = wheel down
         term.attachCustomWheelEventHandler((e) => {
-          const lines = Math.ceil(Math.abs(e.deltaY) / 33)
-          term.scrollLines(e.deltaY > 0 ? lines : -lines)
+          if (!(term.wasmTerm?.isAlternateScreen?.() ?? false)) return false
+          const sock = wsRef.current
+          if (!sock || sock.readyState !== WebSocket.OPEN) return true
+          const btn = e.deltaY < 0 ? 64 : 65
+          const lines = Math.max(1, Math.min(5, Math.ceil(Math.abs(e.deltaY) / 33)))
+          for (let i = 0; i < lines; i++) {
+            sock.send(`\x1b[<${btn};1;1M`)
+            sock.send(`\x1b[<${btn};1;1m`)
+          }
           return true
         })
 

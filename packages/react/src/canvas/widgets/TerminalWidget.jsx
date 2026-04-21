@@ -514,7 +514,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
               </div>
             )}
             <span className={overlayStyles.interactHint}>
-              {waking ? 'Waking up...' : 'Start terminal session'}
+              {waking ? 'Waking up...' : connectAttempt > 0 ? 'Continue terminal session' : 'Start terminal session'}
             </span>
           </div>
         )}

@@ -383,6 +383,35 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     }
   }, [phase])
 
+  const [showDragHint, setShowDragHint] = useState(false)
+  const dragHintTimer = useRef(null)
+
+  const handleTerminalPointerDown = useCallback((e) => {
+    if (phase !== 'interacting') return
+    // Allow the select handle itself to still initiate drag
+    if (e.target.closest('.tc-drag-handle')) return
+    e.stopPropagation()
+
+    // Detect drag gesture: if pointer moves >5px before releasing, show hint
+    const startX = e.clientX
+    const startY = e.clientY
+    let moved = false
+    function onMove(me) {
+      if (!moved && (Math.abs(me.clientX - startX) > 5 || Math.abs(me.clientY - startY) > 5)) {
+        moved = true
+        setShowDragHint(true)
+        clearTimeout(dragHintTimer.current)
+        dragHintTimer.current = setTimeout(() => setShowDragHint(false), 2000)
+      }
+    }
+    function onUp() {
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onUp)
+    }
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup', onUp)
+  }, [phase])
+
   const handleStartSession = useCallback(() => {
     setWaking(true)
     setTimeout(() => {
@@ -410,8 +439,14 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           ...(typeof height === 'number' ? { height: `${height}px` } : undefined),
         }}
         onClick={handleClick}
+        onPointerDown={handleTerminalPointerDown}
         onKeyDown={phase === 'interacting' ? (e) => e.stopPropagation() : undefined}
       >
+        {showDragHint && (
+          <div className={styles.dragHint}>
+            <span className={styles.dragHintArrow}>←</span> Drag here to move widget
+          </div>
+        )}
         {phase === 'error' && (
           <div className={styles.error}>
             <span>⚠ {errorMsg}</span>

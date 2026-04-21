@@ -158,6 +158,38 @@
 }
 
 /* Fullscreen expand */
+
+/* Drag hint tooltip — appears when user tries to drag the terminal body */
+.dragHint {
+  position: absolute;
+  bottom: -32px;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--bgColor-inverse, #1f2328);
+  color: var(--fgColor-onInverse, #ffffff);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: dragHintIn 150ms ease;
+}
+
+.dragHintArrow {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+@keyframes dragHintIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .expandBackdrop {
   position: fixed;
   inset: 0;

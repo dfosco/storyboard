@@ -32,9 +32,9 @@
 
 ## General instructions
 
-- Before running any other instruction, evaluate if the user prompt contains a trigger for one or more skills in `.github/skills`.
+- Before running any other instruction, evaluate if the user prompt contains a trigger for one or more skills in `.agents/skills`.
   - **"Ship", "ship this", "ship a change", "ship a feature"** → always invoke the **ship** skill. This is a hard rule — never implement changes directly on `main`. The ship skill creates a worktree, implements there, and pushes to a remote branch.
-- If the user asks `how to use this repo`, `how to run this project` etc, give them an outline of `AGENTS.md` and point them to this file, the `README.md` and the `.github/architecture` docs
+- If the user asks `how to use this repo`, `how to run this project` etc, give them an outline of `AGENTS.md` and point them to this file, the `README.md` and the `.agents/architecture` docs
 - **After completing any change**, and NOT USING THE SHIP SKILL:
   1. Create a feature branch and push it. Never leave committed work on `main`.
   2. Create a clips task for the work done and mark it as closed. Use the relevant goal if one exists, or create a new one.
@@ -46,39 +46,39 @@
 
 Every single plan generated should be saved to a markdown file on the repository, no exceptions. 
 
-The default location is in `.github/plans`, but the user may ask for a specific location or you might override that based on context.
+The default location is in `.agents/plans`, but the user may ask for a specific location or you might override that based on context.
 
 ---
 
 ## Skills
 
-- **canvas** (`.github/skills/canvas/SKILL.md`) - Work with Storyboard canvases to add, move, update, remove, arrange widgets, and describe canvas state.
+- **canvas** (`.agents/skills/canvas/SKILL.md`) - Work with Storyboard canvases to add, move, update, remove, arrange widgets, and describe canvas state.
 
-- **create** (`.github/skills/create/SKILL.md`) — Walks through creating Storyboard assets: prototype, external prototype, flow, page, canvas, object, or record.
+- **create** (`.agents/skills/create/SKILL.md`) — Walks through creating Storyboard assets: prototype, external prototype, flow, page, canvas, object, or record.
 
-- **worktree** (`.github/skills/worktree/SKILL.md`) — Creates a git worktree in `.worktrees/<branch-name>` and switches into it.
+- **worktree** (`.agents/skills/worktree/SKILL.md`) — Creates a git worktree in `.worktrees/<branch-name>` and switches into it.
 
-- **tools** (`.github/skills/tools/SKILL.md`) — Reference for creating toolbar tools: config schema, handlers, surfaces, and render types.
+- **tools** (`.agents/skills/tools/SKILL.md`) — Reference for creating toolbar tools: config schema, handlers, surfaces, and render types.
 
-- **changeset** (`.github/skills/changeset/SKILL.md`) — Low-level changeset operations: create changeset files, version bump, tag.
+- **changeset** (`.agents/skills/changeset/SKILL.md`) — Low-level changeset operations: create changeset files, version bump, tag.
 
-- **release** (`.github/skills/release/SKILL.md`) — Full release workflow: generate changeset from commits, version, tag, push. CI publishes via OIDC.
+- **release** (`.agents/skills/release/SKILL.md`) — Full release workflow: generate changeset from commits, version, tag, push. CI publishes via OIDC.
 
-- **storyboard-core** (`.github/skills/storyboard-core/SKILL.md`) — Guide for adding CoreUIBar menu buttons and wiring action handlers.
+- **storyboard-core** (`.agents/skills/storyboard-core/SKILL.md`) — Guide for adding CoreUIBar menu buttons and wiring action handlers.
 
-- **vitest** (`.github/skills/vitest/SKILL.md`) — Vitest testing framework guidance for writing and configuring tests.
+- **vitest** (`.agents/skills/vitest/SKILL.md`) — Vitest testing framework guidance for writing and configuring tests.
 
-- **clips** (`.github/skills/clips/SKILL.md`) — Local-first issue tracking workflow for goals/tasks synced to GitHub.
+- **clips** (`.agents/skills/clips/SKILL.md`) — Local-first issue tracking workflow for goals/tasks synced to GitHub.
 
-- **architecture-scanner** (`.github/skills/architecture-scanner/SKILL.md`) — Scans codebase architecture and generates docs in `.github/architecture/`.
+- **architecture-scanner** (`.agents/skills/architecture-scanner/SKILL.md`) — Scans codebase architecture and generates docs in `.agents/architecture/`.
 
-- **storyboard** (`.github/skills/storyboard/SKILL.md`) — Storyboard data structuring for flows, objects, and records.
+- **storyboard** (`.agents/skills/storyboard/SKILL.md`) — Storyboard data structuring for flows, objects, and records.
 
-- **changelog** (`.github/skills/changelog/SKILL.md`) — Generates formatted changelog entries from commit ranges.
+- **changelog** (`.agents/skills/changelog/SKILL.md`) — Generates formatted changelog entries from commit ranges.
 
-- **ship** (`.github/skills/ship/SKILL.md`) — End-to-end feature shipping: worktree → plan → implement → adversarial review → push.
+- **ship** (`.agents/skills/ship/SKILL.md`) — End-to-end feature shipping: worktree → plan → implement → adversarial review → push.
 
-- **agent-browser** (`.github/skills/agent-browser/SKILL.md`) — Browser inspection during development using `agent-browser` CLI. Snapshots, screenshots, console errors, element inspection.
+- **agent-browser** (`.agents/skills/agent-browser/SKILL.md`) — Browser inspection during development using `agent-browser` CLI. Snapshots, screenshots, console errors, element inspection.
 
 ---
 
@@ -147,7 +147,7 @@ This `devURL` is used as the default target by the **agent-browser** skill when 
 
 This is a **Storyboard prototyping app** using Vite and file-based routing via `@generouted/react-router`.
 
-Detailed architectural documentation lives in `.github/architecture/`. Consult the relevant architecture docs when:
+Detailed architectural documentation lives in `.agents/architecture/`. Consult the relevant architecture docs when:
 
 - Debugging a hard-to-solve bug in a file or set of files
 - Implementing a large-scale refactor of a file

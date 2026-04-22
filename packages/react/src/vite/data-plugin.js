@@ -1375,5 +1375,38 @@ export default function storyboardDataPlugin() {
   }
 }
 
+/**
+ * Vite plugin that copies `.storyboard/terminal-snapshots/` into the build
+ * output so TerminalReadWidget can fetch them as static files in production.
+ */
+export function terminalSnapshotPlugin() {
+  return {
+    name: 'storyboard-terminal-snapshots',
+
+    generateBundle() {
+      const snapshotsDir = path.resolve('.storyboard/terminal-snapshots')
+      if (!fs.existsSync(snapshotsDir)) return
+
+      const walk = (dir) => {
+        const entries = fs.readdirSync(dir, { withFileTypes: true })
+        for (const entry of entries) {
+          const full = path.join(dir, entry.name)
+          if (entry.isDirectory()) {
+            walk(full)
+          } else if (entry.name.endsWith('.json')) {
+            const rel = path.relative(snapshotsDir, full).replace(/\\/g, '/')
+            this.emitFile({
+              type: 'asset',
+              fileName: `_storyboard/terminal-snapshots/${rel}`,
+              source: fs.readFileSync(full, 'utf-8'),
+            })
+          }
+        }
+      }
+      walk(snapshotsDir)
+    },
+  }
+}
+
 // Exported for testing
 export { resolveTemplateVars, computeTemplateVars, parseDataFile }

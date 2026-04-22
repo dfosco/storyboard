@@ -6,7 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 import generouted from '@generouted/react-router/plugin'
 // In worktrees, npm workspace links point at the main worktree. Import
 // Vite plugins via relative paths so each worktree runs its own source.
-import storyboardData from './packages/react/src/vite/data-plugin.js'
+import storyboardData, { terminalSnapshotPlugin } from './packages/react/src/vite/data-plugin.js'
 import storyboardServer from './packages/core/src/vite/server-plugin.js'
 import postcssGlobalData from '@csstools/postcss-global-data'
 import postcssPresetEnv from 'postcss-preset-env'
@@ -75,6 +75,7 @@ export default defineConfig(() => {
         tailwindcss(),
         storyboardData(),
         storyboardServer(),
+        terminalSnapshotPlugin(),
         svelte(),
         react(),
         generouted({

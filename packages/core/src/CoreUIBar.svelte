@@ -164,8 +164,8 @@
     const hideChromeTool = tools['hide-chrome']
     const commandPaletteTool = tools['command-palette']
     return {
-      hideChrome: hideChromeTool?.shortcut || { key: '.', label: '⌘.' },
-      openCommandMenu: commandPaletteTool?.shortcut || { key: 'k', label: '⌘K' },
+      hideChrome: hideChromeTool?.shortcut || { key: '.', label: 'cmd + .' },
+      openCommandMenu: commandPaletteTool?.shortcut || { key: 'k', label: 'cmd + K' },
     }
   })
 
@@ -779,7 +779,7 @@
                   </span>
                 {/if}
               </Tooltip.Trigger>
-              <Tooltip.Content side="top">{menu.ariaLabel || menu.key}{menu.shortcut?.label ? ` · ${menu.shortcut.label}` : ''}</Tooltip.Content>
+              <Tooltip.Content side="top">{menu.ariaLabel || menu.key}{#if menu.shortcut?.label} <span style="display:inline-block;background:rgba(255,255,255,0.12);padding:1px 4px;border-radius:3px;margin-left:6px;font-size:11px;font-family:monospace">{menu.shortcut.label}</span>{/if}</Tooltip.Content>
             </Tooltip.Root>
           {/if}
         {/if}
@@ -798,7 +798,7 @@
               {basePath}
             />
           </Tooltip.Trigger>
-          <Tooltip.Content side="top">{menu.ariaLabel || menu.key}{menu.shortcut?.label ? ` · ${menu.shortcut.label}` : ''}</Tooltip.Content>
+          <Tooltip.Content side="top">{menu.ariaLabel || menu.key}{#if menu.shortcut?.label} <span style="display:inline-block;background:rgba(255,255,255,0.12);padding:1px 4px;border-radius:3px;margin-left:6px;font-size:11px;font-family:monospace">{menu.shortcut.label}</span>{/if}</Tooltip.Content>
         </Tooltip.Root>
       {/if}
     {/each}

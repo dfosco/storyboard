@@ -1,6 +1,7 @@
 /**
  * CanvasZoomToFit — standalone zoom-to-objects button.
  */
+import './CanvasZoomToFit.css'
 import * as Tooltip from './lib/components/ui/tooltip/index.js'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
 

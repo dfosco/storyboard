@@ -1,6 +1,7 @@
 /**
  * CanvasZoomControl — zoom in/out/reset bar for canvas pages.
  */
+import './CanvasZoomControl.css'
 import * as Tooltip from './lib/components/ui/tooltip/index.js'
 
 export default function CanvasZoomControl({ config = {}, data, zoom = 100, tabindex = -1 }) {

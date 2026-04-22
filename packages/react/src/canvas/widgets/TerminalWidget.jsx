@@ -141,46 +141,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     },
   }), [setExpanded])
 
-  // Permanent guard: monkey-patch .focus() on every textarea/focusable element
-  // ghostty-web creates inside the terminal container so that focus() always
-  // uses { preventScroll: true }. This prevents the browser from EVER scrolling
-  // the canvas — no whiplash, no restore needed.
-  useEffect(() => {
-    const el = terminalRef.current
-    if (!el) return
-    const patched = new WeakSet()
-
-    function patchFocusable(node) {
-      if (patched.has(node)) return
-      if (!(node instanceof HTMLElement)) return
-      const tag = node.tagName
-      if (tag === 'TEXTAREA' || tag === 'INPUT' || node.tabIndex >= 0) {
-        patched.add(node)
-        const original = node.focus.bind(node)
-        node.focus = function (opts) {
-          original({ ...opts, preventScroll: true })
-        }
-      }
-    }
-
-    // Patch existing children
-    el.querySelectorAll('textarea, input, [tabindex]').forEach(patchFocusable)
-
-    // Observe for dynamically added elements (ghostty creates textarea lazily)
-    const observer = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        for (const n of m.addedNodes) {
-          if (n.nodeType === 1) {
-            patchFocusable(n)
-            n.querySelectorAll?.('textarea, input, [tabindex]').forEach(patchFocusable)
-          }
-        }
-      }
-    })
-    observer.observe(el, { childList: true, subtree: true })
-    return () => observer.disconnect()
-  }, [])
-
   // Exit interactive on click outside
   useEffect(() => {
     if (!interactive) return
@@ -253,6 +213,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         ws.onopen = () => {
           if (disposed) return
           setReady(true)
+          setInteractive(true)
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
         }
 
@@ -324,7 +285,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
       }
       setInteractive(true)
-      termRef.current?.focus()
+      termRef.current?.focus?.()
     }, 100)
     return () => clearTimeout(timer)
   }, [expanded])
@@ -357,7 +318,14 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     if (sessionEnded) return
     if (ready) {
       setInteractive(true)
-      termRef.current?.focus()
+      const scrollEl = terminalRef.current?.closest('[class*="canvasScroll"]')
+      const scrollTop = scrollEl?.scrollTop
+      const scrollLeft = scrollEl?.scrollLeft
+      termRef.current?.focus({ preventScroll: true })
+      if (scrollEl && (scrollEl.scrollTop !== scrollTop || scrollEl.scrollLeft !== scrollLeft)) {
+        scrollEl.scrollTop = scrollTop
+        scrollEl.scrollLeft = scrollLeft
+      }
     }
   }, [sessionEnded, ready])
 
@@ -434,11 +402,11 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
             onClick={(e) => {
               if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
               setInteractive(true)
-              termRef.current?.focus()
+              termRef.current?.focus({ preventScroll: true })
             }}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') { setInteractive(true); termRef.current?.focus() } }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { setInteractive(true); termRef.current?.focus({ preventScroll: true }) } }}
             aria-label="Click to interact"
           >
             <span className={overlayStyles.interactHint}>Click to interact</span>

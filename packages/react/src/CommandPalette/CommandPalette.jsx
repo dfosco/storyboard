@@ -204,6 +204,19 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
         continue
       }
 
+      if (tool.inlineAction === 'open-palette') {
+        remainingItems.push({
+          id: `cfg:${section.id}:${toolId}`,
+          children: label,
+          keywords: [label, toolId, 'command', 'palette', 'search'].filter(Boolean),
+          showType: false,
+          onClick: () => {
+            document.dispatchEvent(new CustomEvent('storyboard:open-palette'))
+          },
+        })
+        continue
+      }
+
       // Any remaining tools (all surfaces)
       if (tool.render === 'link' && tool.url) {
         remainingItems.push({
@@ -538,6 +551,19 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
         showType: false,
         onClick: () => {
           document.documentElement.classList.toggle('storyboard-chrome-hidden')
+        },
+      })
+      continue
+    }
+
+    if (tool.inlineAction === 'open-palette') {
+      items.push({
+        id: `cfg:${section.id}:${toolId}`,
+        children: label,
+        keywords: [label, toolId, 'command', 'palette', 'search'].filter(Boolean),
+        showType: false,
+        onClick: () => {
+          document.dispatchEvent(new CustomEvent('storyboard:open-palette'))
         },
       })
       continue

@@ -23,7 +23,7 @@
  */
 
 import { execSync } from 'node:child_process'
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -89,6 +89,90 @@ let currentBranch = 'unknown'
 
 /** Actual server port, resolved from httpServer at setup time */
 let actualServerPort = null
+
+/** Active snapshot intervals keyed by tmuxName */
+const snapshotIntervals = new Map()
+
+/** Rolling raw PTY output buffers keyed by tmuxName */
+const rawTailBuffers = new Map()
+
+const RAW_TAIL_MAX = 2000
+
+/** Safe directory name from canvasId (replace `/` with `--`) */
+function safeCanvasDir(canvasId) {
+  return canvasId.replace(/\//g, '--')
+}
+
+/** Snapshot directory for a canvas */
+function snapshotDir(canvasId) {
+  return join(process.cwd(), '.storyboard', 'terminal-snapshots', safeCanvasDir(canvasId))
+}
+
+/**
+ * Capture terminal pane content and write snapshot JSON.
+ * Falls back to rawTail if tmux capture-pane fails.
+ */
+function captureSnapshot({ tmuxName, widgetId, canvasId, prettyName, cols, rows }) {
+  let content = ''
+  try {
+    content = execSync(`tmux capture-pane -t "${tmuxName}" -p -e`, {
+      encoding: 'utf8',
+      timeout: 3000,
+    })
+  } catch {
+    // tmux capture failed — use rawTail as fallback
+  }
+
+  const rawTail = rawTailBuffers.get(tmuxName) || ''
+  const dir = snapshotDir(canvasId)
+  const filePath = join(dir, `${widgetId}.json`)
+  const tmpPath = filePath + '.tmp'
+
+  const snapshot = {
+    content,
+    rawTail,
+    widgetId,
+    canvasId,
+    prettyName: prettyName || null,
+    timestamp: new Date().toISOString(),
+    cols: cols || 80,
+    rows: rows || 24,
+  }
+
+  try {
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(tmpPath, JSON.stringify(snapshot), 'utf8')
+    renameSync(tmpPath, filePath)
+  } catch (err) {
+    // Clean up tmp file on failure
+    try { if (existsSync(tmpPath)) writeFileSync(tmpPath, ''); } catch {}
+  }
+}
+
+/** Start periodic snapshot capture for a session */
+function startSnapshotCapture(opts) {
+  const { tmuxName } = opts
+  if (snapshotIntervals.has(tmuxName)) return
+
+  const termCfg = readTerminalConfig()
+  const interval = termCfg.snapshotInterval ?? 5000
+
+  const id = setInterval(() => captureSnapshot(opts), interval)
+  snapshotIntervals.set(tmuxName, id)
+}
+
+/** Stop periodic snapshot capture and do a final capture */
+function stopSnapshotCapture(tmuxName, finalOpts) {
+  const id = snapshotIntervals.get(tmuxName)
+  if (id) {
+    clearInterval(id)
+    snapshotIntervals.delete(tmuxName)
+  }
+  if (finalOpts) {
+    captureSnapshot(finalOpts)
+  }
+  rawTailBuffers.delete(tmuxName)
+}
 
 /** Check if a tmux session with the given name exists */
 function tmuxSessionExists(name) {
@@ -444,7 +528,17 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
     if (ws.readyState === ws.OPEN) {
       ws.send(data)
     }
+    // Maintain rolling raw tail buffer
+    const prev = rawTailBuffers.get(tmuxName) || ''
+    const updated = (prev + data).slice(-RAW_TAIL_MAX)
+    rawTailBuffers.set(tmuxName, updated)
   })
+
+  // Start periodic snapshot capture for tmux sessions
+  const snapshotOpts = { tmuxName, widgetId, canvasId, prettyName, cols: 80, rows: 24 }
+  if (hasTmux) {
+    startSnapshotCapture(snapshotOpts)
+  }
 
   ptyProcess.onExit(() => {
     ptyProcesses.delete(tmuxName)
@@ -459,6 +553,9 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
       const parsed = JSON.parse(str)
       if (parsed.type === 'resize' && parsed.cols && parsed.rows) {
         ptyProcess.resize(parsed.cols, parsed.rows)
+        // Update snapshot dimensions
+        snapshotOpts.cols = parsed.cols
+        snapshotOpts.rows = parsed.rows
         return
       }
     } catch {
@@ -468,8 +565,11 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
     ptyProcess.write(str)
   })
 
-  // On disconnect: kill the pty (detaches from tmux) but leave the tmux session alive
+  // On disconnect: final snapshot, kill the pty (detaches from tmux) but leave the tmux session alive
   ws.on('close', () => {
+    if (hasTmux) {
+      stopSnapshotCapture(tmuxName, snapshotOpts)
+    }
     if (wsConnections.get(tmuxName) === ws) {
       wsConnections.delete(tmuxName)
     }
@@ -482,6 +582,9 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
   })
 
   ws.on('error', () => {
+    if (hasTmux) {
+      stopSnapshotCapture(tmuxName, snapshotOpts)
+    }
     if (wsConnections.get(tmuxName) === ws) {
       wsConnections.delete(tmuxName)
     }
@@ -589,4 +692,7 @@ async function executeStartupSequence(tmuxName, ws, sequence) {
 
 // Re-export for backwards compat (canvas server uses this name)
 export { killSession as killTerminalSession }
+
+// Export for REST endpoint in canvas server
+export { snapshotDir as terminalSnapshotDir }
 

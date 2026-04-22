@@ -1743,6 +1743,39 @@ export function Default() {
       return
     }
 
+    // GET /terminal-snapshot/:widgetId — read terminal snapshot JSON
+    if (routePath.startsWith('/terminal-snapshot/') && method === 'GET') {
+      const widgetId = routePath.slice('/terminal-snapshot/'.length)
+      if (!widgetId || widgetId.includes('..') || widgetId.includes('/')) {
+        sendJson(res, 400, { error: 'Invalid widgetId' })
+        return
+      }
+
+      // Search all canvas subdirectories for this widget's snapshot
+      const snapshotsRoot = path.join(root, '.storyboard', 'terminal-snapshots')
+      try {
+        if (!fs.existsSync(snapshotsRoot)) {
+          sendJson(res, 404, { error: 'No snapshots found' })
+          return
+        }
+        const dirs = fs.readdirSync(snapshotsRoot, { withFileTypes: true })
+        for (const d of dirs) {
+          if (!d.isDirectory()) continue
+          const filePath = path.join(snapshotsRoot, d.name, `${widgetId}.json`)
+          if (fs.existsSync(filePath)) {
+            const data = fs.readFileSync(filePath, 'utf8')
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(data)
+            return
+          }
+        }
+        sendJson(res, 404, { error: 'Snapshot not found' })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to read snapshot: ${err.message}` })
+      }
+      return
+    }
+
     sendJson(res, 404, { error: `Unknown route: ${method} ${routePath}` })
   }
 }

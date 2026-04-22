@@ -326,10 +326,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
       const canvasArg = canvasId !== 'unknown' ? canvasId : ''
       setTimeout(() => {
         const nameArg = prettyName ? ` --name "${prettyName}"` : ''
-        // Enable mouse AFTER welcome exits: welcome script runs, user picks
-        // an option, shell takes over, then mouse on activates.
-        const mouseCmd = `tmux set-option mouse on 2>/dev/null`
-        const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}; ${mouseCmd}\r`
+        const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}\r`
         ptyProcess.write(cmd)
       }, 600)
 

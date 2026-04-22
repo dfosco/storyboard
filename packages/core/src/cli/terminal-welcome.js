@@ -16,6 +16,12 @@ import { dim, cyan, bold } from './intro.js'
 
 const blue = (s) => `\x1b[34m${s}\x1b[0m`
 
+// Enable/disable tmux mouse — must be off during Clack prompts (mouse
+// events crash Clack), on during shell/copilot sessions (for scrolling).
+function setMouse(on) {
+  try { execSync(`tmux set-option mouse ${on ? 'on' : 'off'} 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+}
+
 const flagSchema = {
   branch: { type: 'string', description: 'Current branch name' },
   canvas: { type: 'string', description: 'Current canvas name' },
@@ -30,6 +36,7 @@ const canvasShort = canvas === 'unknown' ? canvas : canvas.split('/').pop()
 
 async function welcomeLoop() {
   while (true) {
+    setMouse(false)
     console.clear()
     p.intro(`${bold('storyboard terminal')}`)
 
@@ -43,8 +50,8 @@ async function welcomeLoop() {
     })
 
     if (p.isCancel(action)) {
-      p.outro(dim('Opening shell...'))
-      break
+      // Don't exit to shell on cancel — loop back to welcome
+      continue
     }
 
     // Show metadata after selection
@@ -57,11 +64,22 @@ async function welcomeLoop() {
 
     if (action === 'shell') {
       p.outro(dim('Opening shell...'))
-      break
+      setMouse(true)
+      // Spawn an interactive shell; when it exits, loop back to welcome
+      try {
+        const shell = process.env.SHELL || '/bin/zsh'
+        const child = spawn(shell, [], { stdio: 'inherit' })
+        await new Promise((resolve) => {
+          child.on('close', resolve)
+          child.on('error', resolve)
+        })
+      } catch {}
+      continue
     }
 
     if (action === 'copilot') {
       p.outro(dim('Starting Copilot...'))
+      setMouse(true)
       // Run copilot with terminal-agent, then pre-type /autopilot via tmux
       try {
         const agentArgs = ['--agent', 'terminal-agent']

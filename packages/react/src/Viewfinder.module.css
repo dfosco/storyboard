@@ -42,8 +42,7 @@
 
 .appName {
   font-size: 24px;
-  /* font-style: italic; */
-  font-weight: 900;
+  font-weight: 800;
   color: var(--fgColor-default, #1a1a1a);
   line-height: 1.1;
 }

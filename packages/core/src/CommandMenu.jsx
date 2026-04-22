@@ -237,7 +237,7 @@ export default function CommandMenu({
   return (
     <>
       <DropdownMenu.Root open={open} onOpenChange={handleOpenChange}>
-        <DropdownMenu.Trigger asChild>
+        <DropdownMenu.Trigger>
           <TriggerButton
             active={open}
             className="text-2xl"

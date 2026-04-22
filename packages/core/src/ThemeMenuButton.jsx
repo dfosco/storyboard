@@ -50,7 +50,7 @@ export default function ThemeMenuButton({ config = {}, data, localOnly, tabindex
 
   return (
     <DropdownMenu.Root open={menuOpen} onOpenChange={setMenuOpen}>
-      <DropdownMenu.Trigger asChild>
+      <DropdownMenu.Trigger>
           <TriggerButton
             active={menuOpen}
             size="icon-xl"

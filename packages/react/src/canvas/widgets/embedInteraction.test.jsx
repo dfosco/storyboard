@@ -56,72 +56,70 @@ describe('Embed interaction overlay', () => {
       resizable: false,
     }
 
-    it('renders "Click to open" hint when no snapshot exists', () => {
+    it('renders "Click to interact" hint when no snapshot exists', () => {
       render(<PrototypeEmbed {...defaultProps} />)
       
-      const hint = screen.getByText('Click to open')
+      const hint = screen.getByText('Click to interact')
       expect(hint).toBeInTheDocument()
-      // CSS modules mangle class names, just check the element exists
     })
 
     it('enters interactive mode on single click (not double-click)', async () => {
       const { container } = render(<PrototypeEmbed {...defaultProps} />)
       
-      // Overlay should exist before interaction
-      const overlay = screen.getByRole('button', { name: /click to open/i })
+      // Overlay should exist before interaction; iframe is always rendered
+      const overlay = screen.getByRole('button', { name: /click to interact with prototype/i })
       expect(overlay).toBeInTheDocument()
-      expect(container.querySelector('iframe')).not.toBeInTheDocument()
-      expect(screen.getByText('Design Overview')).toBeInTheDocument()
+      expect(container.querySelector('iframe')).toBeInTheDocument()
       
       // Single click should remove the overlay (enter interactive mode)
       fireEvent.click(overlay)
       
       // Overlay should no longer exist
-      expect(screen.queryByRole('button', { name: /click to open/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /click to interact/i })).not.toBeInTheDocument()
       expect(container.querySelector('iframe')).toBeInTheDocument()
 
       fireEvent.pointerDown(document.body)
-      expect(screen.getByRole('button', { name: /click to open/i })).toBeInTheDocument()
-      expect(container.querySelector('iframe')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /click to interact with prototype/i })).toBeInTheDocument()
+      expect(container.querySelector('iframe')).toBeInTheDocument()
     })
 
     it('does not enter interactive mode on shift+click (preserves multi-select)', () => {
       render(<PrototypeEmbed {...defaultProps} />)
       
-      const overlay = screen.getByRole('button', { name: /click to open/i })
+      const overlay = screen.getByRole('button', { name: /click to interact with prototype/i })
       fireEvent.click(overlay, { shiftKey: true })
       
       // Overlay should still exist (did not enter interactive mode)
-      expect(screen.getByRole('button', { name: /click to open/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /click to interact with prototype/i })).toBeInTheDocument()
     })
 
     it('does not enter interactive mode on meta+click (preserves multi-select)', () => {
       render(<PrototypeEmbed {...defaultProps} />)
       
-      const overlay = screen.getByRole('button', { name: /click to open/i })
+      const overlay = screen.getByRole('button', { name: /click to interact with prototype/i })
       fireEvent.click(overlay, { metaKey: true })
       
-      expect(screen.getByRole('button', { name: /click to open/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /click to interact with prototype/i })).toBeInTheDocument()
     })
 
     it('supports keyboard interaction (Enter key) with event prevention', () => {
       render(<PrototypeEmbed {...defaultProps} />)
       
-      const overlay = screen.getByRole('button', { name: /click to open/i })
+      const overlay = screen.getByRole('button', { name: /click to interact with prototype/i })
       const event = { key: 'Enter', preventDefault: vi.fn(), stopPropagation: vi.fn() }
       fireEvent.keyDown(overlay, event)
       
-      expect(screen.queryByRole('button', { name: /click to open/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /click to interact/i })).not.toBeInTheDocument()
     })
 
     it('supports keyboard interaction (Space key) with event prevention', () => {
       render(<PrototypeEmbed {...defaultProps} />)
       
-      const overlay = screen.getByRole('button', { name: /click to open/i })
+      const overlay = screen.getByRole('button', { name: /click to interact with prototype/i })
       const event = { key: ' ', preventDefault: vi.fn(), stopPropagation: vi.fn() }
       fireEvent.keyDown(overlay, event)
       
-      expect(screen.queryByRole('button', { name: /click to open/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /click to interact/i })).not.toBeInTheDocument()
     })
   })
 
@@ -143,7 +141,7 @@ describe('Embed interaction overlay', () => {
       const { container } = render(<FigmaEmbed {...defaultProps} />)
       
       const overlay = screen.getByRole('button', { name: /click to interact/i })
-      expect(container.querySelector('iframe')).not.toBeInTheDocument()
+      expect(container.querySelector('iframe')).toBeInTheDocument()
       fireEvent.click(overlay)
       
       expect(screen.queryByRole('button', { name: /click to interact/i })).not.toBeInTheDocument()
@@ -151,7 +149,7 @@ describe('Embed interaction overlay', () => {
 
       fireEvent.pointerDown(document.body)
       expect(screen.getByRole('button', { name: /click to interact/i })).toBeInTheDocument()
-      expect(container.querySelector('iframe')).not.toBeInTheDocument()
+      expect(container.querySelector('iframe')).toBeInTheDocument()
     })
   })
 
@@ -162,20 +160,20 @@ describe('Embed interaction overlay', () => {
       resizable: false,
     }
 
-    it('mounts iframe only after user activation', () => {
+    it('mounts iframe and shows overlay initially, removes overlay on click', () => {
       const { container } = render(<StoryWidget {...defaultProps} />)
 
-      const overlay = screen.getByRole('button', { name: /click to open story component/i })
-      expect(container.querySelector('iframe')).not.toBeInTheDocument()
+      const overlay = screen.getByRole('button', { name: /click to interact$/i })
+      expect(container.querySelector('iframe')).toBeInTheDocument()
 
       fireEvent.click(overlay)
 
-      expect(screen.queryByRole('button', { name: /click to open story component/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /click to interact/i })).not.toBeInTheDocument()
       expect(container.querySelector('iframe')).toBeInTheDocument()
 
       fireEvent.pointerDown(document.body)
-      expect(screen.getByRole('button', { name: /click to open story component/i })).toBeInTheDocument()
-      expect(container.querySelector('iframe')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /click to interact$/i })).toBeInTheDocument()
+      expect(container.querySelector('iframe')).toBeInTheDocument()
     })
   })
 

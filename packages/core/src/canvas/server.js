@@ -281,6 +281,10 @@ export function createCanvasHandler(ctx) {
         event: 'storyboard:canvas-file-changed',
         data: { canvasId: canvasName, name: canvasName, metadata: data },
       })
+
+      // Refresh terminal config files on every canvas change so agents
+      // always see up-to-date connectedWidgets and widget props.
+      updateTerminalConnectionsForCanvas(root, canvasName, data, data.connectors || [])
     } catch { /* best effort — watcher will catch it eventually */ }
   }
 
@@ -672,9 +676,6 @@ export function createCanvasHandler(ctx) {
           connector,
         })
 
-        // Update terminal configs if a terminal widget is involved
-        updateTerminalConnectionsForCanvas(root, name, data, [...(data.connectors || []), connector])
-
         sendJson(res, 201, { success: true, connector })
         pushCanvasUpdate(name, filePath, __viteWs)
       } catch (err) {
@@ -711,10 +712,6 @@ export function createCanvasHandler(ctx) {
           timestamp: new Date().toISOString(),
           connectorId,
         })
-
-        // Update terminal configs — rebuild connections without the removed connector
-        const remainingConnectors = (data.connectors || []).filter((c) => c.id !== connectorId)
-        updateTerminalConnectionsForCanvas(root, name, data, remainingConnectors)
 
         sendJson(res, 200, { success: true, removed: 1 })
         pushCanvasUpdate(name, filePath, __viteWs)

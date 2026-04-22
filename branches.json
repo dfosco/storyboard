@@ -72,6 +72,7 @@
   {"folder":"branch--4.2.0-terminal-and-server","branch":"4.2.0-terminal-and-server"},
   {"folder":"branch--4.2.0-terminal-expand","branch":"4.2.0-terminal-expand"},
   {"folder":"branch--4.2.0-tmux-management","branch":"4.2.0-tmux-management"},
+  {"folder":"branch--4.2.0-viewfinder-card-actions-menu","branch":"4.2.0-viewfinder-card-actions-menu"},
   {"folder":"branch--4.2.0","branch":"4.2.0"},
   {"folder":"branch--auth-modal-baseui","branch":"auth-modal-baseui"},
   {"folder":"branch--branch-links-fix","branch":"branch-links-fix"},

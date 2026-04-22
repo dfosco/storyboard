@@ -740,18 +740,28 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasA
         parsed = { ...parsed, folder: protoFolders[name] }
       }
 
-      // Load toolbar.config.json from prototype directory if present
+      // Load prototype-level config overrides from the prototype directory.
+      // Any config file placed alongside the .prototype.json becomes an override
+      // for that domain when the prototype is active.
       if (suffix === 'prototype') {
         const protoDir = path.dirname(absPath)
-        const toolbarConfigPath = path.join(protoDir, 'toolbar.config.json')
-        if (fs.existsSync(toolbarConfigPath)) {
-          try {
-            const toolbarRaw = fs.readFileSync(toolbarConfigPath, 'utf-8')
-            const toolbarConfig = parseJsonc(toolbarRaw)
-            if (toolbarConfig) {
-              parsed = { ...parsed, toolbarConfig }
-            }
-          } catch { /* skip invalid toolbar config */ }
+        const protoConfigFiles = [
+          { filename: 'toolbar.config.json', key: 'toolbarConfig' },
+          { filename: 'commandpalette.config.json', key: 'commandPaletteConfig' },
+          { filename: 'widgets.config.json', key: 'widgetsConfig' },
+          { filename: 'paste.config.json', key: 'pasteConfig' },
+        ]
+        for (const { filename, key } of protoConfigFiles) {
+          const cfgPath = path.join(protoDir, filename)
+          if (fs.existsSync(cfgPath)) {
+            try {
+              const raw = fs.readFileSync(cfgPath, 'utf-8')
+              const cfg = parseJsonc(raw)
+              if (cfg) {
+                parsed = { ...parsed, [key]: cfg }
+              }
+            } catch { /* skip invalid config */ }
+          }
         }
       }
 
@@ -1151,8 +1161,9 @@ export default function storyboardDataPlugin() {
           return
         }
 
-        // Invalidate when toolbar.config.json inside a prototype changes
-        if (normalized.endsWith('/toolbar.config.json') && normalized.includes('/prototypes/')) {
+        // Invalidate when any config file inside a prototype changes
+        const protoConfigPattern = /\/(toolbar|commandpalette|widgets|paste)\.config\.json$/
+        if (protoConfigPattern.test(normalized) && normalized.includes('/prototypes/')) {
           buildResult = null
           const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
           if (mod) {

@@ -361,6 +361,7 @@
     // Re-evaluate action menus and prototype toolbar config on SPA navigation
     const { getPrototypeMetadata } = await import('./loader.js')
     const { setPrototypeToolbarConfig, clearPrototypeToolbarConfig } = await import('./toolbarConfigStore.js')
+    const { setOverrides, clearOverrides } = await import('./configStore.js')
 
     function syncPrototypeToolbar() {
       let pathname = window.location.pathname
@@ -369,13 +370,35 @@
       const firstSegment = pathname.replace(/^\//, '').split('/')[0] || null
       if (firstSegment) {
         const meta = getPrototypeMetadata(firstSegment)
+
+        // Toolbar overrides (legacy store + unified store)
         if (meta?.toolbarConfig) {
           setPrototypeToolbarConfig(meta.toolbarConfig)
+          setOverrides('toolbar', meta.toolbarConfig)
         } else {
           clearPrototypeToolbarConfig()
+          clearOverrides('toolbar')
+        }
+
+        // Other domain overrides (unified store only)
+        const domainMap = [
+          ['commandPaletteConfig', 'commandPalette'],
+          ['widgetsConfig', 'widgets'],
+          ['pasteConfig', 'paste'],
+        ]
+        for (const [metaKey, domain] of domainMap) {
+          if (meta?.[metaKey]) {
+            setOverrides(domain, meta[metaKey])
+          } else {
+            clearOverrides(domain)
+          }
         }
       } else {
         clearPrototypeToolbarConfig()
+        clearOverrides('toolbar')
+        clearOverrides('commandPalette')
+        clearOverrides('widgets')
+        clearOverrides('paste')
       }
     }
 

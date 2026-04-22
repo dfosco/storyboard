@@ -2,8 +2,8 @@
   display: flex;
   align-items: center;
   border-radius: 10px;
-  border: 2.5px solid var(--sb--trigger-border, var(--color-slate-400));
-  background: var(--sb--trigger-bg, var(--color-slate-100));
+  border: 2.5px solid var(--sb--trigger-border, var(--borderColor-default, #d1d9e0));
+  background: var(--sb--trigger-bg, var(--bgColor-default, #f6f8fa));
   overflow: hidden;
 }
 
@@ -17,12 +17,12 @@
   height: 38px;
   font-size: 16px;
   font-weight: 600;
-  color: var(--sb--trigger-text, var(--color-slate-600));
+  color: var(--sb--trigger-text, var(--fgColor-default, #1f2328));
   transition: background 120ms;
 }
 
 .canvas-zoom-btn:hover:not(:disabled) {
-  background: var(--sb--trigger-bg-hover, var(--color-slate-300));
+  background: var(--sb--trigger-bg-hover, var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2)));
 }
 
 .canvas-zoom-btn:disabled {
@@ -42,12 +42,12 @@
   font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--sb--trigger-text, var(--color-slate-600));
-  border-left: 2px solid var(--sb--trigger-border, var(--color-slate-400));
-  border-right: 2px solid var(--sb--trigger-border, var(--color-slate-400));
+  color: var(--sb--trigger-text, var(--fgColor-default, #1f2328));
+  border-left: 2px solid var(--sb--trigger-border, var(--borderColor-default, #d1d9e0));
+  border-right: 2px solid var(--sb--trigger-border, var(--borderColor-default, #d1d9e0));
   transition: background 120ms;
 }
 
 .canvas-zoom-label:hover {
-  background: var(--sb--trigger-bg-hover, var(--color-slate-300));
+  background: var(--sb--trigger-bg-hover, var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2)));
 }

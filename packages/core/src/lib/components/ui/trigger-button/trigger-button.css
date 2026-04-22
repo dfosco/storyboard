@@ -3,7 +3,7 @@
   position: relative;
 }
 [data-trigger-button] [data-slot="button-wrapper"] {
-  --sb--sc-border-color: var(--sb--trigger-border, var(--color-slate-400));
+  --sb--sc-border-color: var(--sb--trigger-border, var(--borderColor-default, #d1d9e0));
   --sb--sc-border-width: var(--sb--trigger-border-width, 3px);
 }
 /* Accent-colored border/gap on focus — follows the superellipse shape */
@@ -11,14 +11,14 @@
   --sb--sc-border-color: hsl(212 92% 45%);
 }
 [data-trigger-button] [data-slot="button"] {
-  background-color: var(--sb--trigger-bg, var(--color-slate-100));
-  color: var(--sb--trigger-text, var(--color-slate-600));
+  background-color: var(--sb--trigger-bg, var(--bgColor-default, #f6f8fa));
+  color: var(--sb--trigger-text, var(--fgColor-default, #1f2328));
 }
 [data-trigger-button] [data-slot="button"]:hover,
 [data-trigger-button] [data-slot="button"]:focus-visible,
 [data-trigger-button] [data-slot="button"][aria-expanded="true"],
 [data-trigger-button][data-active] [data-slot="button"] {
-  background-color: var(--sb--trigger-bg-hover, var(--color-slate-300));
+  background-color: var(--sb--trigger-bg-hover, var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2)));
 }
 
 /* Inactive: disabled-looking, no interaction */

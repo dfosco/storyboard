@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
 import { getTerminalConfig } from '@dfosco/storyboard-core'
+import { ScreenNormalIcon } from '@primer/octicons-react'
 import { useOverride } from '../../hooks/useOverride.js'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './TerminalWidget.module.css'
@@ -471,7 +472,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
               {connectedEmbed.type === 'story' ? connectedEmbed.props?.storyId : connectedEmbed.props?.src || 'Prototype'}
             </span>
           )}
-          <button className={styles.expandClose} onClick={() => setExpanded(false)} aria-label="Close expanded view" autoFocus>✕</button>
+          <button className={styles.expandClose} onClick={() => setExpanded(false)} aria-label="Close expanded view" autoFocus><ScreenNormalIcon size={16} /></button>
         </div>
         <div className={`${styles.expandBody}${hasSplit ? ` ${styles.expandSplit}` : ''}`}>
           <div ref={expandContainerRef} className={styles.expandTerminal} />

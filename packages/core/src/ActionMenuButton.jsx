@@ -26,18 +26,15 @@ export default function ActionMenuButton({ config = {}, data, localOnly, tabinde
 
   return (
     <DropdownMenu.Root open={menuOpen} onOpenChange={handleOpenChange}>
-      <DropdownMenu.Trigger>
-        {(props) => (
+      <DropdownMenu.Trigger asChild>
           <TriggerButton
             active={menuOpen}
             size="icon-xl"
             aria-label={config.ariaLabel || config.label || 'Menu'}
             tabIndex={tabindex}
-            {...props}
           >
             <Icon name={config.icon || 'primer/gear'} size={16} {...(config.meta || {})} />
           </TriggerButton>
-        )}
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Content

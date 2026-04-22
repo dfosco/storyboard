@@ -49,14 +49,12 @@ export default function CreateMenuButton({ features: featuresProp = [], data, co
   return (
     <>
       <DropdownMenu.Root open={menuOpen} onOpenChange={setMenuOpen}>
-        <DropdownMenu.Trigger>
-          {(props) => (
+        <DropdownMenu.Trigger asChild>
             <TriggerButton
               active={menuOpen}
               size="icon-xl"
               aria-label={config.ariaLabel || config.label}
               tabIndex={tabindex}
-              {...props}
             >
               {config.icon ? (
                 <Icon name={config.icon} size={16} {...(config.meta || {})} />
@@ -66,7 +64,6 @@ export default function CreateMenuButton({ features: featuresProp = [], data, co
                 '+'
               )}
             </TriggerButton>
-          )}
         </DropdownMenu.Trigger>
 
         <DropdownMenu.Content

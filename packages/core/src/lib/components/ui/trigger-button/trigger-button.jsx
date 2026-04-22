@@ -1,12 +1,12 @@
 import './trigger-button.css';
-import { useMemo } from "react";
+import { useMemo, forwardRef } from "react";
 import { cn } from "../../../utils/index.js";
 import { registerSmoothCorners } from '../../../../smoothCorners.js';
 import { Button } from '../../../components/ui/button/index.js';
 
 registerSmoothCorners();
 
-export default function TriggerButton({
+const TriggerButton = forwardRef(function TriggerButton({
 className,
 wrapperClass = "",
 active = false,
@@ -16,7 +16,7 @@ localOnly = false,
 size = "icon-2xl",
 children,
 ...props
-}) {
+}, ref) {
 const borderWidth = useMemo(
 () => ['icon-2xl', 'icon-xl', '2xl', 'xl'].includes(size) ? '3px' : '2px',
 [size]
@@ -32,6 +32,7 @@ data-local-only={localOnly || undefined}
 style={{ '--sb--trigger-border-width': borderWidth }}
 >
 <Button
+ref={ref}
 variant="trigger"
 size={size}
 disabled={inactive}
@@ -50,4 +51,6 @@ className
 </Button>
 </span>
 );
-}
+});
+
+export default TriggerButton;

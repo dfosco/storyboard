@@ -964,7 +964,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     try {
       const copyProps = { ...widget.props }
       // Terminal widgets must get unique names — strip prettyName so the server generates a fresh one
-      if (widget.type === 'terminal') delete copyProps.prettyName
+      if (widget.type === 'terminal' || widget.type === 'agent') delete copyProps.prettyName
 
       undoRedo.snapshot(stateRef.current, 'add')
       const result = await addWidgetApi(canvasId, {
@@ -1930,7 +1930,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
             const relX = (w.position?.x ?? 0) - minX
             const relY = (w.position?.y ?? 0) - minY
             const pasteProps = { ...w.props }
-            if (w.type === 'terminal') delete pasteProps.prettyName
+            if (w.type === 'terminal' || w.type === 'agent') delete pasteProps.prettyName
             const result = await addWidgetApi(canvasId, {
               type: w.type,
               props: pasteProps,
@@ -2370,7 +2370,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   })
   for (const widget of sortedWidgets) {
     // In production, render terminal widgets as read-only instead of hiding them
-    const effectiveWidget = (!isLocalDev && widget.type === 'terminal')
+    const effectiveWidget = (!isLocalDev && (widget.type === 'terminal' || widget.type === 'agent'))
       ? { ...widget, type: 'terminal-read' }
       : widget
     allChildren.push(

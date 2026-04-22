@@ -230,7 +230,7 @@ export function createCanvasHandler(ctx) {
 
       const widgets = canvasData.widgets || []
       const widgetMap = new Map(widgets.map(w => [w.id, w]))
-      const terminalWidgets = widgets.filter((w) => w.type === 'terminal')
+      const terminalWidgets = widgets.filter((w) => w.type === 'terminal' || w.type === 'agent')
 
       for (const tw of terminalWidgets) {
         const connectedIds = new Set()
@@ -489,7 +489,7 @@ export function createCanvasHandler(ctx) {
         const widgetId = generateWidgetId(type)
 
         // Auto-assign a pretty name for terminal widgets
-        if (type === 'terminal' && !props.prettyName) {
+        if ((type === 'terminal' || type === 'agent') && !props.prettyName) {
           try {
             const { generateFriendlyName } = await import('./terminal-registry.js')
             props.prettyName = generateFriendlyName()
@@ -543,7 +543,7 @@ export function createCanvasHandler(ctx) {
         })
 
         // Orphan terminal session when a terminal widget is deleted (not killed)
-        if (widget.type === 'terminal') {
+        if (widget.type === 'terminal' || widget.type === 'agent') {
           try {
             const { orphanTerminalSession } = await import('./terminal-server.js')
             orphanTerminalSession(widgetId)

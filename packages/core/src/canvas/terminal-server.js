@@ -282,14 +282,15 @@ export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') 
     const params = new URLSearchParams(queryStr || '')
     const canvasId = params.get('canvas') || 'unknown'
     const prettyName = params.get('name') || null
+    const widgetStartupCommand = params.get('startupCommand') || null
 
     wss.handleUpgrade(req, socket, head, (ws) => {
-      handleConnection(ws, sessionId, canvasId, prettyName)
+      handleConnection(ws, sessionId, canvasId, prettyName, widgetStartupCommand)
     })
   })
 }
 
-function handleConnection(ws, widgetId, canvasId, prettyName) {
+function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupCommand = null) {
   const branch = currentBranch
   const tmuxName = generateTmuxName(branch, canvasId, widgetId)
 
@@ -427,7 +428,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
 
     // For new sessions, either run startupCommand (skip welcome) or show the welcome screen
     if (isNewSession) {
-      const startupCommand = termCfg.startupCommand ?? null
+      const startupCommand = widgetStartupCommand ?? termCfg.startupCommand ?? null
 
       if (startupCommand) {
         // startupCommand is set — bypass welcome screen entirely

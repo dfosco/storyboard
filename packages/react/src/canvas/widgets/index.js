@@ -26,6 +26,7 @@ export const widgetRegistry = {
   'terminal': TerminalWidget,
   'terminal-read': TerminalReadWidget,
   'action': ActionWidget,
+  'agent': TerminalWidget,
 }
 
 /**

@@ -31,6 +31,16 @@
   animation: splitExpandScaleIn 0.2s ease;
 }
 
+.modalFullscreen {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--bgColor-default, #ffffff);
+  display: flex;
+  flex-direction: column;
+  animation: splitExpandScaleIn 0.2s ease;
+}
+
 @keyframes splitExpandScaleIn {
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }

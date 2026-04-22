@@ -1190,4 +1190,12 @@
   .groupByFolders {
     display: none;
   }
+
+  .logo {
+    display: none;
+  }
+
+  .appSubtitle {
+    display: none;
+  }
 }

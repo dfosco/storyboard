@@ -860,6 +860,7 @@ export default function Viewfinder({
   const [activeNav, setActiveNav] = useState('all')
   const [activeTab, setActiveTab] = useState('All')
   const [showCreate, setShowCreate] = useState(false)
+  const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [groupByFolders, setGroupByFolders] = useState(() => {
     try { return localStorage.getItem(GROUP_BY_FOLDERS_KEY) !== 'false' } catch { return true }
@@ -973,18 +974,20 @@ export default function Viewfinder({
         </div>
         <div className={css.topActions}>
           <BranchDropdown basePath={basePath} />
-          <Menu.Root open={showCreate} onOpenChange={setShowCreate}>
-            <Menu.Trigger className={css.createBtn}>
-              <PlusIcon size={14} /> Create
-            </Menu.Trigger>
-            <Menu.Portal>
-              <Menu.Positioner className={css.createDropdownPositioner} side="bottom" align="end" sideOffset={4}>
-                <Menu.Popup className={css.createDropdown}>
-                  <CreateMenu onClose={() => setShowCreate(false)} basePath={basePath} />
-                </Menu.Popup>
-              </Menu.Positioner>
-            </Menu.Portal>
-          </Menu.Root>
+          {isLocalDev && (
+            <Menu.Root open={showCreate} onOpenChange={setShowCreate}>
+              <Menu.Trigger className={css.createBtn}>
+                <PlusIcon size={14} /> Create
+              </Menu.Trigger>
+              <Menu.Portal>
+                <Menu.Positioner className={css.createDropdownPositioner} side="bottom" align="end" sideOffset={4}>
+                  <Menu.Popup className={css.createDropdown}>
+                    <CreateMenu onClose={() => setShowCreate(false)} basePath={basePath} />
+                  </Menu.Popup>
+                </Menu.Positioner>
+              </Menu.Portal>
+            </Menu.Root>
+          )}
         </div>
       </header>
 

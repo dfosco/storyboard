@@ -737,6 +737,20 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasA
     initCalls.push(`initCustomerModeConfig(${JSON.stringify(config.customerMode)})`)
   }
 
+  // Client toolbar overrides from root toolbar.config.json
+  const clientToolbarPath = path.resolve(root, 'toolbar.config.json')
+  try {
+    if (fs.existsSync(clientToolbarPath)) {
+      const raw = fs.readFileSync(clientToolbarPath, 'utf-8')
+      const errors = []
+      const parsed = parseJsonc(raw, errors)
+      if (parsed && errors.length === 0) {
+        imports.push(`import { setClientToolbarOverrides } from '@dfosco/storyboard-core'`)
+        initCalls.push(`setClientToolbarOverrides(${JSON.stringify(parsed)})`)
+      }
+    }
+  } catch { /* skip if unreadable */ }
+
   // Log info when multiple flows target the same route
   const routeGroups = {}
   for (const [name, { route, isDefault }] of Object.entries(resolvedFlowRoutes)) {
@@ -985,6 +999,18 @@ export default function storyboardDataPlugin() {
           return
         }
 
+        // Invalidate when root toolbar.config.json changes
+        if (normalized === path.resolve(root, 'toolbar.config.json').split(path.sep).join('/') ||
+            normalized === path.resolve(root, 'toolbar.config.json')) {
+          buildResult = null
+          const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
+          if (mod) {
+            server.moduleGraph.invalidateModule(mod)
+            server.ws.send({ type: 'full-reload' })
+          }
+          return
+        }
+
         const parsed = parseDataFile(filePath)
         // Also invalidate when files are added/removed inside .folder/ directories
         const inFolder = normalized.includes('.folder/')
@@ -1103,8 +1129,14 @@ export default function storyboardDataPlugin() {
       // Watch storyboard.config.json for changes
       const { configPath } = readConfig(root)
       watcher.add(configPath)
+
+      // Watch root toolbar.config.json for changes
+      const clientToolbarConfigPath = path.resolve(root, 'toolbar.config.json')
+      watcher.add(clientToolbarConfigPath)
+
       const invalidateConfig = (filePath) => {
-        if (path.resolve(filePath) === configPath) {
+        const resolved = path.resolve(filePath)
+        if (resolved === configPath || resolved === clientToolbarConfigPath) {
           buildResult = null
           const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
           if (mod) {

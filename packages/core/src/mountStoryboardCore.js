@@ -19,7 +19,7 @@ import { initPlugins } from './plugins.js'
 import { initUIConfig } from './uiConfig.js'
 import { initCanvasConfig } from './canvasConfig.js'
 import { initCommandPaletteConfig } from './commandPaletteConfig.js'
-import { initToolbarConfig } from './toolbarConfigStore.js'
+import { initToolbarConfig, consumeClientToolbarOverrides } from './toolbarConfigStore.js'
 import { initCustomerModeConfig } from './customerModeConfig.js'
 
 let _mounted = false
@@ -196,12 +196,25 @@ export async function mountStoryboardCore(config = {}, options = {}) {
 
   // Load and merge toolbar config.
   // Core defaults come from toolbar.config.json (bundled).
-  // Client can provide overrides via config.toolbar or a toolbar.config.json at repo root.
+  // Client can provide overrides via:
+  //   1. config.toolbar in storyboard.config.json
+  //   2. A root toolbar.config.json (auto-discovered by the Vite data plugin)
   const { deepMerge } = await import('./loader.js')
   const defaultConfig = (await import('../toolbar.config.json')).default
-  let toolbarConfig = config.toolbar
-    ? deepMerge(defaultConfig, config.toolbar)
-    : { ...defaultConfig }
+  const clientOverrides = consumeClientToolbarOverrides()
+  const explicitToolbar = config.toolbar
+
+  let toolbarConfig
+  if (explicitToolbar && clientOverrides) {
+    // Both sources — merge all three layers
+    toolbarConfig = deepMerge(deepMerge(defaultConfig, clientOverrides), explicitToolbar)
+  } else if (explicitToolbar) {
+    toolbarConfig = deepMerge(defaultConfig, explicitToolbar)
+  } else if (clientOverrides) {
+    toolbarConfig = deepMerge(defaultConfig, clientOverrides)
+  } else {
+    toolbarConfig = { ...defaultConfig }
+  }
 
   // Inject repository URL from storyboard.config.json into the toolbar config
   if (config.repository?.owner && config.repository?.name) {

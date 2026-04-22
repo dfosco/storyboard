@@ -125,50 +125,48 @@
   }
 
   function resolveCommandConfig(cfg: any): any {
-    if (cfg.command) {
-      // Build command menu config from new schema
-      const actions: any[] = []
-      actions.push({ type: 'header', label: 'Command Menu' })
+    if (!cfg.tools) return cfg.menus?.command || null
+    // Build command action config from command-palette surface tools
+    const actions: any[] = []
+    actions.push({ type: 'header', label: 'Command Menu' })
 
-      // Add command-palette tools as actions
-      if (cfg.tools) {
-        for (const [toolKey, tool] of Object.entries(cfg.tools as Record<string, any>)) {
-          if (tool.surface !== 'command-palette') continue
-          if (tool.render === 'separator') {
-            actions.push({ type: 'separator' })
-            continue
-          }
-          actions.push({
-            id: tool.handler || `core/${tool.label?.toLowerCase().replace(/\s+/g, '-')}`,
-            label: tool.label || tool.ariaLabel,
-            type: tool.render || 'default',
-            url: tool.url || null,
-            modes: tool.modes || ['*'],
-            toolKey,
-            localOnly: !tool.prod,
-          })
-        }
+    for (const [toolKey, tool] of Object.entries(cfg.tools as Record<string, any>)) {
+      if (tool.surface !== 'command-palette') continue
+      if (tool.render === 'separator') {
+        actions.push({ type: 'separator' })
+        continue
       }
-
-      return {
-        ariaLabel: 'Command Menu',
-        trigger: 'command',
-        icon: cfg.command.icon,
-        meta: cfg.command.meta,
-        default: true,
-        modes: ['*'],
-        actions,
-      }
+      actions.push({
+        id: tool.handler || `core/${tool.label?.toLowerCase().replace(/\s+/g, '-')}`,
+        label: tool.label || tool.ariaLabel,
+        type: tool.render || 'default',
+        url: tool.url || null,
+        modes: tool.modes || ['*'],
+        toolKey,
+        localOnly: !tool.prod,
+      })
     }
-    return cfg.menus?.command || null
+
+    return {
+      ariaLabel: 'Command Menu',
+      trigger: 'command',
+      default: true,
+      modes: ['*'],
+      actions,
+    }
   }
 
-  const commandMenuConfig = $derived(
-    isMenuHidden('command') ? null : resolveCommandConfig(config)
-  )
-  const shortcutsConfig = $derived({
-    ...((config as any).shortcuts || {}),
-    ...(config.command?.shortcut ? { openCommandMenu: config.command.shortcut } : {}),
+  const commandMenuConfig = $derived(resolveCommandConfig(config))
+
+  // Read shortcuts from tool configs
+  const shortcutsConfig = $derived.by(() => {
+    const tools = (config as any).tools || {}
+    const hideChromeTool = tools['hide-chrome']
+    const commandPaletteTool = tools['command-palette']
+    return {
+      hideChrome: hideChromeTool?.shortcut || { key: '.', label: '⌘.' },
+      openCommandMenu: commandPaletteTool?.shortcut || { key: 'k', label: '⌘K' },
+    }
   })
 
   // Build ordered menu list from JSON key order (excluding command, which is always rightmost)

@@ -94,6 +94,7 @@
   {"folder":"branch--feature-flags","branch":"feature-flags"},
   {"folder":"branch--fix-autosync-listchangedfiles","branch":"fix-autosync-listchangedfiles"},
   {"folder":"branch--fix-canvas-discovery-refresh","branch":"fix-canvas-discovery-refresh"},
+  {"folder":"branch--fix-canvas-optimistic-rollback","branch":"fix-canvas-optimistic-rollback"},
   {"folder":"branch--fix-canvas-reload-guard","branch":"fix-canvas-reload-guard"},
   {"folder":"branch--fix-cmd-palette-clear-btn","branch":"fix-cmd-palette-clear-btn"},
   {"folder":"branch--fix-prototype-embed-hash-params","branch":"fix-prototype-embed-hash-params"},

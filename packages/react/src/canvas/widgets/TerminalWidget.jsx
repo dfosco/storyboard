@@ -274,6 +274,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
       }
+      setInteractive(true)
+      termRef.current?.focus?.()
     }, 100)
     return () => clearTimeout(timer)
   }, [expanded])

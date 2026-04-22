@@ -37,12 +37,6 @@
   text-overflow: ellipsis;
 }
 
-.headerPaused {
-  background: var(--bgColor-attention-muted, #fff8c5);
-  color: var(--fgColor-attention, #9a6700);
-  border-bottom-color: var(--borderColor-attention-muted, #d4a72c66);
-}
-
 .content {
   position: relative;
   width: 100%;

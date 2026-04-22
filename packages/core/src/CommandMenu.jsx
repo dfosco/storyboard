@@ -6,6 +6,7 @@
  *   submenu  → DropdownMenu.Sub with SubTrigger + SubContent
  */
 
+import './CommandMenu.css';
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
 import * as Panel from './lib/components/ui/panel/index.js'

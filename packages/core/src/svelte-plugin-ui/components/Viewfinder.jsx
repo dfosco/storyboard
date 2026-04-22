@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import './Viewfinder.css'
 import { buildPrototypeIndex } from '../../viewfinder.js'
 import { getLocal, setLocal } from '../../localStorage.js'
 import { Icon } from './Icon.jsx'

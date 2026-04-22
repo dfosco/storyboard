@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import './PwaInstallBanner.css'
 import { isMobile, isTouchDevice, subscribeToMobile } from './mobileViewport.js'
 
 const DISMISS_KEY = 'sb-pwa-install-dismissed'

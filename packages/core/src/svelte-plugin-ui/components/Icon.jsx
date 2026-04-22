@@ -19,6 +19,7 @@
  */
 
 import React, { useMemo, useRef, useEffect } from 'react'
+import './Icon.css'
 import octicons from '@primer/octicons'
 import feather from 'feather-icons'
 

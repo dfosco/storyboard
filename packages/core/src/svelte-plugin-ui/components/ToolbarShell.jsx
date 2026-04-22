@@ -11,6 +11,7 @@
  */
 
 import React, { useSyncExternalStore } from 'react'
+import './ToolbarShell.css'
 import { toolState } from '../stores/toolStore.js'
 
 function subscribeToolState(callback) {

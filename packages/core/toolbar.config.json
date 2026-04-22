@@ -232,15 +232,6 @@
       "prod": true,
       "inlineAction": "toggle-chrome",
       "shortcut": { "key": ".", "label": "cmd + ." }
-    },
-    "pause-embeds": {
-      "label": "Pause embed refreshes",
-      "render": "submenu",
-      "surface": "command-palette",
-      "handler": "core:pause-embeds",
-      "modes": ["*"],
-      "hideInCommandPalette": ["^(?!/canvas)"],
-      "hideFromCommandPaletteSearch": true
     }
   }
 }

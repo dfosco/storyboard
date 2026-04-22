@@ -608,7 +608,10 @@ function buildUnifiedConfig(root) {
   }
 
   // 3. Read storyboard.config.json (highest priority)
+  // Use the schema-defaulted config for most things, but also read
+  // the raw file to know which keys were explicitly set by the user.
   const { config: sbConfig } = readConfig(root)
+  const rawSbConfig = readJsonFile(path.resolve(root, 'storyboard.config.json')) || {}
 
   // 4. Merge core defaults with user overrides per domain
   const toolbar = userConfigs.toolbar
@@ -625,22 +628,24 @@ function buildUnifiedConfig(root) {
     : coreWidgets
 
   // 5. Apply storyboard.config.json overrides (highest priority for all domains)
-  const finalToolbar = sbConfig?.toolbar
+  // Only merge when the user explicitly defined the key in storyboard.config.json
+  // (not from configSchema defaults, which would overwrite core config with empty arrays).
+  const finalToolbar = rawSbConfig.toolbar
     ? deepMergeBuild(toolbar, sbConfig.toolbar)
     : toolbar
-  const finalCommandPalette = sbConfig?.commandPalette
+  const finalCommandPalette = rawSbConfig.commandPalette
     ? deepMergeBuild(commandPalette, sbConfig.commandPalette)
     : commandPalette
 
   // 6. Detect overlaps between user config files and storyboard.config.json
-  if (sbConfig?.toolbar && userConfigs.toolbar) {
-    const overlaps = findOverlappingKeys(userConfigs.toolbar.data, sbConfig.toolbar)
+  if (rawSbConfig.toolbar && userConfigs.toolbar) {
+    const overlaps = findOverlappingKeys(userConfigs.toolbar.data, rawSbConfig.toolbar)
     for (const key of overlaps) {
       warnings.push(`Config overlap: "${key}" is defined in both toolbar.config.json and storyboard.config.json.toolbar — storyboard.config.json wins.`)
     }
   }
-  if (sbConfig?.commandPalette && userConfigs.commandPalette) {
-    const overlaps = findOverlappingKeys(userConfigs.commandPalette.data, sbConfig.commandPalette)
+  if (rawSbConfig.commandPalette && userConfigs.commandPalette) {
+    const overlaps = findOverlappingKeys(userConfigs.commandPalette.data, rawSbConfig.commandPalette)
     for (const key of overlaps) {
       warnings.push(`Config overlap: "${key}" is defined in both commandpalette.config.json and storyboard.config.json.commandPalette — storyboard.config.json wins.`)
     }

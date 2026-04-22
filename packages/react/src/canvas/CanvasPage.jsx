@@ -2379,9 +2379,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           isLocalDev={isLocalDev}
         />
         <PageSelector currentName={canvasId} pages={siblingPages} isLocalDev={isLocalDev} />
-        {isLocalDev && (
-          <span className={styles.localEditingLabel}>Local editing</span>
-        )}
       </div>
       <div
         ref={scrollRef}

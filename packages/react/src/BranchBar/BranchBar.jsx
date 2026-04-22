@@ -1,8 +1,8 @@
 /**
- * BranchBar — dark top bar showing current branch on non-main routes.
+ * BranchBar — blue accent bar showing current branch and local dev status.
  *
- * Dev: shows branch name as a static label (use CLI to switch branches).
- * Prod: same label (dropdown switching deferred to ViewfinderNew).
+ * Dev: always visible (main or branch). Shows "Local development" label.
+ * Prod: shows on non-main branches only.
  */
 import { useState, useEffect, useMemo } from 'react'
 import { GitBranchIcon } from '@primer/octicons-react'
@@ -22,6 +22,7 @@ export default function BranchBar({ basePath }) {
     return m ? m[1] : 'main'
   }, [basePath])
 
+  const isLocalDev = import.meta.env.DEV
   const isOnBranch = currentBranch !== 'main'
 
   useEffect(() => {
@@ -32,7 +33,7 @@ export default function BranchBar({ basePath }) {
     return () => observer.disconnect()
   }, [])
 
-  if (!isOnBranch || hidden || isHiddenByParam) return null
+  if ((!isOnBranch && !isLocalDev) || hidden || isHiddenByParam) return null
 
   function hideChrome() {
     window.dispatchEvent(new KeyboardEvent('keydown', {
@@ -46,6 +47,8 @@ export default function BranchBar({ basePath }) {
         <span className={css.barLabel}>
           <GitBranchIcon size={12} />
           <span className={css.barBranchName}>{currentBranch}</span>
+          <span className={css.barSeparator}>·</span>
+          <span>Local development</span>
         </span>
         <div className={css.barActions}>
           <button className={css.barAction} onClick={hideChrome}>Hide</button>

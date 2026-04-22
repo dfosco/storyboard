@@ -50,18 +50,15 @@ export default function ThemeMenuButton({ config = {}, data, localOnly, tabindex
 
   return (
     <DropdownMenu.Root open={menuOpen} onOpenChange={setMenuOpen}>
-      <DropdownMenu.Trigger>
-        {(props) => (
+      <DropdownMenu.Trigger asChild>
           <TriggerButton
             active={menuOpen}
             size="icon-xl"
             aria-label={config.ariaLabel || 'Theme'}
             tabIndex={tabindex}
-            {...props}
           >
             <Icon name={config.icon || 'primer/sun'} size={16} {...(config.meta || {})} />
           </TriggerButton>
-        )}
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Content

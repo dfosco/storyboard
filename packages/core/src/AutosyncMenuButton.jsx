@@ -152,18 +152,15 @@ export default function AutosyncMenuButton({ config = {}, basePath = '/', tabind
 
   return (
     <DropdownMenu.Root open={menuOpen} onOpenChange={handleOpenChange}>
-      <DropdownMenu.Trigger>
-        {(props) => (
+      <DropdownMenu.Trigger asChild>
           <TriggerButton
             active={menuOpen || hasEnabled(enabledScopes)}
             size="icon-xl"
             aria-label={config.ariaLabel || 'Autosync'}
             tabIndex={tabindex}
-            {...props}
           >
             <Icon name={config.icon || 'primer/sync'} size={16} {...(config.meta || {})} />
           </TriggerButton>
-        )}
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Content

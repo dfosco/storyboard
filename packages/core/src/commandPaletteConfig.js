@@ -3,6 +3,8 @@
  * Framework-agnostic (zero npm dependencies).
  */
 
+import { getConfig } from './configStore.js'
+
 let _config = { sections: [] }
 
 /**
@@ -16,8 +18,16 @@ export function initCommandPaletteConfig(config) {
 
 /**
  * Get the current command palette config.
+ * Falls back to the unified config store if the legacy store has no sections.
  * @returns {{ sections: Array }}
  */
 export function getCommandPaletteConfig() {
+  if (_config.sections.length === 0) {
+    const uc = getConfig('commandPalette')
+    if (uc?.sections?.length > 0) {
+      console.log('[devlog] getCommandPaletteConfig: legacy store empty, using configStore fallback with', uc.sections.length, 'sections')
+      _config = { sections: [], ...uc }
+    }
+  }
   return _config
 }

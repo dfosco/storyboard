@@ -71,7 +71,7 @@ function atomicWrite(filePath, data) {
  * Write or update a terminal config file.
  * Called when a terminal widget is created or reconnected.
  */
-export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = null, serverUrl = null }) {
+export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = null, serverUrl = null, tmuxName = null }) {
   const fp = configPath(branch, canvasId, widgetId)
   const dir = dirname(fp)
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
@@ -119,6 +119,16 @@ export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = n
     if (existsSync(symPath)) unlinkSync(symPath)
     symlinkSync(hashName, symPath)
   } catch { /* symlink creation is best-effort */ }
+
+  // Create a tmuxName-named symlink so agents can resolve identity via tmux session name
+  // (tmux session name is always available and never goes stale)
+  if (tmuxName) {
+    const tmuxSymPath = join(dir, `${tmuxName}.json`)
+    try {
+      if (existsSync(tmuxSymPath)) unlinkSync(tmuxSymPath)
+      symlinkSync(hashName, tmuxSymPath)
+    } catch { /* best-effort */ }
+  }
 
   return config
 }

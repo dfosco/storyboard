@@ -82,7 +82,7 @@ export { initUIConfig, isMenuHidden, getHiddenItems } from './uiConfig.js'
 export { initToolRegistry, registerToolModule, setToolComponent, setToolGuardResult, getToolComponent, getToolModule, getToolsForToolbar, getToolConfig, getAllToolConfigs, subscribeToToolRegistry, getToolRegistrySnapshot } from './toolRegistry.js'
 
 // Toolbar config store (reactive layered overrides: core → custom → prototype → user)
-export { initToolbarConfig, setPrototypeToolbarConfig, clearPrototypeToolbarConfig, getToolbarConfig, subscribeToToolbarConfig, getToolbarConfigSnapshot } from './toolbarConfigStore.js'
+export { initToolbarConfig, setPrototypeToolbarConfig, clearPrototypeToolbarConfig, getToolbarConfig, subscribeToToolbarConfig, getToolbarConfigSnapshot, setClientToolbarOverrides } from './toolbarConfigStore.js'
 
 // Toolbar tool state management (runtime state for toolbar tools)
 export { TOOL_STATES, initToolbarToolStates, setToolbarToolState, getToolbarToolState, isToolbarToolLocalOnly, subscribeToToolbarToolStates, getToolbarToolStatesSnapshot } from './toolStateStore.js'

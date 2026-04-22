@@ -27,30 +27,14 @@ import './command-palette.css'
 // Icon size for all palette items
 const ICON_SIZE = 16
 
-// Map item types to icon names (primer/, feather/, iconoir/ namespaces)
-const TYPE_ICON_NAMES = {
-  prototype: 'prototype',
-  canvas: 'canvas',
-  story: 'component',
-  component: 'component',
-  starred: 'primer/star-fill',
-  recent: 'primer/clock',
-  create: 'iconoir/plus-circle',
-  command: 'feather/zap',
-  link: 'feather/external-link',
-  home: 'primer/home',
-  theme: 'primer/sun',
-  terminal: 'feather/terminal',
-  repository: 'primer/mark-github',
-  docs: 'primer/book',
-  devtools: 'feather/tool',
-  'feature-flags': 'feather/flag',
+function getIconMap() {
+  const config = getCommandPaletteConfig()
+  return config?.icons || {}
 }
 
-const FALLBACK_ICON = 'feather/hexagon'
-
 function ItemIcon({ type, toolIcon }) {
-  const iconName = toolIcon || TYPE_ICON_NAMES[type] || FALLBACK_ICON
+  const icons = getIconMap()
+  const iconName = toolIcon || icons[type] || icons.fallback || 'feather/hexagon'
   return <Icon name={iconName} size={ICON_SIZE} color="var(--fgColor-muted, #656d76)" />
 }
 

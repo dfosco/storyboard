@@ -41,7 +41,7 @@
     },
     "agents": {
       "copilot": {
-        "label": "GitHub Copilot",
+        "label": "Copilot CLI",
         "icon": "primer/copilot",
         "startupCommand": "copilot --agent terminal-agent"
       },

@@ -109,6 +109,22 @@ const DEFAULT_THEME = {
   brightWhite: '#f0f6fc',
 }
 
+/**
+ * Focus the terminal without moving the canvas scroll container.
+ * Every terminal focus call MUST go through this helper.
+ */
+function safeFocus(termEl, terminalWrapperEl) {
+  const scrollEl = terminalWrapperEl?.closest('[class*="canvasScroll"]')
+  const scrollTop = scrollEl?.scrollTop
+  const scrollLeft = scrollEl?.scrollLeft
+  termEl?.focus?.({ preventScroll: true })
+  // Belt-and-suspenders: restore if browser still moved it
+  if (scrollEl && (scrollEl.scrollTop !== scrollTop || scrollEl.scrollLeft !== scrollLeft)) {
+    scrollEl.scrollTop = scrollTop
+    scrollEl.scrollLeft = scrollLeft
+  }
+}
+
 export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizable }, ref) {
   const width = readProp(props, 'width', terminalSchema)
   const height = readProp(props, 'height', terminalSchema)
@@ -166,6 +182,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     let disposed = false
     let term = null
     let ws = null
+    let cleanupFocusGuard = null
 
     async function setup() {
       try {
@@ -189,10 +206,36 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           theme: { ...DEFAULT_THEME, ...cfg.theme },
         })
 
+        // Intercept any focus events ghostty-web fires (including deferred
+        // ones from setTimeout) so they never scroll the canvas viewport.
+        const scrollEl = containerRef.current?.closest('[class*="canvasScroll"]')
+        let guardScroll = true
+        function onFocusIn() {
+          if (!guardScroll || !scrollEl) return
+          // Restore scroll position synchronously in the same frame
+          scrollEl.scrollTop = savedScrollTop
+          scrollEl.scrollLeft = savedScrollLeft
+        }
+        let savedScrollTop = scrollEl?.scrollTop ?? 0
+        let savedScrollLeft = scrollEl?.scrollLeft ?? 0
+        containerRef.current.addEventListener('focusin', onFocusIn, true)
+
         term.open(containerRef.current)
-        // Prevent ghostty-web's auto-focus from scrolling the canvas viewport
-        term.blur?.()
+        // Restore immediately in case open() focused synchronously
+        if (scrollEl) {
+          scrollEl.scrollTop = savedScrollTop
+          scrollEl.scrollLeft = savedScrollLeft
+        }
         termRef.current = term
+
+        // Keep the guard up for 500ms to catch any deferred focus() calls
+        setTimeout(() => { guardScroll = false }, 500)
+        // Clean up listener when effect disposes
+        const guardContainer = containerRef.current
+        cleanupFocusGuard = () => {
+          guardScroll = false
+          guardContainer?.removeEventListener('focusin', onFocusIn, true)
+        }
 
         // SGR mouse wheel for tmux scroll in alternate screen
         term.attachCustomWheelEventHandler((e) => {
@@ -254,6 +297,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
     return () => {
       disposed = true
+      cleanupFocusGuard?.()
       if (ws && ws.readyState <= WebSocket.OPEN) ws.close()
       if (term) term.dispose()
       termRef.current = null
@@ -286,7 +330,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
       }
       setInteractive(true)
-      termRef.current?.focus?.({ preventScroll: true })
+      safeFocus(termRef.current, expandContainerRef.current)
     }, 100)
     return () => clearTimeout(timer)
   }, [expanded])
@@ -319,14 +363,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     if (sessionEnded) return
     if (ready) {
       setInteractive(true)
-      const scrollEl = terminalRef.current?.closest('[class*="canvasScroll"]')
-      const scrollTop = scrollEl?.scrollTop
-      const scrollLeft = scrollEl?.scrollLeft
-      termRef.current?.focus({ preventScroll: true })
-      if (scrollEl && (scrollEl.scrollTop !== scrollTop || scrollEl.scrollLeft !== scrollLeft)) {
-        scrollEl.scrollTop = scrollTop
-        scrollEl.scrollLeft = scrollLeft
-      }
+      safeFocus(termRef.current, terminalRef.current)
     }
   }, [sessionEnded, ready])
 
@@ -403,11 +440,11 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
             onClick={(e) => {
               if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
               setInteractive(true)
-              termRef.current?.focus({ preventScroll: true })
+              safeFocus(termRef.current, terminalRef.current)
             }}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') { setInteractive(true); termRef.current?.focus({ preventScroll: true }) } }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { setInteractive(true); safeFocus(termRef.current, terminalRef.current) } }}
             aria-label="Click to interact"
           >
             <span className={overlayStyles.interactHint}>Click to interact</span>

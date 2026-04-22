@@ -517,7 +517,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
       if (isHiddenInPalette(tool, basePath)) continue
-      entries.push({ toolId, tool, label: customLabel || tool.label || toolId })
+      entries.push({ toolId, tool, label: customLabel || tool.label || toolId, hideFromSearch: (typeof entry === 'object' && entry.hideFromCommandPaletteSearch) || tool.hideFromCommandPaletteSearch || false })
     }
   } else {
     for (const [toolId, tool] of Object.entries(tools)) {
@@ -525,11 +525,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
       if (isHiddenInPalette(tool, basePath)) continue
-      entries.push({ toolId, tool, label: tool.label || toolId })
-    }
-  }
-
-  if (entries.length === 0) return null
+      entries.push({ toolId, tool, label: tool.label || toolId, hideFromSearch: tool.hideFromCommandPaletteSearch || false })
 
   const items = []
   const subPages = []

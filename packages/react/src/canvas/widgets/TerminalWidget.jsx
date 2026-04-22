@@ -110,8 +110,9 @@ const DEFAULT_THEME = {
 }
 
 export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizable }, ref) {
-  const width = readProp(props, 'width', terminalSchema)
-  const height = readProp(props, 'height', terminalSchema)
+  const cfg = getTerminalConfig()
+  const width = props?.width ?? cfg.defaultWidth ?? readProp(props, 'width', terminalSchema)
+  const height = props?.height ?? cfg.defaultHeight ?? readProp(props, 'height', terminalSchema)
   const prettyName = props?.prettyName || null
 
   const containerRef = useRef(null)

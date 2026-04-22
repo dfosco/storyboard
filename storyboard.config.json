@@ -31,11 +31,13 @@
   },
   "canvas": {
     "terminal": {
-      "fontSize": 13,
+      "fontSize": 18,
       "fontFamily": "'Ghostty', 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
       "prompt": "❯ ",
       "startupCommand": null,
-      "defaultStartupSequence": null
+      "defaultStartupSequence": null,
+      "defaultWidth": 800,
+      "defaultHeight": 450
     }
   },
   "customerMode": {

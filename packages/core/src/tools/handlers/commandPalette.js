@@ -4,6 +4,6 @@
 export const id = 'command-palette'
 
 export async function component() {
-  const mod = await import('../../CommandPaletteTrigger.svelte')
+  const mod = await import('../../CommandPaletteTrigger.jsx')
   return mod.default
 }

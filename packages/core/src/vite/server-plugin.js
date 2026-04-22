@@ -328,7 +328,7 @@ export default function storyboardServer() {
       })
 
       // Watch toolbar.config.json for changes — trigger full reload so
-      // CoreUIBar.svelte picks up menu/mode config changes during dev
+      // CoreUIBar.jsx picks up menu/mode config changes during dev
       const toolbarConfigPath = path.resolve(
         path.dirname(new URL(import.meta.url).pathname),
         '../../toolbar.config.json'

@@ -1,19 +1,20 @@
 /**
- * Generic mount utility for Svelte plugin components.
+ * Generic mount utility for React plugin components.
  *
- * Provides a framework-agnostic way to mount Svelte components into any
+ * Provides a framework-agnostic way to mount React components into any
  * DOM target.  Handles shared style injection (idempotent) and returns
  * a destroy handle for cleanup.
  *
  * Usage:
  *   import { mountSveltePlugin } from '@dfosco/storyboard-core/svelte-plugin-ui'
- *   import MyComponent from './MyComponent.svelte'
+ *   import MyComponent from './MyComponent.jsx'
  *
  *   const handle = mountSveltePlugin(document.body, MyComponent, { someProp: 'value' })
  *   // later: handle.destroy()
  */
 
-import { mount, unmount, type Component } from 'svelte'
+import { createElement, type ComponentType } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
 
 const STYLE_ID = 'sb-svelte-ui-styles'
 
@@ -69,28 +70,25 @@ export function injectStyles(): Promise<void> {
 export interface PluginHandle {
   /** Remove the component and its wrapper from the DOM */
   destroy: () => void
-  /** The wrapper element containing the Svelte component */
+  /** The wrapper element containing the React component */
   element: HTMLElement
   /** Resolves when all styles are loaded and the component is ready to show */
   ready: Promise<void>
 }
 
 /**
- * Mount a Svelte component into a DOM target.
+ * Mount a React component into a DOM target.
  *
  * @param target - DOM element to append the component wrapper to
- * @param ComponentClass - Svelte component constructor
+ * @param ComponentClass - React component
  * @param props - Props to pass to the component
  * @returns Handle with destroy() method and a `ready` promise
  */
 export function mountSveltePlugin<T extends Record<string, unknown>>(
   target: HTMLElement,
-  ComponentClass: Component<T>,
+  ComponentClass: ComponentType<T>,
   props?: T,
 ): PluginHandle {
-  // Fire-and-forget — styles are either already present (Vite bundle)
-  // or will load in parallel. The `ready` promise on PluginHandle can
-  // be awaited by callers that need to wait for CSS.
   const stylesReady = injectStyles()
 
   const wrapper = document.createElement('div')
@@ -98,16 +96,14 @@ export function mountSveltePlugin<T extends Record<string, unknown>>(
   wrapper.style.display = 'contents'
   target.appendChild(wrapper)
 
-  const instance = mount(ComponentClass, {
-    target: wrapper,
-    props: props ?? ({} as T),
-  })
+  const root: Root = createRoot(wrapper)
+  root.render(createElement(ComponentClass, props ?? ({} as T)))
 
   return {
     element: wrapper,
     ready: stylesReady,
     destroy() {
-      unmount(instance)
+      root.unmount()
       wrapper.remove()
     },
   }

@@ -58,7 +58,7 @@ export function initToolRegistry(config) {
  *
  * @param {string} id - Tool id (matches key in toolbar.config.json tools)
  * @param {object} mod
- * @param {Function} [mod.component] - () => import('./SomeComponent.svelte')
+ * @param {Function} [mod.component] - () => import('./SomeComponent.jsx')
  * @param {object|Function} [mod.handler] - Command action handler
  * @param {Function} [mod.setup] - async (ctx) => void — called once at mount
  * @param {Function} [mod.guard] - async (ctx) => boolean — return false to hide

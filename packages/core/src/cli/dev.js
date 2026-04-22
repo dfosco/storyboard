@@ -328,7 +328,8 @@ async function main() {
 
   if (ready) {
     if (isCaddyRunning()) {
-      p.log.success(proxyUrl)
+      p.log.success(`${proxyUrl}`)
+      p.log.info(`${dim('direct:')} ${directUrl}`)
     } else {
       p.log.success(directUrl)
       p.log.warning('Proxy not running — run `npx storyboard setup` for clean URLs')

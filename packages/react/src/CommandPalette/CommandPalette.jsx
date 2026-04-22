@@ -205,15 +205,7 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
       }
 
       if (tool.inlineAction === 'open-palette') {
-        remainingItems.push({
-          id: `cfg:${section.id}:${toolId}`,
-          children: label,
-          keywords: [label, toolId, 'command', 'palette', 'search'].filter(Boolean),
-          showType: false,
-          onClick: () => {
-            document.dispatchEvent(new CustomEvent('storyboard:open-palette'))
-          },
-        })
+        // Skip — no point opening the palette from within itself
         continue
       }
 

@@ -537,13 +537,18 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
   for (const { toolId, tool, label } of entries) {
     // Inline actions
     if (tool.inlineAction === 'toggle-chrome') {
+      const isHidden = document.documentElement.classList.contains('storyboard-chrome-hidden')
       items.push({
         id: `cfg:${section.id}:${toolId}`,
-        children: label,
+        children: <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{label}</span>
+          <span>{isHidden ? '✓' : ''}</span>
+        </span>,
         keywords: [label, toolId, 'hide', 'show', 'toolbar'].filter(Boolean),
         showType: false,
         onClick: () => {
           document.documentElement.classList.toggle('storyboard-chrome-hidden')
+          setRefreshKey(k => k + 1)
         },
       })
       continue
@@ -589,6 +594,8 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
             options: children.map(child => ({
               label: child.label,
               execute: child.execute,
+              type: child.type,
+              active: child.active,
             })),
           })
           items.push({
@@ -760,6 +767,7 @@ export default function StoryboardCommandPalette({ basePath }) {
   const [activePage, setActivePage] = useState('root')
   const [createType, setCreateType] = useState(null)
   const [currentTheme, setCurrentTheme] = useState(() => getTheme())
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // Keep currentTheme in sync when theme changes
   useEffect(() => {
@@ -836,6 +844,14 @@ export default function StoryboardCommandPalette({ basePath }) {
     }
   }, [basePath])
 
+  // Rebuild palette items when a toggle is clicked (refreshKey changes)
+  useEffect(() => {
+    if (refreshKey === 0) return
+    const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
+    setItems(built.groups)
+    setToolMenus(built.toolMenus)
+  }, [refreshKey, basePath])
+
   const handleChangeOpen = useCallback((value) => {
     if (!value) {
       setOpen(false)
@@ -850,9 +866,11 @@ export default function StoryboardCommandPalette({ basePath }) {
       id: `subpage:${menu.id}`,
       items: (menu.options || []).map((opt, i) => ({
         id: `subpage:${menu.id}:${i}`,
-        children: opt.toolHandler === 'core:theme' && opt.value === currentTheme
-          ? <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}><span>{opt.label}</span><span>✓</span></span>
-          : opt.label,
+        children: opt.type === 'toggle'
+          ? <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}><span>{opt.label}</span><span>{opt.active ? '✓' : ''}</span></span>
+          : opt.toolHandler === 'core:theme' && opt.value === currentTheme
+            ? <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}><span>{opt.label}</span><span>✓</span></span>
+            : opt.label,
         keywords: [opt.label, menu.label || menu.id],
         showType: false,
         onClick: () => {
@@ -863,12 +881,16 @@ export default function StoryboardCommandPalette({ basePath }) {
           } else if (opt.action) {
             executeAction(opt.action, opt.value)
           }
-          setOpen(false)
-          setActivePage('root')
+          if (opt.type === 'toggle') {
+            setRefreshKey(k => k + 1)
+          } else {
+            setOpen(false)
+            setActivePage('root')
+          }
         },
       })),
     })).filter(g => g.items.length > 0)
-  }, [toolMenus, currentTheme])
+  }, [toolMenus, currentTheme, refreshKey])
 
   const filteredItems = useMemo(() => {
     const base = filterItems(items, search)

@@ -595,7 +595,9 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
             const component = await mod.component(toolConfig.render)
             loadedComponents[toolId] = component
           }
-        } catch { /* tool failed to load — skip gracefully */ }
+        } catch (err) {
+          console.warn(`[CoreUIBar] Failed to load tool "${toolId}":`, err)
+        }
       }
 
       if (mounted) {

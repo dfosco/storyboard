@@ -6,8 +6,9 @@
  */
 import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
-import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, PlusIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon, StackIcon } from '@primer/octicons-react'
+import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, PlusIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon, StackIcon, GearIcon, TrashIcon, ShieldLockIcon } from '@primer/octicons-react'
 import { Menu } from '@base-ui/react/menu'
+import { Dialog } from '@base-ui/react/dialog'
 import Icon from './Icon.jsx'
 import css from './Viewfinder.module.css'
 
@@ -813,6 +814,74 @@ function BranchDropdown({ basePath }) {
   )
 }
 
+/* ─── User Settings Dialog ─── */
+
+function UserSettingsDialog({ open, onOpenChange, user, onRemoveToken }) {
+  const hasToken = (() => {
+    try { return !!localStorage.getItem(COMMENTS_TOKEN_KEY) } catch { return false }
+  })()
+  const scopes = user?.scopes || []
+  const isFineGrained = hasToken && scopes.length === 0
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className={css.settingsBackdrop} />
+        <div className={css.settingsPopupWrap}>
+          <Dialog.Popup className={css.settingsPopup}>
+            <Dialog.Title className={css.settingsTitle}>Settings</Dialog.Title>
+            <Dialog.Close className={css.settingsCloseBtn} aria-label="Close">×</Dialog.Close>
+
+            {/* GitHub connection section */}
+            <div className={css.settingsSection}>
+              <div className={css.settingsSectionHeader}>
+                <ShieldLockIcon size={16} />
+                <span>GitHub Connection</span>
+              </div>
+
+              {hasToken ? (
+                <div className={css.settingsTokenCard}>
+                  <div className={css.settingsTokenRow}>
+                    <span className={css.settingsTokenLabel}>Token</span>
+                    <code className={css.settingsTokenValue}>••••••••••••••••</code>
+                  </div>
+                  <div className={css.settingsTokenRow}>
+                    <span className={css.settingsTokenLabel}>Permissions</span>
+                    <span className={css.settingsTokenValue}>
+                      {isFineGrained
+                        ? 'Fine-grained token'
+                        : scopes.map(s => <code key={s} className={css.settingsScope}>{s}</code>)
+                      }
+                    </span>
+                  </div>
+                  <button className={css.settingsRemoveBtn} onClick={onRemoveToken}>
+                    <TrashIcon size={14} />
+                    Remove token
+                  </button>
+                </div>
+              ) : (
+                <div className={css.settingsNoToken}>
+                  <p>No GitHub token configured.</p>
+                  <button
+                    className={css.settingsSignInBtn}
+                    onClick={() => {
+                      onOpenChange(false)
+                      document.dispatchEvent(new CustomEvent('storyboard:open-auth-modal'))
+                    }}
+                  >
+                    <MarkGithubIcon size={16} />
+                    Sign in with GitHub
+                  </button>
+                </div>
+              )}
+            </div>
+          </Dialog.Popup>
+        </div>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
 /* ─── Main Component ─── */
 
 export default function Viewfinder({
@@ -826,6 +895,16 @@ export default function Viewfinder({
   const shouldHideDefault = hideDefaultFlow ?? hideDefaultScene
   const themeAttrs = useToolbarTheme()
   const ghUser = useGitHubUser(basePath)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+
+  const handleRemoveToken = useCallback(() => {
+    try {
+      localStorage.removeItem(COMMENTS_TOKEN_KEY)
+      localStorage.removeItem(COMMENTS_USER_KEY)
+    } catch { /* ignore */ }
+    document.dispatchEvent(new CustomEvent('storyboard:auth-changed'))
+    setSettingsOpen(false)
+  }, [])
 
   // Build data index from real prototype/canvas/story data
   const knownRoutes = useMemo(() =>
@@ -1091,31 +1170,47 @@ export default function Viewfinder({
           ))}
           </div>
 
-          {/* User profile / login */}
+          {/* User profile / settings */}
           <div className={css.sidebarFooter}>
             {ghUser ? (
-              <div className={css.loginBtn}>
-                <img
-                  className={css.userAvatar}
-                  src={ghUser.avatarUrl || `https://github.com/${ghUser.login}.png?size=64`}
-                  alt={ghUser.login}
-                  width={32}
-                  height={32}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className={css.userName}>{ghUser.login}</div>
-                </div>
+              <div className={css.footerRow}>
+                <button className={css.userBtn} onClick={() => setSettingsOpen(true)}>
+                  <img
+                    className={css.userAvatar}
+                    src={ghUser.avatarUrl || `https://github.com/${ghUser.login}.png?size=64`}
+                    alt={ghUser.login}
+                    width={32}
+                    height={32}
+                  />
+                  <div className={css.userInfo}>
+                    <div className={css.userName}>{ghUser.login}</div>
+                  </div>
+                </button>
+                <button className={css.gearBtn} onClick={() => setSettingsOpen(true)} aria-label="Settings">
+                  <GearIcon size={16} />
+                </button>
               </div>
             ) : (
-              <button className={css.loginBtn} onClick={() => document.dispatchEvent(new CustomEvent('storyboard:open-auth-modal'))}>
-                <span className={css.avatar}><MarkGithubIcon size={16} /></span>
-                <div>
-                  <div className={css.userName}>Sign in</div>
-                  <div className={css.userSub}>Connect with GitHub</div>
-                </div>
-              </button>
+              <div className={css.footerRow}>
+                <button className={css.loginBtn} onClick={() => document.dispatchEvent(new CustomEvent('storyboard:open-auth-modal'))}>
+                  <span className={css.avatar}><MarkGithubIcon size={16} /></span>
+                  <div>
+                    <div className={css.userName}>Sign in</div>
+                    <div className={css.userSub}>Connect with GitHub</div>
+                  </div>
+                </button>
+                <button className={css.gearBtn} onClick={() => setSettingsOpen(true)} aria-label="Settings">
+                  <GearIcon size={16} />
+                </button>
+              </div>
             )}
           </div>
+          <UserSettingsDialog
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            user={ghUser}
+            onRemoveToken={handleRemoveToken}
+          />
         </aside>
 
         {/* ─── Main ─── */}

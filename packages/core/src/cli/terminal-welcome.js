@@ -63,7 +63,7 @@ async function welcomeLoop() {
     p.log.info(meta)
 
     if (action === 'shell') {
-      p.outro(dim('Opening shell...'))
+      p.outro(dim('Opening shell... Enter any command below.'))
       setMouse(true)
       // Spawn an interactive shell; when it exits, loop back to welcome
       try {

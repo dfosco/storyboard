@@ -25,6 +25,9 @@ let _mergedConfig = {}
 /** @type {Set<Function>} */
 const _listeners = new Set()
 
+/** @type {object|null} Client-repo toolbar overrides (set by virtual module before mount) */
+let _clientOverrides = null
+
 let _snapshotVersion = 0
 
 // ---------------------------------------------------------------------------

@@ -15,21 +15,27 @@
   user-select: none;
 }
 
-.labelActive {
-  color: var(--fgColor-default, #1f2328);
+.leftLabel {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
 }
 
-.labelMuted {
-  color: var(--fgColor-muted, #656d76);
+.rightLabel {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
   margin-left: auto;
+}
+
+.active {
+  color: var(--fgColor-default, #1f2328);
+}
+
+.muted {
+  color: var(--fgColor-muted, #656d76);
 }
 
 .closeBtn {

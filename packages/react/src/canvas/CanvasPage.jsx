@@ -304,6 +304,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
   widget,
   selected,
   multiSelected,
+  connectorCount,
   onSelect,
   onDeselect,
   onUpdate,
@@ -355,7 +356,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
     }
 
     return adjusted
-  }, [rawFeatures, widget.props?.github, widget.props?.collapsed, widget.type, widget.id])
+  }, [rawFeatures, widget.props?.github, widget.props?.collapsed, widget.type, widget.id, connectorCount])
 
   const handleAction = useCallback((actionId) => {
     if (actionId === 'delete') {
@@ -420,6 +421,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
     prev.widget === next.widget &&
     prev.selected === next.selected &&
     prev.multiSelected === next.multiSelected &&
+    prev.connectorCount === next.connectorCount &&
     prev.readOnly === next.readOnly &&
     prev.onSelect === next.onSelect &&
     prev.onDeselect === next.onDeselect &&
@@ -2394,6 +2396,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           widget={effectiveWidget}
           selected={selectedWidgetIds.has(widget.id)}
           multiSelected={isMultiSelected && selectedWidgetIds.has(widget.id)}
+          connectorCount={localConnectors.filter((c) => c.start?.widgetId === widget.id || c.end?.widgetId === widget.id).length}
           onSelect={(shiftKey) => handleWidgetSelect(widget.id, shiftKey)}
           onDeselect={handleDeselectAll}
           onUpdate={isLocalDev ? handleWidgetUpdate : undefined}

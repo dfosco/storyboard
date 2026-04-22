@@ -1150,6 +1150,8 @@
     "action": {
       "label": "Action",
       "icon": "⚡",
+      "expandable": true,
+      "splitScreen": true,
       "resize": {
         "enabled": true,
         "prod": false
@@ -1189,6 +1191,13 @@
         }
       },
       "features": [
+        {
+          "id": "expand",
+          "type": "action",
+          "action": "expand",
+          "label": "$label:expand",
+          "icon": "expand"
+        },
         {
           "id": "copy",
           "type": "action",

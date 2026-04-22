@@ -16,10 +16,10 @@ import styles from './SplitScreenTopBar.module.css'
 export default function SplitScreenTopBar({ leftLabel, rightLabel, activePane, onClose }) {
   return (
     <div className={styles.bar}>
-      <span className={activePane === 'left' ? styles.labelActive : styles.labelMuted}>
+      <span className={`${styles.leftLabel} ${activePane === 'left' ? styles.active : styles.muted}`}>
         {leftLabel}
       </span>
-      <span className={activePane === 'right' ? styles.labelActive : styles.labelMuted}>
+      <span className={`${styles.rightLabel} ${activePane === 'right' ? styles.active : styles.muted}`}>
         {rightLabel}
       </span>
       <button className={styles.closeBtn} onClick={onClose} aria-label="Close expanded view" autoFocus>

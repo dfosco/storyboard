@@ -1798,6 +1798,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           undoRedo.snapshot(stateRef.current, 'add')
           setLocalWidgets((prev) => [...(prev || []), result.widget])
           setSelectedWidgetIds(new Set([result.widget.id]))
+          navigator.clipboard?.writeText(result.widget.id).catch(() => {})
         }
         return true
       } catch (err) {

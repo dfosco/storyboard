@@ -1,11 +1,8 @@
-import Root from "./toggle.svelte";
-export {
-	toggleVariants,
-
-} from "./toggle.svelte";
+import Root, { toggleVariants } from "./toggle.jsx";
 
 export {
-	Root,
-	//
-	Root as Toggle,
+toggleVariants,
+Root,
+//
+Root as Toggle,
 };

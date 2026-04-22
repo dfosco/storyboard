@@ -2330,25 +2330,28 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     return aSelected - bSelected
   })
   for (const widget of sortedWidgets) {
-    if (!isLocalDev && widget.type === 'terminal') continue
+    // In production, render terminal widgets as read-only instead of hiding them
+    const effectiveWidget = (!isLocalDev && widget.type === 'terminal')
+      ? { ...widget, type: 'terminal-read' }
+      : widget
     allChildren.push(
       <div
-        key={widget.id}
-        id={widget.id}
-        data-tc-x={widget?.position?.x ?? 0}
-        data-tc-y={widget?.position?.y ?? 0}
+        key={effectiveWidget.id}
+        id={effectiveWidget.id}
+        data-tc-x={effectiveWidget?.position?.x ?? 0}
+        data-tc-y={effectiveWidget?.position?.y ?? 0}
         {...(isLocalDev ? { 'data-tc-handle': '.tc-drag-handle, .tc-drag-surface' } : {})}
         {...canvasPrimerAttrs}
         style={canvasThemeVars}
         onClick={isLocalDev ? (e) => {
           e.stopPropagation()
           if (!e.target.closest('.tc-drag-handle')) {
-            handleWidgetSelect(widget.id, e.shiftKey)
+            handleWidgetSelect(effectiveWidget.id, e.shiftKey)
           }
         } : undefined}
       >
         <ChromeWrappedWidget
-          widget={widget}
+          widget={effectiveWidget}
           selected={selectedWidgetIds.has(widget.id)}
           multiSelected={isMultiSelected && selectedWidgetIds.has(widget.id)}
           onSelect={(shiftKey) => handleWidgetSelect(widget.id, shiftKey)}
@@ -2367,13 +2370,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
   const scale = zoom / 100
 
-  const terminalWidgetIds = !isLocalDev 
-    ? new Set((localWidgets ?? []).filter(w => w.type === 'terminal').map(w => w.id))
-    : null
-
-  const filteredConnectors = terminalWidgetIds?.size
-    ? localConnectors.filter(c => !terminalWidgetIds.has(c.startWidgetId) && !terminalWidgetIds.has(c.endWidgetId))
-    : localConnectors
+  const filteredConnectors = localConnectors
 
   return (
     <>

@@ -7,6 +7,7 @@ import FigmaEmbed from './FigmaEmbed.jsx'
 import CodePenEmbed from './CodePenEmbed.jsx'
 import StoryWidget from './StoryWidget.jsx'
 import TerminalWidget from './TerminalWidget.jsx'
+import TerminalReadWidget from './TerminalReadWidget.jsx'
 import ActionWidget from './ActionWidget.jsx'
 
 /**
@@ -23,6 +24,7 @@ export const widgetRegistry = {
   'codepen-embed': CodePenEmbed,
   'story': StoryWidget,
   'terminal': TerminalWidget,
+  'terminal-read': TerminalReadWidget,
   'action': ActionWidget,
 }
 

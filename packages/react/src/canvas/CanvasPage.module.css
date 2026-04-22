@@ -109,21 +109,6 @@
   isolation: isolate;
 }
 
-.localEditingLabel {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 12px;
-  background: hsl(212, 92%, 45%);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 6px;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-  pointer-events: none;
-  user-select: none;
-}
-
 .ghInstallBanner {
   position: fixed;
   left: 50%;

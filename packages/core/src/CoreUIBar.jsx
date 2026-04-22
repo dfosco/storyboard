@@ -550,7 +550,7 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
         })
       }
 
-      // Load all tool modules from the registry
+      // Load all tool modules from the registry — in parallel
       const { coreHandlers } = await import('./tools/registry.js')
       const toolConfigs = config.tools || {}
       const ctx = { basePath, showFlowInfoDialog }
@@ -558,13 +558,13 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
       const loadedComponents = {}
       const loadedData = {}
 
-      for (const [toolId, toolConfig] of Object.entries(toolConfigs)) {
-        if (toolConfig.render === 'separator') continue
-        if (getToolbarToolState(toolId) === 'disabled') continue
+      await Promise.all(Object.entries(toolConfigs).map(async ([toolId, toolConfig]) => {
+        if (toolConfig.render === 'separator') return
+        if (getToolbarToolState(toolId) === 'disabled') return
 
         const handlerRef = toolConfig.handler || `core:${toolId}`
         const loadModule = resolveHandlerModule(handlerRef, coreHandlers, customHandlers)
-        if (!loadModule) continue
+        if (!loadModule) return
 
         try {
           const mod = await loadModule()
@@ -572,7 +572,7 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
 
           if (mod.guard) {
             const ok = await mod.guard(toolCtx)
-            if (!ok) continue
+            if (!ok) return
           }
 
           if (mod.setup) {
@@ -598,7 +598,7 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
         } catch (err) {
           console.warn(`[CoreUIBar] Failed to load tool "${toolId}":`, err)
         }
-      }
+      }))
 
       if (mounted) {
         setToolComponents(loadedComponents)

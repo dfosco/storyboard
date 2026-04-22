@@ -11,6 +11,6 @@ export async function guard() {
 }
 
 export async function component() {
-  const mod = await import('../../CommentsMenuButton.svelte')
+  const mod = await import('../../CommentsMenuButton.jsx')
   return mod.default
 }

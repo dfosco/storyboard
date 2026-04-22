@@ -208,6 +208,16 @@
       "prod": true,
       "handler": "core:feature-flags"
     },
+    "command-palette": {
+      "label": "Command palette",
+      "icon": "iconoir/select-point3d",
+      "meta": { "strokeWeight": 2 },
+      "render": "button",
+      "surface": "command-list",
+      "modes": ["*"],
+      "prod": true,
+      "inlineAction": "open-palette"
+    },
     "hide-toolbars": {
       "label": "Hide toolbars",
       "render": "button",

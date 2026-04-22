@@ -61,6 +61,7 @@
   })
 
   let visible = $state(true)
+  let peeking = $state(false)  // Temporary reveal when clicking command button while hidden
   // Hide the entire toolbar when loaded inside a prototype embed iframe
   const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')
   let commandMenuOpen = $state(false)
@@ -314,14 +315,43 @@
     }
   }
 
+  // Peek mode — temporarily reveal toolbars when clicking command button while hidden.
+  // Clicking outside the toolbar exits peek mode (re-hides).
+  function enterPeekMode() {
+    visible = true
+    peeking = true
+    document.documentElement.classList.remove('storyboard-chrome-hidden')
+    // Defer so the current click doesn't immediately trigger the outside listener
+    requestAnimationFrame(() => {
+      window.addEventListener('pointerdown', peekOutsideHandler, { capture: true })
+    })
+  }
+
+  function exitPeekMode() {
+    peeking = false
+    visible = false
+    document.documentElement.classList.add('storyboard-chrome-hidden')
+    window.removeEventListener('pointerdown', peekOutsideHandler, { capture: true })
+  }
+
+  function peekOutsideHandler(e: PointerEvent) {
+    const bar = document.querySelector('[data-core-ui-bar]')
+    const canvasToolbar = document.querySelector('[aria-label="Canvas toolbar"]')
+    if (bar?.contains(e.target as Node) || canvasToolbar?.contains(e.target as Node)) return
+    exitPeekMode()
+  }
+
   function handleKeydown(e: KeyboardEvent) {
     const hideKey = shortcutsConfig.hideChrome?.key || '.'
     const openKey = shortcutsConfig.openCommandMenu?.key
 
     if (e.key === hideKey && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
-      visible = !visible
-      document.documentElement.classList.toggle('storyboard-chrome-hidden', !visible)
+      if (peeking) exitPeekMode()
+      else {
+        visible = !visible
+        document.documentElement.classList.toggle('storyboard-chrome-hidden', !visible)
+      }
     }
     // Configurable shortcut to open the command menu (works even when hidden)
     if (openKey && e.key === openKey && (e.metaKey || e.ctrlKey)) {
@@ -509,6 +539,7 @@
     if (unsubMobile) unsubMobile()
     clearDynamicActions('mobile-toolbar')
     chromeObserver?.disconnect()
+    window.removeEventListener('pointerdown', peekOutsideHandler, { capture: true })
     document.removeEventListener('storyboard:canvas:mounted', handleCanvasMounted)
     document.removeEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
     document.removeEventListener('storyboard:canvas:zoom-changed', handleZoomChanged)
@@ -785,7 +816,7 @@
       <div class={visible ? '' : 'default-button-dimmed'}>
         <Tooltip.Root>
           <Tooltip.Trigger>
-            <CommandPalette tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} />
+            <CommandPalette tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} oninterceptclick={!visible ? enterPeekMode : undefined} />
           </Tooltip.Trigger>
           <Tooltip.Content side="top">Command Menu</Tooltip.Content>
         </Tooltip.Root>

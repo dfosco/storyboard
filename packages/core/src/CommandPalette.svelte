@@ -12,15 +12,21 @@
     tabindex?: number
     icon?: string
     iconMeta?: Record<string, unknown>
+    oninterceptclick?: () => void
   }
 
   let {
     tabindex,
     icon = 'iconoir/key-command',
     iconMeta = {},
+    oninterceptclick,
   }: Props = $props()
 
   function openPalette() {
+    if (oninterceptclick) {
+      oninterceptclick()
+      return
+    }
     document.dispatchEvent(new CustomEvent('storyboard:toggle-palette'))
   }
 </script>

@@ -57,8 +57,8 @@ function findConnectedEmbed(widgetId) {
   if (!bridge?.connectors || !bridge?.widgets) return null
   const connectedIds = new Set()
   for (const c of bridge.connectors) {
-    if (c.startWidgetId === widgetId) connectedIds.add(c.endWidgetId)
-    if (c.endWidgetId === widgetId) connectedIds.add(c.startWidgetId)
+    if (c.start?.widgetId === widgetId) connectedIds.add(c.end?.widgetId)
+    if (c.end?.widgetId === widgetId) connectedIds.add(c.start?.widgetId)
   }
   for (const w of bridge.widgets) {
     if (connectedIds.has(w.id) && EMBED_TYPES.has(w.type)) return w

@@ -1541,6 +1541,27 @@
   justify-content: flex-end;
 }
 
+.modalSubmitBtn {
+  padding: 8px 16px;
+  background: var(--fgColor-default, #1a1a1a);
+  color: var(--bgColor-default, #fff);
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.modalSubmitBtn:hover {
+  opacity: 0.85;
+}
+
+.modalSubmitBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .modalCancelBtn {
   padding: 8px 16px;
   border: 1px solid var(--borderColor-default, #e5e5e5);

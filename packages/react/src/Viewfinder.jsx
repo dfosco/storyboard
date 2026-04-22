@@ -369,7 +369,7 @@ function EditArtifactModal({ item, dirName, basePath, onClose }) {
 
           <div className={css.modalActions}>
             <button type="button" className={css.modalCancelBtn} onClick={onClose}>Cancel</button>
-            <button type="submit" className={css.createFormSubmit} disabled={submitting}>
+            <button type="submit" className={css.modalSubmitBtn} disabled={submitting}>
               {submitting ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
@@ -381,7 +381,7 @@ function EditArtifactModal({ item, dirName, basePath, onClose }) {
 
 /* ─── Delete Artifact Modal ─── */
 
-function DeleteArtifactModal({ item, dirName, basePath, typeLabel, onClose }) {
+function DeleteArtifactModal({ item, dirName, basePath, typeLabel, onClose, onDeleted }) {
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const overlayRef = useRef(null)
@@ -416,7 +416,8 @@ function DeleteArtifactModal({ item, dirName, basePath, typeLabel, onClose }) {
         const text = await res.text()
         throw new Error(text || `Request failed (${res.status})`)
       }
-      window.location.reload()
+      onDeleted?.()
+      onClose()
     } catch (err) {
       setError(err.message)
       setDeleting(false)
@@ -446,6 +447,16 @@ function DeleteArtifactModal({ item, dirName, basePath, typeLabel, onClose }) {
         {error && <div className={css.createFormError}>{error}</div>}
 
         <div className={css.modalActions}>
+          <button type="button" className={css.modalCancelBtn} onClick={onClose}>Cancel</button>
+          <button
+            type="button"
+            className={css.deleteConfirmBtn}
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? 'Deleting…' : `Delete ${typeLabel}`}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -453,7 +464,7 @@ function DeleteArtifactModal({ item, dirName, basePath, typeLabel, onClose }) {
 
 /* ─── Artifact Card ─── */
 
-function ArtifactCard({ item, basePath, starred, onToggleStar }) {
+function ArtifactCard({ item, basePath, starred, onToggleStar, onItemDeleted }) {
   const href = item.route ? withBase(basePath, item.route) : '#'
   const isExternal = item.isExternal
 
@@ -533,6 +544,7 @@ function ArtifactCard({ item, basePath, starred, onToggleStar }) {
           basePath={basePath}
           typeLabel={typeLabel}
           onClose={() => setShowDelete(false)}
+          onDeleted={() => onItemDeleted?.(item.id)}
         />
       )}
     </>
@@ -633,7 +645,7 @@ function PagesDropdown({ pages, basePath }) {
 
 /* ─── Folder Section ─── */
 
-function FolderSection({ folder, collapsed, onToggle, basePath, starred, onToggleStar }) {
+function FolderSection({ folder, collapsed, onToggle, basePath, starred, onToggleStar, onItemDeleted }) {
   return (
     <section className={collapsed ? css.folderSectionCollapsed : css.folderSection}>
       <button className={css.folderHeader} onClick={onToggle}>
@@ -654,6 +666,7 @@ function FolderSection({ folder, collapsed, onToggle, basePath, starred, onToggl
               basePath={basePath}
               starred={starred.has(item.id)}
               onToggleStar={onToggleStar}
+              onItemDeleted={onItemDeleted}
             />
           ))}
         </div>
@@ -1339,6 +1352,10 @@ export default function Viewfinder({
     })
   }, [])
 
+  const handleItemDeleted = useCallback((itemId) => {
+    setHiddenItems(prev => new Set(prev).add(itemId))
+  }, [])
+
   // Counts
   const counts = useMemo(() => ({
     all: allItems.length,
@@ -1514,6 +1531,7 @@ export default function Viewfinder({
                     basePath={basePath}
                     starred={starred}
                     onToggleStar={toggleStar}
+                    onItemDeleted={handleItemDeleted}
                   />
                 ))}
                 {grouped.ungrouped.length > 0 && (
@@ -1525,6 +1543,7 @@ export default function Viewfinder({
                         basePath={basePath}
                         starred={starred.has(item.id)}
                         onToggleStar={toggleStar}
+                        onItemDeleted={handleItemDeleted}
                       />
                     ))}
                   </div>
@@ -1539,6 +1558,7 @@ export default function Viewfinder({
                     basePath={basePath}
                     starred={starred.has(item.id)}
                     onToggleStar={toggleStar}
+                    onItemDeleted={handleItemDeleted}
                   />
                 ))}
               </div>

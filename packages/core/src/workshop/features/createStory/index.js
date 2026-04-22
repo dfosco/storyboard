@@ -5,7 +5,7 @@
  * This feature provides the workshop UI overlay.
  */
 
-import CreateStoryForm from './CreateStoryForm.svelte'
+import CreateStoryForm from './CreateStoryForm.jsx'
 
 export const name = 'createStory'
 export const label = 'Create story'

@@ -32,6 +32,15 @@ import {
   subscribeToToolbarToolStates,
 } from './toolStateStore.js'
 import defaultToolbarConfig from '../toolbar.config.json'
+import { getPrototypeMetadata } from './loader.js'
+import { setPrototypeToolbarConfig, clearPrototypeToolbarConfig } from './toolbarConfigStore.js'
+import { setOverrides, clearOverrides } from './configStore.js'
+import { coreHandlers } from './tools/registry.js'
+import { toggleCommentMode, isCommentModeActive } from './comments/commentMode.js'
+import { isAuthenticated } from './comments/auth.js'
+import { openAuthModal } from './comments/ui/authModal.js'
+import { themeState, setTheme, THEMES } from './stores/themeStore.js'
+import SidePanelComponent from './SidePanel.jsx'
 
 const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')
 const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true && !new URLSearchParams(window.location.search).has('prodMode')
@@ -382,9 +391,8 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
       } else if (tool.render === 'button' && toolComponentsRef.current[key]) {
         try {
           if (key === 'comments') {
-            const { toggleCommentMode, isCommentModeActive } = await import('./comments/commentMode.js')
-            const { isAuthenticated } = await import('./comments/auth.js')
-            const { openAuthModal } = await import('./comments/ui/authModal.js')
+            
+            
             actions.push({
               id: mobileId,
               label: tool.ariaLabel || 'Comments',
@@ -413,7 +421,6 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
     if (toolConfigs.theme && toolComponentsRef.current.theme) {
       if (!actions.some((a) => a.id === 'mobile:theme')) {
         try {
-          const { themeState, setTheme, THEMES } = await import('./stores/themeStore.js')
           actions.push({
             id: 'mobile:theme',
             label: 'Theme',
@@ -482,10 +489,6 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
     ;(async () => {
       if (!mounted) return
 
-      const { getPrototypeMetadata } = await import('./loader.js')
-      const { setPrototypeToolbarConfig, clearPrototypeToolbarConfig } = await import('./toolbarConfigStore.js')
-      const { setOverrides, clearOverrides } = await import('./configStore.js')
-
       function syncPrototypeToolbar() {
         let pathname = window.location.pathname
         const base = basePath.replace(/\/+$/, '')
@@ -551,7 +554,7 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
       }
 
       // Load all tool modules from the registry — in parallel
-      const { coreHandlers } = await import('./tools/registry.js')
+      
       const toolConfigs = config.tools || {}
       const ctx = { basePath, showFlowInfoDialog }
 
@@ -606,12 +609,9 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
       }
 
       // Load side panel component
-      try {
-        if (sidepanelMenus.length > 0) {
-          const mod = await import('./SidePanel.jsx')
-          if (mounted) setSidePanelComp(() => mod.default)
-        }
-      } catch {}
+      if (sidepanelMenus.length > 0 && mounted) {
+        setSidePanelComp(() => SidePanelComponent)
+      }
 
       // Sync canvas bridge state
       if (typeof window !== 'undefined') {

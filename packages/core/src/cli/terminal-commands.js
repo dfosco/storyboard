@@ -78,15 +78,22 @@ function resolveSession(sessions, id) {
   return null
 }
 
-/** Detect the current tmux session name */
+/** Detect the current tmux session name (only if it's a storyboard session) */
 function getCurrentTmuxSession() {
   try {
-    return execSync('tmux display-message -p "#{session_name}" 2>/dev/null', {
+    const name = execSync('tmux display-message -p "#{session_name}" 2>/dev/null', {
       encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'],
     }).trim()
+    // Only return if this is a storyboard terminal session
+    return name.startsWith('sb-') ? name : null
   } catch {
     return null
   }
+}
+
+/** Check if we're inside ANY tmux (storyboard or user's own) */
+function isInsideTmux() {
+  return Boolean(process.env.TMUX)
 }
 
 // ── Close (archive) ──
@@ -129,9 +136,9 @@ async function openSession(session, worktreeName, port) {
   p.intro(bold('Open session'))
 
   const label = session.name || session.tmuxName
-  const currentTmux = getCurrentTmuxSession()
+  const currentSb = getCurrentTmuxSession()
 
-  if (session.status === 'live' && session.tmuxName !== currentTmux) {
+  if (session.status === 'live' && session.tmuxName !== currentSb) {
     p.log.warn(
       `Session ${cyan(label)} is currently live on widget ${dim(session.widgetId)} ` +
       `in canvas ${cyan(session.canvasId)}.`
@@ -145,8 +152,9 @@ async function openSession(session, worktreeName, port) {
     }
   }
 
-  // If we're inside tmux, switch; otherwise attach
-  if (currentTmux) {
+  // If we're inside a storyboard tmux session, use switch-client.
+  // Otherwise always use attach-session (even if user has their own tmux).
+  if (currentSb) {
     p.outro(`Switching to ${bold(label)}...`)
     try {
       execSync(`tmux switch-client -t "${session.tmuxName}"`, { stdio: 'inherit' })

@@ -6,7 +6,7 @@
   },
 
   "command": {
-    "icon": "primer/home",
+    "icon": "iconoir/key-command",
     "meta": { "strokeWeight": 2 },
     "shortcut": { "key": "k", "label": "⌘ + K to open" }
   },

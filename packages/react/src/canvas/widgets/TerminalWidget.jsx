@@ -169,19 +169,15 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
     async function setup() {
       try {
-        console.log(`[TerminalWidget] setup start id=${id} attempt=${connectAttempt}`)
         const ghostty = await loadGhostty()
-        if (disposed) { console.log('[TerminalWidget] disposed during ghostty load'); return }
+        if (disposed) return
         if (!ghostty) {
-          console.log('[TerminalWidget] ghostty-web not available')
           setError('ghostty-web not installed — add it to your dependencies to enable terminal widgets')
           return
         }
-        console.log('[TerminalWidget] ghostty loaded OK')
 
         const dims = calcDimensions(width, height)
         const cfg = getTerminalConfig()
-        console.log(`[TerminalWidget] dims cols=${dims.cols} rows=${dims.rows}`)
 
         term = new ghostty.Terminal({
           fontSize: cfg.fontSize ?? 13,
@@ -195,7 +191,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
         term.open(containerRef.current)
         termRef.current = term
-        console.log('[TerminalWidget] terminal opened in DOM')
 
         // SGR mouse wheel for tmux scroll in alternate screen
         term.attachCustomWheelEventHandler((e) => {
@@ -212,13 +207,11 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         })
 
         const url = getWsUrl(id, prettyName)
-        console.log(`[TerminalWidget] connecting WS: ${url}`)
         ws = new WebSocket(url)
         wsRef.current = ws
 
         ws.onopen = () => {
           if (disposed) return
-          console.log('[TerminalWidget] WS open')
           setReady(true)
           setInteractive(true)
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
@@ -230,23 +223,20 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           if (data && data.startsWith('{')) {
             try {
               const msg = JSON.parse(data)
-              console.log('[TerminalWidget] WS JSON msg:', msg.type)
               if (msg.type === 'session-info' || msg.type === 'conflict' || msg.type === 'detached') return
             } catch { /* not JSON */ }
           }
           term.write(typeof e.data === 'string' ? e.data : new Uint8Array(e.data))
         }
 
-        ws.onclose = (ev) => {
+        ws.onclose = () => {
           if (disposed) return
-          console.log(`[TerminalWidget] WS close code=${ev.code} reason=${ev.reason}`)
           setReady(false)
           setSessionEnded(true)
         }
 
-        ws.onerror = (ev) => {
+        ws.onerror = () => {
           if (disposed) return
-          console.log('[TerminalWidget] WS error', ev)
           setReady(false)
           setSessionEnded(true)
         }
@@ -255,7 +245,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           if (ws.readyState === WebSocket.OPEN) ws.send(data)
         })
       } catch (err) {
-        console.error('[TerminalWidget] setup error:', err)
         if (!disposed) setError(err.message || 'Failed to load terminal')
       }
     }
@@ -263,7 +252,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     setup()
 
     return () => {
-      console.log(`[TerminalWidget] cleanup id=${id} attempt=${connectAttempt}`)
       disposed = true
       if (ws && ws.readyState <= WebSocket.OPEN) ws.close()
       if (term) term.dispose()
@@ -365,7 +353,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   }, [interactive])
 
   const handleStartSession = useCallback(() => {
-    console.log('[TerminalWidget] handleStartSession called')
     setWaking(true)
     setTimeout(() => {
       setWaking(false)

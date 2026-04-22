@@ -920,10 +920,14 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     }
     const position = { x: baseX + n * 40, y: baseY + n * 40 }
     try {
+      const copyProps = { ...widget.props }
+      // Terminal widgets must get unique names — strip prettyName so the server generates a fresh one
+      if (widget.type === 'terminal') delete copyProps.prettyName
+
       undoRedo.snapshot(stateRef.current, 'add')
       const result = await addWidgetApi(canvasId, {
         type: widget.type,
-        props: { ...widget.props },
+        props: copyProps,
         position,
       })
       if (result.success && result.widget) {
@@ -1877,9 +1881,11 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           for (const w of sourceWidgets) {
             const relX = (w.position?.x ?? 0) - minX
             const relY = (w.position?.y ?? 0) - minY
+            const pasteProps = { ...w.props }
+            if (w.type === 'terminal') delete pasteProps.prettyName
             const result = await addWidgetApi(canvasId, {
               type: w.type,
-              props: { ...w.props },
+              props: pasteProps,
               position: { x: baseX + relX, y: baseY + relY },
             })
             if (result.success && result.widget) {

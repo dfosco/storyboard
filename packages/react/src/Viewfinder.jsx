@@ -68,20 +68,6 @@ function useGitHubUser(basePath) {
     return null
   })
 
-  useEffect(() => {
-    // If we already have a PAT-cached user, no need to fetch
-    if (user) return
-
-    const apiBase = (basePath || '/').replace(/\/$/, '')
-    fetch(`${apiBase}/_storyboard/git-user`).then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.login) {
-          setUser({ login: data.login, avatarUrl: `https://github.com/${data.login}.png?size=64` })
-        }
-      })
-      .catch(() => {})
-  }, [basePath])
-
   // Listen for auth changes (when user signs in via AuthModal)
   useEffect(() => {
     const handler = () => {

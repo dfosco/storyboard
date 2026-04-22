@@ -782,7 +782,7 @@
                 </span>
               {/if}
             </Tooltip.Trigger>
-            <Tooltip.Content side="top">{menu.ariaLabel || menu.key}</Tooltip.Content>
+            <Tooltip.Content side="top">{menu.ariaLabel || menu.key}{menu.shortcut?.label ? ` · ${menu.shortcut.label}` : ''}</Tooltip.Content>
           </Tooltip.Root>
         {/if}
       {/each}
@@ -793,7 +793,7 @@
           <Tooltip.Trigger>
             <CommandPalette tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} oninterceptclick={!visible ? toggleToolsVisibility : undefined} />
           </Tooltip.Trigger>
-          <Tooltip.Content side="top">{visible ? 'Command Menu' : '⌘. to show'}</Tooltip.Content>
+          <Tooltip.Content side="top">{visible ? '⌘. to hide' : '⌘. to show'}</Tooltip.Content>
         </Tooltip.Root>
       </div>
     {/if}

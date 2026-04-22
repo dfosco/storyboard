@@ -18,6 +18,7 @@ export const coreHandlers = {
   'canvas-toolbar':     () => import('./handlers/canvasToolbar.js'),
   'hide-toolbars':      () => import('./handlers/hideToolbars.js'),
   'pause-embeds':       () => import('./handlers/pauseEmbeds.js'),
+  'command-palette':    () => import('./handlers/commandPalette.js'),
 }
 
 // Keep legacy export name for backward compatibility

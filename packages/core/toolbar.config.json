@@ -209,14 +209,16 @@
       "handler": "core:feature-flags"
     },
     "command-palette": {
-      "label": "Command palette",
+      "ariaLabel": "Command palette",
       "icon": "iconoir/select-point3d",
       "meta": { "strokeWeight": 2 },
       "render": "button",
-      "surface": "command-palette",
+      "surface": "command-toolbar",
+      "handler": "core:command-palette",
       "modes": ["*"],
       "prod": true,
-      "inlineAction": "open-palette"
+      "shortcut": { "key": "k", "label": "⌘K" },
+      "hideInCommandPalette": [".*"]
     },
     "hide-toolbars": {
       "label": "Hide toolbars",
@@ -224,7 +226,8 @@
       "surface": "command-palette",
       "modes": ["*"],
       "prod": true,
-      "inlineAction": "toggle-chrome"
+      "inlineAction": "toggle-chrome",
+      "shortcut": { "key": ".", "label": "⌘." }
     },
     "pause-embeds": {
       "label": "Pause embed refreshes",

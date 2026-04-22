@@ -74,13 +74,13 @@ function summaryText(entry, showCanvas = true) {
   return canvas ? `${canvas} › ${name}` : name
 }
 
-/** Detect the current tmux session name (the one running this CLI) */
+/** Detect the current tmux session name (only if it's a storyboard session) */
 function getCurrentTmuxSession() {
   try {
     const result = execSyncFn('tmux display-message -p "#{session_name}" 2>/dev/null', {
       encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'],
-    })
-    return result.trim()
+    }).trim()
+    return result.startsWith('sb-') ? result : null
   } catch {
     return null
   }

@@ -483,8 +483,15 @@
   position: fixed;
   inset: 0;
   display: flex;
+  flex-direction: column;
   overflow: hidden;
   animation: expandScaleIn 0.2s ease;
+}
+
+.expandSplitPanes {
+  flex: 1;
+  min-height: 0;
+  display: flex;
 }
 
 .expandSplitLeft {

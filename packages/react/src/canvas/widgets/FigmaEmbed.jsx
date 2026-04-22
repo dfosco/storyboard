@@ -5,7 +5,8 @@ import { readProp } from './widgetProps.js'
 import { schemas } from './widgetConfig.js'
 import { toFigmaEmbedUrl, getFigmaTitle, getFigmaType, isFigmaUrl } from './figmaUrl.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
-import { findConnectedSplitTarget, getPaneOrder, buildSecondaryIframeUrl, reparentTerminalInto } from './expandUtils.js'
+import { findConnectedSplitTarget, getPaneOrder, buildSecondaryIframeUrl, reparentTerminalInto, getSplitPaneLabel } from './expandUtils.js'
+import SplitScreenTopBar from './SplitScreenTopBar.jsx'
 import styles from './FigmaEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -274,6 +275,17 @@ function FigmaExpandModal({ expanded, onClose, modalContainerRef, widgetId }) {
   const isTerminalSecondary = connectedWidget?.type === 'terminal' || connectedWidget?.type === 'terminal-read' || connectedWidget?.type === 'agent'
   const terminalRef = useRef(null)
   const cleanupRef = useRef(null)
+  const [activePane, setActivePane] = useState('left')
+
+  const primaryWidget = useMemo(() => {
+    const bridge = window.__storyboardCanvasBridgeState
+    return bridge?.widgets?.find((w) => w.id === widgetId) || { type: 'figma-embed', props: {} }
+  }, [widgetId, expanded])
+
+  const primaryLabel = useMemo(() => getSplitPaneLabel(primaryWidget), [primaryWidget])
+  const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedWidget), [connectedWidget])
+  const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel
+  const rightLabel = paneOrder.primaryIsLeft ? secondaryLabel : primaryLabel
 
   useEffect(() => {
     if (!isTerminalSecondary || !expanded || !terminalRef.current) return
@@ -282,17 +294,23 @@ function FigmaExpandModal({ expanded, onClose, modalContainerRef, widgetId }) {
   }, [isTerminalSecondary, expanded, connectedWidget?.id])
 
   const primaryPane = (
-    <div ref={modalContainerRef} className={hasSplit ? styles.expandContainerSplit : styles.expandContainer} onClick={(e) => e.stopPropagation()}>
-      <button className={styles.expandClose} onClick={onClose} aria-label="Close expanded view" autoFocus>✕</button>
+    <div
+      ref={modalContainerRef}
+      className={hasSplit ? styles.expandContainerSplit : styles.expandContainer}
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={() => setActivePane(paneOrder.primaryIsLeft ? 'left' : 'right')}
+    >
+      {!hasSplit && <button className={styles.expandClose} onClick={onClose} aria-label="Close expanded view" autoFocus>✕</button>}
     </div>
   )
 
   let secondaryPane = null
+  const secondarySide = paneOrder.primaryIsLeft ? 'right' : 'left'
   if (hasSplit) {
     if (secondaryUrl) {
-      secondaryPane = <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()}><iframe src={secondaryUrl} className={styles.expandSecondaryIframe} title="Connected widget" /></div>
+      secondaryPane = <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()} onPointerDown={() => setActivePane(secondarySide)}><iframe src={secondaryUrl} className={styles.expandSecondaryIframe} title="Connected widget" /></div>
     } else if (isTerminalSecondary) {
-      secondaryPane = <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()}><div ref={terminalRef} className={styles.expandTerminal} /></div>
+      secondaryPane = <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()} onPointerDown={() => setActivePane(secondarySide)}><div ref={terminalRef} className={styles.expandTerminal} /></div>
     }
   }
 
@@ -312,8 +330,16 @@ function FigmaExpandModal({ expanded, onClose, modalContainerRef, widgetId }) {
     >
       {hasSplit ? (
         <div className={styles.expandSplitBody}>
-          <div className={styles.expandSplitLeft}>{leftPane}</div>
-          <div className={styles.expandSplitRight}>{rightPane}</div>
+          <SplitScreenTopBar
+            leftLabel={leftLabel}
+            rightLabel={rightLabel}
+            activePane={activePane}
+            onClose={onClose}
+          />
+          <div className={styles.expandSplitPanes}>
+            <div className={styles.expandSplitLeft}>{leftPane}</div>
+            <div className={styles.expandSplitRight}>{rightPane}</div>
+          </div>
         </div>
       ) : (
         primaryPane

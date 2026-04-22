@@ -119,10 +119,17 @@
   display: flex;
 }
 
+.bodySplit {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
 .bodySplit .splitLeft,
 .bodySplit .splitRight {
   flex: 1;
   min-width: 0;
+  height: 100%;
   overflow: hidden;
 }
 

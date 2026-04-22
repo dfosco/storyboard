@@ -4,10 +4,11 @@
  * When a connected split-screen-capable widget exists, renders a 50/50
  * split (ordered by x-coordinate). Otherwise renders single-pane.
  */
-import { useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { ScreenNormalIcon, MarkGithubIcon } from '@primer/octicons-react'
-import { findConnectedSplitTarget, getPaneOrder, buildSecondaryIframeUrl, reparentTerminalInto } from './expandUtils.js'
+import { findConnectedSplitTarget, getPaneOrder, buildSecondaryIframeUrl, reparentTerminalInto, getSplitPaneLabel } from './expandUtils.js'
+import SplitScreenTopBar from './SplitScreenTopBar.jsx'
 import styles from './SplitExpandModal.module.css'
 
 /**
@@ -149,6 +150,17 @@ export default function SplitExpandModal({ expanded, onClose, widgetId, title, c
     () => (hasSplit ? getPaneOrder(widgetId, connectedWidget) : { primaryIsLeft: true }),
     [hasSplit, widgetId, connectedWidget],
   )
+  const [activePane, setActivePane] = useState('left')
+
+  const primaryWidget = useMemo(() => {
+    const bridge = window.__storyboardCanvasBridgeState
+    return bridge?.widgets?.find((w) => w.id === widgetId) || null
+  }, [widgetId, expanded])
+
+  const primaryLabel = useMemo(() => getSplitPaneLabel(primaryWidget) || title || '', [primaryWidget, title])
+  const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedWidget), [connectedWidget])
+  const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel
+  const rightLabel = paneOrder.primaryIsLeft ? secondaryLabel : primaryLabel
 
   // Close on Escape
   useEffect(() => {
@@ -165,8 +177,10 @@ export default function SplitExpandModal({ expanded, onClose, widgetId, title, c
 
   if (!expanded) return null
 
-  const primaryPane = <div className={styles.primaryPane}>{children}</div>
-  const secondaryPane = hasSplit ? <SecondaryPane widget={connectedWidget} /> : null
+  const primarySide = paneOrder.primaryIsLeft ? 'left' : 'right'
+  const secondarySide = paneOrder.primaryIsLeft ? 'right' : 'left'
+  const primaryPane = <div className={styles.primaryPane} onPointerDown={() => setActivePane(primarySide)}>{children}</div>
+  const secondaryPane = hasSplit ? <div onPointerDown={() => setActivePane(secondarySide)}><SecondaryPane widget={connectedWidget} /></div> : null
 
   const leftPane = paneOrder.primaryIsLeft ? primaryPane : secondaryPane
   const rightPane = paneOrder.primaryIsLeft ? secondaryPane : primaryPane
@@ -180,28 +194,38 @@ export default function SplitExpandModal({ expanded, onClose, widgetId, title, c
       onWheel={(e) => e.stopPropagation()}
     >
       <div className={hasSplit ? styles.modalFullscreen : styles.modal} onClick={(e) => e.stopPropagation()}>
-        {title && (
-          <div className={styles.topBar}>
-            <span className={styles.topBarTitle}>{title}</span>
-            <button className={styles.closeBtn} onClick={onClose} aria-label="Close expanded view" autoFocus>
-              <ScreenNormalIcon size={16} />
-            </button>
-          </div>
-        )}
-        <div className={`${styles.body}${hasSplit ? ` ${styles.bodySplit}` : ''}`}>
-          {hasSplit ? (
-            <>
+        {hasSplit ? (
+          <>
+            <SplitScreenTopBar
+              leftLabel={leftLabel}
+              rightLabel={rightLabel}
+              activePane={activePane}
+              onClose={onClose}
+            />
+            <div className={styles.bodySplit}>
               <div className={styles.splitLeft}>{leftPane}</div>
               <div className={styles.splitRight}>{rightPane}</div>
-            </>
-          ) : (
-            primaryPane
-          )}
-        </div>
-        {!title && (
-          <button className={styles.closeBtnFloat} onClick={onClose} aria-label="Close expanded view" autoFocus>
-            ✕
-          </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {title && (
+              <div className={styles.topBar}>
+                <span className={styles.topBarTitle}>{title}</span>
+                <button className={styles.closeBtn} onClick={onClose} aria-label="Close expanded view" autoFocus>
+                  <ScreenNormalIcon size={16} />
+                </button>
+              </div>
+            )}
+            <div className={styles.body}>
+              {primaryPane}
+            </div>
+            {!title && (
+              <button className={styles.closeBtnFloat} onClick={onClose} aria-label="Close expanded view" autoFocus>
+                ✕
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>,

@@ -1,10 +1,12 @@
-import { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react'
+import { useRef, useEffect, useCallback, useState, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { createPortal } from 'react-dom'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
 import { getTerminalConfig } from '@dfosco/storyboard-core'
 import { ScreenNormalIcon } from '@primer/octicons-react'
 import { useOverride } from '../../hooks/useOverride.js'
+import { getSplitPaneLabel } from './expandUtils.js'
+import SplitScreenTopBar from './SplitScreenTopBar.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './TerminalWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
@@ -370,10 +372,18 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     }, 1500)
   }, [])
 
-  const titleLabel = `terminal · ${prettyName || '...'}`
+  const titleLabel = `Terminal · ${prettyName || '…'}`
   const connectedEmbed = expanded ? findConnectedEmbed(id) : null
   const embedUrl = expanded ? buildEmbedUrl(connectedEmbed) : null
   const hasSplit = Boolean(embedUrl)
+  const [activePane, setActivePane] = useState('left')
+
+  const primaryWidget = useMemo(() => ({ type: 'terminal', props: { prettyName } }), [prettyName])
+  const primaryLabel = useMemo(() => getSplitPaneLabel(primaryWidget), [primaryWidget])
+  const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedEmbed), [connectedEmbed])
+  // Terminal is always on the left for now (matching existing behavior)
+  const leftLabel = primaryLabel
+  const rightLabel = secondaryLabel
 
   return (
     <>
@@ -467,19 +477,23 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         onKeyDown={(e) => { if (e.key === 'Escape') setExpanded(false) }}
         onWheel={(e) => e.stopPropagation()}
       >
-        <div className={styles.expandTopBar}>
-          <span className={styles.expandTitle}>{titleLabel}</span>
-          {hasSplit && connectedEmbed && (
-            <span className={styles.expandEmbedLabel}>
-              {connectedEmbed.type === 'story' ? connectedEmbed.props?.storyId : connectedEmbed.props?.src || 'Prototype'}
-            </span>
-          )}
-          <button className={styles.expandClose} onClick={() => setExpanded(false)} aria-label="Close expanded view" autoFocus><ScreenNormalIcon size={16} /></button>
-        </div>
+        {hasSplit ? (
+          <SplitScreenTopBar
+            leftLabel={leftLabel}
+            rightLabel={rightLabel}
+            activePane={activePane}
+            onClose={() => setExpanded(false)}
+          />
+        ) : (
+          <div className={styles.expandTopBar}>
+            <span className={styles.expandTitle}>{titleLabel}</span>
+            <button className={styles.expandClose} onClick={() => setExpanded(false)} aria-label="Close expanded view" autoFocus><ScreenNormalIcon size={16} /></button>
+          </div>
+        )}
         <div className={`${styles.expandBody}${hasSplit ? ` ${styles.expandSplit}` : ''}`}>
-          <div ref={expandContainerRef} className={styles.expandTerminal} />
+          <div ref={expandContainerRef} className={styles.expandTerminal} onPointerDown={() => setActivePane('left')} />
           {hasSplit && (
-            <div className={styles.expandEmbed}>
+            <div className={styles.expandEmbed} onPointerDown={() => setActivePane('right')}>
               <iframe src={embedUrl} className={styles.expandIframe} title="Connected embed" />
             </div>
           )}

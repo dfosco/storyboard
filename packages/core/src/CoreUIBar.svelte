@@ -61,7 +61,6 @@
   })
 
   let visible = $state(true)
-  let peeking = $state(false)  // Temporary reveal when clicking command button while hidden
   // Hide the entire toolbar when loaded inside a prototype embed iframe
   const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')
   let commandMenuOpen = $state(false)
@@ -114,7 +113,7 @@
     if (cfg.tools) {
       const result: Record<string, any> = {}
       for (const [key, tool] of Object.entries(cfg.tools as Record<string, any>)) {
-        if (tool.surface === 'command-list' || tool.surface === 'canvas-toolbar') continue
+        if (tool.surface === 'command-palette' || tool.surface === 'canvas-toolbar') continue
         // Map new render/toolbar fields to legacy menu fields for rendering compat
         const menu: any = { ...tool }
         if (tool.render === 'menu' && tool.handler) {
@@ -133,10 +132,10 @@
       const actions: any[] = []
       actions.push({ type: 'header', label: 'Command Menu' })
 
-      // Add command-list tools as actions
+      // Add command-palette tools as actions
       if (cfg.tools) {
         for (const [toolKey, tool] of Object.entries(cfg.tools as Record<string, any>)) {
-          if (tool.surface !== 'command-list') continue
+          if (tool.surface !== 'command-palette') continue
           if (tool.render === 'separator') {
             actions.push({ type: 'separator' })
             continue
@@ -315,30 +314,11 @@
     }
   }
 
-  // Peek mode — temporarily reveal toolbars when clicking command button while hidden.
-  // Clicking outside the toolbar exits peek mode (re-hides).
-  function enterPeekMode() {
-    visible = true
-    peeking = true
-    document.documentElement.classList.remove('storyboard-chrome-hidden')
-    // Defer so the current click doesn't immediately trigger the outside listener
-    requestAnimationFrame(() => {
-      window.addEventListener('pointerdown', peekOutsideHandler, { capture: true })
-    })
-  }
-
-  function exitPeekMode() {
-    peeking = false
-    visible = false
-    document.documentElement.classList.add('storyboard-chrome-hidden')
-    window.removeEventListener('pointerdown', peekOutsideHandler, { capture: true })
-  }
-
-  function peekOutsideHandler(e: PointerEvent) {
-    const bar = document.querySelector('[data-core-ui-bar]')
-    const canvasToolbar = document.querySelector('[aria-label="Canvas toolbar"]')
-    if (bar?.contains(e.target as Node) || canvasToolbar?.contains(e.target as Node)) return
-    exitPeekMode()
+  // Toggle toolbar tools visibility (command button behavior).
+  // Canvas tools stay visible; only main toolbar tools + branch bar hide.
+  function toggleToolsVisibility() {
+    visible = !visible
+    document.documentElement.classList.toggle('storyboard-chrome-hidden', !visible)
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -347,11 +327,7 @@
 
     if (e.key === hideKey && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
-      if (peeking) exitPeekMode()
-      else {
-        visible = !visible
-        document.documentElement.classList.toggle('storyboard-chrome-hidden', !visible)
-      }
+      toggleToolsVisibility()
     }
     // Configurable shortcut to open the command menu (works even when hidden)
     if (openKey && e.key === openKey && (e.metaKey || e.ctrlKey)) {
@@ -539,7 +515,6 @@
     if (unsubMobile) unsubMobile()
     clearDynamicActions('mobile-toolbar')
     chromeObserver?.disconnect()
-    window.removeEventListener('pointerdown', peekOutsideHandler, { capture: true })
     document.removeEventListener('storyboard:canvas:mounted', handleCanvasMounted)
     document.removeEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
     document.removeEventListener('storyboard:canvas:zoom-changed', handleZoomChanged)
@@ -600,7 +575,7 @@
     actions.push({ type: 'header', label: 'Tools', id: '_mobile_header' })
 
     for (const [key, tool] of Object.entries(toolConfigs as Record<string, any>)) {
-      if (tool.surface !== 'main-toolbar') continue
+      if (tool.surface !== 'command-toolbar') continue
       if (tool.render === 'separator') continue
       if (!tool.prod && !isLocalDev) continue
       if (getToolbarToolState(key) === 'disabled') continue
@@ -720,7 +695,7 @@
 </script>
 
 {#if !isEmbed}
-  {#if visible && canvasActive && canvasMenus.length > 0}
+  {#if canvasActive && canvasMenus.length > 0}
     <div
       class="fixed bottom-6 left-6 z-[9999] font-sans flex items-center gap-3"
       role="toolbar"
@@ -816,9 +791,9 @@
       <div class={visible ? '' : 'default-button-dimmed'}>
         <Tooltip.Root>
           <Tooltip.Trigger>
-            <CommandPalette tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} oninterceptclick={!visible ? enterPeekMode : undefined} />
+            <CommandPalette tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} oninterceptclick={!visible ? toggleToolsVisibility : undefined} />
           </Tooltip.Trigger>
-          <Tooltip.Content side="top">Command Menu</Tooltip.Content>
+          <Tooltip.Content side="top">{visible ? 'Command Menu' : '⌘. to show'}</Tooltip.Content>
         </Tooltip.Root>
       </div>
     {/if}

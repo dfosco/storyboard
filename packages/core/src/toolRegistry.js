@@ -2,8 +2,8 @@
  * Tool Registry — config-driven state management for toolbar tools.
  *
  * Every tool is declared in toolbar.config.json under the `tools` key.
- * Each tool specifies a `toolbar` target (main-toolbar, secondary-toolbar,
- * command-list) and a `render` type (button, menu, sidepanel, submenu, link).
+ * Each tool specifies a `toolbar` target (command-toolbar, canvas-toolbar,
+ * command-palette) and a `render` type (button, menu, sidepanel, submenu, link).
  *
  * Code modules register themselves via registerToolModule() to provide
  * component, handler, setup, and guard functions.
@@ -117,7 +117,7 @@ export function getToolModule(id) {
 /**
  * Get tools for a specific toolbar target, filtered by mode and visibility.
  *
- * @param {string} toolbar - "main-toolbar" | "secondary-toolbar" | "command-list"
+ * @param {string} toolbar - "command-toolbar" | "canvas-toolbar" | "command-palette"
  * @param {string} mode - Current mode name
  * @param {object} [options]
  * @param {boolean} [options.isLocalDev] - Whether running in local dev

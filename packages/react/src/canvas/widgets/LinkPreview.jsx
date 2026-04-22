@@ -256,10 +256,12 @@ export default forwardRef(function LinkPreview({ id, props, onUpdate, resizable 
 
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
-      if (actionId === 'expand') setExpanded(true)
-      else if (actionId === 'open-external') {
+      if (actionId === 'expand') { setExpanded(true); return true }
+      if (actionId === 'open-external') {
         if (url) window.open(url, '_blank', 'noopener')
+        return true
       }
+      return false
     },
   }), [url])
 

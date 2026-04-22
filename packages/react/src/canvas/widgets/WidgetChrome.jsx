@@ -434,8 +434,8 @@ export default function WidgetChrome({
     }
     // Widget-specific actions go through the widget's imperative ref
     if (widgetRef?.current?.handleAction) {
-      widgetRef.current.handleAction(actionId)
-      return
+      const handled = widgetRef.current.handleAction(actionId)
+      if (handled !== false) return
     }
     // Fallback to generic handler
     onAction?.(actionId)
@@ -610,10 +610,10 @@ export default function WidgetChrome({
                     feature={feature}
                     onAction={(actionId) => {
                       if (widgetRef?.current?.handleAction) {
-                        widgetRef.current.handleAction(actionId)
-                      } else {
-                        onAction?.(actionId)
+                        const handled = widgetRef.current.handleAction(actionId)
+                        if (handled !== false) return
                       }
+                      onAction?.(actionId)
                     }}
                   />
                 )
@@ -628,10 +628,10 @@ export default function WidgetChrome({
                 onAction={(actionId) => {
                   // Route overflow menu actions through the widget ref first
                   if (actionId !== 'delete' && actionId !== 'copy' && widgetRef?.current?.handleAction) {
-                    widgetRef.current.handleAction(actionId)
-                  } else {
-                    onAction?.(actionId)
+                    const handled = widgetRef.current.handleAction(actionId)
+                    if (handled !== false) return
                   }
+                  onAction?.(actionId)
                 }}
               />
             )}

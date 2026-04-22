@@ -170,7 +170,11 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     async function setup() {
       try {
         const ghostty = await loadGhostty()
-        if (disposed || !ghostty) return
+        if (disposed) return
+        if (!ghostty) {
+          setError('ghostty-web not installed — add it to your dependencies to enable terminal widgets')
+          return
+        }
 
         const dims = calcDimensions(width, height)
         const cfg = getTerminalConfig()

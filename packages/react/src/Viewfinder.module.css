@@ -249,6 +249,7 @@
 }
 
 .navIcon {
+  color: var(--fgColor-default, #1a1a1a);
   width: 18px;
   height: 18px;
   display: flex;

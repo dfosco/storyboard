@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { remark } from 'remark'
 import remarkGfm from 'remark-gfm'
 import remarkHtml from 'remark-html'
@@ -6,6 +6,7 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetConfig.js'
+import SplitExpandModal from './SplitExpandModal.jsx'
 import styles from './MarkdownBlock.module.css'
 
 const markdownSchema = schemas['markdown']
@@ -64,17 +65,24 @@ async function highlightCodeBlocks(html) {
   )
 }
 
-export default function MarkdownBlock({ props, onUpdate, resizable }) {
+export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizable }, ref) {
   const content = readProp(props, 'content', markdownSchema)
   const width = readProp(props, 'width', markdownSchema)
   const height = props?.height
   const collapsed = !!props?.collapsed
   const canEdit = typeof onUpdate === 'function'
   const [editing, setEditing] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const editingActive = canEdit && editing
   const textareaRef = useRef(null)
   const blockRef = useRef(null)
   const [editHeight, setEditHeight] = useState(null)
+
+  useImperativeHandle(ref, () => ({
+    handleAction(actionId) {
+      if (actionId === 'expand') setExpanded(true)
+    },
+  }), [])
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -137,6 +145,7 @@ export default function MarkdownBlock({ props, onUpdate, resizable }) {
   }, [editingActive, editHeight])
 
   return (
+    <>
     <WidgetWrapper>
       <div
         ref={blockRef}
@@ -200,5 +209,19 @@ export default function MarkdownBlock({ props, onUpdate, resizable }) {
         )}
       </div>
     </WidgetWrapper>
+    <SplitExpandModal
+      expanded={expanded}
+      onClose={() => setExpanded(false)}
+      widgetId={id}
+      title="Markdown"
+    >
+      <div
+        className={styles.expandedPreview}
+        dangerouslySetInnerHTML={{
+          __html: renderedHtml || '<p>No content</p>',
+        }}
+      />
+    </SplitExpandModal>
+    </>
   )
-}
+})

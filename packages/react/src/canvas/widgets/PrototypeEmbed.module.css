@@ -460,3 +460,112 @@
 .expandClose:hover {
   background: rgba(0, 0, 0, 0.7);
 }
+
+/* ── Split-screen layout ──────────────────────────────────────────── */
+
+.expandContainerSplit {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  background: var(--bgColor-default, #ffffff);
+}
+
+.expandContainerSplit .expandIframe {
+  border: none;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.expandSplitBody {
+  width: 90vw;
+  height: 90vh;
+  display: flex;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  animation: expandScaleIn 0.2s ease;
+}
+
+.expandSplitLeft {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--borderColor-muted, #d8dee4);
+}
+
+.expandSplitRight {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.expandSecondary {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: var(--bgColor-default, #ffffff);
+}
+
+.expandSecondary iframe {
+  border: none;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.expandTerminal {
+  width: 100%;
+  height: 100%;
+  background: #0d1117;
+}
+
+.expandMarkdownContent {
+  padding: 32px 40px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--fgColor-default, #1f2328);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.expandMarkdownContent * { pointer-events: auto; }
+.expandMarkdownContent a { color: var(--fgColor-accent, #0969da); text-decoration: none; }
+.expandMarkdownContent a:hover { text-decoration: underline; }
+.expandMarkdownContent img { max-width: 100%; height: auto; border-radius: 6px; margin: 8px 0; display: block; }
+
+.expandGithubCard {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bgColor-default, #ffffff);
+}
+
+.expandGithubHeader {
+  padding: 16px 24px;
+  font-size: 18px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--borderColor-muted, #d8dee4);
+}
+
+.expandGithubBody {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.expandGithubBody * { pointer-events: auto; }
+.expandGithubBody a { color: var(--fgColor-accent, #0969da); }
+
+.expandLinkCard {
+  padding: 32px 40px;
+}
+
+.expandLinkTitle {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react'
 import { remark } from 'remark'
 import remarkGfm from 'remark-gfm'
 import remarkHtml from 'remark-html'
@@ -6,6 +6,7 @@ import { MarkGithubIcon } from '@primer/octicons-react'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, linkPreviewSchema } from './widgetProps.js'
+import SplitExpandModal from './SplitExpandModal.jsx'
 import styles from './LinkPreview.module.css'
 
 const VIDEO_EXT_RE = /\.(mp4|mov|webm|ogg)(\?[^)]*)?$/i
@@ -106,7 +107,7 @@ function getCommentKindLabel(github) {
   return 'Comment'
 }
 
-function GitHubIssueCard({ url, title, github, width, collapsed, onUpdate }) {
+function GitHubIssueCard({ id, url, title, github, width, collapsed, expanded, onCloseExpand }) {
   const authors = Array.isArray(github?.authors)
     ? github.authors.filter((a) => typeof a === 'string' && a.trim())
     : []
@@ -146,6 +147,7 @@ function GitHubIssueCard({ url, title, github, width, collapsed, onUpdate }) {
   }
 
   return (
+    <>
     <WidgetWrapper>
       <div className={`${styles.issueCard} ${collapsed ? styles.issueCardCollapsed : ''}`} style={sizeStyle}>
         <div className={styles.typeBar}>
@@ -204,10 +206,38 @@ function GitHubIssueCard({ url, title, github, width, collapsed, onUpdate }) {
         )}
       </div>
     </WidgetWrapper>
+    <SplitExpandModal
+      expanded={expanded}
+      onClose={onCloseExpand}
+      widgetId={id}
+      title={`${kindLabel}: ${titleText || url || 'GitHub'}`}
+    >
+      <div className={styles.expandedIssue}>
+        <header className={styles.expandedIssueHeader}>
+          <h2 className={styles.expandedIssueTitle}>
+            <a href={url || '#'} target="_blank" rel="noopener noreferrer">
+              {titleText || url}
+              {issueNumber && <span className={styles.expandedIssueNumber}> {issueNumber}</span>}
+            </a>
+          </h2>
+          <div className={styles.expandedByline}>
+            {primaryAuthor && (
+              <a href={`https://github.com/${primaryAuthor}`} target="_blank" rel="noopener noreferrer" className={styles.expandedAuthor}>
+                <img src={`https://github.com/${primaryAuthor}.png?size=40`} alt="" width="20" height="20" className={styles.avatar} loading="lazy" />
+                {primaryAuthor}
+              </a>
+            )}
+            {createdAgo && <span className={styles.expandedBylineText}>{primaryAuthor ? ` opened ${createdAgo}` : `Opened ${createdAgo}`}</span>}
+          </div>
+        </header>
+        {bodyHtml && <div className={styles.expandedIssueBody} dangerouslySetInnerHTML={{ __html: bodyHtml }} />}
+      </div>
+    </SplitExpandModal>
+    </>
   )
 }
 
-export default function LinkPreview({ props, onUpdate, resizable }) {
+export default forwardRef(function LinkPreview({ id, props, onUpdate, resizable }, ref) {
   const url = readProp(props, 'url', linkPreviewSchema)
   const title = readProp(props, 'title', linkPreviewSchema)
   const github = props?.github && typeof props.github === 'object' ? props.github : null
@@ -222,6 +252,16 @@ export default function LinkPreview({ props, onUpdate, resizable }) {
   const cardRef = useRef(null)
   const inputRef = useRef(null)
   const [editing, setEditing] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+
+  useImperativeHandle(ref, () => ({
+    handleAction(actionId) {
+      if (actionId === 'expand') setExpanded(true)
+      else if (actionId === 'open-external') {
+        if (url) window.open(url, '_blank', 'noopener')
+      }
+    },
+  }), [url])
 
   const startEditing = useCallback(() => {
     if (!canEdit) return
@@ -242,12 +282,14 @@ export default function LinkPreview({ props, onUpdate, resizable }) {
   if (github) {
     return (
       <GitHubIssueCard
+        id={id}
         url={url}
         title={title}
         github={github}
         width={width}
         collapsed={!!props?.collapsed}
-        onUpdate={onUpdate}
+        expanded={expanded}
+        onCloseExpand={() => setExpanded(false)}
       />
     )
   }
@@ -262,6 +304,7 @@ export default function LinkPreview({ props, onUpdate, resizable }) {
   const handleResize = (w, h) => onUpdate?.({ width: w, height: h })
 
   return (
+    <>
     <div className={styles.container}>
       <div ref={cardRef} className={styles.card} style={sizeStyle}>
         {ogImage && (
@@ -316,5 +359,19 @@ export default function LinkPreview({ props, onUpdate, resizable }) {
       </div>
       {resizable && <ResizeHandle targetRef={cardRef} width={width} height={height} onResize={handleResize} />}
     </div>
+    <SplitExpandModal
+      expanded={expanded}
+      onClose={() => setExpanded(false)}
+      widgetId={id}
+      title={title || hostname || 'Link Preview'}
+    >
+      <div className={styles.expandedLink}>
+        {ogImage && <img className={styles.expandedOgImage} src={ogImage} alt="" loading="lazy" />}
+        <h2 className={styles.expandedTitle}>{title || hostname || url || 'Untitled'}</h2>
+        {description && <p className={styles.expandedDescription}>{description}</p>}
+        {url && <a href={url} target="_blank" rel="noopener noreferrer" className={styles.expandedUrl}>{url}</a>}
+      </div>
+    </SplitExpandModal>
+    </>
   )
-}
+})

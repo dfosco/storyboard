@@ -1071,7 +1071,7 @@ export default function Viewfinder({
                 {activeTab === 'Starred' && 'No starred items. Click ☆ on a card to star it.'}
                 {activeTab === 'All' && 'No items found. Create a prototype, canvas, or component to get started.'}
               </div>
-            ) : groupByFolders && grouped && activeTab === 'All' && activeNav === 'all' ? (
+            ) : groupByFolders && grouped && activeTab === 'All' ? (
               <>
                 {grouped.folders.map(folder => (
                   <FolderSection

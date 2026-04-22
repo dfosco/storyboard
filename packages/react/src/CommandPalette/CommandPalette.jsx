@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import 'react-cmdk/dist/cmdk.css'
 import * as ReactCmdk from 'react-cmdk'
 const CommandPalette = ReactCmdk.default || ReactCmdk
@@ -858,6 +858,19 @@ export default function StoryboardCommandPalette({ basePath }) {
       setActivePage('root')
     }
   }, [])
+
+  // Force-focus the search input when the palette opens.
+  // headlessui's initialFocus + autoFocus can race with rAF/setTimeout open paths.
+  const focusRafRef = useRef(0)
+  useEffect(() => {
+    cancelAnimationFrame(focusRafRef.current)
+    if (!open) return
+    focusRafRef.current = requestAnimationFrame(() => {
+      const input = document.getElementById('command-palette-search-input')
+      if (input) input.focus()
+    })
+    return () => cancelAnimationFrame(focusRafRef.current)
+  }, [open])
 
   // Flatten sub-page options into searchable groups so they appear in root search
   const subPageGroups = useMemo(() => {

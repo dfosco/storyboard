@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import PageSelector from './PageSelector.jsx'
 
 const PAGES = [
@@ -10,9 +10,15 @@ const PAGES = [
 
 describe('PageSelector', () => {
   beforeEach(() => {
-    // Reset location mock
+    // Reset location mock — use a setter spy so we can track assignments
     delete window.location
-    window.location = { href: '' }
+    const loc = { _href: '' }
+    Object.defineProperty(loc, 'href', {
+      get() { return loc._href },
+      set(v) { loc._href = v },
+      configurable: true,
+    })
+    window.location = loc
   })
 
   it('renders nothing when fewer than 2 pages', () => {
@@ -58,14 +64,17 @@ describe('PageSelector', () => {
     expect(options[0].getAttribute('aria-selected')).toBe('false')
   })
 
-  it('navigates to selected page', () => {
+  it('navigates to selected page', async () => {
     render(<PageSelector currentName="research/interviews" pages={PAGES} />)
     fireEvent.click(screen.getByTitle('Switch canvas page'))
     // Click the option in the menu (not the trigger label)
     const options = screen.getAllByRole('option')
     fireEvent.click(options[1]) // Surveys
 
-    expect(window.location.href).toContain('/canvas/research/surveys')
+    // Navigation uses a 300ms setTimeout for mouse clicks
+    await waitFor(() => {
+      expect(window.location.href).toContain('/canvas/research/surveys')
+    })
   })
 
   it('closes dropdown on Escape', () => {

@@ -367,7 +367,7 @@ function EditArtifactModal({ item, dirName, basePath, onClose }) {
 
           {error && <div className={css.createFormError}>{error}</div>}
 
-          <div className={css.createFormActions}>
+          <div className={css.modalActions}>
             <button type="button" className={css.modalCancelBtn} onClick={onClose}>Cancel</button>
             <button type="submit" className={css.createFormSubmit} disabled={submitting}>
               {submitting ? 'Saving…' : 'Save Changes'}
@@ -445,17 +445,7 @@ function DeleteArtifactModal({ item, dirName, basePath, typeLabel, onClose }) {
 
         {error && <div className={css.createFormError}>{error}</div>}
 
-        <div className={css.createFormActions}>
-          <button type="button" className={css.modalCancelBtn} onClick={onClose}>Cancel</button>
-          <button
-            type="button"
-            className={css.deleteConfirmBtn}
-            onClick={handleDelete}
-            disabled={deleting}
-          >
-            {deleting ? 'Deleting…' : `Delete ${typeLabel}`}
-          </button>
-        </div>
+        <div className={css.modalActions}>
       </div>
     </div>
   )
@@ -1272,15 +1262,17 @@ export default function Viewfinder({
     try { return localStorage.getItem(GROUP_BY_FOLDERS_KEY) !== 'false' } catch { return true }
   })
   const [collapsedFolders, setCollapsedFolders] = useState(new Set())
+  const [hiddenItems, setHiddenItems] = useState(new Set())
   const { starred, toggle: toggleStar } = useStarred()
   const recentIds = useRecent()
 
   // Filter by nav category
+  const typeMap = { prototypes: 'prototype', canvases: 'canvas', components: 'component' }
   const navFiltered = useMemo(() => {
-    if (activeNav === 'all') return allItems
-    const typeMap = { prototypes: 'prototype', canvases: 'canvas', components: 'component' }
-    return allItems.filter(i => i.type === typeMap[activeNav])
-  }, [allItems, activeNav])
+    let filtered = activeNav === 'all' ? allItems : allItems.filter(i => i.type === typeMap[activeNav])
+    if (hiddenItems.size > 0) filtered = filtered.filter(i => !hiddenItems.has(i.id))
+    return filtered
+  }, [allItems, activeNav, hiddenItems])
 
   // Filter by tab
   const items = useMemo(() => {

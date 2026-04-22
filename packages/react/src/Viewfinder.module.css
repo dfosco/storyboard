@@ -1533,6 +1533,14 @@
   font-family: 'Mona Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+.modalActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  justify-content: flex-end;
+}
+
 .modalCancelBtn {
   padding: 8px 16px;
   border: 1px solid var(--borderColor-default, #e5e5e5);

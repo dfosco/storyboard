@@ -4,9 +4,12 @@
  * Endpoints (mounted at /_storyboard/prompt/):
  *   POST /execute  — spawn a copilot agent with the given prompt
  *   GET  /status   — check execution status for a session
+ *   GET  /pool     — inspect pool status
+ *   PUT  /pool     — reconfigure pool at runtime
  *
- * The agent is instructed to create output widgets on the canvas
- * and write a completion signal file when done.
+ * Uses a pre-warmed session pool (prompt-pool.js) for near-instant
+ * prompt execution. When no warm session is available, falls back
+ * to cold-starting a new copilot process.
  */
 
 import { spawn } from 'node:child_process'
@@ -14,6 +17,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { materializeFromText } from './materializer.js'
+import { PromptPool } from './prompt-pool.js'
 
 const SESSIONS_DIR_NAME = '.prompt-sessions'
 const TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
@@ -130,27 +134,167 @@ ${connectedContext || '\nNo connected widgets.'}
 }
 
 /**
- * Check if copilot CLI is available.
+ * Attach a prompt to a warm session from the pool.
+ * Writes the prompt to the process's stdin and wires up output/completion handling.
  */
-function checkCopilotAvailable() {
-  try {
-    const result = spawn('which', ['copilot'], { stdio: 'pipe' })
-    return new Promise((resolve) => {
-      result.on('close', (code) => resolve(code === 0))
-      result.on('error', () => resolve(false))
-      setTimeout(() => resolve(false), 3000)
-    })
-  } catch {
-    return Promise.resolve(false)
-  }
+function attachToWarmSession(warmSession, { sessionId, fullPrompt, signalFile, canvasName, widgetId }) {
+  const child = warmSession.process
+
+  sessions.set(sessionId, {
+    status: 'pending',
+    startedAt: Date.now(),
+    widgetId,
+    canvasName,
+    pid: child.pid,
+    poolSessionId: warmSession.id,
+    warm: true,
+  })
+
+  let stdout = ''
+  let stderr = ''
+
+  child.stdout?.on('data', (data) => { stdout += data.toString() })
+  child.stderr?.on('data', (data) => { stderr += data.toString() })
+
+  child.on('close', (code) => {
+    const session = sessions.get(sessionId)
+    if (!session) return
+
+    if (fs.existsSync(signalFile)) {
+      try {
+        const signal = JSON.parse(fs.readFileSync(signalFile, 'utf-8'))
+        session.status = signal.status || 'done'
+        session.error = signal.error
+        session.resultWidgetId = signal.resultWidgetId
+      } catch {
+        session.status = 'done'
+      }
+    } else if (code !== 0) {
+      session.status = 'error'
+      session.error = stderr || `Process exited with code ${code}`
+    } else {
+      session.status = 'done'
+    }
+    session.stdout = stdout
+    session.completedAt = Date.now()
+  })
+
+  child.on('error', (err) => {
+    const session = sessions.get(sessionId)
+    if (session) {
+      session.status = 'error'
+      session.error = err.message
+      session.completedAt = Date.now()
+    }
+  })
+
+  // Set timeout
+  setTimeout(() => {
+    const session = sessions.get(sessionId)
+    if (session && session.status === 'pending') {
+      session.status = 'error'
+      session.error = 'Prompt execution timed out after 5 minutes'
+      session.completedAt = Date.now()
+      try { child.kill() } catch { /* ignore */ }
+    }
+  }, TIMEOUT_MS)
+
+  // Write prompt to stdin and close it — this kicks the process into action
+  child.stdin?.write(fullPrompt + '\n')
+  child.stdin?.end()
+}
+
+/**
+ * Cold-start a new copilot process for a prompt (fallback when pool is empty).
+ */
+function coldStartSession({ sessionId, fullPrompt, signalFile, root, canvasName, widgetId }) {
+  const child = spawn('copilot', ['-p', fullPrompt], {
+    cwd: root,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      STORYBOARD_CANVAS_NAME: canvasName,
+      STORYBOARD_PROMPT_SESSION_ID: sessionId,
+      STORYBOARD_SIGNAL_FILE: signalFile,
+    },
+  })
+
+  sessions.set(sessionId, {
+    status: 'pending',
+    startedAt: Date.now(),
+    widgetId,
+    canvasName,
+    pid: child.pid,
+    warm: false,
+  })
+
+  let stdout = ''
+  let stderr = ''
+
+  child.stdout?.on('data', (data) => { stdout += data.toString() })
+  child.stderr?.on('data', (data) => { stderr += data.toString() })
+
+  child.on('close', (code) => {
+    const session = sessions.get(sessionId)
+    if (!session) return
+
+    if (fs.existsSync(signalFile)) {
+      try {
+        const signal = JSON.parse(fs.readFileSync(signalFile, 'utf-8'))
+        session.status = signal.status || 'done'
+        session.error = signal.error
+        session.resultWidgetId = signal.resultWidgetId
+      } catch {
+        session.status = 'done'
+      }
+    } else if (code !== 0) {
+      session.status = 'error'
+      session.error = stderr || `Process exited with code ${code}`
+    } else {
+      session.status = 'done'
+    }
+    session.stdout = stdout
+    session.completedAt = Date.now()
+  })
+
+  child.on('error', (err) => {
+    const session = sessions.get(sessionId)
+    if (session) {
+      session.status = 'error'
+      session.error = err.message
+      session.completedAt = Date.now()
+    }
+  })
+
+  setTimeout(() => {
+    const session = sessions.get(sessionId)
+    if (session && session.status === 'pending') {
+      session.status = 'error'
+      session.error = 'Prompt execution timed out after 5 minutes'
+      session.completedAt = Date.now()
+      try { child.kill() } catch { /* ignore */ }
+    }
+  }, TIMEOUT_MS)
+
+  return child
 }
 
 /**
  * Create the prompt route handler.
+ * @param {Object} opts
+ * @param {string} opts.root — project root
+ * @param {Function} opts.sendJson — response helper
+ * @param {Object} [opts.config] — storyboard.config.json prompt section
  */
-export function createPromptHandler({ root, sendJson }) {
+export function createPromptHandler({ root, sendJson, config = {} }) {
   // Ensure sessions directory exists
   getSessionsDir(root)
+
+  // Create and start the session pool
+  const pool = new PromptPool({ root, config: config.pool || {} })
+  pool.start().catch((err) => {
+    console.error('[prompt-server] Failed to start pool:', err.message)
+  })
 
   return async (req, res, { method, path: routePath, body }) => {
     // POST /execute — spawn agent with prompt
@@ -159,13 +303,6 @@ export function createPromptHandler({ root, sendJson }) {
 
       if (!canvasName || !prompt) {
         sendJson(res, 400, { error: 'canvasName and prompt are required' })
-        return
-      }
-
-      // Check copilot availability
-      const available = await checkCopilotAvailable()
-      if (!available) {
-        sendJson(res, 503, { error: 'copilot CLI is not available. Install GitHub Copilot CLI to use prompt widgets.' })
         return
       }
 
@@ -180,7 +317,6 @@ export function createPromptHandler({ root, sendJson }) {
       // Determine base URL for canvas API calls from the agent
       const baseUrl = `http://localhost:${process.env.STORYBOARD_PORT || '5173'}`
 
-      // Build the full prompt with system instructions
       const systemPrompt = buildSystemPrompt({
         canvasName,
         promptPosition: widgetPosition,
@@ -191,83 +327,24 @@ export function createPromptHandler({ root, sendJson }) {
 
       const fullPrompt = `${systemPrompt}\n\n## USER PROMPT\n\n${prompt}`
 
-      // Track session
-      sessions.set(sessionId, {
-        status: 'pending',
-        startedAt: Date.now(),
-        widgetId,
-        canvasName,
-        pid: null,
-      })
+      // Try to acquire a warm session from the pool
+      const warmSession = pool.acquire()
 
-      // Spawn copilot CLI
       try {
-        const child = spawn('copilot', ['-p', fullPrompt], {
-          cwd: root,
-          stdio: ['ignore', 'pipe', 'pipe'],
-          env: {
-            ...process.env,
-            STORYBOARD_CANVAS_NAME: canvasName,
-            STORYBOARD_PROMPT_SESSION_ID: sessionId,
-            STORYBOARD_SIGNAL_FILE: signalFile,
-          },
-        })
+        if (warmSession) {
+          console.log(`[prompt-server] using warm session ${warmSession.id} for ${sessionId}`)
+          attachToWarmSession(warmSession, {
+            sessionId, fullPrompt, signalFile, canvasName, widgetId,
+          })
+          pool.release(warmSession.id)
+        } else {
+          console.log(`[prompt-server] cold-starting session ${sessionId} (pool empty)`)
+          coldStartSession({
+            sessionId, fullPrompt, signalFile, root, canvasName, widgetId,
+          })
+        }
 
-        const session = sessions.get(sessionId)
-        session.pid = child.pid
-
-        let stdout = ''
-        let stderr = ''
-
-        child.stdout?.on('data', (data) => { stdout += data.toString() })
-        child.stderr?.on('data', (data) => { stderr += data.toString() })
-
-        child.on('close', (code) => {
-          const session = sessions.get(sessionId)
-          if (!session) return
-
-          // Check if signal file was written by the agent
-          if (fs.existsSync(signalFile)) {
-            try {
-              const signal = JSON.parse(fs.readFileSync(signalFile, 'utf-8'))
-              session.status = signal.status || 'done'
-              session.error = signal.error
-              session.resultWidgetId = signal.resultWidgetId
-            } catch {
-              session.status = 'done'
-            }
-          } else if (code !== 0) {
-            session.status = 'error'
-            session.error = stderr || `Process exited with code ${code}`
-          } else {
-            // Process exited successfully but no signal file — assume done
-            session.status = 'done'
-          }
-          session.stdout = stdout
-          session.completedAt = Date.now()
-        })
-
-        child.on('error', (err) => {
-          const session = sessions.get(sessionId)
-          if (session) {
-            session.status = 'error'
-            session.error = err.message
-            session.completedAt = Date.now()
-          }
-        })
-
-        // Set timeout
-        setTimeout(() => {
-          const session = sessions.get(sessionId)
-          if (session && session.status === 'pending') {
-            session.status = 'error'
-            session.error = 'Prompt execution timed out after 5 minutes'
-            session.completedAt = Date.now()
-            try { child.kill() } catch { /* ignore */ }
-          }
-        }, TIMEOUT_MS)
-
-        sendJson(res, 200, { sessionId })
+        sendJson(res, 200, { sessionId, warm: !!warmSession })
       } catch (err) {
         sessions.delete(sessionId)
         sendJson(res, 500, { error: `Failed to spawn agent: ${err.message}` })
@@ -295,7 +372,22 @@ export function createPromptHandler({ root, sendJson }) {
         status: session.status,
         error: session.error || null,
         resultWidgetId: session.resultWidgetId || null,
+        warm: session.warm || false,
       })
+      return
+    }
+
+    // GET /pool — inspect pool status
+    if (routePath === '/pool' && method === 'GET') {
+      sendJson(res, 200, pool.status())
+      return
+    }
+
+    // PUT /pool — reconfigure pool at runtime
+    if (routePath === '/pool' && method === 'PUT') {
+      const { size, maxSize, enabled } = body || {}
+      pool.reconfigure({ size, maxSize, enabled })
+      sendJson(res, 200, pool.status())
       return
     }
 

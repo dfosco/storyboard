@@ -218,7 +218,8 @@ export default function storyboardServer() {
       }
 
       // Wire prompt API routes (AI prompt execution for canvas prompt widgets)
-      routeHandlers.set('prompt', createPromptHandler({ root, sendJson }))
+      const promptConfig = config.prompt || {}
+      routeHandlers.set('prompt', createPromptHandler({ root, sendJson, config: promptConfig }))
 
       // Ignore assets/canvas/ so image/snapshot writes don't trigger reloads
       server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'images'))

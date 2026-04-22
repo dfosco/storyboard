@@ -1,7 +1,7 @@
 .toolbar-separator {
   width: 1px;
   height: 20px;
-  background: var(--sb--trigger-border, var(--color-slate-400));
+  background: var(--sb--trigger-border, var(--borderColor-default, #d1d9e0));
   opacity: 0.4;
   flex-shrink: 0;
 }

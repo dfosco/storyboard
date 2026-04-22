@@ -59,7 +59,7 @@
     untrack(() => initToolbarToolStates(tools, { isLocalDev }))
   })
 
-  let visible = $state(true)
+  let visible = $state((() => { try { return localStorage.getItem('sb-chrome-hidden') !== '1' } catch { return true } })())
   // Hide the entire toolbar when loaded inside a prototype embed iframe
   const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')
   let toolComponents: Record<string, any> = $state({})
@@ -315,6 +315,7 @@
   function toggleToolsVisibility() {
     visible = !visible
     document.documentElement.classList.toggle('storyboard-chrome-hidden', !visible)
+    try { localStorage.setItem('sb-chrome-hidden', !visible ? '1' : '') } catch {}
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -348,6 +349,10 @@
   }
 
   onMount(async () => {
+    // Restore chrome visibility from localStorage
+    if (!visible) {
+      document.documentElement.classList.add('storyboard-chrome-hidden')
+    }
     window.addEventListener('keydown', handleKeydown)
     setRoutingBasePath(basePath)
 
@@ -357,6 +362,7 @@
       const hidden = document.documentElement.classList.contains('storyboard-chrome-hidden')
       if (visible === !hidden) return
       visible = !hidden
+      try { localStorage.setItem('sb-chrome-hidden', hidden ? '1' : '') } catch {}
     })
     chromeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
 

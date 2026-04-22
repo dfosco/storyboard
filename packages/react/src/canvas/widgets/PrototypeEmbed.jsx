@@ -6,6 +6,7 @@ import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
+import { findConnectedSplitTarget, getPaneOrder, buildSecondaryIframeUrl, reparentTerminalInto } from './expandUtils.js'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -408,20 +409,145 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
       {resizable && <ResizeHandle targetRef={embedRef} width={width} height={height} onResize={handleResize} />}
     </WidgetWrapper>
     {createPortal(
-      <div
-        className={styles.expandBackdrop}
-        style={expanded ? undefined : { display: 'none' }}
-        onClick={() => setExpanded(false)}
-        onPointerDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-        onWheel={(e) => e.stopPropagation()}
-      >
-        <div ref={modalContainerRef} className={styles.expandContainer} onClick={(e) => e.stopPropagation()}>
-          <button className={styles.expandClose} onClick={() => setExpanded(false)} aria-label="Close expanded view" autoFocus>✕</button>
-        </div>
-      </div>,
+      <PrototypeExpandModal
+        expanded={expanded}
+        onClose={() => setExpanded(false)}
+        modalContainerRef={modalContainerRef}
+        widgetId={widgetId}
+      />,
       document.body
     )}
     </>
   )
 })
+
+/**
+ * PrototypeExpandModal — the existing expand modal with split-screen support.
+ * Keeps iframe reparenting in the primary pane, adds a secondary pane if connected.
+ */
+function PrototypeExpandModal({ expanded, onClose, modalContainerRef, widgetId }) {
+  const connectedWidget = useMemo(
+    () => (expanded ? findConnectedSplitTarget(widgetId) : null),
+    [expanded, widgetId],
+  )
+  const hasSplit = Boolean(connectedWidget)
+  const paneOrder = useMemo(
+    () => (hasSplit ? getPaneOrder(widgetId, connectedWidget) : { primaryIsLeft: true }),
+    [hasSplit, widgetId, connectedWidget],
+  )
+  const secondaryUrl = useMemo(() => buildSecondaryIframeUrl(connectedWidget), [connectedWidget])
+  const isTerminalSecondary = connectedWidget?.type === 'terminal' || connectedWidget?.type === 'terminal-read'
+  const terminalRef = useRef(null)
+  const cleanupRef = useRef(null)
+
+  // Reparent terminal DOM for split
+  useEffect(() => {
+    if (!isTerminalSecondary || !expanded || !terminalRef.current) return
+    cleanupRef.current = reparentTerminalInto(connectedWidget.id, terminalRef.current)
+    return () => {
+      cleanupRef.current?.()
+      cleanupRef.current = null
+    }
+  }, [isTerminalSecondary, expanded, connectedWidget?.id])
+
+  const primaryPane = (
+    <div ref={modalContainerRef} className={hasSplit ? styles.expandContainerSplit : styles.expandContainer} onClick={(e) => e.stopPropagation()}>
+      <button className={styles.expandClose} onClick={onClose} aria-label="Close expanded view" autoFocus>✕</button>
+    </div>
+  )
+
+  let secondaryPane = null
+  if (hasSplit) {
+    if (secondaryUrl) {
+      secondaryPane = (
+        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()}>
+          <iframe src={secondaryUrl} className={styles.expandIframe} title="Connected widget" />
+        </div>
+      )
+    } else if (isTerminalSecondary) {
+      secondaryPane = (
+        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()}>
+          <div ref={terminalRef} className={styles.expandTerminal} />
+        </div>
+      )
+    } else if (connectedWidget?.type === 'markdown') {
+      secondaryPane = (
+        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()}>
+          <MarkdownSecondaryPane content={connectedWidget.props?.content} />
+        </div>
+      )
+    } else if (connectedWidget?.type === 'link-preview') {
+      secondaryPane = (
+        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()}>
+          <LinkPreviewSecondaryPane widget={connectedWidget} />
+        </div>
+      )
+    }
+  }
+
+  const leftPane = paneOrder.primaryIsLeft ? primaryPane : secondaryPane
+  const rightPane = paneOrder.primaryIsLeft ? secondaryPane : primaryPane
+
+  return (
+    <div
+      className={styles.expandBackdrop}
+      style={expanded ? undefined : { display: 'none' }}
+      onClick={onClose}
+      onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      onWheel={(e) => e.stopPropagation()}
+    >
+      {hasSplit ? (
+        <div className={styles.expandSplitBody}>
+          <div className={styles.expandSplitLeft}>{leftPane}</div>
+          <div className={styles.expandSplitRight}>{rightPane}</div>
+        </div>
+      ) : (
+        primaryPane
+      )}
+    </div>
+  )
+}
+
+/** Minimal markdown renderer for secondary pane */
+function MarkdownSecondaryPane({ content }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!ref.current || !content) return
+    let cancelled = false
+    ;(async () => {
+      const { remark } = await import('remark')
+      const remarkGfm = (await import('remark-gfm')).default
+      const remarkHtml = (await import('remark-html')).default
+      if (cancelled) return
+      const result = remark().use(remarkGfm).use(remarkHtml, { sanitize: false }).processSync(content)
+      if (ref.current) ref.current.innerHTML = String(result).replace(/<a\s/g, '<a target="_blank" rel="noopener noreferrer" ')
+    })()
+    return () => { cancelled = true }
+  }, [content])
+  return <div ref={ref} className={styles.expandMarkdownContent} />
+}
+
+/** Link preview secondary pane (GitHub card or plain) */
+function LinkPreviewSecondaryPane({ widget }) {
+  const { url, title, github } = widget.props || {}
+  const bodyRef = useRef(null)
+  useEffect(() => {
+    if (bodyRef.current && github?.bodyHtml) bodyRef.current.innerHTML = github.bodyHtml
+  }, [github?.bodyHtml])
+
+  if (github) {
+    return (
+      <div className={styles.expandGithubCard}>
+        <div className={styles.expandGithubHeader}>{title || url || 'GitHub'}</div>
+        {github.bodyHtml && <div ref={bodyRef} className={styles.expandGithubBody} />}
+      </div>
+    )
+  }
+  return (
+    <div className={styles.expandLinkCard}>
+      <p className={styles.expandLinkTitle}>{title || url || 'Link'}</p>
+      {url && <a href={url} target="_blank" rel="noopener noreferrer">{url}</a>}
+    </div>
+  )
+}

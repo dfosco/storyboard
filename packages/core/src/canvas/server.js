@@ -1776,6 +1776,95 @@ export function Default() {
       return
     }
 
+    // DELETE /delete-canvas — delete a canvas and its directory
+    if (routePath === '/delete-canvas' && method === 'DELETE') {
+      const { name } = body
+      if (!name || typeof name !== 'string') {
+        sendJson(res, 400, { error: 'Canvas name is required' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      try {
+        const dir = path.dirname(filePath)
+        const canvasDir = path.join(root, 'src', 'canvas')
+
+        // Delete the canvas file
+        fs.unlinkSync(filePath)
+
+        // If the parent directory is inside src/canvas/ and now empty (or only has .meta.json), remove it
+        if (dir !== canvasDir) {
+          const remaining = fs.readdirSync(dir).filter(f => !f.endsWith('.meta.json'))
+          if (remaining.length === 0) {
+            for (const f of fs.readdirSync(dir)) {
+              fs.unlinkSync(path.join(dir, f))
+            }
+            fs.rmdirSync(dir)
+          }
+        }
+
+        sendJson(res, 200, { success: true, deleted: name })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to delete canvas: ${err.message}` })
+      }
+      return
+    }
+
+    // PUT /update-meta — update canvas metadata
+    if (routePath === '/update-meta' && method === 'PUT') {
+      const { name, title, description, author } = body
+      if (!name || typeof name !== 'string') {
+        sendJson(res, 400, { error: 'Canvas name is required' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      try {
+        // Try to find and update .meta.json first
+        const dir = path.dirname(filePath)
+        const dirName = path.basename(dir).replace(/\.folder$/, '')
+        const metaPath = path.join(dir, `${dirName}.meta.json`)
+
+        if (fs.existsSync(metaPath)) {
+          const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
+          if (title !== undefined) meta.title = title
+          if (description !== undefined) meta.description = description
+          if (author !== undefined) meta.author = author
+          fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+        } else {
+          // Update the canvas JSONL's canvas_created event metadata
+          const text = fs.readFileSync(filePath, 'utf-8')
+          const lines = text.split('\n').filter(Boolean)
+          if (lines.length > 0) {
+            const firstEvent = JSON.parse(lines[0])
+            if (title !== undefined) firstEvent.title = title
+            if (description !== undefined) firstEvent.description = description
+            if (author !== undefined) firstEvent.author = author
+            lines[0] = JSON.stringify(firstEvent)
+            fs.writeFileSync(filePath, lines.join('\n') + '\n', 'utf-8')
+          }
+        }
+
+        // Notify via WebSocket
+        pushCanvasUpdate(name, filePath, __viteWs)
+
+        sendJson(res, 200, { success: true, updated: name })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to update canvas metadata: ${err.message}` })
+      }
+      return
+    }
+
     sendJson(res, 404, { error: `Unknown route: ${method} ${routePath}` })
   }
 }

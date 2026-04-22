@@ -55,12 +55,11 @@ export default function TerminalReadWidget({ id, props }) {
       const canvasId = getCanvasId()
       if (!canvasId) { setFailed(true); return }
 
-      const canvasIdSafe = canvasId.replace(/[^a-zA-Z0-9_-]/g, '_')
       const urls = isProduction()
-        ? [`${baseUrl}_storyboard/terminal-snapshots/${canvasIdSafe}/${id}.json`]
+        ? [`${baseUrl}_storyboard/terminal-snapshots/${canvasId}/${id}.json`]
         : [
             `${baseUrl}_storyboard/canvas/${canvasId}/terminal-snapshot/${id}`,
-            `${baseUrl}_storyboard/terminal-snapshots/${canvasIdSafe}/${id}.json`,
+            `${baseUrl}_storyboard/terminal-snapshots/${canvasId}/${id}.json`,
           ]
 
       for (const url of urls) {

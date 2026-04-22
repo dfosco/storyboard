@@ -55,6 +55,7 @@ function isHiddenInPalette(tool, basePath) {
  */
 function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
   const config = getCommandPaletteConfig()
+  console.log('[devlog] CommandPalette config sections:', config?.sections?.length ?? 'NONE', config)
   const sections = config?.sections || []
   const groups = []
   const toolMenus = []

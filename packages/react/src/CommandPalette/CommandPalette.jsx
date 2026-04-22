@@ -778,43 +778,28 @@ export default function StoryboardCommandPalette({ basePath }) {
     setActivePage(pageId)
   }
 
-  // Listen for Cmd+K directly
-  // The Svelte CoreUIBar also handles Cmd+K by dispatching
-  // 'storyboard:toggle-palette'. We use rAF to detect if Svelte
-  // already fired the toggle event and skip to avoid double-toggle.
+  // Listen for Cmd+K directly to toggle the palette
   useEffect(() => {
-    let toggledByEvent = false
-
-    function handleToggleEvent() {
-      toggledByEvent = true
-    }
-
     function handleKeyDown(e) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
-        toggledByEvent = false
-        requestAnimationFrame(() => {
-          if (toggledByEvent) return
-          const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
-          setItems(built.groups)
-          setToolMenus(built.toolMenus)
-          setAuthorIndex(built.authorIndex)
-          setSearch('')
-          setActivePage('root')
-          setOpen(prev => !prev)
-        })
+        const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
+        setItems(built.groups)
+        setToolMenus(built.toolMenus)
+        setAuthorIndex(built.authorIndex)
+        setSearch('')
+        setActivePage('root')
+        setOpen(prev => !prev)
       }
     }
 
-    document.addEventListener('storyboard:toggle-palette', handleToggleEvent)
     document.addEventListener('keydown', handleKeyDown)
     return () => {
-      document.removeEventListener('storyboard:toggle-palette', handleToggleEvent)
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [basePath])
 
-  // Listen for toggle events from Svelte CoreUIBar
+  // Listen for toggle/open events from toolbar buttons (e.g. CommandPaletteTrigger)
   useEffect(() => {
     function handleToggle() {
       setOpen(prev => {

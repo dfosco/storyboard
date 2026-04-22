@@ -665,15 +665,10 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
   useEffect(() => {
     function handleKeydown(e) {
       const hideKey = shortcutsConfig.hideChrome?.key || '.'
-      const openKey = shortcutsConfig.openCommandMenu?.key
 
       if (e.key === hideKey && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         toggleToolsVisibility()
-      }
-      if (openKey && e.key === openKey && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        document.dispatchEvent(new CustomEvent('storyboard:toggle-palette'))
       }
       for (const menu of cleanedMenus) {
         const shortcut = menu.shortcut

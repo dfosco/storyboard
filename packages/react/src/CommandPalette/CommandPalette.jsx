@@ -822,7 +822,7 @@ export default function StoryboardCommandPalette({ basePath }) {
             setItems(built.groups)
             setToolMenus(built.toolMenus)
             setAuthorIndex(built.authorIndex)
-        setHiddenFromSearchIds(built.hiddenFromSearchIds || new Set())
+            setHiddenFromSearchIds(built.hiddenFromSearchIds || new Set())
             setSearch('')
             setActivePage('root')
           }, 0)
@@ -836,7 +836,7 @@ export default function StoryboardCommandPalette({ basePath }) {
       setItems(built.groups)
       setToolMenus(built.toolMenus)
       setAuthorIndex(built.authorIndex)
-        setHiddenFromSearchIds(built.hiddenFromSearchIds || new Set())
+      setHiddenFromSearchIds(built.hiddenFromSearchIds || new Set())
       setSearch('')
       setActivePage('root')
       setOpen(true)
@@ -934,8 +934,21 @@ export default function StoryboardCommandPalette({ basePath }) {
       })
     }
 
+    // Strip items hidden from search
+    if (hiddenFromSearchIds.size > 0) {
+      for (const group of result) {
+        group.items = group.items.filter(item => {
+          for (const toolId of hiddenFromSearchIds) {
+            if (item.id?.includes(toolId)) return false
+          }
+          return true
+        })
+      }
+      return result.filter(g => g.items.length > 0)
+    }
+
     return result
-  }, [items, search, subPageGroups, authorIndex])
+  }, [items, search, subPageGroups, authorIndex, hiddenFromSearchIds])
 
   // Remove consecutive separators and leading/trailing separators
   const deduplicatedItems = useMemo(() => {

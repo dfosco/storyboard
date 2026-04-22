@@ -95,6 +95,7 @@ function resolveCommandConfig(cfg) {
       modes: tool.modes || ['*'],
       toolKey,
       localOnly: !tool.prod,
+      hideFromCommandPaletteSearch: tool.hideFromCommandPaletteSearch || false,
     })
   }
 

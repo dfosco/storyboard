@@ -194,6 +194,7 @@ export function getActionsForMode(mode) {
       url: a.url || null,
       toolKey: a.toolKey || null,
       localOnly: a.localOnly || false,
+      hideFromCommandPaletteSearch: a.hideFromCommandPaletteSearch || false,
       handler,
       active,
     }

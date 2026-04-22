@@ -55,6 +55,9 @@ export function buildCommandItems(mode, basePath) {
       if (state === 'disabled' || state === 'hidden') continue
     }
 
+    // Skip items hidden from search
+    if (action.hideFromCommandPaletteSearch) continue
+
     if (action.type === 'submenu') {
       // Flatten submenu children into individual items
       const children = getActionChildren(action.id)

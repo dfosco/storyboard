@@ -8,6 +8,13 @@ import { useState, useEffect, useMemo } from 'react'
 import { GitBranchIcon } from '@primer/octicons-react'
 import css from './BranchBar.module.css'
 
+/** Check if we're in local dev mode (respects ?prodMode simulation). */
+function checkLocalDev() {
+  if (typeof window === 'undefined') return false
+  if (new URLSearchParams(window.location.search).has('prodMode')) return false
+  return window.__SB_LOCAL_DEV__ === true
+}
+
 export default function BranchBar({ basePath }) {
   const [hidden, setHidden] = useState(false)
 
@@ -22,7 +29,7 @@ export default function BranchBar({ basePath }) {
     return m ? m[1] : 'main'
   }, [basePath])
 
-  const isLocalDev = import.meta.env.DEV
+  const isLocalDev = checkLocalDev()
   const isOnBranch = currentBranch !== 'main'
 
   useEffect(() => {

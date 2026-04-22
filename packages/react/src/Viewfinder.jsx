@@ -1357,15 +1357,19 @@ export default function Viewfinder({
   }, [])
 
   // Counts
+  const visibleItems = useMemo(() => 
+    hiddenItems.size > 0 ? allItems.filter(i => !hiddenItems.has(i.id)) : allItems
+  , [allItems, hiddenItems])
+
   const counts = useMemo(() => ({
-    all: allItems.length,
-    prototypes: allItems.filter(i => i.type === 'prototype').length,
-    canvases: allItems.filter(i => i.type === 'canvas').length,
-    components: allItems.filter(i => i.type === 'component').length,
-  }), [allItems])
+    all: visibleItems.length,
+    prototypes: visibleItems.filter(i => i.type === 'prototype').length,
+    canvases: visibleItems.filter(i => i.type === 'canvas').length,
+    components: visibleItems.filter(i => i.type === 'component').length,
+  }), [visibleItems])
 
   // Starred items for sidebar
-  const starredItems = useMemo(() => allItems.filter(i => starred.has(i.id)), [allItems, starred])
+  const starredItems = useMemo(() => visibleItems.filter(i => starred.has(i.id)), [visibleItems, starred])
 
   const pageTitle = NAV_ITEMS.find(n => n.id === activeNav)?.label || 'All artifacts'
 

@@ -1,0 +1,1 @@
+var n=Object.defineProperty;var t=(o,r)=>n(o,"name",{value:r,configurable:!0});import{j as s}from"./vendor-primer-bJ87WeS2.js";import{S as u}from"./dropdown-menu-group-heading-B4Kr1vSP.js";function i({children:o,...r}){return s.jsx(u,{...r,children:o})}t(i,"DropdownMenuSub");export{i as D};

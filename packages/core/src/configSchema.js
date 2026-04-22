@@ -16,9 +16,19 @@
  */
 
 /**
+ * @typedef {object} CanvasTerminalConfig
+ * @property {number}  [fontSize]    — terminal font size
+ * @property {string}  [fontFamily]  — terminal font family
+ * @property {string}  [prompt]      — shell prompt string
+ * @property {string|null} [startupCommand] — skip welcome screen: "copilot", "shell", or a custom command. null shows welcome.
+ * @property {object|null} [defaultStartupSequence] — sequence of steps to run after terminal opens
+ */
+
+/**
  * @typedef {object} CanvasConfig
  * @property {PasteRule[]} pasteRules       — URL→widget conversion rules (evaluated in order, first match wins)
  * @property {{ embedBehavior: string, ghGuard: string }} github — GitHub-specific embed settings
+ * @property {CanvasTerminalConfig} [terminal] — terminal widget settings
  */
 
 /**

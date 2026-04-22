@@ -341,21 +341,63 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
     }
     setTimeout(hideStatus, 200)
 
-    // For new sessions, run the welcome prompt script inside tmux
+    // For new sessions, either run startupCommand (skip welcome) or show the welcome screen
     if (isNewSession) {
-      const canvasArg = canvasId !== 'unknown' ? canvasId : ''
-      setTimeout(() => {
-        const nameArg = prettyName ? ` --name "${prettyName}"` : ''
-        const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}\r`
-        ptyProcess.write(cmd)
-      }, 600)
+      const startupCommand = termCfg.startupCommand ?? null
 
-      // Execute startup sequence if configured (after welcome completes)
+      if (startupCommand) {
+        // startupCommand is set — bypass welcome screen entirely
+        if (startupCommand === 'copilot') {
+          // Launch copilot with terminal-agent, then send /allow-all on after ready
+          setTimeout(() => {
+            ptyProcess.write('copilot --agent terminal-agent\r')
+          }, 600)
+          // Poll for copilot readiness, then send /allow-all on
+          let allowSent = false
+          const pollInterval = setInterval(() => {
+            if (allowSent) { clearInterval(pollInterval); return }
+            try {
+              const paneContent = execSync(
+                `tmux capture-pane -t "${tmuxName}" -p`,
+                { encoding: 'utf8', timeout: 1000 }
+              )
+              if (paneContent.includes('Environment loaded:') || paneContent.match(/^[>❯]\s*$/m)) {
+                allowSent = true
+                clearInterval(pollInterval)
+                setTimeout(() => {
+                  try {
+                    execSync(`tmux send-keys -t "${tmuxName}" -l "/allow-all on"`, { stdio: 'ignore' })
+                    execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+                  } catch {}
+                }, 500)
+              }
+            } catch {}
+          }, 1000)
+          setTimeout(() => { if (!allowSent) { allowSent = true; clearInterval(pollInterval) } }, 15000)
+        } else if (startupCommand === 'shell') {
+          // Plain shell — nothing to do, the pty already has a shell running
+        } else {
+          // Custom command — send it directly
+          setTimeout(() => {
+            ptyProcess.write(startupCommand + '\r')
+          }, 600)
+        }
+      } else {
+        // No startupCommand — show the welcome screen as before
+        const canvasArg = canvasId !== 'unknown' ? canvasId : ''
+        setTimeout(() => {
+          const nameArg = prettyName ? ` --name "${prettyName}"` : ''
+          const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}\r`
+          ptyProcess.write(cmd)
+        }, 600)
+      }
+
+      // Execute startup sequence if configured (after welcome or startupCommand)
       const startupSeq = termCfg.defaultStartupSequence
       if (startupSeq?.steps?.length) {
         setTimeout(() => {
           executeStartupSequence(tmuxName, ws, startupSeq)
-        }, 1500)
+        }, startupCommand ? 1500 : 1500)
       }
     }
 

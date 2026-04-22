@@ -6,6 +6,7 @@
  */
 
 import React, { useSyncExternalStore } from 'react'
+import './ModeSwitch.css'
 import { modeState, switchMode } from '../stores/modeStore.js'
 
 function subscribeModeState(callback) {

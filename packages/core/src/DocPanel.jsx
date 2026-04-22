@@ -7,6 +7,7 @@
  *   GET /_storyboard/docs/repo   → { owner, name }
  */
 
+import './DocPanel.css'
 import React, { useState, useEffect, useMemo } from 'react'
 import { marked } from 'marked'
 import octicons from '@primer/octicons'

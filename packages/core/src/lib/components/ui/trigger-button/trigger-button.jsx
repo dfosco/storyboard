@@ -1,3 +1,4 @@
+import './trigger-button.css';
 import { useMemo } from "react";
 import { cn } from "../../../utils/index.js";
 import { registerSmoothCorners } from '../../../../smoothCorners.js';

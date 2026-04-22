@@ -1,3 +1,4 @@
+import './AutosyncMenuButton.css';
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
 import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'

@@ -4,6 +4,7 @@
  * Uses mouseMode for element selection and fiberWalker for component introspection.
  */
 
+import './InspectorPanel.css'
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import octicons from '@primer/octicons'
 import { inspectElement, inspectElementChain } from './inspector/fiberWalker.js'

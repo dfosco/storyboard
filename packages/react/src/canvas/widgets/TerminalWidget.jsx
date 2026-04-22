@@ -37,9 +37,12 @@ function getWsUrl(sessionId, prettyName) {
   return url
 }
 
-function calcDimensions(widthPx, heightPx) {
-  const cellWidth = 7.8
-  const cellHeight = 17
+function calcDimensions(widthPx, heightPx, fontSize = 13) {
+  // Cell dimensions scale proportionally with font size.
+  // Base measurements at 13px: ~7.8px wide, ~17px tall.
+  const scale = fontSize / 13
+  const cellWidth = 7.8 * scale
+  const cellHeight = 17 * scale
   const padding = 24
   const cols = Math.max(10, Math.floor((widthPx - padding) / cellWidth))
   const rows = Math.max(4, Math.floor((heightPx - padding) / cellHeight))
@@ -111,6 +114,7 @@ const DEFAULT_THEME = {
 
 export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizable }, ref) {
   const cfg = getTerminalConfig()
+  const fontSize = cfg.fontSize ?? 13
   const width = props?.width ?? cfg.defaultWidth ?? readProp(props, 'width', terminalSchema)
   const height = props?.height ?? cfg.defaultHeight ?? readProp(props, 'height', terminalSchema)
   const prettyName = props?.prettyName || null
@@ -177,7 +181,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           return
         }
 
-        const dims = calcDimensions(width, height)
+        const dims = calcDimensions(width, height, fontSize)
         const cfg = getTerminalConfig()
 
         term = new ghostty.Terminal({
@@ -265,7 +269,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   useEffect(() => {
     if (!termRef.current) return
     const timer = setTimeout(() => {
-      const dims = calcDimensions(width, height)
+      const dims = calcDimensions(width, height, fontSize)
       termRef.current?.resize?.(dims.cols, dims.rows)
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
@@ -280,7 +284,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     const timer = setTimeout(() => {
       const el = expandContainerRef.current
       if (!el) return
-      const dims = calcDimensions(el.clientWidth, el.clientHeight - 40)
+      const dims = calcDimensions(el.clientWidth, el.clientHeight - 40, fontSize)
       termRef.current?.resize?.(dims.cols, dims.rows)
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
@@ -295,7 +299,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   useEffect(() => {
     if (expanded || !termRef.current) return
     const timer = setTimeout(() => {
-      const dims = calcDimensions(width, height)
+      const dims = calcDimensions(width, height, fontSize)
       termRef.current?.resize?.(dims.cols, dims.rows)
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))

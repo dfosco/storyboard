@@ -80,7 +80,7 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
 
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
-      if (actionId === 'expand') { setExpanded(true); return true }
+      if (actionId === 'expand' || actionId === 'split-screen') { setExpanded(true); return true }
       return false
     },
   }), [])

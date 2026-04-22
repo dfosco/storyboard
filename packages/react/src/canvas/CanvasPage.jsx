@@ -6,11 +6,12 @@ import { shouldPreventCanvasTextSelection } from './textSelection.js'
 import { getCanvasThemeVars, getCanvasPrimerAttrs } from './canvasTheme.js'
 import { getWidgetComponent } from './widgets/index.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'
-import { getFeatures, isResizable, getAnchorState, canAcceptConnection } from './widgets/widgetConfig.js'
+import { getFeatures, isResizable, isExpandable, getAnchorState, canAcceptConnection } from './widgets/widgetConfig.js'
 import { createPasteContext, resolvePaste } from './widgets/pasteRules.js'
 import { getPasteRules } from '@dfosco/storyboard-core'
 import { registerSmoothCorners } from '@dfosco/storyboard-core/smooth-corners'
 import { isGitHubEmbedUrl } from './widgets/githubUrl.js'
+import { findConnectedSplitTarget } from './widgets/expandUtils.js'
 import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import useUndoRedo from './useUndoRedo.js'
@@ -319,7 +320,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
   // Dynamically adjust features based on widget state
   const features = useMemo(() => {
     const isGitHub = !!widget.props?.github
-    return rawFeatures.map((f) => {
+    const adjusted = rawFeatures.map((f) => {
       // Toggle collapse label and hide when content is short (no github = no collapse)
       if (f.action === 'toggle-collapse') {
         if (widget.type === 'link-preview' && !isGitHub) return null
@@ -333,7 +334,28 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
       if (f.action === 'refresh-github' && !isGitHub) return null
       return f
     }).filter(Boolean)
-  }, [rawFeatures, widget.props?.github, widget.props?.collapsed])
+
+    // Add dynamic "Split Screen" action when a connected split target exists
+    if (isExpandable(widget.type)) {
+      const hasConnected = Boolean(findConnectedSplitTarget(widget.id))
+      if (hasConnected) {
+        // Insert before the first menu-only feature
+        const insertIdx = adjusted.findIndex((f) => f.menu)
+        const splitFeature = {
+          id: 'split-screen',
+          type: 'action',
+          action: 'split-screen',
+          label: 'Split Screen',
+          icon: 'columns',
+          prod: true,
+        }
+        if (insertIdx >= 0) adjusted.splice(insertIdx, 0, splitFeature)
+        else adjusted.push(splitFeature)
+      }
+    }
+
+    return adjusted
+  }, [rawFeatures, widget.props?.github, widget.props?.collapsed, widget.type, widget.id])
 
   const handleAction = useCallback((actionId) => {
     if (actionId === 'delete') {

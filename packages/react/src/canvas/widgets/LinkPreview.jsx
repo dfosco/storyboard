@@ -256,7 +256,7 @@ export default forwardRef(function LinkPreview({ id, props, onUpdate, resizable 
 
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
-      if (actionId === 'expand') { setExpanded(true); return true }
+      if (actionId === 'expand' || actionId === 'split-screen') { setExpanded(true); return true }
       if (actionId === 'open-external') {
         if (url) window.open(url, '_blank', 'noopener')
         return true

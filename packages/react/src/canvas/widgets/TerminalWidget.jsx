@@ -143,7 +143,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
-      if (actionId === 'expand') setExpanded(true)
+      if (actionId === 'expand' || actionId === 'split-screen') setExpanded(true)
     },
   }), [setExpanded])
 

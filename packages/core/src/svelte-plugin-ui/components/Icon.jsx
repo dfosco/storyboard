@@ -188,6 +188,7 @@ export default function Icon({
     if (octicon) {
       const html = octicon.toSVG({
         width: size, height: size,
+        fill: 'currentColor',
         ...(label ? { 'aria-label': label } : { 'aria-hidden': 'true' }),
       })
       svgContent = <span dangerouslySetInnerHTML={{ __html: html }} />

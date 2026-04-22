@@ -317,6 +317,17 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
         if (!isNewSession) {
           execSync(`tmux set-option -t "${targetName}" mouse on 2>/dev/null`, { stdio: 'ignore' })
         }
+        // Update tmux session env vars so new shells (and agents reading $STORYBOARD_WIDGET_ID)
+        // always reflect the current widget identity — even after reassignment.
+        const tmuxEnvVars = {
+          STORYBOARD_WIDGET_ID: widgetId,
+          STORYBOARD_CANVAS_ID: canvasId,
+          STORYBOARD_BRANCH: branch,
+          STORYBOARD_SERVER_URL: serverUrl,
+        }
+        for (const [key, val] of Object.entries(tmuxEnvVars)) {
+          execSync(`tmux set-environment -t "${targetName}" ${key} "${val}" 2>/dev/null`, { stdio: 'ignore' })
+        }
       } catch {}
     }
     setTimeout(hideStatus, 200)

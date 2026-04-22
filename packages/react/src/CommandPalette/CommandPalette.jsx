@@ -308,7 +308,8 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
     if (!isLocalDev) return null
     const isCanvasRoute = typeof window !== 'undefined' && window.location.pathname.includes('/canvas/')
     if (!isCanvasRoute) return null
-    const items = Object.entries(widgetTypes).map(([type, def]) => ({
+    const hiddenTypes = new Set(['link-preview', 'image', 'figma-embed', 'codepen-embed', 'story', 'terminal-read'])
+    const items = Object.entries(widgetTypes).filter(([type]) => !hiddenTypes.has(type)).map(([type, def]) => ({
       id: `create-widget:${type}`,
       children: def.label,
       keywords: ['add', 'widget', 'create', type, def.label.toLowerCase()],

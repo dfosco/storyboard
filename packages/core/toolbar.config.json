@@ -21,7 +21,7 @@
       "handler": "core:hide-chrome",
       "modes": ["*"],
       "prod": true,
-      "shortcut": { "key": ".", "label": "⌘." },
+      "shortcut": { "key": ".", "label": "cmd + ." },
       "hideInCommandPalette": [".*"],
       "alwaysVisible": true
     },
@@ -82,7 +82,7 @@
       "excludeRoutes": ["^/$", "/viewfinder", "/canvas/", "/components/", "/notebook/"],
       "hideInCommandPalette": ["^/$", "/viewfinder", "/canvas/", "/components/", "/notebook/"],
       "meta": { "strokeWeight": 2, "scale": 1.1 },
-      "shortcut": { "key": "i", "label": "⌘I" }
+      "shortcut": { "key": "i", "label": "cmd + I" }
     },    
     "create": {
       "disabled": true,
@@ -194,7 +194,7 @@
       "handler": "core:docs",
       "modes": ["*"],
       "prod": true,
-      "shortcut": { "key": "d", "label": "⌘D" }
+      "shortcut": { "key": "d", "label": "cmd + D" }
     },    
     "devtools": {
       "label": "Devtools",
@@ -221,7 +221,7 @@
       "handler": "core:command-palette",
       "modes": ["*"],
       "prod": true,
-      "shortcut": { "key": "k", "label": "⌘K" },
+      "shortcut": { "key": "k", "label": "cmd + K" },
       "hideInCommandPalette": [".*"]
     },
     "hide-toolbars": {
@@ -231,7 +231,7 @@
       "modes": ["*"],
       "prod": true,
       "inlineAction": "toggle-chrome",
-      "shortcut": { "key": ".", "label": "⌘." }
+      "shortcut": { "key": ".", "label": "cmd + ." }
     },
     "pause-embeds": {
       "label": "Pause embed refreshes",

@@ -252,6 +252,7 @@ export function createCanvasHandler(ctx) {
           canvasId: canvasName,
           widgetId: tw.id,
           connectedWidgets,
+          widgetProps: tw.props || null,
         })
       }
     } catch (err) {

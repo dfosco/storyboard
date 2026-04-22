@@ -71,7 +71,7 @@ function atomicWrite(filePath, data) {
  * Write or update a terminal config file.
  * Called when a terminal widget is created or reconnected.
  */
-export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = null, serverUrl = null, tmuxName = null }) {
+export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = null, serverUrl = null, tmuxName = null, widgetProps = null }) {
   const fp = configPath(branch, canvasId, widgetId)
   const dir = dirname(fp)
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
@@ -105,6 +105,7 @@ export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = n
     serverUrl,
     workingDirectory: rootDir,
     deleted: false,
+    widgetProps: widgetProps || existing.widgetProps || null,
     connectedWidgets: existing.connectedWidgets || [],
     agentStatus: existing.agentStatus || null,
     updatedAt: new Date().toISOString(),
@@ -139,13 +140,14 @@ export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = n
  * Stores full widget objects (id, type, props, position) so agents
  * can read context directly without additional API calls.
  */
-export function updateTerminalConnections({ branch, canvasId, widgetId, connectedWidgets }) {
+export function updateTerminalConnections({ branch, canvasId, widgetId, connectedWidgets, widgetProps = null }) {
   const fp = configPath(branch, canvasId, widgetId)
   let config = {}
   try {
     config = JSON.parse(readFileSync(fp, 'utf8'))
   } catch { /* file may not exist yet */ }
 
+  if (widgetProps) config.widgetProps = widgetProps
   config.connectedWidgets = connectedWidgets || []
   config.updatedAt = new Date().toISOString()
 

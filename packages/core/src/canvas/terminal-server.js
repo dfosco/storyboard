@@ -228,7 +228,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
   const serverUrl = `http://localhost:${serverPort}`
 
   // Write terminal config for agent context
-  writeTermConfig({ branch, canvasId, widgetId, serverUrl, tmuxName })
+  writeTermConfig({ branch, canvasId, widgetId, serverUrl, tmuxName, widgetProps: prettyName ? { prettyName } : null })
 
   // Close any existing WS for this session (one viewer at a time)
   const existingWs = wsConnections.get(tmuxName)

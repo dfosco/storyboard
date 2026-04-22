@@ -210,7 +210,7 @@
     },
     "command-palette": {
       "ariaLabel": "Command palette",
-      "icon": "iconoir/select-point3d",
+      "icon": "iconoir/select-point-3d",
       "meta": { "strokeWeight": 2 },
       "render": "button",
       "surface": "command-toolbar",

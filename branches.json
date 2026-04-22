@@ -75,6 +75,7 @@
   {"folder":"branch--4.2.0-tmux-management","branch":"4.2.0-tmux-management"},
   {"folder":"branch--4.2.0-viewfinder-card-actions-menu","branch":"4.2.0-viewfinder-card-actions-menu"},
   {"folder":"branch--4.2.0","branch":"4.2.0"},
+  {"folder":"branch--4.3.0-prompt-widget","branch":"4.3.0-prompt-widget"},
   {"folder":"branch--auth-modal-baseui","branch":"auth-modal-baseui"},
   {"folder":"branch--branch-links-fix","branch":"branch-links-fix"},
   {"folder":"branch--canvas-collision-detection","branch":"canvas-collision-detection"},

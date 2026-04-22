@@ -215,8 +215,12 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
       iframe.className = styles.expandIframe
       iframe.removeAttribute('style')
       const target = modalContainerRef.current
-      if (target.moveBefore) target.moveBefore(iframe, target.firstChild)
-      else target.prepend(iframe)
+      try {
+        if (target.moveBefore) target.moveBefore(iframe, target.firstChild)
+        else target.prepend(iframe)
+      } catch {
+        target.prepend(iframe)
+      }
     } else if (!expanded && inlineContainerRef.current) {
       if (iframe._savedClassName !== undefined) {
         iframe.className = iframe._savedClassName
@@ -225,8 +229,12 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
         delete iframe._savedStyle
       }
       const target = inlineContainerRef.current
-      if (target.moveBefore) target.moveBefore(iframe, null)
-      else target.appendChild(iframe)
+      try {
+        if (target.moveBefore) target.moveBefore(iframe, null)
+        else target.appendChild(iframe)
+      } catch {
+        target.appendChild(iframe)
+      }
     }
   }, [expanded])
 
@@ -253,7 +261,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     handleAction(actionId) {
       if (actionId === 'edit') {
         setEditing(true)
-      } else if (actionId === 'expand') {
+      } else if (actionId === 'expand' || actionId === 'split-screen') {
         setExpanded(true)
       } else if (actionId === 'open-external') {
         if (rawSrc) window.open(rawSrc, '_blank', 'noopener')

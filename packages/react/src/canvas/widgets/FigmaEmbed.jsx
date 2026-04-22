@@ -157,7 +157,7 @@ export default forwardRef(function FigmaEmbed({ id: widgetId, props, onUpdate, r
     handleAction(actionId) {
       if (actionId === 'open-external') {
         if (url) window.open(url, '_blank', 'noopener')
-      } else if (actionId === 'expand') {
+      } else if (actionId === 'expand' || actionId === 'split-screen') {
         setShowIframe(true)
         setExpanded(true)
       }

@@ -29,8 +29,14 @@ export default function CanvasCreateMenu({ config = {}, data, canvasName = '', z
   const [stories, setStories] = useState([])
   const [storiesLoaded, setStoriesLoaded] = useState(false)
 
+  const showAgentsInMenu = useMemo(() => {
+    const canvasConfig = getConfig('canvas')
+    return canvasConfig?.showAgentsInAddMenu !== false
+  }, [])
+
   // Read agent configs from canvas.agents
   const agents = useMemo(() => {
+    if (!showAgentsInMenu) return []
     const canvasConfig = getConfig('canvas')
     const agentsConfig = canvasConfig?.agents
     if (!agentsConfig || typeof agentsConfig !== 'object') return []

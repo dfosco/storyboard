@@ -50,7 +50,8 @@
         "icon": "claude",
         "startupCommand": "claude --agent terminal-agent"
       }
-    }
+    },
+    "showAgentsInAddMenu": false
   },
   "customerMode": {
     "enabled": false,

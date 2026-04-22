@@ -9,8 +9,7 @@
       "toolIds": [
         { "id": "viewfinder", "label": "Homepage" },
         { "id": "theme", "label": "Switch Theme" },
-        { "id": "hide-toolbars", "label": "Hide Toolbars" },
-        { "id": "pause-embeds", "label": "Pause Embed Refreshes", "hideFromCommandPaletteSearch": true }
+        { "id": "hide-toolbars", "label": "Hide Toolbars" }
       ]
     },
     { "id": "sep0", "items": [] },

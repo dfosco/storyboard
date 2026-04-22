@@ -33,7 +33,8 @@
   background: #0d1117;
   border: 1px solid var(--borderColor-default, #30363d);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
-  padding: var(--base-size-24, 24px) var(--base-size-16, 16px);
+  padding: var(--base-size-8, 8px);
+  padding-bottom: var(--base-size-16, 16px);
 }
 
 .xtermContainer {

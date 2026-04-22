@@ -182,6 +182,10 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         term.open(containerRef.current)
         termRef.current = term
 
+        // [devlog] Write debug info directly into the terminal
+        const dbg = (msg) => term.write(`\x1b[2m[devlog] ${msg}\x1b[0m\r\n`)
+        dbg(`widget=${id} name=${prettyName || '(none)'} attempt=${connectAttempt}`)
+
         // SGR mouse wheel for tmux scroll in alternate screen
         term.attachCustomWheelEventHandler((e) => {
           if (!(term.wasmTerm?.isAlternateScreen?.() ?? false)) return false
@@ -202,6 +206,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
         ws.onopen = () => {
           if (disposed) return
+          dbg(`ws.onopen — connected`)
           setReady(true)
           setInteractive(true)
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
@@ -221,12 +226,14 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
         ws.onclose = () => {
           if (disposed) return
+          dbg(`ws.onclose — session ended`)
           setReady(false)
           setSessionEnded(true)
         }
 
         ws.onerror = () => {
           if (disposed) return
+          dbg(`ws.onerror`)
           setReady(false)
           setSessionEnded(true)
         }
@@ -235,7 +242,10 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           if (ws.readyState === WebSocket.OPEN) ws.send(data)
         })
       } catch (err) {
-        if (!disposed) setError(err.message || 'Failed to load terminal')
+        if (!disposed) {
+          dbg?.(`error: ${err.message}`)
+          setError(err.message || 'Failed to load terminal')
+        }
       }
     }
 

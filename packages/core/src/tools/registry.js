@@ -19,6 +19,7 @@ export const coreHandlers = {
   'hide-toolbars':      () => import('./handlers/hideToolbars.js'),
   'pause-embeds':       () => import('./handlers/pauseEmbeds.js'),
   'command-palette':    () => import('./handlers/commandPalette.js'),
+  'hide-chrome':        () => import('./handlers/hideChrome.js'),
 }
 
 // Keep legacy export name for backward compatibility

@@ -10,6 +10,7 @@ import { Button } from './lib/components/ui/button/index.js'
 import { Input } from './lib/components/ui/input/index.js'
 import { Label } from './lib/components/ui/label/index.js'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
+import { getConfig } from './configStore.js'
 
 const widgetTypes = [
   { type: 'sticky-note', label: 'Sticky Note' },
@@ -27,6 +28,20 @@ export default function CanvasCreateMenu({ config = {}, data, canvasName = '', z
   const [view, setView] = useState('menu')
   const [stories, setStories] = useState([])
   const [storiesLoaded, setStoriesLoaded] = useState(false)
+
+  // Read agent configs from canvas.agents
+  const agents = useMemo(() => {
+    const canvasConfig = getConfig('canvas')
+    const agentsConfig = canvasConfig?.agents
+    if (!agentsConfig || typeof agentsConfig !== 'object') return []
+    return Object.entries(agentsConfig).map(([id, cfg]) => ({
+      id,
+      label: cfg.label || id,
+      startupCommand: cfg.startupCommand || id,
+      defaultWidth: cfg.defaultWidth,
+      defaultHeight: cfg.defaultHeight,
+    }))
+  }, [])
 
   // Create form state
   const [createName, setCreateName] = useState('')
@@ -91,9 +106,9 @@ export default function CanvasCreateMenu({ config = {}, data, canvasName = '', z
     }
   }, [menuOpen, view])
 
-  function addWidget(type) {
+  function addWidget(type, props) {
     document.dispatchEvent(new CustomEvent('storyboard:canvas:add-widget', {
-      detail: { type, canvasName }
+      detail: { type, canvasName, props }
     }))
     setMenuOpen(false)
   }
@@ -195,6 +210,28 @@ export default function CanvasCreateMenu({ config = {}, data, canvasName = '', z
                 {wt.label}
               </DropdownMenu.Item>
             ))}
+
+            {agents.length > 0 && (
+              <>
+                <DropdownMenu.Separator />
+                <DropdownMenu.Label>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Icon name="agents" size={12} />
+                    Agents
+                  </span>
+                </DropdownMenu.Label>
+                {agents.map((agent) => (
+                  <DropdownMenu.Item key={agent.id} onClick={() => addWidget('agent', {
+                    agentId: agent.id,
+                    startupCommand: agent.startupCommand,
+                    ...(agent.defaultWidth ? { width: agent.defaultWidth } : {}),
+                    ...(agent.defaultHeight ? { height: agent.defaultHeight } : {}),
+                  })}>
+                    {agent.label}
+                  </DropdownMenu.Item>
+                ))}
+              </>
+            )}
 
             <DropdownMenu.Sub>
               <DropdownMenu.SubTrigger>Component</DropdownMenu.SubTrigger>

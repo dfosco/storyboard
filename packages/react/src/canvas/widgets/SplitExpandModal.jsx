@@ -20,7 +20,7 @@ function SecondaryPane({ widget }) {
 
   // Reparent terminal DOM into the pane
   useEffect(() => {
-    if ((widget.type !== 'terminal' && widget.type !== 'terminal-read') || !terminalRef.current) return
+    if ((widget.type !== 'terminal' && widget.type !== 'terminal-read' && widget.type !== 'agent') || !terminalRef.current) return
     cleanupRef.current = reparentTerminalInto(widget.id, terminalRef.current)
     return () => {
       cleanupRef.current?.()
@@ -38,7 +38,7 @@ function SecondaryPane({ widget }) {
   }
 
   // Terminal: reparent its DOM
-  if (widget.type === 'terminal' || widget.type === 'terminal-read') {
+  if (widget.type === 'terminal' || widget.type === 'terminal-read' || widget.type === 'agent') {
     return (
       <div className={styles.secondaryPane}>
         <div ref={terminalRef} className={styles.terminalContainer} />

@@ -5,22 +5,26 @@
     "command-palette": { "position": "command-menu", "layout": "list" }
   },
 
-  "command": {
-    "icon": "iconoir/key-command",
-    "meta": { "strokeWeight": 2 },
-    "shortcut": { "key": "k", "label": "⌘ + K to open" }
-  },
-
-  "shortcuts": {
-    "hideChrome": { "key": ".", "label": "⌘ + . to hide" }
-  },
-
   "highlighting": {
     "dark": "github-dark-dimmed",
     "light": "github"
   },
 
   "tools": {
+    "hide-chrome": {
+      "ariaLabel": "Toggle toolbars",
+      "icon": "iconoir/key-command",
+      "meta": { "strokeWeight": 2 },
+      "render": "button",
+      "surface": "command-toolbar",
+      "size": "icon-2xl",
+      "handler": "core:hide-chrome",
+      "modes": ["*"],
+      "prod": true,
+      "shortcut": { "key": ".", "label": "⌘." },
+      "hideInCommandPalette": [".*"],
+      "alwaysVisible": true
+    },
     "flows": {
       "label": "Flows",
       "ariaLabel": "Switch flow",
@@ -219,20 +223,6 @@
       "prod": true,
       "shortcut": { "key": "k", "label": "⌘K" },
       "hideInCommandPalette": [".*"]
-    },
-    "hide-chrome": {
-      "ariaLabel": "Toggle toolbars",
-      "icon": "iconoir/key-command",
-      "meta": { "strokeWeight": 2 },
-      "render": "button",
-      "surface": "command-toolbar",
-      "size": "icon-2xl",
-      "handler": "core:hide-chrome",
-      "modes": ["*"],
-      "prod": true,
-      "shortcut": { "key": ".", "label": "⌘." },
-      "hideInCommandPalette": [".*"],
-      "alwaysVisible": true
     },
     "hide-toolbars": {
       "label": "Hide toolbars",

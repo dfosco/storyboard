@@ -466,6 +466,7 @@
 .expandContainerSplit {
   flex: 1;
   min-width: 0;
+  height: 100%;
   position: relative;
   overflow: hidden;
   background: var(--bgColor-default, #ffffff);
@@ -479,18 +480,17 @@
 }
 
 .expandSplitBody {
-  width: 90vw;
-  height: 90vh;
+  position: fixed;
+  inset: 0;
   display: flex;
-  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
   animation: expandScaleIn 0.2s ease;
 }
 
 .expandSplitLeft {
   flex: 1;
   min-width: 0;
+  height: 100%;
   overflow: hidden;
   border-right: 1px solid var(--borderColor-muted, #d8dee4);
 }
@@ -498,6 +498,7 @@
 .expandSplitRight {
   flex: 1;
   min-width: 0;
+  height: 100%;
   overflow: hidden;
 }
 

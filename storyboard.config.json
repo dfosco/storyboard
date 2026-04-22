@@ -38,6 +38,16 @@
       "defaultStartupSequence": null,
       "defaultWidth": 1200,
       "defaultHeight": 450
+    },
+    "agents": {
+      "copilot": {
+        "label": "GitHub Copilot",
+        "startupCommand": "copilot"
+      },
+      "claude": {
+        "label": "Claude",
+        "startupCommand": "claude --dangerously-skip-permissions"
+      }
     }
   },
   "customerMode": {

@@ -28,13 +28,14 @@ function loadGhostty() {
   return ghosttyPromise
 }
 
-function getWsUrl(sessionId, prettyName) {
+function getWsUrl(sessionId, prettyName, startupCommand) {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
   const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
   const baseClean = base.endsWith('/') ? base : base + '/'
   const canvasId = window.__storyboardCanvasBridgeState?.canvasId || 'unknown'
   let url = `${protocol}//${location.host}${baseClean}_storyboard/terminal/${sessionId}?canvas=${encodeURIComponent(canvasId)}`
   if (prettyName) url += `&name=${encodeURIComponent(prettyName)}`
+  if (startupCommand) url += `&startupCommand=${encodeURIComponent(startupCommand)}`
   return url
 }
 
@@ -119,6 +120,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const width = props?.width ?? cfg.defaultWidth ?? readProp(props, 'width', terminalSchema)
   const height = props?.height ?? cfg.defaultHeight ?? readProp(props, 'height', terminalSchema)
   const prettyName = props?.prettyName || null
+  const startupCommand = props?.startupCommand || null
 
   const containerRef = useRef(null)
   const termRef = useRef(null)
@@ -212,7 +214,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           return true
         })
 
-        const url = getWsUrl(id, prettyName)
+        const url = getWsUrl(id, prettyName, startupCommand)
         ws = new WebSocket(url)
         wsRef.current = ws
 

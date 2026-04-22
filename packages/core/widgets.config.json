@@ -1060,6 +1060,93 @@
       },
       "interactGate": false
     },
+    "agent": {
+      "label": "Agent",
+      "icon": "agents",
+      "expandable": true,
+      "splitScreen": true,
+      "resize": {
+        "enabled": false,
+        "prod": false
+      },
+      "props": {
+        "agentId": {
+          "type": "text",
+          "label": "Agent",
+          "category": "settings",
+          "default": ""
+        },
+        "startupCommand": {
+          "type": "text",
+          "label": "Startup Command",
+          "category": "settings",
+          "default": ""
+        },
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "min": 300,
+          "default": 1200
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 200,
+          "default": 450
+        }
+      },
+      "features": [
+        {
+          "id": "expand",
+          "type": "action",
+          "action": "expand",
+          "label": "$label:expand",
+          "icon": "expand"
+        },
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy"
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      },
+      "interactGate": false
+    },
     "action": {
       "label": "Action",
       "icon": "⚡",

@@ -179,7 +179,7 @@ export default function SplitExpandModal({ expanded, onClose, widgetId, title, c
       onKeyDown={(e) => e.stopPropagation()}
       onWheel={(e) => e.stopPropagation()}
     >
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+      <div className={hasSplit ? styles.modalFullscreen : styles.modal} onClick={(e) => e.stopPropagation()}>
         {title && (
           <div className={styles.topBar}>
             <span className={styles.topBarTitle}>{title}</span>

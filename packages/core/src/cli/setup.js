@@ -5,7 +5,7 @@
  */
 
 import * as p from '@clack/prompts'
-import { existsSync, writeFileSync, mkdirSync } from 'fs'
+import { existsSync, writeFileSync, readFileSync, mkdirSync } from 'fs'
 import path from 'path'
 import { execSync } from 'child_process'
 import { generateCaddyfile, isCaddyInstalled, isCaddyRunning, startCaddy, reloadCaddy } from './proxy.js'
@@ -209,6 +209,28 @@ if (isInstalled('code')) {
   }
 
   p.log.success('Canvas asset directories ready')
+}
+
+// 7a. Scaffold .gitignore entries for private canvas images
+{
+  const gitignorePath = '.gitignore'
+  const privatePatterns = [
+    'src/canvas/images/~*',
+    'assets/canvas/images/~*',
+    'assets/canvas/snapshots/~*',
+  ]
+  if (existsSync(gitignorePath)) {
+    try {
+      let content = readFileSync(gitignorePath, 'utf-8')
+      const missing = privatePatterns.filter(p => !content.includes(p))
+      if (missing.length > 0) {
+        const block = '\n# Private canvas images (tilde prefix = not committed)\n' + missing.join('\n') + '\n'
+        content = content.trimEnd() + '\n' + block
+        writeFileSync(gitignorePath, content, 'utf-8')
+        p.log.success('Added private image patterns to .gitignore')
+      }
+    } catch { /* ignore */ }
+  }
 }
 
 // 7b. Copilot agents

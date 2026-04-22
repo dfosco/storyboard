@@ -48,8 +48,8 @@ agent-browser.json
 # Selected widgets bridge (real-time canvas selection for Copilot)
 .storyboard
 
-# Private canvas images (underscore prefix = not committed)
-src/canvas/images/_*
-assets/canvas/images/_*
-assets/canvas/snapshots/_*
+# Private canvas images (tilde prefix = not committed)
+src/canvas/images/~*
+assets/canvas/images/~*
+assets/canvas/snapshots/~*
 .sync-target

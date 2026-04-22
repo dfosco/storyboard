@@ -28,7 +28,7 @@
  *   POST   /github/embed — fetch GitHub issue/discussion/PR/comment metadata via gh
  *   POST   /image    — upload a pasted image to src/canvas/images/
  *   GET    /images/* — serve an image file from src/canvas/images/
- *   POST   /image/toggle-private — toggle _prefix on image filename
+ *   POST   /image/toggle-private — toggle ~prefix on image filename
  */
 
 import fs from 'node:fs'
@@ -1469,7 +1469,7 @@ export function Default() {
       return
     }
 
-    // POST /image/toggle-private — toggle underscore prefix on image filename
+    // POST /image/toggle-private — toggle tilde prefix on image filename
     if (routePath === '/image/toggle-private' && method === 'POST') {
       const { filename } = body
 
@@ -1483,8 +1483,8 @@ export function Default() {
         return
       }
 
-      const isPrivate = filename.startsWith('_')
-      const newFilename = isPrivate ? filename.slice(1) : `_${filename}`
+      const isPrivate = filename.startsWith('~')
+      const newFilename = isPrivate ? filename.slice(1) : `~${filename}`
       const oldPath = resolveImagePath(filename)
       if (!oldPath) {
         sendJson(res, 404, { error: 'Image not found' })

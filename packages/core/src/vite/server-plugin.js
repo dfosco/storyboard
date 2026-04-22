@@ -549,7 +549,7 @@ export default function storyboardServer() {
 
       // Emit canvas images so they're available in deployed (static) builds.
       // Dev server serves these dynamically; production needs the static files.
-      // Private images (prefixed with _) are excluded from the build.
+      // Private images (prefixed with ~) are excluded from the build.
       for (const dir of [
         path.join(root, 'assets', 'canvas', 'images'),
         path.join(root, 'assets', 'canvas', 'snapshots'),
@@ -558,7 +558,7 @@ export default function storyboardServer() {
           const imageFiles = await fs.promises.readdir(dir)
           const subdir = dir.endsWith('snapshots') ? 'snapshots' : 'images'
           for (const file of imageFiles) {
-            if (file.startsWith('_') || file.startsWith('.')) continue
+            if (file.startsWith('~') || file.startsWith('.')) continue
             try {
               const data = await fs.promises.readFile(path.join(dir, file))
               this.emitFile({

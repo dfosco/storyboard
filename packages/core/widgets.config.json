@@ -971,6 +971,64 @@
       },
       "interactGate": false
     },
+    "terminal-read": {
+      "label": "Terminal",
+      "icon": "⬛",
+      "resize": {
+        "enabled": false,
+        "prod": false
+      },
+      "props": {
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "min": 300,
+          "default": 800
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 200,
+          "default": 450
+        }
+      },
+      "features": [
+        {
+          "id": "expand",
+          "type": "action",
+          "action": "expand",
+          "label": "$label:expand",
+          "icon": "expand"
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      },
+      "interactGate": false
+    },
     "action": {
       "label": "Action",
       "icon": "⚡",

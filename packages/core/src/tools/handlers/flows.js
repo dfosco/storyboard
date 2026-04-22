@@ -63,6 +63,6 @@ export async function handler(ctx) {
 }
 
 export async function component() {
-  const mod = await import('../../ActionMenuButton.svelte')
+  const mod = await import('../../ActionMenuButton.jsx')
   return mod.default
 }

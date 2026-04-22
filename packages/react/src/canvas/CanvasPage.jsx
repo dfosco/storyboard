@@ -2059,13 +2059,14 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     if (!previous) return
     debouncedSave.cancel()
     debouncedSourceSave.cancel()
+    dirtyRef.current = true
     setLocalWidgets(previous.widgets)
     setLocalSources(previous.sources)
     setLocalConnectors(previous.connectors ?? [])
     queueWrite(() =>
-      updateCanvas(canvasId, { widgets: previous.widgets, sources: previous.sources, connectors: previous.connectors }).catch((err) =>
-        console.error('[canvas] Failed to persist undo:', err)
-      )
+      updateCanvas(canvasId, { widgets: previous.widgets, sources: previous.sources, connectors: previous.connectors })
+        .catch((err) => console.error('[canvas] Failed to persist undo:', err))
+        .finally(() => { dirtyRef.current = false })
     )
   }, [canvasId, debouncedSave, debouncedSourceSave, undoRedo])
 
@@ -2074,13 +2075,14 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     if (!next) return
     debouncedSave.cancel()
     debouncedSourceSave.cancel()
+    dirtyRef.current = true
     setLocalWidgets(next.widgets)
     setLocalSources(next.sources)
     setLocalConnectors(next.connectors ?? [])
     queueWrite(() =>
-      updateCanvas(canvasId, { widgets: next.widgets, sources: next.sources, connectors: next.connectors }).catch((err) =>
-        console.error('[canvas] Failed to persist redo:', err)
-      )
+      updateCanvas(canvasId, { widgets: next.widgets, sources: next.sources, connectors: next.connectors })
+        .catch((err) => console.error('[canvas] Failed to persist redo:', err))
+        .finally(() => { dirtyRef.current = false })
     )
   }, [canvasId, debouncedSave, debouncedSourceSave, undoRedo])
 

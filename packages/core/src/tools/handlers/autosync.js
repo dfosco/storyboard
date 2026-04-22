@@ -7,6 +7,6 @@
 export const id = 'autosync'
 
 export async function component() {
-  const mod = await import('../../AutosyncMenuButton.svelte')
+  const mod = await import('../../AutosyncMenuButton.jsx')
   return mod.default
 }

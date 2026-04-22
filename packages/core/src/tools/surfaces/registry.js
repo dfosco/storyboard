@@ -7,7 +7,7 @@
  * To add a new surface:
  * 1. Create a definition file in this directory
  * 2. Export it from this registry
- * 3. Add rendering logic in CoreUIBar.svelte
+ * 3. Add rendering logic in CoreUIBar.jsx
  */
 export { id as commandToolbar } from './mainToolbar.js'
 export { id as canvasToolbar } from './canvasToolbar.js'

@@ -1,12 +1,11 @@
 import { defineConfig } from 'vite'
 import path from 'path'
 import react from '@vitejs/plugin-react'
-import { svelte } from '@sveltejs/vite-plugin-svelte'
 import tailwindcss from '@tailwindcss/vite'
 import generouted from '@generouted/react-router/plugin'
 // In worktrees, npm workspace links point at the main worktree. Import
 // Vite plugins via relative paths so each worktree runs its own source.
-import storyboardData, { terminalSnapshotPlugin } from './packages/react/src/vite/data-plugin.js'
+import storyboardData from './packages/react/src/vite/data-plugin.js'
 import storyboardServer from './packages/core/src/vite/server-plugin.js'
 import postcssGlobalData from '@csstools/postcss-global-data'
 import postcssPresetEnv from 'postcss-preset-env'
@@ -75,8 +74,6 @@ export default defineConfig(() => {
         tailwindcss(),
         storyboardData(),
         storyboardServer(),
-        terminalSnapshotPlugin(),
-        svelte(),
         react(),
         generouted({
             source: {
@@ -151,7 +148,7 @@ export default defineConfig(() => {
         // Raised from 500 KB default to suppress the warning for that chunk.
         chunkSizeWarningLimit: 700,
         rollupOptions: {
-            // Core UI modules (loader.js, svelte) are dynamically imported for the
+            // Core UI modules (loader.js, ui components) are dynamically imported for the
             // externalized UI bundle build but also statically imported by core
             // exports. This is intentional — suppress the "won't move to another
             // chunk" noise that only appears in the source-repo build.

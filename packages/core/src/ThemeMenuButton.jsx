@@ -2,21 +2,22 @@ import { useState, useEffect } from 'react'
 import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
 import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
-import { themeState, setTheme, THEMES, themeSyncState, setThemeSyncTarget } from './stores/themeStore.js'
+import { themeState, setTheme, getTheme, THEMES, themeSyncState, getThemeSyncTargets, setThemeSyncTarget } from './stores/themeStore.js'
 
 export default function ThemeMenuButton({ config = {}, data, localOnly, tabindex = -1 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [canvasActive, setCanvasActive] = useState(false)
-  const [theme, setThemeState] = useState(themeState.theme)
-  const [syncState, setSyncState] = useState({ ...themeSyncState })
+  const [theme, setThemeState] = useState(getTheme)
+  const [syncState, setSyncState] = useState(getThemeSyncTargets)
 
   useEffect(() => {
-    // Subscribe to theme store changes
-    const interval = setInterval(() => {
-      setThemeState(themeState.theme)
-      setSyncState({ ...themeSyncState })
-    }, 100)
-    return () => clearInterval(interval)
+    const unsub = themeState.subscribe(s => setThemeState(s.theme))
+    return unsub
+  }, [])
+
+  useEffect(() => {
+    const unsub = themeSyncState.subscribe(s => setSyncState({ ...s }))
+    return unsub
   }, [])
 
   useEffect(() => {

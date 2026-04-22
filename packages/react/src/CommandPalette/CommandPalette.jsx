@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Command } from 'cmdk'
 import {
+  HomeIcon, SunIcon, ZapIcon, GearIcon, PlayIcon, PlusCircleIcon,
+  FileCodeIcon, ColumnsIcon, PackageIcon, StarFillIcon, ClockIcon,
+  TerminalIcon, PaintbrushIcon, EyeIcon, LinkIcon, HashIcon, CommandPaletteIcon,
+  GridIcon,
+} from '@primer/octicons-react'
+import {
   buildPrototypeIndex,
   listStories,
   getStoryData,
@@ -22,6 +28,59 @@ import CreateDialog from './CreateDialog.jsx'
 import BranchBar from '../BranchBar/BranchBar.jsx'
 import AuthModal from '../AuthModal/AuthModal.jsx'
 import './command-palette.css'
+
+// Icon size for all palette items
+const ICON_SIZE = 16
+const ICON_STYLE = { flexShrink: 0, color: 'var(--fgColor-muted, #656d76)' }
+
+// Map item types to Octicon components
+const TYPE_ICONS = {
+  prototype: FileCodeIcon,
+  canvas: ColumnsIcon,
+  story: PackageIcon,
+  starred: StarFillIcon,
+  recent: ClockIcon,
+  create: PlusCircleIcon,
+  command: ZapIcon,
+  link: LinkIcon,
+  home: HomeIcon,
+  theme: SunIcon,
+  terminal: TerminalIcon,
+}
+
+// Map toolbar tool icon names to Octicons (best-effort)
+const TOOL_ICON_MAP = {
+  'primer/sun': SunIcon,
+  'feather/fast-forward': PlayIcon,
+  'primer/comment': HashIcon,
+  'iconoir/square-dashed': EyeIcon,
+  'iconoir/plus-circle': PlusCircleIcon,
+  'iconoir/key-command': CommandPaletteIcon,
+  'primer/gear': GearIcon,
+  'primer/sync': ZapIcon,
+  'iconoir/grid-plus': GridIcon,
+  'primer/paintbrush': PaintbrushIcon,
+  'primer/eye': EyeIcon,
+  'primer/link': LinkIcon,
+}
+
+function ItemIcon({ type, toolIcon }) {
+  const IconComp = (toolIcon && TOOL_ICON_MAP[toolIcon]) || TYPE_ICONS[type]
+  if (!IconComp) return null
+  return <IconComp size={ICON_SIZE} style={ICON_STYLE} />
+}
+
+function AvatarIcon({ username }) {
+  return (
+    <img
+      src={`https://github.com/${username}.png?size=32`}
+      alt={username}
+      width={ICON_SIZE}
+      height={ICON_SIZE}
+      style={{ ...ICON_STYLE, borderRadius: '50%' }}
+    />
+  )
+}
 
 /**
  * Check if a tool should be hidden from the command palette on the current route.
@@ -292,11 +351,11 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
     const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
     if (!isLocalDev) return null
     const createItems = [
-      { id: 'create:canvas', children: 'Canvas', keywords: ['create', 'canvas', 'new', 'board'], showType: false, onClick: () => onCreateAction?.('Canvas') },
-      { id: 'create:prototype', children: 'Prototype', keywords: ['create', 'prototype', 'new', 'page'], showType: false, onClick: () => onCreateAction?.('Prototype') },
-      { id: 'create:component', children: 'Component', keywords: ['create', 'component', 'new', 'story'], showType: false, onClick: () => onCreateAction?.('Component') },
-      { id: 'create:flow', children: 'Prototype Flow', keywords: ['create', 'flow', 'new', 'data'], showType: false, onClick: () => onCreateAction?.('Flow') },
-      { id: 'create:page', children: 'Prototype Page', keywords: ['create', 'page', 'new'], showType: false, onClick: () => onCreateAction?.('Page') },
+      { id: 'create:canvas', children: 'Canvas', keywords: ['create', 'canvas', 'new', 'board'], itemType: 'create', onClick: () => onCreateAction?.('Canvas') },
+      { id: 'create:prototype', children: 'Prototype', keywords: ['create', 'prototype', 'new', 'page'], itemType: 'create', onClick: () => onCreateAction?.('Prototype') },
+      { id: 'create:component', children: 'Component', keywords: ['create', 'component', 'new', 'story'], itemType: 'create', onClick: () => onCreateAction?.('Component') },
+      { id: 'create:flow', children: 'Prototype Flow', keywords: ['create', 'flow', 'new', 'data'], itemType: 'create', onClick: () => onCreateAction?.('Flow') },
+      { id: 'create:page', children: 'Prototype Page', keywords: ['create', 'page', 'new'], itemType: 'create', onClick: () => onCreateAction?.('Page') },
     ]
     return { group: { heading: section.title, id: `cfg:${section.id}`, items: createItems } }
   }
@@ -312,7 +371,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
       id: `create-widget:${type}`,
       children: def.label,
       keywords: ['add', 'widget', 'create', type, def.label.toLowerCase()],
-      showType: false,
+      itemType: 'create',
       onClick: () => {
         document.dispatchEvent(new CustomEvent('storyboard:canvas:add-widget', { detail: { type } }))
       },
@@ -351,7 +410,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
         id: `starred:${id}`,
         children: artifact.name,
         keywords: ['starred', 'star', artifact.name.toLowerCase()],
-        showType: false,
+        itemType: artifact._type === 'canvas' ? 'canvas' : 'prototype',
         onClick: () => {
           if (artifact.isExternal) {
             window.open(route, '_blank')
@@ -482,6 +541,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
         id: `cfg:${section.id}:${item.id}`,
         children: item.name,
         keywords: [item.name, item.id, item.type],
+        itemType: item.type,
         onClick: () => {
           trackRecent(item.type, item.id, item.name)
           window.location.href = item.route

@@ -3,7 +3,7 @@
   position: relative;
 }
 [data-trigger-button] [data-slot="button-wrapper"] {
-  --sb--sc-border-color: var(--borderColor-default, #d1d9e0);
+  --sb--sc-border-color: var(--borderColor-emphasis, #636c76);
   --sb--sc-border-width: var(--sb--trigger-border-width, 3px);
 }
 /* Accent-colored border/gap on focus — follows the superellipse shape */

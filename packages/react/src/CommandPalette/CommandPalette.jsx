@@ -4,7 +4,7 @@ import {
   HomeIcon, SunIcon, ZapIcon, GearIcon, PlayIcon, PlusCircleIcon,
   FileCodeIcon, ColumnsIcon, PackageIcon, StarFillIcon, ClockIcon,
   TerminalIcon, PaintbrushIcon, EyeIcon, LinkIcon, HashIcon, CommandPaletteIcon,
-  GridIcon,
+  TableIcon,
 } from '@primer/octicons-react'
 import {
   buildPrototypeIndex,
@@ -58,7 +58,7 @@ const TOOL_ICON_MAP = {
   'iconoir/key-command': CommandPaletteIcon,
   'primer/gear': GearIcon,
   'primer/sync': ZapIcon,
-  'iconoir/grid-plus': GridIcon,
+  'iconoir/grid-plus': TableIcon,
   'primer/paintbrush': PaintbrushIcon,
   'primer/eye': EyeIcon,
   'primer/link': LinkIcon,
@@ -442,6 +442,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
             id: `cmd:${action.id}/${child.id || child.label}`,
             children: child.label,
             keywords: [action.label, child.label],
+            itemType: 'command',
             onClick: () => { if (child.execute) child.execute() },
           })
         }
@@ -450,6 +451,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
           id: `cmd:${action.id}`,
           children: action.label,
           keywords: [action.label],
+          itemType: 'link',
           onClick: () => {
             const url = action.url.startsWith('/') && !action.url.startsWith('//') ? prefix + action.url : action.url
             window.location.href = url
@@ -460,6 +462,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
           id: `cmd:${action.id}`,
           children: action.label,
           keywords: [action.label],
+          itemType: 'command',
           onClick: () => executeAction(action.id),
         })
       }
@@ -482,6 +485,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
           id: `cfg:${section.id}:${entry.type}:${entry.key}`,
           children: entry.label,
           keywords: [entry.type, entry.key, entry.label],
+          itemType: entry.type,
           onClick: () => {
             trackRecent(entry.type, entry.key, entry.label)
             const route = resolveRecentRoute(entry, prefix)
@@ -576,7 +580,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
       if (isHiddenInPalette(tool, basePath)) continue
-      entries.push({ toolId, tool, label: customLabel || tool.label || toolId })
+      entries.push({ toolId, tool, label: customLabel || tool.label || toolId, toolIcon: tool.icon })
     }
   } else {
     for (const [toolId, tool] of Object.entries(tools)) {
@@ -584,7 +588,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
       if (isHiddenInPalette(tool, basePath)) continue
-      entries.push({ toolId, tool, label: tool.label || toolId })
+      entries.push({ toolId, tool, label: tool.label || toolId, toolIcon: tool.icon })
     }
   }
 
@@ -593,12 +597,13 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
   const items = []
   const subPages = []
 
-  for (const { toolId, tool, label } of entries) {
+  for (const { toolId, tool, label, toolIcon } of entries) {
     // Inline actions
     if (tool.inlineAction === 'toggle-chrome') {
       const isHidden = document.documentElement.classList.contains('storyboard-chrome-hidden')
       items.push({
         id: `cfg:${section.id}:${toolId}`,
+        toolIcon,
         children: <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{label}</span>
           <span>{isHidden ? '✓' : ''}</span>
@@ -730,6 +735,15 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       keywords: [label, toolId].filter(Boolean),
       onClick: () => executeAction(toolId),
     })
+  }
+
+  // Add toolIcon to all items from their entry
+  const iconByToolId = new Map(entries.map(e => [e.toolId, e.toolIcon]))
+  for (const item of items) {
+    if (!item.toolIcon) {
+      const match = item.id?.match(/cfg:[^:]+:(.+)/)
+      if (match && iconByToolId.has(match[1])) item.toolIcon = iconByToolId.get(match[1])
+    }
   }
 
   return {
@@ -960,6 +974,7 @@ export default function StoryboardCommandPalette({ basePath }) {
       groups.push({
         heading: `Artifacts by @${author}`,
         id: `author:${author.toLowerCase()}`,
+        author,
         items: authorItems.map(item => ({
           id: `author:${item.id}`,
           label: item.name,
@@ -1032,7 +1047,7 @@ export default function StoryboardCommandPalette({ basePath }) {
                 !search && <Command.Separator key={list.id} />
               ) : (
                 <Command.Group key={list.id} heading={list.heading}>
-                  {list.items.map(({ id, children, keywords, onClick, ...rest }) => {
+                  {list.items.map(({ id, children, keywords, onClick, itemType, toolIcon, ...rest }) => {
                     if (hiddenFromSearchIds.size > 0) {
                       for (const toolId of hiddenFromSearchIds) {
                         if (id?.includes(toolId)) return null
@@ -1044,6 +1059,7 @@ export default function StoryboardCommandPalette({ basePath }) {
                         value={itemValue({ children, keywords })}
                         onSelect={() => onClick?.()}
                       >
+                        <ItemIcon type={itemType} toolIcon={toolIcon} />
                         {children}
                       </Command.Item>
                     )
@@ -1079,6 +1095,7 @@ export default function StoryboardCommandPalette({ basePath }) {
                     value={itemValue(item)}
                     onSelect={item.onSelect}
                   >
+                    <AvatarIcon username={group.author} />
                     <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>{item.label}</span>
                       <span style={{ fontSize: '12px', color: 'var(--fgColor-muted, #999)' }}>{item.type}</span>

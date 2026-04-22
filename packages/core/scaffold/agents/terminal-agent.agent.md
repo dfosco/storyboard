@@ -14,19 +14,9 @@ Before processing ANY user prompt, read the terminal config file for this sessio
 
 ## Step 1: Read terminal config
 
-First, refresh your identity by sourcing the env file for this tmux session:
+Read your config using your tmux session name (this is always reliable):
 ```bash
-TMUX_NAME=$(tmux display-message -p '#{session_name}' 2>/dev/null)
-source .storyboard/terminals/${TMUX_NAME}.env 2>/dev/null
-cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json
-```
-
-The tmux session name is stable and never changes — this always resolves to the correct widget identity, even after session reassignment.
-
-If the env file doesn't exist, fall back to the session registry:
-```bash
-STORYBOARD_WIDGET_ID=$(node -e "const d=JSON.parse(require('fs').readFileSync('.storyboard/terminal-sessions.json','utf8')); const s=d.find(e=>e.tmuxName==='$TMUX_NAME'); if(s) console.log(s.widgetId)")
-cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json
+cat .storyboard/terminals/$(tmux display-message -p '#{session_name}' 2>/dev/null).json
 ```
 
 If not found, tell the user — do not pick a random config.

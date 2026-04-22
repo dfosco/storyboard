@@ -74,7 +74,7 @@
   padding: 8px 10px;
   border-radius: 6px;
   font-size: 14px;
-  font-weight: 500;
+  /* font-weight: 500; */
   cursor: pointer;
   user-select: none;
   color: var(--fgColor-default, #1f2328);

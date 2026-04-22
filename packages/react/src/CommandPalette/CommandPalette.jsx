@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import 'react-cmdk/dist/cmdk.css'
 import * as ReactCmdk from 'react-cmdk'
 const CommandPalette = ReactCmdk.default || ReactCmdk
@@ -526,11 +526,19 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       if (state === 'disabled' || state === 'hidden') continue
       if (isHiddenInPalette(tool, basePath)) continue
       entries.push({ toolId, tool, label: tool.label || toolId, hideFromSearch: tool.hideFromCommandPaletteSearch || false })
+    }
+  }
+
+  if (entries.length === 0) return null
 
   const items = []
   const subPages = []
 
-  for (const { toolId, tool, label } of entries) {
+  for (const { toolId, tool, label, hideFromSearch } of entries) {
+    // When hideFromCommandPaletteSearch is set, clear keywords so the item
+    // appears in the default view but is excluded from search results.
+    const kw = (words) => hideFromSearch ? [] : words
+
     // Inline actions
     if (tool.inlineAction === 'toggle-chrome') {
       const isHidden = document.documentElement.classList.contains('storyboard-chrome-hidden')
@@ -540,7 +548,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
           <span>{label}</span>
           <span>{isHidden ? '✓' : ''}</span>
         </span>,
-        keywords: [label, toolId, 'hide', 'show', 'toolbar'].filter(Boolean),
+        keywords: kw([label, toolId, 'hide', 'show', 'toolbar'].filter(Boolean)),
         showType: false,
         onClick: () => {
           document.documentElement.classList.toggle('storyboard-chrome-hidden')
@@ -554,7 +562,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       items.push({
         id: `cfg:${section.id}:${toolId}`,
         children: label,
-        keywords: [label, toolId, 'command', 'palette', 'search'].filter(Boolean),
+        keywords: kw([label, toolId, 'command', 'palette', 'search'].filter(Boolean)),
         showType: false,
         onClick: () => {
           document.dispatchEvent(new CustomEvent('storyboard:open-palette'))
@@ -567,7 +575,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       items.push({
         id: `cfg:${section.id}:${toolId}`,
         children: label,
-        keywords: [label, toolId].filter(Boolean),
+        keywords: kw([label, toolId].filter(Boolean)),
         onClick: () => {
           const url = tool.url.startsWith('/') ? prefix + tool.url : tool.url
           window.location.href = url
@@ -586,7 +594,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
             id: pageId,
             label,
             title: label,
-            keywords: [label, toolId].filter(Boolean),
+            keywords: kw([label, toolId].filter(Boolean)),
             options: children.map(child => ({
               label: child.label,
               execute: child.execute,
@@ -597,7 +605,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
           items.push({
             id: `cfg:${section.id}:${toolId}`,
             children: label,
-            keywords: [label, toolId].filter(Boolean),
+            keywords: kw([label, toolId].filter(Boolean)),
             onClick: () => onNavigateToPage?.(pageId),
             closeOnSelect: false,
             showType: false,
@@ -614,7 +622,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
           id: pageId,
           label,
           title: label,
-          keywords: [label, toolId].filter(Boolean),
+          keywords: kw([label, toolId].filter(Boolean)),
           options: tool.options.map(opt => ({
             label: opt.label,
             // Lazy-execute via the handler's action system
@@ -625,7 +633,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
         items.push({
           id: `cfg:${section.id}:${toolId}`,
           children: label,
-          keywords: [label, toolId].filter(Boolean),
+          keywords: kw([label, toolId].filter(Boolean)),
           onClick: () => onNavigateToPage?.(pageId),
           closeOnSelect: false,
           showType: false,
@@ -638,7 +646,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       items.push({
         id: `cfg:${section.id}:${toolId}`,
         children: label,
-        keywords: [label, toolId].filter(Boolean),
+        keywords: kw([label, toolId].filter(Boolean)),
         showType: false,
         onClick: () => {
           setTimeout(() => {
@@ -655,7 +663,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       items.push({
         id: `cfg:${section.id}:${toolId}`,
         children: label,
-        keywords: [label, toolId].filter(Boolean),
+        keywords: kw([label, toolId].filter(Boolean)),
         onClick: () => { if (action) executeAction(action.id) },
       })
       continue
@@ -664,7 +672,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
     items.push({
       id: `cfg:${section.id}:${toolId}`,
       children: label,
-      keywords: [label, toolId].filter(Boolean),
+      keywords: kw([label, toolId].filter(Boolean)),
       onClick: () => executeAction(toolId),
     })
   }
@@ -855,18 +863,65 @@ export default function StoryboardCommandPalette({ basePath }) {
     }
   }, [])
 
-  // Force-focus the search input when the palette opens.
-  // headlessui's initialFocus + autoFocus can race with rAF/setTimeout open paths.
-  const focusRafRef = useRef(0)
+  // --- Keyboard navigation (bypasses react-cmdk's broken portal event bubbling) ---
+  // react-cmdk's onKeyDown sits on a wrapper div outside the headlessui Portal,
+  // so arrow key events from the portaled input never reach it under React 19.
+  // We handle keyboard nav via a document-level capture listener instead.
+  const [selectedIndex, setSelectedIndex] = useState(0)
+
   useEffect(() => {
-    cancelAnimationFrame(focusRafRef.current)
     if (!open) return
-    focusRafRef.current = requestAnimationFrame(() => {
+    setSelectedIndex(0)
+
+    function handleNavKeyDown(e) {
+      const items = document.querySelectorAll('.command-palette-list-item')
+      if (!items.length) return
+
+      if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'n') || (e.ctrlKey && e.key === 'j')) {
+        e.preventDefault()
+        e.stopPropagation()
+        setSelectedIndex(prev => {
+          const next = prev >= items.length - 1 ? 0 : prev + 1
+          items[next]?.scrollIntoView({ behavior: 'smooth', block: next ? 'center' : 'end' })
+          return next
+        })
+      } else if (e.key === 'ArrowUp' || (e.ctrlKey && e.key === 'p') || (e.ctrlKey && e.key === 'k' && !e.metaKey)) {
+        e.preventDefault()
+        e.stopPropagation()
+        setSelectedIndex(prev => {
+          const next = prev <= 0 ? items.length - 1 : prev - 1
+          items[next]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          return next
+        })
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        e.stopPropagation()
+        const current = document.querySelectorAll('.command-palette-list-item')[selectedIndex]
+        if (current) current.click()
+      }
+    }
+
+    // Force-focus the search input (headlessui initialFocus races under React 19)
+    const rafId = requestAnimationFrame(() => {
       const input = document.getElementById('command-palette-search-input')
       if (input) input.focus()
     })
-    return () => cancelAnimationFrame(focusRafRef.current)
-  }, [open])
+
+    document.addEventListener('keydown', handleNavKeyDown, true)
+    return () => {
+      cancelAnimationFrame(rafId)
+      document.removeEventListener('keydown', handleNavKeyDown, true)
+    }
+  }, [open, selectedIndex])
+
+  // Reset selection when search changes
+  useEffect(() => {
+    setSelectedIndex(0)
+  }, [search])
+
+  const handleChangeSelected = useCallback((index) => {
+    setSelectedIndex(index)
+  }, [])
 
   // Flatten sub-page options into searchable groups so they appear in root search
   const subPageGroups = useMemo(() => {
@@ -971,6 +1026,8 @@ export default function StoryboardCommandPalette({ basePath }) {
       search={search}
       isOpen={open}
       page={activePage}
+      selected={selectedIndex}
+      onChangeSelected={handleChangeSelected}
       placeholder={activePage === 'root'
         ? 'Search commands, prototypes, canvases, stories...'
         : `Search ${toolMenus.find(m => m.id === activePage)?.label || ''}...`

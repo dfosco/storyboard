@@ -15,6 +15,7 @@ export const coreHandlers = {
   'feature-flags':      () => import('./handlers/featureFlags.js'),
   autosync:             () => import('./handlers/autosync.js'),
   'canvas-add-widget':  () => import('./handlers/canvasAddWidget.js'),
+  'canvas-agents':      () => import('./handlers/canvasAgents.js'),
   'canvas-toolbar':     () => import('./handlers/canvasToolbar.js'),
   'hide-toolbars':      () => import('./handlers/hideToolbars.js'),
   'command-palette':    () => import('./handlers/commandPalette.js'),

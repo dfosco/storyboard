@@ -42,7 +42,6 @@ let _snapshotVersion = 0
  * @param {object} config - The unified config with all domains
  */
 export function initConfig(config) {
-  console.log('[devlog] initConfig commandPalette.sections:', config?.commandPalette?.sections?.length ?? 'MISSING', 'keys:', Object.keys(config?.commandPalette || {}))
   _baseConfig = config || {}
   _prototypeOverrides = {}
   _recompute()

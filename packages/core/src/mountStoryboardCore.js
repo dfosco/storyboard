@@ -152,8 +152,6 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   // Individual stores are initialized here for backward compatibility — consumers
   // that import directly from these stores still work.
   const uc = getConfig()
-  console.log('[devlog] mountStoryboardCore unified config keys:', Object.keys(uc))
-  console.log('[devlog] uc.commandPalette sections:', uc.commandPalette?.sections?.length ?? 'NONE')
 
   if (uc.featureFlags && Object.keys(uc.featureFlags).length > 0) {
     initFeatureFlags(uc.featureFlags)
@@ -183,12 +181,9 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   // If the unified store has commandPalette data, use it directly.
   // Otherwise fall back to legacy merging with bundled defaults.
   const ucCmdPalette = uc.commandPalette
-  console.log('[devlog] ucCmdPalette:', ucCmdPalette ? `${Object.keys(ucCmdPalette).length} keys` : 'falsy')
   if (ucCmdPalette && Object.keys(ucCmdPalette).length > 0) {
-    console.log('[devlog] Using unified config for command palette')
     initCommandPaletteConfig(ucCmdPalette)
   } else {
-    console.log('[devlog] Falling back to legacy command palette init')
     const defaultCmdPaletteConfig = (await import('../commandpalette.config.json')).default
     if (config.commandPalette) {
       const merged = { ...defaultCmdPaletteConfig, ...config.commandPalette }

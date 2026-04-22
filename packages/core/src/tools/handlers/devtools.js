@@ -28,9 +28,7 @@ export async function handler(ctx) {
   return {
     getChildren: () => {
       const children = []
-      const canToggleProdMode = prodMode
-        && typeof window !== 'undefined'
-        && window.__SB_LOCAL_DEV__ === true
+      const canToggleProdMode = prodMode && typeof window !== 'undefined'
 
       if (canToggleProdMode) {
         children.push({

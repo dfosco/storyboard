@@ -190,6 +190,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         })
 
         term.open(containerRef.current)
+        // Prevent ghostty-web's auto-focus from scrolling the canvas viewport
+        term.blur?.()
         termRef.current = term
 
         // SGR mouse wheel for tmux scroll in alternate screen
@@ -213,7 +215,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         ws.onopen = () => {
           if (disposed) return
           setReady(true)
-          setInteractive(true)
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
         }
 
@@ -285,7 +286,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
       }
       setInteractive(true)
-      termRef.current?.focus?.()
+      termRef.current?.focus?.({ preventScroll: true })
     }, 100)
     return () => clearTimeout(timer)
   }, [expanded])

@@ -12,7 +12,6 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte'
   import './core-ui-colors.css'
-  import CommandPalette from './CommandPalette.svelte'
   import * as Panel from './lib/components/ui/panel/index.js'
   import PwaInstallBanner from './PwaInstallBanner.svelte'
   import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
@@ -63,7 +62,6 @@
   let visible = $state(true)
   // Hide the entire toolbar when loaded inside a prototype embed iframe
   const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')
-  let commandMenuOpen = $state(false)
   let toolComponents: Record<string, any> = $state({})
   let toolData: Record<string, any> = $state({})
   let navVersion = $state(0)
@@ -244,20 +242,20 @@
     return result
   })
 
-  // Total toolbar item count (visible menus + command menu if present)
+  // Total toolbar item count (visible menus)
   const toolbarItemCount = $derived(
-    cleanedMenus.filter(m => m.render !== 'separator').length + (commandMenuConfig ? 1 : 0)
+    cleanedMenus.filter(m => m.render !== 'separator').length
   )
 
-  // Command menu is always the last item (rightmost)
-  const commandMenuIndex = $derived(
-    commandMenuConfig ? cleanedMenus.filter(m => m.render !== 'separator').length : -1
+  // Last tool is the default tabbable item
+  const lastToolIndex = $derived(
+    cleanedMenus.filter(m => m.render !== 'separator').length - 1
   )
 
   function getTabindex(index: number): number {
     if (activeToolbarIndex < 0) {
-      // No item focused yet — make the last item (command menu) tabbable as default
-      return index === toolbarItemCount - 1 ? 0 : -1
+      // No item focused yet — make the last item tabbable as default
+      return index === lastToolIndex ? 0 : -1
     }
     return index === activeToolbarIndex ? 0 : -1
   }
@@ -744,59 +742,68 @@
   >
     {#if visible && !isMobileState}
       {#each cleanedMenus as menu, i (menu.key)}
-        {#if menu.render === 'separator'}
-          <div class="toolbar-separator" aria-hidden="true"></div>
-        {:else}
-          <Tooltip.Root>
-            <Tooltip.Trigger>
-              {#if menu.render === 'sidepanel'}
-                {@const toolState = getToolbarToolState(menu.key)}
-                <TriggerButton
-                  active={$sidePanelState.open && $sidePanelState.activeTab === menu.sidepanel}
-                  inactive={toolState === 'inactive'}
-                  dimmed={toolState === 'dimmed'}
-                  localOnly={isToolbarToolLocalOnly(menu.key)}
-                  size="icon-xl"
-                  aria-label={menu.ariaLabel || menu.key}
-                  tabindex={getTabindex(i)}
-                  onfocus={() => { activeToolbarIndex = i }}
-                  onclick={() => togglePanel(menu.sidepanel)}
-                >
-                  <Icon name={menu.icon || menu.key} size={16} {...(menu.meta || {})} />
-                </TriggerButton>
-              {:else if toolComponents[menu.key]}
-                {@const toolState = getToolbarToolState(menu.key)}
-                {@const ToolComponent = toolComponents[menu.key]}
-                <span
-                  data-tool-state={toolState}
-                  data-local-only={isToolbarToolLocalOnly(menu.key) || undefined}
-                  class={toolState === 'inactive' ? 'tool-inactive' : toolState === 'dimmed' ? 'tool-dimmed' : ''}
-                >
-                  <ToolComponent
-                    config={menu}
-                    data={toolData[menu.key]}
-                    tabindex={getTabindex(i)}
+        {#if !menu.alwaysVisible}
+          {#if menu.render === 'separator'}
+            <div class="toolbar-separator" aria-hidden="true"></div>
+          {:else}
+            <Tooltip.Root>
+              <Tooltip.Trigger>
+                {#if menu.render === 'sidepanel'}
+                  {@const toolState = getToolbarToolState(menu.key)}
+                  <TriggerButton
+                    active={$sidePanelState.open && $sidePanelState.activeTab === menu.sidepanel}
+                    inactive={toolState === 'inactive'}
+                    dimmed={toolState === 'dimmed'}
                     localOnly={isToolbarToolLocalOnly(menu.key)}
-                    {basePath}
-                  />
-                </span>
-              {/if}
-            </Tooltip.Trigger>
-            <Tooltip.Content side="top">{menu.ariaLabel || menu.key}{menu.shortcut?.label ? ` · ${menu.shortcut.label}` : ''}</Tooltip.Content>
-          </Tooltip.Root>
+                    size="icon-xl"
+                    aria-label={menu.ariaLabel || menu.key}
+                    tabindex={getTabindex(i)}
+                    onfocus={() => { activeToolbarIndex = i }}
+                    onclick={() => togglePanel(menu.sidepanel)}
+                  >
+                    <Icon name={menu.icon || menu.key} size={16} {...(menu.meta || {})} />
+                  </TriggerButton>
+                {:else if toolComponents[menu.key]}
+                  {@const toolState = getToolbarToolState(menu.key)}
+                  {@const ToolComponent = toolComponents[menu.key]}
+                  <span
+                    data-tool-state={toolState}
+                    data-local-only={isToolbarToolLocalOnly(menu.key) || undefined}
+                    class={toolState === 'inactive' ? 'tool-inactive' : toolState === 'dimmed' ? 'tool-dimmed' : ''}
+                  >
+                    <ToolComponent
+                      config={menu}
+                      data={toolData[menu.key]}
+                      tabindex={getTabindex(i)}
+                      localOnly={isToolbarToolLocalOnly(menu.key)}
+                      {basePath}
+                    />
+                  </span>
+                {/if}
+              </Tooltip.Trigger>
+              <Tooltip.Content side="top">{menu.ariaLabel || menu.key}{menu.shortcut?.label ? ` · ${menu.shortcut.label}` : ''}</Tooltip.Content>
+            </Tooltip.Root>
+          {/if}
         {/if}
       {/each}
     {/if}
-    {#if commandMenuConfig}
-      <div class={visible ? '' : 'default-button-dimmed'}>
+    {#each cleanedMenus as menu, i (menu.key)}
+      {#if menu.alwaysVisible && toolComponents[menu.key]}
+        {@const ToolComponent = toolComponents[menu.key]}
         <Tooltip.Root>
           <Tooltip.Trigger>
-            <CommandPalette tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} oninterceptclick={!visible ? toggleToolsVisibility : undefined} />
+            <ToolComponent
+              config={menu}
+              data={toolData[menu.key]}
+              tabindex={getTabindex(i)}
+              localOnly={isToolbarToolLocalOnly(menu.key)}
+              {basePath}
+            />
           </Tooltip.Trigger>
-          <Tooltip.Content side="top">{visible ? '⌘. to hide' : '⌘. to show'}</Tooltip.Content>
+          <Tooltip.Content side="top">{menu.ariaLabel || menu.key}{menu.shortcut?.label ? ` · ${menu.shortcut.label}` : ''}</Tooltip.Content>
         </Tooltip.Root>
-      </div>
-    {/if}
+      {/if}
+    {/each}
   </div>
 {/if}
 

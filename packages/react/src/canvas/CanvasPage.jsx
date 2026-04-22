@@ -2370,7 +2370,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     <>
       <div className={styles.canvasTitle}>
         <a href={(import.meta.env?.BASE_URL || '/')} className={styles.canvasLogo} aria-label="Go to homepage">
-          <Icon name="primer/home" size={16} color="#fff" />
+          <Icon name="home" size={16} color="#fff" />
         </a>
         <CanvasTitleEditable
           canvasId={canvasId}

@@ -206,6 +206,7 @@ export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') 
 }
 
 function handleConnection(ws, widgetId, canvasId, prettyName) {
+  console.log(`[devlog:terminal-server] handleConnection widget=${widgetId} canvas=${canvasId}`)
   const branch = currentBranch
   const tmuxName = generateTmuxName(branch, canvasId, widgetId)
 
@@ -397,14 +398,19 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
 
   const generation = entry.generation
   ptyProcesses.set(tmuxName, ptyProcess)
+  console.log(`[devlog:terminal-server] pty spawned tmux=${tmuxName} isNew=${isNewSession} hasTmux=${hasTmux}`)
 
+  let dataCount = 0
   ptyProcess.onData((data) => {
+    dataCount++
+    if (dataCount <= 3) console.log(`[devlog:terminal-server] pty→ws data #${dataCount} len=${data.length}`)
     if (ws.readyState === ws.OPEN) {
       ws.send(data)
     }
   })
 
-  ptyProcess.onExit(() => {
+  ptyProcess.onExit((exitInfo) => {
+    console.log(`[devlog:terminal-server] pty exit`, exitInfo)
     ptyProcesses.delete(tmuxName)
     if (ws.readyState === ws.OPEN) {
       ws.close()

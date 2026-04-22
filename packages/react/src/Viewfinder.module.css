@@ -1440,3 +1440,137 @@
     display: none;
   }
 }
+
+/* Title row: flex container for title + inline star */
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Inline star button variants */
+.iconBtnInline {
+  composes: iconBtn;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  margin: -2px -4px -2px 0;
+}
+
+.iconBtnInlineActive {
+  composes: iconBtnInline;
+  color: var(--fgColor-attention, #f59e0b);
+}
+
+.iconBtnInlineActive:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--fgColor-attention, #d97706);
+}
+
+/* Card actions dropdown menu */
+.actionsMenuPositioner {
+  z-index: 200;
+}
+
+.actionsMenu {
+  background: var(--bgColor-default, #fff);
+  border: 1px solid var(--borderColor-default, #e5e5e5);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  min-width: 160px;
+  font-family: 'Mona Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.actionsMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--fgColor-default, #1a1a1a);
+  text-align: left;
+}
+
+.actionsMenuItem:hover {
+  background: var(--bgColor-neutral-muted, #f0f0f0);
+}
+
+.actionsMenuItemDanger {
+  composes: actionsMenuItem;
+  color: var(--fgColor-danger, #cf222e);
+}
+
+.actionsMenuItemDanger:hover {
+  background: var(--bgColor-danger-muted, #fff0f0);
+  color: var(--fgColor-danger, #cf222e);
+}
+
+/* Modal overlay and content */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
+.modalContent {
+  background: var(--bgColor-default, #fff);
+  border: 1px solid var(--borderColor-default, #e5e5e5);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  padding: 16px;
+  width: 380px;
+  max-width: 90vw;
+  font-family: 'Mona Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.modalCancelBtn {
+  padding: 8px 16px;
+  border: 1px solid var(--borderColor-default, #e5e5e5);
+  border-radius: 6px;
+  background: var(--bgColor-default, #fff);
+  color: var(--fgColor-default, #1a1a1a);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.modalCancelBtn:hover {
+  background: var(--bgColor-neutral-muted, #f0f0f0);
+}
+
+.deleteMessage {
+  font-size: 14px;
+  color: var(--fgColor-muted, #555);
+  line-height: 1.5;
+  margin: 12px 0;
+}
+
+.deleteConfirmBtn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--bgColor-danger-emphasis, #cf222e);
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.deleteConfirmBtn:hover {
+  background: var(--bgColor-danger-emphasis, #a40e26);
+}
+
+.deleteConfirmBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

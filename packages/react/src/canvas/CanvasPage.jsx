@@ -1516,14 +1516,15 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   }, [selectedWidgetIds, canvasId, getSelectedWidgetData])
 
   // Add a widget by type — used by CanvasControls and CoreUIBar event
-  const addWidget = useCallback(async (type) => {
+  const addWidget = useCallback(async (type, extraProps = {}) => {
     const defaultProps = schemas[type] ? getDefaults(schemas[type]) : {}
+    const mergedProps = { ...defaultProps, ...extraProps }
     const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
-    const pos = centerPositionForWidget(center, type, defaultProps)
+    const pos = centerPositionForWidget(center, type, mergedProps)
     try {
       const result = await addWidgetApi(canvasId, {
         type,
-        props: defaultProps,
+        props: mergedProps,
         position: pos,
       })
       if (result.success && result.widget) {
@@ -1560,7 +1561,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   // Listen for CoreUIBar add-widget events
   useEffect(() => {
     function handleAddWidget(e) {
-      addWidget(e.detail.type)
+      addWidget(e.detail.type, e.detail.props)
     }
     function handleAddStoryWidget(e) {
       addStoryWidget(e.detail.storyId)

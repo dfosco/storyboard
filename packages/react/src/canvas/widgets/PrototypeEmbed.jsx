@@ -444,7 +444,7 @@ function PrototypeExpandModal({ expanded, onClose, modalContainerRef, widgetId }
     [hasSplit, widgetId, connectedWidget],
   )
   const secondaryUrl = useMemo(() => buildSecondaryIframeUrl(connectedWidget), [connectedWidget])
-  const isTerminalSecondary = connectedWidget?.type === 'terminal' || connectedWidget?.type === 'terminal-read'
+  const isTerminalSecondary = connectedWidget?.type === 'terminal' || connectedWidget?.type === 'terminal-read' || connectedWidget?.type === 'agent'
   const terminalRef = useRef(null)
   const cleanupRef = useRef(null)
 

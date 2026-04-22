@@ -1,15 +1,19 @@
 /**
- * Icon — React port of the Svelte Icon component.
+ * Icon — renders icons from multiple sources using namespaced names.
  *
- * Renders icons from multiple sources using namespaced names:
+ *   primer/    → Primer Octicons (fill-based)
+ *   feather/   → Feather Icons (stroke-based)
  *   iconoir/   → Iconoir (stroke-based, manually registered)
- *   (no prefix) → Custom overrides (folder, folder-open, prototype, canvas, component)
+ *   (no prefix) → Custom (folder, prototype, canvas, component, etc.)
  *
  * Usage:
- *   <Icon name="folder" color="#54aeff" />
- *   <Icon name="iconoir/key-command" size={16} />
+ *   <Icon name="primer/repo" />
+ *   <Icon name="feather/flag" size={16} />
+ *   <Icon name="iconoir/key-command" size={16} strokeWeight={2} />
  *   <Icon name="prototype" size={14} />
- *   <Icon name="iconoir/plus-circle" size={20} strokeWeight={2} />
+ *   <Icon name="feather/tablet" rotate={90} />
+ *   <Icon name="primer/lock" offsetX={1} offsetY={-1} />
+ *   <Icon name="feather/arrow-right" flipX />
  */
 
 /* ─── Custom SVG paths (fill-based, no namespace prefix) ─── */
@@ -108,77 +112,119 @@ const iconoirIcons = {
 
 /* ─── React Component ─── */
 
+import octicons from '@primer/octicons'
+import feather from 'feather-icons'
+
 /**
  * @param {object} props
- * @param {string} props.name - Icon name. Use "iconoir/{name}" for iconoir, plain name for custom.
+ * @param {string} props.name - Namespaced icon name: primer/, feather/, iconoir/, or plain custom name
  * @param {number} [props.size=16]
  * @param {string} [props.label] - Accessible label (sets aria-label instead of aria-hidden)
  * @param {string} [props.color]
+ * @param {number} [props.offsetX=0]
+ * @param {number} [props.offsetY=0]
+ * @param {number} [props.rotate=0]
+ * @param {boolean} [props.flipX=false]
+ * @param {boolean} [props.flipY=false]
  * @param {number} [props.strokeWeight] - Override stroke width
+ * @param {number} [props.scale=1]
  * @param {string} [props.className]
  */
-export default function Icon({ name, size = 16, label, color, strokeWeight, className }) {
+export default function Icon({
+  name, size = 16, label, color,
+  offsetX = 0, offsetY = 0, rotate = 0,
+  flipX = false, flipY = false,
+  strokeWeight, scale = 1, className,
+}) {
   const source = name.includes('/') ? name.split('/')[0] : null
   const iconName = name.includes('/') ? name.slice(name.indexOf('/') + 1) : name
 
   const ariaProps = label ? { 'aria-label': label, role: 'img' } : { 'aria-hidden': true }
-  const style = color ? { color } : undefined
 
-  // Custom icons
+  // Build wrapper style with all transform props
+  const scaleX = (flipX ? -1 : 1) * scale
+  const scaleY = (flipY ? -1 : 1) * scale
+  const hasTransform = offsetX || offsetY || rotate || flipX || flipY || scale !== 1
+  const wrapperStyle = {
+    ...(color ? { color } : {}),
+    display: 'inline-flex',
+    ...(hasTransform ? {
+      translate: (offsetX || offsetY) ? `${offsetX}px ${offsetY}px` : undefined,
+      rotate: rotate ? `${rotate}deg` : undefined,
+      scale: (flipX || flipY || scale !== 1) ? `${scaleX} ${scaleY}` : undefined,
+    } : {}),
+  }
+
+  let svgContent = null
+
+  // Custom icons (no source prefix)
   const custom = !source ? customIcons[iconName] : null
   if (custom) {
-    // Simple fill-based path icon
     if (custom.path) {
-      return (
-        <span className={className} style={style}>
-          <svg width={size} height={size} viewBox={custom.viewBox} fill="currentColor" {...ariaProps}>
-            <path d={custom.path} />
-          </svg>
-        </span>
+      svgContent = (
+        <svg width={size} height={size} viewBox={custom.viewBox} fill="currentColor" {...ariaProps}>
+          <path d={custom.path} />
+        </svg>
       )
-    }
-    // Stroke-based icon (prototype, component)
-    if (custom.strokePaths) {
-      return (
-        <span className={className} style={style}>
-          <svg width={size} height={size} viewBox={custom.viewBox} fill="none" stroke="currentColor" strokeWidth={custom.strokeWidth || "1.5"} strokeLinecap="round" strokeLinejoin="round" {...ariaProps}>
-            {custom.strokePaths.map((d, i) => <path key={i} d={d} />)}
-          </svg>
-        </span>
+    } else if (custom.strokePaths) {
+      svgContent = (
+        <svg width={size} height={size} viewBox={custom.viewBox} fill="none" stroke="currentColor" strokeWidth={strokeWeight ?? custom.strokeWidth ?? '1.5'} strokeLinecap="round" strokeLinejoin="round" {...ariaProps}>
+          {custom.strokePaths.map((d, i) => <path key={i} d={d} />)}
+        </svg>
       )
-    }
-    // Mixed icon (canvas — stroke rect + fill paths)
-    if (custom.strokeRect || custom.fillPaths) {
-      return (
-        <span className={className} style={style}>
-          <svg width={size} height={size} viewBox={custom.viewBox} fill="none" stroke="currentColor" strokeWidth="2" {...ariaProps}>
-            {custom.strokeRect && <rect {...custom.strokeRect} />}
-            {custom.fillPaths?.map((d, i) => <path key={i} d={d} fill="currentColor" stroke="none" />)}
-          </svg>
-        </span>
+    } else if (custom.strokeRect || custom.fillPaths) {
+      svgContent = (
+        <svg width={size} height={size} viewBox={custom.viewBox} fill="none" stroke="currentColor" strokeWidth={strokeWeight ?? '2'} {...ariaProps}>
+          {custom.strokeRect && <rect {...custom.strokeRect} />}
+          {custom.fillPaths?.map((d, i) => <path key={i} d={d} fill="currentColor" stroke="none" />)}
+        </svg>
       )
     }
   }
 
+  // Primer Octicons
+  if (!svgContent && source === 'primer') {
+    const octicon = octicons[iconName]
+    if (octicon) {
+      const html = octicon.toSVG({
+        width: size, height: size,
+        ...(label ? { 'aria-label': label } : { 'aria-hidden': 'true' }),
+      })
+      svgContent = <span dangerouslySetInnerHTML={{ __html: html }} />
+    }
+  }
+
+  // Feather Icons
+  if (!svgContent && source === 'feather') {
+    const icon = feather.icons[iconName]
+    if (icon) {
+      const html = icon.toSvg({
+        width: size, height: size,
+        'stroke-width': strokeWeight ?? 2,
+        ...(label ? { 'aria-label': label } : { 'aria-hidden': 'true' }),
+      })
+      svgContent = <span dangerouslySetInnerHTML={{ __html: html }} />
+    }
+  }
+
   // Iconoir icons
-  const iconoir = source === 'iconoir' ? iconoirIcons[iconName] : null
-  if (iconoir) {
-    const sw = strokeWeight ?? iconoir.strokeWidth
-    return (
-      <span className={className} style={style}>
+  if (!svgContent && source === 'iconoir') {
+    const iconoir = iconoirIcons[iconName]
+    if (iconoir) {
+      const sw = strokeWeight ?? iconoir.strokeWidth
+      svgContent = (
         <svg
-          width={size}
-          height={size}
-          viewBox={iconoir.viewBox}
+          width={size} height={size} viewBox={iconoir.viewBox}
           fill={iconoir.fill ? 'currentColor' : 'none'}
           strokeWidth={iconoir.fill ? undefined : sw}
           {...ariaProps}
           dangerouslySetInnerHTML={{ __html: iconoir.content }}
         />
-      </span>
-    )
+      )
+    }
   }
 
-  // Unknown icon
-  return null
+  if (!svgContent) return null
+
+  return <span className={className} style={wrapperStyle}>{svgContent}</span>
 }

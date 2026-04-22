@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
 import { getTerminalConfig } from '@dfosco/storyboard-core'
+import { useOverride } from '../../hooks/useOverride.js'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './TerminalWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
@@ -123,7 +124,12 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const [sessionEnded, setSessionEnded] = useState(false)
   const [connectAttempt, setConnectAttempt] = useState(0)
   const [interactive, setInteractive] = useState(false)
-  const [expanded, setExpanded] = useState(false)
+  const [expandedOverride, setExpandedOverride, clearExpandedOverride] = useOverride(`_terminal_expanded_${id}`)
+  const expanded = expandedOverride === 'true'
+  const setExpanded = useCallback((val) => {
+    if (val) setExpandedOverride('true')
+    else clearExpandedOverride()
+  }, [setExpandedOverride, clearExpandedOverride])
   const [waking, setWaking] = useState(false)
   const [showDragHint, setShowDragHint] = useState(false)
   const expandContainerRef = useRef(null)
@@ -133,7 +139,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     handleAction(actionId) {
       if (actionId === 'expand') setExpanded(true)
     },
-  }), [])
+  }), [setExpanded])
 
   // Exit interactive on click outside
   useEffect(() => {

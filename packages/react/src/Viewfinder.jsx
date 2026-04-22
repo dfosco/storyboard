@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useRef, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
-import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, PlusIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon, StackIcon, GearIcon, TrashIcon, ShieldLockIcon, KebabHorizontalIcon, PencilIcon } from '@primer/octicons-react'
+import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, PlusIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon, StackIcon, TrashIcon, ShieldLockIcon, KebabHorizontalIcon, PencilIcon } from '@primer/octicons-react'
 import { Menu } from '@base-ui/react/menu'
 import { Dialog } from '@base-ui/react/dialog'
 import Icon from './Icon.jsx'
@@ -1465,9 +1465,6 @@ export default function Viewfinder({
                     <div className={css.userName}>{ghUser.login}</div>
                   </div>
                 </button>
-                <button className={css.gearBtn} onClick={() => setSettingsOpen(true)} aria-label="Settings">
-                  <GearIcon size={16} />
-                </button>
               </div>
             ) : (
               <div className={css.footerRow}>
@@ -1477,9 +1474,6 @@ export default function Viewfinder({
                     <div className={css.userName}>Sign in</div>
                     <div className={css.userSub}>Connect with GitHub</div>
                   </div>
-                </button>
-                <button className={css.gearBtn} onClick={() => setSettingsOpen(true)} aria-label="Settings">
-                  <GearIcon size={16} />
                 </button>
               </div>
             )}

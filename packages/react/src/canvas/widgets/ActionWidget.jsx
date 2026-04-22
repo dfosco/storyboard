@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
 import ResizeHandle from './ResizeHandle.jsx'
@@ -13,7 +13,7 @@ const actionSchema = schemas['action']
  * session via the /agent/spawn endpoint. Shows status indicators
  * (running/done/error) and allows peeking into errored sessions.
  */
-export default function ActionWidget({ id, props, onUpdate, resizable }) {
+export default forwardRef(function ActionWidget({ id, props, onUpdate, resizable }, ref) {
   const width = readProp(props, 'width', actionSchema)
   const height = readProp(props, 'height', actionSchema)
   const prompt = readProp(props, 'prompt', actionSchema) || ''
@@ -21,6 +21,13 @@ export default function ActionWidget({ id, props, onUpdate, resizable }) {
 
   const [status, setStatus] = useState('idle') // idle | running | done | error
   const [message, setMessage] = useState(null)
+
+  useImperativeHandle(ref, () => ({
+    handleAction(actionId) {
+      // ActionWidget doesn't handle expand/split-screen itself
+      return false
+    },
+  }), [])
 
   // Listen for agent status updates via Vite HMR custom events
   useEffect(() => {
@@ -190,4 +197,4 @@ export default function ActionWidget({ id, props, onUpdate, resizable }) {
       )}
     </div>
   )
-}
+})

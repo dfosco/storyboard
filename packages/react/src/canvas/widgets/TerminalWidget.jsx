@@ -5,7 +5,7 @@ import { schemas } from './widgetProps.js'
 import { getTerminalConfig } from '@dfosco/storyboard-core'
 import { ScreenNormalIcon } from '@primer/octicons-react'
 import { useOverride } from '../../hooks/useOverride.js'
-import { getSplitPaneLabel } from './expandUtils.js'
+import { getSplitPaneLabel, findConnectedSplitTarget, buildSecondaryIframeUrl as buildSplitUrl, getPaneOrder } from './expandUtils.js'
 import SplitScreenTopBar from './SplitScreenTopBar.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './TerminalWidget.module.css'
@@ -373,17 +373,20 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   }, [])
 
   const titleLabel = `Terminal · ${prettyName || '…'}`
-  const connectedEmbed = expanded ? findConnectedEmbed(id) : null
-  const embedUrl = expanded ? buildEmbedUrl(connectedEmbed) : null
-  const hasSplit = Boolean(embedUrl)
+  const connectedEmbed = expanded ? findConnectedSplitTarget(id) : null
+  const embedUrl = expanded ? buildSplitUrl(connectedEmbed) : null
+  const hasSplit = Boolean(connectedEmbed)
   const [activePane, setActivePane] = useState('left')
 
+  const paneOrder = useMemo(
+    () => (hasSplit ? getPaneOrder(id, connectedEmbed) : { primaryIsLeft: true }),
+    [hasSplit, id, connectedEmbed],
+  )
   const primaryWidget = useMemo(() => ({ type: 'terminal', props: { prettyName } }), [prettyName])
   const primaryLabel = useMemo(() => getSplitPaneLabel(primaryWidget), [primaryWidget])
   const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedEmbed), [connectedEmbed])
-  // Terminal is always on the left for now (matching existing behavior)
-  const leftLabel = primaryLabel
-  const rightLabel = secondaryLabel
+  const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel
+  const rightLabel = paneOrder.primaryIsLeft ? secondaryLabel : primaryLabel
 
   return (
     <>
@@ -491,11 +494,26 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           </div>
         )}
         <div className={`${styles.expandBody}${hasSplit ? ` ${styles.expandSplit}` : ''}`}>
-          <div ref={expandContainerRef} className={styles.expandTerminal} onPointerDown={() => setActivePane('left')} />
-          {hasSplit && (
-            <div className={styles.expandEmbed} onPointerDown={() => setActivePane('right')}>
-              <iframe src={embedUrl} className={styles.expandIframe} title="Connected embed" />
-            </div>
+          {hasSplit ? (
+            <>
+              {paneOrder.primaryIsLeft ? (
+                <>
+                  <div ref={expandContainerRef} className={styles.expandTerminal} onPointerDown={() => setActivePane('left')} />
+                  <div className={styles.expandEmbed} onPointerDown={() => setActivePane('right')}>
+                    {embedUrl ? <iframe src={embedUrl} className={styles.expandIframe} title="Connected embed" /> : null}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className={styles.expandEmbed} onPointerDown={() => setActivePane('left')}>
+                    {embedUrl ? <iframe src={embedUrl} className={styles.expandIframe} title="Connected embed" /> : null}
+                  </div>
+                  <div ref={expandContainerRef} className={styles.expandTerminal} onPointerDown={() => setActivePane('right')} />
+                </>
+              )}
+            </>
+          ) : (
+            <div ref={expandContainerRef} className={styles.expandTerminal} />
           )}
         </div>
       </div>,

@@ -59,7 +59,7 @@ const ImageWidget = forwardRef(function ImageWidget({ props, onUpdate, resizable
         const url = getImageUrl(src)
         const a = document.createElement('a')
         a.href = url
-        a.download = src.replace(/^_/, '')
+        a.download = src.replace(/^~/, '')
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)

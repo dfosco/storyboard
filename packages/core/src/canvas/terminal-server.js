@@ -328,6 +328,15 @@ function handleConnection(ws, widgetId, canvasId, prettyName) {
         for (const [key, val] of Object.entries(tmuxEnvVars)) {
           execSync(`tmux set-environment -t "${targetName}" ${key} "${val}" 2>/dev/null`, { stdio: 'ignore' })
         }
+        // Write a sourceable env file keyed by tmux session name.
+        // Running shells can source this to get fresh identity without restarting.
+        const envDir = join(cwd, '.storyboard', 'terminals')
+        try {
+          const envContent = Object.entries(tmuxEnvVars)
+            .map(([k, v]) => `export ${k}="${v}"`)
+            .join('\n') + '\n'
+          writeFileSync(join(envDir, `${targetName}.env`), envContent)
+        } catch { /* best effort */ }
       } catch {}
     }
     setTimeout(hideStatus, 200)

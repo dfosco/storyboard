@@ -14,19 +14,17 @@ Before processing ANY user prompt, read the terminal config file for this sessio
 
 ## Step 1: Read terminal config
 
-First, refresh env vars from tmux (they may be stale if the session was reassigned):
+First, refresh your identity by sourcing the env file for this tmux session:
 ```bash
-eval $(tmux show-environment -s 2>/dev/null | grep STORYBOARD)
-```
-
-Then read your config:
-```bash
+TMUX_NAME=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+source .storyboard/terminals/${TMUX_NAME}.env 2>/dev/null
 cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json
 ```
 
-If the env var is still empty, look up your widget ID from the tmux session registry:
+The tmux session name is stable and never changes — this always resolves to the correct widget identity, even after session reassignment.
+
+If the env file doesn't exist, fall back to the session registry:
 ```bash
-TMUX_NAME=$(tmux display-message -p '#{session_name}' 2>/dev/null)
 STORYBOARD_WIDGET_ID=$(node -e "const d=JSON.parse(require('fs').readFileSync('.storyboard/terminal-sessions.json','utf8')); const s=d.find(e=>e.tmuxName==='$TMUX_NAME'); if(s) console.log(s.widgetId)")
 cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json
 ```

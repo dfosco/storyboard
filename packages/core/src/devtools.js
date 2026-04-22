@@ -1,17 +1,17 @@
 /**
- * Storyboard Core UI Bar — Svelte-based floating toolbar.
+ * Storyboard Core UI Bar — React-based floating toolbar.
  *
- * Mounts the CoreUIBar Svelte component into the DOM.
+ * Mounts the CoreUIBar React component into the DOM.
  * Contains the command menu and mode-specific buttons (workshop, etc.).
- * Uses dynamic import() for the Svelte component to avoid
- * breaking non-Svelte test environments.
+ * Uses dynamic import() for the React component to avoid
+ * breaking non-React test environments.
  *
  * Usage:
  *   import { mountDevTools } from '@dfosco/storyboard-core'
  *   mountDevTools() // call once at app startup
  */
 
-let instance = null
+let root = null
 let wrapper = null
 let skipLink = null
 
@@ -35,8 +35,9 @@ export async function mountDevTools(options = {}) {
   // Skip mounting entirely when loaded inside a prototype embed iframe
   if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')) return
 
-  const { mount } = await import('svelte')
-  const { default: CoreUIBar } = await import('./CoreUIBar.svelte')
+  const { createElement } = await import('react')
+  const { createRoot } = await import('react-dom/client')
+  const { default: CoreUIBar } = await import('./CoreUIBar.jsx')
 
   // Inject skip link as the first child of <body> so it is the
   // first element in the tab order, regardless of where CoreUIBar
@@ -108,24 +109,21 @@ export async function mountDevTools(options = {}) {
   wrapper.id = 'sb-core-ui'
   container.appendChild(wrapper)
 
-  instance = mount(CoreUIBar, {
-    target: wrapper,
-    props: {
-      basePath,
-      toolbarConfig: options.toolbarConfig,
-      customHandlers: options.customHandlers,
-    },
-  })
+  root = createRoot(wrapper)
+  root.render(createElement(CoreUIBar, {
+    basePath,
+    toolbarConfig: options.toolbarConfig,
+    customHandlers: options.customHandlers,
+  }))
 }
 
 /**
  * Remove the Core UI Bar from the DOM.
  */
 export async function unmountDevTools() {
-  if (instance) {
-    const { unmount } = await import('svelte')
-    unmount(instance)
-    instance = null
+  if (root) {
+    root.unmount()
+    root = null
   }
   if (wrapper) { wrapper.remove(); wrapper = null }
   if (skipLink) { skipLink.remove(); skipLink = null }

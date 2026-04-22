@@ -10,7 +10,7 @@
  *   - serverSetup:   Called by the server plugin to register API routes
  */
 
-import CreatePrototypeForm from './CreatePrototypeForm.svelte'
+import CreatePrototypeForm from './CreatePrototypeForm.jsx'
 
 export const name = 'createPrototype'
 export const label = 'Create prototype'

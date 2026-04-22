@@ -120,12 +120,10 @@ export default function CommandMenu({
     }
 
     if (action.type === 'footer') {
-      return (
-        <React.Fragment key={key}>
-          <DropdownMenu.Separator />
-          <div className="px-2 py-1.5 text-xs text-muted-foreground font-mono">{action.label}</div>
-        </React.Fragment>
-      )
+      return [
+        <DropdownMenu.Separator key={`${key}-sep`} />,
+        <div key={key} className="px-2 py-1.5 text-xs text-muted-foreground font-mono">{action.label}</div>,
+      ]
     }
 
     if (action.type === 'toggle') {
@@ -250,7 +248,7 @@ export default function CommandMenu({
         </DropdownMenu.Trigger>
 
         <DropdownMenu.Content side="top" align="end" sideOffset={16} alignOffset={4} className="min-w-[200px]">
-          {resolvedActions.map((action, i) => renderAction(action, i))}
+          {resolvedActions.flatMap((action, i) => renderAction(action, i))}
           {(shortcuts.hideChrome || shortcuts.openCommandMenu) && (
             <>
               <DropdownMenu.Separator />

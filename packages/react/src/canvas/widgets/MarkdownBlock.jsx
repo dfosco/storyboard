@@ -124,12 +124,17 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
     }
   }, [canEdit, content])
 
+  const startEditing = useCallback(() => {
+    // Capture the preview height BEFORE React swaps to the textarea
+    if (blockRef.current) {
+      setEditHeight(blockRef.current.offsetHeight)
+      blockRef.current.dataset.scrollTop = blockRef.current.scrollTop
+    }
+    setEditing(true)
+  }, [])
+
   useEffect(() => {
     if (editingActive) {
-      // Capture the preview height before switching to editor
-      if (blockRef.current && !editHeight) {
-        setEditHeight(blockRef.current.offsetHeight)
-      }
       if (textareaRef.current) {
         // Place cursor at end and prevent scroll jump to top
         const len = textareaRef.current.value.length
@@ -143,7 +148,7 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
     } else {
       setEditHeight(null)
     }
-  }, [editingActive, editHeight])
+  }, [editingActive])
 
   return (
     <>
@@ -180,18 +185,11 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
             data-canvas-allow-text-selection={!canEdit ? '' : undefined}
             onClick={!canEdit ? (e) => e.stopPropagation() : undefined}
             onCopy={!canEdit ? handleReadOnlyCopy : undefined}
-            onDoubleClick={canEdit ? () => {
-              // Save scroll position before switching to editor
-              if (blockRef.current) blockRef.current.dataset.scrollTop = blockRef.current.scrollTop
-              setEditing(true)
-            } : undefined}
+            onDoubleClick={canEdit ? startEditing : undefined}
             role={canEdit ? 'button' : undefined}
             tabIndex={canEdit ? 0 : undefined}
             onKeyDown={canEdit ? (e) => {
-              if (e.key === 'Enter') {
-                if (blockRef.current) blockRef.current.dataset.scrollTop = blockRef.current.scrollTop
-                setEditing(true)
-              }
+              if (e.key === 'Enter') startEditing()
             } : undefined}
             dangerouslySetInnerHTML={{
               __html: renderedHtml || (canEdit

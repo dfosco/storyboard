@@ -22,6 +22,10 @@
   position: relative;
 }
 
+.barProd {
+  background: #1c2128;
+}
+
 .barTrigger {
   display: flex;
   align-items: center;

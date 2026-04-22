@@ -43,12 +43,14 @@ export default function BranchBar({ basePath }) {
 
   return (
     <div className={css.bar} data-branch-bar>
-      <div className={css.barInner}>
+      <div className={`${css.barInner}${isLocalDev ? '' : ` ${css.barProd}`}`}>
         <span className={css.barLabel}>
           <GitBranchIcon size={12} />
           <span className={css.barBranchName}>{currentBranch}</span>
-          <span className={css.barSeparator}>·</span>
-          <span>Local development</span>
+          {isLocalDev && <>
+            <span className={css.barSeparator}>·</span>
+            <span>Local development</span>
+          </>}
         </span>
         <div className={css.barActions}>
           <button className={css.barAction} onClick={hideChrome}>Hide</button>

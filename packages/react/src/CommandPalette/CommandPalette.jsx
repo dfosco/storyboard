@@ -58,7 +58,8 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
   const sections = config?.sections || []
   const groups = []
   const toolMenus = []
-  const usedToolIds = new Set() // Track tools already listed by source:"tools" sections
+  const usedToolIds = new Set()
+  const hiddenFromSearchIds = new Set()
   const basePath = prefix || '/'
 
   for (const section of sections) {
@@ -80,6 +81,7 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
       if (result?.group) groups.push(result.group)
       if (result?.subPages) toolMenus.push(...result.subPages)
       if (result?.usedToolIds) result.usedToolIds.forEach(id => usedToolIds.add(id))
+      if (result?.hiddenFromSearchIds) result.hiddenFromSearchIds.forEach(id => hiddenFromSearchIds.add(id))
       continue
     }
 
@@ -280,7 +282,7 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
     })
   }
 
-  return { groups, toolMenus }
+  return { groups, toolMenus, hiddenFromSearchIds }
 }
 
 function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) {
@@ -517,7 +519,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
       if (isHiddenInPalette(tool, basePath)) continue
-      entries.push({ toolId, tool, label: customLabel || tool.label || toolId, hideFromSearch: (typeof entry === 'object' && entry.hideFromCommandPaletteSearch) || tool.hideFromCommandPaletteSearch || false })
+      entries.push({ toolId, tool, label: customLabel || tool.label || toolId })
     }
   } else {
     for (const [toolId, tool] of Object.entries(tools)) {
@@ -525,7 +527,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
       if (isHiddenInPalette(tool, basePath)) continue
-      entries.push({ toolId, tool, label: tool.label || toolId, hideFromSearch: tool.hideFromCommandPaletteSearch || false })
+      entries.push({ toolId, tool, label: tool.label || toolId })
     }
   }
 
@@ -534,11 +536,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
   const items = []
   const subPages = []
 
-  for (const { toolId, tool, label, hideFromSearch } of entries) {
-    // When hideFromCommandPaletteSearch is set, clear keywords so the item
-    // appears in the default view but is excluded from search results.
-    const kw = (words) => hideFromSearch ? [] : words
-
+  for (const { toolId, tool, label } of entries) {
     // Inline actions
     if (tool.inlineAction === 'toggle-chrome') {
       const isHidden = document.documentElement.classList.contains('storyboard-chrome-hidden')
@@ -548,7 +546,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
           <span>{label}</span>
           <span>{isHidden ? '✓' : ''}</span>
         </span>,
-        keywords: kw([label, toolId, 'hide', 'show', 'toolbar'].filter(Boolean)),
+        keywords: [label, toolId, 'hide', 'show', 'toolbar'].filter(Boolean),
         showType: false,
         onClick: () => {
           document.documentElement.classList.toggle('storyboard-chrome-hidden')
@@ -562,7 +560,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       items.push({
         id: `cfg:${section.id}:${toolId}`,
         children: label,
-        keywords: kw([label, toolId, 'command', 'palette', 'search'].filter(Boolean)),
+        keywords: [label, toolId, 'command', 'palette', 'search'].filter(Boolean),
         showType: false,
         onClick: () => {
           document.dispatchEvent(new CustomEvent('storyboard:open-palette'))
@@ -575,7 +573,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       items.push({
         id: `cfg:${section.id}:${toolId}`,
         children: label,
-        keywords: kw([label, toolId].filter(Boolean)),
+        keywords: [label, toolId].filter(Boolean),
         onClick: () => {
           const url = tool.url.startsWith('/') ? prefix + tool.url : tool.url
           window.location.href = url
@@ -594,7 +592,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
             id: pageId,
             label,
             title: label,
-            keywords: kw([label, toolId].filter(Boolean)),
+            keywords: [label, toolId].filter(Boolean),
             options: children.map(child => ({
               label: child.label,
               execute: child.execute,
@@ -605,7 +603,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
           items.push({
             id: `cfg:${section.id}:${toolId}`,
             children: label,
-            keywords: kw([label, toolId].filter(Boolean)),
+            keywords: [label, toolId].filter(Boolean),
             onClick: () => onNavigateToPage?.(pageId),
             closeOnSelect: false,
             showType: false,
@@ -622,7 +620,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
           id: pageId,
           label,
           title: label,
-          keywords: kw([label, toolId].filter(Boolean)),
+          keywords: [label, toolId].filter(Boolean),
           options: tool.options.map(opt => ({
             label: opt.label,
             // Lazy-execute via the handler's action system
@@ -633,7 +631,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
         items.push({
           id: `cfg:${section.id}:${toolId}`,
           children: label,
-          keywords: kw([label, toolId].filter(Boolean)),
+          keywords: [label, toolId].filter(Boolean),
           onClick: () => onNavigateToPage?.(pageId),
           closeOnSelect: false,
           showType: false,
@@ -646,7 +644,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       items.push({
         id: `cfg:${section.id}:${toolId}`,
         children: label,
-        keywords: kw([label, toolId].filter(Boolean)),
+        keywords: [label, toolId].filter(Boolean),
         showType: false,
         onClick: () => {
           setTimeout(() => {
@@ -663,7 +661,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       items.push({
         id: `cfg:${section.id}:${toolId}`,
         children: label,
-        keywords: kw([label, toolId].filter(Boolean)),
+        keywords: [label, toolId].filter(Boolean),
         onClick: () => { if (action) executeAction(action.id) },
       })
       continue
@@ -672,7 +670,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
     items.push({
       id: `cfg:${section.id}:${toolId}`,
       children: label,
-      keywords: kw([label, toolId].filter(Boolean)),
+      keywords: [label, toolId].filter(Boolean),
       onClick: () => executeAction(toolId),
     })
   }
@@ -752,10 +750,10 @@ function buildPaletteItems(basePath, onCreateAction, onNavigateToPage) {
   const base = (basePath || '/').replace(/\/+$/, '')
   const prefix = base === '/' ? '' : base
 
-  const { groups, toolMenus } = buildConfigSections(prefix, onNavigateToPage, onCreateAction)
+  const { groups, toolMenus, hiddenFromSearchIds } = buildConfigSections(prefix, onNavigateToPage, onCreateAction)
   const authorIndex = buildAuthorIndex(prefix)
 
-  return { groups, toolMenus, authorIndex }
+  return { groups, toolMenus, authorIndex, hiddenFromSearchIds }
 }
 
 /**
@@ -768,6 +766,7 @@ export default function StoryboardCommandPalette({ basePath }) {
   const [items, setItems] = useState([])
   const [toolMenus, setToolMenus] = useState([])
   const [authorIndex, setAuthorIndex] = useState(new Map())
+  const [hiddenFromSearchIds, setHiddenFromSearchIds] = useState(new Set())
   const [activePage, setActivePage] = useState('root')
   const [createType, setCreateType] = useState(null)
   const [currentTheme, setCurrentTheme] = useState(() => getTheme())
@@ -799,6 +798,7 @@ export default function StoryboardCommandPalette({ basePath }) {
         setItems(built.groups)
         setToolMenus(built.toolMenus)
         setAuthorIndex(built.authorIndex)
+        setHiddenFromSearchIds(built.hiddenFromSearchIds || new Set())
         setSearch('')
         setActivePage('root')
         setOpen(prev => !prev)
@@ -822,6 +822,7 @@ export default function StoryboardCommandPalette({ basePath }) {
             setItems(built.groups)
             setToolMenus(built.toolMenus)
             setAuthorIndex(built.authorIndex)
+        setHiddenFromSearchIds(built.hiddenFromSearchIds || new Set())
             setSearch('')
             setActivePage('root')
           }, 0)
@@ -835,6 +836,7 @@ export default function StoryboardCommandPalette({ basePath }) {
       setItems(built.groups)
       setToolMenus(built.toolMenus)
       setAuthorIndex(built.authorIndex)
+        setHiddenFromSearchIds(built.hiddenFromSearchIds || new Set())
       setSearch('')
       setActivePage('root')
       setOpen(true)
@@ -861,66 +863,6 @@ export default function StoryboardCommandPalette({ basePath }) {
       setOpen(false)
       setActivePage('root')
     }
-  }, [])
-
-  // --- Keyboard navigation (bypasses react-cmdk's broken portal event bubbling) ---
-  // react-cmdk's onKeyDown sits on a wrapper div outside the headlessui Portal,
-  // so arrow key events from the portaled input never reach it under React 19.
-  // We handle keyboard nav via a document-level capture listener instead.
-  const [selectedIndex, setSelectedIndex] = useState(0)
-
-  useEffect(() => {
-    if (!open) return
-    setSelectedIndex(0)
-
-    function handleNavKeyDown(e) {
-      const items = document.querySelectorAll('.command-palette-list-item')
-      if (!items.length) return
-
-      if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'n') || (e.ctrlKey && e.key === 'j')) {
-        e.preventDefault()
-        e.stopPropagation()
-        setSelectedIndex(prev => {
-          const next = prev >= items.length - 1 ? 0 : prev + 1
-          items[next]?.scrollIntoView({ behavior: 'smooth', block: next ? 'center' : 'end' })
-          return next
-        })
-      } else if (e.key === 'ArrowUp' || (e.ctrlKey && e.key === 'p') || (e.ctrlKey && e.key === 'k' && !e.metaKey)) {
-        e.preventDefault()
-        e.stopPropagation()
-        setSelectedIndex(prev => {
-          const next = prev <= 0 ? items.length - 1 : prev - 1
-          items[next]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          return next
-        })
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        e.stopPropagation()
-        const current = document.querySelectorAll('.command-palette-list-item')[selectedIndex]
-        if (current) current.click()
-      }
-    }
-
-    // Force-focus the search input (headlessui initialFocus races under React 19)
-    const rafId = requestAnimationFrame(() => {
-      const input = document.getElementById('command-palette-search-input')
-      if (input) input.focus()
-    })
-
-    document.addEventListener('keydown', handleNavKeyDown, true)
-    return () => {
-      cancelAnimationFrame(rafId)
-      document.removeEventListener('keydown', handleNavKeyDown, true)
-    }
-  }, [open, selectedIndex])
-
-  // Reset selection when search changes
-  useEffect(() => {
-    setSelectedIndex(0)
-  }, [search])
-
-  const handleChangeSelected = useCallback((index) => {
-    setSelectedIndex(index)
   }, [])
 
   // Flatten sub-page options into searchable groups so they appear in root search
@@ -1026,8 +968,6 @@ export default function StoryboardCommandPalette({ basePath }) {
       search={search}
       isOpen={open}
       page={activePage}
-      selected={selectedIndex}
-      onChangeSelected={handleChangeSelected}
       placeholder={activePage === 'root'
         ? 'Search commands, prototypes, canvases, stories...'
         : `Search ${toolMenus.find(m => m.id === activePage)?.label || ''}...`

@@ -19,6 +19,7 @@ export default function CanvasAgentsMenu({ config = {}, data, canvasName = '', z
     return Object.entries(agentsConfig).map(([id, cfg]) => ({
       id,
       label: cfg.label || id,
+      icon: cfg.icon,
       startupCommand: cfg.startupCommand || id,
       defaultWidth: cfg.defaultWidth,
       defaultHeight: cfg.defaultHeight,
@@ -69,7 +70,10 @@ export default function CanvasAgentsMenu({ config = {}, data, canvasName = '', z
         <DropdownMenu.Label>Add agent</DropdownMenu.Label>
         {agents.map((agent) => (
           <DropdownMenu.Item key={agent.id} onClick={() => addAgent(agent)}>
-            {agent.label}
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Icon name={agent.icon || 'agents'} size={16} />
+              {agent.label}
+            </span>
           </DropdownMenu.Item>
         ))}
         <DropdownMenu.Separator />

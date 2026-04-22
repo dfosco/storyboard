@@ -21,6 +21,7 @@ import { initCanvasConfig } from './canvasConfig.js'
 import { initCommandPaletteConfig } from './commandPaletteConfig.js'
 import { initToolbarConfig, consumeClientToolbarOverrides } from './toolbarConfigStore.js'
 import { initCustomerModeConfig } from './customerModeConfig.js'
+import { getConfig } from './configStore.js'
 
 let _mounted = false
 
@@ -146,79 +147,102 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   installHistorySync()
   installBodyClassSync()
 
-  // Initialize config-driven systems
-  if (config.featureFlags) {
+  // Initialize config-driven systems.
+  // The unified config store is already seeded by the virtual module's initConfig().
+  // Individual stores are initialized here for backward compatibility — consumers
+  // that import directly from these stores still work.
+  const uc = getConfig()
+
+  if (uc.featureFlags && Object.keys(uc.featureFlags).length > 0) {
+    initFeatureFlags(uc.featureFlags)
+  } else if (config.featureFlags) {
     initFeatureFlags(config.featureFlags)
   }
 
-  if (config.plugins) {
+  if (uc.plugins && Object.keys(uc.plugins).length > 0) {
+    initPlugins(uc.plugins)
+  } else if (config.plugins) {
     initPlugins(config.plugins)
   }
 
-  if (config.ui) {
+  if (uc.ui && Object.keys(uc.ui).length > 0) {
+    initUIConfig(uc.ui)
+  } else if (config.ui) {
     initUIConfig(config.ui)
   }
 
-  if (config.canvas) {
+  if (uc.canvas && Object.keys(uc.canvas).length > 0) {
+    initCanvasConfig(uc.canvas)
+  } else if (config.canvas) {
     initCanvasConfig(config.canvas)
   }
 
   // Load and merge command palette config.
-  // Core defaults come from commandpalette.config.json (bundled).
-  // Client can provide overrides via config.commandPalette.
-  // Sections are merged by `id` — client sections override matching defaults,
-  // default sections not in the client config are preserved (e.g. create-widget).
-  const defaultCmdPaletteConfig = (await import('../commandpalette.config.json')).default
-  if (config.commandPalette) {
-    const merged = { ...defaultCmdPaletteConfig, ...config.commandPalette }
-    if (config.commandPalette.sections && defaultCmdPaletteConfig.sections) {
-      const clientIds = new Set(config.commandPalette.sections.map(s => s.id))
-      const preserved = defaultCmdPaletteConfig.sections.filter(s => !clientIds.has(s.id))
-      merged.sections = [...config.commandPalette.sections, ...preserved]
-    }
-    initCommandPaletteConfig(merged)
+  // If the unified store has commandPalette data, use it directly.
+  // Otherwise fall back to legacy merging with bundled defaults.
+  const ucCmdPalette = uc.commandPalette
+  if (ucCmdPalette && Object.keys(ucCmdPalette).length > 0) {
+    initCommandPaletteConfig(ucCmdPalette)
   } else {
-    initCommandPaletteConfig({ ...defaultCmdPaletteConfig })
+    const defaultCmdPaletteConfig = (await import('../commandpalette.config.json')).default
+    if (config.commandPalette) {
+      const merged = { ...defaultCmdPaletteConfig, ...config.commandPalette }
+      if (config.commandPalette.sections && defaultCmdPaletteConfig.sections) {
+        const clientIds = new Set(config.commandPalette.sections.map(s => s.id))
+        const preserved = defaultCmdPaletteConfig.sections.filter(s => !clientIds.has(s.id))
+        merged.sections = [...config.commandPalette.sections, ...preserved]
+      }
+      initCommandPaletteConfig(merged)
+    } else {
+      initCommandPaletteConfig({ ...defaultCmdPaletteConfig })
+    }
   }
 
   // Initialize customer mode config
-  if (config.customerMode) {
+  if (uc.customerMode && Object.keys(uc.customerMode).length > 0) {
+    initCustomerModeConfig(uc.customerMode)
+  } else if (config.customerMode) {
     initCustomerModeConfig(config.customerMode)
   }
 
   // Initialize comments config (framework-agnostic)
-  if (config.comments) {
-    initCommentsConfig(config, { basePath })
+  const commentsConfig = uc.comments && Object.keys(uc.comments).length > 0 ? uc.comments : config.comments
+  if (commentsConfig) {
+    initCommentsConfig({ ...config, comments: commentsConfig }, { basePath })
   }
 
   // Inject compiled UI styles (await to prevent late restyle / FOUC)
   await injectUIStyles()
 
-  // Load and merge toolbar config.
-  // Core defaults come from toolbar.config.json (bundled).
-  // Client can provide overrides via:
-  //   1. config.toolbar in storyboard.config.json
-  //   2. A root toolbar.config.json (auto-discovered by the Vite data plugin)
+  // Load toolbar config from the unified store.
+  // The unified store already has core defaults merged with client overrides.
+  // Fall back to legacy merging if unified store wasn't seeded.
   const { deepMerge } = await import('./loader.js')
-  const defaultConfig = (await import('../toolbar.config.json')).default
-  const clientOverrides = consumeClientToolbarOverrides()
-  const explicitToolbar = config.toolbar
+  let toolbarConfig = uc.toolbar && Object.keys(uc.toolbar).length > 0
+    ? { ...uc.toolbar }
+    : null
 
-  let toolbarConfig
-  if (explicitToolbar && clientOverrides) {
-    // Both sources — merge all three layers
-    toolbarConfig = deepMerge(deepMerge(defaultConfig, clientOverrides), explicitToolbar)
-  } else if (explicitToolbar) {
-    toolbarConfig = deepMerge(defaultConfig, explicitToolbar)
-  } else if (clientOverrides) {
-    toolbarConfig = deepMerge(defaultConfig, clientOverrides)
-  } else {
-    toolbarConfig = { ...defaultConfig }
+  if (!toolbarConfig) {
+    // Legacy path: unified store not seeded, merge manually
+    const defaultConfig = (await import('../toolbar.config.json')).default
+    const clientOverrides = consumeClientToolbarOverrides()
+    const explicitToolbar = config.toolbar
+
+    if (explicitToolbar && clientOverrides) {
+      toolbarConfig = deepMerge(deepMerge(defaultConfig, clientOverrides), explicitToolbar)
+    } else if (explicitToolbar) {
+      toolbarConfig = deepMerge(defaultConfig, explicitToolbar)
+    } else if (clientOverrides) {
+      toolbarConfig = deepMerge(defaultConfig, clientOverrides)
+    } else {
+      toolbarConfig = { ...defaultConfig }
+    }
   }
 
-  // Inject repository URL from storyboard.config.json into the toolbar config
-  if (config.repository?.owner && config.repository?.name) {
-    const repoUrl = `https://github.com/${config.repository.owner}/${config.repository.name}`
+  // Inject repository URL into the toolbar config
+  const repo = uc.repository || config.repository
+  if (repo?.owner && repo?.name) {
+    const repoUrl = `https://github.com/${repo.owner}/${repo.name}`
 
     // New tools schema
     if (toolbarConfig.tools?.repository) {

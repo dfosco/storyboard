@@ -26,8 +26,8 @@
 </script>
 
 <TriggerButton
-  class="text-2xl"
   aria-label="Command palette"
+  size="icon-xl"
   {tabindex}
   onclick={openPalette}
-><Icon name={config.icon || 'iconoir/select-point3d'} size={16} {...(config.meta || {})} /></TriggerButton>
+><Icon name={config.icon || 'iconoir/select-point-3d'} size={16} {...(config.meta || {})} /></TriggerButton>

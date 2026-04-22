@@ -68,7 +68,7 @@ export default function AuthModal() {
         <Dialog.Backdrop className={css.backdrop} />
         <div className={css.popupWrap}>
           <Dialog.Popup className={css.popup}>
-            <Dialog.Title className={css.title}>Sign in for comments</Dialog.Title>
+            <Dialog.Title className={css.title}>Sign in with GitHub</Dialog.Title>
             <Dialog.Description className={css.desc}>
               Leave comments for other users to see and respond, and react to! Storyboard
               comments use Discussions as a back-end and require a GitHub PAT to be enabled.

@@ -14,23 +14,24 @@ Before processing ANY user prompt, read the terminal config file for this sessio
 
 ## Step 1: Read terminal config
 
-Your widget ID is available via `$STORYBOARD_WIDGET_ID`. Use it to read your config directly:
+First, refresh env vars from tmux (they may be stale if the session was reassigned):
+```bash
+eval $(tmux show-environment -s 2>/dev/null | grep STORYBOARD)
+```
+
+Then read your config:
 ```bash
 cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json
 ```
 
-If the env var is empty, source it from the terminal env file first:
+If the env var is still empty, look up your widget ID from the tmux session registry:
 ```bash
-# Find the env file for this tmux session
-ENV_FILE=$(ls -t .storyboard/terminals/*.env 2>/dev/null | head -1)
-if [ -n "$ENV_FILE" ]; then source "$ENV_FILE"; fi
+TMUX_NAME=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+STORYBOARD_WIDGET_ID=$(node -e "const d=JSON.parse(require('fs').readFileSync('.storyboard/terminal-sessions.json','utf8')); const s=d.find(e=>e.tmuxName==='$TMUX_NAME'); if(s) console.log(s.widgetId)")
 cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json
 ```
 
-As a last resort, list all configs and pick the most recent non-deleted one with `connectedWidgets`:
-```bash
-cat .storyboard/terminals/*.json
-```
+If not found, tell the user — do not pick a random config.
 
 The config file contains everything you need — no additional API calls required:
 

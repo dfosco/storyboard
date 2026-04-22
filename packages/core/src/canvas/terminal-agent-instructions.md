@@ -4,16 +4,24 @@ Before processing ANY user prompt, read the terminal config file for this sessio
 
 ## Step 1: Read terminal config
 
-The config file is in `.storyboard/terminals/`. Find it using:
+First, refresh env vars from tmux (they may be stale if the session was reassigned):
 ```bash
-ls .storyboard/terminals/*.json
+eval $(tmux show-environment -s 2>/dev/null | grep STORYBOARD)
 ```
 
-Or use environment variables to identify your session:
-- `$STORYBOARD_WIDGET_ID` — your terminal widget ID
-- `$STORYBOARD_CANVAS_ID` — the canvas you're on
-- `$STORYBOARD_BRANCH` — the current git branch
-- `$STORYBOARD_SERVER_URL` — the dev server base URL
+Then read your config:
+```bash
+cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json
+```
+
+If the env var is still empty, look up your widget ID from the tmux session registry:
+```bash
+TMUX_NAME=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+STORYBOARD_WIDGET_ID=$(node -e "const d=JSON.parse(require('fs').readFileSync('.storyboard/terminal-sessions.json','utf8')); const s=d.find(e=>e.tmuxName==='$TMUX_NAME'); if(s) console.log(s.widgetId)")
+cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json
+```
+
+If not found, tell the user — do not pick a random config.
 
 ## Step 2: Resolve connected widgets
 

@@ -109,22 +109,6 @@ const DEFAULT_THEME = {
   brightWhite: '#f0f6fc',
 }
 
-/**
- * Focus the terminal without moving the canvas scroll container.
- * Every terminal focus call MUST go through this helper.
- */
-function safeFocus(termEl, terminalWrapperEl) {
-  const scrollEl = terminalWrapperEl?.closest('[class*="canvasScroll"]')
-  const scrollTop = scrollEl?.scrollTop
-  const scrollLeft = scrollEl?.scrollLeft
-  termEl?.focus?.({ preventScroll: true })
-  // Belt-and-suspenders: restore if browser still moved it
-  if (scrollEl && (scrollEl.scrollTop !== scrollTop || scrollEl.scrollLeft !== scrollLeft)) {
-    scrollEl.scrollTop = scrollTop
-    scrollEl.scrollLeft = scrollLeft
-  }
-}
-
 export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizable }, ref) {
   const width = readProp(props, 'width', terminalSchema)
   const height = readProp(props, 'height', terminalSchema)
@@ -157,6 +141,46 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     },
   }), [setExpanded])
 
+  // Permanent guard: monkey-patch .focus() on every textarea/focusable element
+  // ghostty-web creates inside the terminal container so that focus() always
+  // uses { preventScroll: true }. This prevents the browser from EVER scrolling
+  // the canvas — no whiplash, no restore needed.
+  useEffect(() => {
+    const el = terminalRef.current
+    if (!el) return
+    const patched = new WeakSet()
+
+    function patchFocusable(node) {
+      if (patched.has(node)) return
+      if (!(node instanceof HTMLElement)) return
+      const tag = node.tagName
+      if (tag === 'TEXTAREA' || tag === 'INPUT' || node.tabIndex >= 0) {
+        patched.add(node)
+        const original = node.focus.bind(node)
+        node.focus = function (opts) {
+          original({ ...opts, preventScroll: true })
+        }
+      }
+    }
+
+    // Patch existing children
+    el.querySelectorAll('textarea, input, [tabindex]').forEach(patchFocusable)
+
+    // Observe for dynamically added elements (ghostty creates textarea lazily)
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        for (const n of m.addedNodes) {
+          if (n.nodeType === 1) {
+            patchFocusable(n)
+            n.querySelectorAll?.('textarea, input, [tabindex]').forEach(patchFocusable)
+          }
+        }
+      }
+    })
+    observer.observe(el, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [])
+
   // Exit interactive on click outside
   useEffect(() => {
     if (!interactive) return
@@ -182,7 +206,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     let disposed = false
     let term = null
     let ws = null
-    let cleanupFocusGuard = null
 
     async function setup() {
       try {
@@ -206,36 +229,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           theme: { ...DEFAULT_THEME, ...cfg.theme },
         })
 
-        // Intercept any focus events ghostty-web fires (including deferred
-        // ones from setTimeout) so they never scroll the canvas viewport.
-        const scrollEl = containerRef.current?.closest('[class*="canvasScroll"]')
-        let guardScroll = true
-        function onFocusIn() {
-          if (!guardScroll || !scrollEl) return
-          // Restore scroll position synchronously in the same frame
-          scrollEl.scrollTop = savedScrollTop
-          scrollEl.scrollLeft = savedScrollLeft
-        }
-        let savedScrollTop = scrollEl?.scrollTop ?? 0
-        let savedScrollLeft = scrollEl?.scrollLeft ?? 0
-        containerRef.current.addEventListener('focusin', onFocusIn, true)
-
         term.open(containerRef.current)
-        // Restore immediately in case open() focused synchronously
-        if (scrollEl) {
-          scrollEl.scrollTop = savedScrollTop
-          scrollEl.scrollLeft = savedScrollLeft
-        }
         termRef.current = term
-
-        // Keep the guard up for 500ms to catch any deferred focus() calls
-        setTimeout(() => { guardScroll = false }, 500)
-        // Clean up listener when effect disposes
-        const guardContainer = containerRef.current
-        cleanupFocusGuard = () => {
-          guardScroll = false
-          guardContainer?.removeEventListener('focusin', onFocusIn, true)
-        }
 
         // SGR mouse wheel for tmux scroll in alternate screen
         term.attachCustomWheelEventHandler((e) => {
@@ -297,7 +292,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
     return () => {
       disposed = true
-      cleanupFocusGuard?.()
       if (ws && ws.readyState <= WebSocket.OPEN) ws.close()
       if (term) term.dispose()
       termRef.current = null
@@ -330,7 +324,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
       }
       setInteractive(true)
-      safeFocus(termRef.current, expandContainerRef.current)
+      termRef.current?.focus()
     }, 100)
     return () => clearTimeout(timer)
   }, [expanded])
@@ -363,7 +357,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     if (sessionEnded) return
     if (ready) {
       setInteractive(true)
-      safeFocus(termRef.current, terminalRef.current)
+      termRef.current?.focus()
     }
   }, [sessionEnded, ready])
 
@@ -440,11 +434,11 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
             onClick={(e) => {
               if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
               setInteractive(true)
-              safeFocus(termRef.current, terminalRef.current)
+              termRef.current?.focus()
             }}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') { setInteractive(true); safeFocus(termRef.current, terminalRef.current) } }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { setInteractive(true); termRef.current?.focus() } }}
             aria-label="Click to interact"
           >
             <span className={overlayStyles.interactHint}>Click to interact</span>

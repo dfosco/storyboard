@@ -1,8 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import 'react-cmdk/dist/cmdk.css'
-import * as ReactCmdk from 'react-cmdk'
-const CommandPalette = ReactCmdk.default || ReactCmdk
-const { filterItems, getItemIndex } = ReactCmdk
+import { Command } from 'cmdk'
 import {
   buildPrototypeIndex,
   listStories,
@@ -872,14 +869,12 @@ export default function StoryboardCommandPalette({ basePath }) {
       id: `subpage:${menu.id}`,
       items: (menu.options || []).map((opt, i) => ({
         id: `subpage:${menu.id}:${i}`,
-        children: opt.type === 'toggle'
-          ? <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}><span>{opt.label}</span><span>{opt.active ? '✓' : ''}</span></span>
-          : opt.toolHandler === 'core:theme' && opt.value === currentTheme
-            ? <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}><span>{opt.label}</span><span>✓</span></span>
-            : opt.label,
+        label: opt.label,
+        isToggle: opt.type === 'toggle',
+        isActiveToggle: opt.type === 'toggle' && opt.active,
+        isActiveTheme: opt.toolHandler === 'core:theme' && opt.value === currentTheme,
         keywords: [opt.label, menu.label || menu.id],
-        showType: false,
-        onClick: () => {
+        onSelect: () => {
           if (opt.execute) {
             opt.execute()
           } else if (opt.toolHandler === 'core:theme' && opt.value) {
@@ -898,153 +893,171 @@ export default function StoryboardCommandPalette({ basePath }) {
     })).filter(g => g.items.length > 0)
   }, [toolMenus, currentTheme, refreshKey])
 
-  const filteredItems = useMemo(() => {
-    const base = filterItems(items, search)
-    if (!search) return base
-    const matchingSub = filterItems(subPageGroups, search)
-    const result = [...base, ...matchingSub]
-
-    // Author search: match usernames against author index
-    const q = search.toLowerCase()
-    const authorQ = q.startsWith('@') ? q.slice(1) : q
-    for (const [key, { author, items: authorItems }] of authorIndex) {
-      if (!key.includes(authorQ)) continue
-      // Avoid duplicates with already-shown artifact items
-      const shownIds = new Set(result.flatMap(g => g.items.map(i => i.id)))
-      const uniqueItems = authorItems.filter(item => !shownIds.has(`author:${item.id}`))
-      if (uniqueItems.length === 0) continue
-      result.push({
+  // Build author groups from the index
+  const authorGroups = useMemo(() => {
+    const groups = []
+    for (const [, { author, items: authorItems }] of authorIndex) {
+      groups.push({
         heading: `Artifacts by @${author}`,
-        id: `author:${key}`,
-        items: uniqueItems.map(item => ({
+        id: `author:${author.toLowerCase()}`,
+        items: authorItems.map(item => ({
           id: `author:${item.id}`,
-          children: (
-            <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>{item.name}</span>
-              <span style={{ fontSize: '12px', color: 'var(--fgColor-muted, #999)' }}>{item.type}</span>
-            </span>
-          ),
+          label: item.name,
+          type: item.type,
           keywords: [item.name, item.id, item.type, author, `@${author}`],
-          showType: false,
-          onClick: () => {
+          onSelect: () => {
             trackRecent(item.type.toLowerCase(), item.id, item.name)
             window.location.href = item.route
           },
         })),
       })
     }
-
-    // Strip items hidden from search
-    if (hiddenFromSearchIds.size > 0) {
-      for (const group of result) {
-        group.items = group.items.filter(item => {
-          for (const toolId of hiddenFromSearchIds) {
-            if (item.id?.includes(toolId)) return false
-          }
-          return true
-        })
-      }
-      return result.filter(g => g.items.length > 0)
-    }
-
-    return result
-  }, [items, search, subPageGroups, authorIndex, hiddenFromSearchIds])
+    return groups
+  }, [authorIndex])
 
   // Remove consecutive separators and leading/trailing separators
-  const deduplicatedItems = useMemo(() => {
+  const cleanedItems = useMemo(() => {
     const result = []
-    for (const item of filteredItems) {
+    for (const item of items) {
       const isSep = item.id?.startsWith('cfg:sep')
       if (isSep && (result.length === 0 || result[result.length - 1].id?.startsWith('cfg:sep'))) continue
       result.push(item)
     }
-    // Remove trailing separator
     while (result.length > 0 && result[result.length - 1].id?.startsWith('cfg:sep')) result.pop()
     return result
-  }, [filteredItems])
+  }, [items])
 
-  // Items without separators — used for keyboard navigation indexing
-  const navigableItems = useMemo(
-    () => deduplicatedItems.filter(list => !list.id?.startsWith('cfg:sep')),
-    [deduplicatedItems]
-  )
-
-  const handleChangeSearch = useCallback((value) => {
-    setSearch(value)
-  }, [])
+  // Build search value string from keywords array
+  function itemValue(item) {
+    const parts = []
+    if (typeof item.children === 'string') parts.push(item.children)
+    if (item.label) parts.push(item.label)
+    if (item.keywords) parts.push(...item.keywords)
+    return parts.filter(Boolean).join(' ')
+  }
 
   return (
     <>
-    <CommandPalette
-      onChangeSearch={handleChangeSearch}
-      onChangeOpen={handleChangeOpen}
-      search={search}
-      isOpen={open}
-      page={activePage}
-      placeholder={activePage === 'root'
-        ? 'Search commands, prototypes, canvases, stories...'
-        : `Search ${toolMenus.find(m => m.id === activePage)?.label || ''}...`
-      }
+    <Command.Dialog
+      open={open}
+      onOpenChange={handleChangeOpen}
+      label="Command Menu"
+      className="command-palette"
+      shouldFilter={activePage === 'root'}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && activePage !== 'root') {
+          e.preventDefault()
+          e.stopPropagation()
+          setActivePage('root')
+          setSearch('')
+        }
+      }}
     >
-      <CommandPalette.Page id="root">
-        {deduplicatedItems.length ? (
-          deduplicatedItems.map((list) => (
-            list.id?.startsWith('cfg:sep') ? (
-              !search && <hr key={list.id} style={{ border: 'none', borderTop: '1px solid var(--borderColor-muted, #e5e5e5)', margin: '4px 14px' }} />
-            ) : (
-              <CommandPalette.List key={list.id} heading={list.heading}>
-                {list.items.map(({ id, ...rest }) => (
-                  <CommandPalette.ListItem
-                    key={id}
-                    index={getItemIndex(navigableItems, id)}
-                    {...rest}
-                  />
-                ))}
-              </CommandPalette.List>
-            )
-          ))
-        ) : (
-          <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-            No results for &ldquo;{search}&rdquo;
-          </div>
-        )}
-      </CommandPalette.Page>
+      <Command.Input
+        placeholder={activePage === 'root'
+          ? 'Search commands, prototypes, canvases, stories...'
+          : `Search ${toolMenus.find(m => m.id === activePage)?.label || ''}...`
+        }
+        value={search}
+        onValueChange={setSearch}
+      />
+      <Command.List>
+        <Command.Empty>No results found.</Command.Empty>
 
-      {/* Tool-menu sub-pages */}
-      {toolMenus.map(menu => (
-        <CommandPalette.Page
-          key={menu.id}
-          id={menu.id}
-          onEscape={() => { setActivePage('root'); setSearch('') }}
-          searchPrefix={[menu.label || menu.id]}
-        >
-          <CommandPalette.List heading={menu.title || menu.label || menu.id}>
-            {(menu.options || []).map((opt, i) => (
-              <CommandPalette.ListItem
-                key={`${menu.id}:${i}`}
-                index={i}
-                showType={false}
-                onClick={() => {
-                  if (opt.execute) {
-                    opt.execute()
-                  } else if (opt.toolHandler === 'core:theme' && opt.value) {
-                    setTheme(opt.value)
-                  } else if (opt.action) {
-                    executeAction(opt.action, opt.value)
-                  }
-                  setOpen(false)
-                  setActivePage('root')
-                }}
-              >
-                {opt.toolHandler === 'core:theme' && opt.value === currentTheme
-                  ? <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}><span>{opt.label}</span><span>✓</span></span>
-                  : opt.label}
-              </CommandPalette.ListItem>
+        {activePage === 'root' ? (
+          <>
+            {/* Main config-driven groups */}
+            {cleanedItems.map((list) => (
+              list.id?.startsWith('cfg:sep') ? (
+                !search && <Command.Separator key={list.id} />
+              ) : (
+                <Command.Group key={list.id} heading={list.heading}>
+                  {list.items.map(({ id, children, keywords, onClick, ...rest }) => {
+                    if (hiddenFromSearchIds.size > 0) {
+                      for (const toolId of hiddenFromSearchIds) {
+                        if (id?.includes(toolId)) return null
+                      }
+                    }
+                    return (
+                      <Command.Item
+                        key={id}
+                        value={itemValue({ children, keywords })}
+                        onSelect={() => onClick?.()}
+                      >
+                        {children}
+                      </Command.Item>
+                    )
+                  })}
+                </Command.Group>
+              )
             ))}
-          </CommandPalette.List>
-        </CommandPalette.Page>
-      ))}
-    </CommandPalette>
+
+            {/* Sub-page options flattened for root search */}
+            {search && subPageGroups.map(group => (
+              <Command.Group key={group.id} heading={group.heading}>
+                {group.items.map(item => (
+                  <Command.Item
+                    key={item.id}
+                    value={itemValue(item)}
+                    onSelect={item.onSelect}
+                  >
+                    <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>{item.label}</span>
+                      {(item.isActiveToggle || item.isActiveTheme) && <span>✓</span>}
+                    </span>
+                  </Command.Item>
+                ))}
+              </Command.Group>
+            ))}
+
+            {/* Author groups */}
+            {search && authorGroups.map(group => (
+              <Command.Group key={group.id} heading={group.heading}>
+                {group.items.map(item => (
+                  <Command.Item
+                    key={item.id}
+                    value={itemValue(item)}
+                    onSelect={item.onSelect}
+                  >
+                    <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>{item.label}</span>
+                      <span style={{ fontSize: '12px', color: 'var(--fgColor-muted, #999)' }}>{item.type}</span>
+                    </span>
+                  </Command.Item>
+                ))}
+              </Command.Group>
+            ))}
+          </>
+        ) : (
+          /* Tool-menu sub-pages */
+          toolMenus.filter(menu => menu.id === activePage).map(menu => (
+            <Command.Group key={menu.id} heading={menu.title || menu.label || menu.id}>
+              {(menu.options || []).map((opt, i) => (
+                <Command.Item
+                  key={`${menu.id}:${i}`}
+                  value={opt.label}
+                  onSelect={() => {
+                    if (opt.execute) {
+                      opt.execute()
+                    } else if (opt.toolHandler === 'core:theme' && opt.value) {
+                      setTheme(opt.value)
+                    } else if (opt.action) {
+                      executeAction(opt.action, opt.value)
+                    }
+                    setOpen(false)
+                    setActivePage('root')
+                  }}
+                >
+                  {opt.toolHandler === 'core:theme' && opt.value === currentTheme
+                    ? <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}><span>{opt.label}</span><span>✓</span></span>
+                    : opt.label}
+                </Command.Item>
+              ))}
+            </Command.Group>
+          ))
+        )}
+      </Command.List>
+    </Command.Dialog>
 
     <CreateDialog
       type={createType}

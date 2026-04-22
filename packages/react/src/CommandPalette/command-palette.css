@@ -114,3 +114,29 @@ html[data-color-mode="dark"] .command-palette .border-b {
 .command-palette .command-palette-list-item {
   font-weight: 500 !important;
 }
+
+/* ─── Mobile responsiveness ─── */
+@media (max-width: 640px) {
+  /* Full-width panel, no border radius */
+  .command-palette .max-w-xl {
+    max-width: 100% !important;
+    border-radius: 0 !important;
+  }
+
+  /* Reduce fixed height so it fits mobile viewports */
+  .command-palette .h-\[450px\] {
+    height: auto !important;
+    max-height: 80vh !important;
+  }
+
+  /* Remove padding around the panel wrapper */
+  .command-palette .p-4 {
+    padding: 8px !important;
+  }
+
+  /* Align panel to the top of the screen */
+  .command-palette .items-center.justify-center {
+    align-items: flex-start !important;
+    padding-top: 10vh !important;
+  }
+}

@@ -131,7 +131,7 @@
     "create": "iconoir/plus-circle",
     "command": "feather/zap",
     "link": "feather/external-link",
-    "home": "primer/home",
+    "home": "primer/home-fill",
     "theme": "primer/sun",
     "terminal": "feather/terminal",
     "repository": "primer/mark-github",

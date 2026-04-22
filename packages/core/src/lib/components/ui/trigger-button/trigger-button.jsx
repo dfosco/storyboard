@@ -15,6 +15,10 @@ dimmed = false,
 localOnly = false,
 size = "icon-2xl",
 children,
+// Separate Radix trigger props from button props
+'aria-expanded': ariaExpanded,
+'data-state': dataState,
+'aria-haspopup': ariaHaspopup,
 ...props
 }, ref) {
 const borderWidth = useMemo(
@@ -24,15 +28,18 @@ const borderWidth = useMemo(
 
 return (
 <span
+ref={ref}
 data-trigger-button=""
 data-active={active || undefined}
 data-inactive={inactive || undefined}
 data-dimmed={dimmed || undefined}
 data-local-only={localOnly || undefined}
 style={{ '--sb--trigger-border-width': borderWidth }}
+aria-expanded={ariaExpanded}
+data-state={dataState}
+aria-haspopup={ariaHaspopup}
 >
 <Button
-ref={ref}
 variant="trigger"
 size={size}
 disabled={inactive}

@@ -494,7 +494,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
 /**
  * Build a section from toolbar.config.json tools.
  * If toolIds is provided, only include those tools in that order (with optional custom labels).
- * Otherwise include all command-list tools.
+ * Otherwise include all command-palette tools.
  *
  * toolIds format: ["theme", "flows"] or [{ id: "theme", label: "Change theme" }]
  */
@@ -520,7 +520,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
     }
   } else {
     for (const [toolId, tool] of Object.entries(tools)) {
-      if (tool.surface !== 'command-list') continue
+      if (tool.surface !== 'command-palette') continue
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
       if (isHiddenInPalette(tool, basePath)) continue

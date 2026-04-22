@@ -16,7 +16,7 @@ The system separates **what** a tool does (handler module) from **where** it app
 | Concept | Description |
 |---------|-------------|
 | **Tool** | A single entry in `toolbar.config.json` — config + optional handler module |
-| **Surface** | Where the tool renders: `main-toolbar`, `canvas-toolbar`, or `command-list` |
+| **Surface** | Where the tool renders: `command-toolbar`, `canvas-toolbar`, or `command-palette` |
 | **Render type** | How the tool renders: `button`, `menu`, `sidepanel`, `separator`, `zoom-control`, `link`, `submenu` |
 | **Handler** | A JS module that provides guard/setup/handler/component exports |
 | **Guard** | An async function that returns `false` to prevent a tool from loading |
@@ -39,7 +39,7 @@ Open `toolbar.config.json` and add your tool entry under the `tools` key:
       "ariaLabel": "My Tool",
       "icon": "primer/gear",
       "render": "button",
-      "surface": "main-toolbar",
+      "surface": "command-toolbar",
       "handler": "core:my-tool",
       "modes": ["*"]
     }
@@ -91,7 +91,7 @@ Each tool is an entry in the `tools` object of `toolbar.config.json`. The key be
       "ariaLabel": "Human-readable label",
       "icon": "primer/icon-name",
       "render": "button",
-      "surface": "main-toolbar",
+      "surface": "command-toolbar",
       "handler": "core:tool-id",
       "modes": ["*"],
       "excludeRoutes": ["\\/canvas$"],
@@ -281,7 +281,7 @@ Every handler function (`guard`, `setup`, `handler`) receives a context object:
 
 Surfaces are the UI regions where tools are rendered. Each surface supports a specific subset of render types.
 
-### `main-toolbar`
+### `command-toolbar`
 
 The primary floating toolbar, positioned at the bottom-right of the viewport. This is the most common surface for user-facing tools.
 
@@ -292,7 +292,7 @@ The primary floating toolbar, positioned at the bottom-right of the viewport. Th
 ```json
 {
   "my-tool": {
-    "surface": "main-toolbar",
+    "surface": "command-toolbar",
     "render": "button",
     ...
   }
@@ -317,7 +317,7 @@ The canvas-specific toolbar, positioned at the bottom-left. Used for tools that 
 }
 ```
 
-### `command-list`
+### `command-palette`
 
 Items rendered inside the ⌘K command palette. These tools don't have a persistent visual presence — they appear when the user opens the command palette.
 
@@ -328,7 +328,7 @@ Items rendered inside the ⌘K command palette. These tools don't have a persist
 ```json
 {
   "devtools": {
-    "surface": "command-list",
+    "surface": "command-palette",
     "render": "submenu",
     ...
   }
@@ -345,7 +345,7 @@ Render types determine the visual and behavioral presentation of a tool within i
 
 A simple clickable button. Renders with an icon and optional tooltip (from `ariaLabel`).
 
-- **Surface:** `main-toolbar`
+- **Surface:** `command-toolbar`
 - **Handler return:** `{ execute() }` or custom component
 - **Default component:** Uses `TriggerButton`
 
@@ -353,7 +353,7 @@ A simple clickable button. Renders with an icon and optional tooltip (from `aria
 
 A dropdown menu with dynamic items. The handler's `getChildren()` populates the menu.
 
-- **Surfaces:** `main-toolbar`, `canvas-toolbar`
+- **Surfaces:** `command-toolbar`, `canvas-toolbar`
 - **Handler return:** `{ getChildren() }` returning an array of menu items
 - **Default component:** Uses `ActionMenuButton`
 
@@ -361,7 +361,7 @@ A dropdown menu with dynamic items. The handler's `getChildren()` populates the 
 
 A toggle button that opens/closes a side panel. No custom handler or component needed — the toggle behavior is managed by `sidePanelStore`.
 
-- **Surface:** `main-toolbar`
+- **Surface:** `command-toolbar`
 - **Handler return:** Not needed (toggle is automatic)
 - **Default component:** Uses `TriggerButton`
 
@@ -369,7 +369,7 @@ A toggle button that opens/closes a side panel. No custom handler or component n
 
 A visual divider between tool groups. No handler or component needed.
 
-- **Surface:** `main-toolbar`
+- **Surface:** `command-toolbar`
 - **Config only:** No `handler` field required
 
 ### `zoom-control`
@@ -384,14 +384,14 @@ A specialized compound control for canvas zoom (zoom in, zoom out, reset, curren
 
 A navigational item in the command palette. Clicking navigates to a URL or performs a simple action.
 
-- **Surface:** `command-list`
+- **Surface:** `command-palette`
 - **Handler return:** `{ execute() }` or URL target
 
 ### `submenu`
 
 A nested menu inside the command palette. The handler's `getChildren()` populates the submenu items.
 
-- **Surface:** `command-list`
+- **Surface:** `command-palette`
 - **Handler return:** `{ getChildren() }` returning an array of menu items
 
 ### Menu item shapes
@@ -484,7 +484,7 @@ With config:
     "ariaLabel": "Cursor presence",
     "icon": "primer/people",
     "render": "button",
-    "surface": "main-toolbar",
+    "surface": "command-toolbar",
     "handler": "custom:cursors",
     "modes": ["*"]
   }
@@ -507,7 +507,7 @@ A button in the main toolbar that performs an action on click.
       "ariaLabel": "Refresh data",
       "icon": "primer/sync",
       "render": "button",
-      "surface": "main-toolbar",
+      "surface": "command-toolbar",
       "handler": "core:refresh",
       "modes": ["prototype"]
     }
@@ -543,7 +543,7 @@ A dropdown menu whose items are computed at open time.
       "ariaLabel": "Switch flow",
       "icon": "primer/git-branch",
       "render": "menu",
-      "surface": "main-toolbar",
+      "surface": "command-toolbar",
       "handler": "core:flows",
       "modes": ["prototype"]
     }
@@ -602,7 +602,7 @@ A button that toggles a side panel open/closed. The simplest tool type — no ha
       "ariaLabel": "Documentation",
       "icon": "primer/book",
       "render": "sidepanel",
-      "surface": "main-toolbar",
+      "surface": "command-toolbar",
       "handler": "core:docs",
       "modes": ["*"]
     }
@@ -692,7 +692,7 @@ A submenu inside the ⌘K command palette with multiple actions.
       "ariaLabel": "Developer tools",
       "icon": "primer/terminal",
       "render": "submenu",
-      "surface": "command-list",
+      "surface": "command-palette",
       "handler": "core:devtools",
       "modes": ["*"]
     }
@@ -756,7 +756,7 @@ A tool that only appears when a feature flag or condition is met.
       "ariaLabel": "Comments",
       "icon": "primer/comment-discussion",
       "render": "button",
-      "surface": "main-toolbar",
+      "surface": "command-toolbar",
       "handler": "core:comments",
       "modes": ["prototype"]
     }
@@ -796,7 +796,7 @@ A tool that performs initialization and passes data to its component.
       "ariaLabel": "Create",
       "icon": "primer/plus",
       "render": "menu",
-      "surface": "main-toolbar",
+      "surface": "command-toolbar",
       "handler": "core:create",
       "modes": ["*"],
       "actions": ["new-prototype", "new-flow", "new-object"]

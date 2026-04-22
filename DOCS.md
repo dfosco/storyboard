@@ -1214,7 +1214,7 @@ Each tool is declared in the `tools` object:
       "ariaLabel": "Inspect components",
       "icon": "iconoir/square-dashed",
       "render": "sidepanel",
-      "surface": "main-toolbar",
+      "surface": "command-toolbar",
       "handler": "core:inspector",
       "state": "active",
       "modes": ["*"],
@@ -1228,7 +1228,7 @@ Each tool is declared in the `tools` object:
 | Property | Description |
 |----------|-------------|
 | `render` | How it renders: `button`, `menu`, `sidepanel`, `separator`, `link`, `submenu`, `zoom-control` |
-| `surface` | Where it appears: `main-toolbar`, `command-list`, `canvas-toolbar` |
+| `surface` | Where it appears: `command-toolbar`, `command-palette`, `canvas-toolbar` |
 | `handler` | Module reference: `core:name` for built-in, `custom:name` for client-provided |
 | `state` | Initial state (default: `"active"`) |
 | `modes` | Which modes show this tool. `["*"]` = all modes |

@@ -152,6 +152,24 @@ export function getWidgetMeta(type) {
 }
 
 /**
+ * Check if a widget type supports expanding to a full-screen modal.
+ * @param {string} type — widget type string
+ * @returns {boolean}
+ */
+export function isExpandable(type) {
+  return widgetTypes[type]?.expandable === true
+}
+
+/**
+ * Check if a widget type can appear in a split-screen pane.
+ * @param {string} type — widget type string
+ * @returns {boolean}
+ */
+export function isSplitScreenCapable(type) {
+  return widgetTypes[type]?.splitScreen === true
+}
+
+/**
  * Get the interact gate config for a widget type.
  * @returns {{ enabled: boolean, label: string }} 
  */

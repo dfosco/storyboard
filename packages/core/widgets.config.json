@@ -134,6 +134,8 @@
     "markdown": {
       "label": "Markdown",
       "icon": "📄",
+      "expandable": true,
+      "splitScreen": true,
       "resize": {
         "enabled": true,
         "prod": false
@@ -161,6 +163,14 @@
         }
       },
       "features": [
+        {
+          "id": "expand",
+          "type": "action",
+          "action": "expand",
+          "label": "$label:expand",
+          "icon": "expand",
+          "prod": true
+        },
         {
           "id": "toggle-collapse",
           "type": "action",
@@ -222,6 +232,8 @@
     "prototype": {
       "label": "Prototype",
       "icon": "🖥️",
+      "expandable": true,
+      "splitScreen": true,
       "resize": {
         "enabled": true,
         "prod": false
@@ -339,6 +351,8 @@
     "figma-embed": {
       "label": "Figma Embed",
       "icon": "🎨",
+      "expandable": true,
+      "splitScreen": true,
       "resize": {
         "enabled": true,
         "prod": false
@@ -429,6 +443,8 @@
     "codepen-embed": {
       "label": "CodePen Embed",
       "icon": "✏️",
+      "expandable": true,
+      "splitScreen": true,
       "resize": {
         "enabled": true,
         "prod": false
@@ -519,6 +535,8 @@
     "link-preview": {
       "label": "Link Preview",
       "icon": "🔗",
+      "expandable": true,
+      "splitScreen": true,
       "resize": {
         "enabled": false,
         "prod": false
@@ -569,6 +587,14 @@
           "action": "open-external",
           "label": "$label:open-ext",
           "icon": "open-external",
+          "prod": true
+        },
+        {
+          "id": "expand",
+          "type": "action",
+          "action": "expand",
+          "label": "$label:expand",
+          "icon": "expand",
           "prod": true
         },
         {
@@ -689,6 +715,7 @@
     "story": {
       "label": "Story",
       "icon": "📖",
+      "splitScreen": true,
       "resize": {
         "enabled": true,
         "prod": false
@@ -901,6 +928,8 @@
     "terminal": {
       "label": "Terminal",
       "icon": "⬛",
+      "expandable": true,
+      "splitScreen": true,
       "resize": {
         "enabled": false,
         "prod": false
@@ -974,6 +1003,8 @@
     "terminal-read": {
       "label": "Terminal",
       "icon": "⬛",
+      "expandable": true,
+      "splitScreen": true,
       "resize": {
         "enabled": false,
         "prod": false

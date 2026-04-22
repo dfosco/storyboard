@@ -1,30 +1,28 @@
 /**
  * Icon — renders icons from multiple sources using namespaced names.
  *
- * Sources (by namespace prefix):
  *   primer/    → Primer Octicons (fill-based)
  *   feather/   → Feather Icons (stroke-based)
  *   iconoir/   → Iconoir (stroke-based, manually registered)
- *   (no prefix) → Custom overrides (folder, folder-open)
+ *   (no prefix) → Custom (folder, prototype, canvas, component, etc.)
  *
  * Usage:
  *   <Icon name="primer/repo" />
- *   <Icon name="folder" color="#54aeff" />
- *   <Icon name="feather/fast-forward" size={16} />
- *   <Icon name="iconoir/square-dashed" size={16} strokeWeight={2} scale={1.05} />
- *   <Icon name="primer/gear" size={16} label="Settings" />
+ *   <Icon name="feather/flag" size={16} />
+ *   <Icon name="iconoir/key-command" size={16} strokeWeight={2} />
+ *   <Icon name="prototype" size={14} />
  *   <Icon name="feather/tablet" rotate={90} />
  *   <Icon name="primer/lock" offsetX={1} offsetY={-1} />
  *   <Icon name="feather/arrow-right" flipX />
  */
 
-import React, { useMemo, useRef, useEffect } from 'react'
-import './Icon.css'
-import octicons from '@primer/octicons'
-import feather from 'feather-icons'
+/* ─── Custom SVG paths (fill-based, no namespace prefix) ─── */
 
-// Custom SVG paths (fill-based, no namespace prefix).
 const customIcons = {
+  'home': {
+    viewBox: '0 0 16 16',
+    path: 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z',
+  },
   'folder': {
     viewBox: '0 0 24 24',
     path: 'M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h5.175q.4 0 .763.15t.637.425L12 6h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20z',
@@ -33,26 +31,47 @@ const customIcons = {
     viewBox: '0 0 24 24',
     path: 'M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h5.175q.4 0 .763.15t.637.425L12 6h9q.425 0 .713.288T22 7t-.288.713T21 8H7.85q-1.55 0-2.7.975T4 11.45V18l1.975-6.575q.2-.65.738-1.037T7.9 10h12.9q1.025 0 1.613.813t.312 1.762l-1.8 6q-.2.65-.737 1.038T19 20z',
   },
-  // Prototype: stacked pages (file with corner fold + offset page behind)
+  // CollageFrame icon (from PrototypeEmbed widget title bar)
   'prototype': {
     viewBox: '0 0 24 24',
-    path: 'M6 2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8l-6-6H6zm6 1.5L15.5 7H13a1 1 0 0 1-1-1V3.5zM8 20v2h10a2 2 0 0 0 2-2V8h-2v12H8z',
+    strokePaths: [
+      'M19.4 20H4.6C4.26863 20 4 19.7314 4 19.4V4.6C4 4.26863 4.26863 4 4.6 4H19.4C19.7314 4 20 4.26863 20 4.6V19.4C20 19.7314 19.7314 20 19.4 20Z',
+      'M11 12V4',
+      'M4 12H20',
+    ],
   },
-  // Canvas: artboard grid (2x2 rectangles)
-  'canvas': {
-    viewBox: '0 0 24 24',
-    path: 'M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z',
-  },
-  // Component: diamond (rotated square) — universal component symbol
+  // Diamond grid icon (from StoryWidget/ComponentWidget title bar)
   'component': {
     viewBox: '0 0 24 24',
-    path: 'M12 2L2 12l10 10 10-10L12 2zm0 3.41L18.59 12 12 18.59 5.41 12 12 5.41z',
+    strokePaths: [
+      'M5.21173 15.1113L2.52473 12.4243C2.29041 12.1899 2.29041 11.8101 2.52473 11.5757L5.21173 8.88873C5.44605 8.65442 5.82595 8.65442 6.06026 8.88873L8.74727 11.5757C8.98158 11.8101 8.98158 12.1899 8.74727 12.4243L6.06026 15.1113C5.82595 15.3456 5.44605 15.3456 5.21173 15.1113Z',
+      'M11.5757 21.475L8.88874 18.788C8.65443 18.5537 8.65443 18.1738 8.88874 17.9395L11.5757 15.2525C11.8101 15.0182 12.19 15.0182 12.4243 15.2525L15.1113 17.9395C15.3456 18.1738 15.3456 18.5537 15.1113 18.788L12.4243 21.475C12.19 21.7094 11.8101 21.7094 11.5757 21.475Z',
+      'M17.9395 15.1113L15.2525 12.4243C15.0182 12.1899 15.0182 11.8101 15.2525 11.5757L17.9395 8.88873C18.1738 8.65442 18.5537 8.65442 18.788 8.88873L21.475 11.5757C21.7094 11.8101 21.7094 12.1899 21.475 12.4243L18.788 15.1113C18.5537 15.3456 18.1738 15.3456 17.9395 15.1113Z',
+      'M11.5757 8.74727L8.88874 6.06026C8.65443 5.82595 8.65443 5.44605 8.88874 5.21173L11.5757 2.52473C11.8101 2.29041 12.19 2.29041 12.4243 2.52473L15.1113 5.21173C15.3456 5.44605 15.3456 5.82595 15.1113 6.06026L12.4243 8.74727C12.19 8.98158 11.8101 8.98158 11.5757 8.74727Z',
+    ],
+  },
+  // Smiley face icon (from assets/icons/canvas.svg)
+  'canvas': {
+    viewBox: '0 0 28 23',
+    strokeRect: { x: 1, y: 1, width: 26, height: 21, rx: 7 },
+    fillPaths: [
+      'M17.8421 12.9776V12.9788L17.8409 12.9812C18.2386 12.451 18.9901 12.3434 19.5204 12.7409C20.0506 13.1385 20.1582 13.8901 19.7606 14.4204L18.8008 13.7008C19.7416 14.4064 19.7606 14.4209 19.7606 14.4215L19.7583 14.4239C19.7573 14.4252 19.756 14.427 19.7548 14.4286C19.7524 14.4317 19.7499 14.436 19.7466 14.4403C19.7399 14.449 19.7311 14.4601 19.7208 14.4731C19.7001 14.4992 19.6715 14.5332 19.6364 14.5751C19.566 14.6589 19.4665 14.7734 19.3387 14.9067C19.0842 15.1723 18.712 15.5216 18.2312 15.8713C17.2736 16.5677 15.831 17.3011 14.0003 17.3011C12.1695 17.3011 10.727 16.5677 9.76938 15.8713C9.28854 15.5216 8.91634 15.1723 8.66184 14.9067C8.53409 14.7734 8.43453 14.6589 8.36415 14.5751C8.32905 14.5332 8.30044 14.4992 8.27977 14.4731C8.26946 14.4601 8.26066 14.449 8.25398 14.4403C8.25066 14.436 8.24819 14.4317 8.24578 14.4286C8.24457 14.427 8.24325 14.4252 8.24226 14.4239L8.23992 14.4215C8.24001 14.4209 8.25896 14.4064 9.19979 13.7008L8.23992 14.4204C7.8424 13.8901 7.94999 13.1385 8.48018 12.7409C9.01029 12.3435 9.76077 12.4513 10.1585 12.9812L10.1597 12.98L10.1585 12.9776H10.1573C10.1583 12.9789 10.1602 12.9801 10.162 12.9823C10.1691 12.9914 10.182 13.0091 10.2018 13.0327C10.2416 13.08 10.3064 13.1534 10.394 13.2449C10.5708 13.4293 10.8366 13.6804 11.1805 13.9305C11.873 14.4341 12.8308 14.9009 14.0003 14.9009C15.1698 14.9009 16.1276 14.4341 16.8201 13.9305C17.164 13.6804 17.4298 13.4293 17.6065 13.2449C17.6942 13.1534 17.759 13.08 17.7987 13.0327C17.8186 13.0091 17.8314 12.9914 17.8386 12.9823L17.8421 12.9776Z',
+      'M10.4111 6.5C11.0739 6.5 11.6112 7.03731 11.6112 7.70012C11.6112 8.36293 11.0739 8.90025 10.4111 8.90025H10.3993C9.73653 8.90025 9.19922 8.36293 9.19922 7.70012C9.19922 7.03731 9.73653 6.5 10.3993 6.5H10.4111Z',
+      'M17.6103 6.5C18.2731 6.5 18.8104 7.03731 18.8104 7.70012C18.8104 8.36293 18.2731 8.90025 17.6103 8.90025H17.5986C16.9358 8.90025 16.3984 8.36293 16.3984 7.70012C16.3984 7.03731 16.9358 6.5 17.5986 6.5H17.6103Z',
+    ],
+  },
+  'flow': {
+    viewBox: '0 0 24 24',
+    strokeWidth: '2.5',
+    strokePaths: [
+      'M13 19L22 12L13 5L13 19Z',
+      'M2 19L11 12L2 5L2 19Z',
+    ],
   },
 }
 
-// Iconoir icons — registered manually from iconoir package.
-// To add: copy inner paths from node_modules/iconoir/icons/{regular|solid}/{name}.svg
-// Set fill: true for solid/fill-based icons (default: false = stroke-based)
+/* ─── Iconoir icons (stroke-based unless fill: true) ─── */
+
 const iconoirIcons = {
   'square-dashed': {
     viewBox: '0 0 24 24',
@@ -79,125 +98,135 @@ const iconoirIcons = {
     strokeWidth: '1.5',
     content: '<path d="M13.9922 17H16.9922M19.9922 17H16.9922M16.9922 17V14M16.9922 17V20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 9.4V4.6C4 4.26863 4.26863 4 4.6 4H9.4C9.73137 4 10 4.26863 10 4.6V9.4C10 9.73137 9.73137 10 9.4 10H4.6C4.26863 10 4 9.73137 4 9.4Z" stroke="currentColor" stroke-width="1.5"/><path d="M4 19.4V14.6C4 14.2686 4.26863 14 4.6 14H9.4C9.73137 14 10 14.2686 10 14.6V19.4C10 19.7314 9.73137 20 9.4 20H4.6C4.26863 20 4 19.7314 4 19.4Z" stroke="currentColor" stroke-width="1.5"/><path d="M14 9.4V4.6C14 4.26863 14.2686 4 14.6 4H19.4C19.7314 4 20 4.26863 20 4.6V9.4C20 9.73137 19.7314 10 19.4 10H14.6C14.2686 10 14 9.73137 14 9.4Z" stroke="currentColor" stroke-width="1.5"/>',
   },
-  'dots-grid-3x3': {
-    viewBox: '0 0 24 24',
-    strokeWidth: '1.5',
-    content: '<path d="M5.5 6C5.77614 6 6 5.77614 6 5.5C6 5.22386 5.77614 5 5.5 5C5.22386 5 5 5.22386 5 5.5C5 5.77614 5.22386 6 5.5 6Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 12.5C5.77614 12.5 6 12.2761 6 12C6 11.7239 5.77614 11.5 5.5 11.5C5.22386 11.5 5 11.7239 5 12C5 12.2761 5.22386 12.5 5.5 12.5Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 19C5.77614 19 6 18.7761 6 18.5C6 18.2239 5.77614 18 5.5 18C5.22386 18 5 18.2239 5 18.5C5 18.7761 5.22386 19 5.5 19Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 6C12.2761 6 12.5 5.77614 12.5 5.5C12.5 5.22386 12.2761 5 12 5C11.7239 5 11.5 5.22386 11.5 5.5C11.5 5.77614 11.7239 6 12 6Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 12.5C12.2761 12.5 12.5 12.2761 12.5 12C12.5 11.7239 12.2761 11.5 12 11.5C11.7239 11.5 11.5 11.7239 11.5 12C11.5 12.2761 11.7239 12.5 12 12.5Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 19C12.2761 19 12.5 18.7761 12.5 18.5C12.5 18.2239 12.2761 18 12 18C11.7239 18 11.5 18.2239 11.5 18.5C11.5 18.7761 11.7239 19 12 19Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 6C18.7761 6 19 5.77614 19 5.5C19 5.22386 18.7761 5 18.5 5C18.2239 5 18 5.22386 18 5.5C18 5.77614 18.2239 6 18.5 6Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 12.5C18.7761 12.5 19 12.2761 19 12C19 11.7239 18.7761 11.5 18.5 11.5C18.2239 11.5 18 11.7239 18 12C18 12.2761 18.2239 12.5 18.5 12.5Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 19C18.7761 19 19 18.7761 19 18.5C19 18.2239 18.7761 18 18.5 18C18.2239 18 18 18.2239 18 18.5C18 18.7761 18.2239 19 18.5 19Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
-  },
   'view-grid': {
     viewBox: '0 0 24 24',
     strokeWidth: '1.5',
     content: '<path d="M14 20.4V14.6C14 14.2686 14.2686 14 14.6 14H20.4C20.7314 14 21 14.2686 21 14.6V20.4C21 20.7314 20.7314 21 20.4 21H14.6C14.2686 21 14 20.7314 14 20.4Z" stroke="currentColor" stroke-width="1.5"/><path d="M3 20.4V14.6C3 14.2686 3.26863 14 3.6 14H9.4C9.73137 14 10 14.2686 10 14.6V20.4C10 20.7314 9.73137 21 9.4 21H3.6C3.26863 21 3 20.7314 3 20.4Z" stroke="currentColor" stroke-width="1.5"/><path d="M14 9.4V3.6C14 3.26863 14.2686 3 14.6 3H20.4C20.7314 3 21 3.26863 21 3.6V9.4C21 9.73137 20.7314 10 20.4 10H14.6C14.2686 10 14 9.73137 14 9.4Z" stroke="currentColor" stroke-width="1.5"/><path d="M3 9.4V3.6C3 3.26863 3.26863 3 3.6 3H9.4C9.73137 3 10 3.26863 10 3.6V9.4C10 9.73137 9.73137 10 9.4 10H3.6C3.26863 10 3 9.73137 3 9.4Z" stroke="currentColor" stroke-width="1.5"/>',
-  },
-  'dots-grid-3x3-solid': {
-    viewBox: '0 0 24 24',
-    fill: true,
-    content: '<rect x="2.25" y="2.25" width="19.5" height="19.5" rx="1.35" fill="currentColor"/><circle cx="5.5" cy="5.5" r="1.25" fill="var(--sb--trigger-bg, var(--color-slate-100))"/><circle cx="5.5" cy="12" r="1.25" fill="var(--sb--trigger-bg, var(--color-slate-100))"/><circle cx="5.5" cy="18.5" r="1.25" fill="var(--sb--trigger-bg, var(--color-slate-100))"/><circle cx="12" cy="5.5" r="1.25" fill="var(--sb--trigger-bg, var(--color-slate-100))"/><circle cx="12" cy="12" r="1.25" fill="var(--sb--trigger-bg, var(--color-slate-100))"/><circle cx="12" cy="18.5" r="1.25" fill="var(--sb--trigger-bg, var(--color-slate-100))"/><circle cx="18.5" cy="5.5" r="1.25" fill="var(--sb--trigger-bg, var(--color-slate-100))"/><circle cx="18.5" cy="12" r="1.25" fill="var(--sb--trigger-bg, var(--color-slate-100))"/><circle cx="18.5" cy="18.5" r="1.25" fill="var(--sb--trigger-bg, var(--color-slate-100))"/>',
   },
   'square-3d-three-points': {
     viewBox: '0 0 24 24',
     strokeWidth: '1.5',
     content: '<path d="M3 21V3.6C3 3.26863 3.26863 3 3.6 3H21" stroke="currentColor"/><path d="M17 21H20.4C20.7314 21 21 20.7314 21 20.4V17" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 7V9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12V14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 21H9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 21H14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 4C3.55228 4 4 3.55228 4 3C4 2.44772 3.55228 2 3 2C2.44772 2 2 2.44772 2 3C2 3.55228 2.44772 4 3 4Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 22C3.55228 22 4 21.5523 4 21C4 20.4477 3.55228 20 3 20C2.44772 20 2 20.4477 2 21C2 21.5523 2.44772 22 3 22Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 4C21.5523 4 22 3.55228 22 3C22 2.44772 21.5523 2 21 2C20.4477 2 20 2.44772 20 3C20 3.55228 20.4477 4 21 4Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
   },
-  'select-point-3d': {
-    viewBox: '0 0 24 24',
-    strokeWidth: '1.5',
-    content: '<path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 7.35304L21 16.647C21 16.8649 20.8819 17.0656 20.6914 17.1715L12.2914 21.8381C12.1102 21.9388 11.8898 21.9388 11.7086 21.8381L3.30861 17.1715C3.11814 17.0656 3 16.8649 3 16.647L2.99998 7.35304C2.99998 7.13514 3.11812 6.93437 3.3086 6.82855L11.7086 2.16188C11.8898 2.06121 12.1102 2.06121 12.2914 2.16188L20.6914 6.82855C20.8818 6.93437 21 7.13514 21 7.35304Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
-  },
 }
 
-function buildSvgHtml({
-  source, iconName, size, label, strokeWeight,
-}) {
-  const ariaAttrs = label ? `aria-label="${label}"` : 'aria-hidden="true"'
-  const custom = !source ? customIcons[iconName] : null
-  const octicon = source === 'primer' ? octicons[iconName] : null
-  const featherIcon = source === 'feather' ? feather.icons[iconName] : null
-  const iconoir = source === 'iconoir' ? iconoirIcons[iconName] : null
+/* ─── React Component ─── */
 
-  if (custom) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${custom.viewBox}" fill="currentColor" ${ariaAttrs}><path d="${custom.path}"/></svg>`
-  }
-  if (octicon) {
-    return octicon.toSVG({
-      width: size,
-      height: size,
-      ...(label ? { 'aria-label': label } : { 'aria-hidden': 'true' }),
-    })
-  }
-  if (featherIcon) {
-    return featherIcon.toSvg({
-      width: size,
-      height: size,
-      'stroke-width': strokeWeight ?? 2,
-      ...(label ? { 'aria-label': label } : { 'aria-hidden': 'true' }),
-    })
-  }
-  if (iconoir) {
-    if (iconoir.fill) {
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${iconoir.viewBox}" fill="currentColor" ${ariaAttrs}>${iconoir.content}</svg>`
-    }
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${iconoir.viewBox}" fill="none" stroke-width="${strokeWeight ?? iconoir.strokeWidth}" ${ariaAttrs}>${iconoir.content}</svg>`
-  }
-  return ''
-}
+import octicons from '@primer/octicons'
+import feather from 'feather-icons'
 
-export function Icon({
-  name,
-  size = 16,
-  label,
-  color,
-  offsetX = 0,
-  offsetY = 0,
-  rotate = 0,
-  flipX = false,
-  flipY = false,
-  strokeWeight,
-  scale = 1,
+/**
+ * @param {object} props
+ * @param {string} props.name - Namespaced icon name: primer/, feather/, iconoir/, or plain custom name
+ * @param {number} [props.size=16]
+ * @param {string} [props.label] - Accessible label (sets aria-label instead of aria-hidden)
+ * @param {string} [props.color]
+ * @param {number} [props.offsetX=0]
+ * @param {number} [props.offsetY=0]
+ * @param {number} [props.rotate=0]
+ * @param {boolean} [props.flipX=false]
+ * @param {boolean} [props.flipY=false]
+ * @param {number} [props.strokeWeight] - Override stroke width
+ * @param {number} [props.scale=1]
+ * @param {string} [props.className]
+ */
+export default function Icon({
+  name, size = 16, label, color,
+  offsetX = 0, offsetY = 0, rotate = 0,
+  flipX = false, flipY = false,
+  strokeWeight, scale = 1, className,
 }) {
   const source = name.includes('/') ? name.split('/')[0] : null
   const iconName = name.includes('/') ? name.slice(name.indexOf('/') + 1) : name
-  const isStrokeIcon = source === 'feather' || (source === 'iconoir' && !iconoirIcons[iconName]?.fill)
 
-  const svg = useMemo(
-    () => buildSvgHtml({ source, iconName, size, label, strokeWeight }),
-    [source, iconName, size, label, strokeWeight],
-  )
+  const ariaProps = label ? { 'aria-label': label, role: 'img' } : { 'aria-hidden': true }
 
+  // Build wrapper style with all transform props
   const scaleX = (flipX ? -1 : 1) * scale
   const scaleY = (flipY ? -1 : 1) * scale
-  const hasScale = flipX || flipY || scale !== 1
+  const hasTransform = offsetX || offsetY || rotate || flipX || flipY || scale !== 1
+  const wrapperStyle = {
+    ...(color ? { color } : {}),
+    display: 'inline-flex',
+    ...(hasTransform ? {
+      translate: (offsetX || offsetY) ? `${offsetX}px ${offsetY}px` : undefined,
+      rotate: rotate ? `${rotate}deg` : undefined,
+      scale: (flipX || flipY || scale !== 1) ? `${scaleX} ${scaleY}` : undefined,
+    } : {}),
+  }
 
-  const cssText = useMemo(() => {
-    const parts = [
-      color ? `color: ${color}` : '',
-      (offsetX || offsetY) ? `translate: ${offsetX}px ${offsetY}px` : '',
-      rotate ? `rotate: ${rotate}deg` : '',
-      hasScale ? `scale: ${scaleX} ${scaleY}` : '',
-    ].filter(Boolean)
-    return parts.length ? parts.join('; ') : ''
-  }, [color, offsetX, offsetY, rotate, hasScale, scaleX, scaleY])
+  let svgContent = null
 
-  const ref = useRef(null)
-
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.style.cssText = cssText
+  // Custom icons (no source prefix)
+  const custom = !source ? customIcons[iconName] : null
+  if (custom) {
+    if (custom.path) {
+      svgContent = (
+        <svg width={size} height={size} viewBox={custom.viewBox} fill="currentColor" {...ariaProps}>
+          <path d={custom.path} />
+        </svg>
+      )
+    } else if (custom.strokePaths) {
+      svgContent = (
+        <svg width={size} height={size} viewBox={custom.viewBox} fill="none" stroke="currentColor" strokeWidth={strokeWeight ?? custom.strokeWidth ?? '1.5'} strokeLinecap="round" strokeLinejoin="round" {...ariaProps}>
+          {custom.strokePaths.map((d, i) => <path key={i} d={d} />)}
+        </svg>
+      )
+    } else if (custom.strokeRect || custom.fillPaths) {
+      svgContent = (
+        <svg width={size} height={size} viewBox={custom.viewBox} fill="none" stroke="currentColor" strokeWidth={strokeWeight ?? '2'} {...ariaProps}>
+          {custom.strokeRect && <rect {...custom.strokeRect} />}
+          {custom.fillPaths?.map((d, i) => <path key={i} d={d} fill="currentColor" stroke="none" />)}
+        </svg>
+      )
     }
-  }, [cssText])
+  }
 
-  const className = [
-    'storyboard-icon',
-    isStrokeIcon ? 'stroke-icon' : '',
-  ].filter(Boolean).join(' ')
+  // Primer Octicons
+  if (!svgContent && source === 'primer') {
+    const octicon = octicons[iconName]
+    if (octicon) {
+      const html = octicon.toSVG({
+        width: size, height: size,
+        ...(label ? { 'aria-label': label } : { 'aria-hidden': 'true' }),
+      })
+      svgContent = <span dangerouslySetInnerHTML={{ __html: html }} />
+    }
+  }
 
-  return (
-    <span
-      ref={ref}
-      className={className}
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
-  )
+  // Feather Icons
+  if (!svgContent && source === 'feather') {
+    const icon = feather.icons[iconName]
+    if (icon) {
+      const html = icon.toSvg({
+        width: size, height: size,
+        'stroke-width': strokeWeight ?? 2,
+        ...(label ? { 'aria-label': label } : { 'aria-hidden': 'true' }),
+      })
+      svgContent = <span dangerouslySetInnerHTML={{ __html: html }} />
+    }
+  }
+
+  // Iconoir icons
+  if (!svgContent && source === 'iconoir') {
+    const iconoir = iconoirIcons[iconName]
+    if (iconoir) {
+      const sw = strokeWeight ?? iconoir.strokeWidth
+      svgContent = (
+        <svg
+          width={size} height={size} viewBox={iconoir.viewBox}
+          fill={iconoir.fill ? 'currentColor' : 'none'}
+          strokeWidth={iconoir.fill ? undefined : sw}
+          {...ariaProps}
+          dangerouslySetInnerHTML={{ __html: iconoir.content }}
+        />
+      )
+    }
+  }
+
+  if (!svgContent) return null
+
+  return <span className={className} style={wrapperStyle}>{svgContent}</span>
 }
 
-export default Icon
+export { Icon }

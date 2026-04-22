@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Command } from 'cmdk'
-import { Icon } from '@dfosco/storyboard-core'
+import Icon from '../Icon.jsx'
 import {
   buildPrototypeIndex,
   listStories,

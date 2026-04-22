@@ -51,3 +51,6 @@ export { default as AuthModal } from './AuthModal/AuthModal.jsx'
 // Canvas
 export { default as CanvasPage } from './canvas/CanvasPage.jsx'
 export { useCanvas } from './canvas/useCanvas.js'
+
+// Icon
+export { default as Icon } from './Icon.jsx'

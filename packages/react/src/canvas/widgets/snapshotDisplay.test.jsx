@@ -1,8 +1,8 @@
 /**
  * Tests for iframe snapshot display — single snapshot prop.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, fireEvent, waitFor, act } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render } from '@testing-library/react'
 import PrototypeEmbed from './PrototypeEmbed.jsx'
 import StoryWidget from './StoryWidget.jsx'
 
@@ -54,9 +54,9 @@ afterEach(() => {
   document.querySelectorAll('[data-sb-canvas-theme]').forEach(el => el.remove())
 })
 
-describe('Snapshot display', () => {
+describe('Snapshot display (snapshots removed — iframes always render)', () => {
   describe('PrototypeEmbed', () => {
-    it('shows snapshot image when valid snapshot prop exists', () => {
+    it('renders iframe even when snapshot prop is provided', () => {
       const { wrapper } = renderInCanvas(
         <PrototypeEmbed
           id="proto-abc123"
@@ -72,13 +72,11 @@ describe('Snapshot display', () => {
         />
       )
 
-      const img = wrapper.querySelector('img')
-      expect(img).toBeInTheDocument()
-      expect(img.src).toContain('snapshot-proto-abc123.webp')
-      expect(wrapper.querySelector('iframe')).not.toBeInTheDocument()
+      expect(wrapper.querySelector('img')).not.toBeInTheDocument()
+      expect(wrapper.querySelector('iframe')).toBeInTheDocument()
     })
 
-    it('falls back to snapshotLight for backward compat', () => {
+    it('renders iframe when snapshotLight prop is provided', () => {
       const { wrapper } = renderInCanvas(
         <PrototypeEmbed
           id="proto-abc123"
@@ -94,12 +92,11 @@ describe('Snapshot display', () => {
         />
       )
 
-      const img = wrapper.querySelector('img')
-      expect(img).toBeInTheDocument()
-      expect(img.src).toContain('snapshot-proto-abc123--light.webp')
+      expect(wrapper.querySelector('img')).not.toBeInTheDocument()
+      expect(wrapper.querySelector('iframe')).toBeInTheDocument()
     })
 
-    it('shows placeholder when no snapshot exists', () => {
+    it('renders iframe when no snapshot exists', () => {
       const { wrapper } = renderInCanvas(
         <PrototypeEmbed
           id="proto-xyz"
@@ -110,32 +107,10 @@ describe('Snapshot display', () => {
       )
 
       expect(wrapper.querySelector('img')).not.toBeInTheDocument()
-      expect(wrapper.querySelector('iframe')).not.toBeInTheDocument()
+      expect(wrapper.querySelector('iframe')).toBeInTheDocument()
     })
 
-    it('falls back to placeholder when snapshot image fails to load', () => {
-      const { wrapper } = renderInCanvas(
-        <PrototypeEmbed
-          id="proto-abc123"
-          props={{
-            src: '/test',
-            width: 400,
-            height: 300,
-            zoom: 100,
-            snapshot: '/_storyboard/canvas/images/snapshot-proto-abc123.webp?v=123',
-          }}
-          onUpdate={vi.fn()}
-          resizable={false}
-        />
-      )
-
-      const img = wrapper.querySelector('img')
-      expect(img).toBeInTheDocument()
-      fireEvent.error(img)
-      expect(wrapper.querySelector('img')).not.toBeInTheDocument()
-    })
-
-    it('ignores snapshot that does not match widget ID', () => {
+    it('ignores snapshot prop that does not match widget ID', () => {
       const { wrapper } = renderInCanvas(
         <PrototypeEmbed
           id="proto-abc123"
@@ -152,9 +127,10 @@ describe('Snapshot display', () => {
       )
 
       expect(wrapper.querySelector('img')).not.toBeInTheDocument()
+      expect(wrapper.querySelector('iframe')).toBeInTheDocument()
     })
 
-    it('does not show snapshot for external URLs', () => {
+    it('renders iframe for external URLs regardless of snapshot', () => {
       const { wrapper } = renderInCanvas(
         <PrototypeEmbed
           id="proto-ext"
@@ -171,11 +147,12 @@ describe('Snapshot display', () => {
       )
 
       expect(wrapper.querySelector('img')).not.toBeInTheDocument()
+      expect(wrapper.querySelector('iframe')).toBeInTheDocument()
     })
   })
 
   describe('StoryWidget', () => {
-    it('shows snapshot image when valid snapshot prop exists', () => {
+    it('renders iframe even when snapshot prop is provided', () => {
       const { wrapper } = renderInCanvas(
         <StoryWidget
           id="story-abc123"
@@ -191,13 +168,11 @@ describe('Snapshot display', () => {
         />
       )
 
-      const img = wrapper.querySelector('img')
-      expect(img).toBeInTheDocument()
-      expect(img.src).toContain('snapshot-story-abc123.webp')
-      expect(wrapper.querySelector('iframe')).not.toBeInTheDocument()
+      expect(wrapper.querySelector('img')).not.toBeInTheDocument()
+      expect(wrapper.querySelector('iframe')).toBeInTheDocument()
     })
 
-    it('falls back to snapshotDark for backward compat', () => {
+    it('renders iframe when snapshotDark prop is provided', () => {
       const { wrapper } = renderInCanvas(
         <StoryWidget
           id="story-abc123"
@@ -210,12 +185,11 @@ describe('Snapshot display', () => {
         />
       )
 
-      const img = wrapper.querySelector('img')
-      expect(img).toBeInTheDocument()
-      expect(img.src).toContain('snapshot-story-abc123--dark.webp')
+      expect(wrapper.querySelector('img')).not.toBeInTheDocument()
+      expect(wrapper.querySelector('iframe')).toBeInTheDocument()
     })
 
-    it('shows placeholder when no snapshot exists', () => {
+    it('renders iframe when no snapshot exists', () => {
       const { wrapper } = renderInCanvas(
         <StoryWidget
           id="story-xyz"
@@ -231,29 +205,7 @@ describe('Snapshot display', () => {
       )
 
       expect(wrapper.querySelector('img')).not.toBeInTheDocument()
-      expect(wrapper.querySelector('iframe')).not.toBeInTheDocument()
-    })
-
-    it('falls back to placeholder when snapshot image fails to load', () => {
-      const { wrapper } = renderInCanvas(
-        <StoryWidget
-          id="story-abc123"
-          props={{
-            storyId: 'button-patterns',
-            exportName: 'Primary',
-            width: 400,
-            height: 300,
-            snapshot: '/_storyboard/canvas/images/snapshot-story-abc123.webp?v=456',
-          }}
-          onUpdate={vi.fn()}
-          resizable={false}
-        />
-      )
-
-      const img = wrapper.querySelector('img')
-      expect(img).toBeInTheDocument()
-      fireEvent.error(img)
-      expect(wrapper.querySelector('img')).not.toBeInTheDocument()
+      expect(wrapper.querySelector('iframe')).toBeInTheDocument()
     })
   })
 })

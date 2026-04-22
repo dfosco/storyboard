@@ -683,11 +683,14 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     }
   }
 
-  // Debounced save to server
+  // Debounced save to server — routed through queueWrite to serialize
+  // with deletes and other writes, preventing stale data from overwriting.
   const debouncedSave = useRef(
     debounce((canvasId, widgets) => {
-      updateCanvas(canvasId, { widgets }).catch((err) =>
-        console.error('[canvas] Failed to save:', err)
+      queueWrite(() =>
+        updateCanvas(canvasId, { widgets }).catch((err) =>
+          console.error('[canvas] Failed to save:', err)
+        )
       )
     }, 2000)
   ).current
@@ -711,6 +714,10 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   }, [canvasId, debouncedSave, undoRedo, snapEnabled, snapGridSize])
 
   const handleWidgetRemove = useCallback((widgetId) => {
+    // Cancel any pending debounced save — it may contain stale data
+    // that includes the widget we're about to delete
+    debouncedSave.cancel()
+
     undoRedo.snapshot(stateRef.current, 'remove', widgetId)
     setLocalWidgets((prev) => prev ? prev.filter((w) => w.id !== widgetId) : prev)
     // Cascade: remove connectors referencing this widget
@@ -731,7 +738,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         console.error('[canvas] Failed to remove widget:', err)
       )
     )
-  }, [canvasId, undoRedo])
+  }, [canvasId, undoRedo, debouncedSave])
 
   const handleConnectorAdd = useCallback(async ({ startWidgetId, startAnchor, endWidgetId, endAnchor }) => {
     try {
@@ -1128,6 +1135,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     }
 
     undoRedo.snapshot(stateRef.current, 'move', dragId)
+    debouncedSave.cancel()
     setLocalWidgets((prev) => {
       if (!prev) return prev
       const next = prev.map((w) =>

@@ -48,12 +48,16 @@ vi.mock('./widgets/widgetProps.js', () => ({
   getDefaults: () => ({}),
 }))
 
-vi.mock('./widgets/widgetConfig.js', () => ({
-  getFeatures: () => [],
-  isResizable: () => false,
-  schemas: {},
-  getMenuWidgetTypes: () => [],
-}))
+vi.mock('./widgets/widgetConfig.js', async () => {
+  const actual = await vi.importActual('./widgets/widgetConfig.js')
+  return {
+    getFeatures: () => [],
+    isResizable: () => false,
+    schemas: {},
+    getMenuWidgetTypes: () => [],
+    getConnectorDefaults: actual.getConnectorDefaults,
+  }
+})
 
 vi.mock('./widgets/figmaUrl.js', () => ({
   isFigmaUrl: () => false,

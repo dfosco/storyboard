@@ -526,6 +526,161 @@ function readModesConfig(root) {
   return fallback
 }
 
+/**
+ * Read a JSON/JSONC file, returning null on failure.
+ */
+function readJsonFile(filePath) {
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8')
+    const errors = []
+    const parsed = parseJsonc(raw, errors)
+    return errors.length === 0 ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Find a core config file from either the monorepo workspace or node_modules.
+ */
+function readCoreConfigFile(root, filename) {
+  const candidates = [
+    path.resolve(root, `packages/core/${filename}`),
+    path.resolve(root, `node_modules/@dfosco/storyboard-core/${filename}`),
+  ]
+  for (const p of candidates) {
+    const parsed = readJsonFile(p)
+    if (parsed) return parsed
+  }
+  return null
+}
+
+/**
+ * Deep-merge helper (same as loader.js deepMerge but available at build time).
+ * Arrays are replaced, not concatenated. Objects are recursively merged.
+ */
+function deepMergeBuild(target, source) {
+  if (!source || typeof source !== 'object') return target
+  if (!target || typeof target !== 'object') return source
+  const result = { ...target }
+  for (const key of Object.keys(source)) {
+    const sv = source[key]
+    const tv = target[key]
+    if (sv && typeof sv === 'object' && !Array.isArray(sv) && tv && typeof tv === 'object' && !Array.isArray(tv)) {
+      result[key] = deepMergeBuild(tv, sv)
+    } else {
+      result[key] = sv
+    }
+  }
+  return result
+}
+
+/**
+ * Build the unified config object by reading and merging all config sources.
+ *
+ * Priority (lowest → highest):
+ *   core defaults → user widgets → user paste → user toolbar → user commandpalette → storyboard.config.json
+ *
+ * Returns { unified, warnings } where warnings is an array of overlap messages.
+ */
+function buildUnifiedConfig(root) {
+  const warnings = []
+
+  // 1. Read core defaults
+  const coreToolbar = readCoreConfigFile(root, 'toolbar.config.json') || {}
+  const coreCommandPalette = readCoreConfigFile(root, 'commandpalette.config.json') || {}
+  const corePaste = readCoreConfigFile(root, 'paste.config.json') || {}
+  const coreWidgets = readCoreConfigFile(root, 'widgets.config.json') || {}
+
+  // 2. Read user config files (priority order)
+  const userFiles = [
+    { domain: 'widgets', filename: 'widgets.config.json', priority: 1 },
+    { domain: 'paste', filename: 'paste.config.json', priority: 2 },
+    { domain: 'toolbar', filename: 'toolbar.config.json', priority: 3 },
+    { domain: 'commandPalette', filename: 'commandpalette.config.json', priority: 4 },
+  ]
+
+  const userConfigs = {}
+  for (const { domain, filename } of userFiles) {
+    const filePath = path.resolve(root, filename)
+    const parsed = readJsonFile(filePath)
+    if (parsed) userConfigs[domain] = { data: parsed, filename }
+  }
+
+  // 3. Read storyboard.config.json (highest priority)
+  const { config: sbConfig } = readConfig(root)
+
+  // 4. Merge core defaults with user overrides per domain
+  const toolbar = userConfigs.toolbar
+    ? deepMergeBuild(coreToolbar, userConfigs.toolbar.data)
+    : coreToolbar
+  const commandPalette = userConfigs.commandPalette
+    ? deepMergeBuild(coreCommandPalette, userConfigs.commandPalette.data)
+    : coreCommandPalette
+  const paste = userConfigs.paste
+    ? deepMergeBuild(corePaste, userConfigs.paste.data)
+    : corePaste
+  const widgets = userConfigs.widgets
+    ? deepMergeBuild(coreWidgets, userConfigs.widgets.data)
+    : coreWidgets
+
+  // 5. Apply storyboard.config.json overrides (highest priority for all domains)
+  const finalToolbar = sbConfig?.toolbar
+    ? deepMergeBuild(toolbar, sbConfig.toolbar)
+    : toolbar
+  const finalCommandPalette = sbConfig?.commandPalette
+    ? deepMergeBuild(commandPalette, sbConfig.commandPalette)
+    : commandPalette
+
+  // 6. Detect overlaps between user config files and storyboard.config.json
+  if (sbConfig?.toolbar && userConfigs.toolbar) {
+    const overlaps = findOverlappingKeys(userConfigs.toolbar.data, sbConfig.toolbar)
+    for (const key of overlaps) {
+      warnings.push(`Config overlap: "${key}" is defined in both toolbar.config.json and storyboard.config.json.toolbar — storyboard.config.json wins.`)
+    }
+  }
+  if (sbConfig?.commandPalette && userConfigs.commandPalette) {
+    const overlaps = findOverlappingKeys(userConfigs.commandPalette.data, sbConfig.commandPalette)
+    for (const key of overlaps) {
+      warnings.push(`Config overlap: "${key}" is defined in both commandpalette.config.json and storyboard.config.json.commandPalette — storyboard.config.json wins.`)
+    }
+  }
+
+  // 7. Build the unified config object
+  const unified = {
+    toolbar: finalToolbar,
+    commandPalette: finalCommandPalette,
+    paste,
+    widgets,
+    featureFlags: sbConfig?.featureFlags || {},
+    modes: sbConfig?.modes || {},
+    ui: sbConfig?.ui || {},
+    canvas: sbConfig?.canvas || {},
+    comments: sbConfig?.comments || {},
+    customerMode: sbConfig?.customerMode || {},
+    plugins: sbConfig?.plugins || {},
+    repository: sbConfig?.repository || {},
+    workshop: sbConfig?.workshop || {},
+  }
+
+  return { unified, warnings }
+}
+
+/**
+ * Find top-level keys that exist in both objects (overlap detection).
+ */
+function findOverlappingKeys(a, b, prefix = '') {
+  const overlaps = []
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return overlaps
+  for (const key of Object.keys(a)) {
+    if (key in b) {
+      const path = prefix ? `${prefix}.${key}` : key
+      overlaps.push(path)
+    }
+  }
+  return overlaps
+}
+
 function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasAliases, canvasGroups, storyRoutes }, root) {
   const declarations = []
   const INDEX_KEYS = ['flow', 'object', 'record', 'prototype', 'folder', 'canvas']
@@ -693,6 +848,14 @@ function generateModule({ index, protoFolders, flowRoutes, canvasRoutes, canvasA
 
   const imports = [`import { init } from '@dfosco/storyboard-core'`]
   const initCalls = [`init({ flows, objects, records, prototypes, folders, canvases, stories })`]
+
+  // Build unified config from all sources
+  const { unified: unifiedConfig, warnings: configWarnings } = buildUnifiedConfig(root)
+  for (const w of configWarnings) {
+    console.warn(`[storyboard] ⚠ ${w}`)
+  }
+  imports.push(`import { initConfig } from '@dfosco/storyboard-core'`)
+  initCalls.push(`initConfig(${JSON.stringify(unifiedConfig)})`)
 
   // Feature flags from storyboard.config.json
   const { config } = readConfig(root)

@@ -94,6 +94,9 @@ export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comm
 export { initCanvasConfig, getPasteRules, getTerminalConfig } from './canvasConfig.js'
 export { getCommandPaletteConfig } from './commandPaletteConfig.js'
 
+// Unified config store
+export { initConfig, getConfig, setOverrides, clearOverrides, clearAllOverrides, subscribeToConfig, getConfigSnapshot } from './configStore.js'
+
 // Customer mode config
 export { initCustomerModeConfig, getCustomerModeConfig, isCustomerMode } from './customerModeConfig.js'
 

@@ -25,6 +25,7 @@ export { useUndoRedo } from './hooks/useUndoRedo.js'
 export { useFeatureFlag } from './hooks/useFeatureFlag.js'
 export { useMode } from './hooks/useMode.js'
 export { useThemeState, useThemeSyncTargets } from './hooks/useThemeState.js'
+export { useConfig } from './hooks/useConfig.js'
 
 // React Router integration
 export { installHashPreserver } from './hashPreserver.js'

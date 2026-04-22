@@ -42,10 +42,12 @@
     "agents": {
       "copilot": {
         "label": "GitHub Copilot",
+        "icon": "primer/copilot",
         "startupCommand": "copilot"
       },
       "claude": {
-        "label": "Claude",
+        "label": "Claude Code",
+        "icon": "claude",
         "startupCommand": "claude --dangerously-skip-permissions"
       }
     }

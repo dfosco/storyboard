@@ -380,7 +380,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
             <span>⚠ {error}</span>
           </div>
         )}
-        {!expanded && <div ref={containerRef} className={styles.xtermContainer} />}
+        <div ref={containerRef} className={styles.xtermContainer} />
 
         {/* Live but not interactive */}
         {ready && !interactive && !sessionEnded && (

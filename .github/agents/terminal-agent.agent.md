@@ -27,10 +27,7 @@ if [ -n "$ENV_FILE" ]; then source "$ENV_FILE"; fi
 cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json
 ```
 
-As a last resort, list all configs and pick the most recent non-deleted one with `connectedWidgets`:
-```bash
-cat .storyboard/terminals/*.json
-```
+If not found, tell the user that's the case -- do not pick a random one.
 
 The config file contains everything you need — no additional API calls required:
 

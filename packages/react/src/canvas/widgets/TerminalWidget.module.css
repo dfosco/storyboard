@@ -49,6 +49,22 @@
   padding: 12px;
 }
 
+/* Hide the native caret on ghostty-web's helper textarea —
+   without this it renders a visible blinking cursor at (0,0)
+   and triggers scrollIntoView on focus (scroll-to-top bug). */
+.xtermContainer :global(.xterm-helper-textarea),
+.xtermContainer textarea {
+  caret-color: transparent !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
 .xtermContainer :global(.xterm-viewport) {
   overflow-y: auto;
 }

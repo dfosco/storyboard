@@ -43,8 +43,12 @@ export default function AuthModal() {
     try { localStorage.setItem(COMMENTS_TOKEN_KEY, trimmed) } catch { /* ignore */ }
 
     try {
-      import('@dfosco/storyboard-core/comments').then(({ setToken }) => {
+      import('@dfosco/storyboard-core/comments').then(({ setToken, validateToken }) => {
         setToken(trimmed)
+        // Validate to cache user info (login + avatar), then notify Viewfinder
+        validateToken(trimmed)
+          .then(() => document.dispatchEvent(new CustomEvent('storyboard:auth-changed')))
+          .catch(() => document.dispatchEvent(new CustomEvent('storyboard:auth-changed')))
       }).catch(() => {})
     } catch { /* comments module may not be initialized */ }
 

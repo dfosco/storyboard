@@ -45,6 +45,66 @@ function useToolbarTheme() {
   return attrs
 }
 
+/* ─── GitHub user hook ─── */
+
+const COMMENTS_USER_KEY = 'sb-comments-user'
+const COMMENTS_TOKEN_KEY = 'sb-comments-token'
+
+/**
+ * Resolve the current GitHub user for display in the sidebar.
+ * Priority: 1) PAT-cached user (from comments auth), 2) gh CLI login via git-user endpoint.
+ */
+function useGitHubUser(basePath) {
+  const [user, setUser] = useState(() => {
+    try {
+      const raw = localStorage.getItem(COMMENTS_USER_KEY)
+      const token = localStorage.getItem(COMMENTS_TOKEN_KEY)
+      if (token && raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed?.login) return parsed
+      }
+    } catch { /* ignore */ }
+    return null
+  })
+
+  useEffect(() => {
+    // If we already have a PAT-cached user, no need to fetch
+    if (user) return
+
+    const apiBase = (basePath || '/').replace(/\/$/, '')
+    fetch(`${apiBase}/_storyboard/git-user`).then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.login) {
+          setUser({ login: data.login, avatarUrl: `https://github.com/${data.login}.png?size=64` })
+        }
+      })
+      .catch(() => {})
+  }, [basePath])
+
+  // Listen for auth changes (when user signs in via AuthModal)
+  useEffect(() => {
+    const handler = () => {
+      try {
+        const raw = localStorage.getItem(COMMENTS_USER_KEY)
+        const token = localStorage.getItem(COMMENTS_TOKEN_KEY)
+        if (token && raw) {
+          const parsed = JSON.parse(raw)
+          if (parsed?.login) { setUser(parsed); return }
+        }
+        setUser(null)
+      } catch { setUser(null) }
+    }
+    window.addEventListener('storage', handler)
+    document.addEventListener('storyboard:auth-changed', handler)
+    return () => {
+      window.removeEventListener('storage', handler)
+      document.removeEventListener('storyboard:auth-changed', handler)
+    }
+  }, [])
+
+  return user
+}
+
 /* ─── localStorage helpers ─── */
 
 const STARRED_KEY = 'sb-viewfinder-starred'
@@ -765,6 +825,7 @@ export default function Viewfinder({
 }) {
   const shouldHideDefault = hideDefaultFlow ?? hideDefaultScene
   const themeAttrs = useToolbarTheme()
+  const ghUser = useGitHubUser(basePath)
 
   // Build data index from real prototype/canvas/story data
   const knownRoutes = useMemo(() =>
@@ -1032,13 +1093,28 @@ export default function Viewfinder({
 
           {/* User profile / login */}
           <div className={css.sidebarFooter}>
-            <button className={css.loginBtn} onClick={() => document.dispatchEvent(new CustomEvent('storyboard:open-auth-modal'))}>
-              <span className={css.avatar}><MarkGithubIcon size={16} /></span>
-              <div>
-                <div className={css.userName}>Sign in</div>
-                <div className={css.userSub}>Connect with GitHub</div>
+            {ghUser ? (
+              <div className={css.loginBtn}>
+                <img
+                  className={css.userAvatar}
+                  src={ghUser.avatarUrl || `https://github.com/${ghUser.login}.png?size=64`}
+                  alt={ghUser.login}
+                  width={32}
+                  height={32}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className={css.userName}>{ghUser.login}</div>
+                </div>
               </div>
-            </button>
+            ) : (
+              <button className={css.loginBtn} onClick={() => document.dispatchEvent(new CustomEvent('storyboard:open-auth-modal'))}>
+                <span className={css.avatar}><MarkGithubIcon size={16} /></span>
+                <div>
+                  <div className={css.userName}>Sign in</div>
+                  <div className={css.userSub}>Connect with GitHub</div>
+                </div>
+              </button>
+            )}
           </div>
         </aside>
 

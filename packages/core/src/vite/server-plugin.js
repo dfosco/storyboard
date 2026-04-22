@@ -296,6 +296,21 @@ export default function storyboardServer() {
         } catch { sendJson(res, 200, []) }
       })
 
+      // Git user — return git config user name and GitHub login (via gh CLI)
+      routeHandlers.set('git-user', async (req, res) => {
+        try {
+          const { execSync } = await import('node:child_process')
+          const name = execSync('git config user.name', { cwd: root, encoding: 'utf8' }).trim()
+          let login = null
+          try {
+            const status = execSync('gh auth status 2>&1', { cwd: root, encoding: 'utf8' })
+            const m = status.match(/Logged in to github\.com account (\S+)/) || status.match(/Logged in to github\.com as (\S+)/)
+            if (m) login = m[1]
+          } catch { /* gh not installed or not logged in */ }
+          sendJson(res, 200, { name, login })
+        } catch { sendJson(res, 200, { name: null, login: null }) }
+      })
+
       // Switch branch — proxy to storyboard server which manages worktree
       // dev servers. The server port is derived from the devDomain.
       routeHandlers.set('switch-branch', async (req, res, ctx) => {

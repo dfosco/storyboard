@@ -26,7 +26,7 @@ export default function ActionMenuButton({ config = {}, data, localOnly, tabinde
 
   return (
     <DropdownMenu.Root open={menuOpen} onOpenChange={handleOpenChange}>
-      <DropdownMenu.Trigger asChild>
+      <DropdownMenu.Trigger>
           <TriggerButton
             active={menuOpen}
             size="icon-xl"

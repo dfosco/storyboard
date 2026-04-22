@@ -152,7 +152,7 @@ export default function AutosyncMenuButton({ config = {}, basePath = '/', tabind
 
   return (
     <DropdownMenu.Root open={menuOpen} onOpenChange={handleOpenChange}>
-      <DropdownMenu.Trigger asChild>
+      <DropdownMenu.Trigger>
           <TriggerButton
             active={menuOpen || hasEnabled(enabledScopes)}
             size="icon-xl"

@@ -49,7 +49,7 @@ export default function CreateMenuButton({ features: featuresProp = [], data, co
   return (
     <>
       <DropdownMenu.Root open={menuOpen} onOpenChange={setMenuOpen}>
-        <DropdownMenu.Trigger asChild>
+        <DropdownMenu.Trigger>
             <TriggerButton
               active={menuOpen}
               size="icon-xl"

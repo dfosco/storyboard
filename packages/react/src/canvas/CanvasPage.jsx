@@ -571,6 +571,10 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     stateRef.current = { widgets: localWidgets, sources: localSources, connectors: localConnectors }
   }, [localWidgets, localSources, localConnectors])
 
+  // Dirty flag — true while optimistic edits haven't been persisted yet.
+  // Prevents HMR echoes from overwriting in-flight local state.
+  const dirtyRef = useRef(false)
+
   // Serialized write queue — ensures JSONL events land in the right order
   const writeQueueRef = useRef(Promise.resolve())
   function queueWrite(fn) {
@@ -665,9 +669,16 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     const isCanvasSwitch = trackedCanvas && canvas && trackedCanvas._route !== canvas._route
     console.log('[viewport] canvas changed —', isCanvasSwitch ? 'new canvas, resetting viewport' : 'same canvas, updating widgets only')
     setTrackedCanvas(canvas)
-    setLocalWidgets(canvas?.widgets ?? null)
-    setLocalConnectors(canvas?.connectors ?? [])
-    setLocalSources(canvas?.sources ?? [])
+
+    // Skip replacing local state with server data when optimistic edits are
+    // pending — the local state is more recent. The next save will persist it
+    // and the subsequent server push (after dirty clears) will reconcile.
+    if (!dirtyRef.current || isCanvasSwitch) {
+      setLocalWidgets(canvas?.widgets ?? null)
+      setLocalConnectors(canvas?.connectors ?? [])
+      setLocalSources(canvas?.sources ?? [])
+    }
+
     setSnapEnabled(canvas?.snapToGrid ?? false)
     setSnapGridSize(canvas?.gridSize || 40)
     undoRedo.reset()
@@ -688,9 +699,9 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   const debouncedSave = useRef(
     debounce((canvasId, widgets) => {
       queueWrite(() =>
-        updateCanvas(canvasId, { widgets }).catch((err) =>
-          console.error('[canvas] Failed to save:', err)
-        )
+        updateCanvas(canvasId, { widgets })
+          .catch((err) => console.error('[canvas] Failed to save:', err))
+          .finally(() => { dirtyRef.current = false })
       )
     }, 2000)
   ).current
@@ -708,6 +719,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       const next = prev.map((w) =>
         w.id === widgetId ? { ...w, props: { ...w.props, ...snapped } } : w
       )
+      dirtyRef.current = true
       debouncedSave(canvasId, next)
       return next
     })
@@ -733,10 +745,11 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       }
       return prev.filter((c) => c.start.widgetId !== widgetId && c.end.widgetId !== widgetId)
     })
+    dirtyRef.current = true
     queueWrite(() =>
-      removeWidgetApi(canvasId, widgetId).catch((err) =>
-        console.error('[canvas] Failed to remove widget:', err)
-      )
+      removeWidgetApi(canvasId, widgetId)
+        .catch((err) => console.error('[canvas] Failed to remove widget:', err))
+        .finally(() => { dirtyRef.current = false })
     )
   }, [canvasId, undoRedo, debouncedSave])
 
@@ -1073,10 +1086,11 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           }
           return w
         })
+        dirtyRef.current = true
         queueWrite(() =>
-          updateCanvas(canvasId, { widgets: next }).catch((err) =>
-            console.error('[canvas] Failed to save multi-move:', err)
-          )
+          updateCanvas(canvasId, { widgets: next })
+            .catch((err) => console.error('[canvas] Failed to save multi-move:', err))
+            .finally(() => { dirtyRef.current = false })
         )
         return next
       })
@@ -1105,10 +1119,11 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           return s
         })
         if (changed) {
+          dirtyRef.current = true
           queueWrite(() =>
-            updateCanvas(canvasId, { sources: next }).catch((err) =>
-              console.error('[canvas] Failed to save multi-move sources:', err)
-            )
+            updateCanvas(canvasId, { sources: next })
+              .catch((err) => console.error('[canvas] Failed to save multi-move sources:', err))
+              .finally(() => { dirtyRef.current = false })
           )
         }
         return changed ? next : current
@@ -1124,10 +1139,11 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         const next = current.some((s) => s?.export === sourceExport)
           ? current.map((s) => (s?.export === sourceExport ? { ...s, position: rounded } : s))
           : [...current, { export: sourceExport, position: rounded }]
+        dirtyRef.current = true
         queueWrite(() =>
-          updateCanvas(canvasId, { sources: next }).catch((err) =>
-            console.error('[canvas] Failed to save source position:', err)
-          )
+          updateCanvas(canvasId, { sources: next })
+            .catch((err) => console.error('[canvas] Failed to save source position:', err))
+            .finally(() => { dirtyRef.current = false })
         )
         return next
       })
@@ -1141,10 +1157,11 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       const next = prev.map((w) =>
         w.id === dragId ? { ...w, position: rounded } : w
       )
+      dirtyRef.current = true
       queueWrite(() =>
-        updateCanvas(canvasId, { widgets: next }).catch((err) =>
-          console.error('[canvas] Failed to save widget position:', err)
-        )
+        updateCanvas(canvasId, { widgets: next })
+          .catch((err) => console.error('[canvas] Failed to save widget position:', err))
+          .finally(() => { dirtyRef.current = false })
       )
       return next
     })

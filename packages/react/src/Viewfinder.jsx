@@ -4,9 +4,9 @@
  * Replaces the old list-based Viewfinder with a sidebar + grid layout.
  * Wired to real data from buildPrototypeIndex and listStories.
  */
-import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
-import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, PlusIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon, StackIcon } from '@primer/octicons-react'
+import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, PlusIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon, StackIcon, KebabHorizontalIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
 import { Menu } from '@base-ui/react/menu'
 import Icon from './Icon.jsx'
 import css from './Viewfinder.module.css'
@@ -157,16 +157,260 @@ function AvatarStack({ authors }) {
 
 /* ─── Star Button ─── */
 
-function StarBtn({ active, onClick }) {
+function StarBtn({ active, onClick, inline }) {
+  const cls = inline
+    ? (active ? css.iconBtnInlineActive : css.iconBtnInline)
+    : (active ? css.iconBtnActive : css.iconBtn)
   return (
     <button
-      className={active ? css.iconBtnActive : css.iconBtn}
+      className={cls}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClick() }}
       aria-label={active ? 'Remove favorite' : 'Favorite'}
       title={active ? 'Remove favorite' : 'Favorite'}
     >
       {active ? <StarFillIcon size={16} /> : <StarIcon size={16} />}
     </button>
+  )
+}
+
+/* ─── Card Actions Menu ─── */
+
+function CardActionsMenu({ typeLabel, onEdit, onDelete }) {
+  return (
+    <Menu.Root>
+      <Menu.Trigger
+        className={css.iconBtn}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+        aria-label="Actions"
+        render={<button />}
+      >
+        <KebabHorizontalIcon size={16} />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner className={css.actionsMenuPositioner} side="bottom" alignment="end">
+          <Menu.Popup className={css.actionsMenu} onClick={(e) => { e.preventDefault(); e.stopPropagation() }}>
+            <Menu.Item
+              className={css.actionsMenuItem}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit() }}
+              render={<button />}
+            >
+              <PencilIcon size={16} />
+              Edit {typeLabel}
+            </Menu.Item>
+            <Menu.Item
+              className={css.actionsMenuItemDanger}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete() }}
+              render={<button />}
+            >
+              <TrashIcon size={16} />
+              Delete {typeLabel}
+            </Menu.Item>
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  )
+}
+
+/* ─── Edit Artifact Modal ─── */
+
+function EditArtifactModal({ item, dirName, basePath, onClose }) {
+  const [name, setName] = useState(item.name || '')
+  const [description, setDescription] = useState(item.description || '')
+  const [author, setAuthor] = useState(
+    item.author
+      ? (Array.isArray(item.author) ? item.author.join(', ') : item.author)
+      : ''
+  )
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const overlayRef = useRef(null)
+
+  const typeLabel = item.type === 'canvas' ? 'Canvas' : item.type === 'prototype' ? 'Prototype' : 'Component'
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setSubmitting(true)
+
+    const apiBase = (basePath || '/').replace(/\/+$/, '')
+    let endpoint
+
+    if (item.type === 'canvas') {
+      endpoint = `${apiBase}/_storyboard/canvas/update-meta`
+    } else if (item.type === 'prototype') {
+      endpoint = `${apiBase}/_storyboard/workshop/prototypes`
+    } else {
+      setError('Editing this type is not supported')
+      setSubmitting(false)
+      return
+    }
+
+    const body = {
+      name: dirName,
+      title: name.trim(),
+      description: description.trim(),
+      author: author.trim(),
+    }
+    if (item.folder) body.folder = item.folder
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || `Request failed (${res.status})`)
+      }
+      window.location.reload()
+    } catch (err) {
+      setError(err.message)
+      setSubmitting(false)
+    }
+  }
+
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  return (
+    <div className={css.modalOverlay} onClick={(e) => { if (e.target === overlayRef.current) onClose() }} ref={overlayRef}>
+      <div className={css.modalContent} onClick={(e) => e.stopPropagation()}>
+        <form onSubmit={handleSubmit}>
+          <div className={css.createFormHeader}>
+            <div className={css.createMenuTitle}>Edit {typeLabel}</div>
+            <button type="button" className={css.createFormClose} onClick={onClose} aria-label="Close">
+              <XIcon size={16} />
+            </button>
+          </div>
+
+          <div className={css.createFormField}>
+            <label className={css.createFormLabel}>Name</label>
+            <input
+              className={css.createFormInput}
+              value={name}
+              onChange={e => setName(e.target.value)}
+              autoFocus
+            />
+          </div>
+
+          <div className={css.createFormField}>
+            <label className={css.createFormLabel}>Description</label>
+            <input
+              className={css.createFormInput}
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Optional description"
+            />
+          </div>
+
+          <div className={css.createFormField}>
+            <label className={css.createFormLabel}>Author</label>
+            <input
+              className={css.createFormInput}
+              value={author}
+              onChange={e => setAuthor(e.target.value)}
+              placeholder="GitHub username(s), comma-separated"
+            />
+          </div>
+
+          {error && <div className={css.createFormError}>{error}</div>}
+
+          <div className={css.createFormActions}>
+            <button type="button" className={css.modalCancelBtn} onClick={onClose}>Cancel</button>
+            <button type="submit" className={css.createFormSubmit} disabled={submitting}>
+              {submitting ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Delete Artifact Modal ─── */
+
+function DeleteArtifactModal({ item, dirName, basePath, typeLabel, onClose }) {
+  const [error, setError] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const overlayRef = useRef(null)
+
+  const handleDelete = async () => {
+    setError('')
+    setDeleting(true)
+
+    const apiBase = (basePath || '/').replace(/\/+$/, '')
+    let endpoint
+
+    if (item.type === 'canvas') {
+      endpoint = `${apiBase}/_storyboard/canvas/delete-canvas`
+    } else if (item.type === 'prototype') {
+      endpoint = `${apiBase}/_storyboard/workshop/prototypes`
+    } else {
+      setError('Deleting this type is not supported')
+      setDeleting(false)
+      return
+    }
+
+    const body = { name: dirName }
+    if (item.folder) body.folder = item.folder
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || `Request failed (${res.status})`)
+      }
+      window.location.reload()
+    } catch (err) {
+      setError(err.message)
+      setDeleting(false)
+    }
+  }
+
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  return (
+    <div className={css.modalOverlay} onClick={(e) => { if (e.target === overlayRef.current) onClose() }} ref={overlayRef}>
+      <div className={css.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div className={css.createFormHeader}>
+          <div className={css.createMenuTitle}>Delete {typeLabel}</div>
+          <button type="button" className={css.createFormClose} onClick={onClose} aria-label="Close">
+            <XIcon size={16} />
+          </button>
+        </div>
+
+        <p className={css.deleteMessage}>
+          Are you sure you want to delete <strong>{item.name}</strong>? This action cannot be undone.
+        </p>
+
+        {error && <div className={css.createFormError}>{error}</div>}
+
+        <div className={css.createFormActions}>
+          <button type="button" className={css.modalCancelBtn} onClick={onClose}>Cancel</button>
+          <button
+            type="button"
+            className={css.deleteConfirmBtn}
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? 'Deleting…' : `Delete ${typeLabel}`}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -189,36 +433,72 @@ function ArtifactCard({ item, basePath, starred, onToggleStar }) {
     ? (Array.isArray(item.author) ? item.author : [item.author])
     : item.gitAuthor ? [item.gitAuthor] : []
 
+  const [showEdit, setShowEdit] = useState(false)
+  const [showDelete, setShowDelete] = useState(false)
+
+  // Extract dirName from item.id (format: "type:dirName")
+  const dirName = item.id.split(':').slice(1).join(':')
+  const typeLabel = item.type === 'canvas' ? 'Canvas' : item.type === 'prototype' ? 'Prototype' : 'Component'
+  const canEditDelete = item.type === 'canvas' || item.type === 'prototype'
+
   return (
-    <Tag className={css.card} {...linkProps} onClick={handleClick}>
-      <div className={css.cardHeader}>
-        <span className={css.cardBadge}>{getTypeLabel(item.type)}</span>
-        <div className={css.cardActions}>
-          {item.flows?.length > 0 && <FlowsDropdown flows={item.flows} basePath={basePath} />}
-          {item.pages?.length > 1 && <PagesDropdown pages={item.pages} basePath={basePath} />}
-          <StarBtn active={starred} onClick={() => onToggleStar(item.id)} />
-        </div>
-      </div>
-      <div className={css.cardBody}>
-        <div className={css.cardBodyContent}>
-          <div className={css.cardTitle}>
-            {item.name}
-            {isExternal && <span className={css.externalBadge}>↗</span>}
+    <>
+      <Tag className={css.card} {...linkProps} onClick={handleClick}>
+        <div className={css.cardHeader}>
+          <span className={css.cardBadge}>{getTypeLabel(item.type)}</span>
+          <div className={css.cardActions}>
+            {item.flows?.length > 0 && <FlowsDropdown flows={item.flows} basePath={basePath} />}
+            {item.pages?.length > 1 && <PagesDropdown pages={item.pages} basePath={basePath} />}
+            {canEditDelete && (
+              <CardActionsMenu
+                typeLabel={typeLabel}
+                onEdit={() => setShowEdit(true)}
+                onDelete={() => setShowDelete(true)}
+              />
+            )}
           </div>
-          {item.description && (
-            <div className={css.cardDescription}>{item.description}</div>
-          )}
-          <div className={css.cardFooter}>
-            <AvatarStack authors={authorList} />
-            <div className={css.cardMeta}>
-              {authorList.length > 0 && <span>{authorList.join(', ')}</span>}
-              {authorList.length > 0 && formatRelativeTime(item.lastModified) && <span className={css.cardMetaDot} />}
-              {formatRelativeTime(item.lastModified) && <span>{formatRelativeTime(item.lastModified)}</span>}
+        </div>
+        <div className={css.cardBody}>
+          <div className={css.cardBodyContent}>
+            <div className={css.cardTitleRow}>
+              <div className={css.cardTitle}>
+                {item.name}
+                {isExternal && <span className={css.externalBadge}>↗</span>}
+              </div>
+              <StarBtn active={starred} onClick={() => onToggleStar(item.id)} inline />
+            </div>
+            {item.description && (
+              <div className={css.cardDescription}>{item.description}</div>
+            )}
+            <div className={css.cardFooter}>
+              <AvatarStack authors={authorList} />
+              <div className={css.cardMeta}>
+                {authorList.length > 0 && <span>{authorList.join(', ')}</span>}
+                {authorList.length > 0 && formatRelativeTime(item.lastModified) && <span className={css.cardMetaDot} />}
+                {formatRelativeTime(item.lastModified) && <span>{formatRelativeTime(item.lastModified)}</span>}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </Tag>
+      </Tag>
+      {showEdit && (
+        <EditArtifactModal
+          item={item}
+          dirName={dirName}
+          basePath={basePath}
+          onClose={() => setShowEdit(false)}
+        />
+      )}
+      {showDelete && (
+        <DeleteArtifactModal
+          item={item}
+          dirName={dirName}
+          basePath={basePath}
+          typeLabel={typeLabel}
+          onClose={() => setShowDelete(false)}
+        />
+      )}
+    </>
   )
 }
 

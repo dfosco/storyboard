@@ -2,6 +2,7 @@
  * CanvasUndoRedo — grouped undo/redo button bar.
  */
 import { useState, useEffect } from 'react'
+import './CanvasUndoRedo.css'
 import * as Tooltip from './lib/components/ui/tooltip/index.js'
 
 export default function CanvasUndoRedo({ config = {}, data, tabindex = -1 }) {

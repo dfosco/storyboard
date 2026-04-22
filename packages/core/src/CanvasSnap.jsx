@@ -2,6 +2,7 @@
  * CanvasSnap — standalone snap-to-grid toggle button.
  */
 import { useState, useEffect } from 'react'
+import './CanvasSnap.css'
 import * as Tooltip from './lib/components/ui/tooltip/index.js'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
 

@@ -113,3 +113,6 @@ export {
 
 // Recent artifacts (command palette recents)
 export { trackRecent, getRecent, clearRecent } from './recentArtifacts.js'
+
+// Icon component for UI rendering
+export { Icon, default as IconDefault } from './svelte-plugin-ui/components/Icon.jsx'

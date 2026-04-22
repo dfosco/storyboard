@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Command } from 'cmdk'
-import {
-  HomeIcon, SunIcon, ZapIcon, GearIcon, PlayIcon, PlusCircleIcon,
-  FileCodeIcon, ColumnsIcon, PackageIcon, StarFillIcon, ClockIcon,
-  TerminalIcon, PaintbrushIcon, EyeIcon, LinkIcon, HashIcon, CommandPaletteIcon,
-  TableIcon,
-} from '@primer/octicons-react'
+import { Icon } from '@dfosco/storyboard-core'
 import {
   buildPrototypeIndex,
   listStories,
@@ -31,43 +26,32 @@ import './command-palette.css'
 
 // Icon size for all palette items
 const ICON_SIZE = 16
-const ICON_STYLE = { flexShrink: 0, color: 'var(--fgColor-muted, #656d76)' }
 
-// Map item types to Octicon components
-const TYPE_ICONS = {
-  prototype: FileCodeIcon,
-  canvas: ColumnsIcon,
-  story: PackageIcon,
-  starred: StarFillIcon,
-  recent: ClockIcon,
-  create: PlusCircleIcon,
-  command: ZapIcon,
-  link: LinkIcon,
-  home: HomeIcon,
-  theme: SunIcon,
-  terminal: TerminalIcon,
+// Map item types to icon names (primer/, feather/, iconoir/ namespaces)
+const TYPE_ICON_NAMES = {
+  prototype: 'prototype',
+  canvas: 'canvas',
+  story: 'component',
+  component: 'component',
+  starred: 'primer/star-fill',
+  recent: 'primer/clock',
+  create: 'iconoir/plus-circle',
+  command: 'feather/zap',
+  link: 'feather/external-link',
+  home: 'primer/home',
+  theme: 'primer/sun',
+  terminal: 'feather/terminal',
+  repository: 'primer/mark-github',
+  docs: 'primer/book',
+  devtools: 'feather/tool',
+  'feature-flags': 'feather/flag',
 }
 
-// Map toolbar tool icon names to Octicons (best-effort)
-const TOOL_ICON_MAP = {
-  'primer/sun': SunIcon,
-  'feather/fast-forward': PlayIcon,
-  'primer/comment': HashIcon,
-  'iconoir/square-dashed': EyeIcon,
-  'iconoir/plus-circle': PlusCircleIcon,
-  'iconoir/key-command': CommandPaletteIcon,
-  'primer/gear': GearIcon,
-  'primer/sync': ZapIcon,
-  'iconoir/grid-plus': TableIcon,
-  'primer/paintbrush': PaintbrushIcon,
-  'primer/eye': EyeIcon,
-  'primer/link': LinkIcon,
-}
+const FALLBACK_ICON = 'feather/hexagon'
 
 function ItemIcon({ type, toolIcon }) {
-  const IconComp = (toolIcon && TOOL_ICON_MAP[toolIcon]) || TYPE_ICONS[type]
-  if (!IconComp) return null
-  return <IconComp size={ICON_SIZE} style={ICON_STYLE} />
+  const iconName = toolIcon || TYPE_ICON_NAMES[type] || FALLBACK_ICON
+  return <Icon name={iconName} size={ICON_SIZE} color="var(--fgColor-muted, #656d76)" />
 }
 
 function AvatarIcon({ username }) {
@@ -77,7 +61,7 @@ function AvatarIcon({ username }) {
       alt={username}
       width={ICON_SIZE}
       height={ICON_SIZE}
-      style={{ ...ICON_STYLE, borderRadius: '50%' }}
+      style={{ flexShrink: 0, borderRadius: '50%' }}
     />
   )
 }

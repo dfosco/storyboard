@@ -820,6 +820,25 @@
         "exclude": []
       }
     },
+    "prompt": {
+      "label": "Prompt",
+      "icon": "✨",
+      "resize": { "enabled": false, "prod": false },
+      "props": {
+        "text":           { "type": "text",   "label": "Prompt text",      "category": "content",  "default": "" },
+        "status":         { "type": "text",   "label": "Status",           "category": "settings", "default": "idle" },
+        "sessionId":      { "type": "text",   "label": "Session ID",       "category": "settings", "default": "" },
+        "resultWidgetId": { "type": "text",   "label": "Result Widget ID", "category": "settings", "default": "" },
+        "errorMessage":   { "type": "text",   "label": "Error Message",    "category": "settings", "default": "" },
+        "connections":    { "type": "text",   "label": "Connections",      "category": "settings", "default": "" },
+        "width":          { "type": "number", "label": "Width",            "category": "size",     "default": 320, "min": 200 }
+      },
+      "features": [
+        { "id": "copy",      "type": "action", "action": "copy",      "label": "$label:duplicate", "icon": "copy" },
+        { "id": "copy-link", "type": "action", "action": "copy-link", "label": "$label:copy-link", "icon": "link",  "menu": true, "prod": true },
+        { "id": "delete",    "type": "action", "action": "delete",    "label": "$label:delete",    "icon": "trash", "menu": true }
+      ]
+    },
     "image": {
       "label": "Image",
       "icon": "🖼️",

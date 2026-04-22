@@ -18,6 +18,7 @@ import { serverFeatures as workshopFeatures } from '../workshop/features/registr
 import { docsHandler, collectFiles } from './docs-handler.js'
 import { createCanvasHandler } from '../canvas/server.js'
 import { setupSelectedWidgets } from '../canvas/selectedWidgets.js'
+import { createPromptHandler } from '../canvas/prompt-server.js'
 import { createAutosyncHandler } from '../autosync/server.js'
 import { setupTerminalServer } from '../canvas/terminal-server.js'
 import { listSessions, detachSession, killSession, orphanSession } from '../canvas/terminal-registry.js'
@@ -216,9 +217,16 @@ export default function storyboardServer() {
         setupTerminalServer(server.httpServer, base, branch)
       }
 
+      // Wire prompt API routes (AI prompt execution for canvas prompt widgets)
+      routeHandlers.set('prompt', createPromptHandler({ root, sendJson }))
+
       // Ignore assets/canvas/ so image/snapshot writes don't trigger reloads
       server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'images'))
       server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'snapshots'))
+
+      // Ignore .storyboard/.prompt-sessions/ so signal file writes don't trigger reloads
+      const promptSessionsDir = path.join(root, '.storyboard', '.prompt-sessions')
+      server.watcher.unwatch(promptSessionsDir)
 
       // Wire autosync API routes (always enabled — git automation for dev)
       routeHandlers.set('autosync', createAutosyncHandler({ root, sendJson }))

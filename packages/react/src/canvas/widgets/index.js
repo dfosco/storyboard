@@ -9,6 +9,7 @@ import StoryWidget from './StoryWidget.jsx'
 import TerminalWidget from './TerminalWidget.jsx'
 import TerminalReadWidget from './TerminalReadWidget.jsx'
 import ActionWidget from './ActionWidget.jsx'
+import PromptWidget from './PromptWidget.jsx'
 
 /**
  * Maps widget type strings to their React components.
@@ -27,6 +28,7 @@ export const widgetRegistry = {
   'terminal-read': TerminalReadWidget,
   'action': ActionWidget,
   'agent': TerminalWidget,
+  'prompt': PromptWidget,
 }
 
 /**

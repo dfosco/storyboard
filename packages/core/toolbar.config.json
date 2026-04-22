@@ -125,6 +125,18 @@
       "excludeRoutes": ["^/$", "/viewfinder"],
       "hideInCommandPalette": ["^(?!/canvas)"]
     },
+    "canvas-agents": {
+      "ariaLabel": "Add agent",
+      "label": "Add agent",
+      "icon": "agents",
+      "render": "menu",
+      "surface": "canvas-toolbar",
+      "handler": "core:canvas-agents",
+      "modes": ["*"],
+      "menuWidth": "220px",
+      "excludeRoutes": ["^/$", "/viewfinder"],
+      "hideInCommandPalette": ["^(?!/canvas)"]
+    },
     "canvas-zoom": {
       "ariaLabel": "Zoom controls",
       "render": "canvas-zoom",

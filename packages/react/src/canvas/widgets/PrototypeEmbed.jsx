@@ -6,7 +6,8 @@ import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
-import { findConnectedSplitTarget, getPaneOrder, buildSecondaryIframeUrl, reparentTerminalInto } from './expandUtils.js'
+import { findConnectedSplitTarget, getPaneOrder, buildSecondaryIframeUrl, reparentTerminalInto, getSplitPaneLabel, getWidgetX } from './expandUtils.js'
+import SplitScreenTopBar from './SplitScreenTopBar.jsx'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -447,6 +448,18 @@ function PrototypeExpandModal({ expanded, onClose, modalContainerRef, widgetId }
   const isTerminalSecondary = connectedWidget?.type === 'terminal' || connectedWidget?.type === 'terminal-read' || connectedWidget?.type === 'agent'
   const terminalRef = useRef(null)
   const cleanupRef = useRef(null)
+  const [activePane, setActivePane] = useState('left')
+
+  // Build labels for the top bar
+  const primaryWidget = useMemo(() => {
+    const bridge = window.__storyboardCanvasBridgeState
+    return bridge?.widgets?.find((w) => w.id === widgetId) || { type: 'prototype', props: {} }
+  }, [widgetId, expanded])
+
+  const primaryLabel = useMemo(() => getSplitPaneLabel(primaryWidget), [primaryWidget])
+  const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedWidget), [connectedWidget])
+  const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel
+  const rightLabel = paneOrder.primaryIsLeft ? secondaryLabel : primaryLabel
 
   // Reparent terminal DOM for split
   useEffect(() => {
@@ -459,34 +472,40 @@ function PrototypeExpandModal({ expanded, onClose, modalContainerRef, widgetId }
   }, [isTerminalSecondary, expanded, connectedWidget?.id])
 
   const primaryPane = (
-    <div ref={modalContainerRef} className={hasSplit ? styles.expandContainerSplit : styles.expandContainer} onClick={(e) => e.stopPropagation()}>
-      <button className={styles.expandClose} onClick={onClose} aria-label="Close expanded view" autoFocus>✕</button>
+    <div
+      ref={modalContainerRef}
+      className={hasSplit ? styles.expandContainerSplit : styles.expandContainer}
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={() => setActivePane(paneOrder.primaryIsLeft ? 'left' : 'right')}
+    >
+      {!hasSplit && <button className={styles.expandClose} onClick={onClose} aria-label="Close expanded view" autoFocus>✕</button>}
     </div>
   )
 
   let secondaryPane = null
+  const secondarySide = paneOrder.primaryIsLeft ? 'right' : 'left'
   if (hasSplit) {
     if (secondaryUrl) {
       secondaryPane = (
-        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()} onPointerDown={() => setActivePane(secondarySide)}>
           <iframe src={secondaryUrl} className={styles.expandIframe} title="Connected widget" />
         </div>
       )
     } else if (isTerminalSecondary) {
       secondaryPane = (
-        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()} onPointerDown={() => setActivePane(secondarySide)}>
           <div ref={terminalRef} className={styles.expandTerminal} />
         </div>
       )
     } else if (connectedWidget?.type === 'markdown') {
       secondaryPane = (
-        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()} onPointerDown={() => setActivePane(secondarySide)}>
           <MarkdownSecondaryPane content={connectedWidget.props?.content} />
         </div>
       )
     } else if (connectedWidget?.type === 'link-preview') {
       secondaryPane = (
-        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()} onPointerDown={() => setActivePane(secondarySide)}>
           <LinkPreviewSecondaryPane widget={connectedWidget} />
         </div>
       )
@@ -507,8 +526,16 @@ function PrototypeExpandModal({ expanded, onClose, modalContainerRef, widgetId }
     >
       {hasSplit ? (
         <div className={styles.expandSplitBody}>
-          <div className={styles.expandSplitLeft}>{leftPane}</div>
-          <div className={styles.expandSplitRight}>{rightPane}</div>
+          <SplitScreenTopBar
+            leftLabel={leftLabel}
+            rightLabel={rightLabel}
+            activePane={activePane}
+            onClose={onClose}
+          />
+          <div className={styles.expandSplitPanes}>
+            <div className={styles.expandSplitLeft}>{leftPane}</div>
+            <div className={styles.expandSplitRight}>{rightPane}</div>
+          </div>
         </div>
       ) : (
         primaryPane

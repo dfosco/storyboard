@@ -4,7 +4,7 @@
  * Reads the canvas bridge state to find connected widgets eligible
  * for split-screen, and builds iframe URLs for secondary panes.
  */
-import { isSplitScreenCapable } from './widgetConfig.js'
+import { isSplitScreenCapable, getWidgetMeta } from './widgetConfig.js'
 
 /**
  * Find a connected widget that is split-screen capable.
@@ -137,4 +137,44 @@ export function reparentTerminalInto(widgetId, targetEl) {
       originalParent.appendChild(xtermEl)
     }
   }
+}
+
+/**
+ * Build a "Type · Metadata" label for a widget in split-screen top bar.
+ * @param {{ type: string, props: Object }} widget
+ * @returns {string}
+ */
+export function getSplitPaneLabel(widget) {
+  if (!widget) return ''
+  const meta = getWidgetMeta(widget.type)
+  const typeName = meta?.label || widget.type
+
+  if (widget.type === 'terminal' || widget.type === 'terminal-read') {
+    return `Terminal · ${widget.props?.prettyName || '…'}`
+  }
+  if (widget.type === 'prototype') {
+    return `Prototype · ${widget.props?.src || '…'}`
+  }
+  if (widget.type === 'figma-embed') {
+    const url = widget.props?.url || ''
+    let name = 'Figma'
+    try { name = new URL(url).pathname.split('/').pop() || 'Figma' } catch { /* */ }
+    return `Figma · ${name}`
+  }
+  if (widget.type === 'codepen-embed') {
+    return `CodePen · ${widget.props?.url || '…'}`
+  }
+  if (widget.type === 'story') {
+    return `Story · ${widget.props?.storyId || '…'}`
+  }
+  if (widget.type === 'markdown') {
+    const content = widget.props?.content || ''
+    const firstLine = content.split('\n').find((l) => l.trim()) || ''
+    const preview = firstLine.replace(/^#+\s*/, '').slice(0, 40)
+    return `Markdown · ${preview || '…'}`
+  }
+  if (widget.type === 'link-preview') {
+    return `${widget.props?.github ? 'GitHub' : 'Link'} · ${widget.props?.title || widget.props?.url || '…'}`
+  }
+  return typeName
 }

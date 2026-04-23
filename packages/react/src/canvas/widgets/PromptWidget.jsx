@@ -159,7 +159,6 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate, res
       }
 
       onUpdate?.({ sessionId: result.tmuxName || '' })
-      setShowOutput(true)
     } catch (err) {
       setExecStatus('error')
       setExecError(err.message)
@@ -195,7 +194,16 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate, res
   }, [onUpdate])
 
   const handleResize = useCallback((newWidth, newHeight) => {
-    onUpdate?.({ width: newWidth, height: newHeight })
+    const el = containerRef.current
+    const termEl = termContainerRef.current
+    if (el && termEl) {
+      // height prop controls only the terminal area, not the full wrapper
+      const nonTermH = el.offsetHeight - termEl.offsetHeight
+      const newTermH = Math.max(80, newHeight - nonTermH)
+      onUpdate?.({ width: newWidth, height: newTermH })
+    } else {
+      onUpdate?.({ width: newWidth })
+    }
   }, [onUpdate])
 
   // Embedded read-only terminal

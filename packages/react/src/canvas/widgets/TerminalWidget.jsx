@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback, useState, useMemo, forwardRef, useImper
 import { createPortal } from 'react-dom'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
-import { getTerminalConfig } from '@dfosco/storyboard-core'
+import { getTerminalConfig, getTerminalDimensions } from '@dfosco/storyboard-core'
 import { ScreenNormalIcon } from '@primer/octicons-react'
 import { useOverride } from '../../hooks/useOverride.js'
 import { getSplitPaneLabel, findConnectedSplitTarget, buildSecondaryIframeUrl as buildSplitUrl, getPaneOrder } from './expandUtils.js'
@@ -123,8 +123,13 @@ const DEFAULT_THEME = {
 export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizable }, ref) {
   const cfg = getTerminalConfig()
   const fontSize = cfg.fontSize ?? 13
-  const rawWidth = props?.width ?? cfg.defaultWidth ?? readProp(props, 'width', terminalSchema)
-  const rawHeight = props?.height ?? cfg.defaultHeight ?? readProp(props, 'height', terminalSchema)
+  const agentId = props?.agentId || null
+  const dims = getTerminalDimensions(agentId, {
+    width: readProp(props, 'width', terminalSchema),
+    height: readProp(props, 'height', terminalSchema),
+  })
+  const rawWidth = props?.width ?? dims.width
+  const rawHeight = props?.height ?? dims.height
   const prettyName = props?.prettyName || null
   const startupCommand = props?.startupCommand || null
 

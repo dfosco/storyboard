@@ -9,6 +9,7 @@ import { schemas, getDefaults } from './widgets/widgetProps.js'
 import { getFeatures, isResizable, isExpandable, getAnchorState, canAcceptConnection } from './widgets/widgetConfig.js'
 import { createPasteContext, resolvePaste } from './widgets/pasteRules.js'
 import { getPasteRules } from '@dfosco/storyboard-core'
+import { isTerminalResizable, getTerminalDimensions } from '@dfosco/storyboard-core'
 import { registerSmoothCorners } from '@dfosco/storyboard-core/smooth-corners'
 import { isGitHubEmbedUrl } from './widgets/githubUrl.js'
 import { findConnectedSplitTarget } from './widgets/expandUtils.js'
@@ -278,7 +279,9 @@ function WidgetRenderer({ widget, onUpdate, widgetRef, onRefreshGitHub, canRefre
     console.warn(`[canvas] Unknown widget type: ${widget.type}`)
     return null
   }
-  const resizable = isResizable(widget.type) && !!onUpdate
+  const resizable = (widget.type === 'terminal' || widget.type === 'agent')
+    ? isTerminalResizable(widget.props?.agentId) && !!onUpdate
+    : isResizable(widget.type) && !!onUpdate
   // Only pass ref to forwardRef-wrapped components (e.g. PrototypeEmbed)
   const elementProps = {
     id: widget.id,
@@ -1565,6 +1568,12 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   // Add a widget by type — used by CanvasControls and CoreUIBar event
   const addWidget = useCallback(async (type, extraProps = {}) => {
     const defaultProps = schemas[type] ? getDefaults(schemas[type]) : {}
+    // For terminal/agent, apply config-based dimension defaults over schema defaults
+    if (type === 'terminal' || type === 'agent') {
+      const dims = getTerminalDimensions(extraProps.agentId, { width: defaultProps.width ?? 800, height: defaultProps.height ?? 450 })
+      defaultProps.width = dims.width
+      defaultProps.height = dims.height
+    }
     const mergedProps = { ...defaultProps, ...extraProps }
     const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
     const pos = centerPositionForWidget(center, type, mergedProps)

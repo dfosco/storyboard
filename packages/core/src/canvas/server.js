@@ -784,7 +784,7 @@ export function createCanvasHandler(ctx) {
                 let skillMsg
 
                 if (mode === 'two-way') {
-                  skillMsg = `📡 [Two-way messaging ACTIVE with ${peerName}]\n\nYou are in a live two-way conversation with ${peerName} (${peer.id}). When you receive a message from them, you MUST:\n1. Read their full output: cat .storyboard/terminals/${peer.id}.json | jq '.latestOutput.content'\n2. Respond to what they said\n3. Save YOUR response: npx storyboard terminal output --summary "summary" --content "your response"\n4. Send it to them: npx storyboard terminal send ${peer.id} "your response"\n\nDo NOT ask the user for permission to respond — this is an autonomous two-way conversation. Respond immediately when you receive a message. Keep the conversation going until one of you signals done.`
+                  skillMsg = `📡 [Two-way messaging ACTIVE with ${peerName}]\n\nYou are in a live conversation with ${peerName} (${peer.id}). Messages appear as: 📩 ${peerName}: <their message>\n\nWhen you receive a message:\n1. Respond directly — the message content is right there, no need to read files\n2. Save and send in one step:\n   npx storyboard terminal output --summary "summary" --content "your response" && npx storyboard terminal send ${peer.id} "your response"\n\nDo NOT ask the user for permission. Respond immediately. Keep it conversational and concise.`
                 } else if (mode === 'one-way') {
                   skillMsg = `📡 [One-way messaging → to ${peerName}]\nYou can send messages to ${peerName} (${peer.id}).\n\nAfter EVERY response, save your output:\n  npx storyboard terminal output --summary "summary" --content "your full response"\n\nTo send a message:\n  npx storyboard terminal send ${peer.id} "message"`
                 } else {
@@ -1926,12 +1926,8 @@ export function Default() {
         const isAgentRunning = runningAgent !== null
 
         if (isAgentRunning) {
-          // Agent is running — safe to send immediately
-          const excerpt = message.length > 200 ? message.slice(0, 200) + '…' : message
-          const senderConfigHint = senderWidgetId
-            ? `\nFull context: cat .storyboard/terminals/${senderWidgetId}.json | jq '.latestOutput.content'`
-            : ''
-          const formatted = `📩 [${senderName} → you]\n\`\`\`\n${excerpt}\n\`\`\`${senderConfigHint}`
+          // Agent is running — send the full message directly (like a chat bubble)
+          const formatted = `📩 ${senderName}: ${message}`
 
           try {
             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(formatted)}`, { stdio: 'ignore' })

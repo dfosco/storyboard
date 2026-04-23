@@ -360,41 +360,37 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
       }
     }
 
-    // Add dynamic "Messaging" dropdown for terminal/agent widgets with connected peers
+    // Add dynamic "Broadcast" toggle for terminal/agent widgets with connected peers
     if (widget.type === 'terminal' || widget.type === 'agent') {
       const widgetConnectors = connectorCount || []
       const widgetList = allWidgets || []
-      const terminalPeers = []
+      let hasBroadcastPeers = false
+      let allBroadcastActive = true
+      const broadcastConnectorIds = []
+
       for (const conn of widgetConnectors) {
         const peerId = conn.start?.widgetId === widget.id ? conn.end?.widgetId : conn.start?.widgetId
         const peer = widgetList.find((w) => w.id === peerId)
         if (peer && (peer.type === 'terminal' || peer.type === 'agent')) {
-          const messaging = conn.meta?.messaging || {}
-          const sharedMode = conn.meta?.messagingMode
-          const myMode = sharedMode === 'two-way' ? 'two-way' : (messaging[widget.id] || 'none')
-          terminalPeers.push({ peer, connectorId: conn.id, mode: myMode, sharedMode })
+          hasBroadcastPeers = true
+          broadcastConnectorIds.push(conn.id)
+          if (conn.meta?.messagingMode !== 'two-way') allBroadcastActive = false
         }
       }
-      if (terminalPeers.length > 0) {
-        const items = []
-        for (const { peer, connectorId, mode } of terminalPeers) {
-          const peerName = peer.props?.prettyName || peer.id
-          items.push(
-            { action: `messaging:${connectorId}:none`, label: `${peerName}: No messaging`, icon: mode === 'none' ? 'check' : null },
-            { action: `messaging:${connectorId}:one-way`, label: `${peerName}: One-way →`, icon: mode === 'one-way' ? 'check' : null },
-            { action: `messaging:${connectorId}:two-way`, label: `${peerName}: Two-way ↔`, icon: mode === 'two-way' ? 'check' : null },
-          )
-        }
+
+      if (hasBroadcastPeers) {
+        const isActive = allBroadcastActive
         const insertIdx = adjusted.findIndex((f) => f.menu)
-        const messagingFeature = {
-          id: 'messaging',
-          type: 'dropdown',
-          label: 'Messaging',
+        const broadcastFeature = {
+          id: 'broadcast',
+          type: 'action',
+          action: `broadcast-toggle:${broadcastConnectorIds.join(',')}:${isActive ? 'off' : 'on'}`,
+          label: isActive ? 'Broadcast On' : 'Broadcast',
           icon: 'broadcast',
-          items,
+          active: isActive,
         }
-        if (insertIdx >= 0) adjusted.splice(insertIdx, 0, messagingFeature)
-        else adjusted.push(messagingFeature)
+        if (insertIdx >= 0) adjusted.splice(insertIdx, 0, broadcastFeature)
+        else adjusted.push(broadcastFeature)
       }
     }
 
@@ -427,23 +423,17 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
         })
       }
-    } else if (actionId.startsWith('messaging:')) {
-      // messaging:<connectorId>:<mode>
+    } else if (actionId.startsWith('broadcast-toggle:')) {
+      // broadcast-toggle:<connectorId1,connectorId2,...>:<on|off>
       const parts = actionId.split(':')
-      const connectorId = parts[1]
-      const mode = parts[2]
-      if (connectorId && mode) {
-        const bridge = window.__storyboardCanvasBridgeState
-        const canvasId = bridge?.canvasId || ''
-
-        // Two-way is shared (top-level messagingMode)
-        // One-way/none is per-widget (messaging.{widgetId})
-        const meta = mode === 'two-way'
-          ? { messagingMode: 'two-way' }
-          : { messaging: { [widget.id]: mode }, messagingMode: null }
-
-        updateConnectorApi(canvasId, connectorId, meta)
-          .catch((err) => console.error('[canvas] Failed to update connector messaging mode:', err))
+      const connectorIds = parts[1].split(',')
+      const turnOn = parts[2] === 'on'
+      const bridge = window.__storyboardCanvasBridgeState
+      const canvasId = bridge?.canvasId || ''
+      const meta = turnOn ? { messagingMode: 'two-way' } : { messagingMode: null }
+      for (const cid of connectorIds) {
+        updateConnectorApi(canvasId, cid, meta)
+          .catch((err) => console.error('[canvas] Failed to toggle broadcast:', err))
       }
     }
   }, [widget, onRemove, onCopy, onRefreshGitHub])
@@ -2591,6 +2581,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           <ConnectorLayer
             connectors={filteredConnectors}
             widgets={localWidgets ?? []}
+            selectedWidgetIds={selectedWidgetIds}
             onRemove={isLocalDev ? handleConnectorRemove : undefined}
             onEndpointDrag={undefined}
             dragPreview={connectorDrag}

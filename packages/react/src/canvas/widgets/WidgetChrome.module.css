@@ -193,6 +193,25 @@
   border-color: var(--borderColor-default, #484f58);
 }
 
+.featureBtnActive {
+  background: var(--bgColor-accent-emphasis, #0969da);
+  border-color: var(--bgColor-accent-emphasis, #0969da);
+  color: var(--fgColor-onEmphasis, #ffffff);
+}
+
+:global([data-sb-canvas-theme^='dark']) .featureBtnActive {
+  background: var(--bgColor-accent-emphasis, #388bfd);
+  border-color: var(--bgColor-accent-emphasis, #388bfd);
+  color: var(--fgColor-onEmphasis, #ffffff);
+}
+
+.featureBtnActive:hover {
+  background: var(--bgColor-accent-emphasis, #0969da);
+  border-color: var(--bgColor-accent-emphasis, #0969da);
+  color: var(--fgColor-onEmphasis, #ffffff);
+  filter: brightness(1.1);
+}
+
 /* Select handle — right-aligned rounded rect */
 .selectHandle {
   all: unset;

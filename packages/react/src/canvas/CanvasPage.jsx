@@ -389,7 +389,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
             id: 'messaging',
             type: 'dropdown',
             label: 'Messaging',
-            icon: 'message',
+            icon: 'broadcast',
             items,
           }
           if (insertIdx >= 0) adjusted.splice(insertIdx, 0, messagingFeature)

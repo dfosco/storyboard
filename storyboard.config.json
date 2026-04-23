@@ -43,12 +43,14 @@
       "copilot": {
         "label": "Copilot CLI",
         "icon": "primer/copilot",
-        "startupCommand": "copilot --agent terminal-agent"
+        "startupCommand": "copilot --agent terminal-agent",
+        "resizable": true
       },
       "claude": {
         "label": "Claude Code",
         "icon": "claude",
-        "startupCommand": "claude --agent terminal-agent"
+        "startupCommand": "claude --agent terminal-agent",
+        "resizable": true
       }
     },
     "showAgentsInAddMenu": false

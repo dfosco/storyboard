@@ -58,7 +58,9 @@ The config file contains everything you need — no additional API calls require
 
 ## Step 2: Use connected widget context
 
-The `connectedWidgets` array contains the FULL props of every widget connected to this terminal. This is your highest priority context:
+The `connectedWidgets` array contains the FULL props of every widget connected to this terminal. These are your **partners** (also known as **buddies**). This is your highest priority context.
+
+When the user says "your partner", "your buddy", or "connected widget" — they mean widgets in your `connectedWidgets` array. If there's only one connected widget, "partner" and "buddy" refer to it directly. If there are multiple, ask which one.
 
 - **sticky-note**: `props.text` — instructions, notes, or requirements
 - **markdown**: `props.content` — documentation, specs, or prose
@@ -66,6 +68,7 @@ The `connectedWidgets` array contains the FULL props of every widget connected t
 - **story**: `props.storyId` + `props.exportName` — component to work with
 - **link-preview**: `props.url` — external reference
 - **prototype**: `props.src` — prototype path
+- **terminal** / **agent**: another terminal or agent you can message (see Step 6)
 
 Interpret the user's prompt in light of these connected widgets.
 

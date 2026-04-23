@@ -193,11 +193,14 @@ npx storyboard terminal send --connected "Your message here"
 ```
 
 ### Save your output for peers to read
+
+**IMPORTANT: You MUST save your output after every response when messaging is enabled.** This is how your peer reads what you said — without it, they see `null`.
+
 ```bash
-npx storyboard terminal output --summary "What you did" --content "Full detailed output"
+npx storyboard terminal output --summary "One-line summary" --content "Your full response text here"
 ```
 
-Peers can then read your output from your config file:
+Peers read your output from your config file:
 ```bash
 cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json | jq '.latestOutput.content'
 ```

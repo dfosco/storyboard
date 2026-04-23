@@ -396,7 +396,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel
   const rightLabel = paneOrder.primaryIsLeft ? secondaryLabel : primaryLabel
 
-  const termDims = useMemo(() => calcDimensions(width, height, fontSize), [width, height, fontSize])
 
   return (
     <>
@@ -407,7 +406,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         className={styles.terminal}
         style={{
           ...(typeof width === 'number' ? { width: `${width}px` } : undefined),
-          ...(typeof height === 'number' ? { height: `${termDims.snappedHeight}px` } : undefined),
+          ...(typeof height === 'number' ? { height: `${height}px` } : undefined),
         }}
         onClick={handleClick}
         onPointerDown={handleTerminalPointerDown}

@@ -52,9 +52,7 @@ function calcDimensions(widthPx, heightPx, fontSize = 13) {
   const vPad = 18
   const cols = Math.max(10, Math.floor((widthPx - hPad) / cellWidth))
   const rows = Math.max(4, Math.floor((heightPx - vPad) / cellHeight))
-  // Snapped height = exact pixels the terminal grid + padding actually needs
-  const snappedHeight = Math.round(rows * cellHeight + vPad)
-  return { cols, rows, snappedHeight }
+  return { cols, rows }
 }
 
 const EMBED_TYPES = new Set(['prototype', 'story'])
@@ -134,12 +132,12 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const startupCommand = props?.startupCommand || null
 
   // Snap dimensions to cell grid so the terminal fills its container exactly
-  const { cols, rows, snappedHeight } = useMemo(
+  const { cols, rows } = useMemo(
     () => calcDimensions(rawWidth, rawHeight, fontSize),
     [rawWidth, rawHeight, fontSize],
   )
   const width = rawWidth
-  const height = snappedHeight
+  const height = rawHeight
 
   const containerRef = useRef(null)
   const termRef = useRef(null)
@@ -169,13 +167,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     },
   }), [setExpanded])
 
-  // Persist snapped height back to widget props so canvas bounds match
-  useEffect(() => {
-    if (snappedHeight !== rawHeight) {
-      onUpdate?.({ height: snappedHeight })
-    }
-  }, [snappedHeight, rawHeight, onUpdate])
-
   // Exit interactive on click outside
   useEffect(() => {
     if (!interactive) return
@@ -191,10 +182,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   }, [interactive, id])
 
   const handleResize = useCallback((w, h) => {
-    // Snap height to cell grid so there's no gap at the bottom
-    const dims = calcDimensions(w, h, fontSize)
-    onUpdate?.({ width: w, height: dims.snappedHeight })
-  }, [onUpdate, fontSize])
+    onUpdate?.({ width: w, height: h })
+  }, [onUpdate])
 
   // Connect terminal + WebSocket
   useEffect(() => {

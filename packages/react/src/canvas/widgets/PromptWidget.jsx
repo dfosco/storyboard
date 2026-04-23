@@ -66,7 +66,7 @@ export default function PromptWidget({ id, props, onUpdate }) {
   // Parse connections (stored as comma-separated string in props)
   const connections = connectionsRaw ? connectionsRaw.split(',').filter(Boolean) : []
 
-  // Listen for agent status via HMR (same pattern as ActionWidget)
+  // Listen for agent status via HMR
   const onUpdateRef = useRef(onUpdate)
   useEffect(() => { onUpdateRef.current = onUpdate }, [onUpdate])
 

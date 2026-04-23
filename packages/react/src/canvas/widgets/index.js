@@ -8,7 +8,6 @@ import CodePenEmbed from './CodePenEmbed.jsx'
 import StoryWidget from './StoryWidget.jsx'
 import TerminalWidget from './TerminalWidget.jsx'
 import TerminalReadWidget from './TerminalReadWidget.jsx'
-import ActionWidget from './ActionWidget.jsx'
 import PromptWidget from './PromptWidget.jsx'
 
 /**
@@ -26,7 +25,6 @@ export const widgetRegistry = {
   'story': StoryWidget,
   'terminal': TerminalWidget,
   'terminal-read': TerminalReadWidget,
-  'action': ActionWidget,
   'agent': TerminalWidget,
   'prompt': PromptWidget,
 }

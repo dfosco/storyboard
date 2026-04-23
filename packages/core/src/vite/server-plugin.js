@@ -22,6 +22,7 @@ import { createAutosyncHandler } from '../autosync/server.js'
 import { setupTerminalServer } from '../canvas/terminal-server.js'
 import { listSessions, detachSession, killSession, orphanSession } from '../canvas/terminal-registry.js'
 import { execSync as cpExecSync } from 'node:child_process'
+import { list as listRunningServers } from '../worktree/serverRegistry.js'
 
 const API_PREFIX = '/_storyboard/'
 
@@ -270,28 +271,18 @@ export default function storyboardServer() {
         sendJson(res, 404, { error: 'Not found' })
       })
 
-      // Worktrees API — lists available worktrees/branches from ports.json
+      // Worktrees API — lists running worktrees/branches from server registry
       routeHandlers.set('worktrees', async (req, res) => {
         try {
-          // Walk up from root to find the repo root's .worktrees/ports.json
-          let dir = root
-          let portsPath = null
-          for (let i = 0; i < 10; i++) {
-            const candidate = path.join(dir, '.worktrees', 'ports.json')
-            if (fs.existsSync(candidate)) { portsPath = candidate; break }
-            // Check if ports.json is a sibling (we're inside a worktree)
-            const parentCandidate = path.join(path.dirname(dir), 'ports.json')
-            if (fs.existsSync(parentCandidate)) { portsPath = parentCandidate; break }
-            const parent = path.dirname(dir)
-            if (parent === dir) break
-            dir = parent
-          }
-          if (!portsPath) { sendJson(res, 200, []); return }
-          const ports = JSON.parse(fs.readFileSync(portsPath, 'utf8'))
-          const branches = Object.keys(ports).map(name => ({
-            branch: name,
-            folder: name === 'main' ? '' : `branch--${name}/`,
+          const servers = listRunningServers()
+          const branches = servers.map(srv => ({
+            branch: srv.worktree,
+            folder: srv.worktree === 'main' ? '' : `branch--${srv.worktree}/`,
           }))
+          // Always include main
+          if (!branches.some(b => b.branch === 'main')) {
+            branches.unshift({ branch: 'main', folder: '' })
+          }
           sendJson(res, 200, branches)
         } catch { sendJson(res, 200, []) }
       })

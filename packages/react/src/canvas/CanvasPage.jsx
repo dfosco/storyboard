@@ -559,8 +559,9 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   // Scroll lock: prevents focus-triggered scroll jumps when adding terminal/agent widgets.
   // The lock captures the current scroll position and forces it back on every scroll event
   // until unlocked by the widget's ready signal or a safety timeout.
-  const scrollLockRef = useRef(null) // { top, left, timer, handler }
-  const [scrollLocked, setScrollLocked] = useState(false)
+  // Visual UI (outline + banner) only appears after 1.5s if still locked.
+  const scrollLockRef = useRef(null) // { top, left, safetyTimer, uiTimer, handler }
+  const [scrollLockVisible, setScrollLockVisible] = useState(false)
 
   const lockScroll = useCallback(() => {
     const el = scrollRef.current
@@ -571,11 +572,12 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       el.scrollTop = scrollLockRef.current.top
       el.scrollLeft = scrollLockRef.current.left
     }
+    // Show visual UI after 1.5s if still locked
+    const uiTimer = setTimeout(() => setScrollLockVisible(true), 1500)
     // Safety timeout: auto-unlock after 5s to never leave the canvas stuck
-    const timer = setTimeout(() => unlockScroll(), 5000)
-    scrollLockRef.current = { ...pos, timer, handler }
+    const safetyTimer = setTimeout(() => unlockScroll(), 5000)
+    scrollLockRef.current = { ...pos, safetyTimer, uiTimer, handler }
     el.addEventListener('scroll', handler)
-    setScrollLocked(true)
   }, [])
 
   const unlockScroll = useCallback(() => {
@@ -583,9 +585,10 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     if (!lock) return
     const el = scrollRef.current
     if (el) el.removeEventListener('scroll', lock.handler)
-    clearTimeout(lock.timer)
+    clearTimeout(lock.safetyTimer)
+    clearTimeout(lock.uiTimer)
     scrollLockRef.current = null
-    setScrollLocked(false)
+    setScrollLockVisible(false)
   }, [])
 
   // Listen for terminal/agent ready events to unlock scroll
@@ -2478,16 +2481,21 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         data-storyboard-canvas-scroll
         data-sb-canvas-theme={canvasTheme}
         {...canvasPrimerAttrs}
-        className={`${styles.canvasScroll}${scrollLocked ? ` ${styles.canvasScrollLocked}` : ''}`}
+        className={`${styles.canvasScroll}${scrollLockVisible ? ` ${styles.canvasScrollLocked}` : ''}`}
         style={{
           ...canvasThemeVars,
           ...(spaceHeld ? { cursor: panningActive ? 'grabbing' : 'grab' } : {}),
         }}
         onMouseDown={(e) => { handlePanStart(e); handleMarqueeMouseDown(e); }}
       >
-        {scrollLocked && (
+        {scrollLockVisible && (
           <div className={styles.scrollLockBanner}>
-            Canvas temporarily locked… please wait
+            <span>Canvas temporarily locked… please wait</span>
+            <button
+              className={styles.scrollLockDismiss}
+              onClick={unlockScroll}
+              aria-label="Unlock canvas"
+            >×</button>
           </div>
         )}
         <MarqueeOverlay rect={marqueeScreenRect} />

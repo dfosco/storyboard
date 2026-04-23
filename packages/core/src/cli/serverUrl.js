@@ -6,7 +6,7 @@
  * dev server. Falls back to ports.json if Caddy isn't reachable.
  */
 
-import { detectWorktreeName, getPort } from '../worktree/port.js'
+import { detectWorktreeName, resolveRunningPort } from '../worktree/port.js'
 import { readDevDomain } from './proxy.js'
 import { execSync } from 'child_process'
 
@@ -55,7 +55,7 @@ export function getServerUrl() {
     // Caddy not running or not reachable — fall through
   }
 
-  // Fallback to ports.json
-  const port = getPort(name)
+  // Fallback to server registry / ports.json
+  const port = resolveRunningPort(name)
   return `http://localhost:${port}`
 }

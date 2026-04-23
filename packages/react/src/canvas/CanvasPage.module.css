@@ -175,7 +175,7 @@
 
 /* Scroll lock visual indicator — shown while adding terminal/agent widgets */
 .canvasScrollLocked {
-  outline: 3px solid var(--fgColor-accent, #0969da);
+  outline: 3px solid var(--borderColor-emphasis, #636c76);
   outline-offset: -3px;
 }
 
@@ -185,7 +185,10 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 15;
-  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 14px;
   border-radius: 8px;
   border: 1px solid var(--borderColor-default, #d1d9e0);
   background: color-mix(in srgb, var(--bgColor-default, #ffffff) 88%, transparent);
@@ -196,5 +199,26 @@
   font-weight: 500;
   color: var(--fgColor-muted, #656d76);
   white-space: nowrap;
-  pointer-events: none;
+}
+
+.scrollLockDismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--fgColor-muted, #656d76);
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  padding: 0;
+}
+
+.scrollLockDismiss:hover {
+  background: var(--bgColor-muted, #f6f8fa);
+  color: var(--fgColor-default, #1f2328);
 }

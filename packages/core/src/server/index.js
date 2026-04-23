@@ -16,10 +16,10 @@ import http from 'node:http'
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, mkdirSync } from 'node:fs'
 import { resolve, join, dirname } from 'node:path'
-import { getPort, releasePort, portsFilePath, repoRoot, worktreeDir, listWorktrees } from '../worktree/port.js'
+import { getPort, releasePort, repoRoot, worktreeDir, listWorktrees } from '../worktree/port.js'
 import { generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, reloadCaddy, readDevDomain } from '../cli/proxy.js'
 import { compactAll } from '../canvas/compact.js'
-import { register, unregister, generateId } from '../worktree/serverRegistry.js'
+import { register, unregister, generateId, list } from '../worktree/serverRegistry.js'
 
 const SERVER_PORT_BASE = 4100
 
@@ -241,15 +241,18 @@ routeHandlers.set('switch-branch', async (req, res, ctx) => {
 // GET /_storyboard/worktrees
 routeHandlers.set('worktrees', async (req, res) => {
   try {
-    const pf = portsFilePath()
-    if (!existsSync(pf)) { sendJson(res, 200, []); return }
-    const ports = JSON.parse(readFileSync(pf, 'utf8'))
-    const branches = Object.keys(ports).map(name => ({
-      branch: name,
-      folder: name === 'main' ? '' : `branch--${name}/`,
-      port: ports[name],
-      running: processes.has(name) ? processes.get(name).status : null,
+    // Use the server registry (live processes) instead of stale ports.json
+    const servers = list()
+    const branches = servers.map(srv => ({
+      branch: srv.worktree,
+      folder: srv.worktree === 'main' ? '' : `branch--${srv.worktree}/`,
+      port: srv.port,
+      running: processes.has(srv.worktree) ? processes.get(srv.worktree).status : 'background',
     }))
+    // Always include main even if no server is registered for it
+    if (!branches.some(b => b.branch === 'main')) {
+      branches.unshift({ branch: 'main', folder: '', port: 1234, running: null })
+    }
     sendJson(res, 200, branches)
   } catch { sendJson(res, 200, []) }
 })

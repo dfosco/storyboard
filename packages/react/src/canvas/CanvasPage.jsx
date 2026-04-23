@@ -1453,7 +1453,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     if (!zoomEventTimer.current) {
       zoomEventTimer.current = setTimeout(() => {
         zoomEventTimer.current = null
-        window[CANVAS_BRIDGE_STATE_KEY] = { active: true, canvasId, zoom: zoomRef.current }
+        window[CANVAS_BRIDGE_STATE_KEY] = { ...window[CANVAS_BRIDGE_STATE_KEY], active: true, canvasId, zoom: zoomRef.current }
         document.dispatchEvent(new CustomEvent('storyboard:canvas:zoom-changed', {
           detail: { zoom: zoomRef.current }
         }))
@@ -1463,7 +1463,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
   // Signal canvas mount/unmount to CoreUIBar
   useEffect(() => {
-    window[CANVAS_BRIDGE_STATE_KEY] = { active: true, canvasId, zoom: zoomRef.current }
+    window[CANVAS_BRIDGE_STATE_KEY] = { ...window[CANVAS_BRIDGE_STATE_KEY], active: true, canvasId, zoom: zoomRef.current }
     document.dispatchEvent(new CustomEvent('storyboard:canvas:mounted', {
       detail: { canvasId, zoom: zoomRef.current }
     }))
@@ -1754,7 +1754,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
   // Broadcast zoom level to CoreUIBar whenever it changes
   useEffect(() => {
-    window[CANVAS_BRIDGE_STATE_KEY] = { active: true, canvasId, zoom }
+    window[CANVAS_BRIDGE_STATE_KEY] = { ...window[CANVAS_BRIDGE_STATE_KEY], active: true, canvasId, zoom }
     document.dispatchEvent(new CustomEvent('storyboard:canvas:zoom-changed', {
       detail: { zoom }
     }))

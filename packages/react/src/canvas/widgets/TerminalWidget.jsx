@@ -5,7 +5,7 @@ import { schemas } from './widgetProps.js'
 import { getTerminalConfig, getTerminalDimensions } from '@dfosco/storyboard-core'
 import { ScreenNormalIcon } from '@primer/octicons-react'
 import { useOverride } from '../../hooks/useOverride.js'
-import { getSplitPaneLabel, findConnectedSplitTarget, buildSecondaryIframeUrl as buildSplitUrl, getPaneOrder } from './expandUtils.js'
+import { getSplitPaneLabel, findConnectedSplitTarget, buildSecondaryIframeUrl, getPaneOrder, reparentTerminalInto } from './expandUtils.js'
 import SplitScreenTopBar from './SplitScreenTopBar.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './TerminalWidget.module.css'
@@ -55,45 +55,7 @@ function calcDimensions(widthPx, heightPx, fontSize = 13) {
   return { cols, rows }
 }
 
-const EMBED_TYPES = new Set(['prototype', 'story'])
-
-function findConnectedEmbed(widgetId) {
-  const bridge = window.__storyboardCanvasBridgeState
-  if (!bridge?.connectors || !bridge?.widgets) return null
-  const connectedIds = new Set()
-  for (const c of bridge.connectors) {
-    if (c.start?.widgetId === widgetId) connectedIds.add(c.end?.widgetId)
-    if (c.end?.widgetId === widgetId) connectedIds.add(c.start?.widgetId)
-  }
-  for (const w of bridge.widgets) {
-    if (connectedIds.has(w.id) && EMBED_TYPES.has(w.type)) return w
-  }
-  return null
-}
-
-function buildEmbedUrl(widget) {
-  if (!widget) return null
-  const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
-  const baseClean = base.endsWith('/') ? base.slice(0, -1) : base
-  if (widget.type === 'prototype') {
-    const src = widget.props?.src
-    if (!src) return null
-    if (/^https?:\/\//.test(src)) return src
-    return `${baseClean}${src.startsWith('/') ? '' : '/'}${src}?_sb_embed&_sb_hide_branch_bar`
-  }
-  if (widget.type === 'story') {
-    const storyId = widget.props?.storyId
-    const exportName = widget.props?.exportName
-    if (!storyId) return null
-    const storyData = typeof window !== 'undefined' && window.__storyboardStoryIndex?.[storyId]
-    if (storyData?._route) {
-      const route = exportName ? `${storyData._route}?export=${exportName}` : storyData._route
-      return `${baseClean}${route}`
-    }
-    return null
-  }
-  return null
-}
+const TERMINAL_TYPES = new Set(['terminal', 'terminal-read', 'agent'])
 
 const DEFAULT_THEME = {
   background: '#0d1117',
@@ -390,20 +352,38 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   }, [])
 
   const titleLabel = `Terminal · ${prettyName || '…'}`
-  const connectedEmbed = expanded ? findConnectedSplitTarget(id) : null
-  const embedUrl = expanded ? buildSplitUrl(connectedEmbed) : null
-  const hasSplit = Boolean(connectedEmbed)
+  const connectedWidget = expanded ? findConnectedSplitTarget(id) : null
+  const hasSplit = Boolean(connectedWidget)
   const [activePane, setActivePane] = useState('left')
+  const secondaryRef = useRef(null)
+  const reparentCleanupRef = useRef(null)
 
   const paneOrder = useMemo(
-    () => (hasSplit ? getPaneOrder(id, connectedEmbed) : { primaryIsLeft: true }),
-    [hasSplit, id, connectedEmbed],
+    () => (hasSplit ? getPaneOrder(id, connectedWidget) : { primaryIsLeft: true }),
+    [hasSplit, id, connectedWidget],
   )
   const primaryWidget = useMemo(() => ({ type: 'terminal', props: { prettyName } }), [prettyName])
   const primaryLabel = useMemo(() => getSplitPaneLabel(primaryWidget), [primaryWidget])
-  const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedEmbed), [connectedEmbed])
+  const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedWidget), [connectedWidget])
   const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel
   const rightLabel = paneOrder.primaryIsLeft ? secondaryLabel : primaryLabel
+
+  // Build iframe URL for iframe-embeddable secondary types
+  const secondaryIframeUrl = useMemo(
+    () => (connectedWidget ? buildSecondaryIframeUrl(connectedWidget) : null),
+    [connectedWidget],
+  )
+  const isTerminalSecondary = connectedWidget && TERMINAL_TYPES.has(connectedWidget.type)
+
+  // Reparent terminal DOM into secondary pane when connected to another terminal
+  useEffect(() => {
+    if (!isTerminalSecondary || !expanded || !secondaryRef.current) return
+    reparentCleanupRef.current = reparentTerminalInto(connectedWidget.id, secondaryRef.current)
+    return () => {
+      reparentCleanupRef.current?.()
+      reparentCleanupRef.current = null
+    }
+  }, [isTerminalSecondary, expanded, connectedWidget?.id])
 
 
   return (
@@ -518,13 +498,15 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
                 <>
                   <div ref={expandContainerRef} className={styles.expandTerminal} onPointerDown={() => setActivePane('left')} />
                   <div className={styles.expandEmbed} onPointerDown={() => setActivePane('right')}>
-                    {embedUrl ? <iframe src={embedUrl} className={styles.expandIframe} title="Connected embed" /> : null}
+                    {secondaryIframeUrl ? <iframe src={secondaryIframeUrl} className={styles.expandIframe} title="Connected embed" /> : null}
+                    {isTerminalSecondary ? <div ref={secondaryRef} className={styles.expandTerminal} /> : null}
                   </div>
                 </>
               ) : (
                 <>
                   <div className={styles.expandEmbed} onPointerDown={() => setActivePane('left')}>
-                    {embedUrl ? <iframe src={embedUrl} className={styles.expandIframe} title="Connected embed" /> : null}
+                    {secondaryIframeUrl ? <iframe src={secondaryIframeUrl} className={styles.expandIframe} title="Connected embed" /> : null}
+                    {isTerminalSecondary ? <div ref={secondaryRef} className={styles.expandTerminal} /> : null}
                   </div>
                   <div ref={expandContainerRef} className={styles.expandTerminal} onPointerDown={() => setActivePane('right')} />
                 </>

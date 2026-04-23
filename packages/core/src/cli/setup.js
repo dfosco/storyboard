@@ -266,7 +266,7 @@ if (isCaddyInstalled()) {
     reloadCaddy(caddyfilePath)
     proxySpin.stop('Proxy reloaded')
   } else {
-    proxySpin.start('Starting proxy (requires sudo for port 80)...')
+    proxySpin.start('Starting proxy...')
     startCaddy(caddyfilePath)
     proxySpin.stop('Proxy started')
   }

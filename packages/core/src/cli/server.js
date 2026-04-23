@@ -6,13 +6,12 @@
  *   storyboard server list         List running dev servers
  *   storyboard server start [wt]   Start the persistent server + Vite for a worktree
  *   storyboard server stop <id>    Stop a dev server by worktree name or ID
- *   storyboard server stop-proxy   Stop the Caddy proxy (no sudo required)
  */
 
 import * as p from '@clack/prompts'
 import { startServer, SERVER_PORT, spawnViteForBranch } from '../server/index.js'
 import { parseFlags } from './flags.js'
-import { readDevDomain, generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, stopCaddy } from './proxy.js'
+import { readDevDomain, generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning } from './proxy.js'
 import { detectWorktreeName, getPort, repoRoot } from '../worktree/port.js'
 import {
   list,
@@ -145,20 +144,6 @@ function serverStop(target) {
   unregister(entry.id)
 }
 
-function serverStopProxy() {
-  if (!isCaddyRunning()) {
-    p.log.info('Caddy proxy is not running.')
-    return
-  }
-
-  if (stopCaddy()) {
-    p.log.success('Caddy proxy stopped.')
-  } else {
-    p.log.error('Failed to stop Caddy proxy.')
-    process.exit(1)
-  }
-}
-
 // ─── Dispatch ────────────────────────────────────────────
 
 async function main() {
@@ -178,12 +163,9 @@ async function main() {
     case 'stop':
       serverStop(positional[1])
       break
-    case 'stop-proxy':
-      serverStopProxy()
-      break
     default: {
       // Catch unknown subcommands before falling through to legacy branch behavior
-      const knownSubcommands = ['list', 'start', 'stop', 'stop-proxy']
+      const knownSubcommands = ['list', 'start', 'stop']
       if (subcommand && !subcommand.match(/^[a-z0-9]/) || ['exit', 'help', 'status'].includes(subcommand)) {
         p.log.error(`Unknown subcommand: "${subcommand}"`)
         p.log.info(`Available: ${knownSubcommands.join(', ')}`)

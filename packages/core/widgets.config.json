@@ -847,7 +847,6 @@
       "features": [
         { "id": "copy",           "type": "action", "action": "copy",           "label": "$label:duplicate",  "icon": "copy" },
         { "id": "expand-output",  "type": "action", "action": "expand-output",  "label": "Show output",       "icon": "unfold" },
-        { "id": "open-terminal",  "type": "action", "action": "open-terminal",  "label": "Open terminal",     "icon": "expand",  "menu": true },
         { "id": "copy-link",      "type": "action", "action": "copy-link",      "label": "$label:copy-link",  "icon": "link",    "menu": true, "prod": true },
         { "id": "delete",         "type": "action", "action": "delete",         "label": "$label:delete",     "icon": "trash",   "menu": true }
       ]

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { readProp, promptSchema } from './widgetProps.js'
-import { CopilotIcon, PaperAirplaneIcon, CheckCircleIcon, XCircleIcon, XIcon, SquareFillIcon } from '@primer/octicons-react'
+import { CopilotIcon, SquareFillIcon, CheckCircleIcon, XIcon } from '@primer/octicons-react'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './PromptWidget.module.css'
 
@@ -73,11 +73,6 @@ function calcMiniDimensions(widthPx) {
   return { cols, rows }
 }
 
-const SUGGESTIONS = [
-  'Implement the connected design',
-  'Review and refactor this code',
-]
-
 const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate, resizable }, ref) {
   const persistedText = readProp(props, 'text', promptSchema)
   const persistedStatus = readProp(props, 'status', promptSchema)
@@ -125,12 +120,6 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate, res
     handleAction(action) {
       if (action === 'expand-output') {
         setShowOutput(prev => !prev)
-        return true
-      }
-      if (action === 'open-terminal') {
-        document.dispatchEvent(new CustomEvent('storyboard:expand-widget', {
-          detail: { widgetId: id, type: 'prompt' },
-        }))
         return true
       }
       return false
@@ -203,11 +192,6 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate, res
     setShowOutput(false)
     onUpdate?.({ status: 'idle', sessionId: '', errorMessage: '', text: '' })
   }, [onUpdate])
-
-  const handleSuggestionClick = useCallback((text) => {
-    setDraftText(text)
-    textareaRef.current?.focus()
-  }, [])
 
   const handleResize = useCallback((newWidth) => {
     onUpdate?.({ width: newWidth })
@@ -336,27 +320,6 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate, res
               {isError ? 'Retry' : 'Run'}
             </button>
           </div>
-
-          {!draftText.trim() && (
-            <>
-              <div className={styles.suggestionsLabel}>
-                Start with a suggestion <span className={styles.sparkle}>✦</span>
-              </div>
-              <div className={styles.suggestions}>
-                {SUGGESTIONS.map((text, i) => (
-                  <button
-                    key={i}
-                    className={styles.chip}
-                    onClick={() => handleSuggestionClick(text)}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onPointerDown={(e) => e.stopPropagation()}
-                  >
-                    {text}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
         </>
       )}
 

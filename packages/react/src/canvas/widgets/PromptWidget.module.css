@@ -106,48 +106,6 @@
   white-space: nowrap;
 }
 
-/* ── Suggestions ── */
-
-.suggestionsLabel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--fgColor-muted, #636c76);
-  margin: 12px 0 10px;
-  padding-top: 12px;
-  border-top: 1px solid var(--borderColor-muted, #d8dee4);
-}
-
-.sparkle {
-  font-size: 14px;
-}
-
-.suggestions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.chip {
-  background: var(--bgColor-accent-muted, #ddf4ff);
-  color: var(--fgColor-accent, #0969da);
-  border: none;
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  line-height: 1.4;
-  max-width: 200px;
-  text-align: left;
-  transition: background 0.15s, color 0.15s;
-}
-
-.chip:hover {
-  background: var(--bgColor-accent-emphasis, #0969da);
-  color: var(--fgColor-onEmphasis, #fff);
-}
-
 /* ── Pending state ── */
 
 .pendingArea {
@@ -264,13 +222,13 @@
   background: var(--bgColor-muted, #f6f8fa);
 }
 
-/* ── Inline terminal output ── */
+/* ── Inline terminal output (flush to bottom edge) ── */
 
 .terminalArea {
-  margin-top: 16px;
-  border: 1px solid var(--borderColor-muted, #d8dee4);
-  border-radius: 8px;
+  margin: 16px -20px -20px;
+  border-top: 1px solid var(--borderColor-muted, #d8dee4);
   overflow: hidden;
+  border-radius: 0 0 16px 16px;
 }
 
 .terminalHeader {

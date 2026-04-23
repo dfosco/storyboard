@@ -40,7 +40,6 @@ export class HotPool {
   #size = DEFAULT_POOL_SIZE
   #maxSize = DEFAULT_MAX_SIZE
   #enabled = true
-  #devlog = false
   #filling = false
   #healthTimer = null
   #copilotAvailable = null // null = unknown, true/false = checked
@@ -55,11 +54,11 @@ export class HotPool {
     this.#size = Math.max(0, config.size ?? DEFAULT_POOL_SIZE)
     this.#maxSize = Math.max(this.#size, config.maxSize ?? DEFAULT_MAX_SIZE)
     this.#enabled = config.enabled !== false
-    this.#devlog = !!config.devlog
   }
 
+  /** Prefixed log — always emits in dev; filter by [devlog] in terminal. */
   #log(...args) {
-    if (this.#devlog) this.#log('', ...args)
+    console.log('[devlog][hot-pool]', ...args)
   }
 
   /** Start the pool — call once on server init. */
@@ -163,7 +162,6 @@ export class HotPool {
     const newMax = Math.max(newSize, config.maxSize ?? this.#maxSize)
     const newEnabled = config.enabled !== false
 
-    if (config.devlog !== undefined) this.#devlog = !!config.devlog
     this.#log(`⚙ RECONFIG size=${newSize} maxSize=${newMax} enabled=${newEnabled}`)
 
     const sizeChanged = newSize !== this.#size

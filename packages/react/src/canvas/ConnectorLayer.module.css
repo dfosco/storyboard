@@ -65,11 +65,6 @@
   stroke-width: 3px;
 }
 
-.connectorBroadcast:hover {
-  stroke: var(--bgColor-accent-emphasis, #0969da);
-  stroke-width: 3.5px;
-}
-
 /* Flowing dots animation along broadcast connectors */
 .broadcastFlow {
   fill: none;

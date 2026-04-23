@@ -1,8 +1,8 @@
 /**
  * storyboard dev [branch] — Start Vite with correct base path.
  *
- * If the storyboard server is running, delegates to it via the
- * switch-branch API instead of spawning Vite directly.
+ * Always runs Vite in the foreground as a cancelable process.
+ * Ctrl+C kills Vite, releases the port, and exits cleanly.
  *
  * Usage:
  *   storyboard dev                 # detect worktree from cwd
@@ -15,7 +15,6 @@
  */
 
 import * as p from '@clack/prompts'
-import http from 'node:http'
 import { spawn, execFileSync } from 'child_process'
 import { existsSync } from 'fs'
 import { resolve } from 'path'
@@ -25,7 +24,6 @@ import { startRenameWatcher } from '../rename-watcher/watcher.js'
 import { parseFlags } from './flags.js'
 import { hasUncommittedChanges, localBranchExists, resolveDefaultBranch } from './dev-helpers.js'
 import { compactAll } from '../canvas/compact.js'
-import { SERVER_PORT } from '../server/index.js'
 
 const flagSchema = {
   port: { type: 'number', description: 'Override dev server port' },
@@ -203,48 +201,6 @@ async function resolveDevTarget(branchArg, { allowCreate = true } = {}) {
   return { worktreeName: branchArg, targetCwd: targetDir, created: true }
 }
 
-/** Check if the storyboard server is already running */
-function isServerRunning() {
-  return new Promise((resolve) => {
-    const req = http.get(`http://localhost:${SERVER_PORT}/health`, (res) => {
-      if (res.statusCode !== 200) { resolve(false); return }
-      let data = ''
-      res.on('data', (chunk) => { data += chunk })
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data)
-          // Verify the server belongs to this repo's devDomain
-          const ourDomain = readDevDomain(process.cwd())
-          resolve(json.ok === true && json.devDomain === ourDomain)
-        } catch { resolve(false) }
-      })
-    })
-    req.on('error', () => resolve(false))
-    req.setTimeout(1000, () => { req.destroy(); resolve(false) })
-  })
-}
-
-/** Ask the running server to start a branch */
-function requestBranchFromServer(branch) {
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify({ branch })
-    const req = http.request(`http://localhost:${SERVER_PORT}/_storyboard/switch-branch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-    }, (res) => {
-      let data = ''
-      res.on('data', (chunk) => { data += chunk })
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)) }
-        catch { reject(new Error('Invalid server response')) }
-      })
-    })
-    req.on('error', reject)
-    req.write(body)
-    req.end()
-  })
-}
-
 async function main() {
   const { flags, positional } = parseFlags(process.argv.slice(3), flagSchema)
 
@@ -273,27 +229,7 @@ async function main() {
   const proxyUrl = `http://${domain}${basePath}`
   const directUrl = `http://localhost:${port}${basePath}`
 
-  // ── Check if storyboard server is already running ──
-  const serverRunning = await isServerRunning()
-
-  if (serverRunning) {
-    // Delegate to the running server — just ask it to start this branch
-    p.log.info('Storyboard server detected — delegating...')
-    try {
-      const result = await requestBranchFromServer(worktreeName)
-      if (result.url) {
-        p.log.success(result.url)
-        p.outro(result.status === 'already_running' ? 'Already running' : 'Started')
-      } else {
-        p.log.error(result.error || 'Failed to start branch')
-      }
-    } catch (err) {
-      p.log.error(`Server communication failed: ${err.message}`)
-    }
-    return
-  }
-
-  // ── No server running — start server + Vite together ──
+  // ── Start server + Vite in the foreground ──
   p.log.info('Starting storyboard server...')
 
   const { startServer, spawnViteForBranch, waitForPort: waitPort } = await import('../server/index.js')

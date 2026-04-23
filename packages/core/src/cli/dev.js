@@ -335,12 +335,14 @@ async function main() {
   process.on('SIGINT', cleanup)
   process.on('SIGTERM', cleanup)
 
-  // Wait for Vite to be ready — poll entry.port dynamically since Vite
-  // may rebind to a different port if the assigned one is occupied.
+  // Wait for Vite to report "ready in" via stdout — entry.status is set to
+  // 'ready' by the spawnVite stdout listener, which also updates entry.port
+  // to the actual bound port. TCP-polling entry.port is unreliable because
+  // the assigned port may be occupied by another process (false positive).
   const ready = await (async () => {
     const start = Date.now()
     while (Date.now() - start < 60_000) {
-      if (await waitPort(entry.port, 500)) return true
+      if (entry.status === 'ready') return true
       await new Promise(r => setTimeout(r, 300))
     }
     return false

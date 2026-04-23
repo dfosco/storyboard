@@ -16,6 +16,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { execSync } from 'child_process'
 import { dirname, resolve } from 'path'
 import { portsFilePath } from '../worktree/port.js'
+import { list as listRunningServers } from '../worktree/serverRegistry.js'
 
 export function readDevDomain(cwd) {
   try {
@@ -29,25 +30,48 @@ export function readDevDomain(cwd) {
 
 const DOMAIN = readDevDomain()
 
+/**
+ * Build branch→port map from running servers (servers.json) + explicit overrides.
+ * Only includes branches with live processes — prevents stale routes from
+ * creating redirect loops when ports get reused by different Vite instances.
+ * When multiple servers run for the same worktree, latest startedAt wins.
+ */
+function livePortMap(portOverrides = {}) {
+  const map = {}
+  try {
+    for (const srv of listRunningServers()) {
+      if (srv.worktree === 'main') continue
+      const existing = map[srv.worktree]
+      if (!existing || srv.startedAt > existing.startedAt) {
+        map[srv.worktree] = { port: srv.port, startedAt: srv.startedAt }
+      }
+    }
+  } catch { /* registry unavailable — rely on overrides only */ }
+
+  // Build final branch→port, overrides always win
+  const result = {}
+  for (const [name, info] of Object.entries(map)) result[name] = info.port
+  Object.assign(result, portOverrides)
+  // Remove 'main' if accidentally passed — handled separately
+  delete result.main
+  return result
+}
+
 export function generateCaddyfile(portOverrides = {}) {
   const portsFile = portsFilePath()
   const dir = dirname(portsFile)
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
 
-  let ports = { main: 1234 }
+  // Main port from ports.json (always 1234 unless overridden)
+  let mainPort = 1234
   if (existsSync(portsFile)) {
     try {
-      ports = JSON.parse(readFileSync(portsFile, 'utf8'))
-    } catch {
-      // Corrupted — use defaults
-    }
+      const ports = JSON.parse(readFileSync(portsFile, 'utf8'))
+      mainPort = ports.main || 1234
+    } catch { /* use default */ }
   }
 
-  // Apply runtime overrides (e.g. when assigned port was in use)
-  Object.assign(ports, portOverrides)
-
-  const mainPort = ports.main || 1234
-  const branches = Object.entries(ports).filter(([name]) => name !== 'main')
+  const branches = Object.entries(livePortMap(portOverrides))
 
   // Build Caddy route blocks — branches first (more specific), main last (fallback)
   const branchBlocks = branches
@@ -107,15 +131,17 @@ const CADDY_ADMIN = 'http://localhost:2019'
  * Tagged with @id so it can be upserted independently of other repos.
  */
 export function generateRouteConfig(portOverrides = {}) {
+  // Main port from ports.json
   const portsFile = portsFilePath()
-  let ports = { main: 1234 }
+  let mainPort = 1234
   if (existsSync(portsFile)) {
-    try { ports = JSON.parse(readFileSync(portsFile, 'utf8')) } catch { /* use defaults */ }
+    try {
+      const ports = JSON.parse(readFileSync(portsFile, 'utf8'))
+      mainPort = ports.main || 1234
+    } catch { /* use default */ }
   }
-  Object.assign(ports, portOverrides)
 
-  const mainPort = ports.main || 1234
-  const branches = Object.entries(ports).filter(([name]) => name !== 'main')
+  const branches = Object.entries(livePortMap(portOverrides))
 
   // Branch subroutes first (more specific), then main fallback
   const subroutes = branches.map(([name, port]) => ({

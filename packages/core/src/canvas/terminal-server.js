@@ -539,81 +539,61 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
 
       if (startupCommand) {
 
-        const isCopilot = startupCommand === 'copilot' || startupCommand.startsWith('copilot ')
-        const isClaude = startupCommand === 'claude' || startupCommand.startsWith('claude ')
-        const isCodex = startupCommand === 'codex' || startupCommand.startsWith('codex ')
+        // Look up agent config for this startup command
+        const agentCfg = (() => {
+          try {
+            const raw = readFileSync(resolve(process.cwd(), 'storyboard.config.json'), 'utf8')
+            const agentsConfig = JSON.parse(raw)?.canvas?.agents
+            if (!agentsConfig || typeof agentsConfig !== 'object') return null
+            for (const cfg of Object.values(agentsConfig)) {
+              if (cfg.startupCommand && startupCommand.startsWith(cfg.startupCommand.split(' ')[0])) return cfg
+            }
+          } catch {}
+          return null
+        })()
 
-        if (isCopilot) {
-          // Launch copilot, then send /allow-all on after ready
-          setTimeout(() => {
-            ptyProcess.write(startupCommand + '\r')
-            // Start polling AFTER copilot has been launched (give it time to start)
-            let allowSent = false
-            const pollInterval = setInterval(() => {
-              if (allowSent) { clearInterval(pollInterval); return }
-              try {
-                const paneContent = execSync(
-                  `tmux capture-pane -t "${tmuxName}" -p`,
-                  { encoding: 'utf8', timeout: 1000 }
-                )
-                // Only match copilot-specific readiness signals, not bare shell prompts
-                if (paneContent.includes('Environment loaded:') || paneContent.includes('custom instruction')) {
-                  allowSent = true
-                  clearInterval(pollInterval)
-                  setTimeout(() => {
-                    try {
-                      execSync(`tmux send-keys -t "${tmuxName}" -l "/allow-all on"`, { stdio: 'ignore' })
-                      execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-                    } catch {}
-                    setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
-                  }, 500)
-                }
-              } catch {}
-            }, 2000)
-            setTimeout(() => { if (!allowSent) { allowSent = true; clearInterval(pollInterval) } }, 30000)
-          }, 900)
-        } else if (isClaude) {
-          // Launch claude with --dangerously-skip-permissions to auto-approve all tools
-          const claudeCmd = startupCommand.includes('--dangerously-skip-permissions')
-            ? startupCommand
-            : startupCommand + ' --dangerously-skip-permissions'
-          setTimeout(() => {
-            ptyProcess.write(claudeCmd + '\r')
-            // Poll for claude readiness, then deliver pending messages
-            let readySent = false
-            const pollInterval = setInterval(() => {
-              if (readySent) { clearInterval(pollInterval); return }
-              try {
-                const paneContent = execSync(
-                  `tmux capture-pane -t "${tmuxName}" -p`,
-                  { encoding: 'utf8', timeout: 1000 }
-                )
-                if (paneContent.includes('Welcome to') || paneContent.includes('? for shortcuts')) {
-                  readySent = true
-                  clearInterval(pollInterval)
-                  setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
-                }
-              } catch {}
-            }, 2000)
-            setTimeout(() => { if (!readySent) { readySent = true; clearInterval(pollInterval) } }, 30000)
-          }, 900)
-        } else if (isCodex) {
-          // Launch codex with --full-auto for auto-approve; reads .codex/config.toml for instructions
-          const codexCmd = startupCommand.includes('--full-auto')
-            ? startupCommand
-            : startupCommand + ' --full-auto'
-          setTimeout(() => {
-            ptyProcess.write(codexCmd + '\r')
-            // Codex starts quickly — deliver pending messages after a short delay
-            setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 5000)
-          }, 900)
-        } else if (startupCommand === 'shell') {
+        if (startupCommand === 'shell') {
           // Plain shell — nothing to do, the pty already has a shell running
-        } else {
-          // Custom command — send it directly
+        } else if (agentCfg || startupCommand !== 'shell') {
+          // Agent or custom command — use config-driven startup
+          const cmd = agentCfg?.startupCommand || startupCommand
+          const postStartup = agentCfg?.postStartup || null
+          const readinessSignal = agentCfg?.readinessSignal || null
+
           setTimeout(() => {
-            ptyProcess.write(startupCommand + '\r')
-          }, 800)
+            ptyProcess.write(cmd + '\r')
+
+            if (readinessSignal) {
+              // Poll for readiness, then send postStartup command and deliver messages
+              let sent = false
+              const pollInterval = setInterval(() => {
+                if (sent) { clearInterval(pollInterval); return }
+                try {
+                  const paneContent = execSync(
+                    `tmux capture-pane -t "${tmuxName}" -p`,
+                    { encoding: 'utf8', timeout: 1000 }
+                  )
+                  if (paneContent.includes(readinessSignal)) {
+                    sent = true
+                    clearInterval(pollInterval)
+                    setTimeout(() => {
+                      if (postStartup) {
+                        try {
+                          execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(postStartup)}`, { stdio: 'ignore' })
+                          execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+                        } catch {}
+                      }
+                      setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
+                    }, 500)
+                  }
+                } catch {}
+              }, 2000)
+              setTimeout(() => { if (!sent) { sent = true; clearInterval(pollInterval) } }, 30000)
+            } else {
+              // No readiness signal — deliver messages after a delay
+              setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 5000)
+            }
+          }, 900)
         }
       } else {
         // No startupCommand — show the welcome screen as before

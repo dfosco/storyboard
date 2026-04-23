@@ -1901,18 +1901,29 @@ export function Default() {
           } catch { /* use widgetId as fallback */ }
         }
 
-        // Check if agent is running: session must be live AND pane must
-        // be running something other than a bare shell
-        let paneCommand = ''
+        // Deterministic agent detection: get the pane's shell PID, then
+        // check its child process. Known agent CLIs (copilot, claude) run
+        // as direct children of the shell. We match against the process
+        // name (comm) to identify which agent is running.
+        let runningAgent = null // null = no agent, 'copilot' | 'claude' = which one
         try {
-          paneCommand = execSync(
-            `tmux list-panes -t "${tmuxName}" -F '#{pane_current_command}'`,
+          const panePid = execSync(
+            `tmux list-panes -t "${tmuxName}" -F '#{pane_pid}'`,
             { encoding: 'utf8', timeout: 2000 }
           ).trim()
-        } catch { /* tmux not available */ }
+          if (panePid && isLive) {
+            const children = execSync(
+              `ps -o comm= -p $(pgrep -P ${panePid} 2>/dev/null | tr '\\n' ',') 2>/dev/null || true`,
+              { encoding: 'utf8', timeout: 2000 }
+            ).trim().split('\n').map(s => s.trim()).filter(Boolean)
+            for (const cmd of children) {
+              if (cmd === 'copilot') { runningAgent = 'copilot'; break }
+              if (cmd === 'claude') { runningAgent = 'claude'; break }
+            }
+          }
+        } catch { /* tmux/ps not available */ }
 
-        const shellCommands = new Set(['zsh', 'bash', 'sh', 'fish', ''])
-        const isAgentRunning = isLive && !shellCommands.has(paneCommand)
+        const isAgentRunning = runningAgent !== null
 
         if (isAgentRunning) {
           // Agent is running — safe to send immediately

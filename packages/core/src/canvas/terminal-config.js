@@ -71,7 +71,7 @@ function atomicWrite(filePath, data) {
  * Write or update a terminal config file.
  * Called when a terminal widget is created or reconnected.
  */
-export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = null, serverUrl = null, tmuxName = null, widgetProps = null }) {
+export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = null, serverUrl = null, tmuxName = null, widgetProps = null, displayName = null }) {
   const fp = configPath(branch, canvasId, widgetId)
   const dir = dirname(fp)
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
@@ -97,6 +97,7 @@ export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = n
   const config = {
     ...existing,
     widgetId,
+    displayName: displayName || existing.displayName || widgetProps?.prettyName || existing.widgetProps?.prettyName || null,
     canvasId,
     canvasFile: canvasFile || existing.canvasFile || null,
     branch,

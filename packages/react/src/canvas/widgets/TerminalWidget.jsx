@@ -170,8 +170,10 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   }, [interactive, id])
 
   const handleResize = useCallback((w, h) => {
-    onUpdate?.({ width: w, height: h })
-  }, [onUpdate])
+    // Snap height to cell grid so there's no gap at the bottom
+    const dims = calcDimensions(w, h, fontSize)
+    onUpdate?.({ width: w, height: dims.snappedHeight })
+  }, [onUpdate, fontSize])
 
   // Connect terminal + WebSocket
   useEffect(() => {

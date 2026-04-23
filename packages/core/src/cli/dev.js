@@ -327,7 +327,13 @@ async function main() {
   const ready = await waitPort(entry.port, 60_000)
 
   if (ready) {
+    // Register the Caddy route eagerly — don't rely solely on the async
+    // stdout listener in spawnVite(), which may not have fired yet.
     if (isCaddyRunning()) {
+      const routeConfig = generateRouteConfig({ [worktreeName]: entry.port })
+      if (upsertCaddyRoute(routeConfig)) {
+        generateCaddyfile({ [worktreeName]: entry.port })
+      }
       p.log.success(`${proxyUrl}`)
       p.log.info(`direct: ${directUrl}`)
     } else {

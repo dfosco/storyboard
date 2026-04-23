@@ -2101,8 +2101,6 @@ export function Default() {
           })
         }
 
-        const serverUrl = `http://localhost:${req.socket?.localPort || 1234}`
-
         // If we got a warm tmux session, rename it to the canonical name.
         // Otherwise, create a fresh tmux session from scratch.
         let usedWarm = false

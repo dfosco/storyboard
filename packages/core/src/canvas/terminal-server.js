@@ -518,13 +518,17 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
       // Shell-config overrides (STARSHIP_CONFIG, etc.) must also be sent here
       // because the shell's .zshrc has already run by the time tmux global env
       // overrides are applied.
-      const envExports = [
+      const envParts = [
         `export STORYBOARD_WIDGET_ID="${widgetId}"`,
         `export STORYBOARD_CANVAS_ID="${canvasId}"`,
         `export STORYBOARD_BRANCH="${branch}"`,
         `export STORYBOARD_SERVER_URL="${serverUrl}"`,
         ...Object.entries(TMUX_SHELL_OVERRIDES).map(([k, v]) => `export ${k}="${v}"`),
-      ].join(' && ')
+      ]
+      // Chain clear into env exports so it runs synchronously after exports
+      // complete, avoiding a timing race where clear leaks into the agent prompt
+      if (startupCommand) envParts.push('clear')
+      const envExports = envParts.join(' && ')
 
       setTimeout(() => {
         try {
@@ -534,13 +538,6 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
       }, 300)
 
       if (startupCommand) {
-        // Clear terminal before launching agent to hide env setup
-        setTimeout(() => {
-          try {
-            execSync(`tmux send-keys -t "${tmuxName}" -l "clear"`, { stdio: 'ignore' })
-            execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-          } catch {}
-        }, 600)
 
         const isCopilot = startupCommand === 'copilot' || startupCommand.startsWith('copilot ')
         const isClaude = startupCommand === 'claude' || startupCommand.startsWith('claude ')

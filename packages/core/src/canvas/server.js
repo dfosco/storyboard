@@ -1887,6 +1887,11 @@ export function Default() {
           return
         }
 
+        // Check session is live (widget open in browser)
+        const { getSession } = await import('./terminal-registry.js')
+        const session = getSession(tmuxName)
+        const isLive = session?.status === 'live'
+
         // Resolve sender display name
         let senderName = senderWidgetId || 'unknown'
         if (senderWidgetId) {
@@ -1896,7 +1901,8 @@ export function Default() {
           } catch { /* use widgetId as fallback */ }
         }
 
-        // Check if agent is running (safe to send) or shell prompt (queue)
+        // Check if agent is running: session must be live AND pane must
+        // be running something other than a bare shell
         let paneCommand = ''
         try {
           paneCommand = execSync(
@@ -1905,7 +1911,8 @@ export function Default() {
           ).trim()
         } catch { /* tmux not available */ }
 
-        const isAgentRunning = paneCommand === 'node'
+        const shellCommands = new Set(['zsh', 'bash', 'sh', 'fish', ''])
+        const isAgentRunning = isLive && !shellCommands.has(paneCommand)
 
         if (isAgentRunning) {
           // Agent is running — safe to send immediately

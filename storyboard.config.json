@@ -51,6 +51,18 @@
         "icon": "claude",
         "startupCommand": "claude --agent terminal-agent",
         "resizable": true
+      },
+      "codex": {
+        "label": "Codex CLI",
+        "icon": "primer/copilot",
+        "startupCommand": "codex",
+        "resizable": true
+      },
+      "codex": {
+        "label": "Codex",
+        "icon": "codex",
+        "startupCommand": "codex",
+        "resizable": true
       }
     },
     "showAgentsInAddMenu": false

@@ -541,6 +541,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
 
         const isCopilot = startupCommand === 'copilot' || startupCommand.startsWith('copilot ')
         const isClaude = startupCommand === 'claude' || startupCommand.startsWith('claude ')
+        const isCodex = startupCommand === 'codex' || startupCommand.startsWith('codex ')
 
         if (isCopilot) {
           // Launch copilot, then send /allow-all on after ready
@@ -595,6 +596,16 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
               } catch {}
             }, 2000)
             setTimeout(() => { if (!readySent) { readySent = true; clearInterval(pollInterval) } }, 30000)
+          }, 900)
+        } else if (isCodex) {
+          // Launch codex with --full-auto for auto-approve; reads .codex/config.toml for instructions
+          const codexCmd = startupCommand.includes('--full-auto')
+            ? startupCommand
+            : startupCommand + ' --full-auto'
+          setTimeout(() => {
+            ptyProcess.write(codexCmd + '\r')
+            // Codex starts quickly — deliver pending messages after a short delay
+            setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 5000)
           }, 900)
         } else if (startupCommand === 'shell') {
           // Plain shell — nothing to do, the pty already has a shell running

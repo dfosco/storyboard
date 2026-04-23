@@ -735,8 +735,8 @@ export function createCanvasHandler(ctx) {
 
       try {
         const data = readCanvas(filePath)
-        const exists = (data.connectors || []).some((c) => c.id === connectorId)
-        if (!exists) {
+        const connector = (data.connectors || []).find((c) => c.id === connectorId)
+        if (!connector) {
           sendJson(res, 404, { error: `Connector "${connectorId}" not found in canvas "${name}"` })
           return
         }
@@ -750,6 +750,53 @@ export function createCanvasHandler(ctx) {
 
         sendJson(res, 200, { success: true })
         pushCanvasUpdate(name, filePath, __viteWs)
+
+        // Inject messaging skill into both terminals when mode changes
+        if (meta?.messagingMode) {
+          const widgets = data.widgets || []
+          const startWidget = widgets.find((w) => w.id === connector.start?.widgetId)
+          const endWidget = widgets.find((w) => w.id === connector.end?.widgetId)
+          const isTerminalType = (w) => w && (w.type === 'terminal' || w.type === 'agent')
+
+          if (isTerminalType(startWidget) && isTerminalType(endWidget)) {
+            try {
+              const { execSync } = await import('node:child_process')
+              const { findTmuxNameForWidget } = await import('./terminal-registry.js')
+              const mode = meta.messagingMode
+
+              const pairs = [
+                { widget: startWidget, peer: endWidget },
+                { widget: endWidget, peer: startWidget },
+              ]
+
+              for (const { widget: w, peer } of pairs) {
+                const tmuxName = findTmuxNameForWidget(w.id)
+                if (!tmuxName) continue
+
+                const peerName = peer.props?.prettyName || peer.id
+                let skillMsg
+
+                if (mode === 'two-way') {
+                  skillMsg = `📡 [Messaging mode: two-way ↔ with ${peerName}]\nYou can send and receive messages.\n- Send: npx storyboard terminal send ${peer.id} "message"\n- Save output: npx storyboard terminal output --summary "..." --content "..."\n- Read their output: cat .storyboard/terminals/${peer.id}.json | jq '.latestOutput'\n- Check status: npx storyboard terminal status ${peer.id}`
+                } else if (mode === 'one-way') {
+                  const isSource = w.id === connector.start?.widgetId
+                  if (isSource) {
+                    skillMsg = `📡 [Messaging mode: one-way → to ${peerName}]\nYou can send messages to ${peerName}.\n- Send: npx storyboard terminal send ${peer.id} "message"\n- Save output: npx storyboard terminal output --summary "..." --content "..."`
+                  } else {
+                    skillMsg = `📡 [Messaging mode: one-way ← from ${peerName}]\nYou can receive messages from ${peerName}.\n- Read their output: cat .storyboard/terminals/${peer.id}.json | jq '.latestOutput'`
+                  }
+                } else {
+                  skillMsg = `📡 [Messaging with ${peerName} disabled]`
+                }
+
+                try {
+                  execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(skillMsg)}`, { stdio: 'ignore' })
+                  execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+                } catch { /* tmux session may not be active */ }
+              }
+            } catch { /* best effort */ }
+          }
+        }
       } catch (err) {
         sendJson(res, 500, { error: `Failed to update connector: ${err.message}` })
       }

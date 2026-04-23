@@ -147,6 +147,12 @@ switch (command) {
       import('./terminal-commands.js')
     } else if (process.argv[3] === 'remove') {
       import('./terminal-commands.js')
+    } else if (process.argv[3] === 'send') {
+      import('./terminal-messaging.js').then(m => m.handleSend())
+    } else if (process.argv[3] === 'output') {
+      import('./terminal-messaging.js').then(m => m.handleOutput())
+    } else if (process.argv[3] === 'status') {
+      import('./terminal-messaging.js').then(m => m.handleStatus())
     } else {
       // Default: session browser (formerly `storyboard sessions`)
       import('./sessions.js')

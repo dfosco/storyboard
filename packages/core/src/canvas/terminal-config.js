@@ -219,3 +219,53 @@ export function updateAgentStatus({ branch, canvasId, widgetId, status, message 
   atomicWrite(fp, config)
   return config
 }
+
+/**
+ * Read a terminal config by widget ID (searches by symlink).
+ * @param {string} widgetId
+ * @returns {Object|null}
+ */
+export function readTerminalConfigById(widgetId) {
+  const dir = join(rootDir, TERMINALS_DIR)
+  const symPath = join(dir, `${widgetId}.json`)
+  try {
+    return JSON.parse(readFileSync(symPath, 'utf8'))
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Append a pending message to a terminal's config.
+ * Messages are delivered when the agent starts or reconnects.
+ * @param {string} widgetId
+ * @param {{ from: string|null, fromName: string, message: string, createdAt: string }} msg
+ */
+export function updatePendingMessages(widgetId, msg) {
+  const config = readTerminalConfigById(widgetId)
+  if (!config) return
+
+  if (!Array.isArray(config.pendingMessages)) config.pendingMessages = []
+  config.pendingMessages.push(msg)
+  config.updatedAt = new Date().toISOString()
+
+  // Write back using the config's known path
+  const fp = configPath(config.branch || 'unknown', config.canvasId || 'unknown', widgetId)
+  atomicWrite(fp, config)
+}
+
+/**
+ * Save the latest output from an agent for peers to read.
+ * @param {string} widgetId
+ * @param {{ content: string, summary: string, updatedAt: string }} output
+ */
+export function updateLatestOutput(widgetId, output) {
+  const config = readTerminalConfigById(widgetId)
+  if (!config) return
+
+  config.latestOutput = output
+  config.updatedAt = new Date().toISOString()
+
+  const fp = configPath(config.branch || 'unknown', config.canvasId || 'unknown', widgetId)
+  atomicWrite(fp, config)
+}

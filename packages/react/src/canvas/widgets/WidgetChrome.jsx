@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Tooltip } from '@primer/react'
-import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode, UnwrapIcon as OcticonUnwrap, ImageIcon as OcticonImage, UnfoldIcon as OcticonUnfold, FoldIcon as OcticonFold, ScreenFullIcon as OcticonScreenFull } from '@primer/octicons-react'
+import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode, UnwrapIcon as OcticonUnwrap, ImageIcon as OcticonImage, UnfoldIcon as OcticonUnfold, FoldIcon as OcticonFold, ScreenFullIcon as OcticonScreenFull, BroadcastIcon as OcticonBroadcast } from '@primer/octicons-react'
 import { getConnectorConfig, getInteractGate } from './widgetConfig.js'
 import styles from './WidgetChrome.module.css'
 import overlayStyles from './embedOverlay.module.css'
@@ -145,12 +145,8 @@ function ColumnsIcon() {
 }
 
 /** Icon registry — maps icon name strings from config to React components. */
-function MessageIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  )
+function BroadcastIcon() {
+  return <OcticonBroadcast size={12} />
 }
 
 const ICON_REGISTRY = {
@@ -174,7 +170,7 @@ const ICON_REGISTRY = {
   'unfold': UnfoldIcon,
   'fold': FoldIcon,
   'columns': ColumnsIcon,
-  'message': MessageIcon,
+  'broadcast': BroadcastIcon,
 }
 
 /** Danger-styled actions in the overflow menu. */

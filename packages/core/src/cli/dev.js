@@ -1,7 +1,12 @@
 /**
  * storyboard dev [branch] — Start Vite with correct base path.
  *
- * Always runs Vite in the foreground as a cancelable process.
+ * If a storyboard server is already running (from another `sb dev`),
+ * operates in "client mode": asks the existing server to spawn Vite
+ * for this branch, prints the URL, and exits. This allows multiple
+ * branches to run simultaneously through the same server + Caddy proxy.
+ *
+ * Otherwise, starts the server in the foreground as the "owner".
  * Ctrl+C kills Vite, releases the port, and exits cleanly.
  *
  * Usage:
@@ -15,7 +20,8 @@
  */
 
 import * as p from '@clack/prompts'
-import { spawn, execFileSync } from 'child_process'
+import http from 'node:http'
+import { execFileSync } from 'child_process'
 import { existsSync } from 'fs'
 import { resolve } from 'path'
 import { detectWorktreeName, getPort, releasePort, repoRoot, worktreeDir, listWorktrees } from '../worktree/port.js'
@@ -201,39 +207,114 @@ async function resolveDevTarget(branchArg, { allowCreate = true } = {}) {
   return { worktreeName: branchArg, targetCwd: targetDir, created: true }
 }
 
-async function main() {
-  const { flags, positional } = parseFlags(process.argv.slice(3), flagSchema)
+// ─── Server Detection ───
 
-  const branchArg = positional[0] || undefined
-  const overridePort = flags.port || null
-  const allowCreate = flags.create
+/**
+ * Check if a storyboard server is already running on the expected port.
+ * Returns the server's health response if running, or null.
+ */
+function checkExistingServer(port) {
+  return new Promise((resolve) => {
+    const req = http.get(`http://localhost:${port}/health`, (res) => {
+      let data = ''
+      res.on('data', (c) => (data += c))
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)) }
+        catch { resolve(null) }
+      })
+    })
+    req.on('error', () => resolve(null))
+    req.setTimeout(2000, () => { req.destroy(); resolve(null) })
+  })
+}
 
-  p.intro('storyboard dev')
+/**
+ * Ask an existing server to spawn Vite for a branch via the switch-branch API.
+ * Returns the parsed JSON response.
+ */
+function requestSwitchBranch(port, branch) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({ branch })
+    const req = http.request(
+      { hostname: 'localhost', port, path: '/_storyboard/switch-branch', method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } },
+      (res) => {
+        let data = ''
+        res.on('data', (c) => (data += c))
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data)
+            if (res.statusCode >= 400) reject(new Error(json.error || `HTTP ${res.statusCode}`))
+            else resolve(json)
+          } catch { reject(new Error(`Bad response: ${data}`)) }
+        })
+      }
+    )
+    req.on('error', reject)
+    req.setTimeout(90_000, () => { req.destroy(); reject(new Error('Timeout waiting for Vite to start')) })
+    req.end(body)
+  })
+}
 
-  const { worktreeName, targetCwd, created } = await resolveDevTarget(branchArg, { allowCreate })
+// ─── Client Mode ───
 
-  if (created) {
-    p.log.success(`Worktree ready: .worktrees/${worktreeName}`)
-  } else if (branchArg) {
-    p.log.info(`Using ${worktreeName === 'main' ? 'main repo' : `.worktrees/${worktreeName}`}`)
-  }
-
-  const port = getPort(worktreeName)
+/**
+ * Run in client mode: an existing server handles Vite lifecycle.
+ * We just ask it to start the branch, print URLs, and exit.
+ */
+async function runClientMode(serverPort, worktreeName, domain) {
   const isMain = worktreeName === 'main'
-
-  const basePath = isMain
-    ? '/'
-    : `/branch--${worktreeName}/`
-
-  const domain = readDevDomain(targetCwd)
+  const basePath = isMain ? '/' : `/branch--${worktreeName}/`
   const proxyUrl = `http://${domain}${basePath}`
-  const directUrl = `http://localhost:${port}${basePath}`
 
-  // ── Start server + Vite in the foreground ──
+  p.log.info(`Server already running on :${serverPort} — requesting dev session for "${worktreeName}"...`)
+
+  try {
+    const result = await requestSwitchBranch(serverPort, worktreeName)
+
+    if (result.status === 'already_running') {
+      p.log.success(`Already running: ${proxyUrl}`)
+    } else {
+      p.log.success(`Started: ${proxyUrl}`)
+    }
+
+    p.log.info(`Stop with: npx storyboard server stop ${worktreeName}`)
+    p.outro('Ready')
+  } catch (err) {
+    p.log.error(`Failed to start dev for "${worktreeName}": ${err.message}`)
+    process.exit(1)
+  }
+}
+
+// ─── Owner Mode ───
+
+/**
+ * Run in owner mode: start the server + Vite in the foreground.
+ * This is the original behavior — the process owns the server lifecycle.
+ */
+async function runOwnerMode(worktreeName, targetCwd, domain, serverPort) {
+  getPort(worktreeName) // allocate port for this worktree
+  const isMain = worktreeName === 'main'
+  const basePath = isMain ? '/' : `/branch--${worktreeName}/`
+  const proxyUrl = `http://${domain}${basePath}`
+
   p.log.info('Starting storyboard server...')
 
-  const { startServer, spawnViteForBranch, waitForPort: waitPort } = await import('../server/index.js')
-  const serverInstance = startServer()
+  const { startServer, spawnViteForBranch } = await import('../server/index.js')
+
+  let serverInstance
+  try {
+    serverInstance = await startServer()
+  } catch (err) {
+    if (err.code === 'EADDRINUSE') {
+      // Race condition: server started between our health check and bind attempt.
+      // Fall back to client mode.
+      p.log.info('Server started by another process — switching to client mode...')
+      await runClientMode(serverPort, worktreeName, domain)
+      return
+    }
+    throw err
+  }
 
   // Compact bloated canvas JSONL files before starting Vite
   const compacted = compactAll(targetCwd)
@@ -243,13 +324,9 @@ async function main() {
     }
   }
 
-  // Spawn Vite through the server (manages the child process)
   const entry = spawnViteForBranch(worktreeName)
-
-  // Start rename watcher in target directory
   const renameWatcher = startRenameWatcher(targetCwd)
 
-  // Auto-compact every 15 minutes
   const compactInterval = setInterval(() => {
     try {
       const results = compactAll(targetCwd)
@@ -259,7 +336,6 @@ async function main() {
     } catch { /* non-critical */ }
   }, 15 * 60 * 1000)
 
-  // Clean up everything when the user closes the process (Ctrl+C, SIGTERM)
   function cleanup() {
     renameWatcher.close()
     clearInterval(compactInterval)
@@ -271,10 +347,6 @@ async function main() {
   process.on('SIGINT', cleanup)
   process.on('SIGTERM', cleanup)
 
-  // Wait for Vite to report "ready in" via stdout — entry.status is set to
-  // 'ready' by the spawnVite stdout listener, which also updates entry.port
-  // to the actual bound port. TCP-polling entry.port is unreliable because
-  // the assigned port may be occupied by another process (false positive).
   const ready = await (async () => {
     const start = Date.now()
     while (Date.now() - start < 60_000) {
@@ -285,11 +357,8 @@ async function main() {
   })()
 
   if (ready) {
-    // Use the actual port Vite bound to (may differ from assigned port)
     const actualDirectUrl = `http://localhost:${entry.port}${basePath}`
 
-    // Register the Caddy route eagerly — don't rely solely on the async
-    // stdout listener in spawnVite(), which may not have fired yet.
     if (isCaddyRunning()) {
       const routeConfig = generateRouteConfig({ [worktreeName]: entry.port })
       if (upsertCaddyRoute(routeConfig)) {
@@ -303,7 +372,6 @@ async function main() {
     }
     p.outro('Ready')
 
-    // Pipe Vite output for interactive use
     entry.child.stdout.pipe(process.stdout)
     entry.child.stderr.pipe(process.stderr)
   } else {
@@ -320,6 +388,43 @@ async function main() {
     }
     process.exit(code ?? 0)
   })
+}
+
+// ─── Main ───
+
+async function main() {
+  const { flags, positional } = parseFlags(process.argv.slice(3), flagSchema)
+
+  const branchArg = positional[0] || undefined
+  const allowCreate = flags.create
+
+  p.intro('storyboard dev')
+
+  const { worktreeName, targetCwd, created } = await resolveDevTarget(branchArg, { allowCreate })
+
+  if (created) {
+    p.log.success(`Worktree ready: .worktrees/${worktreeName}`)
+  } else if (branchArg) {
+    p.log.info(`Using ${worktreeName === 'main' ? 'main repo' : `.worktrees/${worktreeName}`}`)
+  }
+
+  const domain = readDevDomain(targetCwd)
+
+  // Check if a storyboard server is already running for this repo
+  const { SERVER_PORT } = await import('../server/index.js')
+  const existingServer = await checkExistingServer(SERVER_PORT)
+
+  if (existingServer?.ok) {
+    // Validate the running server belongs to the same repo (devDomain match)
+    if (existingServer.devDomain && existingServer.devDomain !== domain) {
+      p.log.error(`Port ${SERVER_PORT} is in use by a different project (domain: ${existingServer.devDomain}).`)
+      p.log.info('Stop it with `npx storyboard exit`, or use a different devDomain in storyboard.config.json.')
+      process.exit(1)
+    }
+    await runClientMode(SERVER_PORT, worktreeName, domain)
+  } else {
+    await runOwnerMode(worktreeName, targetCwd, domain, SERVER_PORT)
+  }
 }
 
 main()

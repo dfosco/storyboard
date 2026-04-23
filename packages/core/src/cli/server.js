@@ -77,7 +77,16 @@ async function serverStart(branchArg, flags) {
     }
   } catch { /* Caddy not available */ }
 
-  const server = startServer(port)
+  try {
+    await startServer(port)
+  } catch (err) {
+    if (err.code === 'EADDRINUSE') {
+      p.log.error(`Port ${port} is already in use — another server may be running.`)
+      p.log.info('Try: npx storyboard server list')
+      process.exit(1)
+    }
+    throw err
+  }
 
   const isMain = worktreeName === 'main'
   const basePath = isMain ? '/' : `/branch--${worktreeName}/`

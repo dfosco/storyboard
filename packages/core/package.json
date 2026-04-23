@@ -53,6 +53,7 @@
     "./svelte-plugin-ui/styles/base.css": "./dist/tailwind.css",
     "./styles/tailwind.css": "./dist/tailwind.css",
     "./worktree/port": "./src/worktree/port.js",
+    "./worktree/serverRegistry": "./src/worktree/serverRegistry.js",
     "./canvas/collision": "./src/canvas/collision.js",
     "./canvas/identity": "./src/canvas/identity.js",
     "./config": "./src/configSchema.js",

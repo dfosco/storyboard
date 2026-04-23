@@ -6,6 +6,7 @@ import { parse as parseJsonc } from 'jsonc-parser'
 import { materializeFromText } from '@dfosco/storyboard-core/canvas/materializer'
 import { toCanvasId } from '@dfosco/storyboard-core/canvas/identity'
 import { getConfig } from '@dfosco/storyboard-core/config'
+import { list as listRunningServers } from '@dfosco/storyboard-core/worktree/serverRegistry'
 
 const VIRTUAL_MODULE_ID = 'virtual:storyboard-data-index'
 const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID
@@ -1345,19 +1346,16 @@ export default function storyboardDataPlugin() {
     },
 
     // Inject __SB_BRANCHES__ into HTML so the Viewfinder branch selector works.
-    // Reads .worktrees/ports.json to enumerate active worktree dev servers.
+    // Uses server registry (live running processes) instead of stale ports.json.
     transformIndexHtml(html, ctx) {
       // Only inject in dev mode
       if (!ctx.server) return html
 
       try {
-        const portsJsonPath = path.resolve(root, '.worktrees', 'ports.json')
-        if (!fs.existsSync(portsJsonPath)) return html
-
-        const ports = JSON.parse(fs.readFileSync(portsJsonPath, 'utf-8'))
-        const branches = Object.entries(ports)
-          .filter(([name]) => name !== 'main')
-          .map(([name, port]) => ({ branch: name, folder: `branch--${name}`, port }))
+        const servers = listRunningServers()
+        const branches = servers
+          .filter(srv => srv.worktree !== 'main')
+          .map(srv => ({ branch: srv.worktree, folder: `branch--${srv.worktree}`, port: srv.port }))
 
         if (branches.length === 0) return html
 

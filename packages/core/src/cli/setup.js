@@ -273,11 +273,41 @@ if (isCaddyInstalled()) {
 }
 
 // 9. Install / sync dependencies
-await withSpin(
-  'Installing dependencies...',
-  'Dependencies installed',
-  () => { run('npm install', { stdio: 'ignore' }) }
-)
+// Skip npm install if a dev server is running — it would trigger Vite's
+// file watcher and restart the server on a different port.
+{
+  const { SERVER_PORT } = await import('../server/index.js')
+  const { readDevDomain: readDomain } = await import('./proxy.js')
+  const http = await import('node:http')
+
+  const devRunning = await new Promise((resolve) => {
+    const req = http.get(`http://localhost:${SERVER_PORT}/health`, (res) => {
+      if (res.statusCode !== 200) { resolve(false); return }
+      let data = ''
+      res.on('data', (chunk) => { data += chunk })
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data)
+          const ourDomain = readDomain()
+          resolve(json.ok === true && json.devDomain === ourDomain)
+        } catch { resolve(false) }
+      })
+    })
+    req.on('error', () => resolve(false))
+    req.setTimeout(1000, () => { req.destroy(); resolve(false) })
+  })
+
+  if (devRunning) {
+    p.log.info(dim('Skipping npm install — dev server is running (would cause restart)'))
+    p.log.info(dim('Run `npm install` manually after stopping the dev server if needed'))
+  } else {
+    await withSpin(
+      'Installing dependencies...',
+      'Dependencies installed',
+      () => { run('npm install', { stdio: 'ignore' }) }
+    )
+  }
+}
 
 p.note(
   [

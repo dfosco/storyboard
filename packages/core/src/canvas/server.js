@@ -1743,6 +1743,110 @@ export function Default() {
       return
     }
 
+    // ── Terminal Messaging API ──────────────────────────────────────────
+
+    // POST /terminal/send — send a message to a terminal via tmux send-keys
+    if (routePath === '/terminal/send' && method === 'POST') {
+      const { widgetId: targetWidgetId, message, from: senderWidgetId } = body
+
+      if (!targetWidgetId || !message) {
+        sendJson(res, 400, { error: 'widgetId and message are required' })
+        return
+      }
+
+      try {
+        const { execSync } = await import('node:child_process')
+        const { findTmuxNameForWidget } = await import('./terminal-registry.js')
+        const { readTerminalConfigById, updatePendingMessages, initTerminalConfig } = await import('./terminal-config.js')
+
+        initTerminalConfig(root)
+
+        const tmuxName = findTmuxNameForWidget(targetWidgetId)
+        if (!tmuxName) {
+          sendJson(res, 404, { error: `No active session for widget ${targetWidgetId}` })
+          return
+        }
+
+        // Resolve sender display name
+        let senderName = senderWidgetId || 'unknown'
+        if (senderWidgetId) {
+          try {
+            const senderConfig = readTerminalConfigById(senderWidgetId)
+            if (senderConfig?.displayName) senderName = senderConfig.displayName
+          } catch { /* use widgetId as fallback */ }
+        }
+
+        // Check if agent is running (safe to send) or shell prompt (queue)
+        let paneCommand = ''
+        try {
+          paneCommand = execSync(
+            `tmux list-panes -t "${tmuxName}" -F '#{pane_current_command}'`,
+            { encoding: 'utf8', timeout: 2000 }
+          ).trim()
+        } catch { /* tmux not available */ }
+
+        const isAgentRunning = paneCommand === 'node'
+
+        if (isAgentRunning) {
+          // Agent is running — safe to send immediately
+          const excerpt = message.length > 200 ? message.slice(0, 200) + '…' : message
+          const senderConfigHint = senderWidgetId
+            ? `\nFull context: cat .storyboard/terminals/${senderWidgetId}.json | jq '.latestOutput.content'`
+            : ''
+          const formatted = `📩 [${senderName} → you]\n\`\`\`\n${excerpt}\n\`\`\`${senderConfigHint}`
+
+          try {
+            execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(formatted)}`, { stdio: 'ignore' })
+            execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+          } catch (err) {
+            sendJson(res, 500, { error: `Failed to send via tmux: ${err.message}` })
+            return
+          }
+
+          sendJson(res, 200, { success: true, delivered: true })
+        } else {
+          // Shell prompt or unknown — queue the message
+          updatePendingMessages(targetWidgetId, {
+            from: senderWidgetId || null,
+            fromName: senderName,
+            message,
+            createdAt: new Date().toISOString(),
+          })
+
+          sendJson(res, 200, { success: true, queued: true })
+        }
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to send message: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /terminal/output — save latest output to terminal config
+    if (routePath === '/terminal/output' && method === 'POST') {
+      const { widgetId: outputWidgetId, content, summary } = body
+
+      if (!outputWidgetId) {
+        sendJson(res, 400, { error: 'widgetId is required' })
+        return
+      }
+
+      try {
+        const { updateLatestOutput, initTerminalConfig } = await import('./terminal-config.js')
+        initTerminalConfig(root)
+
+        updateLatestOutput(outputWidgetId, {
+          content: content || '',
+          summary: summary || '',
+          updatedAt: new Date().toISOString(),
+        })
+
+        sendJson(res, 200, { success: true })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to save output: ${err.message}` })
+      }
+      return
+    }
+
     // GET /terminal-snapshot/:widgetId — read terminal snapshot JSON
     if (routePath.startsWith('/terminal-snapshot/') && method === 'GET') {
       const widgetId = routePath.slice('/terminal-snapshot/'.length)

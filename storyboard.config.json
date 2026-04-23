@@ -44,24 +44,22 @@
         "label": "Copilot CLI",
         "icon": "primer/copilot",
         "startupCommand": "copilot --agent terminal-agent",
+        "postStartup": "/allow-all on",
+        "readinessSignal": "Environment loaded:",
         "resizable": true
       },
       "claude": {
         "label": "Claude Code",
         "icon": "claude",
-        "startupCommand": "claude --agent terminal-agent",
+        "startupCommand": "claude --agent terminal-agent --dangerously-skip-permissions",
+        "readinessSignal": "? for shortcuts",
         "resizable": true
       },
       "codex": {
         "label": "Codex CLI",
         "icon": "primer/copilot",
-        "startupCommand": "codex",
-        "resizable": true
-      },
-      "codex": {
-        "label": "Codex",
-        "icon": "codex",
-        "startupCommand": "codex",
+        "startupCommand": "codex --full-auto",
+        "configFiles": [".codex/config.toml"],
         "resizable": true
       }
     },

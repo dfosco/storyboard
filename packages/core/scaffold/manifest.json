@@ -51,6 +51,11 @@
       "target": ".githooks/",
       "mode": "updateable",
       "directory": true
+    },
+    {
+      "source": "scaffold/codex/config.toml",
+      "target": ".codex/config.toml",
+      "mode": "scaffold"
     }
   ]
 }

@@ -931,7 +931,6 @@
       "expandable": true,
       "splitScreen": true,
       "resize": {
-        "enabled": false,
         "prod": false
       },
       "props": {
@@ -1006,6 +1005,7 @@
       "expandable": true,
       "splitScreen": true,
       "resize": {
+        "enabled": false,
         "prod": false
       },
       "props": {

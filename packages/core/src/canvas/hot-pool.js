@@ -1,8 +1,9 @@
 /**
- * Hot Pool — pre-warms copilot CLI sessions for instant agent execution.
+ * Hot Pool — pre-warms tmux sessions for instant agent execution.
  *
- * Maintains a queue of ready-to-use copilot processes with automatic
- * scaling based on demand pressure.
+ * Maintains a queue of ready-to-use tmux sessions with a warm shell,
+ * automatic scaling based on demand pressure, and instant handoff
+ * to prompt/spawn.
  *
  * ## Load Balancer
  *
@@ -27,21 +28,19 @@
  * when the "Dev logs" toggle is on in Storyboard DevTools.
  */
 
-import { spawn } from 'node:child_process'
-import process from 'node:process'
+import { execSync } from 'node:child_process'
 
 /**
  * @typedef {Object} WarmSession
  * @property {string} id
- * @property {import('node:child_process').ChildProcess} process
+ * @property {string} tmuxName — the tmux session name (pool-prefixed)
  * @property {number} createdAt
- * @property {'warming'|'ready'|'acquired'|'dead'} state
+ * @property {'warming'|'ready'|'acquired'|'consumed'|'dead'} state
  */
 
 const DEFAULT_POOL_SIZE = 1
 const DEFAULT_MAX_POOL_SIZE = 3
 const DEFAULT_COOLDOWN_MINS = 10
-const WARM_TIMEOUT_MS = 10_000
 const HEALTH_CHECK_INTERVAL_MS = 30_000
 
 export class HotPool {
@@ -63,7 +62,6 @@ export class HotPool {
 
   // Load balancer state
   #pressured = false
-  #lastAcquireAt = 0
   #cooldownTimer = null
 
   /**
@@ -150,18 +148,16 @@ export class HotPool {
     const session = this.#queue.splice(idx, 1)[0]
     session.state = 'acquired'
     this.#acquired.set(session.id, session)
-    this.#lastAcquireAt = Date.now()
-
     const age = ((Date.now() - session.createdAt) / 1000).toFixed(1)
     const readyCount = this.#queue.filter(s => s.state === 'ready').length
 
     // Scale-up: queue drained to 0 ready → enter pressure mode
     if (readyCount === 0 && !this.#pressured) {
       this.#pressured = true
-      this.#log(`→ ACQUIRED ${session.id} (age: ${age}s) — ⚡ PRESSURE ON (scaling to max_pool_size=${this.#maxPoolSize})`)
+      this.#log(`→ ACQUIRED ${session.id} tmux=${session.tmuxName} (age: ${age}s) — ⚡ PRESSURE ON (scaling to max_pool_size=${this.#maxPoolSize})`)
       this.#resetCooldown()
     } else {
-      this.#log(`→ ACQUIRED ${session.id} (age: ${age}s, queue: ${readyCount}/${this.#fillTarget})`)
+      this.#log(`→ ACQUIRED ${session.id} tmux=${session.tmuxName} (age: ${age}s, queue: ${readyCount}/${this.#fillTarget})`)
       this.#resetCooldown()
     }
 
@@ -169,11 +165,31 @@ export class HotPool {
     return session
   }
 
+  /**
+   * Consume a previously acquired session — transfers ownership out of the pool permanently.
+   * Use this when the session becomes a widget-owned canonical tmux session.
+   */
+  consume(sessionId) {
+    const session = this.#acquired.get(sessionId)
+    if (!session) return
+    session.state = 'consumed'
+    this.#acquired.delete(sessionId)
+    this.#log(`⊘ CONSUMED ${sessionId} (active: ${this.#acquired.size})`)
+  }
+
   release(sessionId) {
     const session = this.#acquired.get(sessionId)
     if (!session) return
     this.#acquired.delete(sessionId)
-    this.#log(`← RELEASED ${sessionId} (active: ${this.#acquired.size})`)
+    // Return to pool if still alive, otherwise kill
+    if (this.#tmuxSessionExists(session.tmuxName)) {
+      session.state = 'ready'
+      this.#queue.push(session)
+      this.#log(`← RELEASED ${sessionId} back to queue (queue: ${this.#queue.length}/${this.#fillTarget})`)
+    } else {
+      session.state = 'dead'
+      this.#log(`← RELEASED ${sessionId} but tmux gone, discarded`)
+    }
   }
 
   status() {
@@ -286,42 +302,72 @@ export class HotPool {
 
   async #spawnWarmSession() {
     const id = `pool-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-    this.#log(`⊕ SPAWN starting ${id}…`)
+    const tmuxName = `sb-pool-${id}`
+    this.#log(`⊕ SPAWN starting ${id} (tmux: ${tmuxName})…`)
 
     try {
-      const child = spawn('copilot', [], {
-        cwd: this.#root,
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env },
-      })
+      // Create headless tmux session with a warm shell — matches terminal-server bootstrap
+      execSync(`tmux -f /dev/null new-session -d -s "${tmuxName}" -c "${this.#root}"`, { stdio: 'ignore' })
+      execSync(`tmux set-option -t "${tmuxName}" status off 2>/dev/null`, { stdio: 'ignore' })
+      execSync(`tmux set-option -t "${tmuxName}" set-clipboard off 2>/dev/null`, { stdio: 'ignore' })
 
       /** @type {WarmSession} */
-      const session = { id, process: child, createdAt: Date.now(), state: 'warming' }
+      const session = { id, tmuxName, createdAt: Date.now(), state: 'warming' }
 
+      // Verify the tmux session is alive and shell is responsive
       const ready = await new Promise((resolve) => {
-        const timer = setTimeout(() => { session.state = 'ready'; resolve(true) }, WARM_TIMEOUT_MS)
-        child.on('error', () => { clearTimeout(timer); session.state = 'dead'; resolve(false) })
-        child.on('close', () => {
-          clearTimeout(timer)
-          if (session.state === 'warming') { session.state = 'dead'; resolve(false) }
-        })
-        child.stderr?.once('data', () => {})
-        child.stdout?.once('data', () => { clearTimeout(timer); session.state = 'ready'; resolve(true) })
+        const timer = setTimeout(() => {
+          // After timeout, check if session still exists
+          if (this.#tmuxSessionExists(tmuxName)) {
+            session.state = 'ready'
+            resolve(true)
+          } else {
+            session.state = 'dead'
+            resolve(false)
+          }
+        }, 2000) // Shell warmup is fast — 2s is plenty
+
+        // Quick check: try to capture-pane to verify shell is up
+        const check = setInterval(() => {
+          try {
+            const output = execSync(`tmux capture-pane -t "${tmuxName}" -p 2>/dev/null`, { encoding: 'utf8', timeout: 1000 })
+            if (output.trim().length > 0) {
+              clearInterval(check)
+              clearTimeout(timer)
+              session.state = 'ready'
+              resolve(true)
+            }
+          } catch { /* not ready yet */ }
+        }, 300)
       })
 
-      if (!ready) { this.#log(`⊕ SPAWN ${id} failed (died during warmup)`); return null }
-      this.#log(`⊕ SPAWN ${id} ready (pid: ${child.pid})`)
+      if (!ready) {
+        this.#log(`⊕ SPAWN ${id} failed (tmux session died)`)
+        try { execSync(`tmux kill-session -t "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+        return null
+      }
+      this.#log(`⊕ SPAWN ${id} ready (tmux: ${tmuxName})`)
       return session
-    } catch {
+    } catch (err) {
+      this.#log(`⊕ SPAWN ${id} error: ${err.message}`)
+      try { execSync(`tmux kill-session -t "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' }) } catch {}
       return null
+    }
+  }
+
+  #tmuxSessionExists(name) {
+    try {
+      execSync(`tmux has-session -t "${name}" 2>/dev/null`, { stdio: 'ignore' })
+      return true
+    } catch {
+      return false
     }
   }
 
   #killSession(session) {
     try {
-      if (session.process && !session.process.killed) {
-        session.process.stdin?.end()
-        session.process.kill()
+      if (session.tmuxName) {
+        execSync(`tmux kill-session -t "${session.tmuxName}" 2>/dev/null`, { stdio: 'ignore' })
       }
     } catch { /* ignore */ }
     session.state = 'dead'
@@ -330,7 +376,7 @@ export class HotPool {
   #healthCheck() {
     const before = this.#queue.length
     this.#queue = this.#queue.filter(s => {
-      if (s.process.killed || s.process.exitCode !== null) { s.state = 'dead'; return false }
+      if (!this.#tmuxSessionExists(s.tmuxName)) { s.state = 'dead'; return false }
       return true
     })
 
@@ -346,12 +392,10 @@ export class HotPool {
 
   async #checkCopilot() {
     try {
-      const result = spawn('which', ['copilot'], { stdio: 'pipe' })
-      return new Promise((resolve) => {
-        result.on('close', (code) => resolve(code === 0))
-        result.on('error', () => resolve(false))
-        setTimeout(() => resolve(false), 3000)
-      })
+      // Check both tmux and copilot are available
+      execSync('which tmux', { stdio: 'pipe' })
+      execSync('which copilot', { stdio: 'pipe' })
+      return true
     } catch {
       return false
     }

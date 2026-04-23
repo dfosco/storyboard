@@ -2050,7 +2050,7 @@ export function Default() {
         return
       }
 
-      // Try to acquire a warm session from the hot pool
+      // Try to acquire a warm tmux session from the hot pool
       const warmSession = hotPool?.acquire() || null
 
       // Delegate to agent/spawn — the prompt widget is just a specialized agent
@@ -2084,23 +2084,41 @@ export function Default() {
 
         const serverUrl = `http://localhost:${req.socket?.localPort || 1234}`
 
-        // Create headless tmux session
-        try {
-          execSync(`tmux new-session -d -s "${tmuxName}" -c "${root}"`, { stdio: 'ignore' })
-          execSync(`tmux set-option -t "${tmuxName}" status off`, { stdio: 'ignore' })
-          execSync(`tmux set-option -t "${tmuxName}" mouse on`, { stdio: 'ignore' })
-        } catch { /* session may already exist */ }
+        // If we got a warm tmux session, rename it to the canonical name.
+        // Otherwise, create a fresh tmux session from scratch.
+        let usedWarm = false
+        if (warmSession?.tmuxName) {
+          try {
+            // Kill any existing session with the canonical name first
+            try { execSync(`tmux kill-session -t "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+            // Rename the warm session to the canonical name
+            execSync(`tmux rename-session -t "${warmSession.tmuxName}" "${tmuxName}"`, { stdio: 'ignore' })
+            usedWarm = true
+            hotPool.consume(warmSession.id)
+          } catch {
+            // Rename failed — fall back to creating fresh session
+            hotPool.release(warmSession.id)
+          }
+        }
 
+        if (!usedWarm) {
+          // Fresh tmux session (cold path)
+          try {
+            execSync(`tmux -f /dev/null new-session -d -s "${tmuxName}" -c "${root}"`, { stdio: 'ignore' })
+            execSync(`tmux set-option -t "${tmuxName}" status off`, { stdio: 'ignore' })
+            execSync(`tmux set-option -t "${tmuxName}" set-clipboard off 2>/dev/null`, { stdio: 'ignore' })
+          } catch { /* session may already exist */ }
+        }
+
+        // Set env vars — use send-keys to export into the running shell
         const envMap = {
           STORYBOARD_WIDGET_ID: widgetId,
           STORYBOARD_CANVAS_ID: canvasId,
           STORYBOARD_BRANCH: branch,
           STORYBOARD_SERVER_URL: serverUrl,
         }
-        for (const [key, val] of Object.entries(envMap)) {
-          execSync(`tmux setenv -t "${tmuxName}" ${key} "${val}"`, { stdio: 'ignore' })
-        }
 
+        // Write env file for the copilot command to source
         const { join } = await import('node:path')
         const envFile = join(root, '.storyboard', 'terminals', `${tmuxName}.env`)
         const envContent = Object.entries(envMap).map(([k, v]) => `export ${k}=${JSON.stringify(v)}`).join('\n') + '\n'
@@ -2112,15 +2130,21 @@ export function Default() {
           sendJson(res, 400, { error: `Agent "${agent?.id || 'unknown'}" does not support prompt mode (no promptCommand configured)` })
           return
         }
-        setTimeout(() => {
+
+        // Send the copilot command — warm sessions have a shell ready, no delay needed
+        const delay = usedWarm ? 0 : 500
+        const sendCmd = () => {
           try {
             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })
             execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
           } catch {}
-        }, 500)
+        }
 
-        // Release warm session (one-shot — already acquired)
-        if (warmSession) hotPool.release(warmSession.id)
+        if (delay > 0) {
+          setTimeout(sendCmd, delay)
+        } else {
+          sendCmd()
+        }
 
         // Idle timeout (5 min)
         setTimeout(async () => {
@@ -2140,7 +2164,7 @@ export function Default() {
           } catch {}
         }, 5 * 60 * 1000)
 
-        sendJson(res, 200, { success: true, tmuxName, status: 'running', warm: !!warmSession })
+        sendJson(res, 200, { success: true, tmuxName, status: 'running', warm: usedWarm })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to spawn prompt agent: ${err.message}` })
       }

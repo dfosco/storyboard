@@ -131,6 +131,28 @@ export function getPort(worktreeName) {
 }
 
 /**
+ * Release a port assignment for a worktree.
+ *
+ * Removes the entry from ports.json so the port can be reused.
+ * Never removes 'main'.
+ *
+ * @param {string} worktreeName
+ */
+export function releasePort(worktreeName) {
+  if (worktreeName === 'main') return
+
+  const portsFile = portsFilePath()
+  if (!existsSync(portsFile)) return
+
+  try {
+    const ports = JSON.parse(readFileSync(portsFile, 'utf8'))
+    if (!(worktreeName in ports)) return
+    delete ports[worktreeName]
+    writeFileSync(portsFile, JSON.stringify(ports, null, 2) + '\n')
+  } catch { /* ignore corrupt file */ }
+}
+
+/**
  * Resolve the port for a worktree from .worktrees/ports.json
  * without assigning a new one if missing.
  *

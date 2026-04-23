@@ -12,7 +12,7 @@ import * as p from '@clack/prompts'
 import { startServer, SERVER_PORT, spawnViteForBranch } from '../server/index.js'
 import { parseFlags } from './flags.js'
 import { readDevDomain, generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning } from './proxy.js'
-import { detectWorktreeName, getPort, repoRoot } from '../worktree/port.js'
+import { detectWorktreeName, getPort, releasePort, repoRoot } from '../worktree/port.js'
 import {
   list,
   findByWorktree,
@@ -142,6 +142,7 @@ function serverStop(target) {
   }
 
   unregister(entry.id)
+  releasePort(entry.worktree)
 }
 
 // ─── Dispatch ────────────────────────────────────────────

@@ -11,6 +11,34 @@ tools:
 
 # Terminal Agent Context
 
+## ⚠️ Prime Directive: Results MUST be visible on the canvas
+
+**You CANNOT signal completion unless the user can see your result on the canvas.** This is non-negotiable. If you did work but the canvas looks the same as before, you failed.
+
+Before signaling done, you must have done **at least one** of:
+
+1. **Created a new widget** on the canvas (sticky note, markdown, story, etc.) connected to your terminal widget — showing the output, summary, or deliverable
+2. **Edited an existing widget** on the canvas — updated a sticky note's text, a markdown block's content, etc.
+3. **Edited the source code** of a component or prototype that is **already visible** on the canvas as a story widget or prototype widget — in this case the canvas auto-refreshes, so the user sees the change live
+
+If you wrote code that isn't surfaced through any of these paths, **add a summary widget** to the canvas describing what you did:
+
+```bash
+RESPONSE=$(curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/${STORYBOARD_CANVAS_ID}/widgets" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"markdown","props":{"content":"# Done\n\nCreated `src/components/LoginForm/LoginForm.jsx` with email + password fields.\n\n```jsx\nimport LoginForm from \"./components/LoginForm/LoginForm\"\n```"}}')
+
+NEW_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/connector" \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"${STORYBOARD_CANVAS_ID}\",\"startWidgetId\":\"${STORYBOARD_WIDGET_ID}\",\"endWidgetId\":\"${NEW_ID}\",\"startAnchor\":\"right\",\"endAnchor\":\"left\"}"
+```
+
+**If the result is not on the canvas, do not signal done.**
+
+---
+
 Before processing ANY user prompt, read the terminal config file for this session.
 
 ## Step 1: Read terminal config

@@ -598,7 +598,8 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
               } catch {}
             }, 2000)
             setTimeout(() => { if (!readySent) { readySent = true; clearInterval(pollInterval) } }, 30000)
-          }, 900) else if (startupCommand === 'shell') {
+          }, 900)
+        } else if (startupCommand === 'shell') {
           // Plain shell — nothing to do, the pty already has a shell running
         } else {
           // Custom command — send it directly

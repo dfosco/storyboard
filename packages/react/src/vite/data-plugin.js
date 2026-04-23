@@ -6,7 +6,7 @@ import { parse as parseJsonc } from 'jsonc-parser'
 import { materializeFromText } from '@dfosco/storyboard-core/canvas/materializer'
 import { toCanvasId } from '@dfosco/storyboard-core/canvas/identity'
 import { getConfig } from '@dfosco/storyboard-core/config'
-import { list as listRunningServers } from '@dfosco/storyboard-core/worktree/serverRegistry'
+import { list as listRunningServers } from '../../../core/src/worktree/serverRegistry.js'
 
 const VIRTUAL_MODULE_ID = 'virtual:storyboard-data-index'
 const RESOLVED_ID = '\0' + VIRTUAL_MODULE_ID

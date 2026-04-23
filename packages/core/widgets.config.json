@@ -824,6 +824,17 @@
       "label": "Prompt",
       "icon": "zap",
       "resize": { "enabled": true, "prod": false },
+      "execution": {
+        "default": "copilot",
+        "agents": {
+          "copilot": {
+            "command": "copilot --agent terminal-agent -p \"${prompt}\" --allow-all"
+          },
+          "claude": {
+            "command": "claude --agent terminal-agent -p \"${prompt}\" --dangerously-skip-permissions"
+          }
+        }
+      },
       "props": {
         "text":           { "type": "text",   "label": "Prompt text",      "category": "content",  "default": "" },
         "status":         { "type": "text",   "label": "Status",           "category": "settings", "default": "idle" },

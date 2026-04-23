@@ -44,53 +44,38 @@ import {
   isGitHubEmbedUrl,
 } from './githubEmbeds.js'
 import { stampBounds, stampBoundsAll } from './collision.js'
+import widgetsConfig from '../../widgets.config.json' with { type: 'json' }
 
 /**
- * Read agent config from storyboard.config.json → canvas.agents.
- * Returns the default agent, or a specific one by id.
+ * Read the prompt widget's execution config from widgets.config.json.
+ * Returns { default, agents } where each agent has a command template.
  */
-function readAgentConfig(root, agentId) {
-  try {
-    const configPath = path.join(root, 'storyboard.config.json')
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-    const agents = config?.canvas?.agents || {}
-
-    if (agentId && agents[agentId]) return { id: agentId, ...agents[agentId] }
-
-    // Find the default agent
-    for (const [id, agent] of Object.entries(agents)) {
-      if (agent.default) return { id, ...agent }
-    }
-
-    // Fallback to first agent
-    const firstId = Object.keys(agents)[0]
-    return firstId ? { id: firstId, ...agents[firstId] } : null
-  } catch {
-    return null
-  }
+function getPromptExecution() {
+  return widgetsConfig?.widgets?.prompt?.execution || null
 }
 
 /**
  * Build the CLI command for a prompt spawn.
- * Reads the agent's promptCommand template from storyboard.config.json
- * and interpolates ${prompt}. Agents without promptCommand don't support
- * non-interactive prompt execution.
+ * Reads the prompt widget's execution.agents config and interpolates ${prompt}.
  */
-function buildPromptCmd({ root, prompt, envFile, agentId }) {
-  const agent = readAgentConfig(root, agentId)
+function buildPromptCmd({ prompt, envFile, agentId }) {
+  const execution = getPromptExecution()
 
-  if (!agent) {
-    // Bare fallback — no config found
+  if (!execution) {
+    // Bare fallback — no execution config found
     const escaped = prompt.replace(/"/g, '\\"')
     return `source ${envFile} && copilot -p "${escaped}" --allow-all`
   }
 
-  if (!agent.promptCommand) {
-    return null // This agent doesn't support prompt mode
+  const id = agentId || execution.default
+  const agent = execution.agents?.[id]
+
+  if (!agent?.command) {
+    return null // This agent doesn't have a prompt command
   }
 
   const escaped = prompt.replace(/"/g, '\\"')
-  const cmd = agent.promptCommand.replace('${prompt}', escaped)
+  const cmd = agent.command.replace('${prompt}', escaped)
   return `source ${envFile} && ${cmd}`
 }
 
@@ -1810,19 +1795,26 @@ export function Default() {
         const envContent = Object.entries(envMap).map(([k, v]) => `export ${k}=${JSON.stringify(v)}`).join('\n') + '\n'
         fsModule.writeFileSync(envFile, envContent)
 
-        // Build command from storyboard.config.json agent definitions
-        const copilotCmd = autopilot
-          ? buildPromptCmd({ root, prompt, envFile })
-          : (() => {
-              const agent = readAgentConfig(root)
-              const base = agent?.startupCommand || 'copilot'
-              return `source ${envFile} && ${base}`
-            })()
-
-        if (autopilot && !copilotCmd) {
-          const agent = readAgentConfig(root)
-          sendJson(res, 400, { error: `Agent "${agent?.id || 'unknown'}" does not support prompt mode (no promptCommand configured)` })
-          return
+        // Build command from widgets.config.json (prompt mode) or storyboard.config.json (interactive)
+        let copilotCmd
+        if (autopilot) {
+          copilotCmd = buildPromptCmd({ prompt, envFile })
+          if (!copilotCmd) {
+            const execution = getPromptExecution()
+            sendJson(res, 400, { error: `Default agent "${execution?.default || 'unknown'}" has no prompt command configured` })
+            return
+          }
+        } else {
+          // Interactive mode — read startupCommand from storyboard.config.json
+          let startupCmd = 'copilot'
+          try {
+            const configPath = path.join(root, 'storyboard.config.json')
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
+            const agents = config?.canvas?.agents || {}
+            const defaultAgent = Object.values(agents).find(a => a.default) || Object.values(agents)[0]
+            if (defaultAgent?.startupCommand) startupCmd = defaultAgent.startupCommand
+          } catch {}
+          copilotCmd = `source ${envFile} && ${startupCmd}`
         }
 
         setTimeout(() => {
@@ -2124,10 +2116,10 @@ export function Default() {
         const envContent = Object.entries(envMap).map(([k, v]) => `export ${k}=${JSON.stringify(v)}`).join('\n') + '\n'
         fsModule.writeFileSync(envFile, envContent)
 
-        const copilotCmd = buildPromptCmd({ root, prompt, envFile })
+        const copilotCmd = buildPromptCmd({ prompt, envFile })
         if (!copilotCmd) {
-          const agent = readAgentConfig(root)
-          sendJson(res, 400, { error: `Agent "${agent?.id || 'unknown'}" does not support prompt mode (no promptCommand configured)` })
+          const execution = getPromptExecution()
+          sendJson(res, 400, { error: `Default agent "${execution?.default || 'unknown'}" has no prompt command configured` })
           return
         }
 

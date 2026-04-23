@@ -67,6 +67,26 @@ try {
 
 const TERMINAL_PATH_PREFIX = '/_storyboard/terminal/'
 
+/**
+ * Env var prefixes/names from external terminal emulators and shell configs
+ * that must be stripped before spawning tmux or shell processes — they leak
+ * custom theming, prompts, and shell integrations into the storyboard terminal.
+ */
+const SHELL_CONFIG_STRIP_RE = /^(ZDOTDIR|STARSHIP_|GHOSTTY_|POWERLEVEL|P9K_|P10K_|ZSH_THEME|BASH_ENV|ITERM_|KITTY_|ALACRITTY_|WEZTERM_|PROMPT_COMMAND|RPROMPT|RPS1)$/
+
+function isShellConfigVar(key) {
+  return SHELL_CONFIG_STRIP_RE.test(key) || key === 'ENV'
+}
+
+/** Filter process.env, removing shell-config vars that would leak into PTY */
+function cleanEnv() {
+  const filtered = {}
+  for (const [k, v] of Object.entries(process.env)) {
+    if (!isShellConfigVar(k)) filtered[k] = v
+  }
+  return filtered
+}
+
 /** Read terminal config from storyboard.config.json */
 function readTerminalConfig() {
   try {
@@ -260,8 +280,10 @@ export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') 
   // Clean up shell-config vars that may have leaked into the tmux server's
   // global environment from earlier versions (caused "empty shell" bug).
   if (hasTmux) {
-    for (const key of ['ZDOTDIR', 'STARSHIP_CONFIG', 'POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD', 'ZSH_THEME', 'BASH_ENV', 'ENV']) {
-      try { execSync(`tmux set-environment -g -u ${key} 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+    for (const key of Object.keys(process.env)) {
+      if (isShellConfigVar(key)) {
+        try { execSync(`tmux set-environment -g -u ${key} 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+      }
     }
   }
 
@@ -356,7 +378,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
   // and contaminate ALL sessions, replacing the user's shell config with a
   // bare minimal one ("empty shell" bug).
   const tmuxEnv = {
-    ...process.env,
+    ...cleanEnv(),
     TERM: 'xterm-256color',
     TERM_PROGRAM: 'storyboard',
     ...identityEnv,
@@ -373,7 +395,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
   } catch { /* best effort */ }
 
   const directEnv = {
-    ...process.env,
+    ...cleanEnv(),
     TERM: 'xterm-256color',
     TERM_PROGRAM: 'storyboard',
     ZDOTDIR: zdotdir,

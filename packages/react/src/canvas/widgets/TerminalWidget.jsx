@@ -47,9 +47,11 @@ function calcDimensions(widthPx, heightPx, fontSize = 13) {
   const scale = fontSize / 13
   const cellWidth = 7.8 * scale
   const cellHeight = 17 * scale
-  const padding = 24
-  const cols = Math.max(10, Math.floor((widthPx - padding) / cellWidth))
-  const rows = Math.max(4, Math.floor((heightPx - padding) / cellHeight))
+  // .terminal has 8px padding + 1px border on each side (box-sizing: border-box)
+  const hPad = 18 // 8+1 each side
+  const vPad = 18
+  const cols = Math.max(10, Math.floor((widthPx - hPad) / cellWidth))
+  const rows = Math.max(4, Math.floor((heightPx - vPad) / cellHeight))
   return { cols, rows }
 }
 
@@ -225,6 +227,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           setReady(true)
           setInteractive(true)
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
+          // Signal CanvasPage to unlock scroll position
+          document.dispatchEvent(new CustomEvent('storyboard:widget-ready', { detail: { widgetId: id } }))
         }
 
         ws.onmessage = (e) => {

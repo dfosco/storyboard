@@ -29,6 +29,7 @@ import {
   uploadImage,
   addConnector as addConnectorApi,
   removeConnector as removeConnectorApi,
+  updateConnector as updateConnectorApi,
 } from './canvasApi.js'
 import PageSelector from './PageSelector.jsx'
 import Icon from '../Icon.jsx'
@@ -434,7 +435,6 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
       if (connectorId && mode) {
         const bridge = window.__storyboardCanvasBridgeState
         const canvasId = bridge?.canvasId || ''
-        const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
 
         // Two-way is shared (top-level messagingMode)
         // One-way/none is per-widget (messaging.{widgetId})
@@ -442,11 +442,8 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
           ? { messagingMode: 'two-way' }
           : { messaging: { [widget.id]: mode }, messagingMode: null }
 
-        fetch(`${base}/_storyboard/canvas/connector`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: canvasId, connectorId, meta }),
-        }).catch((err) => console.error('[canvas] Failed to update connector messaging mode:', err))
+        updateConnectorApi(canvasId, connectorId, meta)
+          .catch((err) => console.error('[canvas] Failed to update connector messaging mode:', err))
       }
     }
   }, [widget, onRemove, onCopy, onRefreshGitHub])

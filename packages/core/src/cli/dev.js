@@ -297,7 +297,7 @@ async function main() {
   p.log.info('Starting storyboard server...')
 
   const { startServer, spawnViteForBranch, waitForPort: waitPort } = await import('../server/index.js')
-  startServer()
+  const serverInstance = startServer()
 
   // Compact bloated canvas JSONL files before starting Vite
   const compacted = compactAll(targetCwd)
@@ -322,6 +322,17 @@ async function main() {
       }
     } catch { /* non-critical */ }
   }, 15 * 60 * 1000)
+
+  // Clean up everything when the user closes the process (Ctrl+C, SIGTERM)
+  function cleanup() {
+    renameWatcher.close()
+    clearInterval(compactInterval)
+    try { entry.child.kill('SIGTERM') } catch { /* already dead */ }
+    try { serverInstance.close() } catch { /* best effort */ }
+    process.exit(0)
+  }
+  process.on('SIGINT', cleanup)
+  process.on('SIGTERM', cleanup)
 
   // Wait for Vite to be ready
   const ready = await waitPort(entry.port, 60_000)
@@ -353,6 +364,7 @@ async function main() {
   entry.child.on('exit', (code) => {
     renameWatcher.close()
     clearInterval(compactInterval)
+    try { serverInstance.close() } catch { /* best effort */ }
     if (code && code !== 0) {
       p.log.error(`Vite exited with code ${code}`)
     }

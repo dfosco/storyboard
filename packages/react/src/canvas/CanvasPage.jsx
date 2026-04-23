@@ -556,6 +556,45 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   const [snapGridSize, setSnapGridSize] = useState(canvas?.gridSize || 40)
   const [showGhInstallBanner, setShowGhInstallBanner] = useState(false)
 
+  // Scroll lock: prevents focus-triggered scroll jumps when adding terminal/agent widgets.
+  // The lock captures the current scroll position and forces it back on every scroll event
+  // until unlocked by the widget's ready signal or a safety timeout.
+  const scrollLockRef = useRef(null) // { top, left, timer, handler }
+  const [scrollLocked, setScrollLocked] = useState(false)
+
+  const lockScroll = useCallback(() => {
+    const el = scrollRef.current
+    if (!el || scrollLockRef.current) return
+    const pos = { top: el.scrollTop, left: el.scrollLeft }
+    const handler = () => {
+      if (!scrollLockRef.current) return
+      el.scrollTop = scrollLockRef.current.top
+      el.scrollLeft = scrollLockRef.current.left
+    }
+    // Safety timeout: auto-unlock after 5s to never leave the canvas stuck
+    const timer = setTimeout(() => unlockScroll(), 5000)
+    scrollLockRef.current = { ...pos, timer, handler }
+    el.addEventListener('scroll', handler)
+    setScrollLocked(true)
+  }, [])
+
+  const unlockScroll = useCallback(() => {
+    const lock = scrollLockRef.current
+    if (!lock) return
+    const el = scrollRef.current
+    if (el) el.removeEventListener('scroll', lock.handler)
+    clearTimeout(lock.timer)
+    scrollLockRef.current = null
+    setScrollLocked(false)
+  }, [])
+
+  // Listen for terminal/agent ready events to unlock scroll
+  useEffect(() => {
+    function handleReady() { unlockScroll() }
+    document.addEventListener('storyboard:widget-ready', handleReady)
+    return () => document.removeEventListener('storyboard:widget-ready', handleReady)
+  }, [unlockScroll])
+
   // Refs for snap settings (used by drop handler inside effect closure)
   const snapEnabledRef = useRef(snapEnabled)
   const snapGridSizeRef = useRef(snapGridSize)
@@ -1523,6 +1562,8 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     const mergedProps = { ...defaultProps, ...extraProps }
     const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
     const pos = centerPositionForWidget(center, type, mergedProps)
+    // Lock scroll for terminal/agent widgets to prevent focus-triggered viewport jumps
+    if (type === 'terminal' || type === 'agent') lockScroll()
     try {
       const result = await addWidgetApi(canvasId, {
         type,
@@ -1536,8 +1577,9 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       }
     } catch (err) {
       console.error('[canvas] Failed to add widget:', err)
+      if (type === 'terminal' || type === 'agent') unlockScroll()
     }
-  }, [canvasId, undoRedo])
+  }, [canvasId, undoRedo, lockScroll, unlockScroll])
 
   // Add a story widget by storyId — used by CanvasControls story picker
   const addStoryWidget = useCallback(async (storyId) => {
@@ -2436,13 +2478,18 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         data-storyboard-canvas-scroll
         data-sb-canvas-theme={canvasTheme}
         {...canvasPrimerAttrs}
-        className={styles.canvasScroll}
+        className={`${styles.canvasScroll}${scrollLocked ? ` ${styles.canvasScrollLocked}` : ''}`}
         style={{
           ...canvasThemeVars,
           ...(spaceHeld ? { cursor: panningActive ? 'grabbing' : 'grab' } : {}),
         }}
         onMouseDown={(e) => { handlePanStart(e); handleMarqueeMouseDown(e); }}
       >
+        {scrollLocked && (
+          <div className={styles.scrollLockBanner}>
+            Canvas temporarily locked… please wait
+          </div>
+        )}
         <MarqueeOverlay rect={marqueeScreenRect} />
         <div
           ref={zoomElRef}

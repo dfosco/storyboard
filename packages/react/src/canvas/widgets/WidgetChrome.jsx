@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Tooltip } from '@primer/react'
-import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode, UnwrapIcon as OcticonUnwrap, ImageIcon as OcticonImage, UnfoldIcon as OcticonUnfold, FoldIcon as OcticonFold, ScreenFullIcon as OcticonScreenFull, BroadcastIcon as OcticonBroadcast } from '@primer/octicons-react'
+import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode, UnwrapIcon as OcticonUnwrap, ImageIcon as OcticonImage, UnfoldIcon as OcticonUnfold, FoldIcon as OcticonFold, ScreenFullIcon as OcticonScreenFull, BroadcastIcon as OcticonBroadcast, CheckIcon as OcticonCheck } from '@primer/octicons-react'
 import { getConnectorConfig, getInteractGate } from './widgetConfig.js'
 import styles from './WidgetChrome.module.css'
 import overlayStyles from './embedOverlay.module.css'
@@ -145,6 +145,10 @@ function ColumnsIcon() {
 }
 
 /** Icon registry — maps icon name strings from config to React components. */
+function CheckMarkIcon() {
+  return <OcticonCheck size={12} />
+}
+
 function BroadcastIcon() {
   return <OcticonBroadcast size={12} />
 }
@@ -171,6 +175,7 @@ const ICON_REGISTRY = {
   'fold': FoldIcon,
   'columns': ColumnsIcon,
   'broadcast': BroadcastIcon,
+  'check': CheckMarkIcon,
 }
 
 /** Danger-styled actions in the overflow menu. */

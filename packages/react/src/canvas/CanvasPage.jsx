@@ -380,9 +380,9 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
         for (const { peer, connectorId, mode } of terminalPeers) {
           const peerName = peer.props?.prettyName || peer.id
           items.push(
-            { action: `messaging:${connectorId}:none`, label: `${peerName}: No messaging${mode === 'none' ? ' ●' : ''}`, icon: mode === 'none' ? 'eye-closed' : null },
-            { action: `messaging:${connectorId}:one-way`, label: `${peerName}: One-way →${mode === 'one-way' ? ' ●' : ''}`, icon: mode === 'one-way' ? 'broadcast' : null },
-            { action: `messaging:${connectorId}:two-way`, label: `${peerName}: Two-way ↔${mode === 'two-way' ? ' ●' : ''}`, icon: mode === 'two-way' ? 'broadcast' : null },
+            { action: `messaging:${connectorId}:none`, label: `${peerName}: No messaging`, icon: mode === 'none' ? 'check' : null },
+            { action: `messaging:${connectorId}:one-way`, label: `${peerName}: One-way →`, icon: mode === 'one-way' ? 'check' : null },
+            { action: `messaging:${connectorId}:two-way`, label: `${peerName}: Two-way ↔`, icon: mode === 'two-way' ? 'check' : null },
           )
         }
         const insertIdx = adjusted.findIndex((f) => f.menu)

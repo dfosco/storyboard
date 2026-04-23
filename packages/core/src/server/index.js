@@ -311,6 +311,14 @@ const server = http.createServer(async (req, res) => {
 })
 
 export function startServer(port = SERVER_PORT) {
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`[storyboard-server] Port ${port} is already in use — another server may be running.`)
+      console.error(`  Try: npx storyboard server list`)
+      process.exit(1)
+    }
+    throw err
+  })
   server.listen(port, () => {
     // port logged by CLI via onReady; suppress here to avoid duplicate output
   })

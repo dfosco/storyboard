@@ -56,3 +56,6 @@ assets/canvas/snapshots/~*
 
 # Integration test results (ephemeral local artifacts)
 test-results/
+
+# .claude/agents/ is a build target — source of truth is .agents/agents/
+.claude/agents/

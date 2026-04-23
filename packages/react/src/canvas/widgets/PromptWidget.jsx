@@ -62,14 +62,14 @@ const DEFAULT_THEME = {
   selectionBackground: '#264f78',
 }
 
-function calcMiniDimensions(widthPx) {
+function calcMiniDimensions(widthPx, heightPx) {
   const scale = MINI_FONT_SIZE / 13
   const cellWidth = 7.8 * scale
   const cellHeight = 17 * scale
   const hPad = 18
   const vPad = 18
   const cols = Math.max(10, Math.floor((widthPx - hPad) / cellWidth))
-  const rows = Math.max(4, Math.floor((MINI_TERMINAL_HEIGHT - vPad) / cellHeight))
+  const rows = Math.max(4, Math.floor((heightPx - vPad) / cellHeight))
   return { cols, rows }
 }
 
@@ -78,6 +78,7 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate, res
   const persistedStatus = readProp(props, 'status', promptSchema)
   const errorMessage = readProp(props, 'errorMessage', promptSchema)
   const width = readProp(props, 'width', promptSchema)
+  const height = readProp(props, 'height', promptSchema)
   const [draftText, setDraftText] = useState('')
   const [execStatus, setExecStatus] = useState(persistedStatus || 'idle')
   const [execError, setExecError] = useState(errorMessage || '')
@@ -193,8 +194,8 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate, res
     onUpdate?.({ status: 'idle', sessionId: '', errorMessage: '', text: '' })
   }, [onUpdate])
 
-  const handleResize = useCallback((newWidth) => {
-    onUpdate?.({ width: newWidth })
+  const handleResize = useCallback((newWidth, newHeight) => {
+    onUpdate?.({ width: newWidth, height: newHeight })
   }, [onUpdate])
 
   // Embedded read-only terminal
@@ -213,7 +214,8 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate, res
         if (!ghostty) return
 
         const widthPx = typeof width === 'number' ? width : 320
-        const dims = calcMiniDimensions(widthPx)
+        const heightPx = typeof height === 'number' ? height : MINI_TERMINAL_HEIGHT
+        const dims = calcMiniDimensions(widthPx, heightPx)
 
         term = new ghostty.Terminal({
           fontSize: MINI_FONT_SIZE,
@@ -269,7 +271,7 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate, res
       termRef.current = null
       wsRef.current = null
     }
-  }, [showOutput, execStatus, id, width])
+  }, [showOutput, execStatus, id, width, height])
 
   const isPending = execStatus === 'pending'
   const isDone = execStatus === 'done'
@@ -383,7 +385,10 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate, res
             className={styles.terminalContainer}
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
-            style={{ pointerEvents: 'none' }}
+            style={{
+              pointerEvents: 'none',
+              height: typeof height === 'number' ? `${height}px` : undefined,
+            }}
           />
         </div>
       )}

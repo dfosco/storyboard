@@ -842,7 +842,8 @@
         "resultWidgetId": { "type": "text",   "label": "Result Widget ID", "category": "settings", "default": "" },
         "errorMessage":   { "type": "text",   "label": "Error Message",    "category": "settings", "default": "" },
         "connections":    { "type": "text",   "label": "Connections",      "category": "settings", "default": "" },
-        "width":          { "type": "number", "label": "Width",            "category": "size",     "default": 320, "min": 200 }
+        "width":          { "type": "number", "label": "Width",            "category": "size",     "default": 320, "min": 200 },
+        "height":         { "type": "number", "label": "Height",           "category": "size",     "default": 180, "min": 80 }
       },
       "features": [
         { "id": "copy",           "type": "action", "action": "copy",           "label": "$label:duplicate",  "icon": "copy" },

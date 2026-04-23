@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { readProp, promptSchema } from './widgetProps.js'
 import { CopilotIcon, PaperAirplaneIcon, CheckCircleIcon, XCircleIcon, XIcon, SquareFillIcon, LinkIcon, SmileyIcon, PlusIcon } from '@primer/octicons-react'
+import ResizeHandle from './ResizeHandle.jsx'
 import styles from './PromptWidget.module.css'
 
 function getBase() {
@@ -77,7 +78,7 @@ const SUGGESTIONS = [
   'Review and refactor this code',
 ]
 
-const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, ref) {
+const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate, resizable }, ref) {
   const persistedText = readProp(props, 'text', promptSchema)
   const persistedStatus = readProp(props, 'status', promptSchema)
   const errorMessage = readProp(props, 'errorMessage', promptSchema)
@@ -92,6 +93,7 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
 
   const connections = connectionsRaw ? connectionsRaw.split(',').filter(Boolean) : []
 
+  const containerRef = useRef(null)
   const termContainerRef = useRef(null)
   const termRef = useRef(null)
   const wsRef = useRef(null)
@@ -211,6 +213,10 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
     textareaRef.current?.focus()
   }, [])
 
+  const handleResize = useCallback((newWidth) => {
+    onUpdate?.({ width: newWidth })
+  }, [onUpdate])
+
   // Embedded read-only terminal
   useEffect(() => {
     if (!showOutput || execStatus === 'idle') return
@@ -292,6 +298,7 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
 
   return (
     <div
+      ref={containerRef}
       className={styles.wrapper}
       style={typeof width === 'number' ? { width: `${width}px` } : undefined}
     >
@@ -432,6 +439,13 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
             style={{ pointerEvents: 'none' }}
           />
         </div>
+      )}
+      {resizable && (
+        <ResizeHandle
+          targetRef={containerRef}
+          minWidth={200}
+          onResize={handleResize}
+        />
       )}
     </div>
   )

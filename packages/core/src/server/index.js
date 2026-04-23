@@ -129,7 +129,12 @@ function spawnVite(branch) {
     const text = data.toString()
     const portMatch = text.match(/localhost:(\d+)/)
     if (portMatch) {
-      entry.port = Number(portMatch[1])
+      const actualPort = Number(portMatch[1])
+      if (actualPort !== entry.port) {
+        entry.port = actualPort
+        // Re-register with the actual port Vite bound to
+        register({ id: entry.serverId, worktree: branch, pid: child.pid, port: actualPort, background: true })
+      }
     }
     if (text.includes('ready in')) {
       entry.status = 'ready'

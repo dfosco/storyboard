@@ -174,11 +174,57 @@ On failure:
 npx storyboard agent signal --status error --message "What went wrong"
 ```
 
+## Step 6: Messaging with connected terminals
+
+If your terminal config has a `messaging` section, you can exchange messages with connected terminal/agent peers. Check your config:
+
+```bash
+cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json | jq '.messaging'
+```
+
+### Send a message to a peer
+```bash
+npx storyboard terminal send <peerWidgetId> "Your message here"
+```
+
+Or auto-resolve the connected peer (only works with a single connected terminal):
+```bash
+npx storyboard terminal send --connected "Your message here"
+```
+
+### Save your output for peers to read
+```bash
+npx storyboard terminal output --summary "What you did" --content "Full detailed output"
+```
+
+Peers can then read your output from your config file:
+```bash
+cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json | jq '.latestOutput.content'
+```
+
+### Check a peer's status
+```bash
+npx storyboard terminal status <peerWidgetId>
+```
+
+### Read a peer's latest output
+```bash
+cat .storyboard/terminals/<peerWidgetId>.json | jq '.latestOutput'
+```
+
+### Messaging modes
+Messaging is controlled by the user via the 💬 menu on terminal widgets:
+- **No messaging** — you cannot send or receive (default)
+- **One-way →** — only one direction is allowed
+- **Two-way ↔** — both terminals can send freely
+
+Check your `messaging.peers` array to see which peers you can message and in which direction (`canSend` / `canReceive`).
+
 **IMPORTANT:**
 - NEVER write directly to `.canvas.jsonl` files — use the canvas CLI or server API
 - **Prefer CLI commands** (`npx storyboard canvas ...`) over direct HTTP calls — they resolve ports automatically
 - Only fall back to HTTP API (`{serverUrl}/_storyboard/canvas/`) if the CLI doesn't support the operation
-- Environment variables `$STORYBOARD_WIDGET_ID`, `$STORYBOARD_CANVAS_ID`, `$STORYBOARD_BRANCH`, `$STORYBOARD_SERVER_URL` are also available in the shell
+- Environment variables `$STORYBOARD_WIDGET_ID`, `$STORYBOARD_CANVAS_ID`, `$STORYBOARD_BRANCH`, `$STORYBOARD_SERVER_URL` are available in the shell
 
 ## HTTP API Reference (fallback only)
 

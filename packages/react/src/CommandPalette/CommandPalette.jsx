@@ -950,6 +950,8 @@ export default function StoryboardCommandPalette({ basePath }) {
           keywords: [item.name, item.id, item.type, author, `@${author}`],
           onSelect: () => {
             trackRecent(item.type.toLowerCase(), item.id, item.name)
+            setOpen(false)
+            setActivePage('root')
             window.location.href = item.route
           },
         })),
@@ -1015,7 +1017,7 @@ export default function StoryboardCommandPalette({ basePath }) {
                 !search && <Command.Separator key={list.id} />
               ) : (
                 <Command.Group key={list.id} heading={list.heading}>
-                  {list.items.map(({ id, children, keywords, onClick, itemType, toolIcon, ...rest }) => {
+                  {list.items.map(({ id, children, keywords, onClick, itemType, toolIcon, closeOnSelect, ...rest }) => {
                     if (hiddenFromSearchIds.size > 0) {
                       for (const toolId of hiddenFromSearchIds) {
                         if (id?.includes(toolId)) return null
@@ -1025,7 +1027,13 @@ export default function StoryboardCommandPalette({ basePath }) {
                       <Command.Item
                         key={id}
                         value={itemValue({ children, keywords })}
-                        onSelect={() => onClick?.()}
+                        onSelect={() => {
+                          onClick?.()
+                          if (closeOnSelect !== false) {
+                            setOpen(false)
+                            setActivePage('root')
+                          }
+                        }}
                       >
                         <ItemIcon type={itemType} toolIcon={toolIcon} />
                         {children}

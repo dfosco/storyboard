@@ -752,7 +752,7 @@ export function createCanvasHandler(ctx) {
         pushCanvasUpdate(name, filePath, __viteWs)
 
         // Inject messaging skill into both terminals when mode changes
-        if (meta?.messagingMode) {
+        if (meta?.messagingMode || meta?.messaging) {
           const widgets = data.widgets || []
           const startWidget = widgets.find((w) => w.id === connector.start?.widgetId)
           const endWidget = widgets.find((w) => w.id === connector.end?.widgetId)
@@ -762,7 +762,13 @@ export function createCanvasHandler(ctx) {
             try {
               const { execSync } = await import('node:child_process')
               const { findTmuxNameForWidget } = await import('./terminal-registry.js')
-              const mode = meta.messagingMode
+
+              // Resolve effective mode per widget
+              const getMode = (w) => {
+                if (meta.messagingMode === 'two-way') return 'two-way'
+                if (meta.messaging?.[w.id]) return meta.messaging[w.id]
+                return 'none'
+              }
 
               const pairs = [
                 { widget: startWidget, peer: endWidget },
@@ -774,17 +780,13 @@ export function createCanvasHandler(ctx) {
                 if (!tmuxName) continue
 
                 const peerName = peer.props?.prettyName || peer.id
+                const mode = getMode(w)
                 let skillMsg
 
                 if (mode === 'two-way') {
                   skillMsg = `📡 [Messaging mode: two-way ↔ with ${peerName}]\nYou can send and receive messages.\n- Send: npx storyboard terminal send ${peer.id} "message"\n- Save output: npx storyboard terminal output --summary "..." --content "..."\n- Read their output: cat .storyboard/terminals/${peer.id}.json | jq '.latestOutput'\n- Check status: npx storyboard terminal status ${peer.id}`
                 } else if (mode === 'one-way') {
-                  const isSource = w.id === connector.start?.widgetId
-                  if (isSource) {
-                    skillMsg = `📡 [Messaging mode: one-way → to ${peerName}]\nYou can send messages to ${peerName}.\n- Send: npx storyboard terminal send ${peer.id} "message"\n- Save output: npx storyboard terminal output --summary "..." --content "..."`
-                  } else {
-                    skillMsg = `📡 [Messaging mode: one-way ← from ${peerName}]\nYou can receive messages from ${peerName}.\n- Read their output: cat .storyboard/terminals/${peer.id}.json | jq '.latestOutput'`
-                  }
+                  skillMsg = `📡 [Messaging mode: one-way → to ${peerName}]\nYou can send messages to ${peerName}.\n- Send: npx storyboard terminal send ${peer.id} "message"\n- Save output: npx storyboard terminal output --summary "..." --content "..."`
                 } else {
                   skillMsg = `📡 [Messaging with ${peerName} disabled]`
                 }

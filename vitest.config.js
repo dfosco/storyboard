@@ -24,6 +24,7 @@ export default defineConfig({
     exclude: [
       'packages/core/src/comments/ui/authModal.test.js',
       'packages/core/src/devtools.test.js',
+      'packages/core/src/canvas/__tests__/*-integration.test.js',
     ],
   },
 })

@@ -16,6 +16,7 @@
         "version": "changeset version && node scripts/sync-root-version.js",
         "tag": "changeset tag",
         "test": "vitest run",
+        "test:integration": "vitest run --config vitest.integration.config.js",
         "test:watch": "vitest",
         "test:core": "vitest run packages/core",
         "test:react": "vitest run packages/react",

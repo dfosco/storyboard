@@ -40,6 +40,7 @@ export class HotPool {
   #size = DEFAULT_POOL_SIZE
   #maxSize = DEFAULT_MAX_SIZE
   #enabled = true
+  #devlog = false
   #filling = false
   #healthTimer = null
   #copilotAvailable = null // null = unknown, true/false = checked
@@ -54,21 +55,30 @@ export class HotPool {
     this.#size = Math.max(0, config.size ?? DEFAULT_POOL_SIZE)
     this.#maxSize = Math.max(this.#size, config.maxSize ?? DEFAULT_MAX_SIZE)
     this.#enabled = config.enabled !== false
+    this.#devlog = !!config.devlog
+  }
+
+  #log(...args) {
+    if (this.#devlog) this.#log('', ...args)
   }
 
   /** Start the pool — call once on server init. */
   async start() {
-    if (!this.#enabled || this.#size === 0) return
+    if (!this.#enabled || this.#size === 0) {
+      this.#log(' pool disabled or size=0, skipping start')
+      return
+    }
 
     // Check copilot availability before filling
     this.#copilotAvailable = await this.#checkCopilot()
     if (!this.#copilotAvailable) {
-      console.log('[hot-pool] copilot CLI not found — pool disabled')
+      this.#log(' copilot CLI not found — pool disabled')
       return
     }
 
-    console.log(`[hot-pool] starting with size=${this.#size}, maxSize=${this.#maxSize}`)
+    this.#log(` ✦ STARTING pool (size=${this.#size}, maxSize=${this.#maxSize})`)
     await this.#fill()
+    this.#log(` ✦ READY — ${this.#queue.filter(s => s.state === 'ready').length} warm sessions available`)
 
     // Periodic health check — kill dead sessions and refill
     this.#healthTimer = setInterval(() => this.#healthCheck(), HEALTH_CHECK_INTERVAL_MS)
@@ -84,7 +94,7 @@ export class HotPool {
       this.#killSession(session)
     }
     this.#queue = []
-    console.log('[hot-pool] stopped')
+    this.#log(' ■ STOPPED — all sessions killed')
   }
 
   /**
@@ -93,19 +103,27 @@ export class HotPool {
    * Immediately triggers a backfill.
    */
   acquire() {
-    if (!this.#enabled || this.#queue.length === 0) return null
+    if (!this.#enabled || this.#queue.length === 0) {
+      this.#log(` → ACQUIRE requested — pool ${!this.#enabled ? 'disabled' : 'empty'}, returning null`)
+      return null
+    }
 
     // Find first ready session
     const idx = this.#queue.findIndex(s => s.state === 'ready')
-    if (idx === -1) return null
+    if (idx === -1) {
+      this.#log(` → ACQUIRE requested — ${this.#queue.length} in queue but none ready (all warming), returning null`)
+      return null
+    }
 
     const session = this.#queue.splice(idx, 1)[0]
     session.state = 'acquired'
     this.#acquired.set(session.id, session)
 
-    console.log(`[hot-pool] acquired session ${session.id} (${this.#queue.length} remaining)`)
+    const age = ((Date.now() - session.createdAt) / 1000).toFixed(1)
+    this.#log(` → ACQUIRED ${session.id} (age: ${age}s, queue: ${this.#queue.length}/${this.#size}, active: ${this.#acquired.size})`)
 
     // Backfill asynchronously
+    this.#log(`   ↳ triggering backfill…`)
     this.#fill().catch(() => {})
 
     return session
@@ -119,6 +137,7 @@ export class HotPool {
     const session = this.#acquired.get(sessionId)
     if (!session) return
     this.#acquired.delete(sessionId)
+    this.#log(` ← RELEASED ${sessionId} (active: ${this.#acquired.size})`)
     // Don't return to pool — used sessions are one-shot
   }
 
@@ -143,6 +162,9 @@ export class HotPool {
     const newSize = Math.max(0, config.size ?? this.#size)
     const newMax = Math.max(newSize, config.maxSize ?? this.#maxSize)
     const newEnabled = config.enabled !== false
+
+    if (config.devlog !== undefined) this.#devlog = !!config.devlog
+    this.#log(`⚙ RECONFIG size=${newSize} maxSize=${newMax} enabled=${newEnabled}`)
 
     const sizeChanged = newSize !== this.#size
     this.#size = newSize
@@ -172,21 +194,28 @@ export class HotPool {
   async #fill() {
     if (this.#filling || !this.#enabled) return
     this.#filling = true
+    this.#log(`⟳ BACKFILL starting (queue: ${this.#queue.length}/${this.#size})`)
 
     try {
+      let spawned = 0
       while (this.#queue.length < this.#size) {
         const total = this.#queue.length + this.#acquired.size
-        if (total >= this.#maxSize) break
+        if (total >= this.#maxSize) {
+          this.#log(`⟳ BACKFILL hit maxSize cap (${total}/${this.#maxSize})`)
+          break
+        }
 
         const session = await this.#spawnWarmSession()
         if (session) {
           this.#queue.push(session)
-          console.log(`[hot-pool] warmed session ${session.id} (queue: ${this.#queue.length}/${this.#size})`)
+          spawned++
+          this.#log(`⟳ BACKFILL warmed ${session.id} (queue: ${this.#queue.length}/${this.#size})`)
         } else {
-          // Spawn failed — don't keep trying
+          this.#log(`⟳ BACKFILL spawn failed, stopping`)
           break
         }
       }
+      this.#log(`⟳ BACKFILL done — spawned ${spawned}, queue: ${this.#queue.length}/${this.#size}`)
     } finally {
       this.#filling = false
     }
@@ -194,6 +223,7 @@ export class HotPool {
 
   async #spawnWarmSession() {
     const id = `pool-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    this.#log(`⊕ SPAWN starting ${id}…`)
 
     try {
       // Spawn copilot with stdin open — it will wait for input
@@ -245,7 +275,11 @@ export class HotPool {
         })
       })
 
-      if (!ready) return null
+      if (!ready) {
+        this.#log(`⊕ SPAWN ${id} failed (process died during warmup)`)
+        return null
+      }
+      this.#log(`⊕ SPAWN ${id} ready (pid: ${child.pid})`)
       return session
     } catch {
       return null
@@ -263,7 +297,6 @@ export class HotPool {
   }
 
   #healthCheck() {
-    // Remove dead sessions from the queue
     const before = this.#queue.length
     this.#queue = this.#queue.filter(s => {
       if (s.process.killed || s.process.exitCode !== null) {
@@ -275,10 +308,11 @@ export class HotPool {
 
     const removed = before - this.#queue.length
     if (removed > 0) {
-      console.log(`[hot-pool] health check: removed ${removed} dead sessions`)
+      this.#log(`♥ HEALTH removed ${removed} dead sessions (queue: ${this.#queue.length}/${this.#size})`)
+    } else {
+      this.#log(`♥ HEALTH ok (queue: ${this.#queue.length}/${this.#size}, active: ${this.#acquired.size})`)
     }
 
-    // Refill
     this.#fill().catch(() => {})
   }
 

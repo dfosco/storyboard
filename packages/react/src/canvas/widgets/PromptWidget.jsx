@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { readProp, promptSchema } from './widgetProps.js'
-import { PaperAirplaneIcon, CheckCircleIcon, XCircleIcon, XIcon, SyncIcon } from '@primer/octicons-react'
+import { PaperAirplaneIcon, CheckCircleIcon, XCircleIcon, XIcon, SquareFillIcon } from '@primer/octicons-react'
 import styles from './PromptWidget.module.css'
 
 function getBase() {
@@ -122,7 +122,7 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
     return () => import.meta.hot.off('storyboard:agent-status', handler)
   }, [id])
 
-  // Expose action handlers for WidgetChrome menu features
+  // Expose action handlers and state for WidgetChrome
   useImperativeHandle(ref, () => ({
     handleAction(action) {
       if (action === 'expand-output') {
@@ -130,7 +130,6 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
         return true
       }
       if (action === 'open-terminal') {
-        // Open the tmux session as a full terminal — dispatch expand event
         document.dispatchEvent(new CustomEvent('storyboard:expand-widget', {
           detail: { widgetId: id, type: 'prompt' },
         }))
@@ -138,7 +137,12 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
       }
       return false
     },
-  }), [id])
+    getState(key) {
+      if (key === 'showOutput') return showOutput
+      if (key === 'hasSession') return execStatus !== 'idle'
+      return undefined
+    },
+  }), [id, showOutput, execStatus])
 
   const handleSubmit = useCallback(async () => {
     if (!draftText.trim() || !canEdit) return
@@ -300,7 +304,12 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
             onClick={handleCancel}
             title="Cancel (stop agent)"
           >
-            <SyncIcon size={14} className={styles.spinner} />
+            <svg className={styles.spinnerSvg} viewBox="0 0 16 16" width="14" height="14">
+              <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="28 10" />
+            </svg>
+            <span className={styles.stopIcon}>
+              <SquareFillIcon size={14} />
+            </span>
           </button>
         )}
         {isDone && <span className={styles.doneIcon}><CheckCircleIcon size={14} /></span>}

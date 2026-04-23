@@ -27,9 +27,14 @@
   flex: 1;
 }
 
-.spinner {
+.spinnerSvg {
   animation: spin 1s linear infinite;
   color: var(--fgColor-accent, #0969da);
+}
+
+.stopIcon {
+  display: none;
+  color: var(--fgColor-danger, #cf222e);
 }
 
 @keyframes spin {
@@ -52,7 +57,14 @@
 
 .cancelBtn:hover {
   background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2));
-  color: var(--fgColor-danger, #cf222e);
+}
+
+.cancelBtn:hover .spinnerSvg {
+  display: none;
+}
+
+.cancelBtn:hover .stopIcon {
+  display: flex;
 }
 
 .doneIcon {

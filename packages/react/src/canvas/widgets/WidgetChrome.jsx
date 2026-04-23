@@ -609,10 +609,34 @@ export default function WidgetChrome({
                   label = 'Show component'
                 }
 
+                // Expand-output toggle: swap icon/label, hide when no session
+                if (feature.action === 'expand-output') {
+                  const hasSession = widgetRef?.current?.getState?.('hasSession')
+                  if (!hasSession) return null
+                  const isActive = widgetRef?.current?.getState?.('showOutput')
+                  if (isActive) {
+                    Icon = ICON_REGISTRY['fold']
+                    label = 'Hide output'
+                  } else {
+                    label = 'Show output'
+                  }
+                }
+
+                // Open-terminal: hide when no session
+                if (feature.action === 'open-terminal') {
+                  const hasSession = widgetRef?.current?.getState?.('hasSession')
+                  if (!hasSession) return null
+                }
+
+                // Determine active state for toggle buttons
+                const isActive = feature.active || (
+                  feature.action === 'expand-output' && widgetRef?.current?.getState?.('showOutput')
+                )
+
                 return (
                   <Tooltip key={feature.id} text={label} direction="n">
                     <button
-                      className={`${styles.featureBtn}${feature.active ? ` ${styles.featureBtnActive}` : ''}`}
+                      className={`${styles.featureBtn}${isActive ? ` ${styles.featureBtnActive}` : ''}`}
                       onClick={(e) => handleActionClick(feature.action, e)}
                       aria-label={label}
                     >

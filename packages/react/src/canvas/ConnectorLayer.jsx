@@ -111,14 +111,25 @@ function buildPath(startPt, startAnchor, endPt, endAnchor, freeEnd = false) {
  * @param {Object} startPt — position of the connector's start endpoint
  * @param {Object} endPt — position of the connector's end endpoint
  */
+const ENDPOINT_HIT_PADDING = 8
+
 function EndpointShape({ x, y, startPt, endPt, style, onPointerDown }) {
   const passThrough = !onPointerDown ? { pointerEvents: 'none' } : {}
+  const hitRadius = connectorConfig.endpointRadius + ENDPOINT_HIT_PADDING
+  const hitTarget = onPointerDown ? (
+    <circle cx={x} cy={y} r={hitRadius}
+      className={styles.endpointHitArea}
+      onPointerDown={onPointerDown}
+    />
+  ) : null
   if (style === 'none') {
     return (
-      <circle cx={x} cy={y} r={connectorConfig.endpointRadius}
-        style={{ fill: 'transparent', stroke: 'none', ...(onPointerDown ? { pointerEvents: 'auto', cursor: 'crosshair' } : { pointerEvents: 'none' }) }}
-        onPointerDown={onPointerDown}
-      />
+      <>
+        {hitTarget}
+        <circle cx={x} cy={y} r={connectorConfig.endpointRadius}
+          style={{ fill: 'transparent', stroke: 'none', ...(onPointerDown ? { pointerEvents: 'none' } : { pointerEvents: 'none' }) }}
+        />
+      </>
     )
   }
   if (style === 'arrow-start' || style === 'arrow-end') {
@@ -128,21 +139,25 @@ function EndpointShape({ x, y, startPt, endPt, style, onPointerDown }) {
     const dy = target.y - y
     const rotation = (Math.atan2(dy, dx) * 180 / Math.PI) + 90
     return (
-      <polygon
-        points={`0,${-size} ${size * 0.6},${size * 0.5} ${-size * 0.6},${size * 0.5}`}
-        transform={`translate(${x},${y}) rotate(${rotation})`}
-        className={styles.connectorEndpoint}
-        style={passThrough}
-        onPointerDown={onPointerDown}
-      />
+      <>
+        {hitTarget}
+        <polygon
+          points={`0,${-size} ${size * 0.6},${size * 0.5} ${-size * 0.6},${size * 0.5}`}
+          transform={`translate(${x},${y}) rotate(${rotation})`}
+          className={styles.connectorEndpoint}
+          style={passThrough}
+        />
+      </>
     )
   }
   return (
-    <circle cx={x} cy={y} r={connectorConfig.endpointRadius}
-      className={styles.connectorEndpoint}
-      style={passThrough}
-      onPointerDown={onPointerDown}
-    />
+    <>
+      {hitTarget}
+      <circle cx={x} cy={y} r={connectorConfig.endpointRadius}
+        className={styles.connectorEndpoint}
+        style={passThrough}
+      />
+    </>
   )
 }
 

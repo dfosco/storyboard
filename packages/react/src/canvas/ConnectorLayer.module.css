@@ -42,6 +42,19 @@
   filter: drop-shadow(0 0 4px var(--connector-endpoint-fill, var(--fgColor-accent, #0969da)));
 }
 
+/* Invisible expanded hit area around connector endpoints */
+.endpointHitArea {
+  fill: transparent;
+  stroke: none;
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+/* Glow effect when hovering endpoint hit area */
+.endpointHitArea:hover ~ .connectorEndpoint {
+  filter: drop-shadow(0 0 4px var(--connector-endpoint-fill, var(--fgColor-accent, #0969da)));
+}
+
 .connectorPathHitArea {
   fill: none;
   stroke: transparent;

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { readProp, promptSchema } from './widgetProps.js'
-import { CopilotIcon, PaperAirplaneIcon, CheckCircleIcon, XCircleIcon, XIcon, SquareFillIcon, LinkIcon, SmileyIcon, PlusIcon } from '@primer/octicons-react'
+import { CopilotIcon, PaperAirplaneIcon, CheckCircleIcon, XCircleIcon, XIcon, SquareFillIcon } from '@primer/octicons-react'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './PromptWidget.module.css'
 
@@ -83,15 +83,11 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate, res
   const persistedStatus = readProp(props, 'status', promptSchema)
   const errorMessage = readProp(props, 'errorMessage', promptSchema)
   const width = readProp(props, 'width', promptSchema)
-  const connectionsRaw = readProp(props, 'connections', promptSchema)
-
   const [draftText, setDraftText] = useState('')
   const [execStatus, setExecStatus] = useState(persistedStatus || 'idle')
   const [execError, setExecError] = useState(errorMessage || '')
   const [showOutput, setShowOutput] = useState(false)
   const canEdit = typeof onUpdate === 'function'
-
-  const connections = connectionsRaw ? connectionsRaw.split(',').filter(Boolean) : []
 
   const containerRef = useRef(null)
   const termContainerRef = useRef(null)
@@ -331,18 +327,6 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate, res
           )}
 
           <div className={styles.toolbar}>
-            <div className={styles.toolbarIcons}>
-              <button className={styles.iconButton} aria-label="Add context" title="Add context">
-                <PlusIcon size={16} />
-              </button>
-              <span className={styles.separator} />
-              <button className={styles.iconButton} aria-label="Connections" title="Connections">
-                <LinkIcon size={16} />
-              </button>
-              {connections.length > 0 && (
-                <span className={styles.connectionBadge}>{connections.length}</span>
-              )}
-            </div>
             <button
               className={styles.submitBtn}
               onClick={handleSubmit}

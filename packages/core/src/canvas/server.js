@@ -264,7 +264,7 @@ export function createCanvasHandler(ctx) {
 
       const widgets = canvasData.widgets || []
       const widgetMap = new Map(widgets.map(w => [w.id, w]))
-      const terminalWidgets = widgets.filter((w) => w.type === 'terminal' || w.type === 'agent')
+      const terminalWidgets = widgets.filter((w) => w.type === 'terminal' || w.type === 'agent' || w.type === 'prompt')
 
       for (const tw of terminalWidgets) {
         const connectedIds = new Set()
@@ -2049,7 +2049,7 @@ export function Default() {
       // We reuse the same tmux-based infrastructure
       try {
         const { execSync } = await import('node:child_process')
-        const { writeTerminalConfig, updateAgentStatus, initTerminalConfig } = await import('./terminal-config.js')
+        const { writeTerminalConfig, updateAgentStatus, updateTerminalConnections, initTerminalConfig } = await import('./terminal-config.js')
         const { generateTmuxName, registerSession } = await import('./terminal-registry.js')
         const fsModule = await import('node:fs')
 
@@ -2060,11 +2060,38 @@ export function Default() {
           branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
         } catch {}
 
+        const serverUrl = `http://localhost:${req.socket?.localPort || 1234}`
         const tmuxName = generateTmuxName(branch, canvasId, widgetId)
 
         registerSession({ branch, canvasId, widgetId, prettyName: null })
-        writeTerminalConfig({ branch, canvasId, widgetId })
+        writeTerminalConfig({ branch, canvasId, widgetId, serverUrl, tmuxName })
         updateAgentStatus({ branch, canvasId, widgetId, status: 'running', message: 'Prompt agent spawning...' })
+
+        // Resolve connected widgets so the terminal-agent has context
+        try {
+          const canvasFilePath = findCanvasPath(root, canvasId)
+          if (canvasFilePath) {
+            const canvasData = readCanvas(canvasFilePath)
+            const widgetMap = new Map((canvasData.widgets || []).map(w => [w.id, w]))
+            const connectors = canvasData.connectors || []
+            const connectedIds = new Set()
+            for (const conn of connectors) {
+              if (conn.start?.widgetId === widgetId) connectedIds.add(conn.end?.widgetId)
+              if (conn.end?.widgetId === widgetId) connectedIds.add(conn.start?.widgetId)
+            }
+            connectedIds.delete(undefined)
+            connectedIds.delete(null)
+            const connectedWidgets = [...connectedIds]
+              .map(id => widgetMap.get(id))
+              .filter(Boolean)
+              .map(w => ({ id: w.id, type: w.type, props: w.props, position: w.position }))
+            if (connectedWidgets.length > 0) {
+              updateTerminalConnections({ branch, canvasId, widgetId, connectedWidgets })
+            }
+          }
+        } catch (err) {
+          console.warn(`[storyboard] Failed to resolve prompt connections: ${err.message}`)
+        }
 
         if (__viteWs) {
           __viteWs.send({

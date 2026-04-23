@@ -73,11 +73,36 @@ The priority holder can also keep the cluster token themselves to ask follow-up 
 
 ### Cluster Finality
 
-The priority holder signals **finality** when the user's request is considered done. This doesn't remove connections — it just marks the current conversation round as complete. The cluster remains active for future messages.
+The priority holder signals **finality** when a **conversation** is complete — the user's request has been fulfilled. This doesn't remove connections or dissolve the cluster. It closes the current conversation. The cluster remains active for future conversations.
+
+### Conversations
+
+A **conversation** is the unit of goal-driven work within a cluster. It starts when the priority holder is activated (by a user message or by receiving the cluster token) and ends when the priority holder signals finality.
+
+- Every conversation has a unique ID (`conv_01HXYZ...` — ULID, same as messages)
+- Every message in the JSONL includes a `conversationId` field
+- A conversation has a **status**: `active`, `finalized`, `timed_out`, `reopened`
+- A conversation has a **goal** (set by the priority holder at the start)
+- Multiple conversations can exist within a cluster over time, but only one is `active` at a time
+
+**Lifecycle:**
+
+1. **Start:** Priority holder receives a user message or decides to initiate → emits `conversation:start` with a goal
+2. **Active:** Messages, tokens, and responses flow within this conversation. New members who join the cluster mid-conversation can read the full conversation history (all events with this `conversationId`)
+3. **Finality:** Priority holder emits `conversation:finality` → conversation status becomes `finalized`
+4. **Reopen:** A finalized conversation can be reopened via `conversation:reopen` — e.g., "actually, let's revisit that planning discussion". The original goal and full history are preserved. New messages append to the same conversation.
+5. **Timeout:** If a conversation exceeds the configured timeout, the server emits `conversation:timeout` and the conversation is auto-finalized.
+
+**Why conversations matter:**
+
+- **Context boundaries:** When agent C joins the cluster mid-way, it can be told "read conversation `conv_01HXYZ` to catch up" — a clean, bounded context window
+- **History:** The cluster accumulates a list of conversations over time. An agent can reference past conversations: "In our last conversation, we decided X"
+- **Reopening:** If the user says "go back to that planning discussion," the agent can reopen the specific conversation rather than starting fresh
+- **Metrics/debugging:** Each conversation is a traceable unit of work with a clear start, goal, and end
 
 ### Timeouts
 
-Configurable cap (default 30 minutes) via `storyboard.config.json` → `canvas.messaging.clusterTimeoutMinutes`. Clusters that exceed this are auto-finalized.
+Configurable cap (default 30 minutes) via `storyboard.config.json` → `canvas.messaging.conversationTimeoutMinutes`. Conversations that exceed this are auto-finalized.
 
 ---
 
@@ -105,6 +130,7 @@ Every line in the JSONL is a **message event** with this envelope:
   "timestamp": "2026-04-23T18:04:13.510Z",  // ISO 8601, millisecond precision
   "canvasId": "viewfinder-redesign",
   "clusterId": "cluster_abc123",
+  "conversationId": "conv_01HABC...",  // which conversation this event belongs to
 
   // Sender
   "senderId": "widget-a-id",
@@ -137,11 +163,12 @@ Every line in the JSONL is a **message event** with this envelope:
 | `cluster:created` | New cluster formed from connections | Server (on connector creation) |
 | `cluster:priority` | Declares the priority holder | Server (on cluster creation) |
 | `cluster:priority:transfer` | Priority transferred (holder left/deleted) | Server |
-| `cluster:goal` | Priority holder defines the cluster's goal | Priority holder agent |
-| `cluster:token:assign` | Cluster token passed to a widget | Current token holder |
-| `cluster:finality` | Conversation round complete | Priority holder |
-| `cluster:timeout` | Cluster auto-finalized due to timeout | Server |
 | `cluster:dissolved` | All connections removed | Server |
+| `conversation:start` | New conversation opened with a goal | Priority holder |
+| `conversation:finality` | Conversation complete, goal reached | Priority holder |
+| `conversation:reopen` | Finalized conversation reopened | Priority holder |
+| `conversation:timeout` | Conversation auto-finalized due to timeout | Server |
+| `cluster:token:assign` | Cluster token passed to a widget | Current token holder |
 | `message:send` | A widget sends a message with message tokens | Any token-holding widget |
 | `message:received` | Acknowledges receipt of a message | Recipient widget |
 | `message:response` | A widget responds (consumes its message token) | Token-holding recipient |
@@ -165,7 +192,16 @@ Cluster state is never stored separately — it's computed by replaying the JSON
   goal: "Get ideas for next week's planning",
   clusterTokenHolder: "widget-a-id",
   designatedSuccessor: "widget-c-id",  // most recently designated fallback priority holder
-  status: "active",               // active | finalized | dissolved | timed_out
+  status: "active",               // active | dissolved
+  activeConversation: {            // null if no conversation is active
+    conversationId: "conv_01HABC...",
+    goal: "Get ideas for next week's planning",
+    status: "active",             // active | finalized | timed_out | reopened
+    startedAt: "2026-04-23T18:01:00.000Z",
+  },
+  conversations: [                 // all conversations in this cluster (summary)
+    { conversationId: "conv_01HABC...", goal: "...", status: "active", startedAt: "...", finalizedAt: null },
+  ],
   createdAt: "2026-04-23T18:00:00.000Z",
   lastActivityAt: "2026-04-23T18:04:13.510Z",
   // Pending message tokens for the current message round
@@ -206,13 +242,14 @@ All routes under `/_storyboard/messages/`.
 
 ### `POST /_storyboard/messages/send`
 
-Send a message into a cluster. The sender must hold either the cluster token or a pending message token.
+Send a message into a cluster. The sender must hold either the cluster token or a pending message token. If no active conversation exists, this implicitly starts one.
 
 ```jsonc
 // Request body
 {
   "canvasId": "viewfinder-redesign",
   "clusterId": "cluster_abc123",
+  "conversationId": "conv_01HABC...",  // current conversation (auto-created if omitted)
   "senderId": "widget-a-id",
   "body": "Give me ideas for next week's planning",
   "payload": {},                    // optional
@@ -248,6 +285,7 @@ Read the message log for a canvas. Supports filters:
 
 ```
 ?clusterId=cluster_abc123           // filter by cluster
+?conversationId=conv_01HABC...     // filter by conversation
 ?since=msg_01HXYZ...               // messages after this ID (for polling)
 ?senderId=widget-a-id              // filter by sender
 ```
@@ -265,16 +303,32 @@ Assign the cluster token to a peer.
 }
 ```
 
-### `POST /_storyboard/messages/cluster/finality`
+### `POST /_storyboard/messages/conversation/finality`
 
-Signal that the current conversation round is complete.
+Signal that the current conversation is complete. Only the priority holder can do this.
 
 ```jsonc
 {
   "canvasId": "viewfinder-redesign",
   "clusterId": "cluster_abc123",
+  "conversationId": "conv_01HABC...",
   "senderId": "widget-a-id",
-  "summary": "Planning ideas collected from B and C"
+  "summary": "Planning ideas collected from B and C",
+  "successor": "widget-c-id"       // optional — designate next priority holder
+}
+```
+
+### `POST /_storyboard/messages/conversation/reopen`
+
+Reopen a finalized conversation. Preserves all history; new messages append to it.
+
+```jsonc
+{
+  "canvasId": "viewfinder-redesign",
+  "clusterId": "cluster_abc123",
+  "conversationId": "conv_01HABC...",
+  "senderId": "widget-a-id",
+  "body": "Actually, let's revisit the planning ideas"
 }
 ```
 
@@ -309,6 +363,7 @@ Each terminal's `.storyboard/terminals/{widget}.json` gains a `clusters` array (
         { "widgetId": "proto-xyz",   "displayName": "Auth Prototype", "role": "passive" }
       ],
       "messageLogPath": ".storyboard/messages/viewfinder-redesign.jsonl",
+      "activeConversationId": "conv_01HABC...",  // current active conversation (null if none)
       "hasClusterToken": true,
       "pendingMessageToken": null     // or { messageId, order }
     }
@@ -355,7 +410,7 @@ For the initial implementation, push is optional — pull with a 1-2 second inte
 {
   "canvas": {
     "messaging": {
-      "clusterTimeoutMinutes": 30,
+      "conversationTimeoutMinutes": 30,
       "messageTokenTimeoutSeconds": 120,
       "pollIntervalMs": 2000,
       "maxMessagesPerCluster": 200
@@ -393,12 +448,19 @@ For the initial implementation, push is optional — pull with a 1-2 second inte
 5. If a widget is fully disconnected → it leaves all clusters
 6. If no connections remain in a cluster → append `cluster:dissolved`
 
-### Finality
+### Finality (Conversation-level)
 
-1. Priority holder sends `POST /cluster/finality`
-2. Append `cluster:finality` event
-3. Cluster status becomes `finalized`
-4. A new user message to the priority holder can start a new conversation round in the same cluster
+1. Priority holder sends `POST /messages/conversation/finality`
+2. Append `conversation:finality` event with `conversationId`, `summary`, and `successor`
+3. Conversation status becomes `finalized`
+4. The cluster remains `active` — a new user message starts a new conversation (`conversation:start`)
+
+### Reopen
+
+1. Priority holder sends `POST /messages/conversation/reopen` with `conversationId`
+2. Append `conversation:reopen` event
+3. Conversation status becomes `reopened` (treated as `active` for token routing)
+4. New members who joined after finality can read the full conversation history to catch up
 
 ---
 

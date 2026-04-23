@@ -277,11 +277,23 @@ export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') 
   initRegistry(root, { gracePeriod: termCfg.orphanGracePeriod })
   initTerminalConfig(root)
 
-  // Clean up shell-config vars that may have leaked into the tmux server's
-  // global environment from earlier versions (caused "empty shell" bug).
+  // Inject shell-config overrides into the tmux server's global environment
+  // so shells spawned inside tmux sessions inherit them. This neutralizes
+  // starship, powerlevel10k, and other prompt/theme customizations that would
+  // leak the user's external terminal appearance into storyboard terminals.
   if (hasTmux) {
+    const overrides = {
+      STARSHIP_CONFIG: '/dev/null',
+      POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD: 'true',
+      ZSH_THEME: '',
+      TERM_PROGRAM: 'storyboard',
+    }
+    for (const [key, val] of Object.entries(overrides)) {
+      try { execSync(`tmux set-environment -g ${key} "${val}" 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+    }
+    // Unset vars that should not exist at all inside storyboard terminals
     for (const key of Object.keys(process.env)) {
-      if (isShellConfigVar(key)) {
+      if (isShellConfigVar(key) && !(key in overrides)) {
         try { execSync(`tmux set-environment -g -u ${key} 2>/dev/null`, { stdio: 'ignore' }) } catch {}
       }
     }

@@ -45,6 +45,8 @@ import {
 import {
   writeTerminalConfig as writeTermConfig,
   initTerminalConfig,
+  readTerminalConfigById,
+  updatePendingMessages,
 } from './terminal-config.js'
 import { findByWorktree } from '../worktree/serverRegistry.js'
 import { detectWorktreeName } from '../worktree/port.js'
@@ -562,6 +564,8 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
                     execSync(`tmux send-keys -t "${tmuxName}" -l "/allow-all on"`, { stdio: 'ignore' })
                     execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
                   } catch {}
+                  // Deliver any pending messages after agent is ready
+                  setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
                 }, 500)
               }
             } catch {}
@@ -708,6 +712,39 @@ function sendJson(ws, data) {
   if (ws.readyState === ws.OPEN) {
     ws.send(JSON.stringify(data))
   }
+}
+
+/**
+ * Deliver any pending messages queued for this terminal.
+ * Called after agent startup is complete.
+ */
+function deliverPendingMessages(tmuxName, widgetId) {
+  if (!hasTmux) return
+  try {
+    const config = readTerminalConfigById(widgetId)
+    if (!config?.pendingMessages?.length) return
+
+    const messages = config.pendingMessages
+    // Clear pending messages from config
+    config.pendingMessages = []
+    config.updatedAt = new Date().toISOString()
+
+    // Write back via symlink path
+    const symPath = join(process.cwd(), '.storyboard', 'terminals', `${widgetId}.json`)
+    try { writeFileSync(symPath, JSON.stringify(config, null, 2)) } catch {}
+
+    // Deliver each message with a small delay between them
+    messages.forEach((msg, i) => {
+      setTimeout(() => {
+        try {
+          const excerpt = msg.message.length > 200 ? msg.message.slice(0, 200) + '…' : msg.message
+          const formatted = `📩 [${msg.fromName || msg.from || 'unknown'} → you]\n\`\`\`\n${excerpt}\n\`\`\`${msg.from ? `\nFull context: cat .storyboard/terminals/${msg.from}.json | jq '.latestOutput.content'` : ''}`
+          execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(formatted)}`, { stdio: 'ignore' })
+          execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+        } catch {}
+      }, i * 1500)
+    })
+  } catch {}
 }
 
 /**

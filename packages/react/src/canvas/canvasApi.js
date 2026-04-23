@@ -96,3 +96,7 @@ export function addConnector(canvasId, { startWidgetId, startAnchor, endWidgetId
 export function removeConnector(canvasId, connectorId) {
   return request('/connector', 'DELETE', { name: canvasId, connectorId })
 }
+
+export function updateConnector(canvasId, connectorId, meta) {
+  return request('/connector', 'PATCH', { name: canvasId, connectorId, meta })
+}

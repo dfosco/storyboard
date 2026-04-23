@@ -1,16 +1,26 @@
 /**
  * Hot Pool — pre-warms copilot CLI sessions for instant agent execution.
  *
- * Maintains a queue of ready-to-use copilot processes. When a prompt or
- * agent widget needs a session, it grabs a warm one from the pool
- * (near-instant) instead of cold-starting. The pool immediately
- * backfills to keep the queue full.
+ * Maintains a queue of ready-to-use copilot processes with automatic
+ * scaling based on demand pressure.
+ *
+ * ## Load Balancer
+ *
+ * The pool has two operating levels:
+ *   - **pool_size** — baseline warm sessions at rest (default: 1)
+ *   - **max_pool_size** — surge capacity when under pressure (default: 3)
+ *
+ * Scale-up:  When an acquire() drains the queue to 0, the pool enters
+ *            "pressure" mode and backfills to max_pool_size.
+ * Scale-down: After 10 minutes with no acquisitions, the pool scales
+ *             back to pool_size by killing excess warm sessions.
  *
  * Configuration (storyboard.config.json → hotPool):
- *   hotPool.pool_size      — warm sessions to maintain at rest (default: 1)
- *   hotPool.max_pool_size  — hard cap on warm sessions (default: 3)
- *   hotPool.enabled        — enable/disable the pool (default: true)
- *   hotPool.verbose        — log pool lifecycle to Vite terminal (default: false)
+ *   hotPool.pool_size       — baseline warm sessions (default: 1)
+ *   hotPool.max_pool_size   — surge cap (default: 3)
+ *   hotPool.cooldown_mins   — minutes idle before scale-down (default: 10)
+ *   hotPool.enabled         — enable/disable the pool (default: true)
+ *   hotPool.verbose         — log to Vite terminal (default: false)
  *
  * Browser devlogs are sent via the Vite HMR channel and only appear
  * when the "Dev logs" toggle is on in Storyboard DevTools.
@@ -29,6 +39,7 @@ import process from 'node:process'
 
 const DEFAULT_POOL_SIZE = 1
 const DEFAULT_MAX_POOL_SIZE = 3
+const DEFAULT_COOLDOWN_MINS = 10
 const WARM_TIMEOUT_MS = 10_000
 const HEALTH_CHECK_INTERVAL_MS = 30_000
 
@@ -40,12 +51,18 @@ export class HotPool {
   #root = ''
   #poolSize = DEFAULT_POOL_SIZE
   #maxPoolSize = DEFAULT_MAX_POOL_SIZE
+  #cooldownMs = DEFAULT_COOLDOWN_MINS * 60_000
   #enabled = true
   #verbose = false
   #filling = false
   #healthTimer = null
   #copilotAvailable = null
   #wsSend = null
+
+  // Load balancer state
+  #pressured = false
+  #lastAcquireAt = 0
+  #cooldownTimer = null
 
   /**
    * @param {Object} opts
@@ -55,19 +72,18 @@ export class HotPool {
    */
   constructor({ root, config = {}, wsSend = null }) {
     this.#root = root
-    this.#poolSize = Math.max(0, config.pool_size ?? DEFAULT_POOL_SIZE)
+    this.#poolSize = Math.max(1, config.pool_size ?? DEFAULT_POOL_SIZE)
     this.#maxPoolSize = Math.max(this.#poolSize, config.max_pool_size ?? DEFAULT_MAX_POOL_SIZE)
+    this.#cooldownMs = (config.cooldown_mins ?? DEFAULT_COOLDOWN_MINS) * 60_000
     this.#enabled = config.enabled !== false
     this.#verbose = !!config.verbose
     this.#wsSend = wsSend
   }
 
-  /** Terminal log — only when verbose is true in config. */
   #termLog(...args) {
     if (this.#verbose) console.log('[hot-pool]', ...args)
   }
 
-  /** Browser devlog — sent via HMR, shown when DevTools "Dev logs" is on. */
   #browserLog(message) {
     if (this.#wsSend) {
       this.#wsSend({
@@ -78,10 +94,14 @@ export class HotPool {
     }
   }
 
-  /** Log to both terminal (if verbose) and browser (always via HMR). */
   #log(message) {
     this.#termLog(message)
     this.#browserLog(message)
+  }
+
+  /** Current fill target — pool_size normally, max_pool_size under pressure. */
+  get #fillTarget() {
+    return this.#pressured ? this.#maxPoolSize : this.#poolSize
   }
 
   async start() {
@@ -96,7 +116,7 @@ export class HotPool {
       return
     }
 
-    this.#log(`✦ STARTING (pool_size=${this.#poolSize}, max_pool_size=${this.#maxPoolSize})`)
+    this.#log(`✦ STARTING (pool_size=${this.#poolSize}, max_pool_size=${this.#maxPoolSize}, cooldown=${this.#cooldownMs / 60_000}min)`)
     await this.#fill()
     this.#log(`✦ READY — ${this.#queue.filter(s => s.state === 'ready').length} warm sessions`)
 
@@ -104,14 +124,11 @@ export class HotPool {
   }
 
   stop() {
-    if (this.#healthTimer) {
-      clearInterval(this.#healthTimer)
-      this.#healthTimer = null
-    }
-    for (const session of this.#queue) {
-      this.#killSession(session)
-    }
+    if (this.#healthTimer) { clearInterval(this.#healthTimer); this.#healthTimer = null }
+    if (this.#cooldownTimer) { clearTimeout(this.#cooldownTimer); this.#cooldownTimer = null }
+    for (const session of this.#queue) this.#killSession(session)
     this.#queue = []
+    this.#pressured = false
     this.#log('■ STOPPED — all sessions killed')
   }
 
@@ -130,9 +147,20 @@ export class HotPool {
     const session = this.#queue.splice(idx, 1)[0]
     session.state = 'acquired'
     this.#acquired.set(session.id, session)
+    this.#lastAcquireAt = Date.now()
 
     const age = ((Date.now() - session.createdAt) / 1000).toFixed(1)
-    this.#log(`→ ACQUIRED ${session.id} (age: ${age}s, queue: ${this.#queue.length}/${this.#poolSize})`)
+    const readyCount = this.#queue.filter(s => s.state === 'ready').length
+
+    // Scale-up: queue drained to 0 ready → enter pressure mode
+    if (readyCount === 0 && !this.#pressured) {
+      this.#pressured = true
+      this.#log(`→ ACQUIRED ${session.id} (age: ${age}s) — ⚡ PRESSURE ON (scaling to max_pool_size=${this.#maxPoolSize})`)
+      this.#resetCooldown()
+    } else {
+      this.#log(`→ ACQUIRED ${session.id} (age: ${age}s, queue: ${readyCount}/${this.#fillTarget})`)
+      this.#resetCooldown()
+    }
 
     this.#fill().catch(() => {})
     return session
@@ -149,7 +177,13 @@ export class HotPool {
     return {
       enabled: this.#enabled,
       copilotAvailable: this.#copilotAvailable,
-      config: { pool_size: this.#poolSize, max_pool_size: this.#maxPoolSize, verbose: this.#verbose },
+      pressured: this.#pressured,
+      config: {
+        pool_size: this.#poolSize,
+        max_pool_size: this.#maxPoolSize,
+        cooldown_mins: this.#cooldownMs / 60_000,
+        verbose: this.#verbose,
+      },
       queue: this.#queue.map(s => ({
         id: s.id,
         state: s.state,
@@ -157,39 +191,59 @@ export class HotPool {
       })),
       acquired: this.#acquired.size,
       ready: this.#queue.filter(s => s.state === 'ready').length,
+      fillTarget: this.#fillTarget,
     }
   }
 
   reconfigure(config) {
-    if (config.max_pool_size !== undefined) {
-      this.#maxPoolSize = Math.max(1, config.max_pool_size)
-    }
-    const newSize = Math.min(
-      Math.max(0, config.pool_size ?? this.#poolSize),
-      this.#maxPoolSize
-    )
+    if (config.max_pool_size !== undefined) this.#maxPoolSize = Math.max(1, config.max_pool_size)
+    if (config.cooldown_mins !== undefined) this.#cooldownMs = config.cooldown_mins * 60_000
+    const newSize = Math.min(Math.max(1, config.pool_size ?? this.#poolSize), this.#maxPoolSize)
     const newEnabled = config.enabled !== false
     if (config.verbose !== undefined) this.#verbose = !!config.verbose
 
-    this.#log(`⚙ RECONFIG pool_size=${newSize} max_pool_size=${this.#maxPoolSize} enabled=${newEnabled}`)
+    this.#log(`⚙ RECONFIG pool_size=${newSize} max=${this.#maxPoolSize} cooldown=${this.#cooldownMs / 60_000}min enabled=${newEnabled}`)
 
     const sizeChanged = newSize !== this.#poolSize
     this.#poolSize = newSize
 
-    if (!newEnabled && this.#enabled) {
-      this.stop()
-      this.#enabled = false
-      return
-    }
-
+    if (!newEnabled && this.#enabled) { this.stop(); this.#enabled = false; return }
     this.#enabled = newEnabled
 
     if (sizeChanged && this.#enabled) {
-      while (this.#queue.length > this.#poolSize) {
+      // Trim if over new target
+      while (this.#queue.length > this.#fillTarget) {
         const excess = this.#queue.pop()
         if (excess) this.#killSession(excess)
       }
       this.#fill().catch(() => {})
+    }
+  }
+
+  // ── Load balancer ───────────────────────────────────────────────
+
+  /** Reset the cooldown timer — called on every acquire. */
+  #resetCooldown() {
+    if (this.#cooldownTimer) clearTimeout(this.#cooldownTimer)
+    this.#cooldownTimer = setTimeout(() => this.#scaleDown(), this.#cooldownMs)
+  }
+
+  /** Scale down from pressure mode back to pool_size. */
+  #scaleDown() {
+    if (!this.#pressured) return
+    this.#pressured = false
+    this.#cooldownTimer = null
+
+    const excess = this.#queue.length - this.#poolSize
+    if (excess > 0) {
+      let killed = 0
+      while (this.#queue.length > this.#poolSize) {
+        const session = this.#queue.pop()
+        if (session) { this.#killSession(session); killed++ }
+      }
+      this.#log(`↓ SCALE DOWN — pressure off, killed ${killed} excess (queue: ${this.#queue.length}/${this.#poolSize})`)
+    } else {
+      this.#log(`↓ SCALE DOWN — pressure off (queue already at ${this.#queue.length}/${this.#poolSize})`)
     }
   }
 
@@ -198,11 +252,12 @@ export class HotPool {
   async #fill() {
     if (this.#filling || !this.#enabled) return
     this.#filling = true
-    this.#log(`⟳ BACKFILL starting (queue: ${this.#queue.length}/${this.#poolSize}, max: ${this.#maxPoolSize})`)
+    const target = this.#fillTarget
+    this.#log(`⟳ BACKFILL starting (queue: ${this.#queue.length}/${target}${this.#pressured ? ' ⚡' : ''})`)
 
     try {
       let spawned = 0
-      while (this.#queue.length < this.#poolSize) {
+      while (this.#queue.length < target) {
         const total = this.#queue.length + this.#acquired.size
         if (total >= this.#maxPoolSize) {
           this.#log(`⟳ BACKFILL hit max_pool_size cap (${total}/${this.#maxPoolSize})`)
@@ -212,13 +267,13 @@ export class HotPool {
         if (session) {
           this.#queue.push(session)
           spawned++
-          this.#log(`⟳ BACKFILL warmed ${session.id} (queue: ${this.#queue.length}/${this.#poolSize})`)
+          this.#log(`⟳ BACKFILL warmed ${session.id} (queue: ${this.#queue.length}/${target})`)
         } else {
           this.#log('⟳ BACKFILL spawn failed, stopping')
           break
         }
       }
-      this.#log(`⟳ BACKFILL done — spawned ${spawned}, queue: ${this.#queue.length}/${this.#poolSize}`)
+      this.#log(`⟳ BACKFILL done — spawned ${spawned}, queue: ${this.#queue.length}/${target}`)
     } finally {
       this.#filling = false
     }
@@ -239,11 +294,7 @@ export class HotPool {
       const session = { id, process: child, createdAt: Date.now(), state: 'warming' }
 
       const ready = await new Promise((resolve) => {
-        const timer = setTimeout(() => {
-          session.state = 'ready'
-          resolve(true)
-        }, WARM_TIMEOUT_MS)
-
+        const timer = setTimeout(() => { session.state = 'ready'; resolve(true) }, WARM_TIMEOUT_MS)
         child.on('error', () => { clearTimeout(timer); session.state = 'dead'; resolve(false) })
         child.on('close', () => {
           clearTimeout(timer)
@@ -253,10 +304,7 @@ export class HotPool {
         child.stdout?.once('data', () => { clearTimeout(timer); session.state = 'ready'; resolve(true) })
       })
 
-      if (!ready) {
-        this.#log(`⊕ SPAWN ${id} failed (died during warmup)`)
-        return null
-      }
+      if (!ready) { this.#log(`⊕ SPAWN ${id} failed (died during warmup)`); return null }
       this.#log(`⊕ SPAWN ${id} ready (pid: ${child.pid})`)
       return session
     } catch {
@@ -283,9 +331,9 @@ export class HotPool {
 
     const removed = before - this.#queue.length
     if (removed > 0) {
-      this.#log(`♥ HEALTH removed ${removed} dead (queue: ${this.#queue.length}/${this.#poolSize})`)
+      this.#log(`♥ HEALTH removed ${removed} dead (queue: ${this.#queue.length}/${this.#fillTarget})`)
     } else {
-      this.#log(`♥ HEALTH ok (queue: ${this.#queue.length}/${this.#poolSize}, active: ${this.#acquired.size})`)
+      this.#log(`♥ HEALTH ok (queue: ${this.#queue.length}/${this.#fillTarget}, active: ${this.#acquired.size}${this.#pressured ? ' ⚡' : ''})`)
     }
 
     this.#fill().catch(() => {})

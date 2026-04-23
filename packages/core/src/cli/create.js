@@ -59,24 +59,40 @@ async function serverPost(path, body) {
   return res.json()
 }
 
-async function checkServer() {
+async function checkServer(url) {
+  const target = url || getServerUrl()
   try {
-    await fetch(getServerUrl(), { signal: AbortSignal.timeout(2000) })
+    await fetch(target, { signal: AbortSignal.timeout(5000) })
     return true
-  } catch {
+  } catch (err) {
+    p.log.warning(`Could not reach dev server at ${target}: ${err.message}`)
     return false
   }
 }
 
 async function ensureDevServer() {
+  // 1. If STORYBOARD_SERVER_URL is explicitly set, try it first (with retry)
+  if (process.env.STORYBOARD_SERVER_URL) {
+    const envUrl = process.env.STORYBOARD_SERVER_URL.replace(/\/$/, '')
+    if (await checkServer(envUrl)) return
+
+    // Retry once after a short delay (server may be mid-restart)
+    await new Promise((r) => setTimeout(r, 1000))
+    if (await checkServer(envUrl)) return
+
+    p.log.warning(
+      `STORYBOARD_SERVER_URL (${envUrl}) is not reachable — falling back to auto-discovery.`
+    )
+  }
+
+  // 2. Try auto-discovered URL (Caddy → ports.json)
   if (await checkServer()) return
 
+  // 3. No server found — start one
   const s = p.spinner()
-  s.start('Starting dev server...')
+  s.start('No running dev server found — starting one...')
 
   const { spawn } = await import('child_process')
-  const { readFileSync } = await import('fs')
-  const { resolve } = await import('path')
   const { generateCaddyfile, isCaddyRunning, reloadCaddy } = await import('./proxy.js')
 
   const worktreeName = detectWorktreeName()
@@ -95,7 +111,8 @@ async function ensureDevServer() {
   const start = Date.now()
   while (Date.now() - start < 30000) {
     await new Promise((r) => setTimeout(r, 500))
-    if (await checkServer()) {
+    try {
+      await fetch(`http://localhost:${port}`, { signal: AbortSignal.timeout(2000) })
       // Update Caddy with actual port
       try {
         const caddyfilePath = generateCaddyfile({ [worktreeName]: port })
@@ -103,6 +120,8 @@ async function ensureDevServer() {
       } catch {}
       s.stop('Dev server started')
       return
+    } catch {
+      // Not ready yet — keep waiting
     }
   }
   s.stop('Dev server may still be starting...')

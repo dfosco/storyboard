@@ -308,6 +308,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
   selected,
   multiSelected,
   connectorCount,
+  allWidgets,
   onSelect,
   onDeselect,
   onUpdate,
@@ -360,45 +361,39 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
 
     // Add dynamic "Messaging" dropdown for terminal/agent widgets with connected peers
     if (widget.type === 'terminal' || widget.type === 'agent') {
-      const bridge = window.__storyboardCanvasBridgeState
-      if (bridge?.connectors && bridge?.widgets) {
-        const peerConnectors = bridge.connectors.filter(
-          (c) => c.start?.widgetId === widget.id || c.end?.widgetId === widget.id
-        )
-        const terminalPeers = []
-        for (const conn of peerConnectors) {
-          const peerId = conn.start?.widgetId === widget.id ? conn.end?.widgetId : conn.start?.widgetId
-          const peer = bridge.widgets.find((w) => w.id === peerId)
-          if (peer && (peer.type === 'terminal' || peer.type === 'agent')) {
-            // Two-way is shared (stored as top-level messagingMode)
-            // One-way/none is per-widget (stored in messaging.{widgetId})
-            const messaging = conn.meta?.messaging || {}
-            const sharedMode = conn.meta?.messagingMode
-            const myMode = sharedMode === 'two-way' ? 'two-way' : (messaging[widget.id] || 'none')
-            terminalPeers.push({ peer, connectorId: conn.id, mode: myMode, sharedMode })
-          }
+      const widgetConnectors = connectorCount || []
+      const widgetList = allWidgets || []
+      const terminalPeers = []
+      for (const conn of widgetConnectors) {
+        const peerId = conn.start?.widgetId === widget.id ? conn.end?.widgetId : conn.start?.widgetId
+        const peer = widgetList.find((w) => w.id === peerId)
+        if (peer && (peer.type === 'terminal' || peer.type === 'agent')) {
+          const messaging = conn.meta?.messaging || {}
+          const sharedMode = conn.meta?.messagingMode
+          const myMode = sharedMode === 'two-way' ? 'two-way' : (messaging[widget.id] || 'none')
+          terminalPeers.push({ peer, connectorId: conn.id, mode: myMode, sharedMode })
         }
-        if (terminalPeers.length > 0) {
-          const items = []
-          for (const { peer, connectorId, mode } of terminalPeers) {
-            const peerName = peer.props?.prettyName || peer.id
-            items.push(
-              { action: `messaging:${connectorId}:none`, label: `${peerName}: No messaging${mode === 'none' ? ' ●' : ''}`, icon: mode === 'none' ? 'eye-closed' : null },
-              { action: `messaging:${connectorId}:one-way`, label: `${peerName}: One-way →${mode === 'one-way' ? ' ●' : ''}`, icon: mode === 'one-way' ? 'broadcast' : null },
-              { action: `messaging:${connectorId}:two-way`, label: `${peerName}: Two-way ↔${mode === 'two-way' ? ' ●' : ''}`, icon: mode === 'two-way' ? 'broadcast' : null },
-            )
-          }
-          const insertIdx = adjusted.findIndex((f) => f.menu)
-          const messagingFeature = {
-            id: 'messaging',
-            type: 'dropdown',
-            label: 'Messaging',
-            icon: 'broadcast',
-            items,
-          }
-          if (insertIdx >= 0) adjusted.splice(insertIdx, 0, messagingFeature)
-          else adjusted.push(messagingFeature)
+      }
+      if (terminalPeers.length > 0) {
+        const items = []
+        for (const { peer, connectorId, mode } of terminalPeers) {
+          const peerName = peer.props?.prettyName || peer.id
+          items.push(
+            { action: `messaging:${connectorId}:none`, label: `${peerName}: No messaging${mode === 'none' ? ' ●' : ''}`, icon: mode === 'none' ? 'eye-closed' : null },
+            { action: `messaging:${connectorId}:one-way`, label: `${peerName}: One-way →${mode === 'one-way' ? ' ●' : ''}`, icon: mode === 'one-way' ? 'broadcast' : null },
+            { action: `messaging:${connectorId}:two-way`, label: `${peerName}: Two-way ↔${mode === 'two-way' ? ' ●' : ''}`, icon: mode === 'two-way' ? 'broadcast' : null },
+          )
         }
+        const insertIdx = adjusted.findIndex((f) => f.menu)
+        const messagingFeature = {
+          id: 'messaging',
+          type: 'dropdown',
+          label: 'Messaging',
+          icon: 'broadcast',
+          items,
+        }
+        if (insertIdx >= 0) adjusted.splice(insertIdx, 0, messagingFeature)
+        else adjusted.push(messagingFeature)
       }
     }
 
@@ -491,6 +486,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
     prev.selected === next.selected &&
     prev.multiSelected === next.multiSelected &&
     prev.connectorCount === next.connectorCount &&
+    prev.allWidgets === next.allWidgets &&
     prev.readOnly === next.readOnly &&
     prev.onSelect === next.onSelect &&
     prev.onDeselect === next.onDeselect &&
@@ -2525,7 +2521,8 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           widget={effectiveWidget}
           selected={selectedWidgetIds.has(widget.id)}
           multiSelected={isMultiSelected && selectedWidgetIds.has(widget.id)}
-          connectorCount={localConnectors.filter((c) => c.start?.widgetId === widget.id || c.end?.widgetId === widget.id).map((c) => `${c.id}:${c.meta?.messagingMode || ''}:${c.meta?.messaging?.[widget.id] || ''}`).join(',')}
+          connectorCount={localConnectors.filter((c) => c.start?.widgetId === widget.id || c.end?.widgetId === widget.id)}
+          allWidgets={localWidgets}
           onSelect={(shiftKey) => handleWidgetSelect(widget.id, shiftKey)}
           onDeselect={handleDeselectAll}
           onUpdate={isLocalDev ? handleWidgetUpdate : undefined}

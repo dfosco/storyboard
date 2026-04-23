@@ -370,8 +370,12 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
           const peerId = conn.start?.widgetId === widget.id ? conn.end?.widgetId : conn.start?.widgetId
           const peer = bridge.widgets.find((w) => w.id === peerId)
           if (peer && (peer.type === 'terminal' || peer.type === 'agent')) {
-            const mode = conn.meta?.messagingMode || 'none'
-            terminalPeers.push({ peer, connectorId: conn.id, mode })
+            // Two-way is shared (stored as top-level messagingMode)
+            // One-way/none is per-widget (stored in messaging.{widgetId})
+            const messaging = conn.meta?.messaging || {}
+            const sharedMode = conn.meta?.messagingMode
+            const myMode = sharedMode === 'two-way' ? 'two-way' : (messaging[widget.id] || 'none')
+            terminalPeers.push({ peer, connectorId: conn.id, mode: myMode, sharedMode })
           }
         }
         if (terminalPeers.length > 0) {
@@ -380,8 +384,8 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
             const peerName = peer.props?.prettyName || peer.id
             items.push(
               { action: `messaging:${connectorId}:none`, label: `${peerName}: No messaging${mode === 'none' ? ' ●' : ''}`, icon: mode === 'none' ? 'eye-closed' : null },
-              { action: `messaging:${connectorId}:one-way`, label: `${peerName}: One-way →${mode === 'one-way' ? ' ●' : ''}`, icon: mode === 'one-way' ? 'message' : null },
-              { action: `messaging:${connectorId}:two-way`, label: `${peerName}: Two-way ↔${mode === 'two-way' ? ' ●' : ''}`, icon: mode === 'two-way' ? 'message' : null },
+              { action: `messaging:${connectorId}:one-way`, label: `${peerName}: One-way →${mode === 'one-way' ? ' ●' : ''}`, icon: mode === 'one-way' ? 'broadcast' : null },
+              { action: `messaging:${connectorId}:two-way`, label: `${peerName}: Two-way ↔${mode === 'two-way' ? ' ●' : ''}`, icon: mode === 'two-way' ? 'broadcast' : null },
             )
           }
           const insertIdx = adjusted.findIndex((f) => f.menu)
@@ -436,10 +440,17 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
         const bridge = window.__storyboardCanvasBridgeState
         const canvasId = bridge?.canvasId || ''
         const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+
+        // Two-way is shared (top-level messagingMode)
+        // One-way/none is per-widget (messaging.{widgetId})
+        const meta = mode === 'two-way'
+          ? { messagingMode: 'two-way' }
+          : { messaging: { [widget.id]: mode }, messagingMode: null }
+
         fetch(`${base}/_storyboard/canvas/connector`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: canvasId, connectorId, meta: { messagingMode: mode } }),
+          body: JSON.stringify({ name: canvasId, connectorId, meta }),
         }).catch((err) => console.error('[canvas] Failed to update connector messaging mode:', err))
       }
     }
@@ -2514,7 +2525,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           widget={effectiveWidget}
           selected={selectedWidgetIds.has(widget.id)}
           multiSelected={isMultiSelected && selectedWidgetIds.has(widget.id)}
-          connectorCount={localConnectors.filter((c) => c.start?.widgetId === widget.id || c.end?.widgetId === widget.id).map((c) => `${c.id}:${c.meta?.messagingMode || ''}`).join(',')}
+          connectorCount={localConnectors.filter((c) => c.start?.widgetId === widget.id || c.end?.widgetId === widget.id).map((c) => `${c.id}:${c.meta?.messagingMode || ''}:${c.meta?.messaging?.[widget.id] || ''}`).join(',')}
           onSelect={(shiftKey) => handleWidgetSelect(widget.id, shiftKey)}
           onDeselect={handleDeselectAll}
           onUpdate={isLocalDev ? handleWidgetUpdate : undefined}

@@ -183,11 +183,20 @@ export function materialize(events) {
       }
 
       case 'connector_updated': {
-        state.connectors = (state.connectors || []).map((c) =>
-          c.id === evt.connectorId
-            ? { ...c, ...evt.updates, id: c.id, start: c.start, end: c.end }
-            : c,
-        )
+        state.connectors = (state.connectors || []).map((c) => {
+          if (c.id !== evt.connectorId) return c
+          const updates = evt.updates || {}
+          // Deep-merge meta so per-widget messaging settings accumulate
+          const mergedMeta = { ...(c.meta || {}), ...(updates.meta || {}) }
+          if (updates.meta?.messaging) {
+            mergedMeta.messaging = { ...(c.meta?.messaging || {}), ...updates.meta.messaging }
+          }
+          // Clear messagingMode if explicitly set to null (switching from two-way to per-widget)
+          if (updates.meta && updates.meta.messagingMode === null) {
+            delete mergedMeta.messagingMode
+          }
+          return { ...c, ...updates, meta: mergedMeta, id: c.id, start: c.start, end: c.end }
+        })
         break
       }
 

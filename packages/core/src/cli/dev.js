@@ -334,10 +334,21 @@ async function main() {
   process.on('SIGINT', cleanup)
   process.on('SIGTERM', cleanup)
 
-  // Wait for Vite to be ready
-  const ready = await waitPort(entry.port, 60_000)
+  // Wait for Vite to be ready — poll entry.port dynamically since Vite
+  // may rebind to a different port if the assigned one is occupied.
+  const ready = await (async () => {
+    const start = Date.now()
+    while (Date.now() - start < 60_000) {
+      if (await waitPort(entry.port, 500)) return true
+      await new Promise(r => setTimeout(r, 300))
+    }
+    return false
+  })()
 
   if (ready) {
+    // Use the actual port Vite bound to (may differ from assigned port)
+    const actualDirectUrl = `http://localhost:${entry.port}${basePath}`
+
     // Register the Caddy route eagerly — don't rely solely on the async
     // stdout listener in spawnVite(), which may not have fired yet.
     if (isCaddyRunning()) {
@@ -346,9 +357,9 @@ async function main() {
         generateCaddyfile({ [worktreeName]: entry.port })
       }
       p.log.success(`${proxyUrl}`)
-      p.log.info(`direct: ${directUrl}`)
+      p.log.info(`direct: ${actualDirectUrl}`)
     } else {
-      p.log.success(directUrl)
+      p.log.success(actualDirectUrl)
       p.log.warning('Proxy not running — run `npx storyboard setup` for clean URLs')
     }
     p.outro('Ready')

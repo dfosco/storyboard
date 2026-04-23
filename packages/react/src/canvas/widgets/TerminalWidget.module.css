@@ -47,6 +47,11 @@
 .xtermContainer :global(.xterm) {
   width: 100%;
   height: 100%;
+  background: #0d1117;
+}
+
+.xtermContainer :global(.xterm) canvas {
+  background: #0d1117;
 }
 
 /* Hide the native caret on ghostty-web's helper textarea —

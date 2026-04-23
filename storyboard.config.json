@@ -67,6 +67,11 @@
     },
     "showAgentsInAddMenu": false
   },
+  "hotPool": {
+    "pool_size": 1,
+    "enabled": true,
+    "verbose": false
+  },
   "customerMode": {
     "enabled": false,
     "hideChrome": false,

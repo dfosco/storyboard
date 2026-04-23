@@ -4,12 +4,9 @@
  * Endpoints (mounted at /_storyboard/prompt/):
  *   POST /execute  — spawn a copilot agent with the given prompt
  *   GET  /status   — check execution status for a session
- *   GET  /pool     — inspect pool status
- *   PUT  /pool     — reconfigure pool at runtime
  *
- * Uses a pre-warmed session hot pool (hot-pool.js) for near-instant
- * prompt execution. When no warm session is available, falls back
- * to cold-starting a new copilot process.
+ * Uses the shared HotPool (injected) for near-instant prompt execution.
+ * When no warm session is available, falls back to cold-starting.
  */
 
 import { spawn } from 'node:child_process'
@@ -17,7 +14,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { materializeFromText } from './materializer.js'
-import { HotPool } from './hot-pool.js'
 
 const SESSIONS_DIR_NAME = '.prompt-sessions'
 const TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
@@ -284,17 +280,11 @@ function coldStartSession({ sessionId, fullPrompt, signalFile, root, canvasName,
  * @param {Object} opts
  * @param {string} opts.root — project root
  * @param {Function} opts.sendJson — response helper
- * @param {Object} [opts.config] — storyboard.config.json prompt section
+ * @param {import('./hot-pool.js').HotPool} opts.pool — shared hot pool instance
  */
-export function createPromptHandler({ root, sendJson, config = {} }) {
+export function createPromptHandler({ root, sendJson, pool }) {
   // Ensure sessions directory exists
   getSessionsDir(root)
-
-  // Create and start the session pool
-  const pool = new HotPool({ root, config: config.hotPool || {} })
-  pool.start().catch((err) => {
-    console.error('[prompt-server] Failed to start pool:', err.message)
-  })
 
   return async (req, res, { method, path: routePath, body }) => {
     // POST /execute — spawn agent with prompt
@@ -374,20 +364,6 @@ export function createPromptHandler({ root, sendJson, config = {} }) {
         resultWidgetId: session.resultWidgetId || null,
         warm: session.warm || false,
       })
-      return
-    }
-
-    // GET /pool — inspect pool status
-    if (routePath === '/pool' && method === 'GET') {
-      sendJson(res, 200, pool.status())
-      return
-    }
-
-    // PUT /pool — reconfigure pool at runtime
-    if (routePath === '/pool' && method === 'PUT') {
-      const { size, maxSize, enabled } = body || {}
-      pool.reconfigure({ size, maxSize, enabled })
-      sendJson(res, 200, pool.status())
       return
     }
 

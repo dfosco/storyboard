@@ -19,6 +19,7 @@ import { docsHandler, collectFiles } from './docs-handler.js'
 import { createCanvasHandler } from '../canvas/server.js'
 import { setupSelectedWidgets } from '../canvas/selectedWidgets.js'
 import { createPromptHandler } from '../canvas/prompt-server.js'
+import { HotPool } from '../canvas/hot-pool.js'
 import { createAutosyncHandler } from '../autosync/server.js'
 import { setupTerminalServer } from '../canvas/terminal-server.js'
 import { listSessions, detachSession, killSession, orphanSession } from '../canvas/terminal-registry.js'
@@ -217,9 +218,30 @@ export default function storyboardServer() {
         setupTerminalServer(server.httpServer, base, branch)
       }
 
-      // Wire prompt API routes (AI prompt execution for canvas prompt widgets)
-      const promptConfig = config.prompt || {}
-      routeHandlers.set('prompt', createPromptHandler({ root, sendJson, config: promptConfig }))
+      // Create shared hot pool (pre-warmed agent sessions for any widget)
+      const hotPoolConfig = config.hotPool || {}
+      const wsSend = server.ws.send.bind(server.ws)
+      const hotPool = new HotPool({ root, config: hotPoolConfig, wsSend })
+      hotPool.start().catch((err) => {
+        console.error('[hot-pool] Failed to start:', err.message)
+      })
+
+      // Mount hot pool API routes (shared infra — not tied to any widget)
+      routeHandlers.set('hot-pool', async (req, res, { method, path: routePath, body }) => {
+        if (routePath === '/' && method === 'GET') {
+          sendJson(res, 200, hotPool.status())
+          return
+        }
+        if (routePath === '/' && method === 'PUT') {
+          hotPool.reconfigure(body || {})
+          sendJson(res, 200, hotPool.status())
+          return
+        }
+        sendJson(res, 404, { error: `Unknown hot-pool route: ${method} ${routePath}` })
+      })
+
+      // Wire prompt API routes (passes shared hot pool)
+      routeHandlers.set('prompt', createPromptHandler({ root, sendJson, pool: hotPool }))
 
       // Ignore assets/canvas/ so image/snapshot writes don't trigger reloads
       server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'images'))

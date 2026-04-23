@@ -11,6 +11,7 @@ import { createPasteContext, resolvePaste } from './widgets/pasteRules.js'
 import { getPasteRules } from '@dfosco/storyboard-core'
 import { isTerminalResizable, getTerminalDimensions } from '@dfosco/storyboard-core'
 import { registerSmoothCorners } from '@dfosco/storyboard-core/smooth-corners'
+import { registerHotPoolDevLogs } from './hotPoolDevLogs.js'
 import { isGitHubEmbedUrl } from './widgets/githubUrl.js'
 import { findConnectedSplitTarget } from './widgets/expandUtils.js'
 import WidgetChrome from './widgets/WidgetChrome.jsx'
@@ -47,6 +48,7 @@ const CANVAS_BRIDGE_STATE_KEY = '__storyboardCanvasBridgeState'
 const GH_INSTALL_URL = 'https://github.com/cli/cli'
 
 registerSmoothCorners()
+registerHotPoolDevLogs()
 
 /** Matches branch-deploy base path prefixes like /branch--my-feature/ */
 const BRANCH_PREFIX_RE = /^\/branch--[^/]+/

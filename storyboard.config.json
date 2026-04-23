@@ -59,6 +59,7 @@
         "label": "Codex CLI",
         "icon": "primer/copilot",
         "startupCommand": "codex --full-auto",
+        "readinessSignal": "default \u00b7",
         "configFiles": [".codex/config.toml"],
         "resizable": true
       }

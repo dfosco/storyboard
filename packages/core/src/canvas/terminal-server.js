@@ -336,11 +336,102 @@ export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') 
     const canvasId = params.get('canvas') || 'unknown'
     const prettyName = params.get('name') || null
     const widgetStartupCommand = params.get('startupCommand') || null
+    const readOnly = params.get('readOnly') === '1'
 
     wss.handleUpgrade(req, socket, head, (ws) => {
-      handleConnection(ws, sessionId, canvasId, prettyName, widgetStartupCommand)
+      if (readOnly) {
+        handleReadOnlyConnection(ws, sessionId, canvasId)
+      } else {
+        handleConnection(ws, sessionId, canvasId, prettyName, widgetStartupCommand)
+      }
     })
   })
+}
+
+/**
+ * Read-only WebSocket connection — attaches to an existing tmux session
+ * for output-only streaming. Does NOT close existing WS connections,
+ * does NOT kill existing pty processes, does NOT register in the session registry.
+ * Used by the PromptWidget's inline terminal viewer.
+ */
+function handleReadOnlyConnection(ws, widgetId, canvasId) {
+  const branch = currentBranch
+  const tmuxName = generateTmuxName(branch, canvasId, widgetId)
+
+  if (!hasTmux || !tmuxSessionExists(tmuxName)) {
+    try {
+      ws.send(JSON.stringify({ type: 'error', message: 'No active session to observe' }))
+      ws.close()
+    } catch {}
+    return
+  }
+
+  // Track read-only connections separately so they don't interfere with the primary
+  const roKey = `${tmuxName}:ro`
+  const existingRo = wsConnections.get(roKey)
+  if (existingRo && existingRo !== ws && existingRo.readyState <= 1) {
+    try { existingRo.close() } catch {}
+  }
+  wsConnections.set(roKey, ws)
+
+  let ptyProcess
+  try {
+    ptyProcess = pty.spawn('tmux', ['-f', '/dev/null', 'attach-session', '-t', tmuxName, '-r'], {
+      name: 'xterm-256color',
+      cols: 80,
+      rows: 24,
+      cwd: process.cwd(),
+      env: { ...process.env, TERM: 'xterm-256color' },
+    })
+  } catch (err) {
+    try {
+      ws.send(JSON.stringify({ type: 'error', message: `Failed to attach: ${err.message}` }))
+      ws.close()
+    } catch {}
+    return
+  }
+
+  // Forward pty output to WS (one-way only)
+  ptyProcess.onData((data) => {
+    if (ws.readyState === 1) {
+      try { ws.send(data) } catch {}
+    }
+  })
+
+  ptyProcess.onExit(() => {
+    wsConnections.delete(roKey)
+    if (ws.readyState <= 1) {
+      try { ws.close() } catch {}
+    }
+  })
+
+  // Handle resize from client (needed for correct rendering)
+  ws.on('message', (msg) => {
+    try {
+      const str = typeof msg === 'string' ? msg : msg.toString()
+      if (!str.startsWith('{')) return // ignore non-JSON (input data)
+      const parsed = JSON.parse(str)
+      if (parsed.type === 'resize' && parsed.cols && parsed.rows) {
+        ptyProcess.resize(parsed.cols, parsed.rows)
+      }
+    } catch {}
+    // All other input is silently dropped (read-only)
+  })
+
+  ws.on('close', () => {
+    wsConnections.delete(roKey)
+    try { ptyProcess.kill() } catch {}
+  })
+
+  ws.on('error', () => {
+    wsConnections.delete(roKey)
+    try { ptyProcess.kill() } catch {}
+  })
+
+  // Send session info
+  try {
+    ws.send(JSON.stringify({ type: 'session-info', tmuxName, readOnly: true }))
+  } catch {}
 }
 
 function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupCommand = null) {

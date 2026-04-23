@@ -71,9 +71,10 @@ function readAgentConfig(root, agentId) {
 }
 
 /**
- * Build the copilot CLI command for a prompt spawn.
- * Reads the agent's startupCommand from storyboard.config.json and
- * appends -p "prompt" for non-interactive execution.
+ * Build the CLI command for a prompt spawn.
+ * Reads the agent's promptCommand template from storyboard.config.json
+ * and interpolates ${prompt}. Agents without promptCommand don't support
+ * non-interactive prompt execution.
  */
 function buildPromptCmd({ root, prompt, envFile, agentId }) {
   const agent = readAgentConfig(root, agentId)
@@ -84,17 +85,13 @@ function buildPromptCmd({ root, prompt, envFile, agentId }) {
     return `source ${envFile} && copilot -p "${escaped}" --allow-all`
   }
 
-  // startupCommand is e.g. "copilot --agent terminal-agent"
-  // For prompt mode, add -p "prompt" and ensure permissions are granted
-  const base = agent.startupCommand || 'copilot'
+  if (!agent.promptCommand) {
+    return null // This agent doesn't support prompt mode
+  }
+
   const escaped = prompt.replace(/"/g, '\\"')
-
-  // Determine permission flags from the existing startupCommand
-  // If it already includes permission flags, don't double them
-  const hasPermFlag = /--allow-all|--dangerously-skip-permissions|--full-auto/.test(base)
-  const permFlag = hasPermFlag ? '' : ' --allow-all'
-
-  return `source ${envFile} && ${base} -p "${escaped}"${permFlag}`
+  const cmd = agent.promptCommand.replace('${prompt}', escaped)
+  return `source ${envFile} && ${cmd}`
 }
 
 /**
@@ -1813,7 +1810,7 @@ export function Default() {
         const envContent = Object.entries(envMap).map(([k, v]) => `export ${k}=${JSON.stringify(v)}`).join('\n') + '\n'
         fsModule.writeFileSync(envFile, envContent)
 
-        // Build copilot command from storyboard.config.json agent definitions
+        // Build command from storyboard.config.json agent definitions
         const copilotCmd = autopilot
           ? buildPromptCmd({ root, prompt, envFile })
           : (() => {
@@ -1821,6 +1818,13 @@ export function Default() {
               const base = agent?.startupCommand || 'copilot'
               return `source ${envFile} && ${base}`
             })()
+
+        if (autopilot && !copilotCmd) {
+          const agent = readAgentConfig(root)
+          sendJson(res, 400, { error: `Agent "${agent?.id || 'unknown'}" does not support prompt mode (no promptCommand configured)` })
+          return
+        }
+
         setTimeout(() => {
           try {
             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })
@@ -2103,6 +2107,11 @@ export function Default() {
         fsModule.writeFileSync(envFile, envContent)
 
         const copilotCmd = buildPromptCmd({ root, prompt, envFile })
+        if (!copilotCmd) {
+          const agent = readAgentConfig(root)
+          sendJson(res, 400, { error: `Agent "${agent?.id || 'unknown'}" does not support prompt mode (no promptCommand configured)` })
+          return
+        }
         setTimeout(() => {
           try {
             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })

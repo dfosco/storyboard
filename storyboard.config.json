@@ -45,6 +45,7 @@
         "default": true,
         "icon": "primer/copilot",
         "startupCommand": "copilot --agent terminal-agent",
+        "promptCommand": "copilot --agent terminal-agent -p \"${prompt}\" --allow-all",
         "postStartup": "/allow-all on",
         "readinessSignal": "Environment loaded:",
         "resizable": true
@@ -53,12 +54,13 @@
         "label": "Claude Code",
         "icon": "claude",
         "startupCommand": "claude --agent terminal-agent --dangerously-skip-permissions",
+        "promptCommand": "claude --agent terminal-agent -p \"${prompt}\" --dangerously-skip-permissions",
         "readinessSignal": "? for shortcuts",
         "resizable": true
       },
       "codex": {
         "label": "Codex CLI",
-        "icon": "primer/copilot",
+        "icon": "codex",
         "startupCommand": "codex --full-auto",
         "readinessSignal": "default \u00b7",
         "configFiles": [".codex/config.toml"],

@@ -784,9 +784,9 @@ export function createCanvasHandler(ctx) {
                 let skillMsg
 
                 if (mode === 'two-way') {
-                  skillMsg = `📡 [Messaging mode: two-way ↔ with ${peerName}]\nYou can send and receive messages with ${peerName} (${peer.id}).\n\nIMPORTANT: After EVERY response, save your output so ${peerName} can read it:\n  npx storyboard terminal output --summary "one-line summary" --content "your full response"\n\nTo send a message:\n  npx storyboard terminal send ${peer.id} "message"\n\nTo read their latest output:\n  cat .storyboard/terminals/${peer.id}.json | jq '.latestOutput'`
+                  skillMsg = `📡 [Two-way messaging ACTIVE with ${peerName}]\n\nYou are in a live two-way conversation with ${peerName} (${peer.id}). When you receive a message from them, you MUST:\n1. Read their full output: cat .storyboard/terminals/${peer.id}.json | jq '.latestOutput.content'\n2. Respond to what they said\n3. Save YOUR response: npx storyboard terminal output --summary "summary" --content "your response"\n4. Send it to them: npx storyboard terminal send ${peer.id} "your response"\n\nDo NOT ask the user for permission to respond — this is an autonomous two-way conversation. Respond immediately when you receive a message. Keep the conversation going until one of you signals done.`
                 } else if (mode === 'one-way') {
-                  skillMsg = `📡 [Messaging mode: one-way → to ${peerName}]\nYou can send messages to ${peerName} (${peer.id}).\n\nIMPORTANT: After EVERY response, save your output:\n  npx storyboard terminal output --summary "one-line summary" --content "your full response"\n\nTo send a message:\n  npx storyboard terminal send ${peer.id} "message"`
+                  skillMsg = `📡 [One-way messaging → to ${peerName}]\nYou can send messages to ${peerName} (${peer.id}).\n\nAfter EVERY response, save your output:\n  npx storyboard terminal output --summary "summary" --content "your full response"\n\nTo send a message:\n  npx storyboard terminal send ${peer.id} "message"`
                 } else {
                   skillMsg = `📡 [Messaging with ${peerName} disabled]`
                 }

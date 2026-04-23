@@ -2514,7 +2514,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           widget={effectiveWidget}
           selected={selectedWidgetIds.has(widget.id)}
           multiSelected={isMultiSelected && selectedWidgetIds.has(widget.id)}
-          connectorCount={localConnectors.filter((c) => c.start?.widgetId === widget.id || c.end?.widgetId === widget.id).length}
+          connectorCount={localConnectors.filter((c) => c.start?.widgetId === widget.id || c.end?.widgetId === widget.id).map((c) => `${c.id}:${c.meta?.messagingMode || ''}`).join(',')}
           onSelect={(shiftKey) => handleWidgetSelect(widget.id, shiftKey)}
           onDeselect={handleDeselectAll}
           onUpdate={isLocalDev ? handleWidgetUpdate : undefined}

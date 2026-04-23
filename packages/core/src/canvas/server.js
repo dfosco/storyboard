@@ -210,7 +210,7 @@ function generateWidgetId(type) {
  * Create the canvas API route handler.
  */
 export function createCanvasHandler(ctx) {
-  const { root, sendJson } = ctx
+  const { root, sendJson, hotPool } = ctx
 
   /**
    * Update terminal configs when connectors change.
@@ -1978,6 +1978,107 @@ export function Default() {
         sendJson(res, 200, { success: true })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to save output: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /prompt/spawn — spawn a prompt agent session (acquires from hot pool)
+    if (routePath === '/prompt/spawn' && method === 'POST') {
+      const { canvasId, widgetId, prompt } = body
+
+      if (!canvasId || !widgetId || !prompt) {
+        sendJson(res, 400, { error: 'canvasId, widgetId, and prompt are required' })
+        return
+      }
+
+      // Try to acquire a warm session from the hot pool
+      const warmSession = hotPool?.acquire() || null
+
+      // Delegate to agent/spawn — the prompt widget is just a specialized agent
+      // We reuse the same tmux-based infrastructure
+      try {
+        const { execSync } = await import('node:child_process')
+        const { writeTerminalConfig, updateAgentStatus, initTerminalConfig } = await import('./terminal-config.js')
+        const { generateTmuxName, registerSession } = await import('./terminal-registry.js')
+        const fsModule = await import('node:fs')
+
+        initTerminalConfig(root)
+
+        let branch = 'unknown'
+        try {
+          branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
+        } catch {}
+
+        const tmuxName = generateTmuxName(branch, canvasId, widgetId)
+
+        registerSession({ branch, canvasId, widgetId, prettyName: null })
+        writeTerminalConfig({ branch, canvasId, widgetId })
+        updateAgentStatus({ branch, canvasId, widgetId, status: 'running', message: 'Prompt agent spawning...' })
+
+        if (__viteWs) {
+          __viteWs.send({
+            type: 'custom',
+            event: 'storyboard:agent-status',
+            data: { widgetId, canvasId, status: 'running', timestamp: new Date().toISOString() },
+          })
+        }
+
+        const serverUrl = `http://localhost:${req.socket?.localPort || 1234}`
+
+        // Create headless tmux session
+        try {
+          execSync(`tmux new-session -d -s "${tmuxName}" -c "${root}"`, { stdio: 'ignore' })
+          execSync(`tmux set-option -t "${tmuxName}" status off`, { stdio: 'ignore' })
+          execSync(`tmux set-option -t "${tmuxName}" mouse on`, { stdio: 'ignore' })
+        } catch { /* session may already exist */ }
+
+        const envMap = {
+          STORYBOARD_WIDGET_ID: widgetId,
+          STORYBOARD_CANVAS_ID: canvasId,
+          STORYBOARD_BRANCH: branch,
+          STORYBOARD_SERVER_URL: serverUrl,
+        }
+        for (const [key, val] of Object.entries(envMap)) {
+          execSync(`tmux setenv -t "${tmuxName}" ${key} "${val}"`, { stdio: 'ignore' })
+        }
+
+        const { join } = await import('node:path')
+        const envFile = join(root, '.storyboard', 'terminals', `${tmuxName}.env`)
+        const envContent = Object.entries(envMap).map(([k, v]) => `export ${k}=${JSON.stringify(v)}`).join('\n') + '\n'
+        fsModule.writeFileSync(envFile, envContent)
+
+        const copilotCmd = `source ${envFile} && copilot -p "${prompt.replace(/"/g, '\\"')}"`
+        setTimeout(() => {
+          try {
+            execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })
+            execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+          } catch {}
+        }, 500)
+
+        // Release warm session (one-shot — already acquired)
+        if (warmSession) hotPool.release(warmSession.id)
+
+        // Idle timeout (5 min)
+        setTimeout(async () => {
+          try {
+            const { readTerminalConfig } = await import('./terminal-config.js')
+            const cfg = readTerminalConfig({ branch, canvasId, widgetId })
+            if (cfg?.agentStatus?.status === 'running') {
+              updateAgentStatus({ branch, canvasId, widgetId, status: 'error', message: 'Prompt timed out (5 min)' })
+              if (__viteWs) {
+                __viteWs.send({
+                  type: 'custom',
+                  event: 'storyboard:agent-status',
+                  data: { widgetId, canvasId, status: 'error', message: 'Prompt timed out', timestamp: new Date().toISOString() },
+                })
+              }
+            }
+          } catch {}
+        }, 5 * 60 * 1000)
+
+        sendJson(res, 200, { success: true, tmuxName, status: 'running', warm: !!warmSession })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to spawn prompt agent: ${err.message}` })
       }
       return
     }

@@ -18,7 +18,6 @@ import { serverFeatures as workshopFeatures } from '../workshop/features/registr
 import { docsHandler, collectFiles } from './docs-handler.js'
 import { createCanvasHandler } from '../canvas/server.js'
 import { setupSelectedWidgets } from '../canvas/selectedWidgets.js'
-import { createPromptHandler } from '../canvas/prompt-server.js'
 import { HotPool } from '../canvas/hot-pool.js'
 import { createAutosyncHandler } from '../autosync/server.js'
 import { setupTerminalServer } from '../canvas/terminal-server.js'
@@ -203,8 +202,16 @@ export default function storyboardServer() {
       // Wire docs API routes (always enabled — serves README + source files)
       routeHandlers.set('docs', docsHandler({ root, sendJson }))
 
+      // Create shared hot pool (pre-warmed agent sessions for any widget)
+      const hotPoolConfig = config.hotPool || {}
+      const wsSend = server.ws.send.bind(server.ws)
+      const hotPool = new HotPool({ root, config: hotPoolConfig, wsSend })
+      hotPool.start().catch((err) => {
+        console.error('[hot-pool] Failed to start:', err.message)
+      })
+
       // Wire canvas API routes (always enabled — CRUD for .canvas.jsonl files)
-      routeHandlers.set('canvas', createCanvasHandler({ root, sendJson }))
+      routeHandlers.set('canvas', createCanvasHandler({ root, sendJson, hotPool }))
 
       // Selected widgets bridge — writes .selectedwidgets.json for Copilot context
       setupSelectedWidgets(server, root)
@@ -218,38 +225,9 @@ export default function storyboardServer() {
         setupTerminalServer(server.httpServer, base, branch)
       }
 
-      // Create shared hot pool (pre-warmed agent sessions for any widget)
-      const hotPoolConfig = config.hotPool || {}
-      const wsSend = server.ws.send.bind(server.ws)
-      const hotPool = new HotPool({ root, config: hotPoolConfig, wsSend })
-      hotPool.start().catch((err) => {
-        console.error('[hot-pool] Failed to start:', err.message)
-      })
-
-      // Mount hot pool API routes (shared infra — not tied to any widget)
-      routeHandlers.set('hot-pool', async (req, res, { method, path: routePath, body }) => {
-        if (routePath === '/' && method === 'GET') {
-          sendJson(res, 200, hotPool.status())
-          return
-        }
-        if (routePath === '/' && method === 'PUT') {
-          hotPool.reconfigure(body || {})
-          sendJson(res, 200, hotPool.status())
-          return
-        }
-        sendJson(res, 404, { error: `Unknown hot-pool route: ${method} ${routePath}` })
-      })
-
-      // Wire prompt API routes (passes shared hot pool)
-      routeHandlers.set('prompt', createPromptHandler({ root, sendJson, pool: hotPool }))
-
       // Ignore assets/canvas/ so image/snapshot writes don't trigger reloads
       server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'images'))
       server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'snapshots'))
-
-      // Ignore .storyboard/.prompt-sessions/ so signal file writes don't trigger reloads
-      const promptSessionsDir = path.join(root, '.storyboard', '.prompt-sessions')
-      server.watcher.unwatch(promptSessionsDir)
 
       // Wire autosync API routes (always enabled — git automation for dev)
       routeHandlers.set('autosync', createAutosyncHandler({ root, sendJson }))
@@ -296,6 +274,32 @@ export default function storyboardServer() {
           const tmuxName = decodeURIComponent(deleteMatch[1])
           killSession(tmuxName)
           sendJson(res, 200, { success: true })
+          return
+        }
+
+        // ── Hot Pool routes (/terminal/hot-pool/*) ──────────────
+
+        // GET /hot-pool — pool status
+        if (ctx.method === 'GET' && subpath === 'hot-pool') {
+          sendJson(res, 200, hotPool.status())
+          return
+        }
+
+        // PUT /hot-pool — reconfigure pool
+        if (ctx.method === 'PUT' && subpath === 'hot-pool') {
+          hotPool.reconfigure(ctx.body || {})
+          sendJson(res, 200, hotPool.status())
+          return
+        }
+
+        // POST /hot-pool/acquire — acquire a warm session from the pool
+        if (ctx.method === 'POST' && subpath === 'hot-pool/acquire') {
+          const session = hotPool.acquire()
+          if (!session) {
+            sendJson(res, 200, { acquired: false, session: null })
+            return
+          }
+          sendJson(res, 200, { acquired: true, session: { id: session.id, pid: session.process?.pid } })
           return
         }
 

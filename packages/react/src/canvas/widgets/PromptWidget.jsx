@@ -1,25 +1,18 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { readProp, promptSchema } from './widgetProps.js'
 import styles from './PromptWidget.module.css'
 
-const POLL_INTERVAL_MS = 2000
-
-function getApiBase() {
-  const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
-  return base + '/_storyboard/prompt'
+function getBase() {
+  return (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
 }
 
-async function executePrompt({ canvasName, widgetId, prompt, connections, widgetPosition }) {
-  const res = await fetch(`${getApiBase()}/execute`, {
+/** Spawn a prompt agent session via the canvas prompt API. */
+async function spawnPromptAgent({ canvasId, widgetId, prompt }) {
+  const res = await fetch(`${getBase()}/_storyboard/canvas/prompt/spawn`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ canvasName, widgetId, prompt, connections, widgetPosition }),
+    body: JSON.stringify({ canvasId, widgetId, prompt }),
   })
-  return res.json()
-}
-
-async function checkStatus(sessionId) {
-  const res = await fetch(`${getApiBase()}/status?sessionId=${encodeURIComponent(sessionId)}`)
   return res.json()
 }
 
@@ -68,59 +61,33 @@ export default function PromptWidget({ id, props, onUpdate }) {
   const [execStatus, setExecStatus] = useState(persistedStatus || 'idle')
   const [execSessionId, setExecSessionId] = useState(sessionId || '')
   const [execError, setExecError] = useState(errorMessage || '')
-  const pollRef = useRef(null)
   const canEdit = typeof onUpdate === 'function'
 
   // Parse connections (stored as comma-separated string in props)
-  const connections = useMemo(
-    () => connectionsRaw ? connectionsRaw.split(',').filter(Boolean) : [],
-    [connectionsRaw]
-  )
+  const connections = connectionsRaw ? connectionsRaw.split(',').filter(Boolean) : []
 
-  // Polling logic via ref to avoid circular hook dependencies
+  // Listen for agent status via HMR (same pattern as ActionWidget)
   const onUpdateRef = useRef(onUpdate)
   useEffect(() => { onUpdateRef.current = onUpdate }, [onUpdate])
 
-  const startPolling = useCallback((sid) => {
-    if (pollRef.current) clearInterval(pollRef.current)
-    pollRef.current = setInterval(async () => {
-      try {
-        const result = await checkStatus(sid)
-        if (result.status === 'done') {
-          setExecStatus('done')
-          clearInterval(pollRef.current)
-          pollRef.current = null
-          onUpdateRef.current?.({
-            status: 'done',
-            resultWidgetId: result.resultWidgetId || '',
-          })
-        } else if (result.status === 'error') {
-          setExecStatus('error')
-          setExecError(result.error || 'Unknown error')
-          clearInterval(pollRef.current)
-          pollRef.current = null
-          onUpdateRef.current?.({
-            status: 'error',
-            errorMessage: result.error || 'Unknown error',
-          })
-        }
-      } catch {
-        // Network error — keep polling
-      }
-    }, POLL_INTERVAL_MS)
-  }, [])
-
-  // Reconnect polling on mount if there's a pending session
   useEffect(() => {
-    if (execStatus === 'pending' && execSessionId) {
-      startPolling(execSessionId)
-    }
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!import.meta.hot) return
 
-  const widgetPosition = props?.position
+    const handler = (data) => {
+      if (data.widgetId !== id) return
+      if (data.status === 'done' || data.status === 'completed') {
+        setExecStatus('done')
+        onUpdateRef.current?.({ status: 'done' })
+      } else if (data.status === 'error') {
+        setExecStatus('error')
+        setExecError(data.message || 'Unknown error')
+        onUpdateRef.current?.({ status: 'error', errorMessage: data.message || 'Unknown error' })
+      }
+    }
+
+    import.meta.hot.on('storyboard:agent-status', handler)
+    return () => import.meta.hot.off('storyboard:agent-status', handler)
+  }, [id])
 
   const handleSubmit = useCallback(async () => {
     if (!draftText.trim() || !canEdit) return
@@ -128,21 +95,20 @@ export default function PromptWidget({ id, props, onUpdate }) {
     setExecStatus('pending')
     setExecError('')
 
-    // Get canvas name from URL or default
+    // Get canvas ID from URL
     const pathParts = window.location.pathname.split('/')
     const canvasIdx = pathParts.indexOf('canvas')
-    const canvasName = canvasIdx >= 0 ? pathParts[canvasIdx + 1] : 'default'
+    const canvasId = canvasIdx >= 0 ? pathParts[canvasIdx + 1] : 'default'
 
     // Persist the prompt text
     onUpdate?.({ text: draftText, status: 'pending' })
 
     try {
-      const result = await executePrompt({
-        canvasName,
+      // Spawn prompt agent (server handles hot pool acquisition internally)
+      const result = await spawnPromptAgent({
+        canvasId,
         widgetId: id,
         prompt: draftText,
-        connections,
-        widgetPosition,
       })
 
       if (result.error) {
@@ -152,15 +118,14 @@ export default function PromptWidget({ id, props, onUpdate }) {
         return
       }
 
-      setExecSessionId(result.sessionId)
-      onUpdate?.({ sessionId: result.sessionId })
-      startPolling(result.sessionId)
+      setExecSessionId(result.tmuxName || canvasId)
+      onUpdate?.({ sessionId: result.tmuxName || '' })
     } catch (err) {
       setExecStatus('error')
       setExecError(err.message)
       onUpdate?.({ status: 'error', errorMessage: err.message })
     }
-  }, [draftText, canEdit, id, connections, widgetPosition, onUpdate, startPolling])
+  }, [draftText, canEdit, id, onUpdate, startPolling])
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {

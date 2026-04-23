@@ -18,7 +18,8 @@
  * Configuration (storyboard.config.json → hotPool):
  *   hotPool.pool_size       — baseline warm sessions (default: 1)
  *   hotPool.max_pool_size   — surge cap (default: 3)
- *   hotPool.cooldown_mins   — minutes idle before scale-down (default: 10)
+ *   hotPool.load_balancer                — enable auto-scaling (default: true)
+ *   hotPool.load_balancer_cooldown_mins  — minutes idle before scale-down (default: 10)
  *   hotPool.enabled         — enable/disable the pool (default: true)
  *   hotPool.verbose         — log to Vite terminal (default: false)
  *
@@ -54,6 +55,7 @@ export class HotPool {
   #cooldownMs = DEFAULT_COOLDOWN_MINS * 60_000
   #enabled = true
   #verbose = false
+  #loadBalancer = true
   #filling = false
   #healthTimer = null
   #copilotAvailable = null
@@ -74,9 +76,10 @@ export class HotPool {
     this.#root = root
     this.#poolSize = Math.max(1, config.pool_size ?? DEFAULT_POOL_SIZE)
     this.#maxPoolSize = Math.max(this.#poolSize, config.max_pool_size ?? DEFAULT_MAX_POOL_SIZE)
-    this.#cooldownMs = (config.cooldown_mins ?? DEFAULT_COOLDOWN_MINS) * 60_000
+    this.#cooldownMs = (config.load_balancer_cooldown_mins ?? DEFAULT_COOLDOWN_MINS) * 60_000
     this.#enabled = config.enabled !== false
     this.#verbose = !!config.verbose
+    this.#loadBalancer = config.load_balancer !== false
     this.#wsSend = wsSend
   }
 
@@ -99,9 +102,9 @@ export class HotPool {
     this.#browserLog(message)
   }
 
-  /** Current fill target — pool_size normally, max_pool_size under pressure. */
+  /** Current fill target — pool_size normally, max_pool_size under pressure (if load balancer on). */
   get #fillTarget() {
-    return this.#pressured ? this.#maxPoolSize : this.#poolSize
+    return (this.#loadBalancer && this.#pressured) ? this.#maxPoolSize : this.#poolSize
   }
 
   async start() {
@@ -181,7 +184,8 @@ export class HotPool {
       config: {
         pool_size: this.#poolSize,
         max_pool_size: this.#maxPoolSize,
-        cooldown_mins: this.#cooldownMs / 60_000,
+        load_balancer: this.#loadBalancer,
+        load_balancer_cooldown_mins: this.#cooldownMs / 60_000,
         verbose: this.#verbose,
       },
       queue: this.#queue.map(s => ({
@@ -197,7 +201,8 @@ export class HotPool {
 
   reconfigure(config) {
     if (config.max_pool_size !== undefined) this.#maxPoolSize = Math.max(1, config.max_pool_size)
-    if (config.cooldown_mins !== undefined) this.#cooldownMs = config.cooldown_mins * 60_000
+    if (config.load_balancer_cooldown_mins !== undefined) this.#cooldownMs = config.load_balancer_cooldown_mins * 60_000
+    if (config.load_balancer !== undefined) this.#loadBalancer = !!config.load_balancer
     const newSize = Math.min(Math.max(1, config.pool_size ?? this.#poolSize), this.#maxPoolSize)
     const newEnabled = config.enabled !== false
     if (config.verbose !== undefined) this.#verbose = !!config.verbose

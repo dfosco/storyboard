@@ -19,7 +19,7 @@ import http from 'node:http'
 import { spawn, execFileSync } from 'child_process'
 import { existsSync } from 'fs'
 import { resolve } from 'path'
-import { detectWorktreeName, getPort, repoRoot, worktreeDir, listWorktrees } from '../worktree/port.js'
+import { detectWorktreeName, getPort, releasePort, repoRoot, worktreeDir, listWorktrees } from '../worktree/port.js'
 import { generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, reloadCaddy, readDevDomain } from './proxy.js'
 import { startRenameWatcher } from '../rename-watcher/watcher.js'
 import { parseFlags } from './flags.js'
@@ -329,6 +329,7 @@ async function main() {
     clearInterval(compactInterval)
     try { entry.child.kill('SIGTERM') } catch { /* already dead */ }
     try { serverInstance.close() } catch { /* best effort */ }
+    releasePort(worktreeName)
     process.exit(0)
   }
   process.on('SIGINT', cleanup)

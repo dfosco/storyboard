@@ -59,17 +59,17 @@
   opacity: var(--connector-drag-opacity, 0.7);
 }
 
-/* Broadcast-active connector — accent color, slightly thicker */
+/* Broadcast-active connector — transparent base, 50% wider */
 .connectorBroadcast {
-  stroke: var(--bgColor-accent-emphasis, #0969da);
-  stroke-width: 3px;
+  stroke: transparent;
+  stroke-width: 6px;
 }
 
 /* Flowing dots animation along broadcast connectors */
 .broadcastFlow {
   fill: none;
-  stroke: var(--fgColor-onEmphasis, #ffffff);
-  stroke-width: 2px;
+  stroke: var(--bgColor-accent-emphasis, #0969da);
+  stroke-width: 6px;
   stroke-dasharray: 3 14;
   stroke-linecap: round;
   pointer-events: none;

@@ -160,6 +160,9 @@ export function getSplitPaneLabel(widget) {
   if (widget.type === 'terminal' || widget.type === 'terminal-read') {
     return `Terminal · ${widget.props?.prettyName || '…'}`
   }
+  if (widget.type === 'agent') {
+    return `Agent · ${widget.props?.prettyName || '…'}`
+  }
   if (widget.type === 'prototype') {
     return `Prototype · ${widget.props?.src || '…'}`
   }

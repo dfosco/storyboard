@@ -400,7 +400,9 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     }, 1500)
   }, [])
 
-  const titleLabel = `Terminal · ${prettyName || '…'}`
+  const isAgent = id.startsWith('agent-')
+  const typeLabel = isAgent ? 'Agent' : 'Terminal'
+  const titleLabel = `${typeLabel} · ${prettyName || '…'}`
   const connectedEmbed = expanded ? findConnectedSplitTarget(id) : null
   const embedUrl = expanded ? buildSplitUrl(connectedEmbed) : null
   const hasSplit = Boolean(connectedEmbed)
@@ -410,7 +412,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     () => (hasSplit ? getPaneOrder(id, connectedEmbed) : { primaryIsLeft: true }),
     [hasSplit, id, connectedEmbed],
   )
-  const primaryWidget = useMemo(() => ({ type: 'terminal', props: { prettyName } }), [prettyName])
+  const primaryWidget = useMemo(() => ({ type: isAgent ? 'agent' : 'terminal', props: { prettyName } }), [prettyName, isAgent])
   const primaryLabel = useMemo(() => getSplitPaneLabel(primaryWidget), [primaryWidget])
   const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedEmbed), [connectedEmbed])
   const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel

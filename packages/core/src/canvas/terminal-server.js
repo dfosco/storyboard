@@ -313,7 +313,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
   const serverUrl = `http://localhost:${serverPort}`
 
   // Write terminal config for agent context
-  writeTermConfig({ branch, canvasId, widgetId, serverUrl, tmuxName, widgetProps: prettyName ? { prettyName } : null })
+  writeTermConfig({ branch, canvasId, widgetId, serverUrl, tmuxName, displayName: prettyName || null, widgetProps: prettyName ? { prettyName } : null })
 
   // Close any existing WS for this session (one viewer at a time)
   const existingWs = wsConnections.get(tmuxName)
@@ -430,13 +430,38 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
     if (isNewSession) {
       const startupCommand = widgetStartupCommand ?? termCfg.startupCommand ?? null
 
+      // Export identity env vars into the shell via send-keys.
+      // pty.spawn sets env on the tmux client process, but the session's
+      // shell doesn't inherit those — it starts from the tmux server env.
+      // send-keys is the only reliable way to set vars in the running shell.
+      const envExports = [
+        `export STORYBOARD_WIDGET_ID="${widgetId}"`,
+        `export STORYBOARD_CANVAS_ID="${canvasId}"`,
+        `export STORYBOARD_BRANCH="${branch}"`,
+        `export STORYBOARD_SERVER_URL="${serverUrl}"`,
+      ].join(' && ')
+
+      setTimeout(() => {
+        try {
+          execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(envExports)}`, { stdio: 'ignore' })
+          execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+          // Clear the screen so the exports don't clutter the terminal
+          setTimeout(() => {
+            try {
+              execSync(`tmux send-keys -t "${tmuxName}" -l "clear"`, { stdio: 'ignore' })
+              execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+            } catch {}
+          }, 200)
+        } catch {}
+      }, 300)
+
       if (startupCommand) {
         // startupCommand is set — bypass welcome screen entirely
         if (startupCommand === 'copilot') {
           // Launch copilot with terminal-agent, then send /allow-all on after ready
           setTimeout(() => {
             ptyProcess.write('copilot --agent terminal-agent\r')
-          }, 600)
+          }, 800)
           // Poll for copilot readiness, then send /allow-all on
           let allowSent = false
           const pollInterval = setInterval(() => {
@@ -465,7 +490,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
           // Custom command — send it directly
           setTimeout(() => {
             ptyProcess.write(startupCommand + '\r')
-          }, 600)
+          }, 800)
         }
       } else {
         // No startupCommand — show the welcome screen as before
@@ -474,7 +499,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
           const nameArg = prettyName ? ` --name "${prettyName}"` : ''
           const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}\r`
           ptyProcess.write(cmd)
-        }, 600)
+        }, 800)
       }
 
       // Execute startup sequence if configured (after welcome or startupCommand)

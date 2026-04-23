@@ -235,7 +235,7 @@ if (isInstalled('code')) {
 
 // 7b. Copilot agents
 {
-  const agentsDir = '.github/agents'
+  const agentsDir = '.agents'
   if (!existsSync(agentsDir)) {
     try { mkdirSync(agentsDir, { recursive: true }) } catch { /* ignore */ }
   }
@@ -251,7 +251,7 @@ if (isInstalled('code')) {
         }
       }
       if (agentFiles.length > 0) {
-        p.log.success('Copilot agents scaffolded (.github/agents/)')
+        p.log.success('Copilot agents scaffolded (.agents/)')
       }
     } catch { /* ignore */ }
   }

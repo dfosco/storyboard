@@ -208,9 +208,9 @@ export default function ConnectorLayer({
         const isBroadcast = conn.meta?.messagingMode === 'two-way'
         const startSelected = selectedWidgetIds?.has(conn.start?.widgetId)
         const endSelected = selectedWidgetIds?.has(conn.end?.widgetId)
-        const showBroadcastAnim = isBroadcast && (startSelected || endSelected)
-        // Reverse direction if the selected widget is the end (dots flow FROM selected)
-        const reverseAnim = isBroadcast && endSelected && !startSelected
+        // Always show flowing dots when broadcast is active
+        // Reverse direction when the end widget is selected (dots flow FROM selected)
+        const reverseAnim = endSelected && !startSelected
 
         return (
           <g key={conn.id}>
@@ -227,7 +227,7 @@ export default function ConnectorLayer({
               onClick={(e) => handleClick(e, conn.id)}
             />
             {/* Broadcast animation: flowing dots along the path */}
-            {showBroadcastAnim && (
+            {isBroadcast && (
               <path
                 d={d}
                 className={`${styles.broadcastFlow}${reverseAnim ? ` ${styles.broadcastFlowReverse}` : ''}`}

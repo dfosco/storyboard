@@ -46,6 +46,58 @@ import {
 import { stampBounds, stampBoundsAll } from './collision.js'
 
 /**
+ * Read agent config from storyboard.config.json → canvas.agents.
+ * Returns the default agent, or a specific one by id.
+ */
+function readAgentConfig(root, agentId) {
+  try {
+    const configPath = path.join(root, 'storyboard.config.json')
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
+    const agents = config?.canvas?.agents || {}
+
+    if (agentId && agents[agentId]) return { id: agentId, ...agents[agentId] }
+
+    // Find the default agent
+    for (const [id, agent] of Object.entries(agents)) {
+      if (agent.default) return { id, ...agent }
+    }
+
+    // Fallback to first agent
+    const firstId = Object.keys(agents)[0]
+    return firstId ? { id: firstId, ...agents[firstId] } : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Build the copilot CLI command for a prompt spawn.
+ * Reads the agent's startupCommand from storyboard.config.json and
+ * appends -p "prompt" for non-interactive execution.
+ */
+function buildPromptCmd({ root, prompt, envFile, agentId }) {
+  const agent = readAgentConfig(root, agentId)
+
+  if (!agent) {
+    // Bare fallback — no config found
+    const escaped = prompt.replace(/"/g, '\\"')
+    return `source ${envFile} && copilot -p "${escaped}" --allow-all`
+  }
+
+  // startupCommand is e.g. "copilot --agent terminal-agent"
+  // For prompt mode, add -p "prompt" and ensure permissions are granted
+  const base = agent.startupCommand || 'copilot'
+  const escaped = prompt.replace(/"/g, '\\"')
+
+  // Determine permission flags from the existing startupCommand
+  // If it already includes permission flags, don't double them
+  const hasPermFlag = /--allow-all|--dangerously-skip-permissions|--full-auto/.test(base)
+  const permFlag = hasPermFlag ? '' : ' --allow-all'
+
+  return `source ${envFile} && ${base} -p "${escaped}"${permFlag}`
+}
+
+/**
  * Scan src/canvas/ for directories containing .meta.json files.
  * Returns an object keyed by directory name (without .folder suffix).
  */
@@ -1761,13 +1813,14 @@ export function Default() {
         const envContent = Object.entries(envMap).map(([k, v]) => `export ${k}=${JSON.stringify(v)}`).join('\n') + '\n'
         fsModule.writeFileSync(envFile, envContent)
 
-        // Launch copilot by sourcing the env file first (short, reliable command)
-        // --allow-all grants file/shell/url permissions for headless execution
-        // --agent terminal-agent loads the canvas-aware agent configuration
-        const copilotBase = autopilot
-          ? `copilot -p "${prompt.replace(/"/g, '\\"')}" --allow-all --agent terminal-agent`
-          : `copilot --agent terminal-agent`
-        const copilotCmd = `source ${envFile} && ${copilotBase}`
+        // Build copilot command from storyboard.config.json agent definitions
+        const copilotCmd = autopilot
+          ? buildPromptCmd({ root, prompt, envFile })
+          : (() => {
+              const agent = readAgentConfig(root)
+              const base = agent?.startupCommand || 'copilot'
+              return `source ${envFile} && ${base}`
+            })()
         setTimeout(() => {
           try {
             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })
@@ -2049,7 +2102,7 @@ export function Default() {
         const envContent = Object.entries(envMap).map(([k, v]) => `export ${k}=${JSON.stringify(v)}`).join('\n') + '\n'
         fsModule.writeFileSync(envFile, envContent)
 
-        const copilotCmd = `source ${envFile} && copilot -p "${prompt.replace(/"/g, '\\"')}" --allow-all --agent terminal-agent`
+        const copilotCmd = buildPromptCmd({ root, prompt, envFile })
         setTimeout(() => {
           try {
             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })
@@ -2081,6 +2134,63 @@ export function Default() {
         sendJson(res, 200, { success: true, tmuxName, status: 'running', warm: !!warmSession })
       } catch (err) {
         sendJson(res, 500, { error: `Failed to spawn prompt agent: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /terminal/kill — kill a terminal/prompt tmux session
+    if (routePath === '/terminal/kill' && method === 'POST') {
+      const { widgetId: targetWidgetId } = body
+
+      if (!targetWidgetId) {
+        sendJson(res, 400, { error: 'widgetId is required' })
+        return
+      }
+
+      try {
+        const { findTmuxNameForWidget, killSession } = await import('./terminal-registry.js')
+        const { updateAgentStatus, initTerminalConfig } = await import('./terminal-config.js')
+
+        initTerminalConfig(root)
+
+        const tmuxName = findTmuxNameForWidget(targetWidgetId)
+        if (!tmuxName) {
+          sendJson(res, 404, { error: `No active session for widget ${targetWidgetId}` })
+          return
+        }
+
+        // Close any WS connections for this session
+        const { orphanTerminalSession } = await import('./terminal-server.js')
+        orphanTerminalSession(targetWidgetId)
+
+        // Kill the tmux session and clean up registry
+        killSession(tmuxName)
+
+        // Update agent status
+        const pathParts = req.url.split('/')
+        const canvasIdx = pathParts.indexOf('canvas')
+        let branch = 'unknown'
+        try {
+          const { execSync } = await import('node:child_process')
+          branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
+        } catch {}
+
+        try {
+          updateAgentStatus({ branch, canvasId: 'unknown', widgetId: targetWidgetId, status: 'cancelled', message: 'Cancelled by user' })
+        } catch {}
+
+        // Notify via HMR
+        if (__viteWs) {
+          __viteWs.send({
+            type: 'custom',
+            event: 'storyboard:agent-status',
+            data: { widgetId: targetWidgetId, status: 'cancelled', message: 'Cancelled by user', timestamp: new Date().toISOString() },
+          })
+        }
+
+        sendJson(res, 200, { success: true, killed: tmuxName })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to kill session: ${err.message}` })
       }
       return
     }

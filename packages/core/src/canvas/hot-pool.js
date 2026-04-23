@@ -1,18 +1,18 @@
 /**
- * Prompt Pool — pre-warms copilot CLI sessions for instant prompt execution.
+ * Hot Pool — pre-warms copilot CLI sessions for instant agent execution.
  *
  * Maintains a configurable queue of ready-to-use copilot processes.
- * When a prompt widget submits, it grabs a warm session from the pool
- * (near-instant) instead of cold-starting one. The pool immediately
- * backfills to keep the queue full.
+ * When a prompt or agent widget needs a session, it grabs a warm one
+ * from the pool (near-instant) instead of cold-starting. The pool
+ * immediately backfills to keep the queue full.
  *
- * Configuration (storyboard.config.json):
- *   prompt.pool.size     — number of warm sessions to maintain (default: 1)
- *   prompt.pool.maxSize  — max concurrent warm sessions (default: 3)
- *   prompt.pool.enabled  — enable/disable the pool (default: true)
+ * Configuration (storyboard.config.json → prompt.hotPool):
+ *   hotPool.size     — number of warm sessions to maintain (default: 1)
+ *   hotPool.maxSize  — max concurrent warm sessions (default: 3)
+ *   hotPool.enabled  — enable/disable the pool (default: true)
  *
  * Each warm session is a copilot CLI process spawned with stdin open,
- * waiting for a prompt to be piped in.
+ * waiting for input to be piped in.
  */
 
 import { spawn } from 'node:child_process'
@@ -31,7 +31,7 @@ const DEFAULT_MAX_SIZE = 3
 const WARM_TIMEOUT_MS = 10_000 // time to wait for process to become ready
 const HEALTH_CHECK_INTERVAL_MS = 30_000
 
-export class PromptPool {
+export class HotPool {
   /** @type {WarmSession[]} */
   #queue = []
   /** @type {Map<string, WarmSession>} */
@@ -47,7 +47,7 @@ export class PromptPool {
   /**
    * @param {Object} opts
    * @param {string} opts.root — project root directory
-   * @param {Object} [opts.config] — prompt.pool config from storyboard.config.json
+   * @param {Object} [opts.config] — prompt.hotPool config from storyboard.config.json
    */
   constructor({ root, config = {} }) {
     this.#root = root
@@ -63,11 +63,11 @@ export class PromptPool {
     // Check copilot availability before filling
     this.#copilotAvailable = await this.#checkCopilot()
     if (!this.#copilotAvailable) {
-      console.log('[prompt-pool] copilot CLI not found — pool disabled')
+      console.log('[hot-pool] copilot CLI not found — pool disabled')
       return
     }
 
-    console.log(`[prompt-pool] starting with size=${this.#size}, maxSize=${this.#maxSize}`)
+    console.log(`[hot-pool] starting with size=${this.#size}, maxSize=${this.#maxSize}`)
     await this.#fill()
 
     // Periodic health check — kill dead sessions and refill
@@ -84,7 +84,7 @@ export class PromptPool {
       this.#killSession(session)
     }
     this.#queue = []
-    console.log('[prompt-pool] stopped')
+    console.log('[hot-pool] stopped')
   }
 
   /**
@@ -103,7 +103,7 @@ export class PromptPool {
     session.state = 'acquired'
     this.#acquired.set(session.id, session)
 
-    console.log(`[prompt-pool] acquired session ${session.id} (${this.#queue.length} remaining)`)
+    console.log(`[hot-pool] acquired session ${session.id} (${this.#queue.length} remaining)`)
 
     // Backfill asynchronously
     this.#fill().catch(() => {})
@@ -181,7 +181,7 @@ export class PromptPool {
         const session = await this.#spawnWarmSession()
         if (session) {
           this.#queue.push(session)
-          console.log(`[prompt-pool] warmed session ${session.id} (queue: ${this.#queue.length}/${this.#size})`)
+          console.log(`[hot-pool] warmed session ${session.id} (queue: ${this.#queue.length}/${this.#size})`)
         } else {
           // Spawn failed — don't keep trying
           break
@@ -275,7 +275,7 @@ export class PromptPool {
 
     const removed = before - this.#queue.length
     if (removed > 0) {
-      console.log(`[prompt-pool] health check: removed ${removed} dead sessions`)
+      console.log(`[hot-pool] health check: removed ${removed} dead sessions`)
     }
 
     // Refill

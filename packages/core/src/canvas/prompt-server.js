@@ -7,7 +7,7 @@
  *   GET  /pool     — inspect pool status
  *   PUT  /pool     — reconfigure pool at runtime
  *
- * Uses a pre-warmed session pool (prompt-pool.js) for near-instant
+ * Uses a pre-warmed session hot pool (hot-pool.js) for near-instant
  * prompt execution. When no warm session is available, falls back
  * to cold-starting a new copilot process.
  */
@@ -17,7 +17,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { materializeFromText } from './materializer.js'
-import { PromptPool } from './prompt-pool.js'
+import { HotPool } from './hot-pool.js'
 
 const SESSIONS_DIR_NAME = '.prompt-sessions'
 const TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
@@ -291,7 +291,7 @@ export function createPromptHandler({ root, sendJson, config = {} }) {
   getSessionsDir(root)
 
   // Create and start the session pool
-  const pool = new PromptPool({ root, config: config.pool || {} })
+  const pool = new HotPool({ root, config: config.hotPool || {} })
   pool.start().catch((err) => {
     console.error('[prompt-server] Failed to start pool:', err.message)
   })

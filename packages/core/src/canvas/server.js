@@ -1905,7 +1905,7 @@ export function Default() {
         // check its child process. Known agent CLIs (copilot, claude) run
         // as direct children of the shell. We match against the process
         // name (comm) to identify which agent is running.
-        let runningAgent = null // null = no agent, 'copilot' | 'claude' = which one
+        let runningAgent = null // null = no agent, 'copilot' | 'claude' | 'codex' = which one
         try {
           const panePid = execSync(
             `tmux list-panes -t "${tmuxName}" -F '#{pane_pid}'`,
@@ -1919,6 +1919,7 @@ export function Default() {
             for (const cmd of children) {
               if (cmd === 'copilot') { runningAgent = 'copilot'; break }
               if (cmd === 'claude') { runningAgent = 'claude'; break }
+              if (cmd === 'codex') { runningAgent = 'codex'; break }
             }
           }
         } catch { /* tmux/ps not available */ }

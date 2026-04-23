@@ -1762,9 +1762,11 @@ export function Default() {
         fsModule.writeFileSync(envFile, envContent)
 
         // Launch copilot by sourcing the env file first (short, reliable command)
+        // --allow-all grants file/shell/url permissions for headless execution
+        // --agent terminal-agent loads the canvas-aware agent configuration
         const copilotBase = autopilot
-          ? `copilot -p "${prompt.replace(/"/g, '\\"')}"`
-          : `copilot`
+          ? `copilot -p "${prompt.replace(/"/g, '\\"')}" --allow-all --agent terminal-agent`
+          : `copilot --agent terminal-agent`
         const copilotCmd = `source ${envFile} && ${copilotBase}`
         setTimeout(() => {
           try {
@@ -2047,7 +2049,7 @@ export function Default() {
         const envContent = Object.entries(envMap).map(([k, v]) => `export ${k}=${JSON.stringify(v)}`).join('\n') + '\n'
         fsModule.writeFileSync(envFile, envContent)
 
-        const copilotCmd = `source ${envFile} && copilot -p "${prompt.replace(/"/g, '\\"')}"`
+        const copilotCmd = `source ${envFile} && copilot -p "${prompt.replace(/"/g, '\\"')}" --allow-all --agent terminal-agent`
         setTimeout(() => {
           try {
             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })

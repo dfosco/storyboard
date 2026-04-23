@@ -530,23 +530,26 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
         try {
           execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(envExports)}`, { stdio: 'ignore' })
           execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-          // Clear the screen so the exports don't clutter the terminal
-          setTimeout(() => {
-            try {
-              execSync(`tmux send-keys -t "${tmuxName}" -l "clear"`, { stdio: 'ignore' })
-              execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-            } catch {}
-          }, 200)
         } catch {}
       }, 300)
 
       if (startupCommand) {
-        // startupCommand is set — bypass welcome screen entirely
-        if (startupCommand === 'copilot') {
-          // Launch copilot with terminal-agent, then send /allow-all on after ready
+        // Clear terminal before launching agent to hide env setup
+        setTimeout(() => {
+          try {
+            execSync(`tmux send-keys -t "${tmuxName}" -l "clear"`, { stdio: 'ignore' })
+            execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+          } catch {}
+        }, 600)
+
+        const isCopilot = startupCommand === 'copilot' || startupCommand.startsWith('copilot ')
+        const isClaude = startupCommand === 'claude' || startupCommand.startsWith('claude ')
+
+        if (isCopilot) {
+          // Launch copilot, then send /allow-all on after ready
           setTimeout(() => {
-            ptyProcess.write('copilot --agent terminal-agent\r')
-          }, 800)
+            ptyProcess.write(startupCommand + '\r')
+          }, 900)
           // Poll for copilot readiness, then send /allow-all on
           let allowSent = false
           const pollInterval = setInterval(() => {
@@ -571,6 +574,35 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
             } catch {}
           }, 1000)
           setTimeout(() => { if (!allowSent) { allowSent = true; clearInterval(pollInterval) } }, 15000)
+        } else if (isClaude) {
+          // Launch claude, then enable auto mode after ready
+          setTimeout(() => {
+            ptyProcess.write(startupCommand + '\r')
+          }, 900)
+          // Poll for claude readiness, then send auto mode command
+          let autoSent = false
+          const pollInterval = setInterval(() => {
+            if (autoSent) { clearInterval(pollInterval); return }
+            try {
+              const paneContent = execSync(
+                `tmux capture-pane -t "${tmuxName}" -p`,
+                { encoding: 'utf8', timeout: 1000 }
+              )
+              if (paneContent.includes('Welcome to') || paneContent.includes('? for shortcuts') || paneContent.match(/^[>❯]\s*$/m)) {
+                autoSent = true
+                clearInterval(pollInterval)
+                setTimeout(() => {
+                  try {
+                    execSync(`tmux send-keys -t "${tmuxName}" -l "/allowed-tools bash edit read"`, { stdio: 'ignore' })
+                    execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+                  } catch {}
+                  // Deliver any pending messages after agent is ready
+                  setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
+                }, 500)
+              }
+            } catch {}
+          }, 1000)
+          setTimeout(() => { if (!autoSent) { autoSent = true; clearInterval(pollInterval) } }, 15000)
         } else if (startupCommand === 'shell') {
           // Plain shell — nothing to do, the pty already has a shell running
         } else {

@@ -72,7 +72,7 @@ const TERMINAL_PATH_PREFIX = '/_storyboard/terminal/'
  * that must be stripped before spawning tmux or shell processes — they leak
  * custom theming, prompts, and shell integrations into the storyboard terminal.
  */
-const SHELL_CONFIG_STRIP_RE = /^(ZDOTDIR|STARSHIP_|GHOSTTY_|POWERLEVEL|P9K_|P10K_|ZSH_THEME|BASH_ENV|ITERM_|KITTY_|ALACRITTY_|WEZTERM_|PROMPT_COMMAND|RPROMPT|RPS1)$/
+const SHELL_CONFIG_STRIP_RE = /^(ZDOTDIR|STARSHIP(_.*)?|GHOSTTY(_.*)?|POWERLEVEL.*|P9K_.*|P10K_.*|ZSH_THEME|BASH_ENV|ITERM(_.*)?|KITTY(_.*)?|ALACRITTY(_.*)?|WEZTERM(_.*)?|PROMPT_COMMAND|RPROMPT|RPS1)$/
 
 function isShellConfigVar(key) {
   return SHELL_CONFIG_STRIP_RE.test(key) || key === 'ENV'

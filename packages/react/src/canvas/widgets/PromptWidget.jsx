@@ -125,7 +125,7 @@ export default function PromptWidget({ id, props, onUpdate }) {
       setExecError(err.message)
       onUpdate?.({ status: 'error', errorMessage: err.message })
     }
-  }, [draftText, canEdit, id, onUpdate, startPolling])
+  }, [draftText, canEdit, id, onUpdate])
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {

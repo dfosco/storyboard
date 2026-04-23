@@ -100,7 +100,7 @@ export default function TerminalReadWidget({ id, props }) {
 
   return (
     <div className={styles.container}>
-      <div className={styles.titleBar}>
+      <div className={`tc-drag-handle ${styles.titleBar}`}>
         <span>{titleLabel}</span>
         <span className={styles.readOnlyBadge}>read only</span>
       </div>

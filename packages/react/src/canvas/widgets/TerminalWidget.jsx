@@ -420,7 +420,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   return (
     <>
     <div className={styles.container}>
-      <div className={styles.titleBar}>{titleLabel}</div>
+      <div className={`tc-drag-handle ${styles.titleBar}`}>{titleLabel}</div>
       <div
         ref={terminalRef}
         className={styles.terminal}

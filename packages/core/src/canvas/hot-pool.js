@@ -7,9 +7,10 @@
  * backfills to keep the queue full.
  *
  * Configuration (storyboard.config.json → hotPool):
- *   hotPool.pool_size  — number of warm sessions to maintain (default: 1)
- *   hotPool.enabled    — enable/disable the pool (default: true)
- *   hotPool.verbose    — log pool lifecycle to Vite terminal (default: false)
+ *   hotPool.pool_size      — warm sessions to maintain at rest (default: 1)
+ *   hotPool.max_pool_size  — hard cap on warm sessions (default: 3)
+ *   hotPool.enabled        — enable/disable the pool (default: true)
+ *   hotPool.verbose        — log pool lifecycle to Vite terminal (default: false)
  *
  * Browser devlogs are sent via the Vite HMR channel and only appear
  * when the "Dev logs" toggle is on in Storyboard DevTools.
@@ -27,6 +28,7 @@ import process from 'node:process'
  */
 
 const DEFAULT_POOL_SIZE = 1
+const DEFAULT_MAX_POOL_SIZE = 3
 const WARM_TIMEOUT_MS = 10_000
 const HEALTH_CHECK_INTERVAL_MS = 30_000
 
@@ -37,6 +39,7 @@ export class HotPool {
   #acquired = new Map()
   #root = ''
   #poolSize = DEFAULT_POOL_SIZE
+  #maxPoolSize = DEFAULT_MAX_POOL_SIZE
   #enabled = true
   #verbose = false
   #filling = false
@@ -53,6 +56,7 @@ export class HotPool {
   constructor({ root, config = {}, wsSend = null }) {
     this.#root = root
     this.#poolSize = Math.max(0, config.pool_size ?? DEFAULT_POOL_SIZE)
+    this.#maxPoolSize = Math.max(this.#poolSize, config.max_pool_size ?? DEFAULT_MAX_POOL_SIZE)
     this.#enabled = config.enabled !== false
     this.#verbose = !!config.verbose
     this.#wsSend = wsSend
@@ -92,7 +96,7 @@ export class HotPool {
       return
     }
 
-    this.#log(`✦ STARTING (pool_size=${this.#poolSize})`)
+    this.#log(`✦ STARTING (pool_size=${this.#poolSize}, max_pool_size=${this.#maxPoolSize})`)
     await this.#fill()
     this.#log(`✦ READY — ${this.#queue.filter(s => s.state === 'ready').length} warm sessions`)
 
@@ -145,7 +149,7 @@ export class HotPool {
     return {
       enabled: this.#enabled,
       copilotAvailable: this.#copilotAvailable,
-      config: { pool_size: this.#poolSize, verbose: this.#verbose },
+      config: { pool_size: this.#poolSize, max_pool_size: this.#maxPoolSize, verbose: this.#verbose },
       queue: this.#queue.map(s => ({
         id: s.id,
         state: s.state,
@@ -157,11 +161,17 @@ export class HotPool {
   }
 
   reconfigure(config) {
-    const newSize = Math.max(0, config.pool_size ?? this.#poolSize)
+    if (config.max_pool_size !== undefined) {
+      this.#maxPoolSize = Math.max(1, config.max_pool_size)
+    }
+    const newSize = Math.min(
+      Math.max(0, config.pool_size ?? this.#poolSize),
+      this.#maxPoolSize
+    )
     const newEnabled = config.enabled !== false
     if (config.verbose !== undefined) this.#verbose = !!config.verbose
 
-    this.#log(`⚙ RECONFIG pool_size=${newSize} enabled=${newEnabled}`)
+    this.#log(`⚙ RECONFIG pool_size=${newSize} max_pool_size=${this.#maxPoolSize} enabled=${newEnabled}`)
 
     const sizeChanged = newSize !== this.#poolSize
     this.#poolSize = newSize
@@ -188,11 +198,16 @@ export class HotPool {
   async #fill() {
     if (this.#filling || !this.#enabled) return
     this.#filling = true
-    this.#log(`⟳ BACKFILL starting (queue: ${this.#queue.length}/${this.#poolSize})`)
+    this.#log(`⟳ BACKFILL starting (queue: ${this.#queue.length}/${this.#poolSize}, max: ${this.#maxPoolSize})`)
 
     try {
       let spawned = 0
       while (this.#queue.length < this.#poolSize) {
+        const total = this.#queue.length + this.#acquired.size
+        if (total >= this.#maxPoolSize) {
+          this.#log(`⟳ BACKFILL hit max_pool_size cap (${total}/${this.#maxPoolSize})`)
+          break
+        }
         const session = await this.#spawnWarmSession()
         if (session) {
           this.#queue.push(session)

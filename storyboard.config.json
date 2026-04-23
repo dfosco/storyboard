@@ -69,6 +69,7 @@
   },
   "hotPool": {
     "pool_size": 1,
+    "max_pool_size": 3,
     "enabled": true,
     "verbose": false
   },

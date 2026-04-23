@@ -17,6 +17,9 @@
 
 /**
  * @typedef {object} CanvasTerminalConfig
+ * @property {boolean} [resizable]   — whether terminal widgets can be resized (default false)
+ * @property {number}  [defaultWidth]  — default width for new terminal widgets
+ * @property {number}  [defaultHeight] — default height for new terminal widgets
  * @property {number}  [fontSize]    — terminal font size
  * @property {string}  [fontFamily]  — terminal font family
  * @property {string}  [prompt]      — shell prompt string
@@ -29,6 +32,17 @@
  * @property {PasteRule[]} pasteRules       — URL→widget conversion rules (evaluated in order, first match wins)
  * @property {{ embedBehavior: string, ghGuard: string }} github — GitHub-specific embed settings
  * @property {CanvasTerminalConfig} [terminal] — terminal widget settings
+ * @property {Record<string, CanvasAgentConfig>} [agents] — per-agent overrides
+ */
+
+/**
+ * @typedef {object} CanvasAgentConfig
+ * @property {string}  [label]         — display label
+ * @property {string}  [icon]          — icon name
+ * @property {string}  [startupCommand] — command to run on startup
+ * @property {boolean} [resizable]     — override terminal resizability for this agent
+ * @property {number}  [defaultWidth]  — override default width
+ * @property {number}  [defaultHeight] — override default height
  */
 
 /**
@@ -123,6 +137,11 @@ export const configDefaults = {
     github: {
       embedBehavior: 'link-preview', // "link-preview" | "rich-embed"
       ghGuard: 'copy',               // "copy" | "link" | "off"
+    },
+    terminal: {
+      resizable: false,
+      defaultWidth: 800,
+      defaultHeight: 450,
     },
   },
   commandPalette: {

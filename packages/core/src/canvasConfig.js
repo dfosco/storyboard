@@ -66,6 +66,46 @@ export function getAgentsConfig() {
   return _agents
 }
 
+/**
+ * Check if a terminal/agent widget should be resizable based on config.
+ * Agent-level `resizable` overrides the base `terminal.resizable`.
+ *
+ * @param {string|null} [agentId] — agent ID to check for overrides
+ * @returns {boolean}
+ */
+export function isTerminalResizable(agentId = null) {
+  if (agentId) {
+    const agentCfg = _agents[agentId]
+    if (agentCfg && agentCfg.resizable !== undefined) return agentCfg.resizable
+  }
+  return _terminal.resizable ?? false
+}
+
+/**
+ * Get effective default dimensions for a terminal/agent widget.
+ * Cascade: agent config > terminal config > provided fallbacks.
+ *
+ * @param {string|null} [agentId] — agent ID to check for overrides
+ * @param {{ width: number, height: number }} [fallback] — schema-level fallbacks
+ * @returns {{ width: number, height: number }}
+ */
+export function getTerminalDimensions(agentId = null, fallback = { width: 800, height: 450 }) {
+  const base = {
+    width: _terminal.defaultWidth ?? fallback.width,
+    height: _terminal.defaultHeight ?? fallback.height,
+  }
+  if (agentId) {
+    const agentCfg = _agents[agentId]
+    if (agentCfg) {
+      return {
+        width: agentCfg.defaultWidth ?? base.width,
+        height: agentCfg.defaultHeight ?? base.height,
+      }
+    }
+  }
+  return base
+}
+
 // ---------------------------------------------------------------------------
 // Test helpers
 // ---------------------------------------------------------------------------

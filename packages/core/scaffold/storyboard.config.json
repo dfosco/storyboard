@@ -24,7 +24,13 @@
     }
   },
   "featureFlags": {},
-  "canvas": {},
+  "canvas": {
+    "terminal": {
+      "resizable": false,
+      "defaultWidth": 800,
+      "defaultHeight": 450
+    }
+  },
   "customerMode": {
     "enabled": false,
     "hideChrome": false,

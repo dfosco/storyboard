@@ -234,9 +234,38 @@ export function createCanvasHandler(ctx) {
 
       for (const tw of terminalWidgets) {
         const connectedIds = new Set()
+        const messagingPeers = []
         for (const conn of connectors) {
-          if (conn.start?.widgetId === tw.id) connectedIds.add(conn.end?.widgetId)
-          if (conn.end?.widgetId === tw.id) connectedIds.add(conn.start?.widgetId)
+          let peerId = null
+          let direction = null
+          if (conn.start?.widgetId === tw.id) {
+            peerId = conn.end?.widgetId
+            direction = 'outgoing' // tw → peer
+          }
+          if (conn.end?.widgetId === tw.id) {
+            peerId = conn.start?.widgetId
+            direction = 'incoming' // peer → tw
+          }
+          if (peerId) {
+            connectedIds.add(peerId)
+            const mode = conn.meta?.messagingMode || 'none'
+            if (mode !== 'none') {
+              const peerWidget = widgetMap.get(peerId)
+              if (peerWidget && (peerWidget.type === 'terminal' || peerWidget.type === 'agent')) {
+                const canSend = mode === 'two-way' || (mode === 'one-way' && direction === 'outgoing')
+                const canReceive = mode === 'two-way' || (mode === 'one-way' && direction === 'incoming')
+                messagingPeers.push({
+                  widgetId: peerId,
+                  displayName: peerWidget.props?.prettyName || peerId,
+                  configPath: `.storyboard/terminals/${peerId}.json`,
+                  type: peerWidget.type,
+                  canSend,
+                  canReceive,
+                  mode,
+                })
+              }
+            }
+          }
         }
         connectedIds.delete(undefined)
         connectedIds.delete(null)
@@ -247,12 +276,16 @@ export function createCanvasHandler(ctx) {
           .filter(Boolean)
           .map(w => ({ id: w.id, type: w.type, props: w.props, position: w.position }))
 
+        // Build messaging section if there are messaging-enabled peers
+        const messaging = messagingPeers.length > 0 ? { peers: messagingPeers } : null
+
         updateTerminalConnections({
           branch,
           canvasId: canvasName,
           widgetId: tw.id,
           connectedWidgets,
           widgetProps: tw.props || null,
+          messaging,
         })
       }
     } catch (err) {
@@ -681,6 +714,44 @@ export function createCanvasHandler(ctx) {
         pushCanvasUpdate(name, filePath, __viteWs)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to add connector: ${err.message}` })
+      }
+      return
+    }
+
+    // PATCH /connector — update connector meta (e.g. messagingMode)
+    if (routePath === '/connector' && method === 'PATCH') {
+      const { name, connectorId, meta } = body
+
+      if (!name || !connectorId) {
+        sendJson(res, 400, { error: 'Canvas name and connectorId are required' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      try {
+        const data = readCanvas(filePath)
+        const exists = (data.connectors || []).some((c) => c.id === connectorId)
+        if (!exists) {
+          sendJson(res, 404, { error: `Connector "${connectorId}" not found in canvas "${name}"` })
+          return
+        }
+
+        appendEvent(filePath, {
+          event: 'connector_updated',
+          timestamp: new Date().toISOString(),
+          connectorId,
+          updates: { meta: { ...(meta || {}) } },
+        })
+
+        sendJson(res, 200, { success: true })
+        pushCanvasUpdate(name, filePath, __viteWs)
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to update connector: ${err.message}` })
       }
       return
     }

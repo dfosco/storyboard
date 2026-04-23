@@ -784,9 +784,9 @@ export function createCanvasHandler(ctx) {
                 let skillMsg
 
                 if (mode === 'two-way') {
-                  skillMsg = `📡 [Messaging mode: two-way ↔ with ${peerName}]\nYou can send and receive messages.\n- Send: npx storyboard terminal send ${peer.id} "message"\n- Save output: npx storyboard terminal output --summary "..." --content "..."\n- Read their output: cat .storyboard/terminals/${peer.id}.json | jq '.latestOutput'\n- Check status: npx storyboard terminal status ${peer.id}`
+                  skillMsg = `📡 [Messaging mode: two-way ↔ with ${peerName}]\nYou can send and receive messages with ${peerName} (${peer.id}).\n\nIMPORTANT: After EVERY response, save your output so ${peerName} can read it:\n  npx storyboard terminal output --summary "one-line summary" --content "your full response"\n\nTo send a message:\n  npx storyboard terminal send ${peer.id} "message"\n\nTo read their latest output:\n  cat .storyboard/terminals/${peer.id}.json | jq '.latestOutput'`
                 } else if (mode === 'one-way') {
-                  skillMsg = `📡 [Messaging mode: one-way → to ${peerName}]\nYou can send messages to ${peerName}.\n- Send: npx storyboard terminal send ${peer.id} "message"\n- Save output: npx storyboard terminal output --summary "..." --content "..."`
+                  skillMsg = `📡 [Messaging mode: one-way → to ${peerName}]\nYou can send messages to ${peerName} (${peer.id}).\n\nIMPORTANT: After EVERY response, save your output:\n  npx storyboard terminal output --summary "one-line summary" --content "your full response"\n\nTo send a message:\n  npx storyboard terminal send ${peer.id} "message"`
                 } else {
                   skillMsg = `📡 [Messaging with ${peerName} disabled]`
                 }

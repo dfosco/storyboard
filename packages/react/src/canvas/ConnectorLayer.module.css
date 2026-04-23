@@ -65,6 +65,11 @@
   stroke-width: 6px;
 }
 
+.connectorPathHitArea:hover ~ .connectorBroadcast {
+  stroke: var(--connector-hover-stroke, var(--fgColor-danger, #cf222e));
+  stroke-width: var(--connector-hover-stroke-width, 5px);
+}
+
 /* Flowing dots animation along broadcast connectors */
 .broadcastFlow {
   fill: none;
@@ -74,6 +79,12 @@
   stroke-linecap: round;
   pointer-events: none;
   animation: broadcastFlowAnim 0.8s linear infinite;
+  transition: opacity 0.15s ease;
+}
+
+/* Hide dots on hover so the red delete indicator shows cleanly */
+.connectorPathHitArea:hover ~ .broadcastFlow {
+  opacity: 0;
 }
 
 .broadcastFlowReverse {

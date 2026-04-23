@@ -334,18 +334,18 @@ const server = http.createServer(async (req, res) => {
 })
 
 export function startServer(port = SERVER_PORT) {
-  server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.error(`[storyboard-server] Port ${port} is already in use — another server may be running.`)
-      console.error(`  Try: npx storyboard server list`)
-      process.exit(1)
-    }
-    throw err
+  return new Promise((resolve, reject) => {
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        reject(Object.assign(new Error(`Port ${port} already in use`), { code: 'EADDRINUSE' }))
+        return
+      }
+      reject(err)
+    })
+    server.listen(port, () => {
+      resolve(server)
+    })
   })
-  server.listen(port, () => {
-    // port logged by CLI via onReady; suppress here to avoid duplicate output
-  })
-  return server
 }
 
 /** Public API for spawning Vite from CLI (with stdout piping) */

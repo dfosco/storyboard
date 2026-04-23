@@ -19,7 +19,7 @@ import { resolve, join, dirname } from 'node:path'
 import { getPort, releasePort, repoRoot, worktreeDir, listWorktrees } from '../worktree/port.js'
 import { generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, reloadCaddy, readDevDomain } from '../cli/proxy.js'
 import { compactAll } from '../canvas/compact.js'
-import { register, unregister, generateId, list } from '../worktree/serverRegistry.js'
+import { register, unregister, generateId, list, findByWorktree } from '../worktree/serverRegistry.js'
 
 const SERVER_PORT_BASE = 4100
 
@@ -206,12 +206,18 @@ routeHandlers.set('switch-branch', async (req, res, ctx) => {
       processes.delete(branch)
     }
 
-    // Check if Vite is already running on the assigned port (started outside this server)
+    // Check if Vite is already running in this server's process map
     const port = getPort(branch)
-    if (await isPortReady(port)) {
-      registerCaddyRoute(branch, port)
-      sendJson(res, 200, { url: targetUrl, status: 'already_running' })
-      return
+    const existingInRegistry = findByWorktree(branch)
+    if (existingInRegistry.length > 0) {
+      const latest = existingInRegistry.reduce((a, b) =>
+        (a.startedAt || '') >= (b.startedAt || '') ? a : b
+      )
+      if (await isPortReady(latest.port)) {
+        registerCaddyRoute(branch, latest.port)
+        sendJson(res, 200, { url: targetUrl, status: 'already_running' })
+        return
+      }
     }
 
     // Check worktree exists
@@ -224,8 +230,16 @@ routeHandlers.set('switch-branch', async (req, res, ctx) => {
     // Spawn Vite
     const entry = spawnVite(branch)
 
-    // Wait for ready
-    const ready = await waitForPort(entry.port, HEALTH_TIMEOUT)
+    // Wait for Vite to report ready via stdout (not TCP polling, which
+    // can false-positive on occupied ports from other processes)
+    const ready = await (async () => {
+      const start = Date.now()
+      while (Date.now() - start < HEALTH_TIMEOUT) {
+        if (entry.status === 'ready') return true
+        await new Promise(r => setTimeout(r, 300))
+      }
+      return false
+    })()
     if (!ready) {
       stopVite(branch)
       sendJson(res, 504, { error: `Vite server for ${branch} did not become ready in time` })

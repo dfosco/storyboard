@@ -52,7 +52,9 @@ function calcDimensions(widthPx, heightPx, fontSize = 13) {
   const vPad = 18
   const cols = Math.max(10, Math.floor((widthPx - hPad) / cellWidth))
   const rows = Math.max(4, Math.floor((heightPx - vPad) / cellHeight))
-  return { cols, rows }
+  // Snapped height = exact pixels the terminal grid + padding actually needs
+  const snappedHeight = Math.round(rows * cellHeight + vPad)
+  return { cols, rows, snappedHeight }
 }
 
 const EMBED_TYPES = new Set(['prototype', 'story'])
@@ -392,6 +394,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel
   const rightLabel = paneOrder.primaryIsLeft ? secondaryLabel : primaryLabel
 
+  const termDims = useMemo(() => calcDimensions(width, height, fontSize), [width, height, fontSize])
+
   return (
     <>
     <div className={styles.container}>
@@ -401,7 +405,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         className={styles.terminal}
         style={{
           ...(typeof width === 'number' ? { width: `${width}px` } : undefined),
-          ...(typeof height === 'number' ? { height: `${height}px` } : undefined),
+          ...(typeof height === 'number' ? { height: `${termDims.snappedHeight}px` } : undefined),
         }}
         onClick={handleClick}
         onPointerDown={handleTerminalPointerDown}

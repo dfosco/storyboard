@@ -1,13 +1,12 @@
 import { useState, useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { readProp, promptSchema } from './widgetProps.js'
-import { PaperAirplaneIcon, CheckCircleIcon, XCircleIcon, XIcon, SquareFillIcon } from '@primer/octicons-react'
+import { CopilotIcon, PaperAirplaneIcon, CheckCircleIcon, XCircleIcon, XIcon, SquareFillIcon, LinkIcon, SmileyIcon, PlusIcon } from '@primer/octicons-react'
 import styles from './PromptWidget.module.css'
 
 function getBase() {
   return (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
 }
 
-/** Spawn a prompt agent session via the canvas prompt API. */
 async function spawnPromptAgent({ canvasId, widgetId, prompt }) {
   const res = await fetch(`${getBase()}/_storyboard/canvas/prompt/spawn`, {
     method: 'POST',
@@ -17,7 +16,6 @@ async function spawnPromptAgent({ canvasId, widgetId, prompt }) {
   return res.json()
 }
 
-/** Kill a terminal/prompt session. */
 async function killSession(widgetId) {
   const res = await fetch(`${getBase()}/_storyboard/canvas/terminal/kill`, {
     method: 'POST',
@@ -36,7 +34,6 @@ function getWsUrl(sessionId, canvasId, readOnly = false) {
   return url
 }
 
-// Shared ghostty loader (same as TerminalWidget)
 let ghosttyPromise = null
 function loadGhostty() {
   if (!ghosttyPromise) {
@@ -75,6 +72,11 @@ function calcMiniDimensions(widthPx) {
   return { cols, rows }
 }
 
+const SUGGESTIONS = [
+  'Implement the connected design',
+  'Review and refactor this code',
+]
+
 const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, ref) {
   const persistedText = readProp(props, 'text', promptSchema)
   const persistedStatus = readProp(props, 'status', promptSchema)
@@ -90,13 +92,12 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
 
   const connections = connectionsRaw ? connectionsRaw.split(',').filter(Boolean) : []
 
-  // Terminal refs
   const termContainerRef = useRef(null)
   const termRef = useRef(null)
   const wsRef = useRef(null)
   const termDisposedRef = useRef(false)
+  const textareaRef = useRef(null)
 
-  // Listen for agent status via HMR
   const onUpdateRef = useRef(onUpdate)
   useEffect(() => { onUpdateRef.current = onUpdate }, [onUpdate])
 
@@ -122,7 +123,6 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
     return () => import.meta.hot.off('storyboard:agent-status', handler)
   }, [id])
 
-  // Expose action handlers and state for WidgetChrome
   useImperativeHandle(ref, () => ({
     handleAction(action) {
       if (action === 'expand-output') {
@@ -171,8 +171,6 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
       }
 
       onUpdate?.({ sessionId: result.tmuxName || '' })
-
-      // Auto-show output when agent starts
       setShowOutput(true)
     } catch (err) {
       setExecStatus('error')
@@ -208,7 +206,12 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
     onUpdate?.({ status: 'idle', sessionId: '', errorMessage: '', text: '' })
   }, [onUpdate])
 
-  // Embedded read-only terminal — connect when showOutput is true and we have a session
+  const handleSuggestionClick = useCallback((text) => {
+    setDraftText(text)
+    textareaRef.current?.focus()
+  }, [])
+
+  // Embedded read-only terminal
   useEffect(() => {
     if (!showOutput || execStatus === 'idle') return
     if (!termContainerRef.current) return
@@ -239,7 +242,6 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
         term.open(termContainerRef.current)
         termRef.current = term
 
-        // Get canvas ID for WS URL
         const pathParts = window.location.pathname.split('/')
         const canvasIdx = pathParts.indexOf('canvas')
         const canvasId = canvasIdx >= 0 ? pathParts[canvasIdx + 1] : 'default'
@@ -265,10 +267,8 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
           term.write(typeof e.data === 'string' ? e.data : new Uint8Array(e.data))
         }
 
-        ws.onclose = () => { /* read-only: no action needed */ }
-        ws.onerror = () => { /* read-only: no action needed */ }
-
-        // Do NOT wire term.onData — this is read-only
+        ws.onclose = () => {}
+        ws.onerror = () => {}
       } catch (err) {
         console.warn('[PromptWidget] terminal setup failed:', err.message)
       }
@@ -292,85 +292,126 @@ const PromptWidget = forwardRef(function PromptWidget({ id, props, onUpdate }, r
 
   return (
     <div
-      className={styles.container}
+      className={styles.wrapper}
       style={typeof width === 'number' ? { width: `${width}px` } : undefined}
     >
-      <header className={styles.header}>
-        <span className={styles.icon}>✨</span>
-        <span className={styles.title}>Prompt</span>
-        {isPending && (
-          <button
-            className={styles.cancelBtn}
-            onClick={handleCancel}
-            title="Cancel (stop agent)"
-          >
-            <svg className={styles.spinnerSvg} viewBox="0 0 16 16" width="14" height="14">
-              <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="28 10" />
-            </svg>
-            <span className={styles.stopIcon}>
-              <SquareFillIcon size={14} />
-            </span>
-          </button>
-        )}
-        {isDone && <span className={styles.doneIcon}><CheckCircleIcon size={14} /></span>}
-        {isError && <span className={styles.errorIcon}><XCircleIcon size={14} /></span>}
-      </header>
-
+      {/* ── Idle / Error: input state ── */}
       {(execStatus === 'idle' || isError) && (
-        <div className={styles.inputArea}>
-          <textarea
-            className={styles.textarea}
-            data-canvas-allow-text-selection
-            value={draftText}
-            onChange={(e) => setDraftText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            placeholder="What should I do?"
-            rows={3}
-            disabled={!canEdit}
-          />
+        <>
+          <div className={styles.header}>
+            <span className={styles.avatar}>
+              <CopilotIcon size={20} />
+            </span>
+            <textarea
+              ref={textareaRef}
+              className={styles.textarea}
+              data-canvas-allow-text-selection
+              value={draftText}
+              onChange={(e) => setDraftText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              placeholder="What should I do?"
+              rows={1}
+              disabled={!canEdit}
+            />
+          </div>
+
           {isError && (
             <p className={styles.errorText} title={execError}>
               {execError}
             </p>
           )}
-          <div className={styles.actions}>
-            {connections.length > 0 && (
-              <span className={styles.connectionBadge}>
-                {connections.length} connected
-              </span>
-            )}
+
+          <div className={styles.toolbar}>
+            <div className={styles.toolbarIcons}>
+              <button className={styles.iconButton} aria-label="Add context" title="Add context">
+                <PlusIcon size={16} />
+              </button>
+              <span className={styles.separator} />
+              <button className={styles.iconButton} aria-label="Connections" title="Connections">
+                <LinkIcon size={16} />
+              </button>
+              {connections.length > 0 && (
+                <span className={styles.connectionBadge}>{connections.length}</span>
+              )}
+            </div>
             <button
               className={styles.submitBtn}
               onClick={handleSubmit}
               disabled={!draftText.trim() || !canEdit}
-              title="Submit prompt (⌘+Enter)"
+              title="Run prompt (⌘+Enter)"
             >
-              <PaperAirplaneIcon size={14} />
-              <span>{isError ? 'Retry' : 'Run'}</span>
+              {isError ? 'Retry' : 'Run'}
+            </button>
+          </div>
+
+          {!draftText.trim() && (
+            <>
+              <div className={styles.suggestionsLabel}>
+                Start with a suggestion <span className={styles.sparkle}>✦</span>
+              </div>
+              <div className={styles.suggestions}>
+                {SUGGESTIONS.map((text, i) => (
+                  <button
+                    key={i}
+                    className={styles.chip}
+                    onClick={() => handleSuggestionClick(text)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* ── Pending state ── */}
+      {isPending && (
+        <div className={styles.pendingArea}>
+          <div className={styles.pendingHeader}>
+            <span className={styles.avatar}>
+              <CopilotIcon size={20} />
+            </span>
+            <p className={styles.pendingText}>{persistedText || draftText}</p>
+          </div>
+          <div className={styles.pendingFooter}>
+            <span className={styles.pendingHint}>Processing…</span>
+            <button
+              className={styles.cancelBtn}
+              onClick={handleCancel}
+              title="Cancel (stop agent)"
+            >
+              <svg className={styles.spinnerSvg} viewBox="0 0 16 16" width="14" height="14">
+                <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="28 10" />
+              </svg>
+              <span className={styles.stopIcon}>
+                <SquareFillIcon size={8} />
+              </span>
             </button>
           </div>
         </div>
       )}
 
-      {isPending && (
-        <div className={styles.pendingArea}>
-          <p className={styles.pendingText}>{persistedText || draftText}</p>
-          <p className={styles.pendingHint}>Processing…</p>
-        </div>
-      )}
-
+      {/* ── Done state ── */}
       {isDone && (
         <div className={styles.doneArea}>
-          <p className={styles.doneText}>{persistedText}</p>
+          <div className={styles.doneHeader}>
+            <span className={`${styles.avatar} ${styles.avatarDone}`}>
+              <CheckCircleIcon size={20} />
+            </span>
+            <p className={styles.doneText}>{persistedText}</p>
+          </div>
           <button className={styles.resetBtn} onClick={handleReset}>
             New prompt
           </button>
         </div>
       )}
 
-      {/* Inline read-only terminal output */}
+      {/* ── Inline read-only terminal output ── */}
       {hasSession && showOutput && (
         <div className={styles.terminalArea}>
           <div className={styles.terminalHeader}>

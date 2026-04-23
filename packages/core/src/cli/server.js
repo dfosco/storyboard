@@ -181,10 +181,19 @@ async function main() {
     case 'stop-proxy':
       serverStopProxy()
       break
-    default:
+    default: {
+      // Catch unknown subcommands before falling through to legacy branch behavior
+      const knownSubcommands = ['list', 'start', 'stop', 'stop-proxy']
+      if (subcommand && !subcommand.match(/^[a-z0-9]/) || ['exit', 'help', 'status'].includes(subcommand)) {
+        p.log.error(`Unknown subcommand: "${subcommand}"`)
+        p.log.info(`Available: ${knownSubcommands.join(', ')}`)
+        p.log.info(`To start a branch: npx storyboard server start <branch>`)
+        process.exit(1)
+      }
       // Legacy behavior: treat argument as branch name (storyboard server <branch>)
       await serverStart(subcommand, flags)
       break
+    }
   }
 }
 

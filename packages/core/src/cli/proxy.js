@@ -1,12 +1,15 @@
 /**
- * storyboard proxy — Generate Caddyfile from ports.json and start/reload Caddy.
+ * storyboard proxy — Manage the Caddy reverse proxy.
+ *
+ * Usage:
+ *   storyboard proxy start       Start or reload Caddy proxy
+ *   storyboard proxy close       Stop Caddy proxy
  *
  * Caddy listens on port 80 for storyboard.localhost, routing:
  *   /storyboard/*              → main (port 1234)
  *   /<branchname>/storyboard/* → worktree (assigned port)
  *
  * Requires Caddy to be installed (brew install caddy).
- * Port 80 requires `sudo caddy start` — handled by `storyboard setup`.
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
@@ -215,7 +218,7 @@ export function upsertCaddyRoute(routeConfig) {
 
 export function startCaddy(caddyfilePath) {
   try {
-    execSync(`sudo caddy start --config "${caddyfilePath}" >/dev/null 2>&1`, { stdio: ['inherit', 'pipe', 'pipe'] })
+    execSync(`caddy start --config "${caddyfilePath}" >/dev/null 2>&1`, { stdio: ['inherit', 'pipe', 'pipe'] })
     return true
   } catch {
     return false
@@ -235,35 +238,56 @@ export function stopCaddy() {
 const isDirectRun = process.argv[2] === 'proxy'
 if (isDirectRun) {
   const { intro, outro, log, spinner } = await import('@clack/prompts')
-  intro('storyboard proxy')
-
-  const caddyfilePath = generateCaddyfile()
+  const subcommand = process.argv[3]
 
   if (!isCaddyInstalled()) {
+    intro('storyboard proxy')
     log.error('Caddy is not installed. Run: brew install caddy')
     process.exit(1)
   }
 
-  const s = spinner()
-  if (isCaddyRunning()) {
-    s.start('Updating proxy routes...')
-    const routeConfig = generateRouteConfig()
-    if (upsertCaddyRoute(routeConfig)) {
-      s.stop('Proxy routes updated (admin API)')
-    } else if (reloadCaddy(caddyfilePath)) {
-      s.stop('Proxy reloaded (Caddyfile fallback)')
+  if (subcommand === 'close' || subcommand === 'stop') {
+    intro('storyboard proxy close')
+    if (!isCaddyRunning()) {
+      log.info('Proxy is not running.')
+      outro('')
+    } else if (stopCaddy()) {
+      log.success('Proxy stopped.')
+      outro('')
     } else {
-      s.stop('Failed to update proxy')
+      log.error('Failed to stop proxy.')
       process.exit(1)
     }
+  } else if (subcommand === 'start' || !subcommand) {
+    intro('storyboard proxy start')
+    const caddyfilePath = generateCaddyfile()
+
+    const s = spinner()
+    if (isCaddyRunning()) {
+      s.start('Updating proxy routes...')
+      const routeConfig = generateRouteConfig()
+      if (upsertCaddyRoute(routeConfig)) {
+        s.stop('Proxy routes updated (admin API)')
+      } else if (reloadCaddy(caddyfilePath)) {
+        s.stop('Proxy reloaded (Caddyfile fallback)')
+      } else {
+        s.stop('Failed to update proxy')
+        process.exit(1)
+      }
+    } else {
+      s.start('Starting proxy...')
+      if (startCaddy(caddyfilePath)) {
+        s.stop('Proxy started')
+      } else {
+        s.stop('Failed to start proxy')
+        process.exit(1)
+      }
+    }
+    outro(`Proxy ready at http://${DOMAIN}/`)
   } else {
-    s.start('Starting proxy (requires sudo for port 80)...')
-    if (startCaddy(caddyfilePath)) {
-      s.stop('Proxy started')
-    } else {
-      s.stop('Failed to start')
-      process.exit(1)
-    }
+    intro('storyboard proxy')
+    log.error(`Unknown subcommand: "${subcommand}"`)
+    log.info('Available: start, close')
+    process.exit(1)
   }
-  outro(`Proxy ready at http://${DOMAIN}/`)
 }

@@ -1005,10 +1005,12 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       n++
     }
     const position = { x: baseX + n * 40, y: baseY + n * 40 }
+    const isTerminal = widget.type === 'terminal' || widget.type === 'agent'
+    if (isTerminal) lockScroll()
     try {
       const copyProps = { ...widget.props }
       // Terminal widgets must get unique names — strip prettyName so the server generates a fresh one
-      if (widget.type === 'terminal' || widget.type === 'agent') delete copyProps.prettyName
+      if (isTerminal) delete copyProps.prettyName
 
       undoRedo.snapshot(stateRef.current, 'add')
       const result = await addWidgetApi(canvasId, {
@@ -1022,8 +1024,9 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       }
     } catch (err) {
       console.error('[canvas] Failed to copy widget:', err)
+      if (isTerminal) unlockScroll()
     }
-  }, [canvasId, localWidgets, undoRedo])
+  }, [canvasId, localWidgets, undoRedo, lockScroll, unlockScroll])
 
   const showMissingGhBanner = useCallback(() => {
     setShowGhInstallBanner(true)
@@ -1971,6 +1974,10 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
           // Single undo snapshot for the entire paste
           undoRedo.snapshot(stateRef.current, 'add')
+
+          // Lock scroll if any pasted widget is terminal/agent
+          const hasTerminal = sourceWidgets.some(w => w.type === 'terminal' || w.type === 'agent')
+          if (hasTerminal) lockScroll()
 
           // Paste all widgets, collecting new IDs for selection
           const newWidgets = []

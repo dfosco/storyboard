@@ -182,6 +182,15 @@ export function materialize(events) {
         break
       }
 
+      case 'connector_updated': {
+        state.connectors = (state.connectors || []).map((c) =>
+          c.id === evt.connectorId
+            ? { ...c, ...evt.updates, id: c.id, start: c.start, end: c.end }
+            : c,
+        )
+        break
+      }
+
       // Unknown events are silently ignored (forward compatibility)
     }
   }

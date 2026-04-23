@@ -145,6 +145,14 @@ function ColumnsIcon() {
 }
 
 /** Icon registry — maps icon name strings from config to React components. */
+function MessageIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+
 const ICON_REGISTRY = {
   'trash': DeleteIcon,
   'zoom-in': ZoomInIcon,
@@ -166,6 +174,7 @@ const ICON_REGISTRY = {
   'unfold': UnfoldIcon,
   'fold': FoldIcon,
   'columns': ColumnsIcon,
+  'message': MessageIcon,
 }
 
 /** Danger-styled actions in the overflow menu. */

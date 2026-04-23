@@ -141,15 +141,20 @@ export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = n
  * Stores full widget objects (id, type, props, position) so agents
  * can read context directly without additional API calls.
  */
-export function updateTerminalConnections({ branch, canvasId, widgetId, connectedWidgets, widgetProps = null }) {
+export function updateTerminalConnections({ branch, canvasId, widgetId, connectedWidgets, widgetProps = null, messaging = null }) {
   const fp = configPath(branch, canvasId, widgetId)
   let config = {}
   try {
     config = JSON.parse(readFileSync(fp, 'utf8'))
   } catch { /* file may not exist yet */ }
 
-  if (widgetProps) config.widgetProps = widgetProps
+  if (widgetProps) {
+    config.widgetProps = widgetProps
+    // Promote displayName from prettyName
+    if (widgetProps.prettyName) config.displayName = widgetProps.prettyName
+  }
   config.connectedWidgets = connectedWidgets || []
+  config.messaging = messaging || null
   config.updatedAt = new Date().toISOString()
 
   atomicWrite(fp, config)

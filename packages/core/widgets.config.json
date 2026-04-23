@@ -828,10 +828,10 @@
         "default": "copilot",
         "agents": {
           "copilot": {
-            "command": "copilot --agent terminal-agent -p \"${prompt}\" --allow-all"
+            "command": "copilot --agent prompt-agent -p \"${prompt}\" --allow-all"
           },
           "claude": {
-            "command": "claude --agent terminal-agent -p \"${prompt}\" --dangerously-skip-permissions"
+            "command": "claude --agent prompt-agent -p \"${prompt}\" --dangerously-skip-permissions"
           }
         }
       },

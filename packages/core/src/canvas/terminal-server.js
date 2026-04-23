@@ -78,6 +78,30 @@ function isShellConfigVar(key) {
   return SHELL_CONFIG_STRIP_RE.test(key) || key === 'ENV'
 }
 
+/**
+ * Overrides injected into tmux global env to neutralize external shell themes.
+ * Applied after the tmux server is guaranteed to exist.
+ */
+const TMUX_SHELL_OVERRIDES = {
+  STARSHIP_CONFIG: '/dev/null',
+  POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD: 'true',
+  ZSH_THEME: '',
+  TERM_PROGRAM: 'storyboard',
+}
+
+/** Apply shell-config overrides to the tmux server's global environment */
+function applyTmuxShellOverrides() {
+  for (const [key, val] of Object.entries(TMUX_SHELL_OVERRIDES)) {
+    try { execSync(`tmux set-environment -g ${key} "${val}" 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+  }
+  // Unset vars that should not exist at all inside storyboard terminals
+  for (const key of Object.keys(process.env)) {
+    if (isShellConfigVar(key) && !(key in TMUX_SHELL_OVERRIDES)) {
+      try { execSync(`tmux set-environment -g -u ${key} 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+    }
+  }
+}
+
 /** Filter process.env, removing shell-config vars that would leak into PTY */
 function cleanEnv() {
   const filtered = {}
@@ -277,26 +301,11 @@ export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') 
   initRegistry(root, { gracePeriod: termCfg.orphanGracePeriod })
   initTerminalConfig(root)
 
-  // Inject shell-config overrides into the tmux server's global environment
-  // so shells spawned inside tmux sessions inherit them. This neutralizes
-  // starship, powerlevel10k, and other prompt/theme customizations that would
-  // leak the user's external terminal appearance into storyboard terminals.
+  // Best-effort: apply shell-config overrides if a tmux server already exists
+  // from a previous dev server run. If no server exists, this fails silently —
+  // overrides are applied again in createTerminal() after the first new-session.
   if (hasTmux) {
-    const overrides = {
-      STARSHIP_CONFIG: '/dev/null',
-      POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD: 'true',
-      ZSH_THEME: '',
-      TERM_PROGRAM: 'storyboard',
-    }
-    for (const [key, val] of Object.entries(overrides)) {
-      try { execSync(`tmux set-environment -g ${key} "${val}" 2>/dev/null`, { stdio: 'ignore' }) } catch {}
-    }
-    // Unset vars that should not exist at all inside storyboard terminals
-    for (const key of Object.keys(process.env)) {
-      if (isShellConfigVar(key) && !(key in overrides)) {
-        try { execSync(`tmux set-environment -g -u ${key} 2>/dev/null`, { stdio: 'ignore' }) } catch {}
-      }
-    }
+    applyTmuxShellOverrides()
   }
 
   const mode = hasTmux ? 'tmux (persistent sessions)' : 'node-pty (no persistence)'
@@ -384,21 +393,10 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
     STORYBOARD_SERVER_URL: serverUrl,
   }
 
-  // Minimal env for the tmux path — only TERM + identity vars.
-  // Shell-config overrides (ZDOTDIR, STARSHIP_CONFIG, etc.) must NOT be
-  // passed here because they leak into the tmux server's global environment
-  // and contaminate ALL sessions, replacing the user's shell config with a
-  // bare minimal one ("empty shell" bug).
-  const tmuxEnv = {
-    ...cleanEnv(),
-    TERM: 'xterm-256color',
-    TERM_PROGRAM: 'storyboard',
-    ...identityEnv,
-  }
-
-  // Full env for the direct-shell fallback (no tmux).
-  // ZDOTDIR + prompt overrides are safe here because they only affect this
-  // single pty process, not a shared server.
+  // Env for the tmux path — cleaned of external shell config + neutralizing overrides.
+  // These env vars are inherited by the shell spawned inside new-session (NOT by the
+  // tmux server global env). Verified: tmux new-session passes the spawning process's
+  // env to the session shell. This does NOT contaminate other tmux sessions.
   const zdotdir = join(tmpdir(), 'storyboard-terminal')
   try {
     mkdirSync(zdotdir, { recursive: true })
@@ -406,6 +404,20 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
     writeFileSync(join(zdotdir, '.zshrc'), `export PS1='${prompt.replace(/'/g, "'\\''")}'\nunset RPS1\n`)
   } catch { /* best effort */ }
 
+  const tmuxEnv = {
+    ...cleanEnv(),
+    TERM: 'xterm-256color',
+    TERM_PROGRAM: 'storyboard',
+    ZDOTDIR: zdotdir,
+    STARSHIP_CONFIG: '/dev/null',
+    POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD: 'true',
+    ZSH_THEME: '',
+    BASH_ENV: '',
+    ENV: '',
+    ...identityEnv,
+  }
+
+  // Full env for the direct-shell fallback (no tmux).
   const directEnv = {
     ...cleanEnv(),
     TERM: 'xterm-256color',
@@ -451,7 +463,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
       env: tmuxEnv,
     })
 
-    // Hide status bar
+    // Hide status bar + apply shell-config overrides
     const targetName = (reattach || hasLegacy) ? actualName : tmuxName
     isNewSession = !(reattach || hasLegacy)
     const hideStatus = () => {
@@ -463,6 +475,12 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
         if (!isNewSession) {
           execSync(`tmux set-option -t "${targetName}" mouse on 2>/dev/null`, { stdio: 'ignore' })
         }
+
+        // Apply shell-config overrides to the tmux server's global env.
+        // This is the reliable call — the tmux server is guaranteed to exist
+        // after pty.spawn('tmux', ...) above.
+        applyTmuxShellOverrides()
+
         // Update tmux session env vars so new shells (and agents reading $STORYBOARD_WIDGET_ID)
         // always reflect the current widget identity — even after reassignment.
         const tmuxEnvVars = {
@@ -491,15 +509,19 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
     if (isNewSession) {
       const startupCommand = widgetStartupCommand ?? termCfg.startupCommand ?? null
 
-      // Export identity env vars into the shell via send-keys.
+      // Export identity env vars + shell-config overrides into the shell via send-keys.
       // pty.spawn sets env on the tmux client process, but the session's
       // shell doesn't inherit those — it starts from the tmux server env.
       // send-keys is the only reliable way to set vars in the running shell.
+      // Shell-config overrides (STARSHIP_CONFIG, etc.) must also be sent here
+      // because the shell's .zshrc has already run by the time tmux global env
+      // overrides are applied.
       const envExports = [
         `export STORYBOARD_WIDGET_ID="${widgetId}"`,
         `export STORYBOARD_CANVAS_ID="${canvasId}"`,
         `export STORYBOARD_BRANCH="${branch}"`,
         `export STORYBOARD_SERVER_URL="${serverUrl}"`,
+        ...Object.entries(TMUX_SHELL_OVERRIDES).map(([k, v]) => `export ${k}="${v}"`),
       ].join(' && ')
 
       setTimeout(() => {

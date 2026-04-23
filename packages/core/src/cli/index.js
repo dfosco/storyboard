@@ -5,7 +5,8 @@
  * Commands:
  *   storyboard dev              Start Vite dev server + update proxy
  *   storyboard setup            Install deps, Caddy, start proxy
- *   storyboard proxy            Generate Caddyfile + start/reload Caddy
+ *   storyboard proxy start      Start or reload Caddy proxy
+ *   storyboard proxy close      Stop Caddy proxy
  *   storyboard update:version   Update @dfosco/storyboard-* packages to latest
  *   storyboard update:beta      Update to latest beta
  *   storyboard update:alpha     Update to latest alpha
@@ -56,7 +57,6 @@ function helpScreen(version) {
     cmd('server list', 'List running dev servers'),
     cmd('server start [wt]', 'Start dev server for a worktree'),
     cmd('server stop <wt|ID>', 'Stop a dev server'),
-    cmd('server stop-proxy', 'Stop Caddy proxy (no sudo)'),
     cmd('code [branch]', 'Open a worktree in VS Code'),
     cmd('exit', 'Stop all dev servers and proxy'),
     '',
@@ -85,7 +85,8 @@ function helpScreen(version) {
     '',
     `  ${bold(cyan('Setup'))}`,
     cmd('setup', 'Install deps, Caddy proxy, start proxy'),
-    cmd('proxy', 'Generate Caddyfile + start/reload Caddy'),
+    cmd('proxy start', 'Start or reload Caddy proxy'),
+    cmd('proxy close', 'Stop Caddy proxy'),
     '',
     `  ${bold(cyan('Updates'))}`,
     cmd('update', 'Update storyboard packages to latest'),

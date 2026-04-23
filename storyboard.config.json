@@ -42,6 +42,7 @@
     "agents": {
       "copilot": {
         "label": "Copilot CLI",
+        "default": true,
         "icon": "primer/copilot",
         "startupCommand": "copilot --agent terminal-agent",
         "postStartup": "/allow-all on",

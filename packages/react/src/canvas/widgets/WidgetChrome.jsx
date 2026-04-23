@@ -612,7 +612,7 @@ export default function WidgetChrome({
                 return (
                   <Tooltip key={feature.id} text={label} direction="n">
                     <button
-                      className={styles.featureBtn}
+                      className={`${styles.featureBtn}${feature.active ? ` ${styles.featureBtnActive}` : ''}`}
                       onClick={(e) => handleActionClick(feature.action, e)}
                       aria-label={label}
                     >

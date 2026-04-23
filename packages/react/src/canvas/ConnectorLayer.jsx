@@ -153,6 +153,7 @@ function EndpointShape({ x, y, startPt, endPt, style, onPointerDown }) {
 export default function ConnectorLayer({
   connectors = [],
   widgets = [],
+  selectedWidgetIds,
   onRemove,
   onEndpointDrag,
   dragPreview,
@@ -202,6 +203,15 @@ export default function ConnectorLayer({
         const startStyle = getEndpointStyle(startWidget.type, 'start')
         const endStyle = getEndpointStyle(endWidget.type, 'end')
 
+        // Broadcast animation: show flowing dots when connector has two-way messaging
+        // and one of the connected widgets is selected
+        const isBroadcast = conn.meta?.messagingMode === 'two-way'
+        const startSelected = selectedWidgetIds?.has(conn.start?.widgetId)
+        const endSelected = selectedWidgetIds?.has(conn.end?.widgetId)
+        const showBroadcastAnim = isBroadcast && (startSelected || endSelected)
+        // Reverse direction if the selected widget is the end (dots flow FROM selected)
+        const reverseAnim = isBroadcast && endSelected && !startSelected
+
         return (
           <g key={conn.id}>
             {/* Invisible wider hit area for easier clicking */}
@@ -213,9 +223,16 @@ export default function ConnectorLayer({
             {/* Visible connector line */}
             <path
               d={d}
-              className={styles.connectorPath}
+              className={`${styles.connectorPath}${isBroadcast ? ` ${styles.connectorBroadcast}` : ''}`}
               onClick={(e) => handleClick(e, conn.id)}
             />
+            {/* Broadcast animation: flowing dots along the path */}
+            {showBroadcastAnim && (
+              <path
+                d={d}
+                className={`${styles.broadcastFlow}${reverseAnim ? ` ${styles.broadcastFlowReverse}` : ''}`}
+              />
+            )}
             {/* Endpoint shapes — visual only, pointer events pass through to anchor dots */}
             <EndpointShape x={startPt.x} y={startPt.y} startPt={startPt} endPt={endPt} style={startStyle}
               onPointerDown={onEndpointDrag ? (e) => { e.stopPropagation(); e.preventDefault(); onEndpointDrag(conn, 'start', e) } : undefined}

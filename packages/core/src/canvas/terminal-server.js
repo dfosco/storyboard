@@ -575,33 +575,29 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
             setTimeout(() => { if (!allowSent) { allowSent = true; clearInterval(pollInterval) } }, 30000)
           }, 900)
         } else if (isClaude) {
-          // Launch claude, then enable auto mode after ready
+          // Launch claude with --dangerously-skip-permissions to auto-approve all tools
+          const claudeCmd = startupCommand.includes('--dangerously-skip-permissions')
+            ? startupCommand
+            : startupCommand + ' --dangerously-skip-permissions'
           setTimeout(() => {
-            ptyProcess.write(startupCommand + '\r')
-            // Start polling AFTER claude has been launched
-            let autoSent = false
+            ptyProcess.write(claudeCmd + '\r')
+            // Poll for claude readiness, then deliver pending messages
+            let readySent = false
             const pollInterval = setInterval(() => {
-              if (autoSent) { clearInterval(pollInterval); return }
+              if (readySent) { clearInterval(pollInterval); return }
               try {
                 const paneContent = execSync(
                   `tmux capture-pane -t "${tmuxName}" -p`,
                   { encoding: 'utf8', timeout: 1000 }
                 )
-                // Match claude-specific readiness: "Welcome to" or "? for shortcuts"
                 if (paneContent.includes('Welcome to') || paneContent.includes('? for shortcuts')) {
-                  autoSent = true
+                  readySent = true
                   clearInterval(pollInterval)
-                  setTimeout(() => {
-                    try {
-                      execSync(`tmux send-keys -t "${tmuxName}" -l "/allowed-tools bash edit read"`, { stdio: 'ignore' })
-                      execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-                    } catch {}
-                    setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
-                  }, 500)
+                  setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
                 }
               } catch {}
             }, 2000)
-            setTimeout(() => { if (!autoSent) { autoSent = true; clearInterval(pollInterval) } }, 30000)
+            setTimeout(() => { if (!readySent) { readySent = true; clearInterval(pollInterval) } }, 30000)
           }, 900) else if (startupCommand === 'shell') {
           // Plain shell — nothing to do, the pty already has a shell running
         } else {

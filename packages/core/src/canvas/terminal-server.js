@@ -257,6 +257,14 @@ export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') 
   initRegistry(root, { gracePeriod: termCfg.orphanGracePeriod })
   initTerminalConfig(root)
 
+  // Clean up shell-config vars that may have leaked into the tmux server's
+  // global environment from earlier versions (caused "empty shell" bug).
+  if (hasTmux) {
+    for (const key of ['ZDOTDIR', 'STARSHIP_CONFIG', 'POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD', 'ZSH_THEME', 'BASH_ENV', 'ENV']) {
+      try { execSync(`tmux set-environment -g -u ${key} 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+    }
+  }
+
   const mode = hasTmux ? 'tmux (persistent sessions)' : 'node-pty (no persistence)'
   console.log(`[storyboard] terminal server ready (${mode}) [branch: ${branch}]`)
 
@@ -334,7 +342,29 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
   const termCfg = readTerminalConfig()
   const prompt = termCfg.prompt || '$ '
 
-  // Create a minimal ZDOTDIR with .zshrc to override the default prompt.
+  // Shared identity env vars for both tmux and direct paths
+  const identityEnv = {
+    STORYBOARD_WIDGET_ID: widgetId,
+    STORYBOARD_CANVAS_ID: canvasId,
+    STORYBOARD_BRANCH: branch,
+    STORYBOARD_SERVER_URL: serverUrl,
+  }
+
+  // Minimal env for the tmux path — only TERM + identity vars.
+  // Shell-config overrides (ZDOTDIR, STARSHIP_CONFIG, etc.) must NOT be
+  // passed here because they leak into the tmux server's global environment
+  // and contaminate ALL sessions, replacing the user's shell config with a
+  // bare minimal one ("empty shell" bug).
+  const tmuxEnv = {
+    ...process.env,
+    TERM: 'xterm-256color',
+    TERM_PROGRAM: 'storyboard',
+    ...identityEnv,
+  }
+
+  // Full env for the direct-shell fallback (no tmux).
+  // ZDOTDIR + prompt overrides are safe here because they only affect this
+  // single pty process, not a shared server.
   const zdotdir = join(tmpdir(), 'storyboard-terminal')
   try {
     mkdirSync(zdotdir, { recursive: true })
@@ -342,7 +372,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
     writeFileSync(join(zdotdir, '.zshrc'), `export PS1='${prompt.replace(/'/g, "'\\''")}'\nunset RPS1\n`)
   } catch { /* best effort */ }
 
-  const env = {
+  const directEnv = {
     ...process.env,
     TERM: 'xterm-256color',
     TERM_PROGRAM: 'storyboard',
@@ -353,10 +383,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
     BASH_ENV: '',
     ENV: '',
     PS1: prompt,
-    STORYBOARD_WIDGET_ID: widgetId,
-    STORYBOARD_CANVAS_ID: canvasId,
-    STORYBOARD_BRANCH: branch,
-    STORYBOARD_SERVER_URL: serverUrl,
+    ...identityEnv,
   }
   let ptyProcess
   let isNewSession = false
@@ -387,7 +414,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
       cols: 80,
       rows: 24,
       cwd,
-      env,
+      env: tmuxEnv,
     })
 
     // Hide status bar
@@ -534,7 +561,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
       cols: 80,
       rows: 24,
       cwd,
-      env,
+      env: directEnv,
     })
   }
   } catch (spawnErr) {

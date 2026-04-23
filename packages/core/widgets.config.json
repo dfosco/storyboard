@@ -823,7 +823,7 @@
     "prompt": {
       "label": "Prompt",
       "icon": "zap",
-      "resize": { "enabled": false, "prod": false },
+      "resize": { "enabled": true, "prod": false },
       "props": {
         "text":           { "type": "text",   "label": "Prompt text",      "category": "content",  "default": "" },
         "status":         { "type": "text",   "label": "Status",           "category": "settings", "default": "idle" },

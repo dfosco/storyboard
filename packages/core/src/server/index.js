@@ -16,7 +16,7 @@ import http from 'node:http'
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, mkdirSync } from 'node:fs'
 import { resolve, join, dirname } from 'node:path'
-import { getPort, portsFilePath, repoRoot, worktreeDir, listWorktrees } from '../worktree/port.js'
+import { getPort, releasePort, portsFilePath, repoRoot, worktreeDir, listWorktrees } from '../worktree/port.js'
 import { generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, reloadCaddy, readDevDomain } from '../cli/proxy.js'
 import { compactAll } from '../canvas/compact.js'
 import { register, unregister, generateId } from '../worktree/serverRegistry.js'
@@ -148,6 +148,7 @@ function spawnVite(branch) {
     entry.status = 'stopped'
     processes.delete(branch)
     unregister(entry.serverId)
+    releasePort(branch)
   })
 
   return entry

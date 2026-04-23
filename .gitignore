@@ -53,3 +53,6 @@ src/canvas/images/~*
 assets/canvas/images/~*
 assets/canvas/snapshots/~*
 .sync-target
+
+# Integration test results (ephemeral local artifacts)
+test-results/

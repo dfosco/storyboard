@@ -10,13 +10,40 @@ A **shared JSONL message log** per canvas page, with **cluster-based orchestrati
 
 - **Message tokens** — embedded per-message, define which peers respond and in what order
 - **Cluster token** — defines which widget "has the mic" for the next turn in the ongoing conversation
-- **Cluster priority** — permanent role for the widget that initiated the cluster; responsible for goal-setting and finality
+- **Cluster priority** — permanent role for the widget that initiated the cluster; responsible for goal-setting and finality. The priority holder also designates a **successor** after each message round, so the cluster can self-heal if the holder is removed.
 
 All messages from all clusters on a canvas page live in a single `.storyboard/messages/{canvasId}.jsonl` file. Widgets only read messages relevant to their cluster. Think of it as a party room — multiple conversations happening, but you only listen to yours.
 
 ---
 
 ## Core Concepts
+
+### Priority Succession
+
+Cluster priority is permanent *unless* the priority holder is removed from the cluster. To handle this gracefully, the priority holder **proactively designates a successor** as part of their normal reasoning:
+
+- After each message round (after hearing all responses), the priority holder includes a `successor` field in their cluster-level events (e.g., `cluster:finality`, `cluster:token:assign`)
+- The successor is the agent the priority holder considers the best fallback — based on response quality, relevance, or role
+- This designation lives in the JSONL log as metadata on the event — no extra API call needed
+
+```jsonc
+{
+  "type": "cluster:finality",
+  "senderId": "widget-a-id",
+  "clusterId": "cluster_abc123",
+  "successor": "widget-c-id",        // <-- proactive succession
+  "summary": "Planning ideas collected from B and C"
+}
+```
+
+**When the priority holder disappears** (disconnect, delete, or leaves the cluster):
+
+1. Server reads the JSONL log for the most recent `successor` designation from the departed priority holder
+2. If a valid successor exists and is still an **active agent** in the cluster → they become the new priority holder via a `cluster:priority:transfer` event
+3. If the designated successor is also gone → fall back to the oldest remaining agent member in the cluster
+4. If no agents remain → the cluster becomes **compute-less** (passive-only). It's valid but inert — no tokens circulate. If an agent is later connected to the cluster, they automatically receive priority.
+
+**Compute-less clusters are valid.** A cluster of three markdown blocks and an image is a legitimate cluster — it just can't do anything until an agent joins. When an agent does join, they get cluster priority automatically since they're the only compute member.
 
 ### Clusters
 
@@ -98,7 +125,8 @@ Every line in the JSONL is a **message event** with this envelope:
 
   // References
   "inReplyTo": null,               // msg_id this responds to
-  "clusterTokenHolder": "widget-a-id"  // who holds the cluster token after this event
+  "clusterTokenHolder": "widget-a-id",  // who holds the cluster token after this event
+  "successor": "widget-c-id"       // designated next priority holder if current holder leaves (optional, set by priority holder)
 }
 ```
 
@@ -136,6 +164,7 @@ Cluster state is never stored separately — it's computed by replaying the JSON
   members: ["widget-a-id", "widget-b-id", "widget-c-id"],
   goal: "Get ideas for next week's planning",
   clusterTokenHolder: "widget-a-id",
+  designatedSuccessor: "widget-c-id",  // most recently designated fallback priority holder
   status: "active",               // active | finalized | dissolved | timed_out
   createdAt: "2026-04-23T18:00:00.000Z",
   lastActivityAt: "2026-04-23T18:04:13.510Z",
@@ -489,7 +518,7 @@ Push notifications via Vite HMR (`storyboard:message`) are an optimization over 
 
 2. **Multiple clusters per widget:** Supported. A widget can be in multiple clusters simultaneously. Terminal config uses a `clusters` array.
 
-3. **Cluster priority transfer:** If the priority holder is disconnected/deleted, priority transfers to the next-oldest member via a `cluster:priority:transfer` event.
+3. **Cluster priority transfer:** The priority holder proactively designates a `successor` in their JSONL events. If they're removed, the server reads the most recent successor designation and transfers priority. Falls back to oldest remaining agent. Compute-less clusters (no agents) are valid but inert.
 
 4. **Agent API access:** Agents call the messaging API via `curl` to the local server. A `storyboard message` CLI command may be added later as a convenience wrapper.
 

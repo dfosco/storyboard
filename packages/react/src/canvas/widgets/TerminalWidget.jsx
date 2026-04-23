@@ -123,10 +123,18 @@ const DEFAULT_THEME = {
 export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizable }, ref) {
   const cfg = getTerminalConfig()
   const fontSize = cfg.fontSize ?? 13
-  const width = props?.width ?? cfg.defaultWidth ?? readProp(props, 'width', terminalSchema)
-  const height = props?.height ?? cfg.defaultHeight ?? readProp(props, 'height', terminalSchema)
+  const rawWidth = props?.width ?? cfg.defaultWidth ?? readProp(props, 'width', terminalSchema)
+  const rawHeight = props?.height ?? cfg.defaultHeight ?? readProp(props, 'height', terminalSchema)
   const prettyName = props?.prettyName || null
   const startupCommand = props?.startupCommand || null
+
+  // Snap dimensions to cell grid so the terminal fills its container exactly
+  const { cols, rows, snappedHeight } = useMemo(
+    () => calcDimensions(rawWidth, rawHeight, fontSize),
+    [rawWidth, rawHeight, fontSize],
+  )
+  const width = rawWidth
+  const height = snappedHeight
 
   const containerRef = useRef(null)
   const termRef = useRef(null)
@@ -154,6 +162,13 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
       if (actionId === 'expand' || actionId === 'split-screen') setExpanded(true)
     },
   }), [setExpanded])
+
+  // Persist snapped height back to widget props so canvas bounds match
+  useEffect(() => {
+    if (snappedHeight !== rawHeight) {
+      onUpdate?.({ height: snappedHeight })
+    }
+  }, [snappedHeight, rawHeight, onUpdate])
 
   // Exit interactive on click outside
   useEffect(() => {

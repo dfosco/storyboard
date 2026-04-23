@@ -549,61 +549,60 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
           // Launch copilot, then send /allow-all on after ready
           setTimeout(() => {
             ptyProcess.write(startupCommand + '\r')
+            // Start polling AFTER copilot has been launched (give it time to start)
+            let allowSent = false
+            const pollInterval = setInterval(() => {
+              if (allowSent) { clearInterval(pollInterval); return }
+              try {
+                const paneContent = execSync(
+                  `tmux capture-pane -t "${tmuxName}" -p`,
+                  { encoding: 'utf8', timeout: 1000 }
+                )
+                // Only match copilot-specific readiness signals, not bare shell prompts
+                if (paneContent.includes('Environment loaded:') || paneContent.includes('custom instruction')) {
+                  allowSent = true
+                  clearInterval(pollInterval)
+                  setTimeout(() => {
+                    try {
+                      execSync(`tmux send-keys -t "${tmuxName}" -l "/allow-all on"`, { stdio: 'ignore' })
+                      execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+                    } catch {}
+                    setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
+                  }, 500)
+                }
+              } catch {}
+            }, 2000)
+            setTimeout(() => { if (!allowSent) { allowSent = true; clearInterval(pollInterval) } }, 30000)
           }, 900)
-          // Poll for copilot readiness, then send /allow-all on
-          let allowSent = false
-          const pollInterval = setInterval(() => {
-            if (allowSent) { clearInterval(pollInterval); return }
-            try {
-              const paneContent = execSync(
-                `tmux capture-pane -t "${tmuxName}" -p`,
-                { encoding: 'utf8', timeout: 1000 }
-              )
-              if (paneContent.includes('Environment loaded:') || paneContent.match(/^[>❯]\s*$/m)) {
-                allowSent = true
-                clearInterval(pollInterval)
-                setTimeout(() => {
-                  try {
-                    execSync(`tmux send-keys -t "${tmuxName}" -l "/allow-all on"`, { stdio: 'ignore' })
-                    execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-                  } catch {}
-                  // Deliver any pending messages after agent is ready
-                  setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
-                }, 500)
-              }
-            } catch {}
-          }, 1000)
-          setTimeout(() => { if (!allowSent) { allowSent = true; clearInterval(pollInterval) } }, 15000)
         } else if (isClaude) {
           // Launch claude, then enable auto mode after ready
           setTimeout(() => {
             ptyProcess.write(startupCommand + '\r')
-          }, 900)
-          // Poll for claude readiness, then send auto mode command
-          let autoSent = false
-          const pollInterval = setInterval(() => {
-            if (autoSent) { clearInterval(pollInterval); return }
-            try {
-              const paneContent = execSync(
-                `tmux capture-pane -t "${tmuxName}" -p`,
-                { encoding: 'utf8', timeout: 1000 }
-              )
-              if (paneContent.includes('Welcome to') || paneContent.includes('? for shortcuts') || paneContent.match(/^[>❯]\s*$/m)) {
-                autoSent = true
-                clearInterval(pollInterval)
-                setTimeout(() => {
-                  try {
-                    execSync(`tmux send-keys -t "${tmuxName}" -l "/allowed-tools bash edit read"`, { stdio: 'ignore' })
-                    execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-                  } catch {}
-                  // Deliver any pending messages after agent is ready
-                  setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
-                }, 500)
-              }
-            } catch {}
-          }, 1000)
-          setTimeout(() => { if (!autoSent) { autoSent = true; clearInterval(pollInterval) } }, 15000)
-        } else if (startupCommand === 'shell') {
+            // Start polling AFTER claude has been launched
+            let autoSent = false
+            const pollInterval = setInterval(() => {
+              if (autoSent) { clearInterval(pollInterval); return }
+              try {
+                const paneContent = execSync(
+                  `tmux capture-pane -t "${tmuxName}" -p`,
+                  { encoding: 'utf8', timeout: 1000 }
+                )
+                // Match claude-specific readiness: "Welcome to" or "? for shortcuts"
+                if (paneContent.includes('Welcome to') || paneContent.includes('? for shortcuts')) {
+                  autoSent = true
+                  clearInterval(pollInterval)
+                  setTimeout(() => {
+                    try {
+                      execSync(`tmux send-keys -t "${tmuxName}" -l "/allowed-tools bash edit read"`, { stdio: 'ignore' })
+                      execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+                    } catch {}
+                    setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
+                  }, 500)
+                }
+              } catch {}
+            }, 2000)
+            setTimeout(() => { if (!autoSent) { autoSent = true; clearInterval(pollInterval) } }, 30000)
+          }, 900) else if (startupCommand === 'shell') {
           // Plain shell — nothing to do, the pty already has a shell running
         } else {
           // Custom command — send it directly

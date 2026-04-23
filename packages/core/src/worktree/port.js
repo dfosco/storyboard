@@ -14,6 +14,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, realpathSync } from 'fs'
 import { join, dirname, basename } from 'path'
 import { execSync } from 'child_process'
+import { findByWorktree } from './serverRegistry.js'
 
 const BASE_PORT = 1234
 
@@ -150,6 +151,31 @@ export function releasePort(worktreeName) {
     delete ports[worktreeName]
     writeFileSync(portsFile, JSON.stringify(ports, null, 2) + '\n')
   } catch { /* ignore corrupt file */ }
+}
+
+/**
+ * Resolve the port for a running dev server.
+ *
+ * Checks the server registry (servers.json) first for a live process,
+ * then falls back to ports.json assignment. Use this when connecting
+ * to an already-running server — it returns the real bound port even
+ * when Vite rebinds to a different port than originally assigned.
+ *
+ * @param {string} worktreeName
+ * @returns {number}
+ */
+export function resolveRunningPort(worktreeName) {
+  try {
+    const servers = findByWorktree(worktreeName)
+    if (servers.length > 0) {
+      const latest = servers.reduce((a, b) =>
+        (a.startedAt || '') >= (b.startedAt || '') ? a : b
+      )
+      return latest.port
+    }
+  } catch { /* registry unavailable */ }
+
+  return resolvePort(worktreeName)
 }
 
 /**

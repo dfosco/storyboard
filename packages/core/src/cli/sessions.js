@@ -12,7 +12,7 @@
 
 import * as p from '@clack/prompts'
 import { execSync as execSyncFn } from 'node:child_process'
-import { detectWorktreeName, getPort } from '../worktree/port.js'
+import { detectWorktreeName, resolveRunningPort } from '../worktree/port.js'
 import { readDevDomain } from './proxy.js'
 import { parseFlags } from './flags.js'
 import { dim, cyan, bold, yellow } from './intro.js'
@@ -128,7 +128,7 @@ function formatRow(idx, entry, isCurrent = false, showCanvas = true) {
 
 async function main() {
   const worktreeName = detectWorktreeName()
-  const port = getPort(worktreeName)
+  const port = resolveRunningPort(worktreeName)
   const currentTmuxSession = getCurrentTmuxSession()
 
   // Session list loop — user can navigate back here after actions

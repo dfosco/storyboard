@@ -240,7 +240,7 @@
     },
     "hide-toolbars": {
       "label": "Hide toolbars",
-      "icon": "iconoir/light-bulb-off",
+      "icon": "primer/light-bulb",
       "render": "button",
       "surface": "command-palette",
       "modes": ["*"],

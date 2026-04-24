@@ -631,9 +631,9 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       const isHidden = document.documentElement.classList.contains('storyboard-chrome-hidden')
       items.push({
         id: `cfg:${section.id}:${toolId}`,
-        toolIcon,
+        toolIcon: isHidden ? 'primer/light-bulb' : 'primer/light-bulb',
         children: <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>{label}</span>
+          <span>{isHidden ? 'Show toolbars' : 'Hide toolbars'}</span>
           <span>{isHidden ? '✓' : ''}</span>
         </span>,
         keywords: [label, toolId, 'hide', 'show', 'toolbar'].filter(Boolean),

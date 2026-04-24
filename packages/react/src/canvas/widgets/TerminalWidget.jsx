@@ -542,7 +542,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         <ResizeHandle
           targetRef={terminalRef}
           onResize={handleResize}
-          minWidth={300}
+          axis="vertical"
           minHeight={200}
         />
       )}

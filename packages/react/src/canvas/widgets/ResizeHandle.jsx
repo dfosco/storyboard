@@ -13,9 +13,10 @@ import styles from './ResizeHandle.module.css'
  * @param {React.RefObject} props.targetRef - ref to the element being resized (reads offsetWidth/Height)
  * @param {number} [props.minWidth=180]  - minimum allowed width
  * @param {number} [props.minHeight=60]  - minimum allowed height
+ * @param {'both'|'vertical'|'horizontal'} [props.axis='both'] - constrain resize to a single axis
  * @param {Function} props.onResize - callback: (width, height) => void
  */
-export default function ResizeHandle({ targetRef, minWidth = 180, minHeight = 60, onResize }) {
+export default function ResizeHandle({ targetRef, minWidth = 180, minHeight = 60, axis = 'both', onResize }) {
   const handleMouseDown = useCallback((e) => {
     e.stopPropagation()
     e.preventDefault()
@@ -29,8 +30,8 @@ export default function ResizeHandle({ targetRef, minWidth = 180, minHeight = 60
     const startH = el.offsetHeight
 
     function onMove(ev) {
-      const newW = Math.max(minWidth, startW + ev.clientX - startX)
-      const newH = Math.max(minHeight, startH + ev.clientY - startY)
+      const newW = axis === 'vertical' ? startW : Math.max(minWidth, startW + ev.clientX - startX)
+      const newH = axis === 'horizontal' ? startH : Math.max(minHeight, startH + ev.clientY - startY)
       onResize?.(newW, newH)
     }
 
@@ -41,16 +42,20 @@ export default function ResizeHandle({ targetRef, minWidth = 180, minHeight = 60
 
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
-  }, [targetRef, minWidth, minHeight, onResize])
+  }, [targetRef, minWidth, minHeight, axis, onResize])
+
+  const cursor = axis === 'vertical' ? 'ns-resize' : axis === 'horizontal' ? 'ew-resize' : 'nwse-resize'
 
   return (
     <div
       className={styles.handle}
+      style={axis !== 'both' ? { cursor } : undefined}
       onMouseDown={handleMouseDown}
       onPointerDown={(e) => e.stopPropagation()}
       role="separator"
-      aria-orientation="horizontal"
+      aria-orientation={axis === 'vertical' ? 'vertical' : 'horizontal'}
       aria-label="Resize"
     />
+  )
   )
 }

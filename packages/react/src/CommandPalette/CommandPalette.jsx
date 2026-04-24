@@ -33,10 +33,12 @@ function getIconMap() {
   return config?.icons || {}
 }
 
-function ItemIcon({ type, toolIcon }) {
+function ItemIcon({ type, toolIcon, toolMeta }) {
   const icons = getIconMap()
-  const iconName = toolIcon || icons[type] || icons.fallback || 'feather/hexagon'
-  return <Icon name={iconName} size={ICON_SIZE} color="var(--fgColor-muted, #656d76)" />
+  const entry = toolIcon || icons[type] || icons.fallback || 'feather/hexagon'
+  const iconName = typeof entry === 'object' ? entry.name : entry
+  const meta = toolMeta || (typeof entry === 'object' ? entry.meta : undefined)
+  return <Icon name={iconName} size={ICON_SIZE} color="var(--fgColor-muted, #656d76)" {...(meta || {})} />
 }
 
 function AvatarIcon({ username }) {
@@ -605,12 +607,13 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       const toolId = typeof entry === 'string' ? entry : entry.id
       const customLabel = typeof entry === 'object' ? entry.label : null
       const closeOnSelect = typeof entry === 'object' ? entry.closeOnSelect : undefined
+      const iconMeta = typeof entry === 'object' ? entry.meta : undefined
       const tool = tools[toolId]
       if (!tool) continue
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
       if (isHiddenInPalette(tool, basePath)) continue
-      entries.push({ toolId, tool, label: customLabel || tool.label || toolId, toolIcon: tool.icon, closeOnSelect: closeOnSelect ?? tool.closeOnSelect })
+      entries.push({ toolId, tool, label: customLabel || tool.label || toolId, toolIcon: tool.icon, toolMeta: iconMeta, closeOnSelect: closeOnSelect ?? tool.closeOnSelect })
     }
   } else {
     for (const [toolId, tool] of Object.entries(tools)) {
@@ -618,7 +621,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
       if (isHiddenInPalette(tool, basePath)) continue
-      entries.push({ toolId, tool, label: tool.label || toolId, toolIcon: tool.icon, closeOnSelect: tool.closeOnSelect })
+      entries.push({ toolId, tool, label: tool.label || toolId, toolIcon: tool.icon, toolMeta: undefined, closeOnSelect: tool.closeOnSelect })
     }
   }
 
@@ -627,7 +630,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
   const items = []
   const subPages = []
 
-  for (const { toolId, tool, label, toolIcon, closeOnSelect: entryCloseOnSelect } of entries) {
+  for (const { toolId, tool, label, toolIcon, toolMeta, closeOnSelect: entryCloseOnSelect } of entries) {
     // Inline actions
     if (tool.inlineAction === 'toggle-chrome') {
       const isHidden = document.documentElement.classList.contains('storyboard-chrome-hidden')
@@ -771,12 +774,16 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
     })
   }
 
-  // Add toolIcon to all items from their entry
-  const iconByToolId = new Map(entries.map(e => [e.toolId, e.toolIcon]))
+  // Add toolIcon and toolMeta to all items from their entry
+  const iconByToolId = new Map(entries.map(e => [e.toolId, { icon: e.toolIcon, meta: e.toolMeta }]))
   for (const item of items) {
     if (!item.toolIcon) {
       const match = item.id?.match(/cfg:[^:]+:(.+)/)
-      if (match && iconByToolId.has(match[1])) item.toolIcon = iconByToolId.get(match[1])
+      if (match && iconByToolId.has(match[1])) {
+        const entry = iconByToolId.get(match[1])
+        item.toolIcon = entry.icon
+        if (!item.toolMeta && entry.meta) item.toolMeta = entry.meta
+      }
     }
   }
 
@@ -1103,7 +1110,7 @@ export default function StoryboardCommandPalette({ basePath }) {
                 !search && <Command.Separator key={list.id} />
               ) : (
                 <Command.Group key={list.id} heading={list.heading}>
-                  {list.items.map(({ id, children, keywords, onClick, itemType, toolIcon, closeOnSelect, url, ...rest }) => {
+                  {list.items.map(({ id, children, keywords, onClick, itemType, toolIcon, toolMeta, closeOnSelect, url, ...rest }) => {
                     if (hiddenFromSearchIds.size > 0) {
                       for (const toolId of hiddenFromSearchIds) {
                         if (id?.includes(toolId)) return null
@@ -1125,7 +1132,7 @@ export default function StoryboardCommandPalette({ basePath }) {
                           }
                         }}
                       >
-                        <ItemIcon type={itemType} toolIcon={toolIcon} />
+                        <ItemIcon type={itemType} toolIcon={toolIcon} toolMeta={toolMeta} />
                         {children}
                       </Command.Item>
                     )

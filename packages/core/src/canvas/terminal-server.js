@@ -158,7 +158,7 @@ const RAW_TAIL_MAX = 2000
 function injectIdentityMessage(tmuxName, { widgetId, displayName, canvasId, branch, serverUrl }) {
   if (!hasTmux) return
   const configFile = `.storyboard/terminals/${widgetId}.json`
-  const msg = `[System] Your terminal identity has been set. widgetId=${widgetId} displayName=${displayName} canvasId=${canvasId} configFile=${configFile} serverUrl=${serverUrl}`
+  const msg = `[System] Your terminal identity has been set. widgetId=${widgetId} displayName=${displayName} canvasId=${canvasId} configFile=${configFile} serverUrl=${serverUrl} — this is a configuration step, no response needed.`
   try {
     execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(msg)}`, { stdio: 'ignore' })
     execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })

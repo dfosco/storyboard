@@ -50,6 +50,10 @@ export function toggleImagePrivacy(filename) {
   return request('/image/toggle-private', 'POST', { filename })
 }
 
+export function duplicateImage(filename) {
+  return request('/image/duplicate', 'POST', { filename })
+}
+
 export function getCanvas(canvasId) {
   return request(`/read?name=${encodeURIComponent(canvasId)}`, 'GET')
 }

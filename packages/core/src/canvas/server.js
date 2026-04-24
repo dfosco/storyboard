@@ -1621,6 +1621,47 @@ export function Default() {
       return
     }
 
+    // POST /image/duplicate — copy an image file with a new timestamped name
+    if (routePath === '/image/duplicate' && method === 'POST') {
+      const { filename } = body
+
+      if (!filename || typeof filename !== 'string') {
+        sendJson(res, 400, { error: 'filename is required' })
+        return
+      }
+
+      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        sendJson(res, 400, { error: 'Invalid filename' })
+        return
+      }
+
+      const sourcePath = resolveImagePath(filename)
+      if (!sourcePath) {
+        sendJson(res, 404, { error: 'Image not found' })
+        return
+      }
+
+      try {
+        const ext = path.extname(filename)
+        const now = new Date()
+        const pad = (n) => String(n).padStart(2, '0')
+        const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}--${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
+        // Preserve privacy prefix
+        const prefix = filename.startsWith('~') ? '~' : ''
+        const baseName = filename.replace(/^~/, '').replace(ext, '')
+        // Extract canvas prefix (everything before the date pattern or the full base)
+        const canvasMatch = baseName.match(/^(.+?--)\d{4}-/)
+        const canvasPrefix = canvasMatch ? canvasMatch[1] : ''
+        const newFilename = `${prefix}${canvasPrefix}${dateStr}${ext}`
+        const targetDir = path.dirname(sourcePath)
+        fs.copyFileSync(sourcePath, path.join(targetDir, newFilename))
+        sendJson(res, 201, { success: true, filename: newFilename })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to duplicate image: ${err.message}` })
+      }
+      return
+    }
+
     // POST /image/toggle-private — toggle tilde prefix on image filename
     if (routePath === '/image/toggle-private' && method === 'POST') {
       const { filename } = body

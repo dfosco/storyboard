@@ -22,6 +22,7 @@ import MarqueeOverlay from './MarqueeOverlay.jsx'
 import {
   addWidget as addWidgetApi,
   checkGitHubCliAvailable,
+  duplicateImage,
   fetchGitHubEmbed,
   getCanvas as getCanvasApi,
   removeWidget as removeWidgetApi,
@@ -1027,6 +1028,11 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       const copyProps = { ...widget.props }
       // Terminal widgets must get unique names — strip prettyName so the server generates a fresh one
       if (isTerminal) delete copyProps.prettyName
+      // Image widgets: duplicate the asset file so each widget owns its own copy
+      if (widget.type === 'image' && copyProps.src) {
+        const dupResult = await duplicateImage(copyProps.src)
+        if (dupResult.success) copyProps.src = dupResult.filename
+      }
 
       undoRedo.snapshot(stateRef.current, 'add')
       const result = await addWidgetApi(canvasId, {
@@ -2000,6 +2006,13 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
             const relY = (w.position?.y ?? 0) - minY
             const pasteProps = { ...w.props }
             if (w.type === 'terminal' || w.type === 'agent') delete pasteProps.prettyName
+            // Image widgets: duplicate the asset so the paste owns its own copy
+            if (w.type === 'image' && pasteProps.src) {
+              try {
+                const dupResult = await duplicateImage(pasteProps.src)
+                if (dupResult.success) pasteProps.src = dupResult.filename
+              } catch { /* use original src as fallback */ }
+            }
             const result = await addWidgetApi(canvasId, {
               type: w.type,
               props: pasteProps,

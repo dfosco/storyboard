@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Resume a failed release — tags, publishes, pushes, and creates GH release.
+# Resume a failed release — ensures tags exist, pushes, and triggers CI publish.
 #
-# Use this when `npm run release` failed partway through (e.g. npm auth
-# expired, network error, publish failed for some packages). It skips
-# lint/test/build/versioning and picks up from the current committed state.
+# Use this when `npm run release` failed partway through (e.g. tags weren't
+# created, push failed, CI didn't trigger). It skips lint/test/build/versioning
+# and picks up from the current committed state.
 #
 # Usage:
 #   npm run release:resume              # resume stable release
@@ -40,16 +40,6 @@ else
   echo "📦 Resuming stable release (v${VERSION})"
 fi
 
-# Check npm auth before doing any work
-echo ""
-echo "🔑 Checking npm authentication..."
-if ! npm whoami &>/dev/null; then
-  echo "  ⚠️  Not logged in to npm."
-  echo "  Please run 'npm login' in a separate terminal, then re-run this script."
-  exit 1
-fi
-echo "  ✅ Logged in as $(npm whoami)"
-
 # Confirm
 echo ""
 echo "┌──────────────────────────────────────────┐"
@@ -59,6 +49,7 @@ if [ -n "$PRE_TAG" ]; then
 else
   echo "│  npm dist-tag: latest"
 fi
+echo "│  Publishing will happen via CI (OIDC)"
 echo "└──────────────────────────────────────────┘"
 echo ""
 read -r -p "Proceed? (y/N) " confirm
@@ -72,30 +63,6 @@ echo "🏷️  Ensuring git tags..."
 npx changeset tag 2>/dev/null || true
 echo "  ✅ Tags verified"
 
-# Publish — skip packages that are already published
-echo "🚀 Publishing to npm..."
-PUBLISH_ARGS=(--access public)
-if [ -n "$PRE_TAG" ]; then
-  PUBLISH_ARGS+=(--tag "$PRE_TAG")
-fi
-
-WORKSPACES=(
-  "@dfosco/storyboard-core"
-  "@dfosco/storyboard-react"
-  "@dfosco/storyboard-react-primer"
-  "@dfosco/storyboard-react-reshaped"
-)
-
-for ws in "${WORKSPACES[@]}"; do
-  PKG_VERSION=$(npm view "${ws}@${VERSION}" version 2>/dev/null || true)
-  if [ "$PKG_VERSION" = "$VERSION" ]; then
-    echo "  ⏭️  ${ws}@${VERSION} already published, skipping"
-  else
-    echo "  📦 Publishing ${ws}@${VERSION}..."
-    npm publish --workspace "$ws" "${PUBLISH_ARGS[@]}"
-  fi
-done
-
 # Exit prerelease mode if needed
 if [ -n "$PRE_TAG" ]; then
   if [ -f ".changeset/pre.json" ]; then
@@ -106,39 +73,18 @@ if [ -n "$PRE_TAG" ]; then
   fi
 fi
 
-echo "⬆️  Pushing with tags..."
-git push --follow-tags
-
-echo "📢 Creating GitHub Release..."
-
 TAG="@dfosco/storyboard-core@${VERSION}"
-CHANGELOG="packages/core/CHANGELOG.md"
-TITLE="v${VERSION}"
 
-GH_RELEASE_ARGS=()
-if [ -n "$PRE_TAG" ]; then
-  GH_RELEASE_ARGS+=(--prerelease)
-else
-  GH_RELEASE_ARGS+=(--latest)
-fi
+echo "⬆️  Pushing branch..."
+git push --set-upstream origin "$(git branch --show-current)" 2>/dev/null || git push
 
-if gh release view "$TAG" &>/dev/null; then
-  echo "  ⏭️  ${TITLE} release already exists, skipping"
-else
-  NOTES=$(awk -v ver="## ${VERSION}" '
-    $0 ~ ver { found=1; next }
-    found && /^## / { exit }
-    found { print }
-  ' "$CHANGELOG")
+echo "⬆️  Pushing tags..."
+git push --tags
 
-  if [ -n "$NOTES" ]; then
-    echo "$NOTES" | gh release create "$TAG" --title "$TITLE" --notes-file - "${GH_RELEASE_ARGS[@]}"
-  else
-    echo "  ⚠️  No changelog section found for ${VERSION} in ${CHANGELOG}"
-    echo "     Falling back to auto-generated notes from commits."
-    gh release create "$TAG" --title "$TITLE" --generate-notes "${GH_RELEASE_ARGS[@]}"
-  fi
-  echo "  ✅ Created release ${TITLE}"
-fi
+echo "🚀 Triggering publish workflow..."
+gh workflow run release-publish.yml -f "tag=${TAG}"
 
-echo "✅ Release resumed successfully!"
+echo ""
+echo "✅ Version ${VERSION} tags pushed and publish triggered!"
+echo ""
+echo "   Track progress: https://github.com/dfosco/storyboard/actions/workflows/release-publish.yml"

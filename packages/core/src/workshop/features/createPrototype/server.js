@@ -330,6 +330,104 @@ export function createPrototypesHandler(ctx) {
       return
     }
 
+    // DELETE /prototypes — delete a prototype directory
+    if (routePath === '/prototypes' && method === 'DELETE') {
+      const { name, folder } = body
+
+      if (!name || typeof name !== 'string') {
+        sendJson(res, 400, { error: 'Prototype name is required' })
+        return
+      }
+
+      const prototypesDir = path.join(root, 'src', 'prototypes')
+      let targetDir
+
+      if (folder) {
+        targetDir = path.join(prototypesDir, `${folder}.folder`, name)
+        if (!fs.existsSync(targetDir)) {
+          targetDir = path.join(prototypesDir, folder, name)
+        }
+      } else {
+        targetDir = path.join(prototypesDir, name)
+      }
+
+      if (!fs.existsSync(targetDir)) {
+        sendJson(res, 404, { error: `Prototype "${name}" not found` })
+        return
+      }
+
+      // Safety: verify it's actually inside src/prototypes/
+      const resolved = path.resolve(targetDir)
+      if (!resolved.startsWith(path.resolve(prototypesDir))) {
+        sendJson(res, 400, { error: 'Invalid path' })
+        return
+      }
+
+      try {
+        fs.rmSync(targetDir, { recursive: true, force: true })
+        sendJson(res, 200, { success: true, deleted: name })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to delete prototype: ${err.message}` })
+      }
+      return
+    }
+
+    // PUT /prototypes — update prototype metadata
+    if (routePath === '/prototypes' && method === 'PUT') {
+      const { name, folder, title, description, author } = body
+
+      if (!name || typeof name !== 'string') {
+        sendJson(res, 400, { error: 'Prototype name is required' })
+        return
+      }
+
+      const prototypesDir = path.join(root, 'src', 'prototypes')
+      let targetDir
+
+      if (folder) {
+        targetDir = path.join(prototypesDir, `${folder}.folder`, name)
+        if (!fs.existsSync(targetDir)) {
+          targetDir = path.join(prototypesDir, folder, name)
+        }
+      } else {
+        targetDir = path.join(prototypesDir, name)
+      }
+
+      if (!fs.existsSync(targetDir)) {
+        sendJson(res, 404, { error: `Prototype "${name}" not found` })
+        return
+      }
+
+      // Find the .prototype.json file
+      const files = fs.readdirSync(targetDir)
+      const protoJsonFile = files.find(f => f.endsWith('.prototype.json'))
+
+      if (!protoJsonFile) {
+        sendJson(res, 404, { error: `No .prototype.json file found in "${name}"` })
+        return
+      }
+
+      try {
+        const protoJsonPath = path.join(targetDir, protoJsonFile)
+        const json = JSON.parse(fs.readFileSync(protoJsonPath, 'utf-8'))
+
+        if (!json.meta) json.meta = {}
+        if (title !== undefined) json.meta.title = title
+        if (description !== undefined) json.meta.description = description
+        if (author !== undefined) {
+          json.meta.author = typeof author === 'string'
+            ? author.split(',').map(a => a.trim()).filter(Boolean)
+            : author
+        }
+
+        fs.writeFileSync(protoJsonPath, JSON.stringify(json, null, 2) + '\n', 'utf-8')
+        sendJson(res, 200, { success: true, updated: name })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to update prototype metadata: ${err.message}` })
+      }
+      return
+    }
+
     // Unmatched routes fall through — the server plugin compositor handles 404
   }
 }

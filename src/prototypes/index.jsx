@@ -6,6 +6,7 @@ export default function IndexPage() {
   return (
     <Viewfinder
       title="Storyboard"
+      subtitle="Collaborative workspace for design & code"
       pageModules={pageModules}
       basePath={import.meta.env.BASE_URL}
     />

@@ -1,13 +1,14 @@
 /**
- * Comment window — Svelte popup that shows a comment thread with replies and reactions.
+ * Comment window — React popup that shows a comment thread with replies and reactions.
  *
  * Opens when clicking a comment pin. Shows comment body, author, replies,
  * reply input, reactions, and supports drag-to-move.
  * Styled with Tachyons + sb-* custom classes for light/dark mode support.
  */
 
-import { mount, unmount } from 'svelte'
-import CommentWindowComponent from './CommentWindow.svelte'
+import { createElement } from 'react'
+import { createRoot } from 'react-dom/client'
+import CommentWindowComponent from './CommentWindow.jsx'
 import { getCachedUser } from '../auth.js'
 import { saveDraft, replyDraftKey } from '../commentDrafts.js'
 import './comment-layout.css'
@@ -50,17 +51,17 @@ export function showCommentWindow(container, comment, discussion, callbacks = {}
 
   container.appendChild(win)
 
-  let instance = null
+  let root = null
 
   function destroy() {
-    // Save reply draft from DOM before Svelte unmounts
+    // Save reply draft from DOM before React unmounts
     const textarea = win.querySelector('textarea[placeholder="Reply…"]')
     const val = textarea?.value?.trim()
     if (val) {
       saveDraft(replyDraftKey(comment.id), { type: 'reply', text: textarea.value })
     }
 
-    if (instance) { unmount(instance); instance = null }
+    if (root) { root.unmount(); root = null }
     win.remove()
     if (activeWindow?.el === win) activeWindow = null
     const currentUrl = new URL(window.location.href)
@@ -69,17 +70,15 @@ export function showCommentWindow(container, comment, discussion, callbacks = {}
     callbacks.onClose?.()
   }
 
-  instance = mount(CommentWindowComponent, {
-    target: win,
-    props: {
-      comment,
-      discussion,
-      user,
-      winEl: win,
-      onClose: destroy,
-      onMove: () => callbacks.onMove?.(),
-    },
-  })
+  root = createRoot(win)
+  root.render(createElement(CommentWindowComponent, {
+    comment,
+    discussion,
+    user,
+    winEl: win,
+    onClose: destroy,
+    onMove: () => callbacks.onMove?.(),
+  }))
 
   // Adjust position to keep window within viewport
   requestAnimationFrame(() => {

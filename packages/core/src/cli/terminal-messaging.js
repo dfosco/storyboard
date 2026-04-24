@@ -84,6 +84,7 @@ export async function handleSend() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ widgetId: targetWidgetId, message, from: senderWidgetId }),
+      signal: AbortSignal.timeout(10000),
     })
     const data = await res.json()
     if (data.success) {
@@ -97,7 +98,11 @@ export async function handleSend() {
       process.exit(1)
     }
   } catch (err) {
-    console.error(`Error: ${err.message}`)
+    if (err.name === 'TimeoutError') {
+      console.error(`Error: request timed out — is the dev server running? (tried ${serverUrl})`)
+    } else {
+      console.error(`Error: ${err.message}`)
+    }
     process.exit(1)
   }
 }
@@ -121,6 +126,7 @@ export async function handleOutput() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ widgetId, content, summary }),
+      signal: AbortSignal.timeout(10000),
     })
     const data = await res.json()
     if (data.success) {
@@ -130,7 +136,11 @@ export async function handleOutput() {
       process.exit(1)
     }
   } catch (err) {
-    console.error(`Error: ${err.message}`)
+    if (err.name === 'TimeoutError') {
+      console.error(`Error: request timed out — is the dev server running? (tried ${serverUrl})`)
+    } else {
+      console.error(`Error: ${err.message}`)
+    }
     process.exit(1)
   }
 }

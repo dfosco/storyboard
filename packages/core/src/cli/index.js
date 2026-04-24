@@ -143,6 +143,24 @@ switch (command) {
   case 'terminal':
     if (process.argv[3] === 'start') {
       import('./terminal-welcome.js')
+    } else if (process.argv[3] === '--help' || process.argv[3] === 'help') {
+      const cmd = (name, desc) => `    ${green(name.padEnd(36))}${desc}`
+      const cmds = [
+        `  ${bold(cyan('Terminal commands'))}`,
+        cmd('terminal', 'Browse and manage terminal sessions (interactive)'),
+        cmd('terminal start', 'Launch the terminal welcome prompt'),
+        cmd('terminal close --id <name>', 'Archive a session'),
+        cmd('terminal open --id <name>', 'Attach to a session'),
+        cmd('terminal remove --id <name>', 'Permanently destroy a session'),
+        cmd('terminal reset', 'Kill tmux server, clear registry & snapshots'),
+        '',
+        `  ${bold(cyan('Messaging'))}`,
+        cmd('terminal send <id> "msg"', 'Send a message to a terminal'),
+        cmd('terminal send --connected "msg"', 'Send to connected peer'),
+        cmd('terminal output --summary "..."', 'Save latest output (+ --content)'),
+        cmd('terminal status <widgetId>', 'Check terminal status'),
+      ].join('\n')
+      console.log(`\n${cmds}\n`)
     } else if (process.argv[3] === 'close' || process.argv[3] === 'archive') {
       import('./terminal-commands.js')
     } else if (process.argv[3] === 'open') {

@@ -50,35 +50,6 @@
   cursor: default;
 }
 
-.zoomLevel {
-  all: unset;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  height: 32px;
-  padding: 0 4px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: var(--fgColor-muted, #656d76);
-  transition: background 120ms;
-}
-
-.zoomLevel:hover {
-  background: var(--bgColor-muted, #f6f8fa);
-  color: var(--fgColor-default, #1f2328);
-}
-
-.divider {
-  width: 1px;
-  height: 20px;
-  margin: 0 2px;
-  background: var(--borderColor-muted, #d8dee4);
-}
-
 /* Create widget menu */
 .createGroup {
   position: relative;
@@ -130,4 +101,35 @@
 
 .menuItem:hover {
   background: var(--bgColor-muted, #f6f8fa);
+}
+
+.menuDivider {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--borderColor-muted, rgba(0, 0, 0, 0.1));
+}
+
+.menuHint {
+  font-size: 11px;
+  color: var(--fgColor-muted, #656d76);
+  margin-left: 8px;
+}
+
+.menuEmpty {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--fgColor-muted, #656d76);
+  font-style: italic;
+}
+
+.backBtn {
+  all: unset;
+  cursor: pointer;
+  margin-right: 4px;
+  font-size: 13px;
+  color: var(--fgColor-muted, #656d76);
+}
+
+.backBtn:hover {
+  color: var(--fgColor-default, #1f2328);
 }

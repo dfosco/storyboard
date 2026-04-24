@@ -1,61 +1,1122 @@
-
-import { useRef, useEffect, useMemo } from 'react'
-
 /**
- * Viewfinder — thin React wrapper around the Svelte Viewfinder component.
+ * Viewfinder — SaaS-style homescreen for Storyboard.
  *
- * Mounts the core Svelte Viewfinder into a container div and manages
- * its lifecycle via React's useEffect.
- *
- * @param {Object} props
- * @param {Record<string, unknown>} [props.scenes] - Scene/flow index (deprecated, ignored — data comes from core)
- * @param {Record<string, unknown>} [props.flows] - Flow index (deprecated, ignored — data comes from core)
- * @param {Record<string, unknown>} [props.pageModules] - import.meta.glob result for page files
- * @param {string} [props.basePath] - Base URL path
- * @param {string} [props.title] - Header title
- * @param {string} [props.subtitle] - Optional subtitle
- * @param {boolean} [props.showThumbnails] - Show thumbnail previews
- * @param {boolean} [props.hideDefaultFlow] - Hide the "default" flow from the "Other flows" section
+ * Replaces the old list-based Viewfinder with a sidebar + grid layout.
+ * Wired to real data from buildPrototypeIndex and listStories.
  */
-export default function Viewfinder({ pageModules = {}, basePath, title = 'Storyboard', subtitle, showThumbnails = false, hideDefaultFlow, hideDefaultScene = false }) {
-  const containerRef = useRef(null)
-  const handleRef = useRef(null)
+import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
+import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
+import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, PlusIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon, StackIcon } from '@primer/octicons-react'
+import { Menu } from '@base-ui/react/menu'
+import Icon from './Icon.jsx'
+import css from './Viewfinder.module.css'
 
-  const shouldHideDefault = hideDefaultFlow ?? hideDefaultScene
+/* ─── Theme sync: read toolbar theme from DOM and apply to Primer/BaseUI ─── */
 
-  const knownRoutes = useMemo(() => Object.keys(pageModules)
-    .map(p => p.replace('/src/prototypes/', '').replace('.jsx', ''))
-    .filter(n => !n.startsWith('_') && n !== 'index' && n !== 'viewfinder'),
-  [pageModules])
-
-  useEffect(() => {
-    if (!containerRef.current) return
-
-    let cancelled = false
-
-    import('@dfosco/storyboard-core/ui-runtime').then(({ mountViewfinder, unmountViewfinder }) => {
-      if (cancelled) return
-      // Ensure clean state for re-mounts
-      unmountViewfinder()
-      handleRef.current = mountViewfinder(containerRef.current, {
-        title,
-        subtitle,
-        basePath,
-        knownRoutes,
-        showThumbnails,
-        hideDefaultFlow: shouldHideDefault,
-      })
-    })
-
-    return () => {
-      cancelled = true
-      if (handleRef.current) {
-        handleRef.current.destroy()
-        handleRef.current = null
-      }
-    }
-  }, [title, subtitle, basePath, knownRoutes, showThumbnails, shouldHideDefault])
-
-  return <div ref={containerRef} style={{ minHeight: '100vh' }} />
+function getToolbarThemeAttrs() {
+  const theme = document.documentElement.getAttribute('data-sb-toolbar-theme') || 'light'
+  if (theme === 'dark_dimmed') {
+    return { 'data-color-mode': 'dark', 'data-dark-theme': 'dark_dimmed', 'data-light-theme': 'light' }
+  }
+  if (theme.startsWith('dark')) {
+    return { 'data-color-mode': 'dark', 'data-dark-theme': 'dark', 'data-light-theme': 'light' }
+  }
+  return { 'data-color-mode': 'light', 'data-light-theme': 'light', 'data-dark-theme': 'dark' }
 }
 
+function useToolbarTheme() {
+  const [attrs, setAttrs] = useState(getToolbarThemeAttrs)
+
+  useEffect(() => {
+    const update = () => setAttrs(getToolbarThemeAttrs())
+    const observer = new MutationObserver(update)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-sb-toolbar-theme'] })
+    update()
+    return () => observer.disconnect()
+  }, [])
+
+  // Sync to document.body so BaseUI portals inherit Primer theme
+  useEffect(() => {
+    for (const [key, value] of Object.entries(attrs)) {
+      document.body.setAttribute(key, value)
+    }
+  }, [attrs])
+
+  return attrs
+}
+
+/* ─── localStorage helpers ─── */
+
+const STARRED_KEY = 'sb-viewfinder-starred'
+const RECENT_KEY = 'sb-viewfinder-recent'
+const MAX_RECENT = 30
+const GROUP_BY_FOLDERS_KEY = 'sb-viewfinder-group-folders'
+
+function readJSON(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) || fallback }
+  catch { return fallback }
+}
+
+function writeJSON(key, value) {
+  localStorage.setItem(key, JSON.stringify(value))
+  window.dispatchEvent(new StorageEvent('storage', { key }))
+}
+
+function createLocalStorageStore(key, fallback) {
+  const subscribe = (cb) => {
+    const handler = (e) => { if (!e.key || e.key === key) cb() }
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
+  }
+  const getSnapshot = () => localStorage.getItem(key) || JSON.stringify(fallback)
+  return { subscribe, getSnapshot }
+}
+
+const starredStore = createLocalStorageStore(STARRED_KEY, [])
+const recentStore = createLocalStorageStore(RECENT_KEY, [])
+
+function useStarred() {
+  const raw = useSyncExternalStore(starredStore.subscribe, starredStore.getSnapshot)
+  const ids = JSON.parse(raw)
+  const toggle = useCallback((id) => {
+    const current = readJSON(STARRED_KEY, [])
+    const next = current.includes(id) ? current.filter(x => x !== id) : [...current, id]
+    writeJSON(STARRED_KEY, next)
+  }, [])
+  return { starred: new Set(ids), toggle }
+}
+
+function useRecent() {
+  const raw = useSyncExternalStore(recentStore.subscribe, recentStore.getSnapshot)
+  return JSON.parse(raw)
+}
+
+function trackRecent(id) {
+  const current = readJSON(RECENT_KEY, [])
+  const next = [id, ...current.filter(x => x !== id)].slice(0, MAX_RECENT)
+  writeJSON(RECENT_KEY, next)
+}
+
+/* ─── URL helpers ─── */
+
+function withBase(basePath, route) {
+  const normalizedRoute = route.startsWith('/') ? route : `/${route}`
+  const normalizedBase = (basePath || '/').replace(/\/+$/, '')
+  if (!normalizedBase || normalizedBase === '/') return normalizedRoute
+  return `${normalizedBase}${normalizedRoute}`.replace(/\/+/g, '/')
+}
+
+/* ─── Thumbnail color from name hash ─── */
+
+const THUMB_CLASSES = ['thumbBlue', 'thumbAmber', 'thumbGreen', 'thumbPurple', 'thumbRose', 'thumbSlate']
+
+function thumbClass(name) {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) | 0
+  return css[THUMB_CLASSES[Math.abs(h) % THUMB_CLASSES.length]]
+}
+
+/* ─── Type helpers ─── */
+
+function getTypeLabel(type) {
+  if (type === 'prototype') return 'PROTOTYPE'
+  if (type === 'canvas') return 'CANVAS'
+  if (type === 'component') return 'COMPONENT'
+  return type?.toUpperCase() || ''
+}
+
+function getTypeIcon(type, size = 14) {
+  if (type === 'prototype') return <Icon name="prototype" size={size} />
+  if (type === 'canvas') return <Icon name="canvas" size={size} />
+  if (type === 'component') return <Icon name="component" size={size} />
+  return null
+}
+
+/* ─── Avatar Stack ─── */
+
+function AvatarStack({ authors }) {
+  if (!authors || authors.length === 0) return null
+  const list = Array.isArray(authors) ? authors : [authors]
+  return (
+    <div className={css.avatarStack}>
+      {list.map(username => (
+        <img
+          key={username}
+          className={css.avatarImg}
+          src={`https://github.com/${username}.png?size=48`}
+          alt={username}
+          width={24}
+          height={24}
+          loading="lazy"
+          onError={(e) => { e.target.style.display = 'none' }}
+        />
+      ))}
+    </div>
+  )
+}
+
+/* ─── Star Button ─── */
+
+function StarBtn({ active, onClick }) {
+  return (
+    <button
+      className={active ? css.iconBtnActive : css.iconBtn}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClick() }}
+      aria-label={active ? 'Remove favorite' : 'Favorite'}
+      title={active ? 'Remove favorite' : 'Favorite'}
+    >
+      {active ? <StarFillIcon size={16} /> : <StarIcon size={16} />}
+    </button>
+  )
+}
+
+/* ─── Artifact Card ─── */
+
+function ArtifactCard({ item, basePath, starred, onToggleStar }) {
+  const href = item.route ? withBase(basePath, item.route) : '#'
+  const isExternal = item.isExternal
+
+  const handleClick = () => {
+    trackRecent(item.id)
+  }
+
+  const Tag = isExternal ? 'a' : 'a'
+  const linkProps = isExternal
+    ? { href: item.externalUrl, target: '_blank', rel: 'noopener noreferrer' }
+    : { href }
+
+  const authorList = item.author
+    ? (Array.isArray(item.author) ? item.author : [item.author])
+    : item.gitAuthor ? [item.gitAuthor] : []
+
+  return (
+    <Tag className={css.card} {...linkProps} onClick={handleClick}>
+      <div className={css.cardHeader}>
+        <span className={css.cardBadge}>{getTypeLabel(item.type)}</span>
+        <div className={css.cardActions}>
+          {item.flows?.length > 0 && <FlowsDropdown flows={item.flows} basePath={basePath} />}
+          {item.pages?.length > 1 && <PagesDropdown pages={item.pages} basePath={basePath} />}
+          <StarBtn active={starred} onClick={() => onToggleStar(item.id)} />
+        </div>
+      </div>
+      <div className={css.cardBody}>
+        <div className={css.cardBodyContent}>
+          <div className={css.cardTitle}>
+            {item.name}
+            {isExternal && <span className={css.externalBadge}>↗</span>}
+          </div>
+          {item.description && (
+            <div className={css.cardDescription}>{item.description}</div>
+          )}
+          <div className={css.cardFooter}>
+            <AvatarStack authors={authorList} />
+            <div className={css.cardMeta}>
+              {authorList.length > 0 && <span>{authorList.join(', ')}</span>}
+              {authorList.length > 0 && formatRelativeTime(item.lastModified) && <span className={css.cardMetaDot} />}
+              {formatRelativeTime(item.lastModified) && <span>{formatRelativeTime(item.lastModified)}</span>}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Tag>
+  )
+}
+
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return ''
+  const now = Date.now()
+  const diff = now - date.getTime()
+  if (diff < 0) return ''
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  if (days < 30) return `${Math.floor(days / 7)}w ago`
+  return date.toLocaleDateString()
+}
+
+/* ─── Flows Dropdown ─── */
+
+function FlowsDropdown({ flows, basePath }) {
+  if (!flows || flows.length === 0) return null
+  return (
+    <Menu.Root>
+      <Menu.Trigger
+        className={css.iconBtn}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+        aria-label="See flows"
+        title="See flows"
+      >
+        <Icon name="flow" size={16} />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner className={css.flowsPositioner} side="bottom" align="end" sideOffset={4}>
+          <Menu.Popup className={css.flowsPopup}>
+            <div className={css.flowsTitle}>Flows</div>
+            {flows.map(flow => (
+              <Menu.Item
+                key={flow.key}
+                className={css.flowsItem}
+                onClick={(e) => {
+                  e.preventDefault()
+                  window.location.href = withBase(basePath, flow.route)
+                }}
+              >
+                {flow.meta?.title || flow.name}
+              </Menu.Item>
+            ))}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  )
+}
+
+/* ─── Pages Dropdown ─── */
+
+function PagesDropdown({ pages, basePath }) {
+  if (!pages || pages.length < 2) return null
+  return (
+    <Menu.Root>
+      <Menu.Trigger
+        className={css.iconBtn}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+        aria-label="See pages"
+        title="See pages"
+      >
+        <StackIcon size={16} />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner className={css.flowsPositioner} side="bottom" align="end" sideOffset={4}>
+          <Menu.Popup className={css.flowsPopup}>
+            <div className={css.flowsTitle}>Pages</div>
+            {pages.map(page => (
+              <Menu.Item
+                key={page.route}
+                className={css.flowsItem}
+                onClick={(e) => {
+                  e.preventDefault()
+                  window.location.href = withBase(basePath, page.route)
+                }}
+              >
+                {page.name}
+              </Menu.Item>
+            ))}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  )
+}
+
+/* ─── Folder Section ─── */
+
+function FolderSection({ folder, collapsed, onToggle, basePath, starred, onToggleStar }) {
+  return (
+    <section className={collapsed ? css.folderSectionCollapsed : css.folderSection}>
+      <button className={css.folderHeader} onClick={onToggle}>
+        <Icon name={collapsed ? 'folder' : 'folder-open'} size={16} className={css.folderIcon} />
+        <span className={css.folderName}>{folder.name}</span>
+        <span className={css.folderCount}>{folder.items.length}</span>
+        <ChevronRightIcon
+          size={14}
+          className={collapsed ? css.folderChevron : css.folderChevronExpanded}
+        />
+      </button>
+      {!collapsed && (
+        <div className={css.grid}>
+          {folder.items.map(item => (
+            <ArtifactCard
+              key={item.id}
+              item={item}
+              basePath={basePath}
+              starred={starred.has(item.id)}
+              onToggleStar={onToggleStar}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+/* ─── Create Footer ─── */
+
+function CreateTip() {
+  return (
+    <div className={css.createTip}>
+      <span className={css.createTipText}>
+        Tip: You can ask your AI assistant to create any of these artifacts: <code className={css.createTipCode}>Create a prototype</code>, <code className={css.createTipCode}>Create a canvas</code>, etc
+      </span>
+    </div>
+  )
+}
+
+function CreateFooter() {
+  return (
+    <div className={css.createFooter}>
+      <span className={css.createFooterDot} />
+      <span className={css.createFooterText}>Only available in dev environment</span>
+    </div>
+  )
+}
+
+/* ─── Create Form ─── */
+
+function CreateForm({ type, onClose, basePath }) {
+  const [name, setName] = useState('')
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [url, setUrl] = useState('')
+  const [isExternal, setIsExternal] = useState(false)
+  const [prototype, setPrototype] = useState('')
+  const [prototypes, setPrototypes] = useState([])
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const needsPrototype = type === 'Flow' || type === 'Page'
+
+  useEffect(() => {
+    if (!needsPrototype) return
+    const apiBase = (basePath || '/').replace(/\/+$/, '')
+    fetch(`${apiBase}/_storyboard/workshop/flows`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.prototypes) setPrototypes(data.prototypes)
+      })
+      .catch(() => {})
+  }, [needsPrototype, basePath])
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!name.trim()) { setError('Name is required'); return }
+    if (needsPrototype && !prototype) { setError('Select a prototype'); return }
+    setError('')
+    setSubmitting(true)
+
+    const apiBase = (basePath || '/').replace(/\/+$/, '')
+    let endpoint, body
+    if (type === 'Canvas') {
+      endpoint = `${apiBase}/_storyboard/canvas/create`
+      body = { name: name.trim(), title: title.trim(), description: description.trim(), grid: true, gridSize: 24 }
+    } else if (type === 'Prototype') {
+      endpoint = `${apiBase}/_storyboard/workshop/prototypes`
+      body = { name: name.trim(), title: title.trim(), description: description.trim() }
+      if (isExternal) { body.external = true; body.url = url.trim() }
+    } else if (type === 'Flow') {
+      endpoint = `${apiBase}/_storyboard/workshop/flows`
+      body = { name: name.trim(), title: title.trim(), prototype, description: description.trim() }
+    } else if (type === 'Page') {
+      endpoint = `${apiBase}/_storyboard/workshop/pages`
+      body = { name: name.trim(), prototype }
+    } else {
+      endpoint = `${apiBase}/_storyboard/canvas/create-story`
+      body = { name: name.trim(), location: 'src/components' }
+    }
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || `Request failed (${res.status})`)
+      }
+      const data = await res.json().catch(() => ({}))
+      const route = data.route || data.path || `/${name.trim()}`
+      window.location.href = withBase(basePath, route)
+    } catch (err) {
+      setError(err.message)
+      setSubmitting(false)
+    }
+  }
+
+  const typeLabels = { Canvas: 'Canvas', Prototype: 'Prototype', Component: 'Component', Flow: 'Prototype Flow', Page: 'Prototype Page' }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className={css.createFormHeader}>
+        <div className={css.createMenuTitle}>New {typeLabels[type] || type}</div>
+        <button type="button" className={css.createFormClose} onClick={onClose} aria-label="Close">
+          <XIcon size={16} />
+        </button>
+      </div>
+
+      {needsPrototype && (
+        <div className={css.createFormField}>
+          <label className={css.createFormLabel}>Prototype *</label>
+          <select
+            className={css.createFormInput}
+            value={prototype}
+            onChange={e => setPrototype(e.target.value)}
+          >
+            <option value="">Select a prototype…</option>
+            {prototypes.map(p => (
+              <option key={p.name} value={p.name}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className={css.createFormField}>
+        <label className={css.createFormLabel}>Name *</label>
+        <input
+          className={css.createFormInput}
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder={type === 'Page' ? 'my-page' : `my-${type.toLowerCase()}`}
+          autoFocus={!needsPrototype}
+        />
+      </div>
+
+      {type !== 'Component' && type !== 'Page' && (
+        <>
+          <div className={css.createFormField}>
+            <label className={css.createFormLabel}>Title</label>
+            <input
+              className={css.createFormInput}
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Optional display title"
+            />
+          </div>
+          <div className={css.createFormField}>
+            <label className={css.createFormLabel}>Description</label>
+            <input
+              className={css.createFormInput}
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Optional description"
+            />
+          </div>
+        </>
+      )}
+
+      {type === 'Prototype' && (
+        <>
+          <div className={css.createFormField}>
+            <label className={css.createFormCheckbox}>
+              <input
+                type="checkbox"
+                checked={isExternal}
+                onChange={e => setIsExternal(e.target.checked)}
+              />
+              External prototype
+            </label>
+          </div>
+          {isExternal && (
+            <div className={css.createFormField}>
+              <label className={css.createFormLabel}>URL</label>
+              <input
+                className={css.createFormInput}
+                value={url}
+                onChange={e => setUrl(e.target.value)}
+                placeholder="https://example.com"
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      {error && <div className={css.createFormError}>{error}</div>}
+
+      <div className={css.createFormActions}>
+        <button type="submit" className={css.createFormSubmit} disabled={submitting}>
+          {submitting ? 'Creating…' : `Create ${typeLabels[type] || type}`}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+/* ─── Create Menu (Dropdown) ─── */
+
+function CreateMenu({ onClose, basePath }) {
+  const [activeForm, setActiveForm] = useState(null)
+  const [showMore, setShowMore] = useState(false)
+
+  const items = [
+    { icon: <Icon name="canvas" size={18} />, title: 'Canvas', desc: 'Interactive board for prototypes, components, and documents' },
+    { icon: <Icon name="prototype" size={18} />, title: 'Prototype', desc: 'Interactive page flow' },
+    { icon: <Icon name="component" size={18} />, title: 'Component', desc: 'Reusable component' },
+  ]
+
+  const moreItems = [
+    { title: 'Prototype Flow', desc: 'A flow data file for a prototype', type: 'Flow' },
+    { title: 'Prototype Page', desc: 'A new page inside a prototype', type: 'Page' },
+  ]
+
+  if (activeForm) {
+    return (
+      <div className={css.createDropdownForm} onKeyDown={e => e.stopPropagation()}>
+        <CreateForm
+          type={activeForm}
+          onBack={() => setActiveForm(null)}
+          onClose={onClose}
+          basePath={basePath}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className={css.createDropdownTitle}>Create new artifact</div>
+      <div className={css.createDropdownGrid}>
+        {items.map(it => (
+          <button key={it.title} className={css.createMenuItem} onClick={() => setActiveForm(it.title)}>
+            <div className={css.createMenuIcon}>{it.icon}</div>
+            <div>
+              <div className={css.createMenuItemTitle}>{it.title}</div>
+              <div className={css.createMenuItemDesc}>{it.desc}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {!showMore ? (
+        <button className={css.moreOptionsBtn} onClick={() => setShowMore(true)}>
+          More options <ChevronDownIcon size={12} />
+        </button>
+      ) : (
+        <div className={css.moreOptionsSection}>
+          {moreItems.map(it => (
+            <button key={it.title} className={css.moreOptionItem} onClick={() => setActiveForm(it.type)}>
+              <div className={css.moreOptionTitle}>{it.title}</div>
+              <div className={css.moreOptionDesc}>{it.desc}</div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <CreateTip />
+      <CreateFooter />
+    </>
+  )
+}
+
+/* ─── PAT Dialog ─── */
+
+/* ─── Nav config ─── */
+
+const NAV_ITEMS = [
+  { id: 'all', label: 'All artifacts', iconName: 'iconoir/view-grid' },
+  { id: 'prototypes', label: 'Prototypes', iconName: 'prototype' },
+  { id: 'canvases', label: 'Canvas', iconName: 'canvas' },
+  { id: 'components', label: 'Components', iconName: 'component' },
+]
+
+const TAB_FILTERS = ['All', 'Recent', 'Starred']
+
+/* ─── Branch Dropdown ─── */
+
+function useBranches(basePath) {
+  const [branches, setBranches] = useState(() => {
+    if (typeof window !== 'undefined' && Array.isArray(window.__SB_BRANCHES__)) {
+      return window.__SB_BRANCHES__
+    }
+    return null
+  })
+
+  const [gitUser, setGitUser] = useState(null)
+
+  useEffect(() => {
+    const apiBase = (basePath || '/').replace(/\/$/, '')
+
+    // Fetch git user info for "my branches" filtering
+    fetch(`${apiBase}/_storyboard/git-user`).then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.name) setGitUser(data.name) })
+      .catch(() => {})
+
+    // Always fetch live branch list from server API
+    fetch(`${apiBase}/_storyboard/worktrees`).then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data) && data.length > 0) setBranches(data) })
+      .catch(() => {})
+  }, [])
+
+  const currentBranch = useMemo(() => {
+    const m = (basePath || '').match(/\/branch--([^/]+)\/?$/)
+    return m ? m[1] : 'main'
+  }, [basePath])
+
+  const branchBasePath = (basePath || '/').replace(/\/branch--[^/]*\/$/, '/')
+
+  return { branches, currentBranch, branchBasePath, gitUser }
+}
+
+function BranchDropdown({ basePath }) {
+  // Dev: hide dropdown — use CLI to switch branches
+  const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
+  if (isLocalDev) return null
+
+  const { branches, currentBranch, branchBasePath, gitUser } = useBranches(basePath)
+  const [showAll, setShowAll] = useState(false)
+  const [switching, setSwitching] = useState(null)
+  const [switchError, setSwitchError] = useState(null)
+
+  if (!branches || branches.length === 0) return null
+
+  const twoWeeksAgo = Date.now() - 14 * 24 * 60 * 60 * 1000
+
+  // Split into "my branches" vs others
+  const myBranches = gitUser
+    ? branches.filter(b => b.author === gitUser || b.branch === currentBranch)
+    : branches.filter(b => b.branch === currentBranch)
+
+  const otherBranches = branches.filter(b => !myBranches.some(m => m.branch === b.branch))
+
+  // Recent = last 2 weeks (or all if showAll)
+  const recentBranches = showAll
+    ? [...otherBranches].sort((a, b) => (a.branch || '').localeCompare(b.branch || ''))
+    : otherBranches
+        .filter(b => !b.lastModified || new Date(b.lastModified).getTime() > twoWeeksAgo)
+        .sort((a, b) => (a.branch || '').localeCompare(b.branch || ''))
+
+  const switchBranch = (branch) => {
+    setSwitching(branch)
+    const target = branches?.find(b => b.branch === branch)
+    window.location.href = `${branchBasePath}${target?.folder || (branch === 'main' ? '' : `branch--${branch}/`)}`
+  }
+
+  return (
+    <Menu.Root>
+      <Menu.Trigger className={css.branchBtn} disabled={!!switching}>
+        <GitBranchIcon size={14} />
+        <span className={css.branchBtnText}>{switching ? `Switching to ${switching}…` : currentBranch}</span>
+        {!switching && <ChevronDownIcon size={12} />}
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner className={css.branchPositioner} side="bottom" align="end" sideOffset={4}>
+          <Menu.Popup className={css.branchPopup}>
+            {myBranches.length > 0 && (
+              <>
+                <div className={css.branchSectionLabel}>My branches</div>
+                {myBranches.map(b => (
+                  <Menu.Item
+                    key={b.branch}
+                    className={`${css.branchItem}${b.branch === currentBranch ? ` ${css.branchItemActive}` : ''}`}
+                    onClick={() => switchBranch(b.branch)}
+                  >
+                    <GitBranchIcon size={12} />
+                    {b.branch}
+                  </Menu.Item>
+                ))}
+              </>
+            )}
+
+            {myBranches.length > 0 && recentBranches.length > 0 && (
+              <div className={css.branchSeparator} />
+            )}
+
+            {recentBranches.length > 0 && (
+              <>
+                <div className={css.branchSectionLabel}>
+                  {showAll ? 'All branches' : 'Recent branches'}
+                </div>
+                <Menu.Viewport className={css.branchViewport}>
+                  {recentBranches.map(b => (
+                    <Menu.Item
+                      key={b.branch}
+                      className={`${css.branchItem}${b.branch === currentBranch ? ` ${css.branchItemActive}` : ''}`}
+                      onClick={() => switchBranch(b.branch)}
+                    >
+                      <GitBranchIcon size={12} />
+                      {b.branch}
+                    </Menu.Item>
+                  ))}
+                </Menu.Viewport>
+              </>
+            )}
+
+            {!showAll && otherBranches.length > recentBranches.length && (
+              <>
+                <div className={css.branchSeparator} />
+                <button
+                  className={css.branchShowAll}
+                  onClick={(e) => { e.stopPropagation(); setShowAll(true) }}
+                >
+                  See all branches ({otherBranches.length})
+                </button>
+              </>
+            )}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  )
+}
+
+/* ─── Main Component ─── */
+
+export default function Viewfinder({
+  pageModules = {},
+  basePath,
+  title = 'Storyboard',
+  subtitle,
+  hideDefaultFlow,
+  hideDefaultScene = false,
+}) {
+  const shouldHideDefault = hideDefaultFlow ?? hideDefaultScene
+  const themeAttrs = useToolbarTheme()
+
+  // Build data index from real prototype/canvas/story data
+  const knownRoutes = useMemo(() =>
+    Object.keys(pageModules)
+      .map(p => p.replace('/src/prototypes/', '').replace('.jsx', ''))
+      .filter(n => !n.startsWith('_') && n !== 'index' && n !== 'viewfinder'),
+    [pageModules],
+  )
+
+  const prototypeIndex = useMemo(() => buildPrototypeIndex(knownRoutes), [knownRoutes])
+
+  // Build unified items list from all sources
+  const allItems = useMemo(() => {
+    const items = []
+
+    // Prototypes (ungrouped + from folders)
+    const addProto = (proto) => {
+      // For prototypes with flows, use the first flow's route
+      const route = proto.flows?.length > 0
+        ? proto.flows[0].route
+        : `/${proto.dirName}`
+
+      items.push({
+        id: `proto:${proto.dirName}`,
+        name: proto.name,
+        type: 'prototype',
+        author: proto.author,
+        gitAuthor: proto.gitAuthor,
+        lastModified: proto.lastModified,
+        route,
+        isExternal: proto.isExternal,
+        externalUrl: proto.externalUrl,
+        folder: proto.folder,
+        description: proto.description,
+        flows: proto.flows || [],
+      })
+    }
+
+    for (const proto of prototypeIndex.prototypes || []) addProto(proto)
+    for (const folder of prototypeIndex.folders || []) {
+      for (const proto of folder.prototypes || []) addProto(proto)
+    }
+
+    // Canvases (ungrouped + from folders)
+    const addCanvas = (canvas) => {
+      items.push({
+        id: `canvas:${canvas.dirName}`,
+        name: canvas.name,
+        type: 'canvas',
+        author: canvas.author,
+        gitAuthor: canvas.gitAuthor,
+        lastModified: null,
+        route: canvas.route,
+        isExternal: false,
+        externalUrl: null,
+        folder: canvas.folder,
+        description: canvas.description,
+        pages: canvas.pages || null,
+      })
+    }
+
+    for (const canvas of prototypeIndex.canvases || []) addCanvas(canvas)
+    for (const folder of prototypeIndex.folders || []) {
+      for (const canvas of folder.canvases || []) addCanvas(canvas)
+    }
+
+    // Components (stories)
+    const storyNames = listStories()
+    for (const name of storyNames) {
+      const data = getStoryData(name)
+      if (!data) continue
+      items.push({
+        id: `component:${name}`,
+        name: name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+        type: 'component',
+        author: null,
+        gitAuthor: null,
+        lastModified: null,
+        route: data._route || `/components/${name}`,
+        isExternal: false,
+        externalUrl: null,
+        folder: null,
+        description: null,
+      })
+    }
+
+    return items
+  }, [prototypeIndex])
+
+  const itemMap = useMemo(() => Object.fromEntries(allItems.map(i => [i.id, i])), [allItems])
+
+  // State
+  const [activeNav, setActiveNav] = useState('all')
+  const [activeTab, setActiveTab] = useState('All')
+  const [showCreate, setShowCreate] = useState(false)
+  const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [groupByFolders, setGroupByFolders] = useState(() => {
+    try { return localStorage.getItem(GROUP_BY_FOLDERS_KEY) !== 'false' } catch { return true }
+  })
+  const [collapsedFolders, setCollapsedFolders] = useState(new Set())
+  const { starred, toggle: toggleStar } = useStarred()
+  const recentIds = useRecent()
+
+  // Filter by nav category
+  const navFiltered = useMemo(() => {
+    if (activeNav === 'all') return allItems
+    const typeMap = { prototypes: 'prototype', canvases: 'canvas', components: 'component' }
+    return allItems.filter(i => i.type === typeMap[activeNav])
+  }, [allItems, activeNav])
+
+  // Filter by tab
+  const items = useMemo(() => {
+    if (activeTab === 'Recent') {
+      const ordered = recentIds.map(id => itemMap[id]).filter(Boolean)
+      if (activeNav !== 'all') {
+        const typeMap = { prototypes: 'prototype', canvases: 'canvas', components: 'component' }
+        return ordered.filter(i => i.type === typeMap[activeNav])
+      }
+      return ordered
+    }
+    const base = activeTab === 'Starred'
+      ? navFiltered.filter(i => starred.has(i.id))
+      : navFiltered
+    return [...base].sort((a, b) => {
+      const aTime = a.lastModified ? new Date(a.lastModified).getTime() : 0
+      const bTime = b.lastModified ? new Date(b.lastModified).getTime() : 0
+      return bTime - aTime
+    })
+  }, [activeTab, activeNav, navFiltered, recentIds, itemMap, starred])
+
+  // Grouped items for folder view
+  const grouped = useMemo(() => {
+    if (!groupByFolders) return null
+    const folderItems = {}
+    const ungrouped = []
+    for (const item of items) {
+      if (item.folder) {
+        if (!folderItems[item.folder]) folderItems[item.folder] = []
+        folderItems[item.folder].push(item)
+      } else {
+        ungrouped.push(item)
+      }
+    }
+    const folderMeta = {}
+    for (const f of prototypeIndex.folders || []) folderMeta[f.dirName] = f
+    const folders = Object.entries(folderItems).map(([dirName, fItems]) => ({
+      dirName,
+      name: folderMeta[dirName]?.name || dirName,
+      items: fItems,
+    }))
+    folders.sort((a, b) => {
+      const aMax = Math.max(0, ...a.items.map(i => i.lastModified ? new Date(i.lastModified).getTime() : 0))
+      const bMax = Math.max(0, ...b.items.map(i => i.lastModified ? new Date(i.lastModified).getTime() : 0))
+      return bMax - aMax
+    })
+    return { ungrouped, folders }
+  }, [items, groupByFolders, prototypeIndex])
+
+  const toggleGrouping = useCallback(() => {
+    setGroupByFolders(prev => {
+      const next = !prev
+      try { localStorage.setItem(GROUP_BY_FOLDERS_KEY, String(next)) } catch {}
+      return next
+    })
+  }, [])
+
+  const toggleFolder = useCallback((dirName) => {
+    setCollapsedFolders(prev => {
+      const next = new Set(prev)
+      if (next.has(dirName)) next.delete(dirName)
+      else next.add(dirName)
+      return next
+    })
+  }, [])
+
+  // Counts
+  const counts = useMemo(() => ({
+    all: allItems.length,
+    prototypes: allItems.filter(i => i.type === 'prototype').length,
+    canvases: allItems.filter(i => i.type === 'canvas').length,
+    components: allItems.filter(i => i.type === 'component').length,
+  }), [allItems])
+
+  // Starred items for sidebar
+  const starredItems = useMemo(() => allItems.filter(i => starred.has(i.id)), [allItems, starred])
+
+  const pageTitle = NAV_ITEMS.find(n => n.id === activeNav)?.label || 'All artifacts'
+
+  return (
+    <div className={css.layout} {...themeAttrs}>
+      {/* ─── Full-width Header ─── */}
+      <header className={css.topBar}>
+        <div className={css.topBarLeft}>
+          <button
+            className={css.hamburgerBtn}
+            onClick={() => setSidebarOpen(prev => !prev)}
+            aria-label="Toggle menu"
+          >
+            {sidebarOpen ? <XIcon size={18} /> : <ThreeBarsIcon size={18} />}
+          </button>
+          <div className={`${css.logo} smooth-corners`}><Icon name="iconoir/key-command" size={22} color="#fff" /></div>
+          <div>
+            <div className={css.appName}>{title}</div>
+            {subtitle && <div className={css.appSubtitle}>{subtitle}</div>}
+          </div>
+        </div>
+        <div className={css.topActions}>
+          <BranchDropdown basePath={basePath} />
+          {isLocalDev && (
+            <Menu.Root open={showCreate} onOpenChange={setShowCreate}>
+              <Menu.Trigger className={css.createBtn}>
+                <PlusIcon size={14} /> Create
+              </Menu.Trigger>
+              <Menu.Portal>
+                <Menu.Positioner className={css.createDropdownPositioner} side="bottom" align="end" sideOffset={4}>
+                  <Menu.Popup className={css.createDropdown}>
+                    <CreateMenu onClose={() => setShowCreate(false)} basePath={basePath} />
+                  </Menu.Popup>
+                </Menu.Positioner>
+              </Menu.Portal>
+            </Menu.Root>
+          )}
+        </div>
+      </header>
+
+      {/* ─── Body: Sidebar + Content ─── */}
+      <div className={css.body}>
+        {/* ─── Sidebar ─── */}
+        <aside className={`${css.sidebar}${sidebarOpen ? ` ${css.sidebarOpen}` : ''}`}>
+          <div className={css.sidebarContent}>
+          <nav className={css.navSection}>
+            {NAV_ITEMS.map(nav => (
+              <button
+                key={nav.id}
+                className={activeNav === nav.id ? css.navItemActive : css.navItem}
+                onClick={() => { setActiveNav(nav.id); setSidebarOpen(false) }}
+              >
+                <span className={css.navIcon}><Icon name={nav.iconName} size={16} /></span>
+                {nav.label}
+                <span className={css.navCount}>{counts[nav.id]}</span>
+              </button>
+            ))}
+          </nav>
+
+          <div className={css.separator} />
+
+          <div className={css.sectionLabel}>Starred</div>
+          {starredItems.length === 0 && (
+            <div className={css.starredEmpty}>Star items to pin them here</div>
+          )}
+          {starredItems.map(s => (
+            <a
+              key={s.id}
+              className={css.starredItem}
+              href={s.isExternal ? s.externalUrl : withBase(basePath, s.route)}
+              {...(s.isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              onClick={() => trackRecent(s.id)}
+            >
+              <span className={css.starredIcon}>{getTypeIcon(s.type)}</span>
+              {s.name}
+            </a>
+          ))}
+          </div>
+
+          {/* User profile / login */}
+          <div className={css.sidebarFooter}>
+            <button className={css.loginBtn} onClick={() => document.dispatchEvent(new CustomEvent('storyboard:open-auth-modal'))}>
+              <span className={css.avatar}><MarkGithubIcon size={16} /></span>
+              <div>
+                <div className={css.userName}>Sign in</div>
+                <div className={css.userSub}>Connect with GitHub</div>
+              </div>
+            </button>
+          </div>
+        </aside>
+
+        {/* ─── Main ─── */}
+        <main className={css.main}>
+          {/* Tabs */}
+          <div className={css.tabs}>
+            {TAB_FILTERS.map(t => (
+              <button
+                key={t}
+                className={activeTab === t ? css.tabActive : css.tab}
+                onClick={() => setActiveTab(t)}
+              >
+                {t}
+              </button>
+            ))}
+            <label className={css.groupByFolders}>
+              <input
+                type="checkbox"
+                className={css.groupByFoldersCheckbox}
+                checked={groupByFolders}
+                onChange={toggleGrouping}
+              />
+              Group by folders
+            </label>
+          </div>
+
+          {/* Grid */}
+          <div className={css.content}>
+            {items.length === 0 ? (
+              <div className={css.emptyState}>
+                {activeTab === 'Recent' && 'No recently opened items yet.'}
+                {activeTab === 'Starred' && 'No starred items. Click ☆ on a card to star it.'}
+                {activeTab === 'All' && 'No items found. Create a prototype, canvas, or component to get started.'}
+              </div>
+            ) : groupByFolders && grouped && activeTab === 'All' ? (
+              <>
+                {grouped.folders.map(folder => (
+                  <FolderSection
+                    key={folder.dirName}
+                    folder={folder}
+                    collapsed={collapsedFolders.has(folder.dirName)}
+                    onToggle={() => toggleFolder(folder.dirName)}
+                    basePath={basePath}
+                    starred={starred}
+                    onToggleStar={toggleStar}
+                  />
+                ))}
+                {grouped.ungrouped.length > 0 && (
+                  <div className={css.grid}>
+                    {grouped.ungrouped.map(item => (
+                      <ArtifactCard
+                        key={item.id}
+                        item={item}
+                        basePath={basePath}
+                        starred={starred.has(item.id)}
+                        onToggleStar={toggleStar}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className={css.grid}>
+                {items.map(item => (
+                  <ArtifactCard
+                    key={item.id}
+                    item={item}
+                    basePath={basePath}
+                    starred={starred.has(item.id)}
+                    onToggleStar={toggleStar}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    </div>
+  )
+}

@@ -31,7 +31,7 @@ describe('toolStateStore', () => {
     })
 
     it('returns "active" after init with no state in config', () => {
-      initToolbarToolStates({ myTool: {} })
+      initToolbarToolStates({ myTool: { prod: true } })
       expect(getToolbarToolState('myTool')).toBe('active')
     })
   })
@@ -39,37 +39,53 @@ describe('toolStateStore', () => {
   describe('initToolbarToolStates', () => {
     it('seeds states from config', () => {
       initToolbarToolStates({
-        inspector: { state: 'hidden' },
-        comments: { state: 'dimmed' },
+        inspector: { state: 'hidden', prod: true },
+        comments: { state: 'dimmed', prod: true },
       })
       expect(getToolbarToolState('inspector')).toBe('hidden')
       expect(getToolbarToolState('comments')).toBe('dimmed')
     })
 
     it('defaults to active when no state specified', () => {
-      initToolbarToolStates({ inspector: { render: 'panel' } })
+      initToolbarToolStates({ inspector: { render: 'panel', prod: true } })
       expect(getToolbarToolState('inspector')).toBe('active')
     })
 
     it('reads state from config when specified', () => {
-      initToolbarToolStates({ inspector: { state: 'inactive' } })
+      initToolbarToolStates({ inspector: { state: 'inactive', prod: true } })
       expect(getToolbarToolState('inspector')).toBe('inactive')
     })
 
-    it('localOnly + !isLocalDev → disabled (overrides config state)', () => {
+    it('dev-only (no prod flag) + !isLocalDev → disabled (overrides config state)', () => {
       initToolbarToolStates(
-        { devTool: { localOnly: true, state: 'active' } },
+        { devTool: { state: 'active' } },
         { isLocalDev: false },
       )
       expect(getToolbarToolState('devTool')).toBe('disabled')
     })
 
-    it('localOnly + isLocalDev → uses config state (active by default)', () => {
+    it('dev-only (no prod flag) + isLocalDev → uses config state (active by default)', () => {
       initToolbarToolStates(
-        { devTool: { localOnly: true } },
+        { devTool: {} },
         { isLocalDev: true },
       )
       expect(getToolbarToolState('devTool')).toBe('active')
+    })
+
+    it('prod tool + !isLocalDev → uses config state', () => {
+      initToolbarToolStates(
+        { prodTool: { prod: true, state: 'active' } },
+        { isLocalDev: false },
+      )
+      expect(getToolbarToolState('prodTool')).toBe('active')
+    })
+
+    it('legacy localOnly + isLocalDev → disabled takes precedence', () => {
+      initToolbarToolStates(
+        { devTool: { localOnly: true, prod: true } },
+        { isLocalDev: false },
+      )
+      expect(getToolbarToolState('devTool')).toBe('disabled')
     })
 
     it('handles empty config', () => {
@@ -78,17 +94,17 @@ describe('toolStateStore', () => {
     })
 
     it('replaces previous state on re-init', () => {
-      initToolbarToolStates({ inspector: { state: 'hidden' } })
+      initToolbarToolStates({ inspector: { state: 'hidden', prod: true } })
       expect(getToolbarToolState('inspector')).toBe('hidden')
 
-      initToolbarToolStates({ inspector: { state: 'dimmed' } })
+      initToolbarToolStates({ inspector: { state: 'dimmed', prod: true } })
       expect(getToolbarToolState('inspector')).toBe('dimmed')
     })
   })
 
   describe('setToolbarToolState', () => {
     it('updates state for a known tool', () => {
-      initToolbarToolStates({ inspector: {} })
+      initToolbarToolStates({ inspector: { prod: true } })
       setToolbarToolState('inspector', 'hidden')
       expect(getToolbarToolState('inspector')).toBe('hidden')
     })
@@ -118,16 +134,16 @@ describe('toolStateStore', () => {
   })
 
   describe('isToolbarToolLocalOnly', () => {
-    it('returns true for localOnly tools', () => {
+    it('returns true for dev-only tools (no prod flag)', () => {
       initToolbarToolStates(
-        { devTool: { localOnly: true } },
+        { devTool: {} },
         { isLocalDev: true },
       )
       expect(isToolbarToolLocalOnly('devTool')).toBe(true)
     })
 
-    it('returns false for non-localOnly tools', () => {
-      initToolbarToolStates({ inspector: {} })
+    it('returns false for prod tools', () => {
+      initToolbarToolStates({ inspector: { prod: true } })
       expect(isToolbarToolLocalOnly('inspector')).toBe(false)
     })
 
@@ -186,7 +202,7 @@ describe('toolStateStore', () => {
 
   describe('_resetToolbarToolStates', () => {
     it('clears all state', () => {
-      initToolbarToolStates({ inspector: { state: 'hidden', localOnly: true } }, { isLocalDev: true })
+      initToolbarToolStates({ inspector: { state: 'hidden', prod: true } }, { isLocalDev: true })
       _resetToolbarToolStates()
       expect(getToolbarToolState('inspector')).toBe('active')
       expect(isToolbarToolLocalOnly('inspector')).toBe(false)

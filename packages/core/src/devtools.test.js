@@ -1,16 +1,23 @@
 /**
  * Tests for devtools.js — command menu mount lifecycle.
- * Mocks the Svelte component to avoid jsdom lifecycle issues.
+ * Mocks the React component to avoid jsdom lifecycle issues.
  */
 
 import { vi } from 'vitest'
 
-vi.mock('svelte', () => ({
-  mount: vi.fn(() => ({})),
-  unmount: vi.fn(),
+const mockRender = vi.fn()
+const mockUnmount = vi.fn()
+const mockCreateRoot = vi.fn(() => ({ render: mockRender, unmount: mockUnmount }))
+
+vi.mock('react', () => ({
+  createElement: vi.fn((comp, props) => ({ comp, props })),
 }))
 
-vi.mock('./CommandMenu.svelte', () => ({ default: {} }))
+vi.mock('react-dom/client', () => ({
+  createRoot: mockCreateRoot,
+}))
+
+vi.mock('./CommandMenu.jsx', () => ({ default: () => null }))
 
 describe('mountDevTools', () => {
   let mountDevTools, unmountDevTools
@@ -19,11 +26,13 @@ describe('mountDevTools', () => {
     document.body.innerHTML = ''
     vi.resetModules()
 
-    vi.doMock('svelte', () => ({
-      mount: vi.fn(() => ({})),
-      unmount: vi.fn(),
+    vi.doMock('react', () => ({
+      createElement: vi.fn((comp, props) => ({ comp, props })),
     }))
-    vi.doMock('./CommandMenu.svelte', () => ({ default: {} }))
+    vi.doMock('react-dom/client', () => ({
+      createRoot: vi.fn(() => ({ render: vi.fn(), unmount: vi.fn() })),
+    }))
+    vi.doMock('./CommandMenu.jsx', () => ({ default: () => null }))
 
     const mod = await import('./devtools.js')
     mountDevTools = mod.mountDevTools

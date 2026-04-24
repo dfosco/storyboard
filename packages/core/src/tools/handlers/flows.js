@@ -45,18 +45,17 @@ export async function handler(ctx) {
 
       return flows.map(f => {
         const meta = vf.getFlowMeta(f.key)
+        let url = vf.resolveFlowRoute(f.key)
+        // Re-apply basePath and branch-- prefix so deployed branch builds stay on the correct path
+        const prefix = (base || '') + (branchSegment ? `/${branchSegment}` : '')
+        if (prefix) url = prefix + url
         return {
           id: f.key,
           label: meta?.title || f.name,
           type: 'radio',
           active: f.key === active,
-          execute: () => {
-            let url = vf.resolveFlowRoute(f.key)
-            // Re-apply basePath and branch-- prefix so deployed branch builds stay on the correct path
-            const prefix = (base || '') + (branchSegment ? `/${branchSegment}` : '')
-            if (prefix) url = prefix + url
-            window.location.href = url
-          },
+          href: url,
+          execute: () => { window.location.href = url },
         }
       })
     },
@@ -64,6 +63,6 @@ export async function handler(ctx) {
 }
 
 export async function component() {
-  const mod = await import('../../ActionMenuButton.svelte')
+  const mod = await import('../../ActionMenuButton.jsx')
   return mod.default
 }

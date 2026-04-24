@@ -1,13 +1,14 @@
 /**
- * Comments drawer — Svelte right-side panel listing all comments across all routes.
+ * Comments drawer — React right-side panel listing all comments across all routes.
  *
  * Opened from the DevTools "See all comments" menu item.
  * Clicking a comment navigates to its route and opens it.
  * Styled with Tachyons + sb-* custom classes for light/dark mode support.
  */
 
-import { mount, unmount } from 'svelte'
-import CommentsDrawerComponent from './CommentsDrawer.svelte'
+import { createElement } from 'react'
+import { createRoot } from 'react-dom/client'
+import CommentsDrawerComponent from './CommentsDrawer.jsx'
 import { isAuthenticated } from '../auth.js'
 import { setCommentMode } from '../commentMode.js'
 import './comment-layout.css'
@@ -32,7 +33,7 @@ export async function openCommentsDrawer() {
   document.body.appendChild(backdrop)
   document.body.appendChild(drawer)
 
-  let instance = null
+  let root = null
 
   function onKeyDown(e) {
     if (e.key === 'Escape') {
@@ -44,28 +45,26 @@ export async function openCommentsDrawer() {
   }
   window.addEventListener('keydown', onKeyDown, true)
 
-  instance = mount(CommentsDrawerComponent, {
-    target: drawer,
-    props: {
-      onClose: closeCommentsDrawer,
-      onNavigate: (route, commentId) => {
-        closeCommentsDrawer()
-        if (window.location.pathname !== route) {
-          const navUrl = new URL(window.location.href)
-          navUrl.pathname = route
-          navUrl.searchParams.set('comment', commentId)
-          window.location.href = navUrl.toString()
-        } else {
-          const navUrl = new URL(window.location.href)
-          navUrl.searchParams.set('comment', commentId)
-          window.history.replaceState(null, '', navUrl.toString())
-          setCommentMode(true)
-        }
-      },
+  root = createRoot(drawer)
+  root.render(createElement(CommentsDrawerComponent, {
+    onClose: closeCommentsDrawer,
+    onNavigate: (route, commentId) => {
+      closeCommentsDrawer()
+      if (window.location.pathname !== route) {
+        const navUrl = new URL(window.location.href)
+        navUrl.pathname = route
+        navUrl.searchParams.set('comment', commentId)
+        window.location.href = navUrl.toString()
+      } else {
+        const navUrl = new URL(window.location.href)
+        navUrl.searchParams.set('comment', commentId)
+        window.history.replaceState(null, '', navUrl.toString())
+        setCommentMode(true)
+      }
     },
-  })
+  }))
 
-  activeDrawer = { backdrop, drawer, instance, onKeyDown }
+  activeDrawer = { backdrop, drawer, root, onKeyDown }
 }
 
 /**
@@ -76,8 +75,8 @@ export function closeCommentsDrawer() {
   if (activeDrawer.onKeyDown) {
     window.removeEventListener('keydown', activeDrawer.onKeyDown, true)
   }
-  if (activeDrawer.instance) {
-    unmount(activeDrawer.instance)
+  if (activeDrawer.root) {
+    activeDrawer.root.unmount()
   }
   activeDrawer.backdrop.remove()
   activeDrawer.drawer.remove()

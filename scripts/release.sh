@@ -36,16 +36,6 @@ else
   echo "📦 Stable release"
 fi
 
-# Check npm auth before doing any work
-echo ""
-echo "🔑 Checking npm authentication..."
-if ! npm whoami &>/dev/null; then
-  echo "  ⚠️  Not logged in to npm."
-  echo "  Please run 'npm login' in a separate terminal, then re-run this script."
-  exit 1
-fi
-echo "  ✅ Logged in as $(npm whoami)"
-
 echo ""
 echo "🔍 Running lint..."
 npm run lint
@@ -110,15 +100,16 @@ if [ -n "$PRE_TAG" ] && [[ "$VERSION" != *"-${PRE_TAG}."* ]]; then
   exit 1
 fi
 
-# Confirm before publishing
+# Confirm before proceeding
 echo ""
 echo "┌──────────────────────────────────────────┐"
-echo "│  About to publish version: ${VERSION}"
+echo "│  About to release version: ${VERSION}"
 if [ -n "$PRE_TAG" ]; then
   echo "│  npm dist-tag: ${PRE_TAG}"
 else
   echo "│  npm dist-tag: latest"
 fi
+echo "│  Publishing will happen via CI (OIDC)"
 echo "└──────────────────────────────────────────┘"
 echo ""
 read -r -p "Proceed? (y/N) " confirm
@@ -142,27 +133,6 @@ fi
 echo "🏷️  Creating git tags..."
 npx changeset tag
 
-echo "🚀 Publishing to npm..."
-if [ "${CI:-}" = "true" ]; then
-  if [ -n "${NPM_TOKEN:-}" ] || [ -n "${NODE_AUTH_TOKEN:-}" ]; then
-    echo "  ℹ️  CI detected; using changeset publish..."
-    npx changeset publish
-  else
-    echo "  ❌ CI publish requires NPM_TOKEN or NODE_AUTH_TOKEN."
-    exit 1
-  fi
-else
-  echo "  ℹ️  Local release detected; using npm publish (passkey/web auth compatible)..."
-  PUBLISH_ARGS=(--access public)
-  if [ -n "$PRE_TAG" ]; then
-    PUBLISH_ARGS+=(--tag "$PRE_TAG")
-  fi
-  npm publish --workspace @dfosco/storyboard-core "${PUBLISH_ARGS[@]}"
-  npm publish --workspace @dfosco/storyboard-react "${PUBLISH_ARGS[@]}"
-  npm publish --workspace @dfosco/storyboard-react-primer "${PUBLISH_ARGS[@]}"
-  npm publish --workspace @dfosco/storyboard-react-reshaped "${PUBLISH_ARGS[@]}"
-fi
-
 # Exit prerelease mode so the repo is left clean
 if [ -n "$PRE_TAG" ]; then
   echo "🔀 Exiting changeset prerelease mode..."
@@ -171,46 +141,18 @@ if [ -n "$PRE_TAG" ]; then
   git commit -m "chore: exit prerelease mode" --allow-empty
 fi
 
-echo "⬆️  Pushing with tags..."
-git push --follow-tags
-
-echo "📢 Creating GitHub Release..."
-
 TAG="@dfosco/storyboard-core@${VERSION}"
-CHANGELOG="packages/core/CHANGELOG.md"
 
-TITLE="v${VERSION}"
+echo "⬆️  Pushing branch..."
+git push --set-upstream origin "$(git branch --show-current)" 2>/dev/null || git push
 
-# Verify the tag exists on the remote
-if ! git ls-remote --tags origin "refs/tags/${TAG}" | grep -q .; then
-  echo "  ⚠️  Tag ${TAG} not found on remote. Pushing tags..."
-  git push --follow-tags
-fi
+echo "⬆️  Pushing tags..."
+git push --tags
 
-GH_RELEASE_ARGS=()
-if [ -n "$PRE_TAG" ]; then
-  GH_RELEASE_ARGS+=(--prerelease)
-else
-  GH_RELEASE_ARGS+=(--latest)
-fi
+echo "🚀 Triggering publish workflow..."
+gh workflow run release-publish.yml -f "tag=${TAG}"
 
-if gh release view "$TAG" &>/dev/null; then
-  echo "  ⏭️  ${TITLE} release already exists, skipping"
-else
-  NOTES=$(awk -v ver="## ${VERSION}" '
-    $0 ~ ver { found=1; next }
-    found && /^## / { exit }
-    found { print }
-  ' "$CHANGELOG")
-
-  if [ -n "$NOTES" ]; then
-    echo "$NOTES" | gh release create "$TAG" --title "$TITLE" --notes-file - "${GH_RELEASE_ARGS[@]}"
-  else
-    echo "  ⚠️  No changelog section found for ${VERSION} in ${CHANGELOG}"
-    echo "     Falling back to auto-generated notes from commits."
-    gh release create "$TAG" --title "$TITLE" --generate-notes "${GH_RELEASE_ARGS[@]}"
-  fi
-  echo "  ✅ Created release ${TITLE}"
-fi
-
-echo "✅ Release complete!"
+echo ""
+echo "✅ Version ${VERSION} tagged, pushed, and publish triggered!"
+echo ""
+echo "   Track progress: https://github.com/dfosco/storyboard/actions/workflows/release-publish.yml"

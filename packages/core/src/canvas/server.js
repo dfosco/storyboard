@@ -563,6 +563,28 @@ export function createCanvasHandler(ctx) {
           } catch { /* registry not initialized yet — will get a name on session connect */ }
         }
 
+        // Pre-reserve terminal identity so hot-pool agents can find their config
+        // immediately when the widget renders (before the WebSocket connects).
+        if (type === 'terminal' || type === 'agent') {
+          try {
+            const { preReserveTerminalIdentity, initTerminalConfig } = await import('./terminal-config.js')
+            initTerminalConfig(root)
+            let branch = 'unknown'
+            try {
+              const { execSync } = await import('node:child_process')
+              branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
+            } catch {}
+            const serverUrl = `http://localhost:${req.socket?.localPort || 1234}`
+            preReserveTerminalIdentity({
+              widgetId,
+              preDisplayName: props.prettyName || null,
+              canvasId: name,
+              branch,
+              serverUrl,
+            })
+          } catch { /* best effort — writeTerminalConfig will create it on connect */ }
+        }
+
         const widget = stampBounds({ id: widgetId, type, position, props })
 
         appendEvent(filePath, {
@@ -2191,11 +2213,29 @@ export function Default() {
 
         // Send the copilot command — warm sessions have a shell ready, no delay needed
         const delay = usedWarm ? 0 : 500
+        const displayName = (() => {
+          try {
+            const canvasFilePath = findCanvasPath(root, canvasId)
+            if (!canvasFilePath) return null
+            const canvasData = readCanvas(canvasFilePath)
+            const w = (canvasData.widgets || []).find(w => w.id === widgetId)
+            return w?.props?.prettyName || null
+          } catch { return null }
+        })()
         const sendCmd = () => {
           try {
             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })
             execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
           } catch {}
+          // Inject identity after the agent command starts
+          setTimeout(() => {
+            const configFile = `.storyboard/terminals/${widgetId}.json`
+            const msg = `[System] Your terminal identity has been set. widgetId=${widgetId} displayName=${displayName || widgetId} canvasId=${canvasId} configFile=${configFile} serverUrl=${serverUrl}`
+            try {
+              execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(msg)}`, { stdio: 'ignore' })
+              execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+            } catch {}
+          }, 3000)
         }
 
         if (delay > 0) {

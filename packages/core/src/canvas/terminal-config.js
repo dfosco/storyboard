@@ -68,6 +68,37 @@ function atomicWrite(filePath, data) {
 }
 
 /**
+ * Pre-reserve terminal identity at widget creation time.
+ * Called from POST /widget when a terminal/agent widget is added to the canvas,
+ * BEFORE the widget renders or the WebSocket connects.
+ *
+ * Writes a minimal config file at `.storyboard/terminals/{widgetId}.json` so
+ * agents (especially hot-pool sessions) can find their identity immediately.
+ * The `reserved` flag marks this as a pre-reserve — writeTerminalConfig() will
+ * later overwrite it with the full config.
+ */
+export function preReserveTerminalIdentity({ widgetId, preDisplayName, canvasId, branch, serverUrl }) {
+  const dir = join(rootDir, TERMINALS_DIR)
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+
+  const fp = join(dir, `${widgetId}.json`)
+  const data = {
+    widgetId,
+    preDisplayName,
+    displayName: preDisplayName,
+    canvasId,
+    branch,
+    serverUrl: serverUrl || null,
+    reserved: true,
+    connectedWidgets: [],
+    messaging: null,
+    agentStatus: null,
+    updatedAt: new Date().toISOString(),
+  }
+  atomicWrite(fp, data)
+}
+
+/**
  * Write or update a terminal config file.
  * Called when a terminal widget is created or reconnected.
  */

@@ -212,6 +212,7 @@
     },    
     "devtools": {
       "label": "Devtools",
+      "icon": "iconoir/wrench",
       "render": "submenu",
       "surface": "command-palette",
       "modes": ["*"],
@@ -220,6 +221,7 @@
     },
     "feature-flags": {
       "label": "Feature Flags",
+      "icon": "iconoir/white-flag",
       "render": "submenu",
       "surface": "command-palette",
       "modes": ["*"],

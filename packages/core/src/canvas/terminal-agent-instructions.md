@@ -4,7 +4,15 @@ Before processing ANY user prompt, read the terminal config file for this sessio
 
 ## Step 1: Read terminal config
 
-Read your config using your tmux session name (this is always reliable):
+Your identity is injected via a `[System]` message when your session starts. It includes
+your `widgetId`, `displayName`, `canvasId`, and `configFile` path.
+
+Read your config directly using the widgetId from that message or from `$STORYBOARD_WIDGET_ID`:
+```bash
+cat .storyboard/terminals/${STORYBOARD_WIDGET_ID}.json
+```
+
+If the env var is empty, resolve via your tmux session name:
 ```bash
 cat .storyboard/terminals/$(tmux display-message -p '#{session_name}' 2>/dev/null).json
 ```

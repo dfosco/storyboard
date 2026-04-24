@@ -147,6 +147,24 @@ const rawTailBuffers = new Map()
 
 const RAW_TAIL_MAX = 2000
 
+/**
+ * Inject a [System] identity message into a running agent's stdin via tmux send-keys.
+ * Called from BOTH hot and cold paths after the tmux session is bound and config is written.
+ * Uses the same pattern as messaging (📩) and skill injection (📡).
+ *
+ * Only injected for agent/prompt widgets — bare terminals skip this to avoid
+ * cluttering the shell with system messages a human would see.
+ */
+function injectIdentityMessage(tmuxName, { widgetId, displayName, canvasId, branch, serverUrl }) {
+  if (!hasTmux) return
+  const configFile = `.storyboard/terminals/${widgetId}.json`
+  const msg = `[System] Your terminal identity has been set. widgetId=${widgetId} displayName=${displayName} canvasId=${canvasId} configFile=${configFile} serverUrl=${serverUrl}`
+  try {
+    execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(msg)}`, { stdio: 'ignore' })
+    execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+  } catch { /* best effort */ }
+}
+
 /** Safe directory name from canvasId (replace `/` with `--`) */
 function safeCanvasDir(canvasId) {
   return canvasId.replace(/\//g, '--')
@@ -732,10 +750,11 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
       if (usedWarmAgent) {
         // ── Hot pool path: agent is already running and ready ──
         // Skip agent launch, readiness polling, and postStartup (all done by pool).
-        // Still export identity env vars into the tmux session environment
-        // (the agent reads config files by tmux session name, not env vars).
-        // Deliver pending messages immediately since the agent is ready.
-        setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 500)
+        // Inject identity via [System] message so the agent knows who it is.
+        setTimeout(() => {
+          injectIdentityMessage(tmuxName, { widgetId, displayName: prettyName, canvasId, branch, serverUrl })
+          setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 1000)
+        }, 500)
       } else {
         // ── Cold path: standard startup flow ──
 
@@ -824,6 +843,8 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
                             execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
                           } catch {}
                         }
+                        // Inject identity, then deliver pending messages
+                        injectIdentityMessage(tmuxName, { widgetId, displayName: prettyName, canvasId, branch, serverUrl })
                         setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
                       }, 500)
                     }
@@ -831,8 +852,11 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
                 }, 2000)
                 setTimeout(() => { if (!sent) { sent = true; clearInterval(pollInterval) } }, 30000)
               } else {
-                // No readiness signal — deliver messages after a delay
-                setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 5000)
+                // No readiness signal — inject identity and deliver messages after a delay
+                setTimeout(() => {
+                  injectIdentityMessage(tmuxName, { widgetId, displayName: prettyName, canvasId, branch, serverUrl })
+                  setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
+                }, 5000)
               }
             }, 900)
           }

@@ -1,6 +1,6 @@
 # Releasing @dfosco/storyboard-* packages
 
-All four packages share a **fixed version** — every release bumps them together.
+All five packages share a **fixed version** — every release bumps them together.
 
 | Package | Description |
 |---------|-------------|
@@ -8,6 +8,7 @@ All four packages share a **fixed version** — every release bumps them togethe
 | `@dfosco/storyboard-react` | React hooks, context, Vite plugin |
 | `@dfosco/storyboard-react-primer` | Primer design system form wrappers |
 | `@dfosco/storyboard-react-reshaped` | Reshaped design system form wrappers |
+| `@dfosco/tiny-canvas` | Lightweight React canvas with draggable widgets |
 
 ---
 
@@ -22,6 +23,7 @@ Remove `"private": true` from each package.json:
 # packages/react/package.json
 # packages/react-primer/package.json
 # packages/react-reshaped/package.json
+# packages/tiny-canvas/package.json
 ```
 
 Add metadata to each package.json (adjust URLs):
@@ -83,68 +85,94 @@ Edit `.changeset/config.json`:
 
 The `@changesets/changelog-github` generator produces richer changelog entries that link to PRs, commit SHAs, and credit contributors — these read well as GitHub Release bodies.
 
-### 5. Set up npm authentication for CI
+### 5. Set up npm OIDC Trusted Publishing
 
-**Option A: Granular Access Token (required for first publish)**
+All packages must have been published at least once before configuring trusted publishing.
+Since all five `@dfosco/storyboard-*` and `@dfosco/tiny-canvas` packages are already published, you can configure OIDC immediately.
 
-Since OIDC trusted publishing only works for packages that have been published at least once,
-you need a granular access token for the initial publish:
+For each package on [npmjs.com](https://www.npmjs.com):
 
-1. Go to https://www.npmjs.com/settings/tokens
-2. Create a **Granular Access Token** with read/write permissions for your packages
-3. **Enable "Bypass 2FA"** on the token (required for non-interactive CI)
-4. Set expiration (90 days max for write tokens)
-5. Add it as a repository secret named `NPM_TOKEN` in **Settings → Secrets → Actions**
+1. Go to **Settings → Trusted Publisher**
+2. Add GitHub Actions as a trusted publisher:
+   - **Owner:** `dfosco`
+   - **Repository:** `storyboard`
+   - **Workflow:** `release-publish.yml`
+   - **Environment:** _(leave blank)_
+3. Repeat for all five packages
 
-**Option B: OIDC Trusted Publishing (recommended, after first publish)**
+Once configured, publishing uses OIDC — no npm tokens, no 2FA, automatic provenance attestation.
 
-After all packages have been published at least once, switch to OIDC trusted publishing
-to eliminate token management entirely:
+> **Note:** You can delete the `NPM_TOKEN` repository secret after verifying OIDC works.
 
-1. Go to each package's settings on npmjs.com → **Trusted Publisher**
-2. Add GitHub Actions as a trusted publisher (org/user: `dfosco`, repo: `storyboard`, workflow: `publish.yml`)
-3. The workflow already has `id-token: write` permission configured
-4. Remove the `NPM_TOKEN` secret — it's no longer needed
+### 6. Workflows
 
-### 6. Add the publish workflow
+Two workflows handle the release lifecycle:
 
-Create `.github/workflows/publish.yml`:
+**`.github/workflows/publish.yml`** — Creates a "Version Packages" PR when changesets exist on `main`:
 
 ```yaml
-name: Publish
+name: Version
 
 on:
   push:
     branches: [main]
-
-concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  release:
+  version:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          registry-url: https://registry.npmjs.org
-
-      - run: npm ci
-
-      - name: Create release PR or publish
-        uses: changesets/action@v1
+          node-version: 22
+      - run: npm ci --legacy-peer-deps
+      - uses: changesets/action@v1
         with:
-          publish: npx changeset publish
           title: "chore: version packages"
           commit: "chore: version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
+
+**`.github/workflows/release-publish.yml`** — Publishes to npm when a version tag is pushed (via OIDC Trusted Publishing):
+
+```yaml
+name: Release Publish
+
+on:
+  push:
+    tags:
+      - '@dfosco/storyboard-core@*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Core package tag'
+        required: true
+
+permissions:
+  contents: write
+  id-token: write   # Required for OIDC
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm ci --legacy-peer-deps
+      - run: |
+          # Publishes all 5 packages with provenance
+          # Skips already-published versions
+          # No NODE_AUTH_TOKEN needed — OIDC handles auth
+          npm publish -w @dfosco/storyboard-core --access public --provenance
+          # ... (see actual workflow for full script)
 ```
 
 ---
@@ -161,7 +189,7 @@ npx changeset
 
 Select the affected packages, choose the bump type (patch / minor / major), and write a summary. This creates a markdown file in `.changeset/`.
 
-Since versioning is fixed, **all packages will be bumped to the same version** regardless of which ones you select.
+Since versioning is fixed, **all packages will be bumped to the same version** regardless of which ones you select. This includes `@dfosco/tiny-canvas`.
 
 ### 2. Commit and push
 
@@ -183,13 +211,13 @@ Merge it to trigger the publish.
 
 ### 4. Auto-publish
 
-Once the version PR is merged, the same action runs `changeset publish`, which publishes all packages to npm.
+Once the version PR is merged, the `release-publish.yml` workflow detects the new version tags and publishes all packages to npm via OIDC Trusted Publishing (with provenance attestation).
 
 ---
 
 ## Manual publish (recommended)
 
-Use the release script which runs lint, tests, build, publishes to npm, and creates GitHub Releases:
+Use the release script which runs lint, tests, build, versions packages, and pushes to trigger CI publishing:
 
 ```bash
 npm run release              # stable release
@@ -199,9 +227,20 @@ npm run release:alpha        # alpha prerelease
 
 > ⚠️ **Do not use `npm run release --beta`** — npm swallows the flag. Always use `npm run release:beta`.
 
+The script will:
+1. Run lint, tests, and build
+2. Enter prerelease mode (if beta/alpha)
+3. Create a changeset interactively
+4. Bump versions
+5. Show a confirmation prompt
+6. Commit, create git tags, and push
+7. **CI takes over** — `release-publish.yml` publishes to npm with OIDC provenance and creates a GitHub Release
+
+No npm login, no 2FA prompts. Publishing is handled entirely by GitHub Actions.
+
 ### Resuming a failed release
 
-If a release fails partway through (e.g. npm auth expired, network error, some packages published but not others), use the resume script:
+If a release fails partway through (e.g. push failed, CI didn't trigger), use the resume script:
 
 ```bash
 npm run release:resume              # resume stable release
@@ -211,38 +250,27 @@ npm run release:resume:alpha        # resume alpha prerelease
 
 This skips lint/test/build/versioning and picks up from the current committed state. It will:
 1. Re-create git tags if missing
-2. Skip packages already published to npm
-3. Push with tags and create a GitHub Release
+2. Push with tags
+3. CI handles publishing (skips already-published packages)
 
-The script will:
-1. Run lint, tests, and build
-2. Enter prerelease mode (if beta/alpha)
-3. Create a changeset interactively
-4. Bump versions
-5. Show a confirmation prompt before publishing
-6. Publish to npm, create git tags, push, and create a GitHub Release
+If CI still doesn't trigger, you can manually dispatch:
+
+```bash
+gh workflow run release-publish.yml -f tag=@dfosco/storyboard-core@<VERSION>
+```
 
 The GitHub Release uses the changelog from `packages/core/CHANGELOG.md`. If no changelog section is found for the version, it falls back to auto-generated notes from commits (with a warning). Stable releases are marked as Latest; prereleases are marked as Pre-release.
 
 Changelogs are generated by `@changesets/changelog-github`, which links PRs, commits, and credits contributors automatically.
 
-For local runs, the script always uses workspace `npm publish` (web/passkey auth compatible).
-
 Or run each step manually:
 
 ```bash
-npm login
 npm run version             # bump versions + sync root
 npx changeset tag           # create git tags
 git add -A && git commit -m "chore: version packages"
-npm publish --workspace @dfosco/storyboard-core --access public
-npm publish --workspace @dfosco/storyboard-react --access public
-npm publish --workspace @dfosco/storyboard-react-primer --access public
-npm publish --workspace @dfosco/storyboard-react-reshaped --access public
-git push --follow-tags
+git push --follow-tags      # CI publishes automatically
 ```
-
-`changeset publish` still works for CI token/OIDC flows, but local passkey-only npm accounts should use `npm publish` because changesets does not support npm's web/passkey OTP flow yet.
 
 ---
 
@@ -299,13 +327,13 @@ Prerelease versions are never tagged as `latest` on npm, so they won't affect us
 ### Minimal (React + Primer)
 
 ```bash
-npm install @dfosco/storyboard-core @dfosco/storyboard-react @dfosco/storyboard-react-primer
+npm install @dfosco/storyboard-core @dfosco/storyboard-react @dfosco/storyboard-react-primer @dfosco/tiny-canvas
 ```
 
 ### With Reshaped instead
 
 ```bash
-npm install @dfosco/storyboard-core @dfosco/storyboard-react @dfosco/storyboard-react-reshaped
+npm install @dfosco/storyboard-core @dfosco/storyboard-react @dfosco/storyboard-react-reshaped @dfosco/tiny-canvas
 ```
 
 ### Vite config

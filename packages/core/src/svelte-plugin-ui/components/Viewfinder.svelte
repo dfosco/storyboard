@@ -9,10 +9,8 @@
 -->
 
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte'
   import { buildPrototypeIndex } from '../../viewfinder.js'
   import { getLocal, setLocal } from '../../localStorage.js'
-  import { getParam, setParam, removeParam } from '../../session.js'
   import Icon from './Icon.svelte'
 
   interface Props {
@@ -84,26 +82,13 @@
   const ungroupedCanvases = $derived(prototypeIndex.canvases || [])
   const sortedCanvases = $derived(prototypeIndex.sorted?.[sortBy]?.canvases ?? ungroupedCanvases)
 
-  // View mode — top-level toggle between Prototypes and Canvases (hidden for now)
+  // View mode — top-level toggle between Prototypes and Canvases
   type ViewMode = 'prototypes' | 'canvases'
-  let viewMode: ViewMode = $state('prototypes')
-
-  function syncViewModeFromHash() {
-    viewMode = getParam('canvas') != null ? 'canvases' : 'prototypes'
-  }
-
-  onMount(() => {
-    syncViewModeFromHash()
-    window.addEventListener('hashchange', syncViewModeFromHash)
-  })
-
-  onDestroy(() => {
-    window.removeEventListener('hashchange', syncViewModeFromHash)
-  })
+  const VIEW_MODE_KEY = 'viewfinder.viewMode'
+  let viewMode: ViewMode = $state(getLocal(VIEW_MODE_KEY) === 'canvases' ? 'canvases' : 'prototypes')
 
   $effect(() => {
-    if (viewMode === 'canvases') setParam('canvas', '1')
-    else removeParam('canvas')
+    setLocal(VIEW_MODE_KEY, viewMode)
   })
 
   // Canvas folder data: extract folders that contain canvases for canvas view
@@ -198,16 +183,14 @@
     return `<svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="320" height="200" fill="var(--sb--placeholder-bg)" />${lines}${rects}</svg>`
   }
 
-  // Branch switching
+  // Branch switching — populated by Vite server plugin when available
   interface Branch { branch: string; folder: string }
 
-  const MOCK_BRANCHES: Branch[] = [
-    { branch: 'main', folder: '' },
-    { branch: 'feat/comments-v2', folder: 'branch--feat-comments-v2' },
-    { branch: 'fix/nav-overflow', folder: 'branch--fix-nav-overflow' },
-  ]
-
-  let branches: Branch[] | null = $state(null)
+  let branches: Branch[] | null = $state(
+    (typeof window !== 'undefined' && Array.isArray((window as any).__SB_BRANCHES__))
+      ? (window as any).__SB_BRANCHES__
+      : null
+  )
 
   const branchBasePath = $derived(
     (basePath || '/storyboard-source/').replace(/\/branch--[^/]*\/$/, '/')
@@ -219,15 +202,6 @@
       return m ? m[1] : 'main'
     })()
   )
-
-  $effect(() => {
-    fetch(`${branchBasePath}branches.json`)
-      .then(r => r.ok ? r.json() : null)
-      .then((data: any) => {
-        branches = Array.isArray(data) && data.length > 0 ? data : MOCK_BRANCHES
-      })
-      .catch(() => { branches = MOCK_BRANCHES })
-  })
 
   function handleBranchChange(e: Event) {
     const folder = (e.target as HTMLSelectElement).value

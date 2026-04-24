@@ -14,6 +14,7 @@
   import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
   import * as Panel from './lib/components/ui/panel/index.js'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
+  import { isExcludedByRoute } from './commandActions.js'
   import type { Component } from 'svelte'
 
   interface CreateMenuFeature {
@@ -35,10 +36,11 @@
     features?: CreateMenuFeature[]
     data?: { features?: CreateMenuFeature[] }
     config?: CreateMenuConfig
+    localOnly?: boolean
     tabindex?: number
   }
 
-  let { features: featuresProp = [], data, config = { label: 'Create' }, tabindex }: Props = $props()
+  let { features: featuresProp = [], data, config = { label: 'Create' }, localOnly, tabindex }: Props = $props()
 
   // Support both direct `features` prop (legacy) and `data.features` (generic toolbar)
   const features = $derived(featuresProp.length > 0 ? featuresProp : (data?.features || []))
@@ -104,13 +106,15 @@
 
   <DropdownMenu.Content side="top" align="end" sideOffset={16} class="min-w-[180px]" style={menuWidth ? `width: ${menuWidth}` : ''}>
     {#each resolvedActions as action (action._key)}
-      {#if action.type === 'header'}
+      {#if isExcludedByRoute(action)}
+        <!-- hidden by route -->
+      {:else if action.type === 'header'}
         <DropdownMenu.Label>{action.label}</DropdownMenu.Label>
       {:else if action.type === 'separator'}
         <DropdownMenu.Separator />
       {:else if action.type === 'footer'}
         <DropdownMenu.Separator />
-        <div class="px-2 py-1.5 text-xs text-muted-foreground flex flex-row items-baseline"><span class="inline-flex w-2 h-2 rounded-full mr-1.5" style="background: hsl(137, 66%, 30%)"></span>Only available in dev environment</div>
+        <div class="px-2 py-1.5 text-xs text-muted-foreground flex flex-row items-baseline"><span class="inline-flex w-2 h-2 rounded-full mr-1.5" style="background: hsl(212, 92%, 45%)"></span>Only available in dev environment</div>
       {:else if action._feature}
         <DropdownMenu.Item onclick={() => showOverlay(action)}>
           {action.label || action._feature.label}

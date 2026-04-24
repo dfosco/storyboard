@@ -19,10 +19,12 @@
       label?: string
       menuWidth?: string
     }
+    data?: any
+    localOnly?: boolean
     tabindex?: number
   }
 
-  let { config = {}, tabindex = -1 }: Props = $props()
+  let { config = {}, data, localOnly, tabindex = -1 }: Props = $props()
 
   let menuOpen = $state(false)
   let canvasActive = $state(false)
@@ -116,7 +118,7 @@
           checked={$themeSyncState.toolbar}
           onSelect={(e) => handleSyncToggle(e, 'toolbar')}
         >
-          Toolbar
+          Tools
         </DropdownMenu.CheckboxItem>
         <DropdownMenu.CheckboxItem
           checked={$themeSyncState.codeBoxes}

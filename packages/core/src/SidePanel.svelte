@@ -269,7 +269,7 @@
 <style>
   .sb-sidepanel {
     position: fixed;
-    top: 0;
+    top: var(--sb-branch-bar-height, 0px);
     right: 0;
     bottom: 0;
     width: var(--sb--sidepanel-width, 420px);
@@ -279,7 +279,7 @@
     background-color: var(--bgColor-default, var(--sb--color-background, #ffffff));
     border-left: 1px solid var(--borderColor-default, var(--sb--color-border, #d0d7de));
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-family: "Mona Sans", -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
     color: var(--fgColor-default, var(--sb--color-foreground, #1f2328));
     animation: sb-sidepanel-slide-in 0.25s ease;
   }

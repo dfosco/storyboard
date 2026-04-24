@@ -25,10 +25,12 @@
       label?: string
       action?: string
     }
+    data?: any
+    localOnly?: boolean
     tabindex?: number
   }
 
-  let { config = {}, tabindex = -1 }: Props = $props()
+  let { config = {}, data, localOnly, tabindex = -1 }: Props = $props()
 
   let menuOpen = $state(false)
   let actionsVersion = $state(0)
@@ -79,7 +81,12 @@
             {#if child.type === 'radio'}
               <DropdownMenu.RadioItem
                 value={child.id}
-                onclick={() => { if (child.execute) child.execute(); menuOpen = false }}
+                onclick={(e) => {
+                  if (child.href && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault(); window.open(child.href, '_blank'); menuOpen = false; return
+                  }
+                  if (child.execute) child.execute(); menuOpen = false
+                }}
               >
                 {child.label}
               </DropdownMenu.RadioItem>
@@ -96,7 +103,12 @@
               {child.label}
             </DropdownMenu.CheckboxItem>
           {:else}
-            <DropdownMenu.Item onclick={() => { if (child.execute) child.execute(); menuOpen = false }}>
+            <DropdownMenu.Item onclick={(e) => {
+              if (child.href && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault(); window.open(child.href, '_blank'); menuOpen = false; return
+              }
+              if (child.execute) child.execute(); menuOpen = false
+            }}>
               {child.label}
             </DropdownMenu.Item>
           {/if}

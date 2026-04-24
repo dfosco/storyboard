@@ -1,0 +1,122 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--bgColor-default, #0d1117);
+  border: 1px solid var(--borderColor-default, #30363d);
+  color: var(--fgColor-default, #e6edf3);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+.container.running {
+  border-color: var(--borderColor-accent-emphasis, #58a6ff);
+}
+
+.container.done {
+  border-color: var(--borderColor-success-emphasis, #3fb950);
+}
+
+.container.error {
+  border-color: var(--borderColor-danger-emphasis, #f85149);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.icon {
+  font-size: 16px;
+}
+
+.label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prompt {
+  color: var(--fgColor-muted, #8b949e);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.runButton {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: none;
+  background: var(--bgColor-accent-emphasis, #1f6feb);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.runButton:hover {
+  background: var(--bgColor-accent-emphasis, #388bfd);
+}
+
+.spinner {
+  color: var(--fgColor-accent, #58a6ff);
+  font-size: 12px;
+}
+
+.errorActions {
+  display: flex;
+  gap: 8px;
+}
+
+.peekButton {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--borderColor-danger-emphasis, #f85149);
+  background: transparent;
+  color: var(--fgColor-danger, #f85149);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.peekButton:hover {
+  background: var(--bgColor-danger-muted, rgba(248, 81, 73, 0.1));
+}
+
+.dismissButton {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--borderColor-default, #30363d);
+  background: transparent;
+  color: var(--fgColor-muted, #8b949e);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dismissButton:hover {
+  background: var(--bgColor-muted, #161b22);
+}
+
+.message {
+  color: var(--fgColor-muted, #8b949e);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

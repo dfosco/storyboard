@@ -24,6 +24,9 @@
     repoInfo ? `https://github.com/${repoInfo.owner}/${repoInfo.name}` : null
   )
 
+  const _basePath = (typeof window !== 'undefined' && window.__STORYBOARD_BASE_PATH__) || '/'
+  const _apiBase = _basePath.replace(/\/$/, '')
+
   // ── Effects ───────────────────────────────────────────────────
 
   onMount(() => {
@@ -37,7 +40,7 @@
     readmeLoading = true
     readmeError = ''
     try {
-      const res = await fetch('/_storyboard/docs/readme')
+      const res = await fetch(`${_apiBase}/_storyboard/docs/readme`)
       if (!res.ok) throw new Error(`${res.status}`)
       const data = await res.json()
       readmeHtml = marked.parse(data.content ?? '')
@@ -50,7 +53,7 @@
 
   async function fetchRepoInfo() {
     try {
-      const res = await fetch('/_storyboard/docs/repo')
+      const res = await fetch(`${_apiBase}/_storyboard/docs/repo`)
       if (res.ok) repoInfo = await res.json()
     } catch {}
   }
@@ -101,7 +104,7 @@
     height: 100%;
     overflow: hidden;
     color: var(--fgColor-default, #e6edf3);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-family: "Mona Sans", -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
     font-size: 13px;
   }
 
@@ -129,7 +132,7 @@
     align-items: center;
     gap: 4px;
     font-size: 12px;
-    font-family: "Ioskeley Mono", ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
     color: var(--fgColor-muted, #848d97);
     text-decoration: none;
     flex-shrink: 0;
@@ -236,7 +239,7 @@
   }
 
   .markdown-body :global(code) {
-    font-family: "Ioskeley Mono", ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
     font-size: 0.9em;
     padding: 2px 6px;
     background: var(--bgColor-muted, #161b22);

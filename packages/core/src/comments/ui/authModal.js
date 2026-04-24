@@ -1,75 +1,58 @@
 /**
- * Auth modal — Svelte-based modal for entering a GitHub PAT.
+ * Auth modal — delegates to the React PATDialog via a custom event.
  *
- * Styled with Tachyons + sb-* custom classes for light/dark mode support.
+ * The Svelte AuthModal is no longer mounted directly. Instead, we dispatch
+ * a 'storyboard:open-auth-modal' event that the React ViewfinderNew listens for.
  */
 
-import { mount, unmount } from 'svelte'
-import AuthModal from './AuthModal.svelte'
 import { getCachedUser, clearToken } from '../auth.js'
-import './comment-layout.css'
-
-const MODAL_ID = 'sb-auth-modal'
 
 /**
- * Open the auth modal. Returns a promise that resolves with the user info
- * on successful sign-in, or null if cancelled.
+ * Open the auth modal. Dispatches a custom event to trigger the React PATDialog.
  * @param {{ initialError?: string|null }} [options]
  * @returns {Promise<{ login: string, avatarUrl: string }|null>}
  */
 export function openAuthModal(options = {}) {
-  const { initialError = null } = options
+  document.dispatchEvent(new CustomEvent('storyboard:open-auth-modal', {
+    detail: options,
+  }))
 
+  // Return a promise that resolves when token appears in localStorage
   return new Promise((resolve) => {
-    const existing = document.getElementById(MODAL_ID)
-    if (existing) existing.remove()
-
-    const backdrop = document.createElement('div')
-    backdrop.id = MODAL_ID
-    backdrop.className = 'sb-auth-backdrop fixed top-0 right-0 bottom-0 left-0 flex items-center justify-center sans-serif'
-
-    let instance = null
-
-    function cleanup() {
-      window.removeEventListener('keydown', onKeyDown, true)
-      if (instance) { unmount(instance); instance = null }
-      backdrop.remove()
+    function onStorage() {
+      try {
+        const token = localStorage.getItem('sb-comments-token')
+        if (token) {
+          window.removeEventListener('storage', onStorage)
+          clearInterval(pollId)
+          const user = getCachedUser()
+          resolve(user || { login: 'user', avatarUrl: '' })
+        }
+      } catch { /* ignore */ }
     }
 
-    function onKeyDown(e) {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        e.stopPropagation()
-        cleanup()
-        resolve(null)
-      }
-    }
+    // Poll localStorage for token changes (same-window writes don't fire 'storage')
+    const initialToken = (() => { try { return localStorage.getItem('sb-comments-token') } catch { return null } })()
+    const pollId = setInterval(() => {
+      try {
+        const token = localStorage.getItem('sb-comments-token')
+        if (token && token !== initialToken) {
+          clearInterval(pollId)
+          window.removeEventListener('storage', onStorage)
+          const user = getCachedUser()
+          resolve(user || { login: 'user', avatarUrl: '' })
+        }
+      } catch { /* ignore */ }
+    }, 500)
 
-    // Close on backdrop click
-    backdrop.addEventListener('click', (e) => {
-      if (e.target === backdrop) {
-        cleanup()
-        resolve(null)
-      }
-    })
+    window.addEventListener('storage', onStorage)
 
-    window.addEventListener('keydown', onKeyDown, true)
-    document.body.appendChild(backdrop)
-
-    instance = mount(AuthModal, {
-      target: backdrop,
-      props: {
-        initialError,
-        onDone: (user) => {
-          cleanup()
-          resolve(user)
-        },
-        onClose: () => {
-          cleanup()
-          resolve(null)
-        },
-      },
-    })
+    // Timeout after 5 minutes
+    setTimeout(() => {
+      clearInterval(pollId)
+      window.removeEventListener('storage', onStorage)
+      resolve(null)
+    }, 5 * 60 * 1000)
   })
 }
 

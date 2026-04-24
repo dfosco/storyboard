@@ -1,18 +1,12 @@
 <!--
   CanvasZoomControl — zoom in/out/reset bar for canvas pages.
-  Extracted from CoreUIBar to be config-driven.
 -->
-
 <script lang="ts">
+  import * as Tooltip from './lib/components/ui/tooltip/index.js'
+
   interface Props {
     config?: any
-    data?: {
-      zoomIn: (zoom: number) => void
-      zoomOut: (zoom: number) => void
-      zoomReset: () => void
-      ZOOM_MIN: number
-      ZOOM_MAX: number
-    }
+    data?: any
     zoom?: number
     tabindex?: number
   }
@@ -22,29 +16,41 @@
 
 {#if data}
   <div class="canvas-zoom-bar" role="group" aria-label={config.ariaLabel || 'Zoom controls'}>
-    <button
-      class="canvas-zoom-btn"
-      onclick={() => data.zoomOut(zoom)}
-      disabled={zoom <= data.ZOOM_MIN}
-      aria-label="Zoom out"
-      title="Zoom out"
-      {tabindex}
-    >−</button>
-    <button
-      class="canvas-zoom-label"
-      onclick={() => data.zoomReset()}
-      aria-label="Reset zoom to 100%"
-      title="Reset to 100%"
-      tabindex={-1}
-    >{zoom}%</button>
-    <button
-      class="canvas-zoom-btn"
-      onclick={() => data.zoomIn(zoom)}
-      disabled={zoom >= data.ZOOM_MAX}
-      aria-label="Zoom in"
-      title="Zoom in"
-      tabindex={-1}
-    >+</button>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        <button
+          class="canvas-zoom-btn"
+          onclick={() => data.zoomOut(zoom)}
+          disabled={zoom <= data.ZOOM_MIN}
+          aria-label="Decrease zoom"
+          {tabindex}
+        >−</button>
+      </Tooltip.Trigger>
+      <Tooltip.Content side="top">Decrease zoom</Tooltip.Content>
+    </Tooltip.Root>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        <button
+          class="canvas-zoom-label"
+          onclick={() => data.zoomReset()}
+          aria-label="Zoom to 100%"
+          tabindex={-1}
+        >{zoom}%</button>
+      </Tooltip.Trigger>
+      <Tooltip.Content side="top">Zoom to 100%</Tooltip.Content>
+    </Tooltip.Root>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        <button
+          class="canvas-zoom-btn"
+          onclick={() => data.zoomIn(zoom)}
+          disabled={zoom >= data.ZOOM_MAX}
+          aria-label="Increase zoom"
+          tabindex={-1}
+        >+</button>
+      </Tooltip.Trigger>
+      <Tooltip.Content side="top">Increase zoom</Tooltip.Content>
+    </Tooltip.Root>
   </div>
 {/if}
 
@@ -53,7 +59,7 @@
     display: flex;
     align-items: center;
     border-radius: 10px;
-    border: 1.5px solid var(--sb--trigger-border, var(--color-slate-400));
+    border: 2.5px solid var(--sb--trigger-border, var(--color-slate-400));
     background: var(--sb--trigger-bg, var(--color-slate-100));
     overflow: hidden;
   }
@@ -65,7 +71,7 @@
     align-items: center;
     justify-content: center;
     width: 36px;
-    height: 32px;
+    height: 38px;
     font-size: 16px;
     font-weight: 600;
     color: var(--sb--trigger-text, var(--color-slate-600));
@@ -88,14 +94,14 @@
     align-items: center;
     justify-content: center;
     min-width: 48px;
-    height: 32px;
+    height: 38px;
     padding: 0 4px;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--sb--trigger-text, var(--color-slate-600));
-    border-left: 1.5px solid var(--sb--trigger-border, var(--color-slate-400));
-    border-right: 1.5px solid var(--sb--trigger-border, var(--color-slate-400));
+    border-left: 2px solid var(--sb--trigger-border, var(--color-slate-400));
+    border-right: 2px solid var(--sb--trigger-border, var(--color-slate-400));
     transition: background 120ms;
   }
 

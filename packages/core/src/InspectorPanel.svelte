@@ -110,7 +110,8 @@
     return null
   }
 
-  const _isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
+  const _isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true && !new URLSearchParams(window.location.search).has('prodMode')
+  const _basePath = (typeof window !== 'undefined' && window.__STORYBOARD_BASE_PATH__) || '/'
 
   /**
    * Fetch source file content — uses dev middleware in dev, static JSON in prod.
@@ -119,7 +120,7 @@
     // In local dev, use the live middleware (reads from disk)
     if (_isLocalDev) {
       try {
-        const res = await fetch(`/_storyboard/docs/source?path=${encodeURIComponent(filePath)}`)
+        const res = await fetch(`${_basePath.replace(/\/$/, '')}/_storyboard/docs/source?path=${encodeURIComponent(filePath)}`)
         if (res.ok) {
           const json = await res.json()
           return json?.content || ''
@@ -268,6 +269,7 @@
       highlightedHtml = hl.codeToHtml(sourceCode, {
         lang: getLang(sourcePath),
         theme: 'github-dark',
+        lineNumbers: false,
         decorations: matchedLine > 0
           ? [{ start: { line: matchedLine - 1, character: 0 }, end: { line: matchedLine - 1, character: Infinity }, properties: { class: 'highlighted-line' } }]
           : [],
@@ -363,6 +365,7 @@
               highlightedHtml = hl.codeToHtml(sourceCode, {
                 lang: getLang(path),
                 theme: 'github-dark',
+                lineNumbers: false,
                 decorations: matchedLine > 0
                   ? [{ start: { line: matchedLine - 1, character: 0 }, end: { line: matchedLine - 1, character: Infinity }, properties: { class: 'highlighted-line' } }]
                   : [],
@@ -454,8 +457,8 @@
     if (_isLocalDev) {
       try {
         const [filesRes, repoRes] = await Promise.all([
-          fetch('/_storyboard/docs/files'),
-          fetch('/_storyboard/docs/repo'),
+          fetch(`${_basePath.replace(/\/$/, '')}/_storyboard/docs/files`),
+          fetch(`${_basePath.replace(/\/$/, '')}/_storyboard/docs/repo`),
         ])
         if (filesRes.ok) {
           const data = await filesRes.json()
@@ -631,7 +634,7 @@
 
 <style>
   .inspector-mono {
-    font-family: "Ioskeley Mono", ui-monospace, monospace;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
   }
 
   .inspector-pulse-dot {
@@ -707,7 +710,7 @@
     padding: 12px 0;
     font-size: 12px;
     line-height: 1.6;
-    font-family: "Ioskeley Mono", ui-monospace, monospace;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
     tab-size: 2;
     background: transparent !important;
     overflow-x: auto;

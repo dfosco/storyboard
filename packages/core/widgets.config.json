@@ -1,0 +1,1056 @@
+{
+  "variables": {
+    "label:duplicate": "Duplicate",
+    "label:copy-link": "Copy widget link",
+    "label:delete": "Delete",
+    "label:open-ext": "Open in new tab",
+    "label:edit": "Edit",
+    "label:download": "Download image",
+    "label:copy-png": "Copy as image",
+    "label:copy-path": "Copy file path",
+    "label:expand": "Expand",
+    "label:copy-id": "Copy widget ID",
+    "label:copy-text": "Copy text"
+  },
+  "connectorDefaults": {
+    "controlOffset": 120,
+    "stroke": "var(--fgColor-accent, #0969da)",
+    "strokeWidth": 4,
+    "hoverStroke": "var(--fgColor-danger, #cf222e)",
+    "hoverStrokeWidth": 5,
+    "endpointRadius": 6,
+    "endpointFill": "var(--fgColor-accent, #0969da)",
+    "endpointStroke": "var(--bgColor-default, #ffffff)",
+    "endpointStrokeWidth": 3,
+    "hitAreaStrokeWidth": 16,
+    "dragStroke": "var(--fgColor-accent, #0969da)",
+    "dragStrokeWidth": 2,
+    "dragDasharray": "6 4",
+    "dragOpacity": 0.7,
+    "startEndpoint": "circle",
+    "endEndpoint": "circle"
+  },
+  "widgets": {
+    "sticky-note": {
+      "label": "Sticky Note",
+      "icon": "📝",
+      "resize": {
+        "enabled": true,
+        "prod": false
+      },
+      "props": {
+        "text": {
+          "type": "text",
+          "label": "Text",
+          "category": "content",
+          "default": ""
+        },
+        "color": {
+          "type": "select",
+          "label": "Color",
+          "category": "settings",
+          "default": "yellow",
+          "options": [
+            "yellow",
+            "blue",
+            "green",
+            "pink",
+            "purple",
+            "orange"
+          ]
+        },
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "min": 180,
+          "default": 270
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 60,
+          "default": 170
+        }
+      },
+      "features": [
+        {
+          "id": "color",
+          "type": "color-picker",
+          "prop": "color"
+        },
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy"
+        },
+        {
+          "id": "copy-text",
+          "type": "action",
+          "action": "copy-text",
+          "label": "$label:copy-text",
+          "icon": "unwrap",
+          "menu": true,
+          "prod": true
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "prod": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
+    },
+    "markdown": {
+      "label": "Markdown",
+      "icon": "📄",
+      "resize": {
+        "enabled": true,
+        "prod": false
+      },
+      "props": {
+        "content": {
+          "type": "text",
+          "label": "Content",
+          "category": "content",
+          "default": ""
+        },
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "default": 530,
+          "min": 200,
+          "max": 1200
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 60
+        }
+      },
+      "features": [
+        {
+          "id": "toggle-collapse",
+          "type": "action",
+          "action": "toggle-collapse",
+          "label": "Collapse height",
+          "icon": "fold"
+        },
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy"
+        },
+        {
+          "id": "copy-text",
+          "type": "action",
+          "action": "copy-text",
+          "label": "Copy Markdown",
+          "icon": "unwrap",
+          "menu": true,
+          "prod": true
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "prod": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
+    },
+    "prototype": {
+      "label": "Prototype",
+      "icon": "🖥️",
+      "resize": {
+        "enabled": true,
+        "prod": false
+      },
+      "props": {
+        "src": {
+          "type": "url",
+          "label": "URL",
+          "category": "content",
+          "default": ""
+        },
+        "originalSrc": {
+          "type": "url",
+          "label": "Original URL",
+          "category": "content",
+          "default": ""
+        },
+        "label": {
+          "type": "text",
+          "label": "Label",
+          "category": "settings",
+          "default": ""
+        },
+        "zoom": {
+          "type": "number",
+          "label": "Zoom",
+          "category": "settings",
+          "default": 100,
+          "min": 25,
+          "max": 200
+        },
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "default": 800,
+          "min": 200,
+          "max": 2000
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "default": 600,
+          "min": 200,
+          "max": 1500
+        }
+      },
+      "features": [
+        {
+          "id": "open-external",
+          "type": "action",
+          "action": "open-external",
+          "label": "$label:open-ext",
+          "icon": "open-external",
+          "prod": true
+        },
+        {
+          "id": "edit-url",
+          "type": "action",
+          "action": "edit",
+          "label": "$label:edit",
+          "icon": "edit"
+        },
+        {
+          "id": "expand",
+          "type": "action",
+          "action": "expand",
+          "label": "$label:expand",
+          "icon": "expand",
+          "prod": true
+        },
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy"
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "prod": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
+    },
+    "figma-embed": {
+      "label": "Figma Embed",
+      "icon": "🎨",
+      "resize": {
+        "enabled": true,
+        "prod": false
+      },
+      "props": {
+        "url": {
+          "type": "url",
+          "label": "URL",
+          "category": "content",
+          "default": ""
+        },
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "default": 800,
+          "min": 200,
+          "max": 2000
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "default": 450,
+          "min": 150,
+          "max": 1500
+        }
+      },
+      "features": [
+        {
+          "id": "open-external",
+          "type": "action",
+          "action": "open-external",
+          "label": "$label:open-ext",
+          "icon": "open-external",
+          "prod": true
+        },
+        {
+          "id": "expand",
+          "type": "action",
+          "action": "expand",
+          "label": "$label:expand",
+          "icon": "expand",
+          "prod": true
+        },
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy"
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "prod": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
+    },
+    "codepen-embed": {
+      "label": "CodePen Embed",
+      "icon": "✏️",
+      "resize": {
+        "enabled": true,
+        "prod": false
+      },
+      "props": {
+        "url": {
+          "type": "url",
+          "label": "URL",
+          "category": "content",
+          "default": ""
+        },
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "default": 800,
+          "min": 200,
+          "max": 2000
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "default": 450,
+          "min": 150,
+          "max": 1500
+        }
+      },
+      "features": [
+        {
+          "id": "open-external",
+          "type": "action",
+          "action": "open-external",
+          "label": "$label:open-ext",
+          "icon": "open-external",
+          "prod": true
+        },
+        {
+          "id": "expand",
+          "type": "action",
+          "action": "expand",
+          "label": "$label:expand",
+          "icon": "expand",
+          "prod": true
+        },
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy"
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "prod": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
+    },
+    "link-preview": {
+      "label": "Link Preview",
+      "icon": "🔗",
+      "resize": {
+        "enabled": false,
+        "prod": false
+      },
+      "props": {
+        "url": {
+          "type": "url",
+          "label": "URL",
+          "category": "content",
+          "default": ""
+        },
+        "title": {
+          "type": "text",
+          "label": "Title",
+          "category": "content",
+          "default": ""
+        },
+        "description": {
+          "type": "text",
+          "label": "Description",
+          "category": "content",
+          "default": ""
+        },
+        "ogImage": {
+          "type": "url",
+          "label": "OG Image",
+          "category": "content",
+          "default": ""
+        },
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "min": 200,
+          "default": 320
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 80
+        }
+      },
+      "features": [
+        {
+          "id": "open-external",
+          "type": "action",
+          "action": "open-external",
+          "label": "$label:open-ext",
+          "icon": "open-external",
+          "prod": true
+        },
+        {
+          "id": "toggle-collapse",
+          "type": "action",
+          "action": "toggle-collapse",
+          "label": "Collapse height",
+          "icon": "fold"
+        },
+        {
+          "id": "refresh-github",
+          "type": "action",
+          "action": "refresh-github",
+          "label": "Refresh data",
+          "icon": "sync"
+        },
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy",
+          "menu": true
+        },
+        {
+          "id": "copy-text",
+          "type": "action",
+          "action": "copy-text",
+          "label": "Copy Markdown",
+          "icon": "unwrap",
+          "menu": true,
+          "prod": true
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "prod": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
+    },
+    "component": {
+      "label": "Component",
+      "icon": "⚛️",
+      "resize": {
+        "enabled": true,
+        "prod": false
+      },
+      "props": {
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "min": 100
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 60
+        }
+      },
+      "features": [
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "prod": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
+    },
+    "story": {
+      "label": "Story",
+      "icon": "📖",
+      "resize": {
+        "enabled": true,
+        "prod": false
+      },
+      "props": {
+        "storyId": {
+          "type": "text",
+          "label": "Story",
+          "category": "content",
+          "default": ""
+        },
+        "exportName": {
+          "type": "text",
+          "label": "Export",
+          "category": "content",
+          "default": ""
+        },
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "min": 100
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 60
+        },
+        "showCode": {
+          "type": "boolean",
+          "label": "Show code",
+          "category": "settings",
+          "default": false
+        }
+      },
+      "features": [
+        {
+          "id": "show-code",
+          "type": "action",
+          "action": "show-code",
+          "label": "Show code",
+          "icon": "code",
+          "prod": true
+        },
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy"
+        },
+        {
+          "id": "open-external",
+          "type": "action",
+          "action": "open-external",
+          "label": "$label:open-ext",
+          "icon": "open-external",
+          "prod": true
+        },
+        {
+          "id": "copy-code",
+          "type": "action",
+          "action": "copy-code",
+          "label": "Copy code",
+          "icon": "code",
+          "menu": true,
+          "prod": true
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "prod": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
+    },
+    "image": {
+      "label": "Image",
+      "icon": "🖼️",
+      "resize": {
+        "enabled": true,
+        "prod": false
+      },
+      "props": {
+        "src": {
+          "type": "text",
+          "label": "Source",
+          "category": "content",
+          "default": ""
+        },
+        "private": {
+          "type": "boolean",
+          "label": "Private",
+          "category": "settings",
+          "default": false
+        },
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "min": 100
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 60
+        }
+      },
+      "features": [
+        {
+          "id": "toggle-private",
+          "type": "action",
+          "action": "toggle-private",
+          "label": "Make private",
+          "icon": "eye"
+        },
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy"
+        },
+        {
+          "id": "image-actions",
+          "type": "dropdown",
+          "icon": "image",
+          "label": "Image actions",
+          "items": [
+            {
+              "action": "download-image",
+              "label": "$label:download",
+              "icon": "download"
+            },
+            {
+              "action": "copy-as-png",
+              "label": "$label:copy-png",
+              "icon": "copy",
+              "alt": {
+                "label": "$label:copy-path",
+                "action": "copy-file-path"
+              }
+            }
+          ]
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "prod": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
+    },
+    "terminal": {
+      "label": "Terminal",
+      "icon": "⬛",
+      "resize": {
+        "enabled": true,
+        "prod": false
+      },
+      "props": {
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "min": 300,
+          "default": 800
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 200,
+          "default": 450
+        }
+      },
+      "features": [
+        {
+          "id": "expand",
+          "type": "action",
+          "action": "expand",
+          "label": "$label:expand",
+          "icon": "expand"
+        },
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy"
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      },
+      "interactGate": false
+    },
+    "action": {
+      "label": "Action",
+      "icon": "⚡",
+      "resize": {
+        "enabled": true,
+        "prod": false
+      },
+      "props": {
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "min": 200,
+          "default": 320
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 120,
+          "default": 180
+        },
+        "prompt": {
+          "type": "string",
+          "label": "Prompt",
+          "category": "content",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "label": "Label",
+          "category": "content",
+          "default": "Run Agent"
+        },
+        "autoRun": {
+          "type": "boolean",
+          "label": "Auto-run on canvas load",
+          "category": "behavior",
+          "default": false
+        }
+      },
+      "features": [
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy"
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": ["*"],
+        "exclude": []
+      }
+    }
+  }
+}

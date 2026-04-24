@@ -16,10 +16,12 @@
 
   interface Props {
     config?: { ariaLabel?: string; icon?: string; meta?: Record<string, any> }
+    data?: any
+    localOnly?: boolean
     tabindex?: number
   }
 
-  let { config = {}, tabindex }: Props = $props()
+  let { config = {}, data, localOnly, tabindex }: Props = $props()
 
   let commentModeOn = $state(isCommentModeActive())
 

@@ -18,8 +18,8 @@
   let name = $state('')
   let title = $state('')
   let titleTouched = $state(false)
+  let description = $state('')
   let folder = $state('')
-  let includeJsx = $state(false)
   let grid = $state(true)
 
   let folders: string[] = $state([])
@@ -45,7 +45,7 @@
   const canSubmit = $derived(!!kebabName && !nameError && !submitting)
 
   function getApiUrl() {
-    const basePath = document.querySelector('base')?.getAttribute('href') || '/'
+    const basePath = window.__STORYBOARD_BASE_PATH__ || '/'
     return basePath.replace(/\/$/, '') + '/_storyboard/canvas'
   }
 
@@ -81,7 +81,7 @@
     try {
       const res = await fetch(getApiUrl() + '/create', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: kebabName, title: displayTitle, folder: folder || undefined, grid, includeJsx }),
+        body: JSON.stringify({ name: kebabName, title: displayTitle, description: description || undefined, folder: folder || undefined, grid }),
       })
       const data = await res.json()
       if (!res.ok) { error = data.error || 'Failed to create canvas'; return }
@@ -108,12 +108,12 @@
     <Label for="sb-canvas-name">Name</Label>
     <Input id="sb-canvas-name" placeholder="e.g. design-overview" autocomplete="off" spellcheck="false" bind:value={name} />
     {#if nameError}<p class="text-sm text-destructive">{nameError}</p>{/if}
-    {#if routePreview}<p class="text-xs text-muted-foreground">Route: <code class="px-1 py-0.5 bg-muted rounded font-mono text-foreground text-xs">{routePreview}</code></p>{/if}
+    {#if routePreview}<p class="text-xs text-muted-foreground mt-1.5">Route: <code class="px-1 py-0.5 bg-muted rounded font-mono text-foreground text-xs">{routePreview}</code></p>{/if}
   </div>
 
   <div class="space-y-1">
-    <Label for="sb-canvas-title">Title</Label>
-    <Input id="sb-canvas-title" placeholder={autoTitle || 'Auto-derived from name'} value={displayTitle} oninput={handleTitleInput} onblur={handleTitleBlur} />
+    <Label for="sb-canvas-description">Description <span class="text-muted-foreground font-normal">(optional)</span></Label>
+    <Input id="sb-canvas-description" placeholder="A brief description of this canvas" bind:value={description} />
   </div>
 
   <div class="space-y-1">
@@ -127,11 +127,6 @@
   <div class="flex items-center gap-2">
     <Checkbox id="sb-canvas-grid" bind:checked={grid} />
     <Label for="sb-canvas-grid" class="text-sm font-normal cursor-pointer">Show grid</Label>
-  </div>
-
-  <div class="flex items-center gap-2">
-    <Checkbox id="sb-canvas-jsx" bind:checked={includeJsx} />
-    <Label for="sb-canvas-jsx" class="text-sm font-normal cursor-pointer">Include JSX companion file</Label>
   </div>
 
   {#if error}<Alert.Root variant="destructive"><Alert.Description>{error}</Alert.Description></Alert.Root>{/if}

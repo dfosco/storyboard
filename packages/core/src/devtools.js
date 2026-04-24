@@ -80,7 +80,7 @@ export async function mountDevTools(options = {}) {
       borderRadius: '0.5rem',
       boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
       fontSize: '0.875rem',
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
+      fontFamily: "'Mona Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
     })
   })
 

@@ -12,13 +12,16 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte'
   import './core-ui-colors.css'
-  import CommandMenu from './CommandMenu.svelte'
+  import CommandPalette from './CommandPalette.svelte'
+  import * as Panel from './lib/components/ui/panel/index.js'
+  import PwaInstallBanner from './PwaInstallBanner.svelte'
   import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
   import * as Tooltip from './lib/components/ui/tooltip/index.js'
   import Icon from './svelte-plugin-ui/components/Icon.svelte'
   import { modeState } from './svelte-plugin-ui/stores/modeStore.js'
   import { sidePanelState, togglePanel } from './stores/sidePanelStore.js'
-  import { initCommandActions, registerCommandAction, getActionChildren, hasChildrenProvider, isExcludedByRoute, setRoutingBasePath } from './commandActions.js'
+  import { initCommandActions, registerCommandAction, getActionChildren, hasChildrenProvider, isExcludedByRoute, setRoutingBasePath, setDynamicActions, clearDynamicActions } from './commandActions.js'
+  import { isMobile, subscribeToMobile } from './mobileViewport.js'
   import { isMenuHidden } from './uiConfig.js'
   import { subscribeToToolbarConfig, getToolbarConfig } from './toolbarConfigStore.js'
   import { initToolbarToolStates, getToolbarToolState, isToolbarToolLocalOnly, subscribeToToolbarToolStates } from './toolStateStore.js'
@@ -67,17 +70,23 @@
   let origPushState: typeof history.pushState
   let origReplaceState: typeof history.replaceState
   let bumpNav: () => void
+  let chromeObserver: MutationObserver | null = null
   let SidePanel: any = $state(null)
   let toolbarEl: HTMLElement | null = $state(null)
   let canvasActive = $state(false)
-  let activeCanvasName = $state('')
+  let activeCanvasId = $state('')
   let canvasZoom = $state(100)
   let toolStateVersion = $state(0)
+
+  // Mobile viewport state — on narrow screens, toolbar tools move into the command menu
+  let isMobileState = $state(isMobile())
+  let unsubMobile: (() => void) | null = null
+  let mobileActionsRegistered = false
 
   // Roving tabindex: only one button in the toolbar is tabbable at a time
   let activeToolbarIndex = $state(-1)
 
-  const isLocalDev = typeof window !== 'undefined' && (window as any).__SB_LOCAL_DEV__ === true
+  const isLocalDev = typeof window !== 'undefined' && (window as any).__SB_LOCAL_DEV__ === true && !new URLSearchParams(window.location.search).has('prodMode')
 
   /**
    * Resolve a handler reference to a module loader function.
@@ -138,7 +147,7 @@
             url: tool.url || null,
             modes: tool.modes || ['*'],
             toolKey,
-            localOnly: tool.localOnly || false,
+            localOnly: !tool.prod,
           })
         }
       }
@@ -183,7 +192,7 @@
     config.tools
       ? Object.entries(config.tools as Record<string, any>)
           .filter(([, tool]) => tool.surface === 'canvas-toolbar')
-          .filter(([, tool]) => !tool.localOnly || isLocalDev)
+          .filter(([, tool]) => tool.prod || isLocalDev)
           .map(([key, tool]) => ({ key, ...tool }))
       : []
   )
@@ -317,7 +326,7 @@
     // Configurable shortcut to open the command menu (works even when hidden)
     if (openKey && e.key === openKey && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
-      commandMenuOpen = !commandMenuOpen
+      document.dispatchEvent(new CustomEvent('storyboard:toggle-palette'))
     }
     // Config-driven tool shortcuts (e.g. Cmd+D for docs, Cmd+I for inspector)
     for (const menu of cleanedMenus) {
@@ -340,9 +349,19 @@
     window.addEventListener('keydown', handleKeydown)
     setRoutingBasePath(basePath)
 
+    // Sync visible state when storyboard-chrome-hidden is toggled externally
+    // (e.g. from command palette or other UI)
+    chromeObserver = new MutationObserver(() => {
+      const hidden = document.documentElement.classList.contains('storyboard-chrome-hidden')
+      if (visible === !hidden) return
+      visible = !hidden
+    })
+    chromeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+
     // Re-evaluate action menus and prototype toolbar config on SPA navigation
     const { getPrototypeMetadata } = await import('./loader.js')
     const { setPrototypeToolbarConfig, clearPrototypeToolbarConfig } = await import('./toolbarConfigStore.js')
+    const { setOverrides, clearOverrides } = await import('./configStore.js')
 
     function syncPrototypeToolbar() {
       let pathname = window.location.pathname
@@ -351,17 +370,39 @@
       const firstSegment = pathname.replace(/^\//, '').split('/')[0] || null
       if (firstSegment) {
         const meta = getPrototypeMetadata(firstSegment)
+
+        // Toolbar overrides (legacy store + unified store)
         if (meta?.toolbarConfig) {
           setPrototypeToolbarConfig(meta.toolbarConfig)
+          setOverrides('toolbar', meta.toolbarConfig)
         } else {
           clearPrototypeToolbarConfig()
+          clearOverrides('toolbar')
+        }
+
+        // Other domain overrides (unified store only)
+        const domainMap = [
+          ['commandPaletteConfig', 'commandPalette'],
+          ['widgetsConfig', 'widgets'],
+          ['pasteConfig', 'paste'],
+        ]
+        for (const [metaKey, domain] of domainMap) {
+          if (meta?.[metaKey]) {
+            setOverrides(domain, meta[metaKey])
+          } else {
+            clearOverrides(domain)
+          }
         }
       } else {
         clearPrototypeToolbarConfig()
+        clearOverrides('toolbar')
+        clearOverrides('commandPalette')
+        clearOverrides('widgets')
+        clearOverrides('paste')
       }
     }
 
-    bumpNav = () => { navVersion++; syncPrototypeToolbar() }
+    bumpNav = () => { navVersion++; syncPrototypeToolbar(); syncMobileActions() }
     window.addEventListener('popstate', bumpNav)
     origPushState = history.pushState.bind(history)
     history.pushState = (...args: any[]) => { origPushState(...args); bumpNav() }
@@ -431,7 +472,7 @@
 
         // Load component
         if (mod.component) {
-          const component = await mod.component()
+          const component = await mod.component(toolConfig.render)
           toolComponents[toolId] = component
         }
       } catch { /* tool failed to load — skip gracefully */ }
@@ -451,6 +492,13 @@
     document.addEventListener('storyboard:canvas:zoom-changed', handleZoomChanged)
     document.addEventListener('storyboard:canvas:status', handleCanvasMounted)
     syncCanvasBridgeState()
+
+    // Subscribe to mobile viewport changes and sync mobile command actions
+    syncMobileActions()
+    unsubMobile = subscribeToMobile((mobile: boolean) => {
+      isMobileState = mobile
+      syncMobileActions()
+    })
   })
 
   onDestroy(() => {
@@ -458,6 +506,9 @@
     if (bumpNav) window.removeEventListener('popstate', bumpNav)
     if (origPushState) history.pushState = origPushState
     if (origReplaceState) history.replaceState = origReplaceState
+    if (unsubMobile) unsubMobile()
+    clearDynamicActions('mobile-toolbar')
+    chromeObserver?.disconnect()
     document.removeEventListener('storyboard:canvas:mounted', handleCanvasMounted)
     document.removeEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
     document.removeEventListener('storyboard:canvas:zoom-changed', handleZoomChanged)
@@ -467,14 +518,16 @@
   function handleCanvasMounted(e: Event) {
     canvasActive = true
     const detail = (e as CustomEvent).detail
-    activeCanvasName = detail?.name || ''
+    activeCanvasId = detail?.canvasId || detail?.name || ''
     canvasZoom = detail?.zoom ?? 100
+    syncMobileActions()
   }
 
   function handleCanvasUnmounted() {
     canvasActive = false
-    activeCanvasName = ''
+    activeCanvasId = ''
     canvasZoom = 100
+    syncMobileActions()
   }
 
   function handleZoomChanged(e: Event) {
@@ -487,12 +540,138 @@
     const state = (window as any).__storyboardCanvasBridgeState
     if (state && typeof state === 'object') {
       canvasActive = state.active === true
-      activeCanvasName = state.name || ''
+      activeCanvasId = state.canvasId || state.name || ''
       canvasZoom = typeof state.zoom === 'number' ? state.zoom : 100
     }
     if (!canvasActive) {
       document.dispatchEvent(new CustomEvent('storyboard:canvas:status-request'))
     }
+  }
+
+  /**
+   * Sync mobile command actions — when in mobile viewport, toolbar tools
+   * become dynamic command actions in the ⌘ menu.
+   */
+  async function syncMobileActions() {
+    if (!isMobileState) {
+      if (mobileActionsRegistered) {
+        clearDynamicActions('mobile-toolbar')
+        mobileActionsRegistered = false
+      }
+      return
+    }
+
+    const actions: any[] = []
+    const handlers: Record<string, any> = {}
+    const toolConfigs = config.tools || {}
+
+    // Main-toolbar tools → command actions
+    actions.push({ type: 'header', label: 'Tools', id: '_mobile_header' })
+
+    for (const [key, tool] of Object.entries(toolConfigs as Record<string, any>)) {
+      if (tool.surface !== 'main-toolbar') continue
+      if (tool.render === 'separator') continue
+      if (!tool.prod && !isLocalDev) continue
+      if (getToolbarToolState(key) === 'disabled') continue
+      if (isExcludedByRoute(tool)) continue
+
+      // Always use mobile:-prefixed ids to avoid clobbering shared desktop handlers
+      const mobileId = `mobile:${key}`
+      const desktopActionId = tool.handler || `core:${key}`
+
+      // Menu tools with getChildren → submenu (delegate to existing desktop handler)
+      if (tool.render === 'menu' && hasChildrenProvider(desktopActionId)) {
+        actions.push({
+          id: mobileId,
+          label: tool.label || tool.ariaLabel,
+          type: 'submenu',
+          modes: tool.modes || ['*'],
+          excludeRoutes: tool.excludeRoutes,
+          toolKey: key,
+          localOnly: !tool.prod,
+        })
+        handlers[mobileId] = {
+          getChildren: () => getActionChildren(desktopActionId),
+        }
+      }
+      // Sidepanel tools → default action (toggle panel)
+      else if (tool.render === 'sidepanel') {
+        actions.push({
+          id: mobileId,
+          label: tool.ariaLabel || tool.label || key,
+          type: 'default',
+          modes: tool.modes || ['*'],
+          excludeRoutes: tool.excludeRoutes,
+          toolKey: key,
+          localOnly: !tool.prod,
+        })
+        handlers[mobileId] = () => { togglePanel(tool.sidepanel) }
+      }
+      // Button tools (e.g. comments) — only if the desktop guard passed (component loaded)
+      else if (tool.render === 'button' && toolComponents[key]) {
+        try {
+          if (key === 'comments') {
+            const { toggleCommentMode, isCommentModeActive } = await import('./comments/commentMode.js')
+            const { isAuthenticated } = await import('./comments/auth.js')
+            const { openAuthModal } = await import('./comments/ui/authModal.js')
+            actions.push({
+              id: mobileId,
+              label: tool.ariaLabel || 'Comments',
+              type: 'toggle',
+              modes: tool.modes || ['*'],
+              excludeRoutes: tool.excludeRoutes,
+              toolKey: key,
+              localOnly: !tool.prod,
+            })
+            handlers[mobileId] = {
+              execute: async () => {
+                if (!isAuthenticated()) {
+                  const user = await openAuthModal()
+                  if (!user) return
+                }
+                toggleCommentMode()
+              },
+              getState: () => isCommentModeActive(),
+            }
+          }
+        } catch { /* comments module not available */ }
+      }
+    }
+
+    // Theme tool — special handling (component-only, no handler in registry)
+    if (toolConfigs.theme && toolComponents.theme) {
+      // Only add if not already handled above (theme has no getChildren in registry)
+      if (!actions.some(a => a.id === 'mobile:theme')) {
+        try {
+          const { themeState, setTheme, THEMES } = await import('./stores/themeStore.js')
+          actions.push({
+            id: 'mobile:theme',
+            label: 'Theme',
+            type: 'submenu',
+            modes: ['*'],
+            toolKey: 'theme',
+            localOnly: !toolConfigs.theme.prod,
+          })
+          handlers['mobile:theme'] = {
+            getChildren: () => {
+              const current = themeState.theme
+              return THEMES.map((t: any) => ({
+                id: `theme:${t.value}`,
+                label: t.label,
+                type: 'toggle' as const,
+                active: current === t.value,
+                execute: () => setTheme(t.value),
+              }))
+            },
+          }
+        } catch { /* theme store not available */ }
+      }
+    }
+
+    // Canvas toolbar stays visible on mobile — no need to duplicate canvas tools here
+
+    setDynamicActions('mobile-toolbar', actions, handlers)
+    mobileActionsRegistered = true
   }
 
   // Flow info dialog state — driven by core/show-flow-info action
@@ -519,18 +698,30 @@
       {#each canvasMenus as canvasTool (canvasTool.key)}
         {#if toolComponents[canvasTool.key]}
           {@const CanvasToolComponent = toolComponents[canvasTool.key]}
-          <Tooltip.Root>
-            <Tooltip.Trigger>
-              <CanvasToolComponent
-                config={canvasTool}
-                data={toolData[canvasTool.key]}
-                canvasName={activeCanvasName}
-                zoom={canvasZoom}
-                tabindex={0}
-              />
-            </Tooltip.Trigger>
-            <Tooltip.Content side="top">{canvasTool.ariaLabel || canvasTool.key}</Tooltip.Content>
-          </Tooltip.Root>
+          {#if canvasTool.render === 'menu'}
+            <Tooltip.Root>
+              <Tooltip.Trigger>
+                <span data-local-only={isToolbarToolLocalOnly(canvasTool.key) || undefined}>
+                  <CanvasToolComponent
+                    config={canvasTool}
+                    data={toolData[canvasTool.key]}
+                    canvasName={activeCanvasId}
+                    zoom={canvasZoom}
+                    tabindex={0}
+                  />
+                </span>
+              </Tooltip.Trigger>
+              <Tooltip.Content side="top">{canvasTool.ariaLabel || canvasTool.key}</Tooltip.Content>
+            </Tooltip.Root>
+          {:else}
+            <CanvasToolComponent
+              config={canvasTool}
+              data={toolData[canvasTool.key]}
+              canvasName={activeCanvasId}
+              zoom={canvasZoom}
+              tabindex={0}
+            />
+          {/if}
         {/if}
       {/each}
     </div>
@@ -545,7 +736,7 @@
     onkeydown={handleToolbarKeydown}
     bind:this={toolbarEl}
   >
-    {#if visible}
+    {#if visible && !isMobileState}
       {#each cleanedMenus as menu, i (menu.key)}
         {#if menu.render === 'separator'}
           <div class="toolbar-separator" aria-hidden="true"></div>
@@ -580,6 +771,7 @@
                     data={toolData[menu.key]}
                     tabindex={getTabindex(i)}
                     localOnly={isToolbarToolLocalOnly(menu.key)}
+                    {basePath}
                   />
                 </span>
               {/if}
@@ -590,10 +782,10 @@
       {/each}
     {/if}
     {#if commandMenuConfig}
-      <div class={visible || commandMenuOpen ? '' : 'default-button-dimmed'}>
+      <div class={visible ? '' : 'default-button-dimmed'}>
         <Tooltip.Root>
           <Tooltip.Trigger>
-            <CommandMenu {basePath} bind:open={commandMenuOpen} bind:flowDialogOpen {flowName} {flowJson} {flowError} shortcuts={shortcutsConfig} tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} />
+            <CommandPalette tabindex={getTabindex(commandMenuIndex)} icon={commandMenuConfig.icon} iconMeta={commandMenuConfig.meta} />
           </Tooltip.Trigger>
           <Tooltip.Content side="top">Command Menu</Tooltip.Content>
         </Tooltip.Root>
@@ -605,6 +797,27 @@
 {#if !isEmbed && SidePanel}
   <SidePanel onClose={() => focusToolbarItem(activeToolbarIndex < 0 ? toolbarItemCount - 1 : activeToolbarIndex)} />
 {/if}
+
+{#if !isEmbed}
+  <PwaInstallBanner />
+{/if}
+
+<!-- Flow info panel (previously inside CommandMenu) -->
+<Panel.Root bind:open={flowDialogOpen}>
+  <Panel.Content>
+    <Panel.Header>
+      <Panel.Title>Flow: {flowName}</Panel.Title>
+      <Panel.Close />
+    </Panel.Header>
+    <Panel.Body>
+      {#if flowError}
+        <span class="text-destructive text-sm">{flowError}</span>
+      {:else}
+        <pre class="m-0 bg-transparent text-sm font-mono leading-relaxed whitespace-pre-wrap break-words">{flowJson}</pre>
+      {/if}
+    </Panel.Body>
+  </Panel.Content>
+</Panel.Root>
 
 <style>
   .toolbar-separator {
@@ -647,7 +860,7 @@
     right: -1px;
     width: 8px;
     height: 8px;
-    background: hsl(137, 66%, 30%);
+    background: hsl(212, 92%, 45%);
     border-radius: 50%;
     border: 2px solid var(--sb--sc-border-color, transparent);
     box-sizing: content-box;

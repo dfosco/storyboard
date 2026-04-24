@@ -1,4 +1,5 @@
 {
+  "devDomain": "storyboard-core",
   "repository": {
     "owner": "dfosco",
     "name": "storyboard"
@@ -12,7 +13,8 @@
     }
   },
   "featureFlags": {
-    "show-banner": true
+    "show-banner": true,
+    "dev-logs": false
   },
   "workshop": {
     "features": {
@@ -21,7 +23,24 @@
       "createCanvas": true
     },
     "partials": [
-      { "directory": "template", "name": "Application" }
+      {
+        "directory": "template",
+        "name": "Application"
+      }
     ]
+  },
+  "canvas": {
+    "terminal": {
+      "fontSize": 13,
+      "fontFamily": "'Ghostty', 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
+      "prompt": "❯ ",
+      "defaultStartupSequence": null
+    }
+  },
+  "customerMode": {
+    "enabled": false,
+    "hideChrome": false,
+    "hideHomepage": false,
+    "protoHomepage": ""
   }
 }

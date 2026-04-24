@@ -14,7 +14,7 @@ Tests for [`packages/core/src/bodyClasses.js`](./bodyClasses.js.md). Validates o
 
 ## Composition
 
-Five `describe` blocks covering override classes, flow classes, `setSceneClass` alias, hide mode, and `installBodyClassSync`. Uses a `getSbClasses()` helper to collect all `sb-` prefixed classes from `document.body`. `beforeEach` clears all body classes and resets hash/hide mode state.
+Six `describe` blocks covering override classes, non-override `sb-*` class preservation (e.g. `sb-comment-mode`, `sb-ff-*`), flow classes, `setSceneClass` alias, hide mode, and `installBodyClassSync`. Uses a `getSbClasses()` helper to collect all `sb-` prefixed classes from `document.body`. `beforeEach` clears all body classes and resets hash/hide mode state.
 
 ## Dependencies
 

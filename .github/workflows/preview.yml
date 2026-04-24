@@ -33,10 +33,12 @@ jobs:
         run: |
           # Sanitize branch name: replace non-alphanumeric chars with hyphens
           BRANCH_NAME="${GITHUB_REF_NAME}"
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
           SAFE_NAME=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9._-]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
           FOLDER="branch--${SAFE_NAME}"
           echo "folder=$FOLDER" >> "$GITHUB_OUTPUT"
-          echo "base=/${FOLDER}/" >> "$GITHUB_OUTPUT"
+          # Project pages are served under /<repo>/, so include that prefix.
+          echo "base=/${REPO_NAME}/${FOLDER}/" >> "$GITHUB_OUTPUT"
           echo "Preview folder: $FOLDER"
 
       - name: Install dependencies

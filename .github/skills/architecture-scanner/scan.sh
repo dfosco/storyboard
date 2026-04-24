@@ -5,9 +5,10 @@
 # Scans the repository for architecturally significant files, maintains
 # a files.json index, and generates architecture documentation index.
 #
-# Usage: .github/skills/architecture-scanner/scan.sh [--discover | --manifest | --stale | --index]
+# Usage: .github/skills/architecture-scanner/scan.sh [--discover | --manifest | --full | --stale | --index]
 #   --discover  Scan repo, create/update files.json (preserves user-set priorities)
 #   --manifest  Print JSON array of non-low files to document (full scan)
+#   --full      Alias for --manifest
 #   --stale     Print manifest of files changed since last architecture commit (incremental)
 #   --index     Generate .github/architecture/architecture.index.md from existing docs
 
@@ -27,6 +28,7 @@ DISCOVERY_RULES=(
   "config|high|vite.config.js"
   "config|low|eslint.config.js"
   "config|high|package.json"
+  "config|high|packages/*/package.json"
 
   # Entry points
   "entry|high|src/index.jsx"
@@ -53,16 +55,21 @@ DISCOVERY_RULES=(
   "storyboard|high|packages/react/src/vite/data-plugin.js"
 
   # Storyboard primer package
-  "storyboard|high|packages/primer/src/index.js"
-  "storyboard|medium|packages/primer/src/[A-Z]*.jsx"
-  "storyboard|high|packages/primer/src/DevTools/DevTools.jsx"
+  "storyboard|high|packages/react-primer/src/index.js"
+  "storyboard|medium|packages/react-primer/src/[A-Z]*.jsx"
+  "storyboard|high|packages/react-primer/src/DevTools/DevTools.jsx"
 
   # Storyboard reshaped package
-  "storyboard|medium|packages/reshaped/src/index.js"
-  "storyboard|low|packages/reshaped/src/[A-Z]*.jsx"
+  "storyboard|medium|packages/react-reshaped/src/index.js"
+  "storyboard|low|packages/react-reshaped/src/[A-Z]*.jsx"
 
-  # Shared components
-  "component|low|src/components/[A-Z]*.jsx"
+  # Tiny canvas package
+  "storyboard|high|packages/tiny-canvas/src/index.js"
+  "storyboard|medium|packages/tiny-canvas/src/*.jsx"
+  "storyboard|medium|packages/tiny-canvas/src/*.js"
+
+  # Shared components (each in its own directory)
+  "component|low|src/components/*/[A-Z]*.jsx"
 
   # Page routes
   "page|low|src/pages/[A-Z]*.jsx"
@@ -219,6 +226,7 @@ import json, os, subprocess, sys
 files_json = '$FILES_JSON'
 arch_dir = '$ARCH_DIR'
 repo_root = '$REPO_ROOT'
+index_file = os.path.join(arch_dir, 'architecture.index.md')
 
 with open(files_json) as f:
     data = json.load(f)
@@ -226,6 +234,13 @@ with open(files_json) as f:
 files = data.get('files', data) if isinstance(data, dict) else data
 categories = data.get('categories', []) if isinstance(data, dict) else []
 cat_map = {c['id']: c for c in categories}
+
+def git_name_only(args):
+    try:
+        out = subprocess.check_output(args, cwd=repo_root, text=True).strip()
+    except subprocess.CalledProcessError:
+        return set()
+    return set(out.splitlines()) if out else set()
 
 # Find the most recent commit that touched .github/architecture/
 try:
@@ -239,62 +254,106 @@ except subprocess.CalledProcessError:
 # Get list of source files changed since that commit (or all if no commit)
 changed_files = set()
 if last_arch_commit:
-    try:
-        diff_output = subprocess.check_output(
-            ['git', 'diff', '--name-only', last_arch_commit, 'HEAD'],
-            cwd=repo_root, text=True
-        ).strip()
-        if diff_output:
-            changed_files = set(diff_output.splitlines())
-        # Also include uncommitted changes (staged + unstaged)
-        diff_wt = subprocess.check_output(
-            ['git', 'diff', '--name-only', 'HEAD'],
-            cwd=repo_root, text=True
-        ).strip()
-        if diff_wt:
-            changed_files.update(diff_wt.splitlines())
-        diff_staged = subprocess.check_output(
-            ['git', 'diff', '--name-only', '--cached'],
-            cwd=repo_root, text=True
-        ).strip()
-        if diff_staged:
-            changed_files.update(diff_staged.splitlines())
-    except subprocess.CalledProcessError:
-        changed_files = set()
+    changed_files.update(git_name_only(['git', 'diff', '--name-only', last_arch_commit, 'HEAD']))
+    # Also include uncommitted changes (staged + unstaged)
+    changed_files.update(git_name_only(['git', 'diff', '--name-only', 'HEAD']))
+    changed_files.update(git_name_only(['git', 'diff', '--name-only', '--cached']))
+
+tracked = [e for e in files if e.get('importance') != 'low']
+tracked_paths = {e['path'] for e in tracked}
 
 results = []
-total_non_low = 0
-for entry in files:
-    if entry.get('importance') == 'low':
-        continue
-    total_non_low += 1
-    src = os.path.join(repo_root, entry['path'])
-    doc = os.path.join(arch_dir, entry['path'] + '.md')
-    if not os.path.isfile(src):
-        continue
-    status = None
-    if not os.path.isfile(doc):
-        status = 'missing'
-    elif not last_arch_commit:
-        # No architecture commits exist yet — everything is stale
-        status = 'stale'
-    elif entry['path'] in changed_files:
-        status = 'stale'
-    if status:
-        e = {**entry, 'doc': entry['path'] + '.md', 'status': status}
-        cat = cat_map.get(entry.get('category'), {})
-        e['category_priority'] = cat.get('priority', 'normal')
-        results.append(e)
+removed = []
+removed_docs = set()
+total_non_low_existing = 0
 
-# Suggest full scan if >50% of files are stale
-if total_non_low > 0 and len(results) > total_non_low * 0.5:
-    print(json.dumps({
-        'suggestion': 'full_scan',
-        'message': f'{len(results)} of {total_non_low} documented files need updates. Consider running --manifest for a full scan instead.',
-        'files': results
-    }, indent=2))
-else:
-    print(json.dumps(results, indent=2))
+for entry in tracked:
+    src_rel = entry['path']
+    src = os.path.join(repo_root, src_rel)
+    doc_rel = src_rel + '.md'
+    doc = os.path.join(arch_dir, doc_rel)
+    cat = cat_map.get(entry.get('category'), {})
+    category_priority = cat.get('priority', 'normal')
+
+    if os.path.isfile(src):
+        total_non_low_existing += 1
+        status = None
+        if not os.path.isfile(doc):
+            status = 'missing'
+        elif not last_arch_commit:
+            # No architecture commits exist yet — everything is stale
+            status = 'stale'
+        elif src_rel in changed_files:
+            status = 'stale'
+
+        if status:
+            e = {**entry, 'doc': doc_rel, 'status': status, 'category_priority': category_priority}
+            if status == 'missing' and src_rel in changed_files:
+                e['change_type'] = 'added'
+            results.append(e)
+    elif os.path.isfile(doc):
+        removed.append({
+            **entry,
+            'doc': doc_rel,
+            'status': 'removed',
+            'reason': 'source_deleted',
+            'category_priority': category_priority
+        })
+        removed_docs.add(doc_rel)
+
+# Find orphan docs for deleted/moved/untracked source files.
+for root, _, filenames in os.walk(arch_dir):
+    for name in filenames:
+        if not name.endswith('.md') or name == 'architecture.index.md':
+            continue
+        doc_abs = os.path.join(root, name)
+        doc_rel = os.path.relpath(doc_abs, arch_dir).replace(os.sep, '/')
+        if doc_rel in removed_docs:
+            continue
+        src_rel = doc_rel[:-3]
+        src = os.path.join(repo_root, src_rel)
+        if src_rel not in tracked_paths:
+            reason = 'untracked_source' if os.path.isfile(src) else 'source_deleted_or_moved'
+            removed.append({
+                'path': src_rel,
+                'doc': doc_rel,
+                'status': 'removed',
+                'reason': reason
+            })
+            removed_docs.add(doc_rel)
+
+index_reasons = []
+if not os.path.isfile(index_file):
+    index_reasons.append('index_missing')
+if results or removed:
+    index_reasons.append('assets_changed')
+if '.github/skills/architecture-scanner/files.json' in changed_files:
+    index_reasons.append('category_config_changed')
+if any(
+    p.startswith('.github/architecture/')
+    and p != '.github/architecture/architecture.index.md'
+    for p in changed_files
+):
+    index_reasons.append('docs_changed')
+
+output = {
+    'index': {
+        'status': 'stale' if index_reasons else 'fresh',
+        'reasons': index_reasons
+    },
+    'files': results,
+    'removed': removed
+}
+
+# Suggest full scan if >50% of existing non-low files need regeneration.
+if total_non_low_existing > 0 and len(results) > total_non_low_existing * 0.5:
+    output['suggestion'] = 'full_scan'
+    output['message'] = (
+        f'{len(results)} of {total_non_low_existing} documented files need updates. '
+        'Consider running --manifest (or --full) for a full scan instead.'
+    )
+
+print(json.dumps(output, indent=2))
 "
 }
 
@@ -354,7 +413,7 @@ case "${1:-}" in
   --discover)
     discover_files
     ;;
-  --manifest)
+  --manifest|--full)
     print_manifest
     ;;
   --stale)
@@ -364,9 +423,10 @@ case "${1:-}" in
     generate_index
     ;;
   *)
-    echo "Usage: $0 [--discover | --manifest | --stale | --index]"
+    echo "Usage: $0 [--discover | --manifest | --full | --stale | --index]"
     echo "  --discover  Scan repo and create/update files.json (preserves priorities)"
     echo "  --manifest  Print JSON manifest of non-low files to document (full scan)"
+    echo "  --full      Alias for --manifest"
     echo "  --stale     Print manifest of files changed since last architecture commit (incremental)"
     echo "  --index     Generate architecture index from existing docs"
     exit 1

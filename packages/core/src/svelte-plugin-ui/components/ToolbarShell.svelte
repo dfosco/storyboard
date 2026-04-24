@@ -76,7 +76,7 @@
     flex-direction: column;
     gap: 8px;
     align-items: flex-end;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-family: "Mona Sans", -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   }
 
   .sb-toolbar {

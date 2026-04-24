@@ -32,12 +32,24 @@ yarn-error.log*
 .github/skills/primer-screenshot-patterns
 .github/skills/primer-url-builder
 .github/skills/playwright-cli
-AGENTS_.md
 .worktrees
 .github/agents/_buddy-rails.md
 .github/agents/_buddy.md
+_*.md
 
 # Compiled UI bundle (built before publish, not tracked in git)
 packages/core/dist/storyboard-ui.*
 
 .clips
+
+# Agent Browser
+agent-browser.json
+
+# Selected widgets bridge (real-time canvas selection for Copilot)
+.storyboard
+
+# Private canvas images (tilde prefix = not committed)
+src/canvas/images/~*
+assets/canvas/images/~*
+assets/canvas/snapshots/~*
+.sync-target

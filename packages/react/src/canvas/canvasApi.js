@@ -28,14 +28,71 @@ export function createCanvas(data) {
   return request('/create', 'POST', data)
 }
 
-export function updateCanvas(name, { widgets, sources, settings }) {
-  return request('/update', 'PUT', { name, widgets, sources, settings })
+export function updateCanvas(canvasId, { widgets, sources, settings }) {
+  return request('/update', 'PUT', { name: canvasId, widgets, sources, settings })
 }
 
-export function addWidget(name, { type, props, position }) {
-  return request('/widget', 'POST', { name, type, props, position })
+export function addWidget(canvasId, { type, props, position }) {
+  return request('/widget', 'POST', { name: canvasId, type, props, position })
 }
 
-export function removeWidget(name, widgetId) {
-  return request('/widget', 'DELETE', { name, widgetId })
+export function removeWidget(canvasId, widgetId) {
+  return request('/widget', 'DELETE', { name: canvasId, widgetId })
+}
+
+export function uploadImage(dataUrl, canvasId, filename) {
+  const body = { dataUrl, canvasName: canvasId }
+  if (filename) body.filename = filename
+  return request('/image', 'POST', body)
+}
+
+export function toggleImagePrivacy(filename) {
+  return request('/image/toggle-private', 'POST', { filename })
+}
+
+export function getCanvas(canvasId) {
+  return request(`/read?name=${encodeURIComponent(canvasId)}`, 'GET')
+}
+
+export function checkGitHubCliAvailable() {
+  return request('/github/available', 'GET')
+}
+
+export function fetchGitHubEmbed(url) {
+  return request('/github/embed', 'POST', { url })
+}
+
+export function renamePage(canvasId, newTitle) {
+  return request('/rename-page', 'PUT', { name: canvasId, newTitle })
+}
+
+export function reorderPages(folder, order) {
+  return request('/reorder-pages', 'PUT', { folder, order })
+}
+
+export function getPageOrder(folder) {
+  return request(`/page-order?folder=${encodeURIComponent(folder)}`, 'GET')
+}
+
+export function updateFolderMeta(folder, title) {
+  return request('/update-folder-meta', 'PUT', { folder, title })
+}
+
+export function duplicateCanvas(canvasId, newTitle) {
+  return request('/duplicate', 'POST', { name: canvasId, newTitle })
+}
+
+export function addConnector(canvasId, { startWidgetId, startAnchor, endWidgetId, endAnchor, connectorType }) {
+  return request('/connector', 'POST', {
+    name: canvasId,
+    startWidgetId,
+    startAnchor,
+    endWidgetId,
+    endAnchor,
+    connectorType,
+  })
+}
+
+export function removeConnector(canvasId, connectorId) {
+  return request('/connector', 'DELETE', { name: canvasId, connectorId })
 }

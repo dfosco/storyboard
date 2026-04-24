@@ -1,0 +1,650 @@
+/**
+ * storyboard create — Create prototypes, canvases, flows, and pages.
+ *
+ * Supports both interactive prompts and non-interactive flags.
+ * When all required flags are provided, skips prompts entirely.
+ * When some flags are provided, prompts only for missing fields.
+ *
+ * Usage:
+ *   storyboard create                                 Interactive picker
+ *   storyboard create prototype                       Interactive prototype creation
+ *   storyboard create prototype --name my-proto       Non-interactive (or partial)
+ *   storyboard create canvas --name my-canvas         Non-interactive (or partial)
+ *   storyboard create flow --name default --prototype my-proto
+ *   storyboard create page --prototype my-proto --path settings
+ */
+
+import * as p from '@clack/prompts'
+import { parseFlags, hasFlags, formatFlagHelp } from './flags.js'
+import { prototypeSchema, canvasSchema, flowSchema, pageSchema, componentSchema } from './schemas.js'
+import { getServerUrl } from './serverUrl.js'
+import { detectWorktreeName, getPort } from '../worktree/port.js'
+
+const dim = (s) => `\x1b[2m${s}\x1b[0m`
+const green = (s) => `\x1b[32m${s}\x1b[0m`
+const cyan = (s) => `\x1b[36m${s}\x1b[0m`
+
+function promptOrCancel(promise) {
+  return promise.then((v) => {
+    if (p.isCancel(v)) process.exit(0)
+    return v
+  })
+}
+
+function showHelp(type, schema) {
+  console.log(`\n  ${type} flags:\n`)
+  console.log(formatFlagHelp(schema))
+  console.log('')
+  process.exit(0)
+}
+
+async function serverGet(path) {
+  const base = getServerUrl()
+  const res = await fetch(`${base}${path}`)
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+  return res.json()
+}
+
+async function serverPost(path, body) {
+  const base = getServerUrl()
+  const res = await fetch(`${base}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`${res.status} ${res.statusText}${text ? ': ' + text : ''}`)
+  }
+  return res.json()
+}
+
+async function checkServer() {
+  try {
+    await fetch(getServerUrl(), { signal: AbortSignal.timeout(2000) })
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function ensureDevServer() {
+  if (await checkServer()) return
+
+  const s = p.spinner()
+  s.start('Starting dev server...')
+
+  const { spawn } = await import('child_process')
+  const { readFileSync } = await import('fs')
+  const { resolve } = await import('path')
+  const { generateCaddyfile, isCaddyRunning, reloadCaddy } = await import('./proxy.js')
+
+  const worktreeName = detectWorktreeName()
+  const port = getPort(worktreeName)
+  const isMain = worktreeName === 'main'
+  const basePath = isMain ? '/' : `/branch--${worktreeName}/`
+
+  const child = spawn('npx', ['vite', '--port', String(port)], {
+    env: { ...process.env, VITE_BASE_PATH: basePath },
+    stdio: ['ignore', 'pipe', 'pipe'],
+    detached: true,
+  })
+  child.unref()
+
+  // Wait for Vite to be ready (up to 30s)
+  const start = Date.now()
+  while (Date.now() - start < 30000) {
+    await new Promise((r) => setTimeout(r, 500))
+    if (await checkServer()) {
+      // Update Caddy with actual port
+      try {
+        const caddyfilePath = generateCaddyfile({ [worktreeName]: port })
+        if (isCaddyRunning()) reloadCaddy(caddyfilePath)
+      } catch {}
+      s.stop('Dev server started')
+      return
+    }
+  }
+  s.stop('Dev server may still be starting...')
+}
+
+function getProxyUrl() {
+  const name = detectWorktreeName()
+  const isMain = name === 'main'
+  return isMain ? 'http://storyboard.localhost/' : `http://storyboard.localhost/branch--${name}/`
+}
+
+function getDirectUrl() {
+  const name = detectWorktreeName()
+  const port = getPort(name)
+  const isMain = name === 'main'
+  return isMain ? `http://localhost:${port}/` : `http://localhost:${port}/branch--${name}/`
+}
+
+/**
+ * After creation: show URL and open in browser.
+ * @param {string} resultPath — e.g. "src/canvas/test.canvas.jsonl" or "src/prototypes/MyProto"
+ * @param {'canvas'|'prototype'} type
+ */
+async function postCreateFlow(resultPath, type) {
+  const { isCaddyRunning } = await import('./proxy.js')
+  const proxyRunning = isCaddyRunning()
+  const baseUrl = proxyRunning ? getProxyUrl() : getDirectUrl()
+
+  // Build the view URL
+  let viewUrl = baseUrl
+  if (type === 'canvas' && resultPath) {
+    const canvasName = resultPath.replace(/^src\/canvas\//, '').replace(/\.canvas\.jsonl$/, '')
+    viewUrl = `${baseUrl}canvas/${canvasName}`
+  } else if (type === 'prototype' && resultPath) {
+    const protoName = resultPath.replace(/^src\/prototypes\//, '')
+    viewUrl = `${baseUrl}${protoName}`
+  }
+
+  p.log.info(`${cyan(viewUrl)}`)
+
+  // Open in browser
+  try {
+    const { execSync } = await import('child_process')
+    execSync(`open "${viewUrl}"`, { stdio: 'ignore' })
+  } catch {}
+
+  p.outro('')
+}
+
+// ── Prototype creation ────────────────────────────────────────
+
+async function createPrototype() {
+  const argv = process.argv.slice(4)
+  if (argv.includes('--help') || argv.includes('-h')) return showHelp('create prototype', prototypeSchema)
+  const flagMode = hasFlags(argv)
+  const { flags, errors } = flagMode ? parseFlags(argv, prototypeSchema) : { flags: {}, errors: [] }
+
+  if (errors.length) {
+    for (const e of errors) p.log.error(e)
+    process.exit(1)
+  }
+
+  p.intro('storyboard create prototype')
+  await ensureDevServer()
+
+  // Fetch available folders and templates from server
+  let folders = []
+  let partials = []
+  try {
+    const data = await serverGet('/_storyboard/workshop/prototypes')
+    folders = data.folders || []
+    partials = data.partials || []
+  } catch {
+    // Server may not support this endpoint — continue without options
+  }
+
+  // Resolve each field: use flag if provided, otherwise prompt
+  const isExternal = flags.url !== undefined
+    ? true
+    : flagMode
+      ? false
+      : await promptOrCancel(p.confirm({ message: 'Is this an external prototype?', initialValue: false }))
+
+  let url = flags.url || ''
+  if (isExternal && !url) {
+    url = await promptOrCancel(p.text({
+      message: 'External URL',
+      placeholder: 'https://example.com/prototype',
+      validate: (v) => {
+        if (!v) return 'URL is required for external prototypes'
+        if (!/^https?:\/\//.test(v)) return 'URL must start with http:// or https://'
+      },
+    }))
+  }
+
+  const name = flags.name || await promptOrCancel(p.text({
+    message: 'Prototype name',
+    placeholder: 'my-prototype',
+    validate: (v) => {
+      if (!v) return 'Name is required'
+      if (/[A-Z\s]/.test(v)) return 'Use kebab-case (lowercase, hyphens)'
+    },
+  }))
+
+  const defaultTitle = name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  const title = flags.title || (flagMode ? defaultTitle : await promptOrCancel(p.text({
+    message: 'Display title',
+    placeholder: defaultTitle,
+    defaultValue: defaultTitle,
+  })))
+
+  // Folder selection
+  let folder = flags.folder || ''
+  if (!folder && !flagMode && folders.length > 0) {
+    folder = await promptOrCancel(p.select({
+      message: 'Folder',
+      options: [
+        { value: '', label: 'None (root)' },
+        ...folders.map((f) => ({ value: f, label: f })),
+      ],
+    }))
+  }
+
+  // Template selection
+  let partial = flags.partial || ''
+  if (!partial && !isExternal && !flagMode && partials.length > 0) {
+    const templateOptions = [
+      { value: '', label: 'Blank (no template)' },
+      ...partials.map((t) => ({
+        value: t.id || t.name || t,
+        label: t.name || t.label || t,
+        hint: t.directory || undefined,
+      })),
+    ]
+    partial = await promptOrCancel(p.select({ message: 'Template', options: templateOptions }))
+  }
+
+  const author = flags.author || (flagMode ? '' : await promptOrCancel(p.text({
+    message: 'Author',
+    placeholder: 'your-name',
+    defaultValue: '',
+  })))
+
+  const description = flags.description || (flagMode ? '' : await promptOrCancel(p.text({
+    message: 'Description',
+    placeholder: 'What is this prototype about?',
+    defaultValue: '',
+  })))
+
+  let createFlow = flags.flow ?? false
+  if (!flagMode && !isExternal) {
+    createFlow = await promptOrCancel(p.confirm({ message: 'Create a default flow file?', initialValue: false }))
+  }
+
+  // Submit
+  const s = p.spinner()
+  s.start('Creating prototype...')
+
+  try {
+    const body = {
+      name,
+      title: title || name,
+      folder: folder || undefined,
+      partial: partial || undefined,
+      author: author || undefined,
+      description: description || undefined,
+      createFlow,
+    }
+    if (isExternal) body.url = url
+
+    const result = await serverPost('/_storyboard/workshop/prototypes', body)
+    s.stop('Prototype created!')
+    if (result.path) {
+      p.log.success(`  ${result.path}`)
+    }
+    await postCreateFlow(result.path || `src/prototypes/${name}`, 'prototype')
+    return
+  } catch (err) {
+    s.stop('Failed to create prototype')
+    p.log.error(err.message)
+  }
+
+  p.outro('')
+}
+
+// ── Canvas creation ───────────────────────────────────────────
+
+async function createCanvas() {
+  const argv = process.argv.slice(4)
+  if (argv.includes('--help') || argv.includes('-h')) return showHelp('create canvas', canvasSchema)
+  const flagMode = hasFlags(argv)
+  const { flags, errors } = flagMode ? parseFlags(argv, canvasSchema) : { flags: {}, errors: [] }
+
+  if (errors.length) {
+    for (const e of errors) p.log.error(e)
+    process.exit(1)
+  }
+
+  p.intro('storyboard create canvas')
+  await ensureDevServer()
+
+  // Fetch available folders
+  let folders = []
+  try {
+    const data = await serverGet('/_storyboard/canvas/folders')
+    folders = data.folders || data || []
+  } catch {
+    // Continue without folders
+  }
+
+  const name = flags.name || await promptOrCancel(p.text({
+    message: 'Canvas name',
+    placeholder: 'my-canvas',
+    validate: (v) => {
+      if (!v) return 'Name is required'
+      if (/[A-Z\s]/.test(v)) return 'Use kebab-case (lowercase, hyphens)'
+    },
+  }))
+
+  const defaultTitle = name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  const title = flags.title || (flagMode ? defaultTitle : await promptOrCancel(p.text({
+    message: 'Display title',
+    placeholder: defaultTitle,
+    defaultValue: defaultTitle,
+  })))
+
+  let folder = flags.folder || ''
+  if (!folder && !flagMode && Array.isArray(folders) && folders.length > 0) {
+    folder = await promptOrCancel(p.select({
+      message: 'Folder',
+      options: [
+        { value: '', label: 'None (root)' },
+        ...folders.map((f) => ({ value: f, label: f })),
+      ],
+    }))
+  }
+
+  const grid = flags.grid ?? (flagMode ? true : await promptOrCancel(p.confirm({
+    message: 'Show dot grid?',
+    initialValue: true,
+  })))
+
+  const includeJsx = flags.jsx ?? (flagMode ? false : await promptOrCancel(p.confirm({
+    message: 'Include JSX companion file?',
+    initialValue: false,
+  })))
+
+  const description = flags.description || (flagMode ? '' : (await promptOrCancel(p.text({
+    message: 'Description (optional)',
+    placeholder: 'A brief description of this canvas',
+  }))) || '')
+
+  // Submit
+  const s = p.spinner()
+  s.start('Creating canvas...')
+
+  try {
+    const result = await serverPost('/_storyboard/canvas/create', {
+      name,
+      title: title || name,
+      folder: folder || undefined,
+      grid,
+      includeJsx,
+      description: description || undefined,
+    })
+    s.stop('Canvas created!')
+    if (result.path || result.name) {
+      p.log.success(`  ${result.path || result.name}`)
+    }
+    await postCreateFlow(result.path || `src/canvas/${name}.canvas.jsonl`, 'canvas')
+    return
+  } catch (err) {
+    s.stop('Failed to create canvas')
+    p.log.error(err.message)
+  }
+
+  p.outro('')
+}
+
+// ── Flow creation ─────────────────────────────────────────────
+
+async function createFlow() {
+  const argv = process.argv.slice(4)
+  if (argv.includes('--help') || argv.includes('-h')) return showHelp('create flow', flowSchema)
+  const flagMode = hasFlags(argv)
+  const { flags, errors } = flagMode ? parseFlags(argv, flowSchema) : { flags: {}, errors: [] }
+
+  if (errors.length) {
+    for (const e of errors) p.log.error(e)
+    process.exit(1)
+  }
+
+  p.intro('storyboard create flow')
+  await ensureDevServer()
+
+  const prototype = flags.prototype || await promptOrCancel(p.text({
+    message: 'Prototype name',
+    placeholder: 'my-prototype',
+    validate: (v) => { if (!v) return 'Prototype is required' },
+  }))
+
+  const name = flags.name || await promptOrCancel(p.text({
+    message: 'Flow name',
+    placeholder: 'default',
+    validate: (v) => { if (!v) return 'Name is required' },
+  }))
+
+  const title = flags.title || (flagMode ? '' : await promptOrCancel(p.text({
+    message: 'Display title',
+    placeholder: name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    defaultValue: '',
+  })))
+
+  const folder = flags.folder || ''
+  const author = flags.author || ''
+  const description = flags.description || ''
+  const copyFrom = flags['copy-from'] || undefined
+  const startingPage = flags['starting-page'] || undefined
+  const globals = flags.globals || undefined
+
+  // Submit
+  const s = p.spinner()
+  s.start('Creating flow...')
+
+  try {
+    const body = {
+      name,
+      prototype,
+      title: title || undefined,
+      folder: folder || undefined,
+      author: author || undefined,
+      description: description || undefined,
+      copyFrom,
+      startingPage,
+      globals,
+    }
+
+    const result = await serverPost('/_storyboard/workshop/flows', body)
+    s.stop('Flow created!')
+    if (result.path) {
+      p.log.success(`  ${result.path}`)
+    }
+    p.outro('')
+  } catch (err) {
+    s.stop('Failed to create flow')
+    p.log.error(err.message)
+    p.outro('')
+  }
+}
+
+// ── Page creation ─────────────────────────────────────────────
+
+async function createPage() {
+  const argv = process.argv.slice(4)
+  if (argv.includes('--help') || argv.includes('-h')) return showHelp('create page', pageSchema)
+  const flagMode = hasFlags(argv)
+  const { flags, errors } = flagMode ? parseFlags(argv, pageSchema) : { flags: {}, errors: [] }
+
+  if (errors.length) {
+    for (const e of errors) p.log.error(e)
+    process.exit(1)
+  }
+
+  p.intro('storyboard create page')
+  await ensureDevServer()
+
+  const prototype = flags.prototype || await promptOrCancel(p.text({
+    message: 'Prototype name',
+    placeholder: 'my-prototype',
+    validate: (v) => { if (!v) return 'Prototype is required' },
+  }))
+
+  const pagePath = flags.path || await promptOrCancel(p.text({
+    message: 'Page path (e.g. settings/general)',
+    placeholder: 'settings',
+    validate: (v) => { if (!v) return 'Path is required' },
+  }))
+
+  const folder = flags.folder || ''
+  const template = flags.template || ''
+
+  // Submit
+  const s = p.spinner()
+  s.start('Creating page...')
+
+  try {
+    const body = {
+      prototype,
+      path: pagePath,
+      folder: folder || undefined,
+      template: template || undefined,
+    }
+
+    const result = await serverPost('/_storyboard/workshop/pages', body)
+    s.stop('Page created!')
+    if (result.path) {
+      p.log.success(`  ${result.path}`)
+    }
+    p.outro('')
+  } catch (err) {
+    s.stop('Failed to create page')
+    p.log.error(err.message)
+    p.outro('')
+  }
+}
+
+// ── Create Component ───────────────────────────────────────────
+
+async function createComponent() {
+  const rest = process.argv.slice(4)
+  if (rest.includes('--help') || rest.includes('-h')) showHelp('component', componentSchema)
+
+  const flagMode = hasFlags(rest)
+  const { flags, errors } = flagMode ? parseFlags(rest, componentSchema) : { flags: {}, errors: [] }
+  if (errors.length) {
+    for (const e of errors) p.log.error(e)
+    process.exit(1)
+  }
+
+  p.intro('storyboard create component')
+
+  const componentName = flags.name || await promptOrCancel(
+    p.text({
+      message: 'Component name',
+      placeholder: 'my-component',
+      validate: (v) => {
+        if (!v) return 'Name is required'
+        if (!/^[a-z][a-z0-9-]*$/.test(v)) return 'Use kebab-case (e.g. my-component)'
+      },
+    }),
+  )
+
+  // Directory picker — list existing subdirectories inside src/components/
+  const fs = await import('node:fs')
+  const path = await import('node:path')
+  const componentsRoot = path.resolve('src/components')
+
+  let directory = flags.directory || ''
+  if (!directory) {
+    const existingDirs = []
+    if (fs.existsSync(componentsRoot)) {
+      for (const entry of fs.readdirSync(componentsRoot, { withFileTypes: true })) {
+        if (entry.isDirectory() && !entry.name.startsWith('_') && !entry.name.startsWith('.')) {
+          existingDirs.push(entry.name)
+        }
+      }
+    }
+
+    if (existingDirs.length > 0) {
+      const dirChoice = await promptOrCancel(
+        p.select({
+          message: 'Directory',
+          options: [
+            { value: '', label: 'src/components/ (root)', hint: 'Top-level component' },
+            ...existingDirs.map((d) => ({ value: d, label: `src/components/${d}/` })),
+          ],
+        }),
+      )
+      directory = dirChoice
+    }
+  }
+
+  // Build file path
+  const targetDir = directory
+    ? path.join(componentsRoot, directory)
+    : componentsRoot
+  const storyFile = path.join(targetDir, `${componentName}.story.jsx`)
+
+  if (fs.existsSync(storyFile)) {
+    p.log.error(`File already exists: ${path.relative('.', storyFile)}`)
+    p.outro('')
+    return
+  }
+
+  // Scaffold the story file
+  const pascalName = componentName
+    .split('-')
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join('')
+
+  const content = `/**
+ * ${pascalName} component stories.
+ * Each named export renders as an embeddable component at /components/${directory ? directory + '/' : ''}${componentName}
+ */
+
+export function Default() {
+  return (
+    <div style={{ padding: '1.5rem', minWidth: 280 }}>
+      <p>${pascalName} component</p>
+    </div>
+  )
+}
+`
+
+  const s = p.spinner()
+  s.start('Creating component...')
+
+  fs.mkdirSync(targetDir, { recursive: true })
+  fs.writeFileSync(storyFile, content)
+
+  s.stop('Component created!')
+  p.log.success(`  ${green(path.relative('.', storyFile))}`)
+  p.log.info(`  ${dim('Route:')} /components/${directory ? directory + '/' : ''}${componentName}`)
+  p.outro('')
+}
+
+// ── Dispatcher ────────────────────────────────────────────────
+
+export { createFlow, createPage, createComponent, ensureDevServer, serverPost, postCreateFlow, getServerUrl }
+
+async function main() {
+  const subcommand = process.argv[3]
+
+  if (subcommand === 'prototype') return createPrototype()
+  if (subcommand === 'canvas') return createCanvas()
+  if (subcommand === 'flow') return createFlow()
+  if (subcommand === 'page') return createPage()
+  if (subcommand === 'component') return createComponent()
+
+  // Interactive picker
+  p.intro('storyboard create')
+
+  const type = await p.select({
+    message: 'What would you like to create?',
+    options: [
+      { value: 'prototype', label: 'Prototype', hint: 'React-based interactive prototype' },
+      { value: 'canvas', label: 'Canvas', hint: 'Freeform canvas with widgets' },
+      { value: 'flow', label: 'Flow', hint: 'Data context for a prototype page' },
+      { value: 'page', label: 'Page', hint: 'New page in a prototype' },
+      { value: 'component', label: 'Component', hint: 'Story-format component (.story.jsx)' },
+    ],
+  })
+
+  if (p.isCancel(type)) return process.exit(0)
+
+  if (type === 'prototype') return createPrototype()
+  if (type === 'canvas') return createCanvas()
+  if (type === 'flow') return createFlow()
+  if (type === 'page') return createPage()
+  if (type === 'component') return createComponent()
+}
+
+// Only run main() when this file is the entry point, not when imported
+const isDirectEntry = process.argv[2] === 'create'
+if (isDirectEntry) main()

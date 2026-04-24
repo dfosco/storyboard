@@ -3,14 +3,14 @@ import { resolveCanvasModuleImport } from './useCanvas.js'
 
 describe('resolveCanvasModuleImport', () => {
   it('prefixes root-relative module paths with BASE_URL', () => {
-    expect(resolveCanvasModuleImport('/src/canvas/button-patterns.canvas.jsx', '/feature-branch/')).toBe(
-      '/feature-branch/src/canvas/button-patterns.canvas.jsx',
+    expect(resolveCanvasModuleImport('/src/canvas/button-patterns.story.jsx', '/feature-branch/')).toBe(
+      '/feature-branch/src/canvas/button-patterns.story.jsx',
     )
   })
 
   it('keeps root-relative paths unchanged when BASE_URL is root', () => {
-    expect(resolveCanvasModuleImport('/src/canvas/button-patterns.canvas.jsx', '/')).toBe(
-      '/src/canvas/button-patterns.canvas.jsx',
+    expect(resolveCanvasModuleImport('/src/canvas/button-patterns.story.jsx', '/')).toBe(
+      '/src/canvas/button-patterns.story.jsx',
     )
   })
 

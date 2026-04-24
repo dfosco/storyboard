@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { readProp, stickyNoteSchema } from './widgetProps.js'
+import ResizeHandle from './ResizeHandle.jsx'
 import styles from './StickyNote.module.css'
 
 const COLORS = {
@@ -11,45 +12,57 @@ const COLORS = {
   orange: { bg: '#fff1e5', border: '#d18616', dot: '#e8a844' },
 }
 
-export default function StickyNote({ props, onUpdate }) {
+export default function StickyNote({ props, onUpdate, resizable }) {
   const text = readProp(props, 'text', stickyNoteSchema)
   const color = readProp(props, 'color', stickyNoteSchema)
+  const width = readProp(props, 'width', stickyNoteSchema)
+  const height = readProp(props, 'height', stickyNoteSchema)
+  const canEdit = typeof onUpdate === 'function'
   const palette = COLORS[color] ?? COLORS.yellow
   const textareaRef = useRef(null)
+  const stickyRef = useRef(null)
   const [editing, setEditing] = useState(false)
+  const editingActive = canEdit && editing
+
+  const handleResize = useCallback((w, h) => {
+    onUpdate?.({ width: w, height: h })
+  }, [onUpdate])
 
   useEffect(() => {
-    if (editing && textareaRef.current) {
+    if (editingActive && textareaRef.current) {
       textareaRef.current.focus()
       textareaRef.current.selectionStart = textareaRef.current.value.length
     }
-  }, [editing])
+  }, [editingActive])
 
   const handleTextChange = useCallback((e) => {
     onUpdate?.({ text: e.target.value })
   }, [onUpdate])
 
-  const handleColorChange = useCallback((newColor) => {
-    onUpdate?.({ color: newColor })
-  }, [onUpdate])
-
   return (
     <div className={styles.container}>
       <article
+        ref={stickyRef}
         className={styles.sticky}
-        style={{ '--sticky-bg': palette.bg, '--sticky-border': palette.border }}
+        style={{
+          '--sticky-bg': palette.bg,
+          '--sticky-border': palette.border,
+          ...(typeof width === 'number' ? { width: `${width}px` } : undefined),
+          ...(typeof height === 'number' ? { height: `${height}px` } : undefined),
+        }}
       >
         <p
           className={styles.text}
-          style={editing ? { visibility: 'hidden' } : undefined}
-          onDoubleClick={() => setEditing(true)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter') setEditing(true) }}
+          style={editingActive ? { visibility: 'hidden' } : undefined}
+          data-canvas-allow-text-selection={!canEdit ? '' : undefined}
+          onDoubleClick={canEdit ? () => setEditing(true) : undefined}
+          role={canEdit ? 'button' : undefined}
+          tabIndex={canEdit ? 0 : undefined}
+          onKeyDown={canEdit ? (e) => { if (e.key === 'Enter') setEditing(true) } : undefined}
         >
-          {text || 'Double-click to edit…'}
+          {text || (canEdit ? 'Double-click to edit…' : 'No content')}
         </p>
-        {editing && (
+        {editingActive && (
           <textarea
             ref={textareaRef}
             className={styles.textarea}
@@ -65,34 +78,15 @@ export default function StickyNote({ props, onUpdate }) {
             placeholder="Type here…"
           />
         )}
+        {resizable && (
+          <ResizeHandle
+            targetRef={stickyRef}
+            minWidth={180}
+            minHeight={60}
+            onResize={handleResize}
+          />
+        )}
       </article>
-
-      {/* Color picker — dot trigger below the sticky */}
-      <div
-        className={styles.pickerArea}
-        onMouseDown={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <span
-          className={styles.pickerDot}
-          style={{ background: palette.dot }}
-        />
-        <div className={styles.pickerPopup}>
-          {Object.entries(COLORS).map(([colorName, c]) => (
-            <button
-              key={colorName}
-              className={`${styles.colorDot} ${colorName === color ? styles.active : ''}`}
-              style={{ background: c.bg, borderColor: c.border }}
-              onClick={(e) => {
-                e.stopPropagation()
-                handleColorChange(colorName)
-              }}
-              title={colorName}
-              aria-label={`Set color to ${colorName}`}
-            />
-          ))}
-        </div>
-      </div>
     </div>
   )
 }

@@ -1,0 +1,187 @@
+#!/usr/bin/env node
+/**
+ * storyboard CLI — unified dev tooling for Storyboard projects.
+ *
+ * Commands:
+ *   storyboard dev              Start Vite dev server + update proxy
+ *   storyboard setup            Install deps, Caddy, start proxy
+ *   storyboard proxy            Generate Caddyfile + start/reload Caddy
+ *   storyboard update:version   Update @dfosco/storyboard-* packages to latest
+ *   storyboard update:beta      Update to latest beta
+ *   storyboard update:alpha     Update to latest alpha
+ *
+ * Aliases: `sb` is equivalent to `storyboard`.
+ */
+
+import * as p from '@clack/prompts'
+import { readFileSync } from 'fs'
+import { resolve } from 'path'
+import { gettingStartedLines, dim, magenta, cyan, green, bold, yellow } from './intro.js'
+
+function getVersion() {
+  try {
+    const pkg = JSON.parse(readFileSync(resolve(import.meta.dirname, '..', '..', 'package.json'), 'utf8'))
+    return pkg.version || '0.0.0'
+  } catch {
+    return '0.0.0'
+  }
+}
+
+function helpScreen(version) {
+  const d = dim('·')
+  const b = dim
+  const f = magenta
+
+  const mascot = [
+    `  ${b('╭─────────────────╮')}`,
+    `  ${b('│')}  ${d}  ${f('◠')}  ${f('◡')}  ${f('◠')}  ${d}  ${b('│')}  ${bold('storyboard')} ${dim(`v${version}`)}`,
+    `  ${b('│')}  ${d}  ${d}  ${d}  ${d}  ${d}  ${b('│')}  ${dim('A design tool for prototyping')}`,
+    `  ${b('╰─────────────────╯')}`,
+  ].join('\n')
+
+  const cmd = (name, desc) => `    ${green(name.padEnd(22))}${desc}`
+
+  const gettingStarted = [
+    '',
+    ...gettingStartedLines(),
+  ].join('\n')
+
+  const commands = [
+    '',
+    `  ${bold('All commands:')}`,
+    '',
+    `  ${bold(cyan('Development'))}`,
+    cmd('dev', 'Start Vite dev server + update proxy'),
+    cmd('dev [branch]', 'Start dev for a specific worktree/branch'),
+    cmd('server list', 'List running dev servers'),
+    cmd('server start [wt]', 'Start dev server for a worktree'),
+    cmd('server stop <wt|ID>', 'Stop a dev server'),
+    cmd('server stop-proxy', 'Stop Caddy proxy (no sudo)'),
+    cmd('code [branch]', 'Open a worktree in VS Code'),
+    cmd('exit', 'Stop all dev servers and proxy'),
+    '',
+    `  ${bold(cyan('Create'))}`,
+    cmd('create', 'Interactive creation picker'),
+    cmd('create prototype', 'Create a prototype'),
+    cmd('create canvas', 'Create a canvas'),
+    cmd('create flow', 'Create a flow for a prototype'),
+    cmd('create page', 'Create a page in a prototype'),
+    '',
+    `  ${bold(cyan('Canvas'))}`,
+    cmd('canvas add <type>', 'Add widget to a canvas'),
+    `                              ${dim('types: sticky-note, markdown, prototype')}`,
+    cmd('canvas update <id>', 'Update a widget\'s props or position'),
+    cmd('canvas read [name]', 'Read canvas state and list widgets'),
+    cmd('compact [name]', 'Compact canvas JSONL files (removes bloat)'),
+    cmd('compact --all', 'Force compact all canvases'),
+    '',
+    `  ${bold(cyan('Terminal'))}`,
+    cmd('terminal', 'Browse and manage terminal sessions'),
+    cmd('terminal start', 'Launch the terminal welcome prompt'),
+    cmd('terminal close --id <name>', 'Archive a session ' + dim('(alias: archive)')),
+    cmd('terminal open --id <name>', 'Attach to a session'),
+    cmd('terminal remove --id <name>', 'Permanently destroy a session'),
+    cmd('terminal --all', 'Show sessions across all branches'),
+    '',
+    `  ${bold(cyan('Setup'))}`,
+    cmd('setup', 'Install deps, Caddy proxy, start proxy'),
+    cmd('proxy', 'Generate Caddyfile + start/reload Caddy'),
+    '',
+    `  ${bold(cyan('Updates'))}`,
+    cmd('update', 'Update storyboard packages to latest'),
+    cmd('update:<tag>', 'Update to a specific tag ' + dim('(beta, alpha, ...)')),
+    '',
+    `  ${dim('All create commands accept --flags for non-interactive use.')}`,
+    `  ${dim('Run')} ${yellow('npx storyboard create <type> --help')} ${dim('for flag details.')}`,
+    '',
+    `  ${dim('Usage:')} ${yellow('npx storyboard')} ${dim('<command>')}`,
+    `  ${dim('Alias:')} ${yellow('npx sb')} ${dim('<command>')}`,
+  ].join('\n')
+
+  return `\n${mascot}\n${gettingStarted}\n${commands}\n`
+}
+
+const command = process.argv[2]
+
+switch (command) {
+  case 'dev':
+    import('./dev.js')
+    break
+  case 'setup':
+    import('./setup.js')
+    break
+  case 'proxy':
+    import('./proxy.js')
+    break
+  case 'create':
+    import('./create.js')
+    break
+  case 'compact':
+    import('./compact.js')
+    break
+  case 'canvas':
+    if (process.argv[3] === 'add') {
+      import('./canvasAdd.js')
+    } else if (process.argv[3] === 'update') {
+      import('./canvasUpdate.js')
+    } else if (process.argv[3] === 'read' || !process.argv[3]) {
+      import('./canvasRead.js')
+    } else if (process.argv[3] === 'bounds') {
+      import('./canvasBounds.js')
+    } else {
+      const version = getVersion()
+      console.log(helpScreen(version))
+      p.log.error(`Unknown canvas subcommand: ${bold(process.argv[3] || '(none)')}`)
+      process.exit(1)
+    }
+    break
+  case 'exit':
+    import('./exit.js')
+    break
+  case 'terminal':
+    if (process.argv[3] === 'start') {
+      import('./terminal-welcome.js')
+    } else if (process.argv[3] === 'close' || process.argv[3] === 'archive') {
+      import('./terminal-commands.js')
+    } else if (process.argv[3] === 'open') {
+      import('./terminal-commands.js')
+    } else if (process.argv[3] === 'remove') {
+      import('./terminal-commands.js')
+    } else {
+      // Default: session browser (formerly `storyboard sessions`)
+      import('./sessions.js')
+    }
+    break
+  case 'sessions':
+    // Backwards compat alias
+    import('./sessions.js')
+    break
+  case 'terminal-welcome':
+    // Internal alias used by terminal-server
+    import('./terminal-welcome.js')
+    break
+  case 'server':
+    import('./server.js')
+    break
+  case 'agent':
+    import('./agent.js')
+    break
+  case 'code':
+    import('./code.js')
+    break
+  default: {
+    if (command === 'update' || (command && command.startsWith('update:'))) {
+      import('./updateVersion.js')
+      break
+    }
+    const version = getVersion()
+
+    if (command) {
+      console.log(helpScreen(version))
+      p.log.error(`Unknown command: ${bold(command)}`)
+      process.exit(1)
+    }
+
+    console.log(helpScreen(version))
+  }
+}

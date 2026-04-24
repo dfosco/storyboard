@@ -3,8 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Storyboard Prototype</title>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Storyboard</title>
 
      <!-- Start Single Page Apps for GitHub Pages -->
      <script type="text/javascript">
@@ -55,6 +56,9 @@
           body:has(#initial-loader) {
             margin: 0;
             padding: 0;
+          }
+          html, body {
+            overscroll-behavior-y: contain;
           }
           @keyframes spin{to{transform:rotate(360deg)}}
           @keyframes fadeIn{from{opacity:0}to{opacity:1}}

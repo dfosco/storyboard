@@ -10,7 +10,7 @@
  *
  * Tools default to "active" unless:
  *   1. Config declares a "state" property
- *   2. The tool is localOnly and the environment is not local dev → "disabled"
+ *   2. The tool lacks `prod: true` and the environment is not local dev → "disabled"
  *
  * State can be changed at runtime by application code via setToolbarToolState().
  * Framework-agnostic (zero npm dependencies).
@@ -38,8 +38,8 @@ const VALID_STATES = new Set(Object.values(TOOL_STATES))
 /** @type {Map<string, string>} tool id → state */
 let _states = new Map()
 
-/** @type {Map<string, boolean>} tool id → localOnly flag */
-let _localOnlyFlags = new Map()
+/** @type {Map<string, boolean>} tool id → dev-only flag (true when tool lacks `prod`) */
+let _devOnlyFlags = new Map()
 
 /** @type {Set<Function>} */
 const _listeners = new Set()
@@ -62,7 +62,7 @@ export function initToolbarToolStates(toolsConfig, options = {}) {
   const { isLocalDev = false } = options
 
   _states = new Map()
-  _localOnlyFlags = new Map()
+  _devOnlyFlags = new Map()
 
   if (!toolsConfig || typeof toolsConfig !== 'object') {
     _notify()
@@ -70,10 +70,13 @@ export function initToolbarToolStates(toolsConfig, options = {}) {
   }
 
   for (const [id, tool] of Object.entries(toolsConfig)) {
-    const isLocalOnly = tool.localOnly === true
-    _localOnlyFlags.set(id, isLocalOnly)
+    // A tool is dev-only if it lacks `prod: true` (or has legacy `localOnly: true`)
+    const isDevOnly = !tool.prod || tool.localOnly === true
+    _devOnlyFlags.set(id, isDevOnly)
 
-    if (isLocalOnly && !isLocalDev) {
+    if (isDevOnly && !isLocalDev) {
+      _states.set(id, TOOL_STATES.DISABLED)
+    } else if (tool.disabled === true) {
       _states.set(id, TOOL_STATES.DISABLED)
     } else {
       const state = tool.state || TOOL_STATES.ACTIVE
@@ -120,14 +123,14 @@ export function getToolbarToolState(id) {
 }
 
 /**
- * Returns whether the tool was marked localOnly in config.
+ * Returns whether the tool is dev-only (lacks `prod: true` in config).
  * Returns false for unknown IDs.
  *
  * @param {string} id Tool id
  * @returns {boolean}
  */
 export function isToolbarToolLocalOnly(id) {
-  return _localOnlyFlags.get(id) || false
+  return _devOnlyFlags.get(id) || false
 }
 
 // ---------------------------------------------------------------------------
@@ -174,7 +177,7 @@ function _notify() {
 /** Reset all state. Only for tests. */
 export function _resetToolbarToolStates() {
   _states = new Map()
-  _localOnlyFlags = new Map()
+  _devOnlyFlags = new Map()
   _listeners.clear()
   _snapshotVersion = 0
 }

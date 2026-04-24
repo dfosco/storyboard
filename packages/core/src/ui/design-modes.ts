@@ -12,9 +12,9 @@
  */
 
 import { mountSveltePlugin, type PluginHandle } from '../svelte-plugin-ui/mount.js'
-import ModeSwitch from '../svelte-plugin-ui/components/ModeSwitch.svelte'
+import ModeSwitch from '../svelte-plugin-ui/components/ModeSwitch.jsx'
 // TODO: Re-enable after migrating devtools features into tool registry
-// import ToolbarShell from '../svelte-plugin-ui/components/ToolbarShell.svelte'
+// import ToolbarShell from '../svelte-plugin-ui/components/ToolbarShell.jsx'
 
 let handles: PluginHandle[] = []
 

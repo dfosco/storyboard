@@ -227,12 +227,14 @@ export async function createInspectorHighlighter() {
      * @param {object} options
      * @param {string} [options.lang] - Language identifier
      * @param {string} [options.theme] - Ignored (theme resolved from config)
+     * @param {boolean} [options.lineNumbers] - Show inline line numbers (default: true)
      * @param {Array<{ start: { line: number }, end: { line: number }, properties: { class: string } }>} [options.decorations]
      * @returns {string} HTML string with highlighted code
      */
     codeToHtml(code, options = {}) {
       const lang = options.lang || 'javascript'
       const decorations = options.decorations || []
+      const showLineNumbers = options.lineNumbers !== false
       const colors = getColors()
 
       let highlighted
@@ -255,13 +257,19 @@ export async function createInspectorHighlighter() {
         }
       }
 
+      const lineNumWidth = String(lines.length).length
+      const gutterColor = colors.comment || colors.headerFg || '#636e7b'
+
       const wrappedLines = lines.map((line, i) => {
         const classes = ['line']
         if (highlightedLines.has(i)) classes.push('highlighted-line')
-        return `<span class="${classes.join(' ')}">${line}</span>`
+        const numSpan = showLineNumbers
+          ? `<span class="line-number" style="color:${gutterColor};user-select:none;opacity:0.5;display:inline-block;width:${lineNumWidth}ch;text-align:right;margin-right:1.5ch">${String(i + 1).padStart(lineNumWidth)}</span>`
+          : ''
+        return `<span class="${classes.join(' ')}">${numSpan}${line}</span>`
       }).join('\n')
 
-      return `<pre style="background:${colors.bg};color:${colors.fg};margin:0;padding:0;overflow-x:auto"><code>${wrappedLines}</code></pre>`
+      return `<pre style="background:${colors.bg};color:${colors.fg};margin:0;padding:var(--base-size-8);overflow-x:auto"><code>${wrappedLines}</code></pre>`
     },
   }
 }

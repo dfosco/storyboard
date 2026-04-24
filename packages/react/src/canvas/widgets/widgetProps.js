@@ -54,8 +54,9 @@
  *
  * ## Declaring Widget Props (Schema)
  *
- * Each widget type exports a `schema` describing its props.
- * This is used by the toolbar, canvas settings, and future widget inspectors.
+ * Widget prop schemas are defined in widgets.config.json (packages/core)
+ * and loaded via widgetConfig.js. This module re-exports the generated
+ * schemas and provides utility functions for reading props with defaults.
  */
 
 /**
@@ -70,6 +71,8 @@
  * @property {number}   [min]       — minimum for 'number' type
  * @property {number}   [max]       — maximum for 'number' type
  */
+
+import { schemas as configSchemas } from './widgetConfig.js'
 
 /**
  * Read a prop value with fallback to schema default.
@@ -114,38 +117,17 @@ export function getDefaults(schema) {
   return result
 }
 
-// ── Widget Schemas ──────────────────────────────────────────────────
+// ── Config-driven schemas ───────────────────────────────────────────
 
-export const stickyNoteSchema = {
-  text:  { type: 'text',   label: 'Text',  category: 'content', defaultValue: '' },
-  color: { type: 'select', label: 'Color', category: 'settings', defaultValue: 'yellow',
-           options: ['yellow', 'blue', 'green', 'pink', 'purple', 'orange'] },
-}
+/** Schema registry — maps widget type strings to their schemas. */
+export const schemas = configSchemas
 
-export const markdownSchema = {
-  content: { type: 'text',   label: 'Content', category: 'content', defaultValue: '' },
-  width:   { type: 'number', label: 'Width',   category: 'size',    defaultValue: 360, min: 200, max: 1200 },
-}
-
-export const prototypeEmbedSchema = {
-  src:    { type: 'url',    label: 'URL',    category: 'content',  defaultValue: '' },
-  label:  { type: 'text',   label: 'Label',  category: 'settings', defaultValue: '' },
-  zoom:   { type: 'number', label: 'Zoom',   category: 'settings', defaultValue: 100, min: 25, max: 200 },
-  width:  { type: 'number', label: 'Width',  category: 'size',     defaultValue: 800, min: 200, max: 2000 },
-  height: { type: 'number', label: 'Height', category: 'size',     defaultValue: 600, min: 200, max: 1500 },
-}
-
-export const linkPreviewSchema = {
-  url:   { type: 'url',  label: 'URL',   category: 'content',  defaultValue: '' },
-  title: { type: 'text', label: 'Title', category: 'content',  defaultValue: '' },
-}
-
-/**
- * Schema registry — maps widget type strings to their schemas.
- */
-export const schemas = {
-  'sticky-note': stickyNoteSchema,
-  'markdown': markdownSchema,
-  'prototype': prototypeEmbedSchema,
-  'link-preview': linkPreviewSchema,
-}
+// Named exports for backward compatibility with widget imports
+export const stickyNoteSchema = schemas['sticky-note']
+export const markdownSchema = schemas['markdown']
+export const prototypeEmbedSchema = schemas['prototype']
+export const linkPreviewSchema = schemas['link-preview']
+export const imageSchema = schemas['image']
+export const figmaEmbedSchema = schemas['figma-embed']
+export const terminalSchema = schemas['terminal']
+export const promptSchema = schemas['prompt']

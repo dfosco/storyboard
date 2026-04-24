@@ -2,8 +2,8 @@
  * Tool Registry — config-driven state management for toolbar tools.
  *
  * Every tool is declared in toolbar.config.json under the `tools` key.
- * Each tool specifies a `toolbar` target (main-toolbar, secondary-toolbar,
- * command-list) and a `render` type (button, menu, sidepanel, submenu, link).
+ * Each tool specifies a `toolbar` target (command-toolbar, canvas-toolbar,
+ * command-palette) and a `render` type (button, menu, sidepanel, submenu, link).
  *
  * Code modules register themselves via registerToolModule() to provide
  * component, handler, setup, and guard functions.
@@ -58,7 +58,7 @@ export function initToolRegistry(config) {
  *
  * @param {string} id - Tool id (matches key in toolbar.config.json tools)
  * @param {object} mod
- * @param {Function} [mod.component] - () => import('./SomeComponent.svelte')
+ * @param {Function} [mod.component] - () => import('./SomeComponent.jsx')
  * @param {object|Function} [mod.handler] - Command action handler
  * @param {Function} [mod.setup] - async (ctx) => void — called once at mount
  * @param {Function} [mod.guard] - async (ctx) => boolean — return false to hide
@@ -117,7 +117,7 @@ export function getToolModule(id) {
 /**
  * Get tools for a specific toolbar target, filtered by mode and visibility.
  *
- * @param {string} toolbar - "main-toolbar" | "secondary-toolbar" | "command-list"
+ * @param {string} toolbar - "command-toolbar" | "canvas-toolbar" | "command-palette"
  * @param {string} mode - Current mode name
  * @param {object} [options]
  * @param {boolean} [options.isLocalDev] - Whether running in local dev
@@ -128,8 +128,9 @@ export function getToolsForToolbar(toolbar, mode, options = {}) {
   const results = []
 
   for (const [id, config] of Object.entries(_toolConfigs)) {
+    if (config.disabled) continue
     if (config.toolbar !== toolbar) continue
-    if (config.localOnly && !isLocalDev) continue
+    if (!config.prod && !isLocalDev) continue
     if (!isToolVisibleInMode(config, mode)) continue
 
     // Check guard result if one was registered

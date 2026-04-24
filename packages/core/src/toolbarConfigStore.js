@@ -25,6 +25,9 @@ let _mergedConfig = {}
 /** @type {Set<Function>} */
 const _listeners = new Set()
 
+/** @type {object|null} Client-repo toolbar overrides (set by virtual module before mount) */
+let _clientOverrides = null
+
 let _snapshotVersion = 0
 
 // ---------------------------------------------------------------------------
@@ -123,12 +126,39 @@ function _recompute() {
 }
 
 // ---------------------------------------------------------------------------
+// Client overrides (set by Vite data plugin before mountStoryboardCore runs)
+// ---------------------------------------------------------------------------
+
+/**
+ * Store client-repo toolbar overrides from a root toolbar.config.json.
+ * Called from the generated virtual module at import time.
+ *
+ * @param {object} config - Client toolbar config (tools, surfaces, etc.)
+ */
+export function setClientToolbarOverrides(config) {
+  _clientOverrides = config
+}
+
+/**
+ * Consume and clear pending client overrides.
+ * Called once by mountStoryboardCore during toolbar config init.
+ *
+ * @returns {object|null}
+ */
+export function consumeClientToolbarOverrides() {
+  const overrides = _clientOverrides
+  _clientOverrides = null
+  return overrides
+}
+
+// ---------------------------------------------------------------------------
 // Test helpers
 // ---------------------------------------------------------------------------
 
 export function _resetToolbarConfig() {
   _baseConfig = {}
   _prototypeConfig = null
+  _clientOverrides = null
   _mergedConfig = {}
   _listeners.clear()
   _snapshotVersion = 0

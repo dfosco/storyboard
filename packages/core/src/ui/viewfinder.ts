@@ -15,7 +15,7 @@
  */
 
 import { mountSveltePlugin, type PluginHandle } from '../svelte-plugin-ui/mount.js'
-import Viewfinder from '../svelte-plugin-ui/components/Viewfinder.svelte'
+import Viewfinder from '../svelte-plugin-ui/components/Viewfinder.jsx'
 
 export interface ViewfinderProps {
   title?: string

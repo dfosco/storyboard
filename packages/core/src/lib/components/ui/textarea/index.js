@@ -1,7 +1,7 @@
-import Root from "./textarea.svelte";
+import Root from "./textarea.jsx";
 
 export {
-	Root,
-	//
-	Root as Textarea,
+Root,
+//
+Root as Textarea,
 };

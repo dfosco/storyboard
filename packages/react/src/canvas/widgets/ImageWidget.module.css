@@ -1,0 +1,39 @@
+.imageWrapper {
+  min-width: unset;
+}
+
+.container {
+  position: relative;
+  overflow: hidden;
+  min-width: 100px;
+}
+
+.frame {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  user-select: none;
+  pointer-events: none;
+}
+
+.privateBadge {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: var(--fgColor-onEmphasis, #fff);
+  background: var(--bgColor-neutral-emphasis, rgba(0, 0, 0, 0.55));
+  pointer-events: none;
+}

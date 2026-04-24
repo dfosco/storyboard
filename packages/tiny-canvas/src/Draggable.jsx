@@ -220,7 +220,10 @@ function Draggable({ children, dragId, initialPosition, onDragStart: onDragStart
   return (
     <article
       ref={draggableRef}
-      style={{ cursor: articleCursor }}
+      style={{
+        cursor: articleCursor,
+        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+      }}
     >
       <div className="tc-draggable-inner">
         {children}

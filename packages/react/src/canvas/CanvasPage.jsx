@@ -1893,7 +1893,9 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   }, [canvasId, zoom])
 
   // Keep bridge in sync with widgets/connectors for expand features
-  useEffect(() => {
+  // Sync synchronously (not in useEffect) so child widgets see current
+  // data when they call findConnectedSplitTarget during render.
+  useMemo(() => {
     const bridge = window[CANVAS_BRIDGE_STATE_KEY] || {}
     bridge.widgets = localWidgets
     bridge.connectors = localConnectors

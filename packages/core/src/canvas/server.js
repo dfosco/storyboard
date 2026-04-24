@@ -2083,8 +2083,8 @@ export function Default() {
         return
       }
 
-      // Try to acquire a warm tmux session from the hot pool
-      const warmSession = hotPool?.acquire() || null
+      // Try to acquire a warm tmux session from the prompt pool
+      const warmSession = hotPool?.acquire('prompt') || null
 
       // Delegate to agent/spawn — the prompt widget is just a specialized agent
       // We reuse the same tmux-based infrastructure
@@ -2152,10 +2152,10 @@ export function Default() {
             // Rename the warm session to the canonical name
             execSync(`tmux rename-session -t "${warmSession.tmuxName}" "${tmuxName}"`, { stdio: 'ignore' })
             usedWarm = true
-            hotPool.consume(warmSession.id)
+            hotPool.consume('prompt', warmSession.id)
           } catch {
             // Rename failed — fall back to creating fresh session
-            hotPool.release(warmSession.id)
+            hotPool.release('prompt', warmSession.id)
           }
         }
 

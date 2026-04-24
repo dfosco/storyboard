@@ -21,6 +21,7 @@ export function registerHotPoolDevLogs() {
 
   import.meta.hot.on('storyboard:hot-pool-log', (data) => {
     if (!isDevLogsEnabled()) return
-    console.log(`%c[hot-pool]%c ${data.message}`, 'color: #8b5cf6; font-weight: bold', 'color: inherit')
+    const poolTag = data.poolId ? `:${data.poolId}` : ''
+    console.log(`%c[hot-pool${poolTag}]%c ${data.message}`, 'color: #8b5cf6; font-weight: bold', 'color: inherit')
   })
 }

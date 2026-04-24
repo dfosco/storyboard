@@ -18,7 +18,7 @@ import { serverFeatures as workshopFeatures } from '../workshop/features/registr
 import { docsHandler, collectFiles } from './docs-handler.js'
 import { createCanvasHandler } from '../canvas/server.js'
 import { setupSelectedWidgets } from '../canvas/selectedWidgets.js'
-import { HotPool } from '../canvas/hot-pool.js'
+import { HotPoolManager } from '../canvas/hot-pool.js'
 import { createAutosyncHandler } from '../autosync/server.js'
 import { setupTerminalServer } from '../canvas/terminal-server.js'
 import { listSessions, detachSession, killSession, orphanSession } from '../canvas/terminal-registry.js'
@@ -202,10 +202,11 @@ export default function storyboardServer() {
       // Wire docs API routes (always enabled — serves README + source files)
       routeHandlers.set('docs', docsHandler({ root, sendJson }))
 
-      // Create shared hot pool (pre-warmed agent sessions for any widget)
+      // Create shared hot pool manager (per-type pre-warmed sessions)
       const hotPoolConfig = config.hotPool || {}
+      const agentsConfig = config.canvas?.agents || {}
       const wsSend = server.ws.send.bind(server.ws)
-      const hotPool = new HotPool({ root, config: hotPoolConfig, wsSend })
+      const hotPool = new HotPoolManager({ root, config: hotPoolConfig, agentsConfig, wsSend })
       hotPool.start().catch((err) => {
         console.error('[hot-pool] Failed to start:', err.message)
       })
@@ -222,7 +223,7 @@ export default function storyboardServer() {
         try {
           branch = cpExecSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
         } catch {}
-        setupTerminalServer(server.httpServer, base, branch)
+        setupTerminalServer(server.httpServer, base, branch, hotPool)
       }
 
       // Ignore assets/canvas/ so image/snapshot writes don't trigger reloads
@@ -292,14 +293,15 @@ export default function storyboardServer() {
           return
         }
 
-        // POST /hot-pool/acquire — acquire a warm session from the pool
+        // POST /hot-pool/acquire — acquire a warm session from a specific pool
         if (ctx.method === 'POST' && subpath === 'hot-pool/acquire') {
-          const session = hotPool.acquire()
+          const poolId = ctx.body?.poolId || 'terminal'
+          const session = hotPool.acquire(poolId)
           if (!session) {
-            sendJson(res, 200, { acquired: false, session: null })
+            sendJson(res, 200, { acquired: false, poolId, session: null })
             return
           }
-          sendJson(res, 200, { acquired: true, session: { id: session.id, pid: session.process?.pid } })
+          sendJson(res, 200, { acquired: true, poolId, session: { id: session.id, tmuxName: session.tmuxName, poolId: session.poolId } })
           return
         }
 

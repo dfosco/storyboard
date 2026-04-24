@@ -36,8 +36,9 @@
       "prompt": "❯ ",
       "startupCommand": null,
       "defaultStartupSequence": null,
-      "defaultWidth": 1200,
-      "defaultHeight": 450
+      "resizable": true,
+      "defaultWidth": 1000,
+      "defaultHeight": 600
     },
     "agents": {
       "copilot": {
@@ -68,12 +69,19 @@
     "showAgentsInAddMenu": false
   },
   "hotPool": {
+    "enabled": true,
+    "verbose": false,
     "pool_size": 1,
     "max_pool_size": 3,
     "load_balancer": true,
     "load_balancer_cooldown_mins": 10,
-    "enabled": true,
-    "verbose": false
+    "pools": {
+      "terminal": { "pool_size": 1 },
+      "copilot":  { "pool_size": 1 },
+      "claude":   { "pool_size": 1 },
+      "codex":    { "pool_size": 1 },
+      "prompt":   { "pool_size": 1 }
+    }
   },
   "customerMode": {
     "enabled": false,

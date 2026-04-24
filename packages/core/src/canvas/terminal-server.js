@@ -136,6 +136,9 @@ let currentBranch = 'unknown'
 /** Actual server port, resolved from httpServer at setup time */
 let actualServerPort = null
 
+/** Hot pool manager reference (set by setupTerminalServer) */
+let hotPoolRef = null
+
 /** Active snapshot intervals keyed by tmuxName */
 const snapshotIntervals = new Map()
 
@@ -276,7 +279,7 @@ function legacyKillSession(widgetId) {
  * @param {string} base — Vite base path
  * @param {string} branch — current git branch name
  */
-export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') {
+export function setupTerminalServer(httpServer, base = '/', branch = 'unknown', hotPoolManager = null) {
   if (!pty || !WebSocketServer) {
     if (!pty) console.warn('[storyboard] node-pty not available — terminal widgets disabled')
     if (!WebSocketServer) console.warn('[storyboard] ws not available — terminal widgets disabled')
@@ -284,6 +287,7 @@ export function setupTerminalServer(httpServer, base = '/', branch = 'unknown') 
   }
 
   currentBranch = branch
+  hotPoolRef = hotPoolManager
 
   // Capture the actual port from the running HTTP server
   try {
@@ -526,6 +530,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
   }
   let ptyProcess
   let isNewSession = false
+  let usedWarmAgent = false // true when session came from a pre-warmed agent pool
 
   try {
   if (hasTmux) {
@@ -534,10 +539,52 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
     // Also check for legacy sb-{widgetId} sessions and migrate
     const legacyName = `sb-${widgetId}`
     const hasLegacy = !reattach && tmuxSessionExists(legacyName)
-    const actualName = hasLegacy ? legacyName : tmuxName
+    let actualName = hasLegacy ? legacyName : tmuxName
+
+    // If no existing session, try to acquire from the hot pool
+    let poolSession = null
+    let poolId = null
+    if (!reattach && !hasLegacy && hotPoolRef) {
+      const startupCommand = widgetStartupCommand ?? readTerminalConfig().startupCommand ?? null
+
+      // Resolve startup command to agent ID for pool lookup
+      if (startupCommand && startupCommand !== 'shell') {
+        try {
+          const raw = readFileSync(resolve(process.cwd(), 'storyboard.config.json'), 'utf8')
+          const agentsConfig = JSON.parse(raw)?.canvas?.agents
+          if (agentsConfig && typeof agentsConfig === 'object') {
+            for (const [id, cfg] of Object.entries(agentsConfig)) {
+              if (cfg.startupCommand && startupCommand.startsWith(cfg.startupCommand.split(' ')[0])) {
+                poolId = id
+                break
+              }
+            }
+          }
+        } catch {}
+      }
+
+      // Try agent pool first, then fall back to terminal pool for bare shells
+      const targetPool = poolId || (startupCommand ? null : 'terminal')
+      if (targetPool && hotPoolRef.has(targetPool)) {
+        poolSession = hotPoolRef.acquire(targetPool)
+      }
+
+      // If we got a warm session, rename it to the canonical tmux name
+      if (poolSession?.tmuxName) {
+        try {
+          try { execSync(`tmux kill-session -t "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+          execSync(`tmux rename-session -t "${poolSession.tmuxName}" "${tmuxName}"`, { stdio: 'ignore' })
+          hotPoolRef.consume(targetPool, poolSession.id)
+          usedWarmAgent = !!poolId // only true for agent pools, not terminal pools
+        } catch {
+          hotPoolRef.release(targetPool, poolSession.id)
+          poolSession = null
+        }
+      }
+    }
 
     // -f /dev/null skips user tmux.conf; 'set status off' hides the status bar
-    const args = (reattach || hasLegacy)
+    const args = (reattach || hasLegacy || poolSession)
       ? ['-f', '/dev/null', 'attach-session', '-t', actualName]
       : ['-f', '/dev/null', 'new-session', '-s', tmuxName, '-c', cwd]
 
@@ -558,7 +605,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
 
     // Hide status bar + apply shell-config overrides
     const targetName = (reattach || hasLegacy) ? actualName : tmuxName
-    isNewSession = !(reattach || hasLegacy)
+    isNewSession = !(reattach || hasLegacy) || !!poolSession
     const hideStatus = () => {
       try {
         execSync(`tmux set-option -t "${targetName}" status off 2>/dev/null`, { stdio: 'ignore' })
@@ -682,108 +729,119 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
       const nameArg = prettyName ? ` --name "${prettyName}"` : ''
       const welcomeBase = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}`
 
-      // Export identity env vars + shell-config overrides into the shell via send-keys.
-      // pty.spawn sets env on the tmux client process, but the session's
-      // shell doesn't inherit those — it starts from the tmux server env.
-      // send-keys is the only reliable way to set vars in the running shell.
-      // Shell-config overrides (STARSHIP_CONFIG, etc.) must also be sent here
-      // because the shell's .zshrc has already run by the time tmux global env
-      // overrides are applied.
-      const envParts = [
-        `export STORYBOARD_WIDGET_ID="${widgetId}"`,
-        `export STORYBOARD_CANVAS_ID="${canvasId}"`,
-        `export STORYBOARD_BRANCH="${branch}"`,
-        `export STORYBOARD_SERVER_URL="${serverUrl}"`,
-        ...Object.entries(TMUX_SHELL_OVERRIDES).map(([k, v]) => `export ${k}="${v}"`),
-      ]
-
-      // Prepend the bin dir to PATH for the initial shell (tmux set-environment
-      // handles future shells, but the first shell is already running)
-      const binDir = join(cwd, '.storyboard', 'terminals', 'bin')
-      envParts.push(`export PATH="${binDir}:$PATH"`)
-
-      // Chain clear into env exports so it runs synchronously after exports
-      // complete, avoiding a timing race where clear leaks into the agent prompt
-      if (startupCommand) envParts.push('clear')
-      const envExports = envParts.join(' && ')
-
-      setTimeout(() => {
-        try {
-          execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(envExports)}`, { stdio: 'ignore' })
-          execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-        } catch {}
-      }, 300)
-
-      if (startupCommand) {
-
-        // Look up agent config for this startup command
-        const agentCfg = (() => {
-          try {
-            const raw = readFileSync(resolve(process.cwd(), 'storyboard.config.json'), 'utf8')
-            const agentsConfig = JSON.parse(raw)?.canvas?.agents
-            if (!agentsConfig || typeof agentsConfig !== 'object') return null
-            for (const cfg of Object.values(agentsConfig)) {
-              if (cfg.startupCommand && startupCommand.startsWith(cfg.startupCommand.split(' ')[0])) return cfg
-            }
-          } catch {}
-          return null
-        })()
-
-        if (startupCommand === 'shell') {
-          // Plain shell — route through welcome with --startup shell so it
-          // returns to the welcome screen on exit
-          setTimeout(() => {
-            const cmd = `${welcomeBase} --startup shell\r`
-            ptyProcess.write(cmd)
-          }, 800)
-        } else if (agentCfg || startupCommand !== 'shell') {
-          // Agent or custom command — route through welcome with --startup
-          // so the welcome screen appears when the agent exits
-          const cmd = agentCfg?.startupCommand || startupCommand
-          const postStartup = agentCfg?.postStartup || null
-          const readinessSignal = agentCfg?.readinessSignal || null
-
-          setTimeout(() => {
-            const welcomeCmd = `${welcomeBase} --startup ${JSON.stringify(cmd)}`
-            ptyProcess.write(welcomeCmd + '\r')
-
-            if (readinessSignal) {
-              // Poll for readiness, then send postStartup command and deliver messages
-              let sent = false
-              const pollInterval = setInterval(() => {
-                if (sent) { clearInterval(pollInterval); return }
-                try {
-                  const paneContent = execSync(
-                    `tmux capture-pane -t "${tmuxName}" -p`,
-                    { encoding: 'utf8', timeout: 1000 }
-                  )
-                  if (paneContent.includes(readinessSignal)) {
-                    sent = true
-                    clearInterval(pollInterval)
-                    setTimeout(() => {
-                      if (postStartup) {
-                        try {
-                          execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(postStartup)}`, { stdio: 'ignore' })
-                          execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-                        } catch {}
-                      }
-                      setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
-                    }, 500)
-                  }
-                } catch {}
-              }, 2000)
-              setTimeout(() => { if (!sent) { sent = true; clearInterval(pollInterval) } }, 30000)
-            } else {
-              // No readiness signal — deliver messages after a delay
-              setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 5000)
-            }
-          }, 900)
-        }
+      if (usedWarmAgent) {
+        // ── Hot pool path: agent is already running and ready ──
+        // Skip agent launch, readiness polling, and postStartup (all done by pool).
+        // Still export identity env vars into the tmux session environment
+        // (the agent reads config files by tmux session name, not env vars).
+        // Deliver pending messages immediately since the agent is ready.
+        setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 500)
       } else {
-        // No startupCommand — show the welcome screen as before
+        // ── Cold path: standard startup flow ──
+
+        // Export identity env vars + shell-config overrides into the shell via send-keys.
+        // pty.spawn sets env on the tmux client process, but the session's
+        // shell doesn't inherit those — it starts from the tmux server env.
+        // send-keys is the only reliable way to set vars in the running shell.
+        // Shell-config overrides (STARSHIP_CONFIG, etc.) must also be sent here
+        // because the shell's .zshrc has already run by the time tmux global env
+        // overrides are applied.
+        const envParts = [
+          `export STORYBOARD_WIDGET_ID="${widgetId}"`,
+          `export STORYBOARD_CANVAS_ID="${canvasId}"`,
+          `export STORYBOARD_BRANCH="${branch}"`,
+          `export STORYBOARD_SERVER_URL="${serverUrl}"`,
+          ...Object.entries(TMUX_SHELL_OVERRIDES).map(([k, v]) => `export ${k}="${v}"`),
+        ]
+
+        // Prepend the bin dir to PATH for the initial shell (tmux set-environment
+        // handles future shells, but the first shell is already running)
+        const binDir = join(cwd, '.storyboard', 'terminals', 'bin')
+        envParts.push(`export PATH="${binDir}:$PATH"`)
+
+        // Chain clear into env exports so it runs synchronously after exports
+        // complete, avoiding a timing race where clear leaks into the agent prompt
+        if (startupCommand) envParts.push('clear')
+        const envExports = envParts.join(' && ')
+
         setTimeout(() => {
-          ptyProcess.write(`${welcomeBase}\r`)
-        }, 800)
+          try {
+            execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(envExports)}`, { stdio: 'ignore' })
+            execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+          } catch {}
+        }, 300)
+
+        if (startupCommand) {
+
+          // Look up agent config for this startup command
+          const agentCfg = (() => {
+            try {
+              const raw = readFileSync(resolve(process.cwd(), 'storyboard.config.json'), 'utf8')
+              const agentsConfig = JSON.parse(raw)?.canvas?.agents
+              if (!agentsConfig || typeof agentsConfig !== 'object') return null
+              for (const cfg of Object.values(agentsConfig)) {
+                if (cfg.startupCommand && startupCommand.startsWith(cfg.startupCommand.split(' ')[0])) return cfg
+              }
+            } catch {}
+            return null
+          })()
+
+          if (startupCommand === 'shell') {
+            // Plain shell — route through welcome with --startup shell so it
+            // returns to the welcome screen on exit
+            setTimeout(() => {
+              const cmd = `${welcomeBase} --startup shell\r`
+              ptyProcess.write(cmd)
+            }, 800)
+          } else if (agentCfg || startupCommand !== 'shell') {
+            // Agent or custom command — route through welcome with --startup
+            // so the welcome screen appears when the agent exits
+            const cmd = agentCfg?.startupCommand || startupCommand
+            const postStartup = agentCfg?.postStartup || null
+            const readinessSignal = agentCfg?.readinessSignal || null
+
+            setTimeout(() => {
+              const welcomeCmd = `${welcomeBase} --startup ${JSON.stringify(cmd)}`
+              ptyProcess.write(welcomeCmd + '\r')
+
+              if (readinessSignal) {
+                // Poll for readiness, then send postStartup command and deliver messages
+                let sent = false
+                const pollInterval = setInterval(() => {
+                  if (sent) { clearInterval(pollInterval); return }
+                  try {
+                    const paneContent = execSync(
+                      `tmux capture-pane -t "${tmuxName}" -p`,
+                      { encoding: 'utf8', timeout: 1000 }
+                    )
+                    if (paneContent.includes(readinessSignal)) {
+                      sent = true
+                      clearInterval(pollInterval)
+                      setTimeout(() => {
+                        if (postStartup) {
+                          try {
+                            execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(postStartup)}`, { stdio: 'ignore' })
+                            execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+                          } catch {}
+                        }
+                        setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
+                      }, 500)
+                    }
+                  } catch {}
+                }, 2000)
+                setTimeout(() => { if (!sent) { sent = true; clearInterval(pollInterval) } }, 30000)
+              } else {
+                // No readiness signal — deliver messages after a delay
+                setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 5000)
+              }
+            }, 900)
+          }
+        } else {
+          // No startupCommand — show the welcome screen as before
+          setTimeout(() => {
+            ptyProcess.write(`${welcomeBase}\r`)
+          }, 800)
+        }
       }
 
       // Execute startup sequence if configured (after welcome or startupCommand)

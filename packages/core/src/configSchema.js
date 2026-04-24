@@ -40,9 +40,22 @@
  * @property {string}  [label]         — display label
  * @property {string}  [icon]          — icon name
  * @property {string}  [startupCommand] — command to run on startup
+ * @property {string}  [postStartup]   — command sent after agent readiness (e.g. "/allow-all on")
+ * @property {string}  [readinessSignal] — tmux pane text that signals the agent is ready
  * @property {boolean} [resizable]     — override terminal resizability for this agent
  * @property {number}  [defaultWidth]  — override default width
  * @property {number}  [defaultHeight] — override default height
+ */
+
+/**
+ * @typedef {object} HotPoolConfig
+ * @property {boolean} [enabled]       — enable/disable all pools (default: true)
+ * @property {boolean} [verbose]       — log to Vite terminal (default: false)
+ * @property {number}  [pool_size]     — default baseline per pool (default: 1)
+ * @property {number}  [max_pool_size] — default surge cap per pool (default: 3)
+ * @property {boolean} [load_balancer] — enable auto-scaling (default: true)
+ * @property {number}  [load_balancer_cooldown_mins] — minutes idle before scale-down (default: 10)
+ * @property {Record<string, { pool_size?: number, max_pool_size?: number }>} [pools] — per-pool overrides (terminal, prompt, copilot, claude, codex)
  */
 
 /**
@@ -103,6 +116,7 @@
  * @property {{ hide?: string[] }} [ui]
  * @property {object}   [toolbar]
  * @property {CanvasConfig} [canvas]
+ * @property {HotPoolConfig} [hotPool]
  * @property {CommandPaletteConfig} [commandPalette]
  * @property {CustomerModeConfig} [customerMode]
  */

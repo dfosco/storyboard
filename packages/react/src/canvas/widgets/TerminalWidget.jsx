@@ -241,8 +241,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           setReady(true)
           setInteractive(true)
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
-          // Signal CanvasPage to unlock scroll position
-          document.dispatchEvent(new CustomEvent('storyboard:widget-ready', { detail: { widgetId: id } }))
         }
 
         ws.onmessage = (e) => {

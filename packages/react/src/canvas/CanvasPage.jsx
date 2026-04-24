@@ -614,43 +614,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   // The lock captures the current scroll position and forces it back on every scroll event
   // until unlocked by the widget's ready signal or a safety timeout.
   // Visual UI (outline + banner) only appears after 1.5s if still locked.
-  const scrollLockRef = useRef(null) // { top, left, safetyTimer, uiTimer, handler }
-  const [scrollLockVisible, setScrollLockVisible] = useState(false)
-
-  const lockScroll = useCallback(() => {
-    const el = scrollRef.current
-    if (!el || scrollLockRef.current) return
-    const pos = { top: el.scrollTop, left: el.scrollLeft }
-    const handler = () => {
-      if (!scrollLockRef.current) return
-      el.scrollTop = scrollLockRef.current.top
-      el.scrollLeft = scrollLockRef.current.left
-    }
-    // Show visual UI after 1.5s if still locked
-    const uiTimer = setTimeout(() => setScrollLockVisible(true), 1500)
-    // Safety timeout: auto-unlock after 5s to never leave the canvas stuck
-    const safetyTimer = setTimeout(() => unlockScroll(), 5000)
-    scrollLockRef.current = { ...pos, safetyTimer, uiTimer, handler }
-    el.addEventListener('scroll', handler)
-  }, [])
-
-  const unlockScroll = useCallback(() => {
-    const lock = scrollLockRef.current
-    if (!lock) return
-    const el = scrollRef.current
-    if (el) el.removeEventListener('scroll', lock.handler)
-    clearTimeout(lock.safetyTimer)
-    clearTimeout(lock.uiTimer)
-    scrollLockRef.current = null
-    setScrollLockVisible(false)
-  }, [])
-
-  // Listen for terminal/agent ready events to unlock scroll
-  useEffect(() => {
-    function handleReady() { unlockScroll() }
-    document.addEventListener('storyboard:widget-ready', handleReady)
-    return () => document.removeEventListener('storyboard:widget-ready', handleReady)
-  }, [unlockScroll])
 
   // Refs for snap settings (used by drop handler inside effect closure)
   const snapEnabledRef = useRef(snapEnabled)
@@ -1060,7 +1023,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     }
     const position = { x: baseX + n * 40, y: baseY + n * 40 }
     const isTerminal = widget.type === 'terminal' || widget.type === 'agent'
-    if (isTerminal) lockScroll()
     try {
       const copyProps = { ...widget.props }
       // Terminal widgets must get unique names — strip prettyName so the server generates a fresh one
@@ -1078,9 +1040,8 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       }
     } catch (err) {
       console.error('[canvas] Failed to copy widget:', err)
-      if (isTerminal) unlockScroll()
     }
-  }, [canvasId, localWidgets, undoRedo, lockScroll, unlockScroll])
+  }, [canvasId, localWidgets, undoRedo])
 
   const showMissingGhBanner = useCallback(() => {
     setShowGhInstallBanner(true)
@@ -1628,8 +1589,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     const mergedProps = { ...defaultProps, ...extraProps }
     const center = getViewportCenter(scrollRef.current, zoomRef.current / 100)
     const pos = centerPositionForWidget(center, type, mergedProps)
-    // Lock scroll for terminal/agent widgets to prevent focus-triggered viewport jumps
-    if (type === 'terminal' || type === 'agent') lockScroll()
     try {
       const result = await addWidgetApi(canvasId, {
         type,
@@ -1643,9 +1602,8 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       }
     } catch (err) {
       console.error('[canvas] Failed to add widget:', err)
-      if (type === 'terminal' || type === 'agent') unlockScroll()
     }
-  }, [canvasId, undoRedo, lockScroll, unlockScroll])
+  }, [canvasId, undoRedo])
 
   // Add a story widget by storyId — used by CanvasControls story picker
   const addStoryWidget = useCallback(async (storyId) => {
@@ -2034,10 +1992,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
           // Single undo snapshot for the entire paste
           undoRedo.snapshot(stateRef.current, 'add')
-
-          // Lock scroll if any pasted widget is terminal/agent
-          const hasTerminal = sourceWidgets.some(w => w.type === 'terminal' || w.type === 'agent')
-          if (hasTerminal) lockScroll()
 
           // Paste all widgets, collecting new IDs for selection
           const newWidgets = []
@@ -2549,23 +2503,13 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         data-storyboard-canvas-scroll
         data-sb-canvas-theme={canvasTheme}
         {...canvasPrimerAttrs}
-        className={`${styles.canvasScroll}${scrollLockVisible ? ` ${styles.canvasScrollLocked}` : ''}`}
+        className={styles.canvasScroll}
         style={{
           ...canvasThemeVars,
           ...(spaceHeld ? { cursor: panningActive ? 'grabbing' : 'grab' } : {}),
         }}
         onMouseDown={(e) => { handlePanStart(e); handleMarqueeMouseDown(e); }}
       >
-        {scrollLockVisible && (
-          <div className={styles.scrollLockBanner}>
-            <span>Canvas temporarily locked… please wait</span>
-            <button
-              className={styles.scrollLockDismiss}
-              onClick={unlockScroll}
-              aria-label="Unlock canvas"
-            >×</button>
-          </div>
-        )}
         <MarqueeOverlay rect={marqueeScreenRect} />
         <div
           ref={zoomElRef}

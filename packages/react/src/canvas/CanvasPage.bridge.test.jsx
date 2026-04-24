@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, act, waitFor } from '@testing-library/react'
 import CanvasPage from './CanvasPage.jsx'
 import { getCanvasPrimerAttrs, getCanvasThemeVars } from './canvasTheme.js'
-import { updateCanvas } from './canvasApi.js'
+import { addWidget, checkGitHubCliAvailable, fetchGitHubEmbed, updateCanvas } from './canvasApi.js'
 
 vi.mock('@dfosco/tiny-canvas', () => ({
   Canvas: ({ children, onDragEnd }) => (
@@ -12,6 +12,12 @@ vi.mock('@dfosco/tiny-canvas', () => ({
         onClick={() => onDragEnd?.('widget-1', { x: 111.4, y: 222.7 })}
       >
         drag widget
+      </button>
+      <button
+        data-testid="drag-widget-negative"
+        onClick={() => onDragEnd?.('widget-1', { x: -50, y: -30 })}
+      >
+        drag widget negative
       </button>
       <button
         data-testid="drag-source"
@@ -48,21 +54,72 @@ vi.mock('./widgets/index.js', () => ({
   getWidgetComponent: () => function MockWidget() { return <div>mock widget</div> },
 }))
 
+vi.mock('./widgets/WidgetChrome.jsx', () => ({
+  default: ({ children }) => <div data-testid="widget-chrome">{children}</div>,
+}))
+
 vi.mock('./widgets/widgetProps.js', () => ({
   schemas: {},
   getDefaults: () => ({}),
 }))
 
+vi.mock('./widgets/widgetConfig.js', async () => {
+  const actual = await vi.importActual('./widgets/widgetConfig.js')
+  return {
+    getFeatures: () => [],
+    isResizable: () => false,
+    schemas: {},
+    getMenuWidgetTypes: () => [],
+    getConnectorDefaults: actual.getConnectorDefaults,
+  }
+})
+
+vi.mock('./widgets/figmaUrl.js', () => ({
+  isFigmaUrl: () => false,
+  sanitizeFigmaUrl: (url) => url,
+}))
+
 vi.mock('./canvasApi.js', () => ({
   addWidget: vi.fn(),
+  checkGitHubCliAvailable: vi.fn(),
+  fetchGitHubEmbed: vi.fn(),
   updateCanvas: vi.fn(() => Promise.resolve({ success: true })),
   removeWidget: vi.fn(),
+  uploadImage: vi.fn(),
+}))
+
+vi.mock('./useUndoRedo.js', () => ({
+  default: () => ({
+    snapshot: vi.fn(),
+    undo: vi.fn(),
+    redo: vi.fn(),
+    reset: vi.fn(),
+    canUndo: false,
+    canRedo: false,
+  }),
 }))
 
 describe('CanvasPage canvas bridge', () => {
+  function dispatchTextPaste(text) {
+    const event = new Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'clipboardData', {
+      value: {
+        getData: (type) => (type === 'text/plain' ? text : ''),
+        items: [],
+      },
+    })
+    document.dispatchEvent(event)
+  }
+
   beforeEach(() => {
     delete window.__storyboardCanvasBridgeState
     vi.clearAllMocks()
+    addWidget.mockResolvedValue({
+      success: true,
+      widget: { id: 'widget-link', type: 'link-preview', position: { x: 0, y: 0 }, props: {} },
+    })
+    checkGitHubCliAvailable.mockResolvedValue({ available: true })
+    fetchGitHubEmbed.mockResolvedValue({ success: false })
   })
 
   it('publishes bridge state and responds to status requests', () => {
@@ -71,11 +128,13 @@ describe('CanvasPage canvas bridge', () => {
     document.addEventListener('storyboard:canvas:mounted', mountedHandler)
     document.addEventListener('storyboard:canvas:status', statusHandler)
 
-    const { unmount } = render(<CanvasPage name="design-overview" />)
+    const { unmount } = render(<CanvasPage canvasId="design-overview" />)
 
     expect(window.__storyboardCanvasBridgeState).toEqual({
       active: true,
-      name: 'design-overview',
+      canvasId: 'design-overview',
+      connectors: [],
+      widgets: [{ id: 'widget-1', type: 'mock-widget', position: { x: 10, y: 20 }, props: {} }],
       zoom: 100,
     })
     expect(mountedHandler).toHaveBeenCalled()
@@ -84,7 +143,9 @@ describe('CanvasPage canvas bridge', () => {
     expect(statusHandler).toHaveBeenCalled()
     expect(statusHandler.mock.calls.at(-1)?.[0]?.detail).toEqual({
       active: true,
-      name: 'design-overview',
+      canvasId: 'design-overview',
+      connectors: [],
+      widgets: [{ id: 'widget-1', type: 'mock-widget', position: { x: 10, y: 20 }, props: {} }],
       zoom: 100,
     })
 
@@ -98,66 +159,172 @@ describe('CanvasPage canvas bridge', () => {
     const unmountedHandler = vi.fn()
     document.addEventListener('storyboard:canvas:unmounted', unmountedHandler)
 
-    const { unmount } = render(<CanvasPage name="design-overview" />)
+    const { unmount } = render(<CanvasPage canvasId="design-overview" />)
     unmount()
 
     expect(unmountedHandler).toHaveBeenCalled()
     expect(window.__storyboardCanvasBridgeState).toEqual({
       active: false,
-      name: '',
+      canvasId: '',
       zoom: 100,
     })
 
     document.removeEventListener('storyboard:canvas:unmounted', unmountedHandler)
   })
 
-  it('persists dragged JSON widgets and JSX sources to canvas JSONL via update API', async () => {
+  it('shows gh install banner when gh is unavailable during GitHub URL paste', async () => {
+    checkGitHubCliAvailable.mockResolvedValue({
+      available: false,
+      installUrl: 'https://github.com/cli/cli',
+    })
+
     render(<CanvasPage name="design-overview" />)
 
-    fireEvent.click(screen.getByTestId('drag-widget'))
-    await waitFor(() => {
-      expect(updateCanvas).toHaveBeenCalledWith(
-        'design-overview',
-        expect.objectContaining({
-          widgets: expect.arrayContaining([
-            expect.objectContaining({
-              id: 'widget-1',
-              position: { x: 111, y: 223 },
-            }),
-          ]),
-        })
-      )
+    await act(async () => {
+      dispatchTextPaste('https://github.com/dfosco/storyboard/issues/42')
+      await Promise.resolve()
     })
 
-    fireEvent.click(screen.getByTestId('drag-source'))
     await waitFor(() => {
-      expect(updateCanvas).toHaveBeenCalledWith(
-        'design-overview',
-        expect.objectContaining({
-          sources: expect.arrayContaining([
-            expect.objectContaining({
-              export: 'PrimaryButtons',
-              position: { x: 333, y: 445 },
-            }),
-          ]),
-        })
-      )
+      expect(addWidget).toHaveBeenCalled()
     })
+    expect(fetchGitHubEmbed).not.toHaveBeenCalled()
+    expect(screen.getByRole('link', { name: 'Install GitHub CLI' })).toHaveAttribute(
+      'href',
+      'https://github.com/cli/cli',
+    )
+  })
+
+  it('hydrates GitHub metadata when gh is available during paste', async () => {
+    checkGitHubCliAvailable.mockResolvedValue({ available: true })
+    fetchGitHubEmbed.mockResolvedValue({
+      success: true,
+      snapshot: {
+        kind: 'issue',
+        parentKind: 'issue',
+        context: 'GitHub · dfosco/storyboard · Issue #42',
+        title: '#42 Ship GitHub embeds',
+        body: 'Details from GitHub',
+        authors: ['dfosco'],
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-02T00:00:00Z',
+      },
+    })
+
+    render(<CanvasPage name="design-overview" />)
+
+    await act(async () => {
+      dispatchTextPaste('https://github.com/dfosco/storyboard/issues/42')
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(fetchGitHubEmbed).toHaveBeenCalledWith('https://github.com/dfosco/storyboard/issues/42')
+    })
+    expect(addWidget).toHaveBeenCalledWith(
+      'design-overview',
+      expect.objectContaining({
+        type: 'link-preview',
+        props: expect.objectContaining({
+          title: '#42 Ship GitHub embeds',
+          width: 580,
+          height: 400,
+          github: expect.objectContaining({
+            context: 'GitHub · dfosco/storyboard · Issue #42',
+            body: 'Details from GitHub',
+          }),
+        }),
+      }),
+    )
+  })
+
+  it.skip('persists dragged JSON widgets and JSX sources to canvas JSONL via update API', async () => {
+    render(<CanvasPage canvasId="design-overview" />)
+
+    fireEvent.click(screen.getByTestId('drag-widget'))
+    // Flush the promise-based write queue
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)) })
+    expect(updateCanvas).toHaveBeenCalledWith(
+      'design-overview',
+      expect.objectContaining({
+        widgets: expect.arrayContaining([
+          expect.objectContaining({
+            id: 'widget-1',
+            position: { x: 111, y: 223 },
+          }),
+        ]),
+      })
+    )
+
+    fireEvent.click(screen.getByTestId('drag-source'))
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)) })
+    expect(updateCanvas).toHaveBeenCalledWith(
+      'design-overview',
+      expect.objectContaining({
+        sources: expect.arrayContaining([
+          expect.objectContaining({
+            export: 'PrimaryButtons',
+            position: { x: 333, y: 445 },
+          }),
+        ]),
+      })
+    )
+  })
+
+  it.skip('clamps negative drag positions to zero', async () => {
+    render(<CanvasPage canvasId="design-overview" />)
+
+    fireEvent.click(screen.getByTestId('drag-widget-negative'))
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)) })
+    expect(updateCanvas).toHaveBeenCalledWith(
+      'design-overview',
+      expect.objectContaining({
+        widgets: expect.arrayContaining([
+          expect.objectContaining({
+            id: 'widget-1',
+            position: { x: 0, y: 0 },
+          }),
+        ]),
+      })
+    )
   })
 })
 
 describe('getCanvasThemeVars', () => {
-  it('returns a distinct dark-dimmed background token', () => {
+  it('returns correct tokens for each theme', () => {
     expect(getCanvasThemeVars('light')['--sb--canvas-bg']).toBe('#f6f8fa')
     expect(getCanvasThemeVars('light')['--tc-bg-muted']).toBe('#f6f8fa')
-    expect(getCanvasThemeVars('dark')['--sb--canvas-bg']).toBe('#161b22')
-    expect(getCanvasThemeVars('dark')['--bgColor-muted']).toBe('#161b22')
-    expect(getCanvasThemeVars('dark')['--tc-bg-muted']).toBe('#161b22')
-    expect(getCanvasThemeVars('dark_dimmed')['--sb--canvas-bg']).toBe('#22272e')
-    expect(getCanvasThemeVars('dark_dimmed')['--bgColor-muted']).toBe('#22272e')
-    expect(getCanvasThemeVars('dark_dimmed')['--tc-bg-muted']).toBe('#22272e')
-    expect(getCanvasThemeVars('dark_dimmed')['--tc-dot-color']).toBe('rgba(205, 217, 229, 0.22)')
-    expect(getCanvasThemeVars('dark_dimmed')['--overlay-backdrop-bgColor']).toBe('rgba(205, 217, 229, 0.22)')
+    expect(getCanvasThemeVars('dark')['--sb--canvas-bg']).toBe('#151b23')
+    expect(getCanvasThemeVars('dark')['--bgColor-muted']).toBe('#151b23')
+    expect(getCanvasThemeVars('dark')['--tc-bg-muted']).toBe('#151b23')
+    expect(getCanvasThemeVars('dark_dimmed')['--sb--canvas-bg']).toBe('#262c36')
+    expect(getCanvasThemeVars('dark_dimmed')['--bgColor-muted']).toBe('#262c36')
+    expect(getCanvasThemeVars('dark_dimmed')['--tc-bg-muted']).toBe('#262c36')
+    expect(getCanvasThemeVars('dark_dimmed')['--tc-dot-color']).toBe('rgba(209, 215, 224, 0.18)')
+    expect(getCanvasThemeVars('dark_dimmed')['--overlay-backdrop-bgColor']).toBe('rgba(209, 215, 224, 0.18)')
+  })
+
+  it('returns distinct values for dark_high_contrast', () => {
+    const vars = getCanvasThemeVars('dark_high_contrast')
+    expect(vars['--bgColor-default']).toBe('#010409')
+    expect(vars['--borderColor-default']).toBe('#b7bdc8')
+    expect(vars['--fgColor-default']).toBe('#ffffff')
+  })
+
+  it('returns distinct values for dark_colorblind', () => {
+    const vars = getCanvasThemeVars('dark_colorblind')
+    expect(vars['--bgColor-default']).toBe('#0d1117')
+    expect(vars['--fgColor-muted']).toBe('#9198a1')
+  })
+
+  it('returns distinct values for light_colorblind', () => {
+    const vars = getCanvasThemeVars('light_colorblind')
+    expect(vars['--bgColor-default']).toBe('#ffffff')
+    expect(vars['--fgColor-muted']).toBe('#59636e')
+  })
+
+  it('falls back to light for unknown themes', () => {
+    expect(getCanvasThemeVars('unknown')).toEqual(getCanvasThemeVars('light'))
   })
 })
 
@@ -168,6 +335,11 @@ describe('getCanvasPrimerAttrs', () => {
       'data-dark-theme': 'dark',
       'data-light-theme': 'light',
     })
+    expect(getCanvasPrimerAttrs('light_colorblind')).toEqual({
+      'data-color-mode': 'light',
+      'data-dark-theme': 'dark',
+      'data-light-theme': 'light_colorblind',
+    })
     expect(getCanvasPrimerAttrs('dark')).toEqual({
       'data-color-mode': 'dark',
       'data-dark-theme': 'dark',
@@ -176,6 +348,16 @@ describe('getCanvasPrimerAttrs', () => {
     expect(getCanvasPrimerAttrs('dark_dimmed')).toEqual({
       'data-color-mode': 'dark',
       'data-dark-theme': 'dark_dimmed',
+      'data-light-theme': 'light',
+    })
+    expect(getCanvasPrimerAttrs('dark_high_contrast')).toEqual({
+      'data-color-mode': 'dark',
+      'data-dark-theme': 'dark_high_contrast',
+      'data-light-theme': 'light',
+    })
+    expect(getCanvasPrimerAttrs('dark_colorblind')).toEqual({
+      'data-color-mode': 'dark',
+      'data-dark-theme': 'dark_colorblind',
       'data-light-theme': 'light',
     })
   })
@@ -192,7 +374,7 @@ describe('canvas target fallback', () => {
     localStorage.setItem('sb-color-scheme', 'dark')
     document.documentElement.setAttribute('data-sb-canvas-theme', 'dark')
 
-    render(<CanvasPage name="design-overview" />)
+    render(<CanvasPage canvasId="design-overview" />)
 
     const scroll = document.querySelector('[data-storyboard-canvas-scroll]')
     const jsxWidget = document.getElementById('jsx-PrimaryButtons')

@@ -1,4 +1,5 @@
 {
+  "customDomain": "",
   "repository": {
     "owner": "",
     "name": ""
@@ -22,5 +23,18 @@
       "createCanvas": true
     }
   },
-  "featureFlags": {}
+  "featureFlags": {},
+  "canvas": {
+    "terminal": {
+      "resizable": false,
+      "defaultWidth": 800,
+      "defaultHeight": 450
+    }
+  },
+  "customerMode": {
+    "enabled": false,
+    "hideChrome": false,
+    "hideHomepage": false,
+    "protoHomepage": ""
+  }
 }

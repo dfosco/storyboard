@@ -1,12 +1,13 @@
 /**
- * Comment composer — Svelte inline text input that appears at click position.
+ * Comment composer — React inline text input that appears at click position.
  *
  * Positioned absolutely within the comment overlay. Submits to the comments API.
  * Styled with Tachyons + sb-* custom classes for light/dark mode support.
  */
 
-import { mount, unmount } from 'svelte'
-import ComposerComponent from './Composer.svelte'
+import { createElement } from 'react'
+import { createRoot } from 'react-dom/client'
+import ComposerComponent from './Composer.jsx'
 import { getCachedUser } from '../auth.js'
 import { saveDraft, clearDraft, composerDraftKey } from '../commentDrafts.js'
 import './comment-layout.css'
@@ -36,7 +37,7 @@ export function showComposer(container, xPct, yPct, route, callbacks = {}) {
   // Stop click from propagating (prevents placing another composer)
   composer.addEventListener('click', (e) => e.stopPropagation())
 
-  let instance = null
+  let root = null
   let skipDraftSave = false
   const draftKey = composerDraftKey(route)
 
@@ -84,7 +85,7 @@ export function showComposer(container, xPct, yPct, route, callbacks = {}) {
   }
 
   function destroy() {
-    // Save draft from DOM before Svelte unmounts (reactive state is unreliable after unmount)
+    // Save draft from DOM before React unmounts
     if (!skipDraftSave) {
       const textarea = composer.querySelector('textarea')
       const val = textarea?.value?.trim()
@@ -94,7 +95,7 @@ export function showComposer(container, xPct, yPct, route, callbacks = {}) {
     }
 
     window.removeEventListener('keydown', onEscape, true)
-    if (instance) { unmount(instance); instance = null }
+    if (root) { root.unmount(); root = null }
     composer.remove()
   }
 
@@ -109,25 +110,23 @@ export function showComposer(container, xPct, yPct, route, callbacks = {}) {
   }
   window.addEventListener('keydown', onEscape, true)
 
-  instance = mount(ComposerComponent, {
-    target: composer,
-    props: {
-      user,
-      route,
-      onCancel: () => {
-        clearDraft(draftKey)
-        skipDraftSave = true
-        destroy()
-        callbacks.onCancel?.()
-      },
-      onSubmit: (text) => {
-        clearDraft(draftKey)
-        skipDraftSave = true
-        destroy()
-        callbacks.onSubmitOptimistic?.(text, pos.x, pos.y)
-      },
+  root = createRoot(composer)
+  root.render(createElement(ComposerComponent, {
+    user,
+    route,
+    onCancel: () => {
+      clearDraft(draftKey)
+      skipDraftSave = true
+      destroy()
+      callbacks.onCancel?.()
     },
-  })
+    onSubmit: (text) => {
+      clearDraft(draftKey)
+      skipDraftSave = true
+      destroy()
+      callbacks.onSubmitOptimistic?.(text, pos.x, pos.y)
+    },
+  }))
 
   applyPosition()
   // Auto-focus textarea after DOM is ready

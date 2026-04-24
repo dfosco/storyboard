@@ -1,0 +1,47 @@
+.toolbar-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--sb--trigger-border, var(--color-slate-400));
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.default-button-dimmed {
+  opacity: 0.3;
+  transition: opacity 200ms;
+}
+
+.default-button-dimmed:hover,
+.default-button-dimmed:focus-within {
+  opacity: 1;
+}
+
+.tool-inactive {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.tool-dimmed {
+  opacity: 0.3;
+  transition: opacity 200ms;
+}
+.tool-dimmed:hover,
+.tool-dimmed:focus-within {
+  opacity: 1;
+}
+[data-local-only] {
+  position: relative;
+}
+[data-local-only]::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  background: hsl(212, 92%, 45%);
+  border-radius: 50%;
+  border: 2px solid var(--sb--sc-border-color, transparent);
+  box-sizing: content-box;
+  pointer-events: none;
+  z-index: 1;
+}

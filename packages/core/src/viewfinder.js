@@ -114,7 +114,7 @@ export function buildPrototypeIndex(knownRoutes = []) {
       icon: meta.icon || null,
       team: meta.team || null,
       tags: meta.tags || null,
-      hideFlows: meta.hideFlows ?? raw?.hideFlows ?? false,
+      hideFlows: meta.hideFlows ?? raw?.hideFlows ?? true,
       folder: raw?.folder || null,
       isExternal,
       externalUrl: isExternal ? raw.url : null,
@@ -139,7 +139,7 @@ export function buildPrototypeIndex(knownRoutes = []) {
           icon: null,
           team: null,
           tags: null,
-          hideFlows: false,
+          hideFlows: true,
           folder: null,
           isExternal: false,
           externalUrl: null,
@@ -199,20 +199,68 @@ export function buildPrototypeIndex(knownRoutes = []) {
   const folders = Object.values(folderMap)
   const prototypes = ungrouped
 
-  // Build canvas entries
+  // Build canvas entries — collapse grouped pages into a single entry per group
   const canvasEntries = []
-  for (const canvasName of listCanvases()) {
-    const data = getCanvasData(canvasName)
+  const seenGroups = new Map() // group name → index in canvasEntries
+  const toTitleCase = (s) => s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+  for (const canvasId of listCanvases()) {
+    const data = getCanvasData(canvasId)
     if (!data) continue
-    canvasEntries.push({
-      name: data.title || canvasName,
-      dirName: canvasName,
-      description: data.description || null,
-      route: data._route || `/${canvasName}`,
+    const meta = data._canvasMeta
+    const group = data._group || null
+
+    // Page name: use title from data, or derive from the file segment
+    const fileSegment = canvasId.split('/').pop()
+    const pageName = data.title || toTitleCase(fileSegment)
+
+    const pageEntry = {
+      name: pageName,
+      route: data._route || `/canvas/${canvasId}`,
+    }
+
+    // If this canvas belongs to a group we've already seen, add as a page
+    if (group && seenGroups.has(group)) {
+      const idx = seenGroups.get(group)
+      if (!canvasEntries[idx].pages) {
+        // Retroactively add the first page
+        const firstId = canvasEntries[idx].dirName
+        const firstData = getCanvasData(firstId)
+        const firstSegment = firstId.split('/').pop()
+        const firstName = firstData?.title || toTitleCase(firstSegment)
+        canvasEntries[idx].pages = [{ name: firstName, route: canvasEntries[idx].route }]
+      }
+      canvasEntries[idx].pages.push(pageEntry)
+      continue
+    }
+
+    const entry = {
+      name: meta?.title || data.title || canvasId,
+      dirName: canvasId,
+      description: meta?.description || data.description || null,
+      route: data._route || `/canvas/${canvasId}`,
       folder: data._folder || null,
       isCanvas: true,
-      author: data.author || null,
+      author: meta?.author || data.author || null,
       gitAuthor: data.gitAuthor || null,
+      _canvasMeta: meta || null,
+      _group: group,
+    }
+    if (group) seenGroups.set(group, canvasEntries.length)
+    canvasEntries.push(entry)
+  }
+
+  // Sort grouped canvas pages by pageOrder from .meta.json
+  for (const entry of canvasEntries) {
+    if (!entry.pages || !entry._canvasMeta?.pageOrder) continue
+    const orderMap = new Map()
+    entry._canvasMeta.pageOrder.forEach((p, idx) => {
+      const key = typeof p === 'string' ? p : p?.name
+      if (key) orderMap.set(key, idx)
+    })
+    entry.pages.sort((a, b) => {
+      const aIdx = orderMap.has(a.name) ? orderMap.get(a.name) : Infinity
+      const bIdx = orderMap.has(b.name) ? orderMap.get(b.name) : Infinity
+      return aIdx - bIdx
     })
   }
 

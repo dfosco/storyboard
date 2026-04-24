@@ -2,7 +2,7 @@
  * Tests for authModal.js — PAT entry modal lifecycle.
  *
  * Tests the modal's resolve/reject/close behavior via the imperative API.
- * Runs under the svelte vitest config since authModal.js imports a .svelte component.
+ * Runs under the React vitest config since authModal.js imports a React component.
  */
 
 import { vi } from 'vitest'

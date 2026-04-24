@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/svelte'
+import { render, screen } from '@testing-library/react'
+import React from 'react'
 import {
   registerMode,
   initTools,
@@ -7,7 +8,7 @@ import {
   setToolState,
 } from '@dfosco/storyboard-core'
 import { _resetModes } from '@test/modes'
-import ToolbarShell from '../components/ToolbarShell.svelte'
+import ToolbarShell from '../components/ToolbarShell.jsx'
 
 afterEach(() => {
   _resetModes()
@@ -19,7 +20,7 @@ afterEach(() => {
 describe('ToolbarShell', () => {
   it('renders nothing when no tools are declared', () => {
     registerMode('prototype', { label: 'Navigate' })
-    const { container } = render(ToolbarShell)
+    const { container } = render(React.createElement(ToolbarShell))
     expect(container.querySelector('[role="toolbar"]')).toBeNull()
   })
 
@@ -34,7 +35,7 @@ describe('ToolbarShell', () => {
     setToolAction('zoom', () => {})
     setToolAction('pan', () => {})
 
-    render(ToolbarShell)
+    render(React.createElement(ToolbarShell))
 
     expect(screen.getByTitle('Zoom')).toBeInTheDocument()
     expect(screen.getByTitle('Pan')).toBeInTheDocument()
@@ -47,7 +48,7 @@ describe('ToolbarShell', () => {
     })
     setToolAction('debug', () => {})
 
-    render(ToolbarShell)
+    render(React.createElement(ToolbarShell))
 
     expect(screen.getByTitle('Debug')).toBeInTheDocument()
     expect(screen.getByText('Dev')).toBeInTheDocument()
@@ -64,7 +65,7 @@ describe('ToolbarShell', () => {
     setToolAction('zoom', () => {})
     setToolAction('debug', () => {})
 
-    render(ToolbarShell)
+    render(React.createElement(ToolbarShell))
 
     const toolbars = screen.getAllByRole('toolbar')
     expect(toolbars).toHaveLength(2)
@@ -78,7 +79,7 @@ describe('ToolbarShell', () => {
       '*': [{ id: 'no-action', label: 'No Action', group: 'tools' }],
     })
 
-    render(ToolbarShell)
+    render(React.createElement(ToolbarShell))
 
     const btn = screen.getByTitle('No Action')
     expect(btn).toBeDisabled()
@@ -92,7 +93,7 @@ describe('ToolbarShell', () => {
     setToolAction('disabled-tool', () => {})
     setToolState('disabled-tool', { enabled: false })
 
-    render(ToolbarShell)
+    render(React.createElement(ToolbarShell))
 
     const btn = screen.getByTitle('Disabled')
     expect(btn).toBeDisabled()
@@ -105,7 +106,7 @@ describe('ToolbarShell', () => {
     })
     setToolState('hidden-tool', { hidden: true })
 
-    const { container } = render(ToolbarShell)
+    const { container } = render(React.createElement(ToolbarShell))
 
     expect(container.querySelector('[role="toolbar"]')).toBeNull()
   })
@@ -118,7 +119,7 @@ describe('ToolbarShell', () => {
     setToolAction('badged', () => {})
     setToolState('badged', { badge: 5 })
 
-    render(ToolbarShell)
+    render(React.createElement(ToolbarShell))
 
     expect(screen.getByText('5')).toBeInTheDocument()
   })

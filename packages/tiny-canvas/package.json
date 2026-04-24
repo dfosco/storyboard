@@ -1,9 +1,14 @@
 {
   "name": "@dfosco/tiny-canvas",
-  "version": "1.2.0",
+  "version": "4.2.0-beta.17",
   "type": "module",
   "license": "MIT",
   "description": "A lightweight React canvas with draggable elements and persistent positions",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dfosco/storyboard.git",
+    "directory": "packages/tiny-canvas"
+  },
   "main": "./dist/tiny-canvas.js",
   "module": "./dist/tiny-canvas.js",
   "types": "./src/index.d.ts",

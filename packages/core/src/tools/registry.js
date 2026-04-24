@@ -13,8 +13,13 @@ export const coreHandlers = {
   inspector:            () => import('./handlers/inspector.js'),
   devtools:             () => import('./handlers/devtools.js'),
   'feature-flags':      () => import('./handlers/featureFlags.js'),
+  autosync:             () => import('./handlers/autosync.js'),
   'canvas-add-widget':  () => import('./handlers/canvasAddWidget.js'),
-  'canvas-zoom':        () => import('./handlers/canvasZoom.js'),
+  'canvas-agents':      () => import('./handlers/canvasAgents.js'),
+  'canvas-toolbar':     () => import('./handlers/canvasToolbar.js'),
+  'hide-toolbars':      () => import('./handlers/hideToolbars.js'),
+  'command-palette':    () => import('./handlers/commandPalette.js'),
+  'hide-chrome':        () => import('./handlers/hideChrome.js'),
 }
 
 // Keep legacy export name for backward compatibility

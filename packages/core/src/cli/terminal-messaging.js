@@ -1,0 +1,167 @@
+/**
+ * Terminal Messaging CLI — send messages between terminals and save output.
+ *
+ * Commands:
+ *   storyboard terminal send <widgetId> "message"      Send a message to a terminal
+ *   storyboard terminal send --connected "message"      Send to connected peer
+ *   storyboard terminal output --summary "..." --content "..."  Save latest output
+ *   storyboard terminal status <widgetId>               Check terminal status
+ */
+
+import { getServerUrl } from './serverUrl.js'
+
+function parseArgs(args) {
+  const result = { positional: [], flags: {} }
+  for (let i = 0; i < args.length; i++) {
+    if (args[i].startsWith('--')) {
+      const key = args[i].slice(2)
+      const next = args[i + 1]
+      if (next && !next.startsWith('--')) {
+        result.flags[key] = next
+        i++
+      } else {
+        result.flags[key] = true
+      }
+    } else {
+      result.positional.push(args[i])
+    }
+  }
+  return result
+}
+
+export async function handleSend() {
+  const args = process.argv.slice(4) // skip: node, sb, terminal, send
+  const { positional, flags } = parseArgs(args)
+
+  // Resolve sender identity from env
+  const senderWidgetId = process.env.STORYBOARD_WIDGET_ID || null
+
+  let targetWidgetId = null
+  let message = null
+
+  if (flags.connected) {
+    // Auto-resolve connected peer
+    if (!senderWidgetId) {
+      console.error('Error: --connected requires $STORYBOARD_WIDGET_ID to be set')
+      process.exit(1)
+    }
+    // Read own config to find connected agent/terminal peers
+    try {
+      const { readTerminalConfigById, initTerminalConfig } = await import('../canvas/terminal-config.js')
+      initTerminalConfig(process.cwd())
+      const config = readTerminalConfigById(senderWidgetId)
+      const peers = (config?.connectedWidgets || []).filter(
+        (w) => w.type === 'terminal' || w.type === 'agent'
+      )
+      if (peers.length === 0) {
+        console.error('No connected terminal/agent peers found')
+        process.exit(1)
+      }
+      if (peers.length > 1) {
+        console.error(`Multiple peers found. Specify one: ${peers.map((p) => p.id).join(', ')}`)
+        process.exit(1)
+      }
+      targetWidgetId = peers[0].id
+    } catch (err) {
+      console.error(`Error resolving connected peer: ${err.message}`)
+      process.exit(1)
+    }
+    message = typeof flags.connected === 'string' ? flags.connected : positional[0]
+  } else {
+    targetWidgetId = positional[0]
+    message = positional.slice(1).join(' ') || flags.message
+  }
+
+  if (!targetWidgetId || !message) {
+    console.error('Usage: storyboard terminal send <widgetId> "message"')
+    console.error('       storyboard terminal send --connected "message"')
+    process.exit(1)
+  }
+
+  const serverUrl = getServerUrl()
+  try {
+    const res = await fetch(`${serverUrl}/_storyboard/canvas/terminal/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ widgetId: targetWidgetId, message, from: senderWidgetId }),
+    })
+    const data = await res.json()
+    if (data.success) {
+      if (data.queued) {
+        console.log(`Message queued for ${targetWidgetId} (agent not running, will deliver on start)`)
+      } else {
+        console.log(`Message delivered to ${targetWidgetId}`)
+      }
+    } else {
+      console.error(`Failed: ${data.error}`)
+      process.exit(1)
+    }
+  } catch (err) {
+    console.error(`Error: ${err.message}`)
+    process.exit(1)
+  }
+}
+
+export async function handleOutput() {
+  const args = process.argv.slice(4) // skip: node, sb, terminal, output
+  const { flags } = parseArgs(args)
+
+  const widgetId = flags.widget || process.env.STORYBOARD_WIDGET_ID
+  const summary = flags.summary || ''
+  const content = flags.content || ''
+
+  if (!widgetId) {
+    console.error('Error: --widget <id> or $STORYBOARD_WIDGET_ID required')
+    process.exit(1)
+  }
+
+  const serverUrl = getServerUrl()
+  try {
+    const res = await fetch(`${serverUrl}/_storyboard/canvas/terminal/output`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ widgetId, content, summary }),
+    })
+    const data = await res.json()
+    if (data.success) {
+      console.log('Output saved')
+    } else {
+      console.error(`Failed: ${data.error}`)
+      process.exit(1)
+    }
+  } catch (err) {
+    console.error(`Error: ${err.message}`)
+    process.exit(1)
+  }
+}
+
+export async function handleStatus() {
+  const args = process.argv.slice(4) // skip: node, sb, terminal, status
+  const { positional } = parseArgs(args)
+
+  const widgetId = positional[0]
+  if (!widgetId) {
+    console.error('Usage: storyboard terminal status <widgetId>')
+    process.exit(1)
+  }
+
+  try {
+    const { readTerminalConfigById, initTerminalConfig } = await import('../canvas/terminal-config.js')
+    initTerminalConfig(process.cwd())
+    const config = readTerminalConfigById(widgetId)
+    if (!config) {
+      console.error(`No config found for ${widgetId}`)
+      process.exit(1)
+    }
+    console.log(JSON.stringify({
+      widgetId: config.widgetId,
+      displayName: config.displayName || null,
+      agentStatus: config.agentStatus || null,
+      latestOutput: config.latestOutput ? { summary: config.latestOutput.summary, updatedAt: config.latestOutput.updatedAt } : null,
+      pendingMessages: (config.pendingMessages || []).length,
+    }, null, 2))
+  } catch (err) {
+    console.error(`Error: ${err.message}`)
+    process.exit(1)
+  }
+}

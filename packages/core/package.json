@@ -1,21 +1,26 @@
 {
   "name": "@dfosco/storyboard-core",
-  "version": "3.8.2",
+  "version": "4.2.0-beta.17",
   "type": "module",
   "license": "MIT",
   "bin": {
-    "storyboard-scaffold": "./src/scaffold.js"
+    "storyboard-scaffold": "./src/scaffold.js",
+    "storyboard": "./src/cli/index.js",
+    "sb": "./src/cli/index.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/dfosco/storyboard-source.git",
+    "url": "https://github.com/dfosco/storyboard.git",
     "directory": "packages/core"
   },
   "files": [
     "src",
     "dist",
     "scaffold",
-    "toolbar.config.json"
+    "toolbar.config.json",
+    "widgets.config.json",
+    "paste.config.json",
+    "commandpalette.config.json"
   ],
   "scripts": {
     "build:css": "tailwindcss -i src/styles/tailwind.css -o dist/tailwind.css --minify",
@@ -27,6 +32,9 @@
   "exports": {
     ".": "./src/index.js",
     "./toolbar.config.json": "./toolbar.config.json",
+    "./widgets.config.json": "./widgets.config.json",
+    "./paste.config.json": "./paste.config.json",
+    "./commandpalette.config.json": "./commandpalette.config.json",
     "./ui-runtime": "./dist/storyboard-ui.js",
     "./ui-runtime/style.css": "./dist/storyboard-ui.css",
     "./canvas/materializer": "./src/canvas/materializer.js",
@@ -43,13 +51,25 @@
     "./ui/design-modes": "./src/ui/design-modes.ts",
     "./ui/viewfinder": "./src/ui/viewfinder.ts",
     "./svelte-plugin-ui/styles/base.css": "./dist/tailwind.css",
-    "./styles/tailwind.css": "./dist/tailwind.css"
+    "./styles/tailwind.css": "./dist/tailwind.css",
+    "./worktree/port": "./src/worktree/port.js",
+    "./worktree/serverRegistry": "./src/worktree/serverRegistry.js",
+    "./canvas/collision": "./src/canvas/collision.js",
+    "./canvas/identity": "./src/canvas/identity.js",
+    "./config": "./src/configSchema.js",
+    "./inspector/highlighter": "./src/inspector/highlighter.js",
+    "./smooth-corners": "./src/smoothCorners.js"
   },
   "dependencies": {
+    "@clack/prompts": "^1.2.0",
     "@primer/octicons": "^19.22.0",
     "feather-icons": "^4.29.2",
+    "highlight.js": "^11.11.1",
+    "html-to-image": "^1.11.13",
     "iconoir": "^7.11.0",
-    "jsonc-parser": "^3.3.1"
+    "jsonc-parser": "^3.3.1",
+    "lucide-react": "^1.8.0",
+    "ws": "^8.0.0"
   },
   "devDependencies": {
     "@lucide/svelte": "^1.7.0",
@@ -66,5 +86,8 @@
     "tailwindcss": "^4.2.2",
     "tw-animate-css": "^1.4.0",
     "vite": "^6.0.0"
+  },
+  "optionalDependencies": {
+    "node-pty": "^1.0.0"
   }
 }

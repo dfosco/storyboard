@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import PropTypes from 'prop-types'
 import { useSearchParams } from 'react-router-dom'
 import { Text } from '@primer/react'
 import { loadFlow } from '@dfosco/storyboard-core'
@@ -40,9 +39,4 @@ export default function SceneDebug({ flowName, sceneName } = {}) {
       </pre>
     </div>
   )
-}
-
-SceneDebug.propTypes = {
-  flowName: PropTypes.string,
-  sceneName: PropTypes.string,
 }

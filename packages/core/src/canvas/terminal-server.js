@@ -616,6 +616,38 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
         `export STORYBOARD_SERVER_URL="${serverUrl}"`,
         ...Object.entries(TMUX_SHELL_OVERRIDES).map(([k, v]) => `export ${k}="${v}"`),
       ]
+
+      // Write shell aliases for `start` and agent shorthand commands.
+      // These are sourced once and available for the session lifetime,
+      // so users can always run `start` to get back to the welcome screen
+      // or `start copilot`, `copilot`, etc. to launch agents.
+      const canvasArg = canvasId !== 'unknown' ? canvasId : ''
+      const nameArg = prettyName ? ` --name "${prettyName}"` : ''
+      const welcomeBase = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}`
+
+      let aliasLines = [
+        '# Storyboard terminal aliases — auto-generated, do not edit',
+        `start() { if [ $# -eq 0 ]; then ${welcomeBase}; else ${welcomeBase} --startup "$*"; fi; }`,
+      ]
+
+      // Read agent configs and create shorthand aliases (copilot, claude, codex, etc.)
+      try {
+        const raw = readFileSync(resolve(process.cwd(), 'storyboard.config.json'), 'utf8')
+        const agentsConfig = JSON.parse(raw)?.canvas?.agents
+        if (agentsConfig && typeof agentsConfig === 'object') {
+          for (const [id, cfg] of Object.entries(agentsConfig)) {
+            if (!cfg.startupCommand) continue
+            // e.g. copilot() { start copilot --agent terminal-agent "$@"; }
+            // User flags are appended after the base command
+            aliasLines.push(`${id}() { start ${cfg.startupCommand} "$@"; }`)
+          }
+        }
+      } catch {}
+
+      const aliasFile = join(cwd, '.storyboard', 'terminals', `${widgetId}.aliases.sh`)
+      try { writeFileSync(aliasFile, aliasLines.join('\n') + '\n') } catch {}
+      envParts.push(`source "${aliasFile}"`)
+
       // Chain clear into env exports so it runs synchronously after exports
       // complete, avoiding a timing race where clear leaks into the agent prompt
       if (startupCommand) envParts.push('clear')
@@ -646,10 +678,8 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
         if (startupCommand === 'shell') {
           // Plain shell — route through welcome with --startup shell so it
           // returns to the welcome screen on exit
-          const canvasArg = canvasId !== 'unknown' ? canvasId : ''
-          const nameArg = prettyName ? ` --name "${prettyName}"` : ''
           setTimeout(() => {
-            const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg} --startup shell\r`
+            const cmd = `${welcomeBase} --startup shell\r`
             ptyProcess.write(cmd)
           }, 800)
         } else if (agentCfg || startupCommand !== 'shell') {
@@ -658,11 +688,9 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
           const cmd = agentCfg?.startupCommand || startupCommand
           const postStartup = agentCfg?.postStartup || null
           const readinessSignal = agentCfg?.readinessSignal || null
-          const canvasArg = canvasId !== 'unknown' ? canvasId : ''
-          const nameArg = prettyName ? ` --name "${prettyName}"` : ''
 
           setTimeout(() => {
-            const welcomeCmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg} --startup ${JSON.stringify(cmd)}`
+            const welcomeCmd = `${welcomeBase} --startup ${JSON.stringify(cmd)}`
             ptyProcess.write(welcomeCmd + '\r')
 
             if (readinessSignal) {
@@ -699,11 +727,8 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
         }
       } else {
         // No startupCommand — show the welcome screen as before
-        const canvasArg = canvasId !== 'unknown' ? canvasId : ''
         setTimeout(() => {
-          const nameArg = prettyName ? ` --name "${prettyName}"` : ''
-          const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}\r`
-          ptyProcess.write(cmd)
+          ptyProcess.write(`${welcomeBase}\r`)
         }, 800)
       }
 

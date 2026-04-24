@@ -96,11 +96,11 @@
 }
 
 /* Push page content down */
-:global(html:has([data-branch-bar])) {
+:global(html:has([data-branch-bar]):not(.storyboard-chrome-hidden)) {
   --sb-branch-bar-height: 32px;
 }
 
-:global(html:has([data-branch-bar]) body) {
+:global(html:has([data-branch-bar]):not(.storyboard-chrome-hidden) body) {
   padding-top: 32px;
 }
 

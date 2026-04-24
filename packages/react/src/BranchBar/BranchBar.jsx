@@ -16,7 +16,9 @@ function checkLocalDev() {
 }
 
 export default function BranchBar({ basePath }) {
-  const [hidden, setHidden] = useState(false)
+  const [hidden, setHidden] = useState(
+    () => typeof document !== 'undefined' && document.documentElement.classList.contains('storyboard-chrome-hidden')
+  )
 
   const isHiddenByParam = useMemo(() => {
     if (typeof window === 'undefined') return false

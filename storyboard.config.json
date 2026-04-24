@@ -38,7 +38,7 @@
       "defaultStartupSequence": null,
       "resizable": true,
       "defaultWidth": 1000,
-      "defaultHeight": 450
+      "defaultHeight": 800
     },
     "agents": {
       "copilot": {

@@ -1476,6 +1476,36 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     }
   }, [canvasId, loading])
 
+  // Debounced viewport-changed HMR event — sends position/zoom to Vite server
+  // so the selected-widgets bridge can write it to disk for agents.
+  useEffect(() => {
+    if (!import.meta.hot) return
+    const el = scrollRef.current
+    if (!el) return
+
+    const tabId = selectionTabIdRef.current
+
+    function sendViewport() {
+      const viewport = getViewportData()
+      if (viewport) {
+        import.meta.hot.send('storyboard:viewport-changed', { tabId, canvasId, viewport })
+      }
+    }
+
+    const debouncedSend = debounce(sendViewport, 500)
+
+    function handleScroll() { debouncedSend() }
+    el.addEventListener('scroll', handleScroll, { passive: true })
+
+    // Also send on zoom commits (zoom state changes trigger this effect)
+    sendViewport()
+
+    return () => {
+      debouncedSend.cancel()
+      el.removeEventListener('scroll', handleScroll)
+    }
+  }, [canvasId, zoom, loading, getViewportData])
+
   /**
    * Zoom to a new level, anchoring on an optional client-space point.
    * When a cursor position is provided (e.g. from a wheel event), the
@@ -1590,6 +1620,26 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   // Uses a stable tabId to survive WebSocket reconnects.
   const selectionTabIdRef = useRef(Math.random().toString(36).slice(2, 10))
 
+  // Gather current viewport data from refs (safe for callbacks/timeouts)
+  const getViewportData = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return null
+    const scale = zoomRef.current / 100
+    const scrollLeft = el.scrollLeft
+    const scrollTop = el.scrollTop
+    const cw = el.clientWidth
+    const ch = el.clientHeight
+    return {
+      centerX: Math.round((scrollLeft + cw / 2) / scale),
+      centerY: Math.round((scrollTop + ch / 2) / scale),
+      zoom: zoomRef.current,
+      topLeftX: Math.round(scrollLeft / scale),
+      topLeftY: Math.round(scrollTop / scale),
+      width: Math.round(cw / scale),
+      height: Math.round(ch / scale),
+    }
+  }, [])
+
   // Gather selected widget data from refs (safe for callbacks/timeouts)
   const getSelectedWidgetData = useCallback(() => {
     const ids = [...selectedIdsRef.current]
@@ -1615,7 +1665,8 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
     function sendFocus() {
       const { widgetIds, widgets } = getSelectedWidgetData()
-      import.meta.hot.send('storyboard:canvas-focused', { tabId, canvasId, widgetIds, widgets })
+      const viewport = getViewportData()
+      import.meta.hot.send('storyboard:canvas-focused', { tabId, canvasId, widgetIds, widgets, viewport })
     }
 
     sendFocus()
@@ -1642,7 +1693,8 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     const tabId = selectionTabIdRef.current
     const timer = setTimeout(() => {
       const { widgetIds, widgets } = getSelectedWidgetData()
-      import.meta.hot.send('storyboard:selection-changed', { tabId, canvasId, widgetIds: widgetIds, widgets })
+      const viewport = getViewportData()
+      import.meta.hot.send('storyboard:selection-changed', { tabId, canvasId, widgetIds: widgetIds, widgets, viewport })
     }, 500)
 
     return () => clearTimeout(timer)

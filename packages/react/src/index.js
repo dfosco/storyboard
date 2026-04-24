@@ -36,8 +36,10 @@ export { FormContext } from './context/FormContext.js'
 // Design mode hook (keep — React apps may still read mode state)
 // ModeSwitch and ToolbarShell UI moved to @dfosco/storyboard-svelte-ui
 
-// Viewfinder dashboard
-export { default as Viewfinder } from './Viewfinder.jsx'
+// Workspace dashboard
+export { default as Workspace } from './Workspace.jsx'
+// Deprecated alias — use Workspace instead
+export { default as Viewfinder } from './Workspace.jsx'
 
 // Command Palette (includes BranchBar automatically)
 export { default as StoryboardCommandPalette } from './CommandPalette/CommandPalette.jsx'

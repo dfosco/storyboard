@@ -1,11 +1,11 @@
 import { flows } from 'virtual:storyboard-data-index'
-import { Viewfinder } from '@dfosco/storyboard-react'
+import { Workspace } from '@dfosco/storyboard-react'
 
 const pageModules = import.meta.glob('/src/prototypes/*.jsx')
 
 export default function WorkspacePage() {
   return (
-    <Viewfinder
+    <Workspace
       title="Storyboard"
       subtitle="Where design work goes"
       flows={flows}

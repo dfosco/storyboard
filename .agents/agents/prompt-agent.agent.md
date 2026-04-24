@@ -132,7 +132,9 @@ npx storyboard canvas add sticky-note --canvas <canvas-name> --props '{"text":"H
 
 ### Creating widgets on the canvas
 
-If your task requires creating new widgets (e.g. "create a plan", "add tasks"), create them and connect them to your prompt widget:
+If your task requires creating new widgets (e.g. "create a plan", "add tasks"), create them and connect them to your prompt widget.
+
+**Positioning:** Read `.storyboard/.selectedwidgets.json` for the `viewport` field — place new widgets near `viewport.centerX, viewport.centerY` so they appear in the user's current view. If no viewport data, place relative to your own prompt widget position.
 
 ```bash
 # Create widget

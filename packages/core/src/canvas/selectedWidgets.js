@@ -1,9 +1,10 @@
 /**
- * Selected Widgets Bridge — real-time canvas selection context for Copilot.
+ * Selected Widgets Bridge — real-time canvas selection & viewport context for agents.
  *
  * Writes `.selectedwidgets.json` at the project root with the currently
- * focused canvas and selected widgets. Copilot reads this file on every
- * prompt to understand what the user is looking at.
+ * focused canvas, selected widgets, and user viewport position/zoom.
+ * Agents read this file on every prompt to understand what the user is
+ * looking at and where to place new widgets.
  *
  * Communication flow:
  *   Browser (CanvasPage.jsx) → HMR events → this module → file on disk
@@ -11,6 +12,7 @@
  * Events listened for:
  *   storyboard:canvas-focused     — tab gained focus or canvas mounted
  *   storyboard:selection-changed  — widget selection changed (debounced client-side)
+ *   storyboard:viewport-changed   — user scrolled/zoomed (debounced 500ms)
  *   storyboard:canvas-unfocused   — canvas unmounted or tab lost focus
  */
 
@@ -97,6 +99,22 @@ function clearSelectedWidgets(root) {
 }
 
 /**
+ * Read the current viewport from `.selectedwidgets.json`.
+ * Returns the viewport object or null if unavailable.
+ *
+ * @param {string} root — project root directory
+ * @returns {{ centerX: number, centerY: number, zoom: number, topLeftX: number, topLeftY: number, width: number, height: number } | null}
+ */
+export function readCurrentViewport(root) {
+  const filePath = path.join(root, DIR_NAME, FILE_NAME)
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8')
+    const data = JSON.parse(raw)
+    return data?.viewport || null
+  } catch { return null }
+}
+
+/**
  * Set up the selected-widgets bridge on a Vite dev server.
  *
  * @param {import('vite').ViteDevServer} server
@@ -111,7 +129,7 @@ export function setupSelectedWidgets(server, root) {
   if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true })
   if (!fs.existsSync(filePath)) {
     writeSelectedWidgets(root, {
-      canvasId: null, canvasFile: null, selectedWidgetIds: [], widgets: [],
+      canvasId: null, canvasFile: null, selectedWidgetIds: [], widgets: [], viewport: null,
     })
   }
 
@@ -122,6 +140,8 @@ export function setupSelectedWidgets(server, root) {
   let activeCanvasFile = null
   let activeWidgetIds = []
   let activeWidgets = []
+  let activeViewport = null
+  let lastViewportJson = null
 
   function writeCurrentState() {
     writeSelectedWidgets(root, {
@@ -129,13 +149,14 @@ export function setupSelectedWidgets(server, root) {
       canvasFile: activeCanvasFile,
       selectedWidgetIds: activeWidgetIds,
       widgets: activeWidgets,
+      viewport: activeViewport,
     })
   }
 
   // --- HMR event listeners ---
 
   server.hot.on('storyboard:canvas-focused', (data, client) => {
-    const { tabId, canvasId, widgetIds = [], widgets = [] } = data || {}
+    const { tabId, canvasId, widgetIds = [], widgets = [], viewport = null } = data || {}
     if (!tabId || !canvasId) return
 
     activeTabId = tabId
@@ -144,12 +165,13 @@ export function setupSelectedWidgets(server, root) {
     activeCanvasFile = resolvePath(canvasId)
     activeWidgetIds = widgetIds
     activeWidgets = widgets
+    if (viewport) activeViewport = viewport
 
     writeCurrentState()
   })
 
   server.hot.on('storyboard:selection-changed', (data) => {
-    const { tabId, canvasId, widgetIds = [], widgets = [] } = data || {}
+    const { tabId, canvasId, widgetIds = [], widgets = [], viewport = null } = data || {}
     if (!tabId || !canvasId) return
 
     // Only accept updates from the active tab
@@ -157,6 +179,7 @@ export function setupSelectedWidgets(server, root) {
 
     activeWidgetIds = widgetIds
     activeWidgets = widgets
+    if (viewport) activeViewport = viewport
 
     // Update canvas info in case it changed (e.g. page navigation within same tab)
     if (canvasId !== activeCanvasId) {
@@ -164,6 +187,22 @@ export function setupSelectedWidgets(server, root) {
       activeCanvasFile = resolvePath(canvasId)
     }
 
+    writeCurrentState()
+  })
+
+  server.hot.on('storyboard:viewport-changed', (data) => {
+    const { tabId, canvasId, viewport } = data || {}
+    if (!tabId || !canvasId || !viewport) return
+
+    // Only accept from active tab AND matching canvas
+    if (tabId !== activeTabId || canvasId !== activeCanvasId) return
+
+    // Skip write if viewport hasn't changed (dedupe)
+    const json = JSON.stringify(viewport)
+    if (json === lastViewportJson) return
+    lastViewportJson = json
+
+    activeViewport = viewport
     writeCurrentState()
   })
 
@@ -180,6 +219,8 @@ export function setupSelectedWidgets(server, root) {
     activeCanvasFile = null
     activeWidgetIds = []
     activeWidgets = []
+    activeViewport = null
+    lastViewportJson = null
 
     clearSelectedWidgets(root)
   })
@@ -196,6 +237,8 @@ export function setupSelectedWidgets(server, root) {
       activeCanvasFile = null
       activeWidgetIds = []
       activeWidgets = []
+      activeViewport = null
+      lastViewportJson = null
       clearSelectedWidgets(root)
     }
   }, CLEANUP_INTERVAL_MS)

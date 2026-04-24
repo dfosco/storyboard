@@ -209,9 +209,10 @@ Where:
 
 **Implicit reference** — If the user says "to the right of the blue sticky" without an ID, read the canvas state and find the matching widget by type + props (e.g. a sticky-note with `color: "blue"`). If ambiguous, ask.
 
-**No position given** — Place at a sensible location:
-- If the canvas is empty, start at `(0, 0)`.
-- If there are existing widgets, place to the right of the rightmost widget or below the last row.
+**No position given** — Place near the user's viewport:
+1. Read `.storyboard/.selectedwidgets.json` and check the `viewport` field
+2. If viewport exists, place near `viewport.centerX, viewport.centerY` (offset slightly to avoid overlap with existing widgets)
+3. If no viewport data, fall back to: empty canvas → `(0, 0)`, otherwise → right of rightmost widget or below last row
 
 ### Step 4: Execute the operation
 

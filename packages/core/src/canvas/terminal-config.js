@@ -17,6 +17,7 @@ import { createHash } from 'node:crypto'
 import { execSync } from 'node:child_process'
 import { findByWorktree } from '../worktree/serverRegistry.js'
 import { detectWorktreeName } from '../worktree/port.js'
+import { readCurrentViewport } from './selectedWidgets.js'
 
 const TERMINALS_DIR = '.storyboard/terminals'
 
@@ -93,6 +94,7 @@ export function preReserveTerminalIdentity({ widgetId, preDisplayName, canvasId,
     connectedWidgets: [],
     messaging: null,
     agentStatus: null,
+    viewport: readCurrentViewport(rootDir) || null,
     updatedAt: new Date().toISOString(),
   }
   atomicWrite(fp, data)
@@ -140,6 +142,7 @@ export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = n
     widgetProps: widgetProps || existing.widgetProps || null,
     connectedWidgets: existing.connectedWidgets || [],
     agentStatus: existing.agentStatus || null,
+    viewport: readCurrentViewport(rootDir) || existing.viewport || null,
     updatedAt: new Date().toISOString(),
   }
 
@@ -186,6 +189,7 @@ export function updateTerminalConnections({ branch, canvasId, widgetId, connecte
   }
   config.connectedWidgets = connectedWidgets || []
   config.messaging = messaging || null
+  config.viewport = readCurrentViewport(rootDir) || config.viewport || null
   config.updatedAt = new Date().toISOString()
 
   atomicWrite(fp, config)

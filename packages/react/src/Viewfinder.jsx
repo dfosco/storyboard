@@ -1,8 +1,8 @@
 /**
- * Viewfinder — SaaS-style homescreen for Storyboard.
+ * Workspace — SaaS-style homescreen for Storyboard.
  *
- * Replaces the old list-based Viewfinder with a sidebar + grid layout.
- * Wired to real data from buildPrototypeIndex and listStories.
+ * Sidebar + grid layout wired to real data from buildPrototypeIndex and listStories.
+ * Formerly known as Viewfinder — renamed to match the /workspace route.
  */
 import { useState, useEffect, useRef, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
@@ -1176,7 +1176,7 @@ function UserSettingsDialog({ open, onOpenChange, user, onRemoveToken }) {
 
 /* ─── Main Component ─── */
 
-export default function Viewfinder({
+export default function Workspace({
   pageModules = {},
   basePath,
   title = 'Storyboard',

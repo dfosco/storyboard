@@ -151,6 +151,8 @@ npx storyboard canvas add sticky-note --canvas <canvas-name> --props '{"text":"H
 npx storyboard canvas add markdown --canvas <canvas-name> --x 100 --y 200
 ```
 
+**Positioning:** Your terminal config at `.storyboard/terminals/<widgetId>.json` includes a `viewport` field with the user's last known position (`centerX`, `centerY`, `zoom`). Place new widgets near the viewport center so they appear in the user's view. If no viewport, place relative to your own widget position.
+
 **Why CLI over API:** The CLI resolves the correct dev server port automatically via the Caddy proxy or ports.json. You never need to know the port number. All commands work from any worktree directory.
 
 ## Step 4: Connect every widget you create

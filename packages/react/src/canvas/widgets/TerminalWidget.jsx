@@ -68,8 +68,12 @@ function fitTerminalToElement(widgetId, containerEl) {
   const cw = term.renderer?.charWidth
   const ch = term.renderer?.charHeight
   if (!cw || !ch) return
-  const cols = Math.max(10, Math.floor(containerEl.clientWidth / cw))
-  const rows = Math.max(4, Math.floor(containerEl.clientHeight / ch))
+  const w = containerEl.clientWidth
+  const h = containerEl.clientHeight
+  // Skip if container hasn't laid out yet (flex: 1 may not have resolved)
+  if (w < 50 || h < 50) return
+  const cols = Math.max(10, Math.floor(w / cw))
+  const rows = Math.max(4, Math.floor(h / ch))
   term.resize?.(cols, rows)
   if (ws?.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'resize', cols, rows }))
@@ -414,11 +418,10 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
       }
     }
 
-    const timer = setTimeout(() => {
-      fitAll()
-      setInteractive(true)
-      termRef.current?.focus?.()
-    }, 100)
+    // Initial fit after DOM has settled (reparent + flex layout)
+    const t1 = setTimeout(fitAll, 150)
+    // Second pass catches late layout (e.g. secondary reparent finishing)
+    const t2 = setTimeout(fitAll, 400)
 
     const ro = new ResizeObserver(() => fitAll())
     ro.observe(expandContainerRef.current)
@@ -426,8 +429,16 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
       ro.observe(secondaryTermRef.current)
     }
 
+    // Set interactive after first fit
+    const t3 = setTimeout(() => {
+      setInteractive(true)
+      termRef.current?.focus?.()
+    }, 200)
+
     return () => {
-      clearTimeout(timer)
+      clearTimeout(t1)
+      clearTimeout(t2)
+      clearTimeout(t3)
       ro.disconnect()
     }
   }, [expanded, isSecondaryTerminal, connectedEmbed?.id])

@@ -1476,6 +1476,26 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     }
   }, [canvasId, loading])
 
+  // Gather current viewport data from refs (safe for callbacks/timeouts)
+  const getViewportData = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return null
+    const scale = zoomRef.current / 100
+    const scrollLeft = el.scrollLeft
+    const scrollTop = el.scrollTop
+    const cw = el.clientWidth
+    const ch = el.clientHeight
+    return {
+      centerX: Math.round((scrollLeft + cw / 2) / scale),
+      centerY: Math.round((scrollTop + ch / 2) / scale),
+      zoom: zoomRef.current,
+      topLeftX: Math.round(scrollLeft / scale),
+      topLeftY: Math.round(scrollTop / scale),
+      width: Math.round(cw / scale),
+      height: Math.round(ch / scale),
+    }
+  }, [])
+
   // Debounced viewport-changed HMR event — sends position/zoom to Vite server
   // so the selected-widgets bridge can write it to disk for agents.
   useEffect(() => {
@@ -1619,26 +1639,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   // Writes .selectedwidgets.json so Copilot knows which canvas/widgets are active.
   // Uses a stable tabId to survive WebSocket reconnects.
   const selectionTabIdRef = useRef(Math.random().toString(36).slice(2, 10))
-
-  // Gather current viewport data from refs (safe for callbacks/timeouts)
-  const getViewportData = useCallback(() => {
-    const el = scrollRef.current
-    if (!el) return null
-    const scale = zoomRef.current / 100
-    const scrollLeft = el.scrollLeft
-    const scrollTop = el.scrollTop
-    const cw = el.clientWidth
-    const ch = el.clientHeight
-    return {
-      centerX: Math.round((scrollLeft + cw / 2) / scale),
-      centerY: Math.round((scrollTop + ch / 2) / scale),
-      zoom: zoomRef.current,
-      topLeftX: Math.round(scrollLeft / scale),
-      topLeftY: Math.round(scrollTop / scale),
-      width: Math.round(cw / scale),
-      height: Math.round(ch / scale),
-    }
-  }, [])
 
   // Gather selected widget data from refs (safe for callbacks/timeouts)
   const getSelectedWidgetData = useCallback(() => {

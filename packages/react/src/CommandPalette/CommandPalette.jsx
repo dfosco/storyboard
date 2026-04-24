@@ -642,7 +642,6 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
         closeOnSelect: entryCloseOnSelect,
         onClick: () => {
           document.documentElement.classList.toggle('storyboard-chrome-hidden')
-          setRefreshKey(k => k + 1)
         },
       })
       continue

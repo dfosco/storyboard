@@ -977,10 +977,16 @@ export default function StoryboardCommandPalette({ basePath }) {
 
   const handleChangeOpen = useCallback((value) => {
     if (!value) {
+      // Escape from a sub-page goes back to root instead of closing
+      if (activePage !== 'root') {
+        setActivePage('root')
+        setSearch('')
+        return
+      }
       setOpen(false)
       setActivePage('root')
     }
-  }, [])
+  }, [activePage])
 
   // Flatten sub-page options into searchable groups so they appear in root search
   const subPageGroups = useMemo(() => {

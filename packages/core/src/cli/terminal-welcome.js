@@ -5,8 +5,14 @@
  * Runs inside tmux, presents a Clack select prompt, loops back after
  * the chosen program exits.
  *
+ * When called with --startup <cmd>, auto-launches that command on the first
+ * iteration, then falls back to the interactive menu on subsequent iterations
+ * (i.e. when the command exits). This makes the welcome screen the universal
+ * supervisor for all terminal widget sessions.
+ *
  * Usage (called automatically by terminal-server for new sessions):
  *   storyboard terminal-welcome [--branch <name>] [--canvas <name>]
+ *   storyboard terminal-welcome --startup "copilot --agent terminal-agent" [--branch <name>] [--canvas <name>]
  */
 
 import * as p from '@clack/prompts'
@@ -48,6 +54,7 @@ const flagSchema = {
   branch: { type: 'string', description: 'Current branch name' },
   canvas: { type: 'string', description: 'Current canvas name' },
   name: { type: 'string', description: 'Terminal pretty name' },
+  startup: { type: 'string', description: 'Auto-launch this command on first iteration' },
 }
 
 const { flags } = parseFlags(process.argv.slice(3), flagSchema)
@@ -55,16 +62,24 @@ const branch = flags.branch || 'unknown'
 const canvas = flags.canvas || 'unknown'
 const prettyName = flags.name || null
 const canvasShort = canvas === 'unknown' ? canvas : canvas.split('/').pop()
+const startupCmd = flags.startup || null
 
 /**
- * Launch an agent by parsing and spawning its startupCommand.
- * If the command is `copilot`, also polls for readiness and sends /allow-all.
+ * Reset terminal state after a child process exits.
+ * Children (especially TUI apps) may leave the terminal in raw mode,
+ * alternate screen, or with the cursor hidden.
+ */
+function resetTerminal() {
+  // Leave alternate screen, show cursor, reset attributes
+  process.stdout.write('\x1b[?1049l\x1b[?25h\x1b[0m')
+  try { execSync('stty sane 2>/dev/null', { stdio: 'ignore' }) } catch {}
+}
+
+/**
+ * Launch an agent by spawning its startupCommand via the user's shell.
+ * If the command starts with `copilot`, also polls for readiness and sends /allow-all.
  */
 async function launchAgent(agent) {
-  const parts = agent.startupCommand.split(/\s+/)
-  const cmd = parts[0]
-  const args = parts.slice(1)
-
   // Show metadata after selection
   const meta = [
     prettyName ? `${dim('name:')} ${blue(prettyName)}` : null,
@@ -76,11 +91,13 @@ async function launchAgent(agent) {
   setMouse(true)
 
   try {
-    const child = spawn(cmd, args, { stdio: 'inherit' })
+    const shell = process.env.SHELL || '/bin/zsh'
+    const child = spawn(shell, ['-lc', agent.startupCommand], { stdio: 'inherit' })
 
     // For copilot, poll for readiness and pre-type /allow-all
     let pollInterval = null
-    if (cmd === 'copilot') {
+    const firstWord = agent.startupCommand.trim().split(/\s+/)[0]
+    if (firstWord === 'copilot') {
       let autopilotSent = false
       pollInterval = setInterval(() => {
         if (autopilotSent) { clearInterval(pollInterval); return }
@@ -118,7 +135,40 @@ async function launchAgent(agent) {
 }
 
 async function welcomeLoop() {
+  let firstIteration = true
+
   while (true) {
+    // On first iteration with --startup, auto-launch the command
+    if (firstIteration && startupCmd) {
+      firstIteration = false
+
+      if (startupCmd === 'shell') {
+        // Plain shell — spawn interactive shell, return to welcome on exit
+        setMouse(true)
+        try {
+          const shell = process.env.SHELL || '/bin/zsh'
+          const child = spawn(shell, [], { stdio: 'inherit' })
+          await new Promise((resolve) => {
+            child.on('close', resolve)
+            child.on('error', resolve)
+          })
+        } catch {}
+        resetTerminal()
+        continue
+      }
+
+      // Try to match against a configured agent for label resolution
+      const matchedAgent = agents.find(a =>
+        startupCmd.startsWith(a.startupCommand?.split(' ')[0])
+      )
+      const agent = matchedAgent || { label: startupCmd.split(/\s+/)[0], startupCommand: startupCmd }
+      await launchAgent(agent)
+      resetTerminal()
+      continue
+    }
+    firstIteration = false
+
+    resetTerminal()
     setMouse(false)
     console.clear()
     p.intro(`${bold('storyboard terminal')}`)

@@ -644,15 +644,26 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
         })()
 
         if (startupCommand === 'shell') {
-          // Plain shell — nothing to do, the pty already has a shell running
+          // Plain shell — route through welcome with --startup shell so it
+          // returns to the welcome screen on exit
+          const canvasArg = canvasId !== 'unknown' ? canvasId : ''
+          const nameArg = prettyName ? ` --name "${prettyName}"` : ''
+          setTimeout(() => {
+            const cmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg} --startup shell\r`
+            ptyProcess.write(cmd)
+          }, 800)
         } else if (agentCfg || startupCommand !== 'shell') {
-          // Agent or custom command — use config-driven startup
+          // Agent or custom command — route through welcome with --startup
+          // so the welcome screen appears when the agent exits
           const cmd = agentCfg?.startupCommand || startupCommand
           const postStartup = agentCfg?.postStartup || null
           const readinessSignal = agentCfg?.readinessSignal || null
+          const canvasArg = canvasId !== 'unknown' ? canvasId : ''
+          const nameArg = prettyName ? ` --name "${prettyName}"` : ''
 
           setTimeout(() => {
-            ptyProcess.write(cmd + '\r')
+            const welcomeCmd = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg} --startup ${JSON.stringify(cmd)}`
+            ptyProcess.write(welcomeCmd + '\r')
 
             if (readinessSignal) {
               // Poll for readiness, then send postStartup command and deliver messages

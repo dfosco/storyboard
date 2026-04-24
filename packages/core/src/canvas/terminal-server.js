@@ -602,11 +602,58 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
         const nameArgVal = prettyName ? ` --name "${prettyName}"` : ''
         const welcomeBase = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArgVal}`
 
+        // Write real executable scripts to .storyboard/terminals/bin/ and
+        // prepend that dir to PATH via tmux set-environment. This makes
+        // `start`, `copilot`, `claude`, `codex` available in ANY shell
+        // inside the tmux session — even bare shells after a crash.
+        const binDir = join(envDir, 'bin')
+        try { mkdirSync(binDir, { recursive: true }) } catch {}
+
+        // `start` — opens welcome screen (no args) or launches a command
+        const startScript = [
+          '#!/usr/bin/env sh',
+          `if [ $# -eq 0 ]; then`,
+          `  ${welcomeBase}`,
+          `else`,
+          `  ${welcomeBase} --startup "$*"`,
+          `fi`,
+        ].join('\n') + '\n'
+        try {
+          writeFileSync(join(binDir, 'start'), startScript, { mode: 0o755 })
+        } catch {}
+
+        // Agent shorthand scripts (copilot, claude, codex, etc.)
+        try {
+          const raw = readFileSync(resolve(process.cwd(), 'storyboard.config.json'), 'utf8')
+          const agentsConfig = JSON.parse(raw)?.canvas?.agents
+          if (agentsConfig && typeof agentsConfig === 'object') {
+            for (const [id, cfg] of Object.entries(agentsConfig)) {
+              if (!cfg.startupCommand) continue
+              const agentScript = [
+                '#!/usr/bin/env sh',
+                `exec start ${cfg.startupCommand} "$@"`,
+              ].join('\n') + '\n'
+              try {
+                writeFileSync(join(binDir, id), agentScript, { mode: 0o755 })
+              } catch {}
+            }
+          }
+        } catch {}
+
+        // Prepend bin dir to PATH in the tmux session environment.
+        // Every new shell in this session will inherit the updated PATH.
+        try {
+          const currentPath = process.env.PATH || '/usr/bin:/bin'
+          if (!currentPath.includes(binDir)) {
+            execSync(`tmux set-environment -t "${targetName}" PATH "${binDir}:${currentPath}" 2>/dev/null`, { stdio: 'ignore' })
+          }
+        } catch {}
+
+        // Also keep the sourceable aliases file for backwards compatibility
         const aliasLines = [
           '# Storyboard terminal aliases — auto-generated, do not edit',
           `start() { if [ $# -eq 0 ]; then ${welcomeBase}; else ${welcomeBase} --startup "$*"; fi; }`,
         ]
-
         try {
           const raw = readFileSync(resolve(process.cwd(), 'storyboard.config.json'), 'utf8')
           const agentsConfig = JSON.parse(raw)?.canvas?.agents
@@ -617,7 +664,6 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
             }
           }
         } catch {}
-
         const aliasFile = join(envDir, `${widgetId}.aliases.sh`)
         try { writeFileSync(aliasFile, aliasLines.join('\n') + '\n') } catch {}
       } catch {}
@@ -648,9 +694,10 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
         ...Object.entries(TMUX_SHELL_OVERRIDES).map(([k, v]) => `export ${k}="${v}"`),
       ]
 
-      // Source the aliases file (written by hideStatus above for every connection)
-      const aliasFile = join(cwd, '.storyboard', 'terminals', `${widgetId}.aliases.sh`)
-      envParts.push(`source "${aliasFile}"`)
+      // Prepend the bin dir to PATH for the initial shell (tmux set-environment
+      // handles future shells, but the first shell is already running)
+      const binDir = join(cwd, '.storyboard', 'terminals', 'bin')
+      envParts.push(`export PATH="${binDir}:$PATH"`)
 
       // Chain clear into env exports so it runs synchronously after exports
       // complete, avoiding a timing race where clear leaks into the agent prompt

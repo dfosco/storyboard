@@ -609,13 +609,16 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
         const binDir = join(envDir, 'bin')
         try { mkdirSync(binDir, { recursive: true }) } catch {}
 
-        // `start` — opens welcome screen (no args) or launches a command
+        // `start` — opens welcome screen (no args) or launches a command.
+        // Uses `exec` to REPLACE the current shell, preventing nested
+        // welcome→shell→welcome→shell stacking. The parent welcome (if any)
+        // sees its child close and loops back to its menu.
         const startScript = [
           '#!/usr/bin/env sh',
           `if [ $# -eq 0 ]; then`,
-          `  ${welcomeBase}`,
+          `  exec ${welcomeBase}`,
           `else`,
-          `  ${welcomeBase} --startup "$*"`,
+          `  exec ${welcomeBase} --startup "$*"`,
           `fi`,
         ].join('\n') + '\n'
         try {

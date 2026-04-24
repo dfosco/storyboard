@@ -57,5 +57,4 @@ export default function ResizeHandle({ targetRef, minWidth = 180, minHeight = 60
       aria-label="Resize"
     />
   )
-  )
 }

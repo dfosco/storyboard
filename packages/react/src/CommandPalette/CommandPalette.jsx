@@ -343,7 +343,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
       id: `create-widget:${type}`,
       children: def.label,
       keywords: ['add', 'widget', 'create', type, def.label.toLowerCase()],
-      itemType: 'create',
+      itemType: type,
       onClick: () => {
         document.dispatchEvent(new CustomEvent('storyboard:canvas:add-widget', { detail: { type } }))
       },

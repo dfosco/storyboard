@@ -129,6 +129,8 @@
     "starred": "primer/star-fill",
     "recent": "primer/clock",
     "create": "iconoir/plus-circle",
+    "sticky-note": "feather/edit-3",
+    "markdown": "feather/file-text",
     "command": "feather/zap",
     "link": "feather/external-link",
     "home": "primer/home-fill",

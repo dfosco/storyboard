@@ -594,6 +594,32 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
             .join('\n') + '\n'
           writeFileSync(join(envDir, `${targetName}.env`), envContent)
         } catch { /* best effort */ }
+
+        // Write shell aliases for `start` and agent shorthand commands.
+        // Written on every connection (not just new sessions) so the file
+        // is always available and up-to-date for manual sourcing.
+        const canvasArg = canvasId !== 'unknown' ? canvasId : ''
+        const nameArgVal = prettyName ? ` --name "${prettyName}"` : ''
+        const welcomeBase = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArgVal}`
+
+        const aliasLines = [
+          '# Storyboard terminal aliases — auto-generated, do not edit',
+          `start() { if [ $# -eq 0 ]; then ${welcomeBase}; else ${welcomeBase} --startup "$*"; fi; }`,
+        ]
+
+        try {
+          const raw = readFileSync(resolve(process.cwd(), 'storyboard.config.json'), 'utf8')
+          const agentsConfig = JSON.parse(raw)?.canvas?.agents
+          if (agentsConfig && typeof agentsConfig === 'object') {
+            for (const [id, cfg] of Object.entries(agentsConfig)) {
+              if (!cfg.startupCommand) continue
+              aliasLines.push(`${id}() { start ${cfg.startupCommand} "$@"; }`)
+            }
+          }
+        } catch {}
+
+        const aliasFile = join(envDir, `${widgetId}.aliases.sh`)
+        try { writeFileSync(aliasFile, aliasLines.join('\n') + '\n') } catch {}
       } catch {}
     }
     setTimeout(hideStatus, 200)
@@ -601,6 +627,11 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
     // For new sessions, either run startupCommand (skip welcome) or show the welcome screen
     if (isNewSession) {
       const startupCommand = widgetStartupCommand ?? termCfg.startupCommand ?? null
+
+      // Build the welcome command base — used by all paths below
+      const canvasArg = canvasId !== 'unknown' ? canvasId : ''
+      const nameArg = prettyName ? ` --name "${prettyName}"` : ''
+      const welcomeBase = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}`
 
       // Export identity env vars + shell-config overrides into the shell via send-keys.
       // pty.spawn sets env on the tmux client process, but the session's
@@ -617,35 +648,8 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
         ...Object.entries(TMUX_SHELL_OVERRIDES).map(([k, v]) => `export ${k}="${v}"`),
       ]
 
-      // Write shell aliases for `start` and agent shorthand commands.
-      // These are sourced once and available for the session lifetime,
-      // so users can always run `start` to get back to the welcome screen
-      // or `start copilot`, `copilot`, etc. to launch agents.
-      const canvasArg = canvasId !== 'unknown' ? canvasId : ''
-      const nameArg = prettyName ? ` --name "${prettyName}"` : ''
-      const welcomeBase = `storyboard terminal-welcome --branch "${branch}" --canvas "${canvasArg}"${nameArg}`
-
-      let aliasLines = [
-        '# Storyboard terminal aliases — auto-generated, do not edit',
-        `start() { if [ $# -eq 0 ]; then ${welcomeBase}; else ${welcomeBase} --startup "$*"; fi; }`,
-      ]
-
-      // Read agent configs and create shorthand aliases (copilot, claude, codex, etc.)
-      try {
-        const raw = readFileSync(resolve(process.cwd(), 'storyboard.config.json'), 'utf8')
-        const agentsConfig = JSON.parse(raw)?.canvas?.agents
-        if (agentsConfig && typeof agentsConfig === 'object') {
-          for (const [id, cfg] of Object.entries(agentsConfig)) {
-            if (!cfg.startupCommand) continue
-            // e.g. copilot() { start copilot --agent terminal-agent "$@"; }
-            // User flags are appended after the base command
-            aliasLines.push(`${id}() { start ${cfg.startupCommand} "$@"; }`)
-          }
-        }
-      } catch {}
-
+      // Source the aliases file (written by hideStatus above for every connection)
       const aliasFile = join(cwd, '.storyboard', 'terminals', `${widgetId}.aliases.sh`)
-      try { writeFileSync(aliasFile, aliasLines.join('\n') + '\n') } catch {}
       envParts.push(`source "${aliasFile}"`)
 
       // Chain clear into env exports so it runs synchronously after exports

@@ -25,6 +25,33 @@ import { getConfig } from './configStore.js'
 
 let _mounted = false
 
+const CHROME_HIDDEN_KEY = 'sb-chrome-hidden'
+
+/**
+ * Restore the saved chrome-hidden state immediately, before React mounts.
+ * Prevents a flash of toolbars appearing then disappearing.
+ */
+function applyEarlyChromeState() {
+  if (typeof document === 'undefined' || typeof localStorage === 'undefined') return
+  const hidden = localStorage.getItem(CHROME_HIDDEN_KEY) === '1'
+  if (hidden) {
+    document.documentElement.classList.add('storyboard-chrome-hidden')
+  }
+}
+
+/**
+ * Watch for changes to the storyboard-chrome-hidden class and persist to
+ * localStorage. Works regardless of which code path toggles the class.
+ */
+function installChromeStatePersistence() {
+  if (typeof document === 'undefined' || typeof localStorage === 'undefined') return
+  const observer = new MutationObserver(() => {
+    const hidden = document.documentElement.classList.contains('storyboard-chrome-hidden')
+    localStorage.setItem(CHROME_HIDDEN_KEY, hidden ? '1' : '0')
+  })
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+}
+
 /**
  * Apply the saved theme to Primer CSS attributes immediately, before
  * React or Svelte mount. This prevents a flash of wrong-theme content.
@@ -139,6 +166,9 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   const basePath = options.basePath || '/'
   const customHandlers = options.handlers || {}
 
+  // Apply saved chrome-hidden state immediately — before React mount
+  applyEarlyChromeState()
+
   // Apply saved theme to DOM immediately — before Svelte/React mount
   applyEarlyTheme()
 
@@ -146,6 +176,7 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   installHideParamListener()
   installHistorySync()
   installBodyClassSync()
+  installChromeStatePersistence()
 
   // Initialize config-driven systems.
   // The unified config store is already seeded by the virtual module's initConfig().

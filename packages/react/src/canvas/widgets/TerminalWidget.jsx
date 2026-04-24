@@ -349,10 +349,12 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         wrap.style.setProperty('--term-cols', dims.cols)
         wrap.style.setProperty('--term-rows', dims.rows)
       }
-      // Re-snap to cell grid
-      const pad = 34
-      if (ch) setSnappedHeight(Math.round(dims.rows * ch) + pad)
-      if (cw) setSnappedWidth(Math.round(dims.cols * cw) + pad)
+      // Re-snap to cell grid (skip during active drag — snap happens on release)
+      if (!isResizingRef.current) {
+        const pad = 34
+        if (ch) setSnappedHeight(Math.round(dims.rows * ch) + pad)
+        if (cw) setSnappedWidth(Math.round(dims.cols * cw) + pad)
+      }
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
       }

@@ -23,8 +23,8 @@
  */
 
 import { execSync } from 'node:child_process'
-import { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync } from 'node:fs'
-import { resolve, join } from 'node:path'
+import { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync, unlinkSync } from 'node:fs'
+import { resolve, join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
 
 let WebSocketServer
@@ -142,10 +142,50 @@ let hotPoolRef = null
 /** Active snapshot intervals keyed by tmuxName */
 const snapshotIntervals = new Map()
 
-/** Rolling raw PTY output buffers keyed by tmuxName */
-const rawTailBuffers = new Map()
+/**
+ * Time-windowed rolling buffer — accumulates raw PTY output with timestamps
+ * so we can trim by age (5 min for private buffer, 1 min for public snapshot).
+ * Each entry is { ts: number, data: string }.
+ */
+const rollingBuffers = new Map()
 
-const RAW_TAIL_MAX = 2000
+/** Max buffer age in ms (5 minutes for private buffer) */
+const BUFFER_MAX_AGE_MS = 5 * 60 * 1000
+
+/** Max snapshot age in ms (1 minute for public snapshot) */
+const SNAPSHOT_MAX_AGE_MS = 1 * 60 * 1000
+
+/** Append PTY output to the rolling buffer for a session */
+function appendToRollingBuffer(tmuxName, data) {
+  let entries = rollingBuffers.get(tmuxName)
+  if (!entries) {
+    entries = []
+    rollingBuffers.set(tmuxName, entries)
+  }
+  entries.push({ ts: Date.now(), data })
+  // Eagerly trim entries older than the max (buffer cap = 5 min)
+  const cutoff = Date.now() - BUFFER_MAX_AGE_MS
+  while (entries.length > 0 && entries[0].ts < cutoff) {
+    entries.shift()
+  }
+}
+
+/** Get concatenated buffer content within a time window */
+function getRollingBufferContent(tmuxName, maxAgeMs = BUFFER_MAX_AGE_MS) {
+  const entries = rollingBuffers.get(tmuxName)
+  if (!entries || entries.length === 0) return ''
+  const cutoff = Date.now() - maxAgeMs
+  return entries
+    .filter((e) => e.ts >= cutoff)
+    .map((e) => e.data)
+    .join('')
+}
+
+/** Strip ANSI escape sequences from a string */
+function stripAnsi(str) {
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/\x1b\[[0-9;]*[a-zA-Z]|\x1b\].*?(\x07|\x1b\\)|\x1b[()][0-9A-B]|\x1b[>=<]|\x1b\[[\?]?[0-9;]*[hlsur]/g, '')
+}
 
 /**
  * Inject a [System] identity message into a running agent's stdin via tmux send-keys.
@@ -170,49 +210,120 @@ function safeCanvasDir(canvasId) {
   return canvasId.replace(/\//g, '--')
 }
 
-/** Snapshot directory for a canvas */
-function snapshotDir(canvasId) {
+/** Snapshot directory for a canvas (legacy — kept for fallback reads) */
+function legacySnapshotDir(canvasId) {
   return join(process.cwd(), '.storyboard', 'terminal-snapshots', safeCanvasDir(canvasId))
 }
 
+/** Private buffer directory — .storyboard/ (gitignored) */
+function bufferDir() {
+  return join(process.cwd(), '.storyboard', 'terminal-buffers')
+}
+
+/** Public snapshot directory — assets/.storyboard-public/terminal-snapshots/ (committed) */
+function publicSnapshotDir() {
+  return join(process.cwd(), 'assets', '.storyboard-public', 'terminal-snapshots')
+}
+
 /**
- * Capture terminal pane content and write snapshot JSON.
- * Falls back to rawTail if tmux capture-pane fails.
+ * Read the `private` prop for a widget from the terminal config.
+ * Returns true if the widget has props.private === true.
  */
-function captureSnapshot({ tmuxName, widgetId, canvasId, prettyName, cols, rows }) {
-  let content = ''
+function isWidgetPrivate(widgetId, canvasId) {
   try {
-    content = execSync(`tmux capture-pane -t "${tmuxName}" -p -e`, {
+    const config = readTerminalConfigById(widgetId)
+    if (config?.widgetProps?.private) return true
+  } catch {}
+  return false
+}
+
+/**
+ * Capture terminal content and write both buffer + snapshot files.
+ *
+ * Buffer (private):  .storyboard/terminal-buffers/<widgetId>.buffer.json  — 5-min scrollback, full metadata
+ * Snapshot (public):  assets/.storyboard-public/terminal-snapshots/<widgetId>.snapshot.json  — 1-min scrollback, stripped ANSI
+ *
+ * When widget is private, the public snapshot is skipped and any existing
+ * snapshot file is renamed to ~<filename> (tilde prefix = gitignored).
+ */
+function captureSnapshot({ tmuxName, widgetId, canvasId, prettyName, cols, rows, createdAt }) {
+  let paneContent = ''
+  try {
+    paneContent = execSync(`tmux capture-pane -t "${tmuxName}" -p -e`, {
       encoding: 'utf8',
       timeout: 3000,
     })
   } catch {
-    // tmux capture failed — use rawTail as fallback
+    // tmux capture failed — rolling buffer is the only source
   }
 
-  const rawTail = rawTailBuffers.get(tmuxName) || ''
-  const dir = snapshotDir(canvasId)
-  const filePath = join(dir, `${widgetId}.json`)
-  const tmpPath = filePath + '.tmp'
+  const now = new Date().toISOString()
+  const rawTail = getRollingBufferContent(tmuxName, BUFFER_MAX_AGE_MS)
 
-  const snapshot = {
-    content,
-    rawTail,
+  // ── Private buffer (.storyboard/terminal-buffers/<widgetId>.buffer.json) ──
+  const bDir = bufferDir()
+  const bufferPath = join(bDir, `${widgetId}.buffer.json`)
+  const bufferTmpPath = bufferPath + '.tmp'
+
+  const bufferData = {
     widgetId,
     canvasId,
+    tmuxName,
     prettyName: prettyName || null,
-    timestamp: new Date().toISOString(),
+    createdAt: createdAt || now,
+    timestamp: now,
     cols: cols || 80,
     rows: rows || 24,
+    paneContent,
+    scrollback: rawTail,
   }
 
   try {
-    mkdirSync(dir, { recursive: true })
-    writeFileSync(tmpPath, JSON.stringify(snapshot), 'utf8')
-    renameSync(tmpPath, filePath)
-  } catch (err) {
-    // Clean up tmp file on failure
-    try { if (existsSync(tmpPath)) writeFileSync(tmpPath, ''); } catch {}
+    mkdirSync(bDir, { recursive: true })
+    writeFileSync(bufferTmpPath, JSON.stringify(bufferData, null, 2), 'utf8')
+    renameSync(bufferTmpPath, bufferPath)
+  } catch {
+    try { if (existsSync(bufferTmpPath)) unlinkSync(bufferTmpPath) } catch {}
+  }
+
+  // ── Public snapshot (assets/.storyboard-public/terminal-snapshots/<widgetId>.snapshot.json) ──
+  const isPrivate = isWidgetPrivate(widgetId, canvasId)
+  const sDir = publicSnapshotDir()
+  const snapshotPath = join(sDir, `${widgetId}.snapshot.json`)
+  const tildeSnapshotPath = join(sDir, `~${widgetId}.snapshot.json`)
+
+  if (isPrivate) {
+    // Rename existing public snapshot to tilde-prefixed (gitignored) version
+    if (existsSync(snapshotPath)) {
+      try { renameSync(snapshotPath, tildeSnapshotPath) } catch {}
+    }
+    return
+  }
+
+  // If un-privated, restore from tilde if the public file doesn't exist yet
+  if (existsSync(tildeSnapshotPath) && !existsSync(snapshotPath)) {
+    try { renameSync(tildeSnapshotPath, snapshotPath) } catch {}
+  }
+
+  const snapshotScrollback = getRollingBufferContent(tmuxName, SNAPSHOT_MAX_AGE_MS)
+  const snapshotData = {
+    widgetId,
+    canvasId,
+    prettyName: prettyName || null,
+    timestamp: now,
+    cols: cols || 80,
+    rows: rows || 24,
+    paneContent: stripAnsi(paneContent),
+    scrollback: stripAnsi(snapshotScrollback),
+  }
+
+  const snapshotTmpPath = snapshotPath + '.tmp'
+  try {
+    mkdirSync(sDir, { recursive: true })
+    writeFileSync(snapshotTmpPath, JSON.stringify(snapshotData, null, 2), 'utf8')
+    renameSync(snapshotTmpPath, snapshotPath)
+  } catch {
+    try { if (existsSync(snapshotTmpPath)) unlinkSync(snapshotTmpPath) } catch {}
   }
 }
 
@@ -238,7 +349,7 @@ function stopSnapshotCapture(tmuxName, finalOpts) {
   if (finalOpts) {
     captureSnapshot(finalOpts)
   }
-  rawTailBuffers.delete(tmuxName)
+  rollingBuffers.delete(tmuxName)
 }
 
 /** Check if a tmux session with the given name exists */
@@ -920,14 +1031,12 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
     if (ws.readyState === ws.OPEN) {
       ws.send(data)
     }
-    // Maintain rolling raw tail buffer
-    const prev = rawTailBuffers.get(tmuxName) || ''
-    const updated = (prev + data).slice(-RAW_TAIL_MAX)
-    rawTailBuffers.set(tmuxName, updated)
+    // Maintain time-windowed rolling buffer
+    appendToRollingBuffer(tmuxName, data)
   })
 
   // Start periodic snapshot capture for tmux sessions
-  const snapshotOpts = { tmuxName, widgetId, canvasId, prettyName, cols: 80, rows: 24 }
+  const snapshotOpts = { tmuxName, widgetId, canvasId, prettyName, cols: 80, rows: 24, createdAt: new Date().toISOString() }
   if (hasTmux) {
     startSnapshotCapture(snapshotOpts)
   }
@@ -1119,5 +1228,54 @@ async function executeStartupSequence(tmuxName, ws, sequence) {
 export { killSession as killTerminalSession }
 
 // Export for REST endpoint in canvas server
-export { snapshotDir as terminalSnapshotDir }
+export { legacySnapshotDir as terminalSnapshotDir }
 
+/**
+ * Read a terminal buffer file by widget ID.
+ * Returns the parsed JSON or null if not found.
+ * Optionally truncates scrollback to `maxLength` chars.
+ */
+export function readTerminalBuffer(widgetId, { maxLength } = {}) {
+  const filePath = join(bufferDir(), `${widgetId}.buffer.json`)
+  try {
+    if (!existsSync(filePath)) return null
+    const data = JSON.parse(readFileSync(filePath, 'utf8'))
+    if (maxLength && typeof maxLength === 'number') {
+      if (data.scrollback && data.scrollback.length > maxLength) {
+        data.scrollback = data.scrollback.slice(-maxLength)
+      }
+      if (data.paneContent && data.paneContent.length > maxLength) {
+        data.paneContent = data.paneContent.slice(-maxLength)
+      }
+    }
+    return data
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Read a terminal public snapshot by widget ID.
+ * Checks new path first, falls back to legacy path.
+ */
+export function readTerminalSnapshot(widgetId, canvasId) {
+  // New path: assets/.storyboard-public/terminal-snapshots/<widgetId>.snapshot.json
+  const newPath = join(publicSnapshotDir(), `${widgetId}.snapshot.json`)
+  try {
+    if (existsSync(newPath)) {
+      return JSON.parse(readFileSync(newPath, 'utf8'))
+    }
+  } catch {}
+
+  // Legacy fallback: .storyboard/terminal-snapshots/<canvasDir>/<widgetId>.json
+  if (canvasId) {
+    const legacyPath = join(legacySnapshotDir(canvasId), `${widgetId}.json`)
+    try {
+      if (existsSync(legacyPath)) {
+        return JSON.parse(readFileSync(legacyPath, 'utf8'))
+      }
+    } catch {}
+  }
+
+  return null
+}

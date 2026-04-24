@@ -81,6 +81,7 @@ function helpScreen(version) {
     cmd('terminal close --id <name>', 'Archive a session ' + dim('(alias: archive)')),
     cmd('terminal open --id <name>', 'Attach to a session'),
     cmd('terminal remove --id <name>', 'Permanently destroy a session'),
+    cmd('terminal read <id>', 'Read terminal buffer ' + dim('(+ --length N)')),
     cmd('terminal --all', 'Show sessions across all branches'),
     cmd('terminal reset', 'Kill tmux server, clear registry & snapshots'),
     '',
@@ -169,6 +170,7 @@ switch (command) {
         cmd('terminal send --connected "msg"', 'Send to connected peer'),
         cmd('terminal output --summary "..."', 'Save latest output (+ --content)'),
         cmd('terminal status <widgetId>', 'Check terminal status'),
+        cmd('terminal read <widgetId>', 'Read terminal buffer (+ --length N)'),
       ].join('\n')
       console.log(`\n${cmds}\n`)
     } else if (process.argv[3] === 'close' || process.argv[3] === 'archive') {
@@ -183,6 +185,8 @@ switch (command) {
       import('./terminal-messaging.js').then(m => m.handleOutput())
     } else if (process.argv[3] === 'status') {
       import('./terminal-messaging.js').then(m => m.handleStatus())
+    } else if (process.argv[3] === 'read') {
+      import('./terminal-messaging.js').then(m => m.handleRead())
     } else {
       // Default: session browser (formerly `storyboard sessions`)
       import('./sessions.js')

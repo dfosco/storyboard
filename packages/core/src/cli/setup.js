@@ -188,7 +188,7 @@ if (isInstalled('code')) {
 
 // 7. Asset directories
 {
-  const dirs = ['assets/canvas/images', '.storyboard', '.storyboard/terminals']
+  const dirs = ['assets/canvas/images', 'assets/.storyboard-public/terminal-snapshots', '.storyboard', '.storyboard/terminals', '.storyboard/terminal-buffers']
   for (const dir of dirs) {
     if (!existsSync(dir)) {
       try { mkdirSync(dir, { recursive: true }) } catch { /* ignore */ }
@@ -218,6 +218,7 @@ if (isInstalled('code')) {
     'src/canvas/images/~*',
     'assets/canvas/images/~*',
     'assets/canvas/snapshots/~*',
+    'assets/.storyboard-public/terminal-snapshots/~*',
   ]
   if (existsSync(gitignorePath)) {
     try {

@@ -596,11 +596,16 @@ export default function WidgetChrome({
 
                 // Toggle-private: swap icon/label based on current state
                 if (feature.action === 'toggle-private') {
+                  const isTerminal = widgetType === 'terminal' || widgetType === 'agent'
                   if (widgetProps?.private) {
                     Icon = ICON_REGISTRY['eye-closed']
-                    label = 'Private image — only visible locally'
+                    label = isTerminal
+                      ? 'Private terminal — snapshots hidden from git'
+                      : 'Private image — only visible locally'
                   } else {
-                    label = 'Published image — deployed with canvas'
+                    label = isTerminal
+                      ? 'Public terminal — snapshots committed to git'
+                      : 'Published image — deployed with canvas'
                   }
                 }
 

@@ -13,6 +13,7 @@ export type Path =
     | `///src/prototypes/main/folder/Signup/Dashboard`
     | `///src/prototypes/main/folder/Signup/templates/CloudApp/Application`
     | `///src/prototypes/viewfinder`
+    | `///src/prototypes/workspace`
 
 export type Params = {
     '///src/prototypes/main/folder/Example/posts/:id': { id: string }

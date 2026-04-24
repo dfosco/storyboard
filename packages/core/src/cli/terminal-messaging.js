@@ -6,6 +6,7 @@
  *   storyboard terminal send --connected "message"      Send to connected peer
  *   storyboard terminal output --summary "..." --content "..."  Save latest output
  *   storyboard terminal status <widgetId>               Check terminal status
+ *   storyboard terminal read <widgetId>                 Read terminal buffer
  */
 
 import { getServerUrl } from './serverUrl.js'
@@ -170,6 +171,59 @@ export async function handleStatus() {
       latestOutput: config.latestOutput ? { summary: config.latestOutput.summary, updatedAt: config.latestOutput.updatedAt } : null,
       pendingMessages: (config.pendingMessages || []).length,
     }, null, 2))
+  } catch (err) {
+    console.error(`Error: ${err.message}`)
+    process.exit(1)
+  }
+}
+
+export async function handleRead() {
+  const args = process.argv.slice(4) // skip: node, sb, terminal, read
+  const { positional, flags } = parseArgs(args)
+
+  const widgetId = positional[0] || process.env.STORYBOARD_WIDGET_ID
+  if (!widgetId) {
+    console.error('Usage: storyboard terminal read <widgetId> [--length N]')
+    process.exit(1)
+  }
+
+  const length = flags.length ? parseInt(flags.length, 10) : undefined
+
+  // Try HTTP API first (dev server may have fresher data)
+  try {
+    const serverUrl = getServerUrl()
+    const qs = length ? `?length=${length}` : ''
+    const res = await fetch(`${serverUrl}/_storyboard/canvas/terminal-buffer/${encodeURIComponent(widgetId)}${qs}`, {
+      signal: AbortSignal.timeout(3000),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      console.log(JSON.stringify(data, null, 2))
+      return
+    }
+  } catch {
+    // Server not reachable — read directly from file
+  }
+
+  // Fallback: read buffer file directly
+  try {
+    const { readFileSync, existsSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const bufferPath = join(process.cwd(), '.storyboard', 'terminal-buffers', `${widgetId}.buffer.json`)
+    if (!existsSync(bufferPath)) {
+      console.error(`No buffer found for ${widgetId}`)
+      process.exit(1)
+    }
+    const data = JSON.parse(readFileSync(bufferPath, 'utf8'))
+    if (length) {
+      if (data.scrollback && data.scrollback.length > length) {
+        data.scrollback = data.scrollback.slice(-length)
+      }
+      if (data.paneContent && data.paneContent.length > length) {
+        data.paneContent = data.paneContent.slice(-length)
+      }
+    }
+    console.log(JSON.stringify(data, null, 2))
   } catch (err) {
     console.error(`Error: ${err.message}`)
     process.exit(1)

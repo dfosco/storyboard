@@ -966,6 +966,12 @@
         "prod": false
       },
       "props": {
+        "private": {
+          "type": "boolean",
+          "label": "Private",
+          "category": "settings",
+          "default": false
+        },
         "width": {
           "type": "number",
           "label": "Width",
@@ -982,6 +988,13 @@
         }
       },
       "features": [
+        {
+          "id": "toggle-private",
+          "type": "action",
+          "action": "toggle-private",
+          "label": "Make private",
+          "icon": "eye"
+        },
         {
           "id": "expand",
           "type": "action",

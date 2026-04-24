@@ -1374,34 +1374,62 @@ export default function storyboardDataPlugin() {
 }
 
 /**
- * Vite plugin that copies `.storyboard/terminal-snapshots/` into the build
- * output so TerminalReadWidget can fetch them as static files in production.
+ * Vite plugin that copies terminal snapshots into the build output
+ * so TerminalReadWidget can fetch them as static files in production.
+ *
+ * Sources (in priority order):
+ *   1. assets/.storyboard-public/terminal-snapshots/<widgetId>.snapshot.json (new, flat)
+ *   2. .storyboard/terminal-snapshots/<canvasDir>/<widgetId>.json (legacy, nested)
+ *
+ * Both are emitted to `_storyboard/terminal-snapshots/` in the build.
+ * Tilde-prefixed files (~) are excluded (private).
  */
 export function terminalSnapshotPlugin() {
   return {
     name: 'storyboard-terminal-snapshots',
 
     generateBundle() {
-      const snapshotsDir = path.resolve('.storyboard/terminal-snapshots')
-      if (!fs.existsSync(snapshotsDir)) return
+      const emittedIds = new Set()
 
-      const walk = (dir) => {
-        const entries = fs.readdirSync(dir, { withFileTypes: true })
-        for (const entry of entries) {
-          const full = path.join(dir, entry.name)
-          if (entry.isDirectory()) {
-            walk(full)
-          } else if (entry.name.endsWith('.json')) {
-            const rel = path.relative(snapshotsDir, full).replace(/\\/g, '/')
-            this.emitFile({
-              type: 'asset',
-              fileName: `_storyboard/terminal-snapshots/${rel}`,
-              source: fs.readFileSync(full, 'utf-8'),
-            })
-          }
+      // 1. New public snapshots (flat structure)
+      const publicDir = path.resolve('assets/.storyboard-public/terminal-snapshots')
+      if (fs.existsSync(publicDir)) {
+        for (const file of fs.readdirSync(publicDir)) {
+          if (file.startsWith('~') || file.startsWith('.') || !file.endsWith('.json')) continue
+          // Extract widgetId from filename: <widgetId>.snapshot.json
+          const widgetId = file.replace(/\.snapshot\.json$/, '')
+          if (widgetId) emittedIds.add(widgetId)
+          this.emitFile({
+            type: 'asset',
+            fileName: `_storyboard/terminal-snapshots/${file}`,
+            source: fs.readFileSync(path.join(publicDir, file), 'utf-8'),
+          })
         }
       }
-      walk(snapshotsDir)
+
+      // 2. Legacy snapshots (nested by canvas dir) — skip if already emitted
+      const legacyDir = path.resolve('.storyboard/terminal-snapshots')
+      if (fs.existsSync(legacyDir)) {
+        const walk = (dir) => {
+          const entries = fs.readdirSync(dir, { withFileTypes: true })
+          for (const entry of entries) {
+            const full = path.join(dir, entry.name)
+            if (entry.isDirectory()) {
+              walk(full)
+            } else if (entry.name.endsWith('.json') && !entry.name.startsWith('~')) {
+              const widgetId = entry.name.replace(/\.json$/, '')
+              if (emittedIds.has(widgetId)) continue // new format takes priority
+              const rel = path.relative(legacyDir, full).replace(/\\/g, '/')
+              this.emitFile({
+                type: 'asset',
+                fileName: `_storyboard/terminal-snapshots/${rel}`,
+                source: fs.readFileSync(full, 'utf-8'),
+              })
+            }
+          }
+        }
+        walk(legacyDir)
+      }
     },
   }
 }

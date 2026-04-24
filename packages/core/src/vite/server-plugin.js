@@ -229,6 +229,7 @@ export default function storyboardServer() {
       // Ignore assets/canvas/ so image/snapshot writes don't trigger reloads
       server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'images'))
       server.watcher.unwatch(path.join(root, 'assets', 'canvas', 'snapshots'))
+      server.watcher.unwatch(path.join(root, 'assets', '.storyboard-public', 'terminal-snapshots'))
 
       // Wire autosync API routes (always enabled — git automation for dev)
       routeHandlers.set('autosync', createAutosyncHandler({ root, sendJson }))

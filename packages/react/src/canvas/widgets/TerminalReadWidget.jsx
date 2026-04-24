@@ -56,10 +56,16 @@ export default function TerminalReadWidget({ id, props }) {
       if (!canvasId) { setFailed(true); return }
 
       const urls = isProduction()
-        ? [`${baseUrl}_storyboard/terminal-snapshots/${canvasId}/${id}.json`]
+        ? [
+            // New flat format: <widgetId>.snapshot.json
+            `${baseUrl}_storyboard/terminal-snapshots/${id}.snapshot.json`,
+            // Legacy nested format: <canvasDir>/<widgetId>.json
+            `${baseUrl}_storyboard/terminal-snapshots/${canvasId.replace(/\//g, '--')}/${id}.json`,
+          ]
         : [
-            `${baseUrl}_storyboard/canvas/${canvasId}/terminal-snapshot/${id}`,
-            `${baseUrl}_storyboard/terminal-snapshots/${canvasId}/${id}.json`,
+            `${baseUrl}_storyboard/canvas/terminal-snapshot/${id}`,
+            `${baseUrl}_storyboard/terminal-snapshots/${id}.snapshot.json`,
+            `${baseUrl}_storyboard/terminal-snapshots/${canvasId.replace(/\//g, '--')}/${id}.json`,
           ]
 
       for (const url of urls) {
@@ -68,7 +74,7 @@ export default function TerminalReadWidget({ id, props }) {
           if (!res.ok) continue
           const data = await res.json()
           if (cancelled) return
-          const text = data.content || data.output || ''
+          const text = data.paneContent || data.content || data.output || ''
           setContent(text)
 
           const converter = await getConverter()

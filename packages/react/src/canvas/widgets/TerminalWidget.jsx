@@ -224,15 +224,16 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         termRef.current = term
 
         // Expose ghostty's actual computed cell metrics as CSS variables
+        // Set on .terminal (terminalRef) so they cascade into .xtermContainer
         const cw = term.renderer?.charWidth
         const ch = term.renderer?.charHeight
-        const el = containerRef.current
-        if (el && cw) el.style.setProperty('--term-char-width', `${cw}px`)
-        if (el && ch) el.style.setProperty('--term-char-height', `${ch}px`)
-        if (el) {
-          el.style.setProperty('--term-cols', dims.cols)
-          el.style.setProperty('--term-rows', dims.rows)
-          el.style.setProperty('--term-font-size', `${cfg.fontSize ?? 13}px`)
+        const wrap = terminalRef.current
+        if (wrap && cw) wrap.style.setProperty('--term-char-width', `${cw}px`)
+        if (wrap && ch) wrap.style.setProperty('--term-char-height', `${ch}px`)
+        if (wrap) {
+          wrap.style.setProperty('--term-cols', dims.cols)
+          wrap.style.setProperty('--term-rows', dims.rows)
+          wrap.style.setProperty('--term-font-size', `${cfg.fontSize ?? 13}px`)
         }
 
         // SGR mouse wheel for tmux scroll in alternate screen
@@ -310,14 +311,14 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
       const dims = calcDimensions(width, height, fontSize)
       termRef.current?.resize?.(dims.cols, dims.rows)
       // Update CSS variables after resize
-      const el = containerRef.current
+      const wrap = terminalRef.current
       const cw = termRef.current?.renderer?.charWidth
       const ch = termRef.current?.renderer?.charHeight
-      if (el && cw) el.style.setProperty('--term-char-width', `${cw}px`)
-      if (el && ch) el.style.setProperty('--term-char-height', `${ch}px`)
-      if (el) {
-        el.style.setProperty('--term-cols', dims.cols)
-        el.style.setProperty('--term-rows', dims.rows)
+      if (wrap && cw) wrap.style.setProperty('--term-char-width', `${cw}px`)
+      if (wrap && ch) wrap.style.setProperty('--term-char-height', `${ch}px`)
+      if (wrap) {
+        wrap.style.setProperty('--term-cols', dims.cols)
+        wrap.style.setProperty('--term-rows', dims.rows)
       }
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))

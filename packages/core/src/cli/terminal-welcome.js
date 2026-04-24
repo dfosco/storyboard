@@ -26,7 +26,7 @@ const blue = (s) => `\x1b[34m${s}\x1b[0m`
 
 /**
  * Read agents config from storyboard.config.json.
- * Returns an array of { id, label, startupCommand } entries.
+ * Returns an array of { id, label, startupCommand, resumeCommand } entries.
  */
 function loadAgents() {
   try {
@@ -38,6 +38,7 @@ function loadAgents() {
       id,
       label: cfg.label || id,
       startupCommand: cfg.startupCommand || null,
+      resumeCommand: cfg.resumeCommand || null,
     })).filter(a => a.startupCommand)
   } catch { return [] }
 }
@@ -242,17 +243,61 @@ async function welcomeLoop() {
     }
 
     if (action === 'sessions') {
-      p.outro(dim('Loading sessions...'))
-      try {
-        const child = spawn('storyboard', ['terminal'], { stdio: 'inherit' })
-        await new Promise((resolve) => {
-          child.on('close', resolve)
-          child.on('error', resolve)
-        })
-      } catch {
-        p.log.error('Failed to load sessions.')
-        await new Promise(r => setTimeout(r, 2000))
+      // Sub-menu: pick which agent's sessions to browse, or terminal sessions
+      const resumableAgents = agents.filter(a => a.resumeCommand)
+
+      const sessionOptions = [
+        ...resumableAgents.map(a => ({
+          value: `agent:${a.id}`,
+          label: `✦ ${a.label} sessions`,
+        })),
+        { value: 'terminal', label: '⊞ Terminal sessions' },
+      ]
+
+      const sessionChoice = await p.select({
+        message: 'Browse sessions',
+        options: sessionOptions,
+      })
+
+      if (p.isCancel(sessionChoice)) continue
+
+      if (sessionChoice === 'terminal') {
+        p.outro(dim('Loading terminal sessions...'))
+        try {
+          const child = spawn('storyboard', ['terminal'], { stdio: 'inherit' })
+          await new Promise((resolve) => {
+            child.on('close', resolve)
+            child.on('error', resolve)
+          })
+        } catch {
+          p.log.error('Failed to load sessions.')
+          await new Promise(r => setTimeout(r, 2000))
+        }
+        continue
       }
+
+      // Agent resume — spawn the resume command interactively
+      if (sessionChoice.startsWith('agent:')) {
+        const agentId = sessionChoice.replace('agent:', '')
+        const agent = resumableAgents.find(a => a.id === agentId)
+        if (agent) {
+          p.outro(dim(`Loading ${agent.label} sessions...`))
+          setMouse(true)
+          try {
+            const shell = process.env.SHELL || '/bin/zsh'
+            const child = spawn(shell, ['-lc', agent.resumeCommand], { stdio: 'inherit' })
+            await new Promise((resolve) => {
+              child.on('close', resolve)
+              child.on('error', resolve)
+            })
+          } catch {
+            p.log.error(`Failed to load ${agent.label} sessions.`)
+            await new Promise(r => setTimeout(r, 2000))
+          }
+        }
+        continue
+      }
+
       continue
     }
   }

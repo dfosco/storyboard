@@ -87,7 +87,7 @@ export async function runBranchGuide(branchArg) {
     }
 
     const result = await p.text({
-      message: 'Which branch do you want to work on?',
+      message: 'Which branch do you want to work on? Select one from above or type a new one',
       placeholder: 'e.g. 4.3.0--my-feature',
       validate: isValidBranchName,
     })

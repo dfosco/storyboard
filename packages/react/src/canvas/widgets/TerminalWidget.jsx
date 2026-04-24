@@ -373,7 +373,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const isAgent = id.startsWith('agent-')
   const typeLabel = isAgent ? 'Agent' : 'Terminal'
   const titleLabel = `${typeLabel} · ${prettyName || '…'}`
-  const connectedEmbed = expanded ? findConnectedSplitTarget(id) : null
+  const connectedEmbed = findConnectedSplitTarget(id)
   const embedUrl = expanded ? buildSplitUrl(connectedEmbed) : null
   const hasSplit = Boolean(connectedEmbed)
   const isSecondaryTerminal = connectedEmbed?.type === 'terminal' || connectedEmbed?.type === 'terminal-read' || connectedEmbed?.type === 'agent'

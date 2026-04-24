@@ -436,7 +436,9 @@ export class HotPool {
             `tmux capture-pane -t "${tmuxName}" -p`,
             { encoding: 'utf8', timeout: 1000 }
           )
-          if (paneContent.includes(readinessSignal)) {
+          // Strip ANSI escape sequences — agent CLIs use heavy formatting
+          const clean = paneContent.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/[^\x20-\x7E\n]/g, '')
+          if (clean.includes(readinessSignal)) {
             clearInterval(poll)
             clearTimeout(timeout)
             resolve(true)
@@ -445,7 +447,13 @@ export class HotPool {
       }, AGENT_READINESS_POLL_MS)
     })
 
-    if (!ready) return false
+    if (!ready) {
+      // Timeout is non-fatal — the agent may be blocked by a CLI prompt
+      // (e.g. update notification). A partially-warm session is still
+      // better than a cold start.
+      this.#log(`⊕ AGENT ${sessionId} readiness timeout — marking ready anyway (better than cold)`)
+      return this.#tmuxSessionExists(tmuxName)
+    }
 
     // Send postStartup command (e.g. "/allow-all on")
     if (postStartup) {
@@ -472,22 +480,23 @@ export class HotPool {
 
   /**
    * For agent pools, verify the agent process is still running in the pane.
-   * Returns false if the tmux session is gone or the agent has exited.
+   * Returns false if the tmux session is gone or the agent has exited
+   * back to a bare shell.
    */
   #isSessionHealthy(session) {
     if (!this.#tmuxSessionExists(session.tmuxName)) return false
 
-    // For agent pools, also check that the agent is still the foreground process
+    // For agent pools, check the foreground process hasn't fallen back to a shell
     if (this.#agentConfig?.startupCommand) {
       try {
         const cmd = execSync(
           `tmux display-message -t "${session.tmuxName}" -p "#{pane_current_command}"`,
           { encoding: 'utf8', timeout: 1000 }
         ).trim()
-        // The agent binary is the first word of the startup command
-        const expectedBin = this.#agentConfig.startupCommand.trim().split(/\s+/)[0]
-        if (cmd !== expectedBin) {
-          this.#log(`♥ HEALTH ${session.id} agent exited (pane_current_command="${cmd}", expected="${expectedBin}")`)
+        // Agent exited if the pane is back to a shell
+        const shells = ['zsh', 'bash', 'sh', 'fish']
+        if (shells.includes(cmd)) {
+          this.#log(`♥ HEALTH ${session.id} agent exited (pane_current_command="${cmd}")`)
           return false
         }
       } catch {

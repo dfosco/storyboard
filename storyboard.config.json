@@ -54,15 +54,16 @@
         "label": "Claude Code",
         "icon": "claude",
         "startupCommand": "claude --agent terminal-agent --dangerously-skip-permissions",
-        "readinessSignal": "? for shortcuts",
+        "readinessSignal": "bypass permissions",
         "resizable": true
       },
       "codex": {
         "label": "Codex CLI",
         "icon": "codex",
         "startupCommand": "codex --full-auto",
-        "readinessSignal": "default \u00b7",
-        "configFiles": [".codex/config.toml"],
+        "configFiles": [
+          ".codex/config.toml"
+        ],
         "resizable": true
       }
     },
@@ -76,11 +77,21 @@
     "load_balancer": true,
     "load_balancer_cooldown_mins": 10,
     "pools": {
-      "terminal": { "pool_size": 1 },
-      "copilot":  { "pool_size": 1 },
-      "claude":   { "pool_size": 1 },
-      "codex":    { "pool_size": 1 },
-      "prompt":   { "pool_size": 1 }
+      "terminal": {
+        "pool_size": 1
+      },
+      "copilot": {
+        "pool_size": 1
+      },
+      "claude": {
+        "pool_size": 1
+      },
+      "codex": {
+        "pool_size": 1
+      },
+      "prompt": {
+        "pool_size": 1
+      }
     }
   },
   "customerMode": {

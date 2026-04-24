@@ -15,7 +15,9 @@ import { getConfig } from './configStore.js'
 const widgetTypes = [
   { type: 'sticky-note', label: 'Sticky Note' },
   { type: 'markdown', label: 'Markdown' },
+  { type: 'prompt', label: 'Prompt' },
   { type: 'prototype', label: 'Prototype' },
+  { type: 'terminal', label: 'Terminal' },
 ]
 
 function getApiUrl() {

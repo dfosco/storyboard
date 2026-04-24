@@ -5,7 +5,7 @@ import { schemas } from './widgetProps.js'
 import { getTerminalConfig, getTerminalDimensions } from '@dfosco/storyboard-core'
 import { ScreenNormalIcon } from '@primer/octicons-react'
 import { useOverride } from '../../hooks/useOverride.js'
-import { getSplitPaneLabel, findConnectedSplitTarget, buildSecondaryIframeUrl as buildSplitUrl, getPaneOrder } from './expandUtils.js'
+import { getSplitPaneLabel, findConnectedSplitTarget, buildSecondaryIframeUrl as buildSplitUrl, getPaneOrder, reparentTerminalInto } from './expandUtils.js'
 import SplitScreenTopBar from './SplitScreenTopBar.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import styles from './TerminalWidget.module.css'
@@ -396,6 +396,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const connectedEmbed = expanded ? findConnectedSplitTarget(id) : null
   const embedUrl = expanded ? buildSplitUrl(connectedEmbed) : null
   const hasSplit = Boolean(connectedEmbed)
+  const isSecondaryTerminal = connectedEmbed?.type === 'terminal' || connectedEmbed?.type === 'terminal-read' || connectedEmbed?.type === 'agent'
   const [activePane, setActivePane] = useState('left')
 
   const paneOrder = useMemo(
@@ -407,6 +408,18 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedEmbed), [connectedEmbed])
   const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel
   const rightLabel = paneOrder.primaryIsLeft ? secondaryLabel : primaryLabel
+
+  // Reparent secondary terminal/agent DOM into the split pane
+  const secondaryTermRef = useRef(null)
+  const secondaryCleanupRef = useRef(null)
+  useEffect(() => {
+    if (!expanded || !hasSplit || !isSecondaryTerminal || !secondaryTermRef.current) return
+    secondaryCleanupRef.current = reparentTerminalInto(connectedEmbed.id, secondaryTermRef.current)
+    return () => {
+      secondaryCleanupRef.current?.()
+      secondaryCleanupRef.current = null
+    }
+  }, [expanded, hasSplit, isSecondaryTerminal, connectedEmbed?.id])
 
 
   return (
@@ -520,15 +533,23 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
               {paneOrder.primaryIsLeft ? (
                 <>
                   <div ref={expandContainerRef} className={styles.expandTerminal} onPointerDown={() => setActivePane('left')} />
-                  <div className={styles.expandEmbed} onPointerDown={() => setActivePane('right')}>
-                    {embedUrl ? <iframe src={embedUrl} className={styles.expandIframe} title="Connected embed" /> : null}
-                  </div>
+                  {isSecondaryTerminal ? (
+                    <div ref={secondaryTermRef} className={styles.expandTerminal} onPointerDown={() => setActivePane('right')} />
+                  ) : (
+                    <div className={styles.expandEmbed} onPointerDown={() => setActivePane('right')}>
+                      {embedUrl ? <iframe src={embedUrl} className={styles.expandIframe} title="Connected embed" /> : null}
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
-                  <div className={styles.expandEmbed} onPointerDown={() => setActivePane('left')}>
-                    {embedUrl ? <iframe src={embedUrl} className={styles.expandIframe} title="Connected embed" /> : null}
-                  </div>
+                  {isSecondaryTerminal ? (
+                    <div ref={secondaryTermRef} className={styles.expandTerminal} onPointerDown={() => setActivePane('left')} />
+                  ) : (
+                    <div className={styles.expandEmbed} onPointerDown={() => setActivePane('left')}>
+                      {embedUrl ? <iframe src={embedUrl} className={styles.expandIframe} title="Connected embed" /> : null}
+                    </div>
+                  )}
                   <div ref={expandContainerRef} className={styles.expandTerminal} onPointerDown={() => setActivePane('right')} />
                 </>
               )}

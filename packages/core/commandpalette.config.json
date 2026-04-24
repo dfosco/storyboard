@@ -138,6 +138,8 @@
     "docs": "primer/book",
     "devtools": "feather/tool",
     "feature-flags": "feather/flag",
+    "agent": "agents",
+    "prompt": "primer/zap",
     "fallback": "feather/hexagon"
   }
 }

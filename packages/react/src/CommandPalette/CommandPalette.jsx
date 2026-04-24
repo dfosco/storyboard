@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Command } from 'cmdk'
 import Icon from '../Icon.jsx'
 import {
@@ -14,6 +14,7 @@ import {
   trackRecent,
   getCommandPaletteConfig,
   getToolbarConfig,
+  getConfig,
   setTheme,
   getTheme,
   isExcludedByRoute,
@@ -116,13 +117,14 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
         items: section.items.map((item, i) => {
           const id = `cfg:${section.id}:${i}`
           if (item.type === 'link') {
+            const resolvedUrl = item.url?.startsWith('/') ? prefix + item.url : item.url
             return {
               id,
               children: item.label,
               keywords: item.keywords || [item.label],
+              url: resolvedUrl,
               onClick: () => {
-                const url = item.url?.startsWith('/') ? prefix + item.url : item.url
-                if (url) window.location.href = url
+                if (resolvedUrl) window.location.href = resolvedUrl
               },
             }
           }
@@ -237,12 +239,14 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
 
       // Any remaining tools (all surfaces)
       if (tool.render === 'link' && tool.url) {
+        const resolvedUrl = tool.url.startsWith('/') ? prefix + tool.url : tool.url
         remainingItems.push({
           id: `cfg:${section.id}:${toolId}`,
           children: label,
           keywords: [label, toolId].filter(Boolean),
           showType: false,
-          onClick: () => { window.location.href = tool.url },
+          url: resolvedUrl,
+          onClick: () => { window.location.href = resolvedUrl },
         })
       } else {
         // Menu tools: close palette and click the toolbar button to open the menu
@@ -334,7 +338,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
     if (!isLocalDev) return null
     const isCanvasRoute = typeof window !== 'undefined' && window.location.pathname.includes('/canvas/')
     if (!isCanvasRoute) return null
-    const hiddenTypes = new Set(['link-preview', 'image', 'figma-embed', 'codepen-embed', 'story', 'terminal-read'])
+    const hiddenTypes = new Set(['link-preview', 'image', 'figma-embed', 'codepen-embed', 'story', 'terminal-read', 'agent'])
     const items = Object.entries(widgetTypes).filter(([type]) => !hiddenTypes.has(type)).map(([type, def]) => ({
       id: `create-widget:${type}`,
       children: def.label,
@@ -344,7 +348,50 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
         document.dispatchEvent(new CustomEvent('storyboard:canvas:add-widget', { detail: { type } }))
       },
     }))
-    return { group: { heading: section.title, id: `cfg:${section.id}`, items } }
+
+    // Build agent submenu from canvas.agents config
+    const subPages = []
+    const canvasConfig = getConfig('canvas')
+    const agentsConfig = canvasConfig?.agents
+    if (agentsConfig && typeof agentsConfig === 'object') {
+      const agentEntries = Object.entries(agentsConfig)
+      if (agentEntries.length > 0) {
+        const pageId = 'create-widget:agents'
+        subPages.push({
+          id: pageId,
+          label: 'Agent',
+          title: 'Add Agent',
+          keywords: ['agent', 'add', 'widget', 'copilot', 'claude', 'codex'],
+          options: agentEntries.map(([id, cfg]) => ({
+            label: cfg.label || id,
+            icon: cfg.icon,
+            execute: () => {
+              document.dispatchEvent(new CustomEvent('storyboard:canvas:add-widget', {
+                detail: {
+                  type: 'agent',
+                  props: {
+                    agentId: id,
+                    startupCommand: cfg.startupCommand || id,
+                    ...(cfg.defaultWidth ? { width: cfg.defaultWidth } : {}),
+                    ...(cfg.defaultHeight ? { height: cfg.defaultHeight } : {}),
+                  },
+                },
+              }))
+            },
+          })),
+        })
+        items.push({
+          id: 'create-widget:agent',
+          children: 'Agent',
+          keywords: ['add', 'widget', 'create', 'agent', 'copilot', 'claude', 'codex'],
+          itemType: 'create',
+          onClick: () => onNavigateToPage?.(pageId),
+          closeOnSelect: false,
+        })
+      }
+    }
+
+    return { group: { heading: section.title, id: `cfg:${section.id}`, items }, subPages }
   }
 
   // --- Starred source (reads from viewfinder localStorage) ---
@@ -415,14 +462,15 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
           })
         }
       } else if (action.type === 'link' && action.url) {
+        const resolvedUrl = action.url.startsWith('/') && !action.url.startsWith('//') ? prefix + action.url : action.url
         commandItems.push({
           id: `cmd:${action.id}`,
           children: action.label,
           keywords: [action.label],
           itemType: 'link',
+          url: resolvedUrl,
           onClick: () => {
-            const url = action.url.startsWith('/') && !action.url.startsWith('//') ? prefix + action.url : action.url
-            window.location.href = url
+            window.location.href = resolvedUrl
           },
         })
       } else {
@@ -600,13 +648,14 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
     }
 
     if (tool.render === 'link' && tool.url) {
+      const resolvedUrl = tool.url.startsWith('/') ? prefix + tool.url : tool.url
       items.push({
         id: `cfg:${section.id}:${toolId}`,
         children: label,
         keywords: [label, toolId].filter(Boolean),
+        url: resolvedUrl,
         onClick: () => {
-          const url = tool.url.startsWith('/') ? prefix + tool.url : tool.url
-          window.location.href = url
+          window.location.href = resolvedUrl
         },
       })
       continue
@@ -810,6 +859,19 @@ export default function StoryboardCommandPalette({ basePath }) {
   const [createType, setCreateType] = useState(null)
   const [currentTheme, setCurrentTheme] = useState(() => getTheme())
   const [refreshKey, setRefreshKey] = useState(0)
+
+  // Track cmd/ctrl modifier for opening links in new tabs
+  const modifierHeldRef = useRef(false)
+  useEffect(() => {
+    const down = (e) => { modifierHeldRef.current = e.metaKey || e.ctrlKey }
+    const up = () => { modifierHeldRef.current = false }
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+    }
+  }, [])
 
   // Keep currentTheme in sync when theme changes
   useEffect(() => {
@@ -1017,7 +1079,7 @@ export default function StoryboardCommandPalette({ basePath }) {
                 !search && <Command.Separator key={list.id} />
               ) : (
                 <Command.Group key={list.id} heading={list.heading}>
-                  {list.items.map(({ id, children, keywords, onClick, itemType, toolIcon, closeOnSelect, ...rest }) => {
+                  {list.items.map(({ id, children, keywords, onClick, itemType, toolIcon, closeOnSelect, url, ...rest }) => {
                     if (hiddenFromSearchIds.size > 0) {
                       for (const toolId of hiddenFromSearchIds) {
                         if (id?.includes(toolId)) return null
@@ -1028,7 +1090,11 @@ export default function StoryboardCommandPalette({ basePath }) {
                         key={id}
                         value={itemValue({ children, keywords })}
                         onSelect={() => {
-                          onClick?.()
+                          if (url && modifierHeldRef.current) {
+                            window.open(url, '_blank')
+                          } else {
+                            onClick?.()
+                          }
                           if (closeOnSelect !== false) {
                             setOpen(false)
                             setActivePage('root')

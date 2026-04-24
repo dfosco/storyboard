@@ -287,9 +287,10 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
       }
     }
 
-    // Also include any toolMenus sub-pages not yet listed
+    // Also include any tool sub-pages not yet listed (skip non-tool sub-pages like create-widget)
     for (const menu of toolMenus) {
-      const menuToolId = menu.id?.replace('tool:', '')
+      if (!menu.id?.startsWith('tool:')) continue
+      const menuToolId = menu.id.replace('tool:', '')
       if (usedToolIds.has(menuToolId)) continue
       if (remainingItems.some(i => i.id === `cfg:${section.id}:${menuToolId}`)) continue
       remainingItems.push({

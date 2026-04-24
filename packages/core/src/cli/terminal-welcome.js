@@ -17,12 +17,19 @@
 
 import * as p from '@clack/prompts'
 import { execSync, spawn } from 'node:child_process'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readFileSync, existsSync } from 'node:fs'
+import { resolve, join } from 'node:path'
 import { parseFlags } from './flags.js'
 import { dim, cyan, bold } from './intro.js'
 
 const blue = (s) => `\x1b[34m${s}\x1b[0m`
+
+// Prepend .storyboard/terminals/bin/ to PATH so `start`, `copilot`, etc.
+// are available in child shells. Done once at startup; child shells inherit it.
+const binDir = join(process.cwd(), '.storyboard', 'terminals', 'bin')
+if (existsSync(binDir) && !process.env.PATH?.includes(binDir)) {
+  process.env.PATH = `${binDir}:${process.env.PATH || ''}`
+}
 
 /**
  * Read agents config from storyboard.config.json.
@@ -74,6 +81,37 @@ function resetTerminal() {
   // Leave alternate screen, show cursor, reset attributes
   process.stdout.write('\x1b[?1049l\x1b[?25h\x1b[0m')
   try { execSync('stty sane 2>/dev/null', { stdio: 'ignore' }) } catch {}
+}
+
+/**
+ * Spawn an interactive shell with the storyboard bin dir on PATH.
+ * zsh re-initializes PATH from .zshrc/.zprofile, so we inject an
+ * `export PATH=...` via tmux send-keys after the shell initializes.
+ */
+function spawnShell() {
+  const shell = process.env.SHELL || '/bin/zsh'
+  const child = spawn(shell, [], { stdio: 'inherit' })
+
+  // Inject PATH after shell init so `start`, `copilot`, etc. are available
+  if (existsSync(binDir)) {
+    setTimeout(() => {
+      try {
+        execSync(`tmux send-keys -l ${JSON.stringify(`export PATH="${binDir}:$PATH"`)}`, { stdio: 'ignore' })
+        execSync(`tmux send-keys Enter`, { stdio: 'ignore' })
+        setTimeout(() => {
+          try {
+            execSync(`tmux send-keys -l "clear"`, { stdio: 'ignore' })
+            execSync(`tmux send-keys Enter`, { stdio: 'ignore' })
+          } catch {}
+        }, 200)
+      } catch {}
+    }, 500)
+  }
+
+  return new Promise((resolve) => {
+    child.on('close', resolve)
+    child.on('error', resolve)
+  })
 }
 
 /**
@@ -146,14 +184,7 @@ async function welcomeLoop() {
       if (startupCmd === 'shell') {
         // Plain shell — spawn interactive shell, return to welcome on exit
         setMouse(true)
-        try {
-          const shell = process.env.SHELL || '/bin/zsh'
-          const child = spawn(shell, [], { stdio: 'inherit' })
-          await new Promise((resolve) => {
-            child.on('close', resolve)
-            child.on('error', resolve)
-          })
-        } catch {}
+        try { await spawnShell() } catch {}
         resetTerminal()
         continue
       }
@@ -231,14 +262,7 @@ async function welcomeLoop() {
       p.outro(dim('Opening shell... Enter any command below.'))
       setMouse(true)
       // Spawn an interactive shell; when it exits, loop back to welcome
-      try {
-        const shell = process.env.SHELL || '/bin/zsh'
-        const child = spawn(shell, [], { stdio: 'inherit' })
-        await new Promise((resolve) => {
-          child.on('close', resolve)
-          child.on('error', resolve)
-        })
-      } catch {}
+      try { await spawnShell() } catch {}
       continue
     }
 

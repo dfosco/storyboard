@@ -29,6 +29,9 @@ function loadGhostty() {
   return ghosttyPromise
 }
 
+// Global registry so split-screen can look up any terminal's ghostty + WS by widget ID
+const terminalRegistry = new Map()
+
 function getWsUrl(sessionId, prettyName, startupCommand) {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
   const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
@@ -52,6 +55,25 @@ function calcDimensions(widthPx, heightPx, fontSize = 13) {
   const cols = Math.max(10, Math.floor((widthPx - hPad) / cellWidth))
   const rows = Math.max(4, Math.floor((heightPx - vPad) / cellHeight))
   return { cols, rows }
+}
+
+/**
+ * Fit a terminal (by widget ID) to a container element using real cell metrics.
+ * Works for both the primary and secondary terminal in split-screen.
+ */
+function fitTerminalToElement(widgetId, containerEl) {
+  const entry = terminalRegistry.get(widgetId)
+  if (!entry || !containerEl) return
+  const { term, ws } = entry
+  const cw = term.renderer?.charWidth
+  const ch = term.renderer?.charHeight
+  if (!cw || !ch) return
+  const cols = Math.max(10, Math.floor(containerEl.clientWidth / cw))
+  const rows = Math.max(4, Math.floor(containerEl.clientHeight / ch))
+  term.resize?.(cols, rows)
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'resize', cols, rows }))
+  }
 }
 
 const EMBED_TYPES = new Set(['prototype', 'story'])
@@ -165,9 +187,14 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
       if (actionId === 'expand' || actionId === 'split-screen') { setExpanded(true); return true }
+      if (actionId === 'toggle-private') {
+        const isPrivate = !!props?.private
+        onUpdate?.({ private: !isPrivate })
+        return true
+      }
       return false
     },
-  }), [setExpanded])
+  }), [setExpanded, props, onUpdate])
 
   // Exit interactive on click outside
   useEffect(() => {
@@ -296,6 +323,9 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         term.onData((data) => {
           if (ws.readyState === WebSocket.OPEN) ws.send(data)
         })
+
+        // Register in global registry for split-screen access
+        terminalRegistry.set(id, { term, ws })
       } catch (err) {
         if (!disposed) setError(err.message || 'Failed to load terminal')
       }
@@ -305,6 +335,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
     return () => {
       disposed = true
+      terminalRegistry.delete(id)
       if (ws && ws.readyState <= WebSocket.OPEN) ws.close()
       if (term) term.dispose()
       termRef.current = null
@@ -341,40 +372,34 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
   // Resize for expand — use real cell metrics, observe viewport changes
   useEffect(() => {
-    if (!expanded || !termRef.current || !expandContainerRef.current) return
+    if (!expanded || !expandContainerRef.current) return
 
-    function fitToContainer() {
-      const el = expandContainerRef.current
-      const term = termRef.current
-      if (!el || !term) return
-      const cw = term.renderer?.charWidth
-      const ch = term.renderer?.charHeight
-      if (!cw || !ch) return
-      // expandContainerRef is .expandTerminal, already below the top bar
-      const availW = el.clientWidth
-      const availH = el.clientHeight
-      const cols = Math.max(10, Math.floor(availW / cw))
-      const rows = Math.max(4, Math.floor(availH / ch))
-      term.resize?.(cols, rows)
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: 'resize', cols, rows }))
+    function fitAll() {
+      // Fit primary terminal
+      fitTerminalToElement(id, expandContainerRef.current)
+      // Fit secondary terminal if in split-screen
+      if (isSecondaryTerminal && secondaryTermRef.current && connectedEmbed?.id) {
+        fitTerminalToElement(connectedEmbed.id, secondaryTermRef.current)
       }
     }
 
     const timer = setTimeout(() => {
-      fitToContainer()
+      fitAll()
       setInteractive(true)
       termRef.current?.focus?.()
     }, 100)
 
-    const ro = new ResizeObserver(() => fitToContainer())
+    const ro = new ResizeObserver(() => fitAll())
     ro.observe(expandContainerRef.current)
+    if (isSecondaryTerminal && secondaryTermRef.current) {
+      ro.observe(secondaryTermRef.current)
+    }
 
     return () => {
       clearTimeout(timer)
       ro.disconnect()
     }
-  }, [expanded])
+  }, [expanded, isSecondaryTerminal, connectedEmbed?.id])
 
   // Restore size on collapse
   useEffect(() => {

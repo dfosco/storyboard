@@ -130,11 +130,12 @@ export function matchesAutosyncScope(scope, filePath) {
     return file === 'src/prototypes' || file.startsWith('src/prototypes/')
   }
 
-  // canvas scope
+  // canvas scope — includes canvas data, canvas assets, and public storyboard assets
   return (
     file === 'src/canvas' ||
     file.startsWith('src/canvas/') ||
     file.endsWith('.canvas.jsonl') ||
+    file.startsWith('assets/canvas/') ||
     file.startsWith('assets/.storyboard-public/')
   )
 }

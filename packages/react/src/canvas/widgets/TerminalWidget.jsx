@@ -138,6 +138,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   )
   const width = rawWidth
   const height = rawHeight
+  // Snapped height computed from ghostty's actual cell metrics (set after open)
+  const [snappedHeight, setSnappedHeight] = useState(null)
 
   const containerRef = useRef(null)
   const termRef = useRef(null)
@@ -236,6 +238,13 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           wrap.style.setProperty('--term-font-size', `${cfg.fontSize ?? 13}px`)
         }
 
+        // Snap container height to exact cell grid using real metrics
+        // .terminal has 8px padding + 1px border on each side = 18px vertical chrome
+        if (ch && !disposed) {
+          const vPad = 18
+          setSnappedHeight(Math.round(dims.rows * ch) + vPad)
+        }
+
         // SGR mouse wheel for tmux scroll in alternate screen
         term.attachCustomWheelEventHandler((e) => {
           if (!(term.wasmTerm?.isAlternateScreen?.() ?? false)) return false
@@ -319,6 +328,11 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
       if (wrap) {
         wrap.style.setProperty('--term-cols', dims.cols)
         wrap.style.setProperty('--term-rows', dims.rows)
+      }
+      // Re-snap height to cell grid
+      if (ch) {
+        const vPad = 18
+        setSnappedHeight(Math.round(dims.rows * ch) + vPad)
       }
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
@@ -457,7 +471,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         className={styles.terminal}
         style={{
           ...(typeof width === 'number' ? { width: `${width}px` } : undefined),
-          ...(typeof height === 'number' ? { height: `${height}px` } : undefined),
+          ...(typeof (snappedHeight ?? height) === 'number' ? { height: `${snappedHeight ?? height}px` } : undefined),
         }}
         onClick={handleClick}
         onPointerDown={handleTerminalPointerDown}

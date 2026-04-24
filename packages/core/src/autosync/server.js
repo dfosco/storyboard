@@ -134,7 +134,8 @@ export function matchesAutosyncScope(scope, filePath) {
   return (
     file === 'src/canvas' ||
     file.startsWith('src/canvas/') ||
-    file.endsWith('.canvas.jsonl')
+    file.endsWith('.canvas.jsonl') ||
+    file.startsWith('assets/.storyboard-public/')
   )
 }
 

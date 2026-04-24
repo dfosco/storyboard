@@ -14,6 +14,7 @@ describe('autosync scope helpers', () => {
   it('matches canvas scope files', () => {
     expect(matchesAutosyncScope('canvas', 'src/canvas/widgets.canvas.jsonl')).toBe(true)
     expect(matchesAutosyncScope('canvas', 'src/canvas/notes.txt')).toBe(true)
+    expect(matchesAutosyncScope('canvas', 'assets/.storyboard-public/terminal-snapshots/agent-abc.snapshot.json')).toBe(true)
     expect(matchesAutosyncScope('canvas', 'src/prototypes/demo/default.flow.json')).toBe(false)
   })
 

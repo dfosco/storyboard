@@ -44,6 +44,8 @@
  */
 
 import { execSync } from 'node:child_process'
+import { writeFileSync, existsSync, unlinkSync, mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 
 /**
  * @typedef {Object} WarmSession
@@ -401,51 +403,109 @@ export class HotPool {
   /**
    * Launch the agent command and wait for the readiness signal.
    * Returns true if the agent is ready, false on timeout or failure.
+   *
+   * Supports two readiness modes:
+   *   1. readinessFile: true — writes a SessionStart hook that touches a signal
+   *      file, appends --settings to the command, and polls for the file.
+   *      More reliable than pane scanning (survives UI changes).
+   *   2. readinessSignal: "text" — polls tmux capture-pane for the text.
+   *   3. Neither — waits 5s and assumes ready.
    */
   async #warmAgent(tmuxName, sessionId) {
-    const { startupCommand, readinessSignal, postStartup } = this.#agentConfig
+    const { startupCommand, readinessSignal, readinessFile, postStartup } = this.#agentConfig
     this.#log(`⊕ AGENT ${sessionId} launching: ${startupCommand}`)
 
+    // Set up file-based readiness hook if configured
+    let signalFilePath = null
+    let settingsFilePath = null
+    let finalCommand = startupCommand
+
+    if (readinessFile) {
+      const hookDir = join(this.#root, '.storyboard', 'hot-pool')
+      try { mkdirSync(hookDir, { recursive: true }) } catch {}
+      signalFilePath = join(hookDir, `${sessionId}.ready`)
+      settingsFilePath = join(hookDir, `${sessionId}.settings.json`)
+
+      // Clean up any stale signal file
+      try { unlinkSync(signalFilePath) } catch {}
+
+      // Write a settings file with a SessionStart hook
+      const settings = {
+        hooks: {
+          SessionStart: [{
+            type: 'command',
+            command: `touch ${JSON.stringify(signalFilePath)}`,
+          }],
+        },
+      }
+      writeFileSync(settingsFilePath, JSON.stringify(settings))
+      finalCommand = `${startupCommand} --settings ${JSON.stringify(settingsFilePath)}`
+      this.#log(`⊕ AGENT ${sessionId} readinessFile hook → ${signalFilePath}`)
+    }
+
     try {
-      // Send the agent command into the warm shell
-      execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(startupCommand)}`, { stdio: 'ignore' })
+      execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(finalCommand)}`, { stdio: 'ignore' })
       execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
     } catch (err) {
       this.#log(`⊕ AGENT ${sessionId} send-keys failed: ${err.message}`)
       return false
     }
 
-    // If no readiness signal defined, wait a fixed delay and hope for the best
-    if (!readinessSignal) {
-      await new Promise(r => setTimeout(r, 5000))
-      this.#log(`⊕ AGENT ${sessionId} no readinessSignal — assuming ready after 5s`)
-      return this.#tmuxSessionExists(tmuxName)
-    }
+    // Determine readiness strategy
+    let ready = false
 
-    // Poll for readiness signal in the tmux pane content
-    const ready = await new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        clearInterval(poll)
-        this.#log(`⊕ AGENT ${sessionId} readiness timeout (${AGENT_READINESS_TIMEOUT_MS / 1000}s)`)
-        resolve(false)
-      }, AGENT_READINESS_TIMEOUT_MS)
+    if (signalFilePath) {
+      // File-based readiness — poll for signal file existence
+      ready = await new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          clearInterval(poll)
+          this.#log(`⊕ AGENT ${sessionId} readiness file timeout (${AGENT_READINESS_TIMEOUT_MS / 1000}s)`)
+          resolve(false)
+        }, AGENT_READINESS_TIMEOUT_MS)
 
-      const poll = setInterval(() => {
-        try {
-          const paneContent = execSync(
-            `tmux capture-pane -t "${tmuxName}" -p`,
-            { encoding: 'utf8', timeout: 1000 }
-          )
-          // Strip ANSI escape sequences — agent CLIs use heavy formatting
-          const clean = paneContent.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/[^\x20-\x7E\n]/g, '')
-          if (clean.includes(readinessSignal)) {
+        const poll = setInterval(() => {
+          if (existsSync(signalFilePath)) {
             clearInterval(poll)
             clearTimeout(timeout)
             resolve(true)
           }
-        } catch { /* not ready yet */ }
-      }, AGENT_READINESS_POLL_MS)
-    })
+        }, AGENT_READINESS_POLL_MS)
+      })
+
+      // Clean up hook files
+      try { unlinkSync(signalFilePath) } catch {}
+      try { unlinkSync(settingsFilePath) } catch {}
+    } else if (readinessSignal) {
+      // Pane-content readiness — poll capture-pane for signal text
+      ready = await new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          clearInterval(poll)
+          this.#log(`⊕ AGENT ${sessionId} readiness timeout (${AGENT_READINESS_TIMEOUT_MS / 1000}s)`)
+          resolve(false)
+        }, AGENT_READINESS_TIMEOUT_MS)
+
+        const poll = setInterval(() => {
+          try {
+            const paneContent = execSync(
+              `tmux capture-pane -t "${tmuxName}" -p`,
+              { encoding: 'utf8', timeout: 1000 }
+            )
+            // Strip ANSI escape sequences — agent CLIs use heavy formatting
+            const clean = paneContent.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/[^\x20-\x7E\n]/g, '')
+            if (clean.includes(readinessSignal)) {
+              clearInterval(poll)
+              clearTimeout(timeout)
+              resolve(true)
+            }
+          } catch { /* not ready yet */ }
+        }, AGENT_READINESS_POLL_MS)
+      })
+    } else {
+      // No readiness mechanism — wait a fixed delay
+      await new Promise(r => setTimeout(r, 5000))
+      this.#log(`⊕ AGENT ${sessionId} no readiness signal — assuming ready after 5s`)
+      return this.#tmuxSessionExists(tmuxName)
+    }
 
     if (!ready) {
       // Timeout is non-fatal — the agent may be blocked by a CLI prompt
@@ -465,7 +525,7 @@ export class HotPool {
       } catch {}
     }
 
-    this.#log(`⊕ AGENT ${sessionId} ready (signal: "${readinessSignal}")`)
+    this.#log(`⊕ AGENT ${sessionId} ready (${signalFilePath ? 'file' : 'signal'}: "${readinessSignal || 'file'}")`)
     return true
   }
 

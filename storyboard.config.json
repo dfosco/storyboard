@@ -56,8 +56,8 @@
         "icon": "claude",
         "startupCommand": "claude --agent terminal-agent --dangerously-skip-permissions",
         "resumeCommand": "claude --resume",
-        "readinessSignal": "bypass permissions",
-        "resizable": true
+        "resizable": true,
+        "readinessSignal": "bypass permissions"
       },
       "codex": {
         "label": "Codex CLI",

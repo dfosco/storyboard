@@ -25,7 +25,7 @@ const LazyInspectorPanel = lazy(() => import('./InspectorPanel.jsx'))
 function OcticonSvg({ name, size = 16 }) {
   const icon = octicons[name]
   if (!icon) return null
-  const svg = icon.toSVG({ width: size, height: size })
+  const svg = icon.toSVG({ width: size, height: size }).replace('<svg ', '<svg fill="currentColor" ')
   return <span style={{ display: 'inline-flex', alignItems: 'center' }} dangerouslySetInnerHTML={{ __html: svg }} />
 }
 

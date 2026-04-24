@@ -16,7 +16,7 @@ import { getColors, createInspectorHighlighter } from './inspector/highlighter.j
 function OcticonSvg({ name, size = 16, className, style }) {
   const icon = octicons[name]
   if (!icon) return null
-  const svg = icon.toSVG({ width: size, height: size })
+  const svg = icon.toSVG({ width: size, height: size }).replace('<svg ', '<svg fill="currentColor" ')
   return <span className={className} style={{ display: 'inline-flex', alignItems: 'center', ...style }} dangerouslySetInnerHTML={{ __html: svg }} />
 }
 

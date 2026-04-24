@@ -303,6 +303,18 @@ function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
     }
 
     if (remainingItems.length === 0) continue
+
+    // Stamp toolIcon from toolbar config onto remaining items
+    for (const item of remainingItems) {
+      if (!item.toolIcon) {
+        const match = item.id?.match(/cfg:[^:]+:(.+)/)
+        if (match) {
+          const t = allTools[match[1]]
+          if (t?.icon) item.toolIcon = t.icon
+        }
+      }
+    }
+
     groups.push({
       heading: section.title,
       id: `cfg:${section.id}`,

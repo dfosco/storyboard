@@ -68,6 +68,10 @@ const customIcons = {
       'M2 19L11 12L2 5L2 19Z',
     ],
   },
+  'sticky-note': {
+    viewBox: '0 0 14 14',
+    path: 'M3.709.471C4.763.353 5.867.25 7 .25s2.237.104 3.29.22h.003a3.694 3.694 0 0 1 3.247 3.256v.004c.113 1.049.21 2.145.21 3.27q-.001.595-.032 1.176l-.008.067c-.556 3.437-3.804 5.226-6.192 5.498h-.006l-.048.006a.6.6 0 0 1-.126 0q-.168.003-.338.003c-1.133 0-2.236-.103-3.29-.221h-.003A3.695 3.695 0 0 1 .46 10.272v-.004C.346 9.221.25 8.126.25 7s.097-2.222.21-3.27v-.003A3.694 3.694 0 0 1 3.707.472zm8.784 7.047h-2.37c-.854 0-1.514.656-1.628 1.442c-.22 1.52-.706 2.546-1.413 3.54H7c-1.061 0-2.108-.097-3.15-.213a2.445 2.445 0 0 1-2.148-2.153C1.592 9.1 1.5 8.057 1.5 7s.091-2.1.202-3.134A2.444 2.444 0 0 1 3.85 1.714C4.89 1.597 5.938 1.5 7 1.5s2.107.098 3.151.213a2.444 2.444 0 0 1 2.147 2.152C12.408 4.9 12.5 5.944 12.5 7q0 .259-.007.518',
+  },
   'agents': {
     viewBox: '0 0 32 32',
     path: 'M27.2 16c0-6.19-5.01-11.2-11.2-11.2S4.8 9.81 4.8 16S9.81 27.2 16 27.2S27.2 22.19 27.2 16m-5.6 2.1a1.4 1.4 0 0 1 0 2.8h-4.2a1.4 1.4 0 0 1 0-2.8zm-11.2-6.8a1.397 1.397 0 0 1 1.84.361l.08.119l2.1 3.5l.087.171a1.4 1.4 0 0 1 0 1.1l-.088.171l-2.1 3.5a1.4 1.4 0 0 1-2.4-1.44l1.67-2.78l-1.67-2.78l-.067-.127a1.394 1.394 0 0 1 .547-1.79zM30 16c0 7.73-6.27 14-14 14S2 23.73 2 16S8.27 2 16 2s14 6.27 14 14',
@@ -125,6 +129,26 @@ const iconoirIcons = {
     viewBox: '0 0 24 24',
     strokeWidth: '1.5',
     content: '<path d="M3 21V3.6C3 3.26863 3.26863 3 3.6 3H21" stroke="currentColor"/><path d="M17 21H20.4C20.7314 21 21 20.7314 21 20.4V17" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 7V9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12V14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 21H9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 21H14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 4C3.55228 4 4 3.55228 4 3C4 2.44772 3.55228 2 3 2C2.44772 2 2 2.44772 2 3C2 3.55228 2.44772 4 3 4Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 22C3.55228 22 4 21.5523 4 21C4 20.4477 3.55228 20 3 20C2.44772 20 2 20.4477 2 21C2 21.5523 2.44772 22 3 22Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 4C21.5523 4 22 3.55228 22 3C22 2.44772 21.5523 2 21 2C20.4477 2 20 2.44772 20 3C20 3.55228 20.4477 4 21 4Z" fill="currentColor" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
+  },
+  'white-flag': {
+    viewBox: '0 0 24 24',
+    strokeWidth: '1.5',
+    content: '<path d="M5 15L5.95039 4.54568C5.97849 4.23663 6.23761 4 6.54793 4H20.343C20.6958 4 20.9725 4.30295 20.9405 4.65432L20.0496 14.4543C20.0215 14.7634 19.7624 15 19.4521 15H5ZM5 15L4.4 21" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
+  },
+  'light-bulb': {
+    viewBox: '0 0 24 24',
+    strokeWidth: '1.5',
+    content: '<path d="M9 18H15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 21H14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.00082 15C9.00098 13 8.50098 12.5 7.50082 11.5C6.50067 10.5 6.02422 9.48689 6.00082 8C5.95284 4.95029 8.00067 3 12.0008 3C16.001 3 18.0488 4.95029 18.0008 8C17.9774 9.48689 17.5007 10.5 16.5008 11.5C15.501 12.5 15.001 13 15.0008 15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
+  },
+  'light-bulb-off': {
+    viewBox: '0 0 24 24',
+    strokeWidth: '1.5',
+    content: '<path d="M9 18H15" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 21H14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.4999 11.5C17.4997 10.5 17.9765 9.48689 17.9999 8C18.0479 4.95029 16 3 11.9999 3C10.8324 3 9.83119 3.16613 8.99988 3.47724" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.99985 15C9 13 8.5 12.5 7.49985 11.5C6.4997 10.5 6.02324 9.48689 5.99985 8C5.99142 7.46458 6.0476 6.96304 6.1676 6.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 3L21 21" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
+  },
+  'wrench': {
+    viewBox: '0 0 24 24',
+    strokeWidth: '1.5',
+    content: '<path d="M10.0503 10.6066L2.97923 17.6777C2.19818 18.4587 2.19818 19.725 2.97923 20.5061V20.5061C3.76027 21.2871 5.0266 21.2871 5.80765 20.5061L12.8787 13.435" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.0502 10.6066C9.20638 8.45358 9.37134 5.6286 11.1109 3.88909C12.8504 2.14957 16.0606 1.76777 17.8284 2.82843L14.7877 5.8691L14.5051 8.98014L17.6161 8.69753L20.6568 5.65685C21.7175 7.42462 21.3357 10.6349 19.5961 12.3744C17.8566 14.1139 15.0316 14.2789 12.8786 13.435" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>',
   },
 }
 

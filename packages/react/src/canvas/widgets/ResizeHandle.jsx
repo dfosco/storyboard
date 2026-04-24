@@ -15,8 +15,10 @@ import styles from './ResizeHandle.module.css'
  * @param {number} [props.minHeight=60]  - minimum allowed height
  * @param {'both'|'vertical'|'horizontal'} [props.axis='both'] - constrain resize to a single axis
  * @param {Function} props.onResize - callback: (width, height) => void
+ * @param {Function} [props.onResizeStart] - called when drag begins
+ * @param {Function} [props.onResizeEnd] - called with final (width, height) on drag end
  */
-export default function ResizeHandle({ targetRef, minWidth = 180, minHeight = 60, axis = 'both', onResize }) {
+export default function ResizeHandle({ targetRef, minWidth = 180, minHeight = 60, axis = 'both', onResize, onResizeStart, onResizeEnd }) {
   const handleMouseDown = useCallback((e) => {
     e.stopPropagation()
     e.preventDefault()
@@ -28,21 +30,26 @@ export default function ResizeHandle({ targetRef, minWidth = 180, minHeight = 60
     const startY = e.clientY
     const startW = el.offsetWidth
     const startH = el.offsetHeight
+    let lastW = startW
+    let lastH = startH
+
+    onResizeStart?.()
 
     function onMove(ev) {
-      const newW = axis === 'vertical' ? startW : Math.max(minWidth, startW + ev.clientX - startX)
-      const newH = axis === 'horizontal' ? startH : Math.max(minHeight, startH + ev.clientY - startY)
-      onResize?.(newW, newH)
+      lastW = axis === 'vertical' ? startW : Math.max(minWidth, startW + ev.clientX - startX)
+      lastH = axis === 'horizontal' ? startH : Math.max(minHeight, startH + ev.clientY - startY)
+      onResize?.(lastW, lastH)
     }
 
     function onUp() {
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
+      onResizeEnd?.(lastW, lastH)
     }
 
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
-  }, [targetRef, minWidth, minHeight, axis, onResize])
+  }, [targetRef, minWidth, minHeight, axis, onResize, onResizeStart, onResizeEnd])
 
   const cursor = axis === 'vertical' ? 'ns-resize' : axis === 'horizontal' ? 'ew-resize' : 'nwse-resize'
 

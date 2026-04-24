@@ -141,6 +141,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   // Snapped dimensions computed from ghostty's actual cell metrics (set after open)
   const [snappedHeight, setSnappedHeight] = useState(null)
   const [snappedWidth, setSnappedWidth] = useState(null)
+  const isResizingRef = useRef(false)
 
   const containerRef = useRef(null)
   const termRef = useRef(null)
@@ -192,6 +193,23 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
   }, [onUpdate])
+
+  const handleResizeStart = useCallback(() => {
+    isResizingRef.current = true
+    setSnappedHeight(null)
+  }, [])
+
+  const handleResizeEnd = useCallback((w, h) => {
+    isResizingRef.current = false
+    // Snap to cell grid on release
+    const ch = termRef.current?.renderer?.charHeight
+    if (ch) {
+      const pad = 34
+      const dims = calcDimensions(w, h, fontSize)
+      setSnappedHeight(Math.round(dims.rows * ch) + pad)
+      onUpdate?.({ width: w, height: Math.round(dims.rows * ch) + pad })
+    }
+  }, [fontSize, onUpdate])
 
   // Connect terminal + WebSocket
   useEffect(() => {
@@ -542,6 +560,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         <ResizeHandle
           targetRef={terminalRef}
           onResize={handleResize}
+          onResizeStart={handleResizeStart}
+          onResizeEnd={handleResizeEnd}
           axis="vertical"
           minHeight={200}
         />

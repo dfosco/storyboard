@@ -73,7 +73,8 @@ export async function validateToken(token) {
   }
 
   const user = await res.json()
-  const userInfo = { login: user.login, avatarUrl: user.avatar_url }
+  const scopes = (res.headers.get('x-oauth-scopes') || '').split(',').map(s => s.trim()).filter(Boolean)
+  const userInfo = { login: user.login, avatarUrl: user.avatar_url, scopes }
 
   // 2. Verify the token can access repository discussions
   await validateTokenPermissions(token)

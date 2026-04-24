@@ -24,6 +24,8 @@ export { useHideMode } from './hooks/useHideMode.js'
 export { useUndoRedo } from './hooks/useUndoRedo.js'
 export { useFeatureFlag } from './hooks/useFeatureFlag.js'
 export { useMode } from './hooks/useMode.js'
+export { useThemeState, useThemeSyncTargets } from './hooks/useThemeState.js'
+export { useConfig } from './hooks/useConfig.js'
 
 // React Router integration
 export { installHashPreserver } from './hashPreserver.js'
@@ -37,6 +39,18 @@ export { FormContext } from './context/FormContext.js'
 // Viewfinder dashboard
 export { default as Viewfinder } from './Viewfinder.jsx'
 
+// Command Palette (includes BranchBar automatically)
+export { default as StoryboardCommandPalette } from './CommandPalette/CommandPalette.jsx'
+
+// Branch Bar (standalone, for consumers who don't use CommandPalette)
+export { default as BranchBar } from './BranchBar/BranchBar.jsx'
+
+// Auth Modal (standalone, for consumers who don't use CommandPalette)
+export { default as AuthModal } from './AuthModal/AuthModal.jsx'
+
 // Canvas
 export { default as CanvasPage } from './canvas/CanvasPage.jsx'
 export { useCanvas } from './canvas/useCanvas.js'
+
+// Icon
+export { default as Icon } from './Icon.jsx'

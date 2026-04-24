@@ -1,9 +1,28 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
+import { createPortal } from 'react-dom'
 import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
+import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
+import { useIframeDevLogs } from './iframeDevLogs.js'
+import { PencilIcon, EyeIcon } from '@primer/octicons-react'
+import { findConnectedSplitTarget, getPaneOrder, getSplitPaneLabel, getWidgetX, writeSplitToURL, clearSplitFromURL } from './expandUtils.js'
+import { SecondaryPane } from './SplitExpandModal.jsx'
+import SplitScreenTopBar from './SplitScreenTopBar.jsx'
+import useSplitRestore from './useSplitRestore.js'
 import styles from './PrototypeEmbed.module.css'
+import overlayStyles from './embedOverlay.module.css'
+
+function CollageFrameIcon({ size = 36 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <path d="M19.4 20H4.6C4.26863 20 4 19.7314 4 19.4V4.6C4 4.26863 4.26863 4 4.6 4H19.4C19.7314 4 20 4.26863 20 4.6V19.4C20 19.7314 19.7314 20 19.4 20Z" />
+      <path d="M11 12V4" />
+      <path d="M4 12H20" />
+    </svg>
+  )
+}
 
 function formatName(name) {
   return name
@@ -17,18 +36,17 @@ function resolveCanvasThemeFromStorage() {
   try {
     const rawSync = localStorage.getItem('sb-theme-sync')
     if (rawSync) sync = { ...sync, ...JSON.parse(rawSync) }
-  } catch {
-    // Ignore malformed sync settings
-  }
+  } catch { /* */ }
   if (!sync.canvas) return 'light'
   const attrTheme = document.documentElement.getAttribute('data-sb-canvas-theme')
   if (attrTheme) return attrTheme
   const stored = localStorage.getItem('sb-color-scheme') || 'system'
   if (stored !== 'system') return stored
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-export default function PrototypeEmbed({ props, onUpdate }) {
+export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdate, resizable }, ref) {
   const src = readProp(props, 'src', prototypeEmbedSchema)
   const width = readProp(props, 'width', prototypeEmbedSchema)
   const height = readProp(props, 'height', prototypeEmbedSchema)
@@ -36,37 +54,52 @@ export default function PrototypeEmbed({ props, onUpdate }) {
   const label = readProp(props, 'label', prototypeEmbedSchema) || src
 
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
-  const rawSrc = src ? `${basePath}${src}` : ''
+  const baseSegment = basePath.replace(/^\//, '')
+  const rawSrc = useMemo(() => {
+    if (!src) return ''
+    if (/^https?:\/\//.test(src)) return src
+    const cleaned = src.replace(/^\/branch--[^/]+/, '')
+    if (baseSegment && cleaned.startsWith(basePath)) return cleaned
+    if (baseSegment && cleaned.startsWith(baseSegment)) return `/${cleaned}`
+    return `${basePath}${cleaned}`
+  }, [src, basePath, baseSegment])
 
   const scale = zoom / 100
+  const isExternal = /^https?:\/\//.test(src || '')
 
   const [editing, setEditing] = useState(false)
   const [interactive, setInteractive] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [splitMode, setSplitMode] = useState(false)
   const [filter, setFilter] = useState('')
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
   const inputRef = useRef(null)
   const filterRef = useRef(null)
   const embedRef = useRef(null)
+  const iframeRef = useRef(null)
+  const inlineContainerRef = useRef(null)
+  const modalContainerRef = useRef(null)
 
-  const iframeSrc = rawSrc
-    ? `${rawSrc}${rawSrc.includes('?') ? '&' : '?'}_sb_embed&_sb_theme_target=prototype&_sb_canvas_theme=${canvasTheme}`
-    : ''
+  const iframeSrc = useMemo(() => {
+    if (!rawSrc) return ''
+    if (/^https?:\/\//.test(rawSrc)) return rawSrc
+    const hashIdx = rawSrc.indexOf('#')
+    const base = hashIdx >= 0 ? rawSrc.slice(0, hashIdx) : rawSrc
+    const hash = hashIdx >= 0 ? rawSrc.slice(hashIdx) : ''
+    const sep = base.includes('?') ? '&' : '?'
+    return `${base}${sep}_sb_embed&_sb_hide_branch_bar&_sb_theme_target=prototype&_sb_canvas_theme=${canvasTheme}${hash}`
+  }, [rawSrc, canvasTheme])
 
-  // Build prototype index for the picker
+  const effectiveSrc = iframeSrc
+
   const prototypeIndex = useMemo(() => {
-    try {
-      return buildPrototypeIndex()
-    } catch {
-      return { folders: [], prototypes: [], globalFlows: [], sorted: { title: { prototypes: [], folders: [] } } }
-    }
+    try { return buildPrototypeIndex() }
+    catch { return { folders: [], prototypes: [], globalFlows: [], sorted: { title: { prototypes: [], folders: [] } } } }
   }, [])
 
-  // Build grouped picker entries from the prototype index
   const pickerGroups = useMemo(() => {
     const groups = []
     const idx = prototypeIndex
-
-    // Collect all prototypes (from folders first, then ungrouped)
     const allProtos = []
     for (const folder of (idx.sorted?.title?.folders || idx.folders || [])) {
       for (const proto of folder.prototypes || []) {
@@ -76,45 +109,22 @@ export default function PrototypeEmbed({ props, onUpdate }) {
     for (const proto of (idx.sorted?.title?.prototypes || idx.prototypes || [])) {
       if (!proto.isExternal) allProtos.push(proto)
     }
-
     for (const proto of allProtos) {
       if (proto.hideFlows && proto.flows.length === 1) {
-        groups.push({
-          label: proto.name,
-          items: [{ name: proto.name, route: proto.flows[0].route }],
-        })
+        groups.push({ label: proto.name, items: [{ name: proto.name, route: proto.flows[0].route }] })
       } else if (proto.flows.length > 0) {
-        groups.push({
-          label: proto.name,
-          items: proto.flows.map((f) => ({
-            name: f.meta?.title || formatName(f.name),
-            route: f.route,
-          })),
-        })
+        groups.push({ label: proto.name, items: proto.flows.map((f) => ({ name: f.meta?.title || formatName(f.name), route: f.route })) })
       } else {
-        groups.push({
-          label: proto.name,
-          items: [{ name: proto.name, route: `/${proto.dirName}` }],
-        })
+        groups.push({ label: proto.name, items: [{ name: proto.name, route: `/${proto.dirName}` }] })
       }
     }
-
-    // Global flows
     const gf = idx.globalFlows || []
     if (gf.length > 0) {
-      groups.push({
-        label: 'Other flows',
-        items: gf.map((f) => ({
-          name: f.meta?.title || formatName(f.name),
-          route: f.route,
-        })),
-      })
+      groups.push({ label: 'Other flows', items: gf.map((f) => ({ name: f.meta?.title || formatName(f.name), route: f.route })) })
     }
-
     return groups
   }, [prototypeIndex])
 
-  // Filter groups by search text
   const filteredGroups = useMemo(() => {
     if (!filter) return pickerGroups
     const q = filter.toLowerCase()
@@ -131,7 +141,29 @@ export default function PrototypeEmbed({ props, onUpdate }) {
       .filter(Boolean)
   }, [pickerGroups, filter])
 
+  const prototypeTitle = useMemo(() => {
+    if (!src) return label || 'Prototype'
+    const cleanSrc = src.replace(/^\/branch--[^/]+/, '')
+    for (const group of pickerGroups) {
+      for (const item of group.items) {
+        const cleanRoute = item.route.replace(/^\/branch--[^/]+/, '')
+        if (cleanRoute === cleanSrc) {
+          // If the flow name matches the group name, just show the name
+          if (item.name === group.label) return group.label
+          return `${group.label} · ${item.name}`
+        }
+      }
+    }
+    return label || 'Prototype'
+  }, [src, label, pickerGroups])
+
   const hasPicker = pickerGroups.length > 0
+
+  useIframeDevLogs({
+    widget: 'PrototypeEmbed',
+    loaded: Boolean(effectiveSrc && interactive),
+    src: effectiveSrc,
+  })
 
   useEffect(() => {
     if (editing && hasPicker && filterRef.current) {
@@ -144,15 +176,17 @@ export default function PrototypeEmbed({ props, onUpdate }) {
 
   // Exit interactive mode when clicking outside the embed
   useEffect(() => {
-    if (!interactive) return
+    if (!interactive || expanded) return
     function handlePointerDown(e) {
       if (embedRef.current && !embedRef.current.contains(e.target)) {
+        const chromeEl = e.target.closest(`[data-widget-id="${widgetId}"]`)
+        if (chromeEl) return
         setInteractive(false)
       }
     }
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [interactive])
+  }, [interactive, expanded, widgetId])
 
   useEffect(() => {
     function readToolbarTheme() {
@@ -163,9 +197,94 @@ export default function PrototypeEmbed({ props, onUpdate }) {
     return () => document.removeEventListener('storyboard:theme:changed', readToolbarTheme)
   }, [])
 
+  // Close expanded modal on Escape
+  useEffect(() => {
+    if (!expanded) return
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setExpanded(false)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => document.removeEventListener('keydown', handleKeyDown, true)
+  }, [expanded])
+
+  // Reparent iframe between inline and modal
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+    if (expanded && modalContainerRef.current) {
+      iframe._savedClassName = iframe.className
+      iframe._savedStyle = iframe.getAttribute('style') || ''
+      iframe.className = styles.expandIframe
+      iframe.removeAttribute('style')
+      const target = modalContainerRef.current
+      try {
+        if (target.moveBefore) target.moveBefore(iframe, target.firstChild)
+        else target.prepend(iframe)
+      } catch {
+        target.prepend(iframe)
+      }
+    } else if (!expanded && inlineContainerRef.current) {
+      if (iframe._savedClassName !== undefined) {
+        iframe.className = iframe._savedClassName
+        iframe.setAttribute('style', iframe._savedStyle)
+        delete iframe._savedClassName
+        delete iframe._savedStyle
+      }
+      const target = inlineContainerRef.current
+      try {
+        if (target.moveBefore) target.moveBefore(iframe, null)
+        else target.appendChild(iframe)
+      } catch {
+        target.appendChild(iframe)
+      }
+    }
+  }, [expanded])
+
+  // Listen for navigation events from the embedded prototype iframe
+  useEffect(() => {
+    function handleMessage(e) {
+      if (e.source !== iframeRef.current?.contentWindow) return
+      if (e.data?.type !== 'storyboard:embed:navigate') return
+      const newSrc = e.data.src
+      if (newSrc && newSrc !== src) {
+        const originalSrc = readProp(props, 'originalSrc', prototypeEmbedSchema)
+        onUpdate?.({ src: newSrc, originalSrc: originalSrc || src })
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [src, props, onUpdate])
+
   const chromeVars = useMemo(() => getEmbedChromeVars(canvasTheme), [canvasTheme])
 
   const enterInteractive = useCallback(() => setInteractive(true), [])
+
+  useImperativeHandle(ref, () => ({
+    handleAction(actionId) {
+      if (actionId === 'edit') {
+        setEditing(true)
+      } else if (actionId === 'expand') {
+        setSplitMode(false)
+        setExpanded(true)
+      } else if (actionId === 'split-screen') {
+        setSplitMode(true)
+        setExpanded(true)
+      } else if (actionId === 'open-external') {
+        if (rawSrc) window.open(rawSrc, '_blank', 'noopener')
+      } else if (actionId === 'zoom-in') {
+        const step = zoom < 75 ? 5 : 25
+        onUpdate?.({ zoom: Math.min(200, zoom + step) })
+      } else if (actionId === 'zoom-out') {
+        const step = zoom <= 75 ? 5 : 25
+        onUpdate?.({ zoom: Math.max(25, zoom - step) })
+      }
+    },
+  }), [rawSrc, zoom, onUpdate])
+
+  useSplitRestore(widgetId, setExpanded)
 
   function handlePickRoute(route) {
     onUpdate?.({ src: route })
@@ -186,13 +305,22 @@ export default function PrototypeEmbed({ props, onUpdate }) {
     setFilter('')
   }
 
+  const handleResize = useCallback((w, h) => {
+    onUpdate?.({ width: w, height: h })
+  }, [onUpdate])
+
   return (
+    <>
     <WidgetWrapper>
       <div
         ref={embedRef}
         className={styles.embed}
         style={{ width, height, ...chromeVars }}
       >
+        <div className={styles.header}>
+          <span className={styles.headerIcon}><CollageFrameIcon size={16} /></span>
+          <span className={styles.headerTitle}>{prototypeTitle}</span>
+        </div>
         {editing ? (
           <div
             className={styles.pickerPanel}
@@ -203,12 +331,7 @@ export default function PrototypeEmbed({ props, onUpdate }) {
               <>
                 <div className={styles.pickerHeader}>
                   <span className={styles.urlLabel}>Pick a prototype</span>
-                  <button
-                    type="button"
-                    className={styles.urlCancel}
-                    onClick={handleCancelEdit}
-                    aria-label="Cancel"
-                  >✕</button>
+                  <button type="button" className={styles.urlCancel} onClick={handleCancelEdit} aria-label="Cancel">✕</button>
                 </div>
                 <input
                   ref={filterRef}
@@ -223,23 +346,14 @@ export default function PrototypeEmbed({ props, onUpdate }) {
                   {filteredGroups.map((group) => (
                     <div key={group.label} className={styles.pickerGroup}>
                       {group.items.length === 1 && group.items[0].name === group.label ? (
-                        <button
-                          className={styles.pickerItem}
-                          role="option"
-                          onClick={() => handlePickRoute(group.items[0].route)}
-                        >
+                        <button className={styles.pickerItem} role="option" onClick={() => handlePickRoute(group.items[0].route)}>
                           {group.label}
                         </button>
                       ) : (
                         <>
                           <div className={styles.pickerGroupLabel}>{group.label}</div>
                           {group.items.map((item) => (
-                            <button
-                              key={item.route}
-                              className={styles.pickerItem}
-                              role="option"
-                              onClick={() => handlePickRoute(item.route)}
-                            >
+                            <button key={item.route} className={styles.pickerItem} role="option" onClick={() => handlePickRoute(item.route)}>
                               {item.name}
                             </button>
                           ))}
@@ -247,38 +361,30 @@ export default function PrototypeEmbed({ props, onUpdate }) {
                       )}
                     </div>
                   ))}
-                  {filteredGroups.length === 0 && (
-                    <div className={styles.pickerEmpty}>No matches</div>
-                  )}
+                  {filteredGroups.length === 0 && <div className={styles.pickerEmpty}>No matches</div>}
                 </div>
                 <div className={styles.pickerDivider} />
               </>
             )}
             <form className={styles.customUrlSection} onSubmit={handleSubmit}>
-              <label className={styles.urlLabel}>
-                {hasPicker ? 'Or enter a custom URL' : 'Prototype URL path'}
-              </label>
-              <input
-                ref={inputRef}
-                className={styles.urlInput}
-                type="text"
-                defaultValue={src}
-                placeholder="/MyPrototype/page"
-                onKeyDown={(e) => { if (e.key === 'Escape') handleCancelEdit() }}
-              />
+              <label className={styles.urlLabel}>{hasPicker ? 'Or enter a custom URL' : 'Prototype URL path'}</label>
+              <input ref={inputRef} className={styles.urlInput} type="text" defaultValue={src} placeholder="/MyPrototype/page" onKeyDown={(e) => { if (e.key === 'Escape') handleCancelEdit() }} />
               <div className={styles.urlActions}>
                 <button type="submit" className={styles.urlSave}>Save</button>
-                {!hasPicker && (
-                  <button type="button" className={styles.urlCancel} onClick={handleCancelEdit}>Cancel</button>
-                )}
+                {!hasPicker && <button type="button" className={styles.urlCancel} onClick={handleCancelEdit}>Cancel</button>}
               </div>
             </form>
           </div>
         ) : iframeSrc ? (
           <>
-            <div className={styles.iframeContainer}>
+            <div
+              ref={inlineContainerRef}
+              className={styles.iframeContainer}
+              style={expanded ? { visibility: 'hidden' } : undefined}
+            >
               <iframe
-                src={iframeSrc}
+                ref={iframeRef}
+                src={effectiveSrc}
                 className={styles.iframe}
                 style={{
                   width: width / scale,
@@ -286,91 +392,150 @@ export default function PrototypeEmbed({ props, onUpdate }) {
                   transform: `scale(${scale})`,
                   transformOrigin: '0 0',
                 }}
-                title={label || 'Prototype embed'}
+                title={`${prototypeTitle} prototype`}
                 sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
               />
             </div>
-            {!interactive && (
+            {!interactive && !expanded && (
               <div
-                className={styles.dragOverlay}
-                onDoubleClick={enterInteractive}
-              />
+                className={overlayStyles.interactOverlay}
+                onClick={(e) => {
+                  if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+                  enterInteractive()
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    enterInteractive()
+                  }
+                }}
+                aria-label="Click to interact with prototype"
+              >
+                <span className={overlayStyles.interactHint}>Click to interact</span>
+              </div>
             )}
           </>
         ) : (
-          <div
-            className={styles.empty}
-            onDoubleClick={() => setEditing(true)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') setEditing(true) }}
-          >
-            <p>Double-click to set prototype URL</p>
-          </div>
-        )}
-        {iframeSrc && !editing && (
-          <button
-            className={styles.editBtn}
-            onClick={(e) => { e.stopPropagation(); setEditing(true) }}
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            title="Edit URL"
-            aria-label="Edit prototype URL"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"/></svg>
-          </button>
-        )}
-        {iframeSrc && !editing && (
-          <div
-            className={styles.zoomBar}
-            onMouseDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <button
-              className={styles.zoomBtn}
-              onClick={() => {
-                const step = zoom <= 75 ? 5 : 25
-                onUpdate?.({ zoom: Math.max(25, zoom - step) })
-              }}
-              disabled={zoom <= 25}
-              aria-label="Zoom out"
-            >−</button>
-            <span className={styles.zoomLabel}>{zoom}%</span>
-            <button
-              className={styles.zoomBtn}
-              onClick={() => {
-                const step = zoom < 75 ? 5 : 25
-                onUpdate?.({ zoom: Math.min(200, zoom + step) })
-              }}
-              disabled={zoom >= 200}
-              aria-label="Zoom in"
-            >+</button>
+          <div className={styles.empty} onClick={() => onUpdate && setEditing(true)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setEditing(true) }}>
+            <CollageFrameIcon size={36} />
+            <p>Click to set prototype URL</p>
           </div>
         )}
       </div>
-      <div
-        className={styles.resizeHandle}
-        onMouseDown={(e) => {
-          e.stopPropagation()
-          e.preventDefault()
-          const startX = e.clientX
-          const startY = e.clientY
-          const startW = width
-          const startH = height
-          function onMove(ev) {
-            const newW = Math.max(200, startW + ev.clientX - startX)
-            const newH = Math.max(150, startH + ev.clientY - startY)
-            onUpdate?.({ width: newW, height: newH })
-          }
-          function onUp() {
-            document.removeEventListener('mousemove', onMove)
-            document.removeEventListener('mouseup', onUp)
-          }
-          document.addEventListener('mousemove', onMove)
-          document.addEventListener('mouseup', onUp)
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
-      />
+      {resizable && <ResizeHandle targetRef={embedRef} width={width} height={height} onResize={handleResize} />}
     </WidgetWrapper>
+    {createPortal(
+      <PrototypeExpandModal
+        expanded={expanded}
+        onClose={() => setExpanded(false)}
+        modalContainerRef={modalContainerRef}
+        widgetId={widgetId}
+      />,
+      document.body
+    )}
+    </>
+  )
+})
+
+/**
+ * PrototypeExpandModal — the existing expand modal with split-screen support.
+ * Keeps iframe reparenting in the primary pane, adds a secondary pane if connected.
+ */
+function PrototypeExpandModal({ expanded, onClose, modalContainerRef, widgetId }) {
+  const connectedWidget = useMemo(
+    () => (expanded ? findConnectedSplitTarget(widgetId) : null),
+    [expanded, widgetId],
+  )
+  const hasSplit = Boolean(connectedWidget)
+  const paneOrder = useMemo(
+    () => (hasSplit ? getPaneOrder(widgetId, connectedWidget) : { primaryIsLeft: true }),
+    [hasSplit, widgetId, connectedWidget],
+  )
+  const [activePane, setActivePane] = useState('left')
+
+  // Persist split-screen state in URL
+  useEffect(() => {
+    if (hasSplit && connectedWidget) {
+      writeSplitToURL(widgetId, connectedWidget.id)
+    }
+    return () => {
+      if (hasSplit) clearSplitFromURL()
+    }
+  }, [expanded, hasSplit, widgetId, connectedWidget])
+
+  // Secondary markdown editing
+  const isSecondaryMarkdown = connectedWidget?.type === 'markdown'
+  const [secondaryEditing, setSecondaryEditing] = useState(false)
+  useEffect(() => { if (!expanded) setSecondaryEditing(false) }, [expanded])
+
+  // Build labels for the top bar
+  const primaryWidget = useMemo(() => {
+    const bridge = window.__storyboardCanvasBridgeState
+    return bridge?.widgets?.find((w) => w.id === widgetId) || { type: 'prototype', props: {} }
+  }, [widgetId, expanded])
+
+  const primaryLabel = useMemo(() => getSplitPaneLabel(primaryWidget), [primaryWidget])
+  const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedWidget), [connectedWidget])
+  const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel
+  const rightLabel = paneOrder.primaryIsLeft ? secondaryLabel : primaryLabel
+
+  // Per-side edit actions (only secondary markdown gets an edit button)
+  const secondaryEditActions = isSecondaryMarkdown ? [{ icon: secondaryEditing ? EyeIcon : PencilIcon, label: secondaryEditing ? 'Preview' : 'Edit', onClick: () => setSecondaryEditing((v) => !v) }] : undefined
+  const leftActions = paneOrder.primaryIsLeft ? undefined : secondaryEditActions
+  const rightActions = paneOrder.primaryIsLeft ? secondaryEditActions : undefined
+
+  const primaryPane = (
+    <div
+      ref={modalContainerRef}
+      className={hasSplit ? styles.expandContainerSplit : styles.expandContainer}
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={() => setActivePane(paneOrder.primaryIsLeft ? 'left' : 'right')}
+    >
+      {!hasSplit && <button className={styles.expandClose} onClick={onClose} aria-label="Close expanded view" autoFocus>✕</button>}
+    </div>
+  )
+
+  const secondarySide = paneOrder.primaryIsLeft ? 'right' : 'left'
+  const secondaryPane = hasSplit ? (
+    <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()} onPointerDown={() => setActivePane(secondarySide)}>
+      <SecondaryPane widget={connectedWidget} editing={secondaryEditing} setEditing={setSecondaryEditing} />
+    </div>
+  ) : null
+
+  const leftPane = paneOrder.primaryIsLeft ? primaryPane : secondaryPane
+  const rightPane = paneOrder.primaryIsLeft ? secondaryPane : primaryPane
+
+  return (
+    <div
+      className={styles.expandBackdrop}
+      style={expanded ? undefined : { display: 'none' }}
+      onClick={onClose}
+      onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      onWheel={(e) => e.stopPropagation()}
+    >
+      {hasSplit ? (
+        <div className={styles.expandSplitBody}>
+          <SplitScreenTopBar
+            leftLabel={leftLabel}
+            rightLabel={rightLabel}
+            activePane={activePane}
+            onClose={onClose}
+            leftActions={leftActions}
+            rightActions={rightActions}
+          />
+          <div className={styles.expandSplitPanes}>
+            <div className={styles.expandSplitLeft}>{leftPane}</div>
+            <div className={styles.expandSplitRight}>{rightPane}</div>
+          </div>
+        </div>
+      ) : (
+        primaryPane
+      )}
+    </div>
   )
 }
+

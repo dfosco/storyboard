@@ -1,11 +1,12 @@
 import { defineConfig } from 'vite'
 import path from 'path'
 import react from '@vitejs/plugin-react'
-import { svelte } from '@sveltejs/vite-plugin-svelte'
 import tailwindcss from '@tailwindcss/vite'
 import generouted from '@generouted/react-router/plugin'
-import storyboardData from '@dfosco/storyboard-react/vite'
-import storyboardServer from '@dfosco/storyboard-core/vite/server'
+// In worktrees, npm workspace links point at the main worktree. Import
+// Vite plugins via relative paths so each worktree runs its own source.
+import storyboardData from './packages/react/src/vite/data-plugin.js'
+import storyboardServer from './packages/core/src/vite/server-plugin.js'
 import postcssGlobalData from '@csstools/postcss-global-data'
 import postcssPresetEnv from 'postcss-preset-env'
 import browsers from '@github/browserslist-config'
@@ -20,7 +21,7 @@ const __dirname = path.dirname(new URL(import.meta.url).pathname)
 const { repository } = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'storyboard.config.json'), 'utf-8'))
 
 export default defineConfig(() => {
-    const base = process.env.VITE_BASE_PATH || `/${repository.name}/`
+    const base = process.env.VITE_BASE_PATH || '/'
 
     return {
     base,
@@ -46,54 +47,33 @@ export default defineConfig(() => {
             '@dfosco/storyboard-core/comments/ui/comments.css': path.resolve(__dirname, 'packages/core/src/comments/ui/comment-layout.css'),
             '@dfosco/storyboard-core/comments/ui/comment-layout.css': path.resolve(__dirname, 'packages/core/src/comments/ui/comment-layout.css'),
             '@dfosco/storyboard-core/comments/svelte': path.resolve(__dirname, 'packages/core/src/comments/ui/index.js'),
+            '@dfosco/storyboard-core/widgets.config.json': path.resolve(__dirname, 'packages/core/widgets.config.json'),
+            '@dfosco/storyboard-core/paste.config.json': path.resolve(__dirname, 'packages/core/paste.config.json'),
             '@dfosco/storyboard-core/canvas/materializer': path.resolve(__dirname, 'packages/core/src/canvas/materializer.js'),
+            '@dfosco/storyboard-core/canvas/identity': path.resolve(__dirname, 'packages/core/src/canvas/identity.js'),
+            '@dfosco/storyboard-core/canvas/collision': path.resolve(__dirname, 'packages/core/src/canvas/collision.js'),
+            '@dfosco/storyboard-core/config': path.resolve(__dirname, 'packages/core/src/configSchema.js'),
             '@dfosco/storyboard-core/modes.css': path.resolve(__dirname, 'packages/core/src/modes.css'),
+            '@dfosco/storyboard-core/inspector/highlighter': path.resolve(__dirname, 'packages/core/src/inspector/highlighter.js'),
+            '@dfosco/storyboard-core/smooth-corners': path.resolve(__dirname, 'packages/core/src/smoothCorners.js'),
             '@dfosco/storyboard-core/comments': path.resolve(__dirname, 'packages/core/src/comments/index.js'),
             '@dfosco/storyboard-core': path.resolve(__dirname, 'packages/core/src/index.js'),
+            '@dfosco/storyboard-react/Icon': path.resolve(__dirname, 'packages/react/src/Icon.jsx'),
+            '@dfosco/storyboard-react/Viewfinder': path.resolve(__dirname, 'packages/react/src/Viewfinder.jsx'),
             '@dfosco/storyboard-react/vite': path.resolve(__dirname, 'packages/react/src/vite/data-plugin.js'),
             '@dfosco/storyboard-react/hash-preserver': path.resolve(__dirname, 'packages/react/src/hashPreserver.js'),
             '@dfosco/storyboard-react/canvas/CanvasPage': path.resolve(__dirname, 'packages/react/src/canvas/CanvasPage.jsx'),
             '@dfosco/storyboard-react': path.resolve(__dirname, 'packages/react/src/index.js'),
             '@dfosco/storyboard-react-primer': path.resolve(__dirname, 'packages/react-primer/src/index.js'),
             '@dfosco/storyboard-react-reshaped': path.resolve(__dirname, 'packages/react-reshaped/src/index.js'),
+            '@dfosco/tiny-canvas/style.css': path.resolve(__dirname, 'packages/tiny-canvas/src/style.css'),
+            '@dfosco/tiny-canvas': path.resolve(__dirname, 'packages/tiny-canvas/src/index.js'),
         },
     },
     plugins: [
-        // Guard against unexpected full-reloads caused by canvas JSONL writes.
-        // Some editors/save modes emit watcher sequences that can still trigger
-        // generic reload paths; suppress those and rely on canvas custom events.
-        {
-            name: 'canvas-reload-guard',
-            configureServer(server) {
-                let recentCanvasMutationAt = 0
-                const CANVAS_WINDOW_MS = 1500
-                const isCanvasFile = (file = '') => /\.canvas\.jsonl$/i.test(file.replace(/\\/g, '/'))
-
-                const markCanvasMutation = (file = '') => {
-                    if (isCanvasFile(file)) recentCanvasMutationAt = Date.now()
-                }
-
-                server.watcher.on('change', markCanvasMutation)
-                server.watcher.on('add', markCanvasMutation)
-                server.watcher.on('unlink', markCanvasMutation)
-
-                const originalSend = server.ws.send.bind(server.ws)
-                server.ws.send = (payload, ...rest) => {
-                    if (
-                        payload &&
-                        payload.type === 'full-reload' &&
-                        Date.now() - recentCanvasMutationAt < CANVAS_WINDOW_MS
-                    ) {
-                        return
-                    }
-                    return originalSend(payload, ...rest)
-                }
-            },
-        },
         tailwindcss(),
         storyboardData(),
         storyboardServer(),
-        svelte(),
         react(),
         generouted({
             source: {
@@ -151,11 +131,12 @@ export default defineConfig(() => {
                 'packages/react/src/**/*.{js,jsx}',
                 'packages/react-primer/src/**/*.{js,jsx}',
                 'packages/core/src/**/*.js',
+                '!packages/core/src/cli/**',
             ],
         },
     },
     optimizeDeps: {
-        include: ['reshaped', '@primer/react', '@primer/octicons-react', 'prop-types'],
+        include: ['reshaped', '@primer/react', '@primer/octicons-react', 'use-sync-external-store/shim', 'use-sync-external-store/shim/with-selector'],
     },
     esbuild: {
         // Preserve function names so the storyboard inspector shows
@@ -167,7 +148,7 @@ export default defineConfig(() => {
         // Raised from 500 KB default to suppress the warning for that chunk.
         chunkSizeWarningLimit: 700,
         rollupOptions: {
-            // Core UI modules (loader.js, svelte) are dynamically imported for the
+            // Core UI modules (loader.js, ui components) are dynamically imported for the
             // externalized UI bundle build but also statically imported by core
             // exports. This is intentional — suppress the "won't move to another
             // chunk" noise that only appears in the source-repo build.

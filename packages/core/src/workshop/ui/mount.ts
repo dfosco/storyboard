@@ -8,7 +8,7 @@
  */
 
 import { mountSveltePlugin, type PluginHandle } from '../../svelte-plugin-ui/mount.js'
-import WorkshopPanel from './WorkshopPanel.svelte'
+import WorkshopPanel from './WorkshopPanel.jsx'
 import { features as allFeatures } from '../features/registry.js'
 import '../../../dist/tailwind.css'
 

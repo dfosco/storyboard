@@ -22,7 +22,9 @@
 [data-core-ui-bar],
 [data-sidepanel],
 [data-slot="dropdown-menu-content"],
-[data-slot="dropdown-menu-sub-content"] {
+[data-slot="dropdown-menu-sub-content"],
+[data-slot="command-palette-content"],
+[data-slot="dialog-overlay"] {
   color-scheme: light;
 
   /* shadcn / Tailwind semantic tokens — pinned to light values */
@@ -62,6 +64,12 @@
   --fgColor-muted: #656d76;
   --borderColor-default: #d1d9e0;
   --bgColor-neutral-muted: rgba(175, 184, 193, 0.2);
+
+  /* Slate palette tokens — used by trigger buttons and canvas toolbar */
+  --color-slate-100: oklch(96.8% .007 247.896);
+  --color-slate-300: oklch(86.9% .022 252.894);
+  --color-slate-400: oklch(70.4% .04 256.788);
+  --color-slate-600: oklch(44.6% .043 257.281);
 }
 
 /* Dark tokens — applied when toolbar syncs with a dark theme.
@@ -71,7 +79,9 @@
 :root[data-sb-toolbar-theme^="dark"] [data-core-ui-bar],
 :root[data-sb-toolbar-theme^="dark"] [data-sidepanel],
 :root[data-sb-toolbar-theme^="dark"] [data-slot="dropdown-menu-content"],
-:root[data-sb-toolbar-theme^="dark"] [data-slot="dropdown-menu-sub-content"] {
+:root[data-sb-toolbar-theme^="dark"] [data-slot="dropdown-menu-sub-content"],
+:root[data-sb-toolbar-theme^="dark"] [data-slot="command-palette-content"],
+:root[data-sb-toolbar-theme^="dark"] [data-slot="dialog-overlay"] {
   color-scheme: dark;
 
   --color-background: #161b22;
@@ -110,4 +120,10 @@
   --fgColor-muted: #8b949e;
   --borderColor-default: #30363d;
   --bgColor-neutral-muted: rgba(110, 118, 129, 0.2);
+
+  /* Slate palette tokens — dark equivalents */
+  --color-slate-100: oklch(20.8% .042 265.755);
+  --color-slate-300: oklch(29.3% .042 264.531);
+  --color-slate-400: oklch(44.6% .043 257.281);
+  --color-slate-600: oklch(70.4% .04 256.788);
 }

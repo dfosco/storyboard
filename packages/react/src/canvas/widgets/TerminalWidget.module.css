@@ -1,0 +1,340 @@
+.container {
+  position: relative;
+  padding-bottom: 0;
+  border-radius: var(--base-size-16, 16px);
+}
+
+/* Match selection outline border-radius to terminal's rounded corners */
+:global(.tc-drag-surface):has(.container) {
+  border-radius: 16px;
+}
+
+.titleBar {
+  position: absolute;
+  top: -28px;
+  left: 4px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  color: #8b949e;
+  user-select: none;
+  white-space: nowrap;
+  z-index: 2;
+  cursor: grab;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+[data-widget-selected] .titleBar {
+  color: var(--borderColor-accent-emphasis, #0969da);
+}
+
+.terminal {
+  position: relative;
+  border-radius: var(--base-size-16, 16px);
+  overflow: hidden;
+  background: #0d1117;
+  border: 1px solid var(--borderColor-default, #30363d);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
+  padding: var(--base-size-8, 8px);
+  box-sizing: border-box;
+}
+
+.xtermContainer {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ghostty-web / xterm.js container overrides */
+.xtermContainer :global(.xterm) {
+  width: 100%;
+  height: 100%;
+  background: #0d1117;
+}
+
+.xtermContainer :global(.xterm) canvas {
+  background: #0d1117;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Hide the native caret on ghostty-web's helper textarea —
+   without this it renders a visible blinking cursor at (0,0)
+   and triggers scrollIntoView on focus (scroll-to-top bug). */
+.xtermContainer :global(.xterm-helper-textarea),
+.xtermContainer textarea {
+  caret-color: transparent !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+.xtermContainer :global(.xterm-viewport) {
+  overflow-y: auto;
+}
+
+.xtermContainer :global(.xterm-viewport::-webkit-scrollbar) {
+  width: 6px;
+}
+
+.xtermContainer :global(.xterm-viewport::-webkit-scrollbar-thumb) {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.xtermContainer :global(.xterm-viewport::-webkit-scrollbar-track) {
+  background: transparent;
+}
+
+.loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8b949e;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0d1117;
+  z-index: 1;
+}
+
+.error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f85149;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0d1117;
+  z-index: 1;
+}
+
+.mutedPrompt {
+  color: #484f58;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace;
+  font-size: 16px;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Terminal Zzz Animation ── */
+
+.buddyZzz {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 16px;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace;
+  pointer-events: none;
+  user-select: none;
+}
+
+.z1 {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.6);
+  animation: zFloat 2.4s ease-in-out infinite;
+  animation-delay: 0s;
+  opacity: 0;
+}
+
+.z2 {
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.5);
+  animation: zFloat 2.4s ease-in-out infinite;
+  animation-delay: 0.8s;
+  opacity: 0;
+}
+
+.z3 {
+  font-size: 28px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  animation: zFloat 2.4s ease-in-out infinite;
+  animation-delay: 1.6s;
+  opacity: 0;
+}
+
+@keyframes zFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  15% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+}
+
+/* Fullscreen expand */
+
+/* Drag hint tooltip — appears when user tries to drag the terminal body */
+.dragHint {
+  position: absolute;
+  bottom: -32px;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--bgColor-inverse, #1f2328);
+  color: var(--fgColor-onInverse, #ffffff);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: dragHintIn 150ms ease;
+}
+
+.dragHintArrow {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+@keyframes dragHintIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.expandBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: #0d1117;
+  display: flex;
+  flex-direction: column;
+  animation: expandFadeIn 0.15s ease;
+}
+
+@keyframes expandFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.expandTopBar {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 12px;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  flex-shrink: 0;
+}
+
+.expandTitle {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #e6edf3;
+}
+
+.expandEmbedLabel {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  color: #8b949e;
+  margin-left: auto;
+  margin-right: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expandClose {
+  all: unset;
+  cursor: pointer;
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: #8b949e;
+  font-size: 14px;
+  transition: background 100ms, color 100ms;
+}
+
+.expandClose:hover {
+  background: #30363d;
+  color: #e6edf3;
+}
+
+.expandEmbedLabel + .expandClose {
+  margin-left: 0;
+}
+
+.expandBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.expandTerminal {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #0d1117;
+  position: relative;
+}
+
+/* Absolutely position xterm inside expandTerminal so ghostty's canvas
+   sizing cannot push the flex layout — it's fully decoupled. */
+.expandTerminal > [class*="xtermContainer"] {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.expandTerminal :global(.xterm) {
+  width: 100%;
+  height: 100%;
+}
+
+.expandSplit .expandTerminal {
+  flex: 1 1 0;
+  width: 50%;
+  max-width: 50%;
+  border-right: 1px solid #30363d;
+}
+
+.expandSplit .expandEmbed {
+  flex: 1 1 0;
+  width: 50%;
+  max-width: 50%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.expandEmbed {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.expandIframe {
+  border: none;
+  width: 100%;
+  height: 100%;
+}

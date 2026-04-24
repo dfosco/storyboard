@@ -47,9 +47,9 @@ function calcDimensions(widthPx, heightPx, fontSize = 13) {
   const scale = fontSize / 13
   const cellWidth = 7.8 * scale
   const cellHeight = 17 * scale
-  // .terminal has 8px padding + 1px border on each side (box-sizing: border-box)
-  const hPad = 18 // 8+1 each side
-  const vPad = 18
+  // .terminal has 16px padding + 1px border on each side (box-sizing: border-box)
+  const hPad = 34 // (16+1) * 2
+  const vPad = 34
   const cols = Math.max(10, Math.floor((widthPx - hPad) / cellWidth))
   const rows = Math.max(4, Math.floor((heightPx - vPad) / cellHeight))
   return { cols, rows }
@@ -240,9 +240,9 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         }
 
         // Snap container to exact cell grid using real metrics
-        // .terminal has 8px padding + 1px border on each side = 18px chrome per axis
+        // .terminal has 16px padding + 1px border on each side = 34px chrome per axis
         if (!disposed) {
-          const pad = 18
+          const pad = 34
           if (ch) setSnappedHeight(Math.round(dims.rows * ch) + pad)
           if (cw) setSnappedWidth(Math.round(dims.cols * cw) + pad)
         }
@@ -332,7 +332,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         wrap.style.setProperty('--term-rows', dims.rows)
       }
       // Re-snap to cell grid
-      const pad = 18
+      const pad = 34
       if (ch) setSnappedHeight(Math.round(dims.rows * ch) + pad)
       if (cw) setSnappedWidth(Math.round(dims.cols * cw) + pad)
       if (wsRef.current?.readyState === WebSocket.OPEN) {

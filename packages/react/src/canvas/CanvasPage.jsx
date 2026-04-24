@@ -765,7 +765,9 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
     setSnapEnabled(canvas?.snapToGrid ?? false)
     setSnapGridSize(canvas?.gridSize || 40)
-    undoRedo.reset()
+    if (isCanvasSwitch) {
+      undoRedo.reset()
+    }
     // Only reset viewport state when switching to a different canvas,
     // not when the same canvas refreshes with server data.
     if (isCanvasSwitch) {

@@ -318,7 +318,17 @@ p.note(
   'Getting started'
 )
 
-console.log()
-console.log(mascot())
+// Offer branch guide
+const wantBranch = await p.confirm({
+  message: 'Want to work from a specific branch?',
+  initialValue: false,
+})
 
-p.outro('')
+if (!p.isCancel(wantBranch) && wantBranch) {
+  const { runBranchGuide } = await import('./branch.js')
+  await runBranchGuide()
+} else {
+  console.log()
+  console.log(mascot())
+  p.outro('')
+}

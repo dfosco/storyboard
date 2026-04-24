@@ -91,6 +91,8 @@ function helpScreen(version) {
     '',
     `  ${bold(cyan('Setup'))}`,
     cmd('setup', 'Install deps, Caddy proxy, start proxy'),
+    cmd('branch', 'Switch to a branch (interactive worktree guide)'),
+    cmd('branch <name>', 'Switch to a specific branch directly'),
     cmd('proxy start', 'Start or reload Caddy proxy'),
     cmd('proxy close', 'Stop Caddy proxy'),
     '',
@@ -116,6 +118,9 @@ switch (command) {
     break
   case 'setup':
     import('./setup.js')
+    break
+  case 'branch':
+    import('./branch.js')
     break
   case 'proxy':
     import('./proxy.js')

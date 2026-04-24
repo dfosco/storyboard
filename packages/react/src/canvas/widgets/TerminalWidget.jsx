@@ -118,7 +118,7 @@ const DEFAULT_THEME = {
   brightWhite: '#f0f6fc',
 }
 
-export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizable }, ref) {
+export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizable, multiSelected }, ref) {
   const cfg = getTerminalConfig()
   const fontSize = cfg.fontSize ?? 13
   const agentId = props?.agentId || null
@@ -180,6 +180,11 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [interactive, id])
+
+  // Exit interactive when terminal becomes part of a multi-selection
+  useEffect(() => {
+    if (multiSelected && interactive) setInteractive(false)
+  }, [multiSelected])
 
   const handleResize = useCallback((w, h) => {
     onUpdate?.({ width: w, height: h })
@@ -341,7 +346,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   }, [expanded])
 
   const handleClick = useCallback(() => {
-    if (sessionEnded) return
+    if (sessionEnded || multiSelected) return
     if (ready) {
       setInteractive(true)
       const scrollEl = terminalRef.current?.closest('[class*="canvasScroll"]')
@@ -353,7 +358,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         scrollEl.scrollLeft = scrollLeft
       }
     }
-  }, [sessionEnded, ready])
+  }, [sessionEnded, multiSelected, ready])
 
   const handleTerminalPointerDown = useCallback((e) => {
     if (!interactive) return
@@ -453,16 +458,16 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
             className={overlayStyles.interactOverlay}
             style={{ backgroundColor: 'transparent' }}
             onClick={(e) => {
-              if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
+              if (multiSelected || e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return
               setInteractive(true)
               termRef.current?.focus({ preventScroll: true })
             }}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') { setInteractive(true); termRef.current?.focus({ preventScroll: true }) } }}
+            onKeyDown={(e) => { if (!multiSelected && e.key === 'Enter') { setInteractive(true); termRef.current?.focus({ preventScroll: true }) } }}
             aria-label="Click to interact"
           >
-            <span className={overlayStyles.interactHint}>Click to interact</span>
+            {!multiSelected && <span className={overlayStyles.interactHint}>Click to interact</span>}
           </div>
         )}
 

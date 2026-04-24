@@ -277,7 +277,7 @@ function computeCanvasBounds(widgets, componentEntries) {
 }
 
 /** Renders a single JSON-defined widget by type lookup. */
-function WidgetRenderer({ widget, onUpdate, widgetRef, onRefreshGitHub, canRefreshGitHub }) {
+function WidgetRenderer({ widget, onUpdate, widgetRef, onRefreshGitHub, canRefreshGitHub, multiSelected }) {
   const Component = getWidgetComponent(widget.type)
   if (!Component) {
     console.warn(`[canvas] Unknown widget type: ${widget.type}`)
@@ -294,6 +294,7 @@ function WidgetRenderer({ widget, onUpdate, widgetRef, onRefreshGitHub, canRefre
     resizable,
     onRefreshGitHub,
     canRefreshGitHub,
+    multiSelected,
   }
   if (Component.$$typeof === Symbol.for('react.forward_ref')) {
     elementProps.ref = widgetRef
@@ -467,6 +468,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
         widgetRef={widgetRef}
         onRefreshGitHub={onRefreshGitHub}
         canRefreshGitHub={canRefreshGitHub}
+        multiSelected={multiSelected}
       />
     </WidgetChrome>
   )

@@ -14,6 +14,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { parse as parseJsonc } from 'jsonc-parser'
 import { getConfig } from '../configSchema.js'
+import { createDevLogger } from '../logger/devLogger.js'
 import { serverFeatures as workshopFeatures } from '../workshop/features/registry-server.js'
 import { docsHandler, collectFiles } from './docs-handler.js'
 import { createCanvasHandler } from '../canvas/server.js'
@@ -49,6 +50,27 @@ function parseJsonBody(req) {
 function sendJson(res, status, data) {
   res.writeHead(status, { 'Content-Type': 'application/json' })
   res.end(JSON.stringify(data))
+}
+
+/**
+ * Create a logging wrapper around sendJson.
+ * Reads per-request route context from res.__sbLogCtx (set by middleware).
+ */
+function createLoggedSendJson(logger) {
+  return function sendJsonLogged(res, status, data) {
+    sendJson(res, status, data)
+    if (status >= 400 && logger) {
+      const ctx = res.__sbLogCtx || {}
+      logger.logResponse({
+        status,
+        method: ctx.method || 'UNKNOWN',
+        url: ctx.url || '',
+        route: ctx.route || null,
+        subRoute: ctx.subRoute || null,
+        error: data?.error || null,
+      })
+    }
+  }
 }
 
 /**
@@ -178,6 +200,14 @@ export default function storyboardServer() {
       }
       // --- End canvas reload guard -----------------------------------------------
 
+      // Initialize dev logger for structured o11y logging
+      const devDomain = config.devDomain || null
+      let currentBranch = null
+      try { currentBranch = cpExecSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim() } catch {}
+      const logVerbose = config.featureFlags?.['dev-logs'] || false
+      const devLogger = createDevLogger({ root, devDomain, branch: currentBranch, verbose: logVerbose })
+      const sendJsonLogged = createLoggedSendJson(devLogger)
+
       const workshopConfig = config.workshop || {}
       const enabledFeatures = workshopConfig.features || {}
 
@@ -186,7 +216,7 @@ export default function storyboardServer() {
       for (const [featureName, featureModule] of Object.entries(workshopFeatures)) {
         if (enabledFeatures[featureName] === false) continue
         if (featureModule.serverSetup) {
-          workshopHandlers.push(featureModule.serverSetup({ root, sendJson, workshopConfig }))
+          workshopHandlers.push(featureModule.serverSetup({ root, sendJson: sendJsonLogged, workshopConfig }))
         }
       }
       if (workshopHandlers.length > 0) {
@@ -195,12 +225,12 @@ export default function storyboardServer() {
             await handler(req, res, ctx)
             if (res.writableEnded) return
           }
-          sendJson(res, 404, { error: `Unknown workshop route: ${ctx.method} ${ctx.path}` })
+          sendJsonLogged(res, 404, { error: `Unknown workshop route: ${ctx.method} ${ctx.path}` })
         })
       }
 
       // Wire docs API routes (always enabled — serves README + source files)
-      routeHandlers.set('docs', docsHandler({ root, sendJson }))
+      routeHandlers.set('docs', docsHandler({ root, sendJson: sendJsonLogged }))
 
       // Create shared hot pool manager (per-type pre-warmed sessions)
       const hotPoolConfig = config.hotPool || {}
@@ -209,10 +239,11 @@ export default function storyboardServer() {
       const hotPool = new HotPoolManager({ root, config: hotPoolConfig, agentsConfig, wsSend })
       hotPool.start().catch((err) => {
         console.error('[hot-pool] Failed to start:', err.message)
+        devLogger.logEvent('error', 'Hot pool failed to start', { error: err.message })
       })
 
       // Wire canvas API routes (always enabled — CRUD for .canvas.jsonl files)
-      routeHandlers.set('canvas', createCanvasHandler({ root, sendJson, hotPool }))
+      routeHandlers.set('canvas', createCanvasHandler({ root, sendJson: sendJsonLogged, hotPool }))
 
       // Selected widgets bridge — writes .selectedwidgets.json for Copilot context
       setupSelectedWidgets(server, root)
@@ -232,7 +263,7 @@ export default function storyboardServer() {
       server.watcher.unwatch(path.join(root, 'assets', '.storyboard-public', 'terminal-snapshots'))
 
       // Wire autosync API routes (always enabled — git automation for dev)
-      routeHandlers.set('autosync', createAutosyncHandler({ root, sendJson }))
+      routeHandlers.set('autosync', createAutosyncHandler({ root, sendJson: sendJsonLogged }))
 
       // Terminal sessions API — list, detach, kill sessions
       routeHandlers.set('terminal', async (req, res, ctx) => {
@@ -244,7 +275,7 @@ export default function storyboardServer() {
         if (ctx.method === 'GET' && (subpath === 'sessions' || subpath === 'sessions/')) {
           const url = new URL(req.url, 'http://localhost')
           const filterBranch = url.searchParams.get('branch') || null
-          sendJson(res, 200, { sessions: listSessions(filterBranch) })
+          sendJsonLogged(res, 200, { sessions: listSessions(filterBranch) })
           return
         }
 
@@ -254,10 +285,10 @@ export default function storyboardServer() {
           const tmuxName = decodeURIComponent(detachMatch[1])
           const entry = detachSession(tmuxName)
           if (!entry) {
-            sendJson(res, 404, { error: 'Session not found' })
+            sendJsonLogged(res, 404, { error: 'Session not found' })
             return
           }
-          sendJson(res, 200, { success: true, session: entry })
+          sendJsonLogged(res, 200, { success: true, session: entry })
           return
         }
 
@@ -266,7 +297,7 @@ export default function storyboardServer() {
         if (ctx.method === 'POST' && orphanMatch) {
           const tmuxName = decodeURIComponent(orphanMatch[1])
           orphanSession(tmuxName)
-          sendJson(res, 200, { success: true })
+          sendJsonLogged(res, 200, { success: true })
           return
         }
 
@@ -275,7 +306,7 @@ export default function storyboardServer() {
         if (ctx.method === 'DELETE' && deleteMatch) {
           const tmuxName = decodeURIComponent(deleteMatch[1])
           killSession(tmuxName)
-          sendJson(res, 200, { success: true })
+          sendJsonLogged(res, 200, { success: true })
           return
         }
 
@@ -283,14 +314,14 @@ export default function storyboardServer() {
 
         // GET /hot-pool — pool status
         if (ctx.method === 'GET' && subpath === 'hot-pool') {
-          sendJson(res, 200, hotPool.status())
+          sendJsonLogged(res, 200, hotPool.status())
           return
         }
 
         // PUT /hot-pool — reconfigure pool
         if (ctx.method === 'PUT' && subpath === 'hot-pool') {
           hotPool.reconfigure(ctx.body || {})
-          sendJson(res, 200, hotPool.status())
+          sendJsonLogged(res, 200, hotPool.status())
           return
         }
 
@@ -299,14 +330,14 @@ export default function storyboardServer() {
           const poolId = ctx.body?.poolId || 'terminal'
           const session = hotPool.acquire(poolId)
           if (!session) {
-            sendJson(res, 200, { acquired: false, poolId, session: null })
+            sendJsonLogged(res, 200, { acquired: false, poolId, session: null })
             return
           }
-          sendJson(res, 200, { acquired: true, poolId, session: { id: session.id, tmuxName: session.tmuxName, poolId: session.poolId } })
+          sendJsonLogged(res, 200, { acquired: true, poolId, session: { id: session.id, tmuxName: session.tmuxName, poolId: session.poolId } })
           return
         }
 
-        sendJson(res, 404, { error: 'Not found' })
+        sendJsonLogged(res, 404, { error: 'Not found' })
       })
 
       // Worktrees API — lists running worktrees/branches from server registry
@@ -321,8 +352,8 @@ export default function storyboardServer() {
           if (!branches.some(b => b.branch === 'main')) {
             branches.unshift({ branch: 'main', folder: '' })
           }
-          sendJson(res, 200, branches)
-        } catch { sendJson(res, 200, []) }
+          sendJsonLogged(res, 200, branches)
+        } catch { sendJsonLogged(res, 200, []) }
       })
 
       // Git user — return git config user name and GitHub login (via gh CLI)
@@ -336,15 +367,15 @@ export default function storyboardServer() {
             const m = status.match(/Logged in to github\.com account (\S+)/) || status.match(/Logged in to github\.com as (\S+)/)
             if (m) login = m[1]
           } catch { /* gh not installed or not logged in */ }
-          sendJson(res, 200, { name, login })
-        } catch { sendJson(res, 200, { name: null, login: null }) }
+          sendJsonLogged(res, 200, { name, login })
+        } catch { sendJsonLogged(res, 200, { name: null, login: null }) }
       })
 
       // Switch branch — proxy to storyboard server which manages worktree
       // dev servers. The server port is derived from the devDomain.
       routeHandlers.set('switch-branch', async (req, res, ctx) => {
         if (ctx.method !== 'POST') {
-          sendJson(res, 405, { error: 'POST required' })
+          sendJsonLogged(res, 405, { error: 'POST required' })
           return
         }
         try {
@@ -363,9 +394,9 @@ export default function storyboardServer() {
             body: JSON.stringify(ctx.body),
           })
           const data = await proxyRes.json()
-          sendJson(res, proxyRes.status, data)
+          sendJsonLogged(res, proxyRes.status, data)
         } catch {
-          sendJson(res, 502, {
+          sendJsonLogged(res, 502, {
             error: 'Storyboard server not running. Start it with: npx storyboard server',
           })
         }
@@ -421,6 +452,9 @@ export default function storyboardServer() {
         const prefix = slashIndex === -1 ? pathAfterPrefix : pathAfterPrefix.slice(0, slashIndex)
         const restPath = slashIndex === -1 ? '/' : pathAfterPrefix.slice(slashIndex)
 
+        // Attach route context for the logging sendJson wrapper
+        res.__sbLogCtx = { method: req.method, url, route: prefix, subRoute: restPath }
+
         const handler = routeHandlers.get(prefix)
         if (!handler) {
           // Proxy to standalone storyboard server for unhandled prefixes
@@ -432,7 +466,7 @@ export default function storyboardServer() {
               proxyRes.pipe(res)
             })
             proxy.on('error', () => {
-              sendJson(res, 502, { error: `Storyboard server not running. Start it with: npx storyboard server` })
+              sendJsonLogged(res, 502, { error: `Storyboard server not running. Start it with: npx storyboard server` })
             })
             if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
               req.pipe(proxy)
@@ -440,7 +474,7 @@ export default function storyboardServer() {
               proxy.end()
             }
           } catch {
-            sendJson(res, 502, { error: 'Storyboard server not running' })
+            sendJsonLogged(res, 502, { error: 'Storyboard server not running' })
           }
           return
         }
@@ -453,7 +487,7 @@ export default function storyboardServer() {
           await handler(req, res, { body, path: restPath, method: req.method, __viteWs: server.ws })
         } catch (err) {
           console.error(`[storyboard-server] Error in ${prefix}:`, err)
-          sendJson(res, 500, { error: err.message || 'Internal server error' })
+          sendJsonLogged(res, 500, { error: err.message || 'Internal server error' })
         }
       })
     },

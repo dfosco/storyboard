@@ -188,7 +188,7 @@ if (isInstalled('code')) {
 
 // 7. Asset directories
 {
-  const dirs = ['assets/canvas/images', 'assets/.storyboard-public/terminal-snapshots', '.storyboard', '.storyboard/terminals', '.storyboard/terminal-buffers']
+  const dirs = ['assets/canvas/images', 'assets/.storyboard-public/terminal-snapshots', '.storyboard', '.storyboard/terminals', '.storyboard/terminal-buffers', '.storyboard/logs']
   for (const dir of dirs) {
     if (!existsSync(dir)) {
       try { mkdirSync(dir, { recursive: true }) } catch { /* ignore */ }

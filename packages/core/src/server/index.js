@@ -20,6 +20,7 @@ import { getPort, releasePort, repoRoot, worktreeDir, listWorktrees } from '../w
 import { generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, reloadCaddy, readDevDomain } from '../cli/proxy.js'
 import { compactAll } from '../canvas/compact.js'
 import { register, unregister, generateId, list, findByWorktree } from '../worktree/serverRegistry.js'
+import { createDevLogger } from '../logger/devLogger.js'
 
 const SERVER_PORT_BASE = 4100
 
@@ -47,12 +48,33 @@ const processes = new Map()
 /** Route handlers: prefix → handler function */
 const routeHandlers = new Map()
 
+// ─── Dev Logger ───
+
+let _currentBranch = null
+try { _currentBranch = (await import('node:child_process')).execSync('git branch --show-current', { encoding: 'utf8', cwd: repoRoot() }).trim() } catch {}
+const devLogger = createDevLogger({ root: repoRoot(), devDomain: DEV_DOMAIN.replace('.localhost', ''), branch: _currentBranch })
+
 // ─── JSON helpers ───
 
 function sendJson(res, status, data) {
   const body = JSON.stringify(data)
   res.writeHead(status, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
   res.end(body)
+}
+
+function sendJsonLogged(res, status, data) {
+  sendJson(res, status, data)
+  if (status >= 400) {
+    const ctx = res.__sbLogCtx || {}
+    devLogger.logResponse({
+      status,
+      method: ctx.method || 'UNKNOWN',
+      url: ctx.url || '',
+      route: ctx.route || null,
+      subRoute: ctx.subRoute || null,
+      error: data?.error || null,
+    })
+  }
 }
 
 async function parseBody(req) {
@@ -178,13 +200,13 @@ function registerCaddyRoute(branch, port) {
 // POST /_storyboard/switch-branch
 routeHandlers.set('switch-branch', async (req, res, ctx) => {
   if (ctx.method !== 'POST') {
-    sendJson(res, 405, { error: 'POST required' })
+    sendJsonLogged(res, 405, { error: 'POST required' })
     return
   }
 
   const { branch } = ctx.body
   if (!branch) {
-    sendJson(res, 400, { error: 'branch is required' })
+    sendJsonLogged(res, 400, { error: 'branch is required' })
     return
   }
 
@@ -199,7 +221,7 @@ routeHandlers.set('switch-branch', async (req, res, ctx) => {
     if (existing && existing.status === 'ready') {
       const alive = await isPortReady(existing.port)
       if (alive) {
-        sendJson(res, 200, { url: targetUrl, status: 'already_running' })
+        sendJsonLogged(res, 200, { url: targetUrl, status: 'already_running' })
         return
       }
       // Stale entry — remove it
@@ -215,7 +237,7 @@ routeHandlers.set('switch-branch', async (req, res, ctx) => {
       )
       if (await isPortReady(latest.port)) {
         registerCaddyRoute(branch, latest.port)
-        sendJson(res, 200, { url: targetUrl, status: 'already_running' })
+        sendJsonLogged(res, 200, { url: targetUrl, status: 'already_running' })
         return
       }
     }
@@ -223,7 +245,7 @@ routeHandlers.set('switch-branch', async (req, res, ctx) => {
     // Check worktree exists
     const cwd = resolveWorktreeCwd(branch)
     if (!cwd) {
-      sendJson(res, 404, { error: `Worktree not found: ${branch}. Create it with: npx storyboard dev ${branch}` })
+      sendJsonLogged(res, 404, { error: `Worktree not found: ${branch}. Create it with: npx storyboard dev ${branch}` })
       return
     }
 
@@ -242,13 +264,13 @@ routeHandlers.set('switch-branch', async (req, res, ctx) => {
     })()
     if (!ready) {
       stopVite(branch)
-      sendJson(res, 504, { error: `Vite server for ${branch} did not become ready in time` })
+      sendJsonLogged(res, 504, { error: `Vite server for ${branch} did not become ready in time` })
       return
     }
 
-    sendJson(res, 200, { url: targetUrl, status: 'started' })
+    sendJsonLogged(res, 200, { url: targetUrl, status: 'started' })
   } catch (err) {
-    sendJson(res, 500, { error: err.message })
+    sendJsonLogged(res, 500, { error: err.message })
   }
 })
 
@@ -267,8 +289,8 @@ routeHandlers.set('worktrees', async (req, res) => {
     if (!branches.some(b => b.branch === 'main')) {
       branches.unshift({ branch: 'main', folder: '', port: 1234, running: null })
     }
-    sendJson(res, 200, branches)
-  } catch { sendJson(res, 200, []) }
+    sendJsonLogged(res, 200, branches)
+  } catch { sendJsonLogged(res, 200, []) }
 })
 
 // GET /_storyboard/server/status
@@ -278,10 +300,10 @@ routeHandlers.set('server', async (req, res, ctx) => {
     for (const [branch, entry] of processes) {
       active.push({ branch, port: entry.port, status: entry.status })
     }
-    sendJson(res, 200, { active, serverPort: SERVER_PORT })
+    sendJsonLogged(res, 200, { active, serverPort: SERVER_PORT })
     return
   }
-  sendJson(res, 404, { error: 'Unknown server route' })
+  sendJsonLogged(res, 404, { error: 'Unknown server route' })
 })
 
 // ─── HTTP Server ───
@@ -308,6 +330,9 @@ const server = http.createServer(async (req, res) => {
     const prefix = slashIdx === -1 ? after : after.slice(0, slashIdx)
     const restPath = slashIdx === -1 ? '/' : after.slice(slashIdx)
 
+    // Attach route context for the logging sendJson wrapper
+    res.__sbLogCtx = { method: req.method, url: req.url, route: prefix, subRoute: restPath }
+
     const handler = routeHandlers.get(prefix)
     if (handler) {
       let body = {}
@@ -318,7 +343,7 @@ const server = http.createServer(async (req, res) => {
         await handler(req, res, { body, path: restPath, method: req.method })
       } catch (err) {
         console.error(`[storyboard-server] Error in ${prefix}:`, err)
-        sendJson(res, 500, { error: err.message })
+        sendJsonLogged(res, 500, { error: err.message })
       }
       return
     }
@@ -326,11 +351,13 @@ const server = http.createServer(async (req, res) => {
 
   // Health check
   if (pathname === '/health') {
-    sendJson(res, 200, { ok: true, devDomain: DEV_DOMAIN })
+    sendJsonLogged(res, 200, { ok: true, devDomain: DEV_DOMAIN })
     return
   }
 
-  sendJson(res, 404, { error: 'Not found' })
+  // Set context for catch-all 404
+  res.__sbLogCtx = { method: req.method, url: req.url, route: null, subRoute: null }
+  sendJsonLogged(res, 404, { error: 'Not found' })
 })
 
 export function startServer(port = SERVER_PORT) {

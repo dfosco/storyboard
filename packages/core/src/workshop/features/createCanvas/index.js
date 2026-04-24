@@ -5,7 +5,7 @@
  * This feature only provides the workshop UI overlay.
  */
 
-import CreateCanvasForm from './CreateCanvasForm.svelte'
+import CreateCanvasForm from './CreateCanvasForm.jsx'
 
 export const name = 'createCanvas'
 export const label = 'Create canvas'

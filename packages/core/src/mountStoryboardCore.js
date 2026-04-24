@@ -17,7 +17,11 @@ import { initCommentsConfig, isCommentsEnabled } from './comments/config.js'
 import { initFeatureFlags } from './featureFlags.js'
 import { initPlugins } from './plugins.js'
 import { initUIConfig } from './uiConfig.js'
-import { initToolbarConfig } from './toolbarConfigStore.js'
+import { initCanvasConfig } from './canvasConfig.js'
+import { initCommandPaletteConfig } from './commandPaletteConfig.js'
+import { initToolbarConfig, consumeClientToolbarOverrides } from './toolbarConfigStore.js'
+import { initCustomerModeConfig } from './customerModeConfig.js'
+import { getConfig } from './configStore.js'
 
 let _mounted = false
 
@@ -37,7 +41,7 @@ function applyEarlyTheme() {
     typeof localStorage !== 'undefined'
       ? localStorage.getItem('sb-theme-sync')
       : null
-  let syncTargets = { prototype: true, toolbar: false, codeBoxes: true, canvas: false }
+  let syncTargets = { prototype: true, toolbar: false, codeBoxes: true, canvas: true }
   if (storedSync) {
     try {
       syncTargets = { ...syncTargets, ...JSON.parse(storedSync) }
@@ -95,9 +99,19 @@ function applyEarlyTheme() {
 
 /**
  * Inject the compiled UI stylesheet if not already present.
+ * In the source repo, Vite bundles this CSS into the ui-entry chunk
+ * automatically, so this is a no-op. In consumer repos it loads the
+ * pre-compiled dist/storyboard-ui.css.
  */
 async function injectUIStyles() {
   if (document.querySelector('[data-storyboard-ui-css]')) return
+
+  // If the styles are already present from Vite's CSS code-splitting,
+  // skip the redundant import.
+  try {
+    const val = getComputedStyle(document.documentElement).getPropertyValue('--sb--bg')
+    if (val && val.trim()) return
+  } catch { /* fall through */ }
 
   try {
     // Dynamic import of CSS — Vite handles this as a side-effect import.
@@ -133,39 +147,102 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   installHistorySync()
   installBodyClassSync()
 
-  // Initialize config-driven systems
-  if (config.featureFlags) {
+  // Initialize config-driven systems.
+  // The unified config store is already seeded by the virtual module's initConfig().
+  // Individual stores are initialized here for backward compatibility — consumers
+  // that import directly from these stores still work.
+  const uc = getConfig()
+
+  if (uc.featureFlags && Object.keys(uc.featureFlags).length > 0) {
+    initFeatureFlags(uc.featureFlags)
+  } else if (config.featureFlags) {
     initFeatureFlags(config.featureFlags)
   }
 
-  if (config.plugins) {
+  if (uc.plugins && Object.keys(uc.plugins).length > 0) {
+    initPlugins(uc.plugins)
+  } else if (config.plugins) {
     initPlugins(config.plugins)
   }
 
-  if (config.ui) {
+  if (uc.ui && Object.keys(uc.ui).length > 0) {
+    initUIConfig(uc.ui)
+  } else if (config.ui) {
     initUIConfig(config.ui)
   }
 
-  // Initialize comments config (framework-agnostic)
-  if (config.comments) {
-    initCommentsConfig(config, { basePath })
+  if (uc.canvas && Object.keys(uc.canvas).length > 0) {
+    initCanvasConfig(uc.canvas)
+  } else if (config.canvas) {
+    initCanvasConfig(config.canvas)
   }
 
-  // Inject compiled UI styles
-  injectUIStyles()
+  // Load and merge command palette config.
+  // If the unified store has commandPalette data, use it directly.
+  // Otherwise fall back to legacy merging with bundled defaults.
+  const ucCmdPalette = uc.commandPalette
+  if (ucCmdPalette && Object.keys(ucCmdPalette).length > 0) {
+    initCommandPaletteConfig(ucCmdPalette)
+  } else {
+    const defaultCmdPaletteConfig = (await import('../commandpalette.config.json')).default
+    if (config.commandPalette) {
+      const merged = { ...defaultCmdPaletteConfig, ...config.commandPalette }
+      if (config.commandPalette.sections && defaultCmdPaletteConfig.sections) {
+        const clientIds = new Set(config.commandPalette.sections.map(s => s.id))
+        const preserved = defaultCmdPaletteConfig.sections.filter(s => !clientIds.has(s.id))
+        merged.sections = [...config.commandPalette.sections, ...preserved]
+      }
+      initCommandPaletteConfig(merged)
+    } else {
+      initCommandPaletteConfig({ ...defaultCmdPaletteConfig })
+    }
+  }
 
-  // Load and merge toolbar config.
-  // Core defaults come from toolbar.config.json (bundled).
-  // Client can provide overrides via config.toolbar or a toolbar.config.json at repo root.
+  // Initialize customer mode config
+  if (uc.customerMode && Object.keys(uc.customerMode).length > 0) {
+    initCustomerModeConfig(uc.customerMode)
+  } else if (config.customerMode) {
+    initCustomerModeConfig(config.customerMode)
+  }
+
+  // Initialize comments config (framework-agnostic)
+  const commentsConfig = uc.comments && Object.keys(uc.comments).length > 0 ? uc.comments : config.comments
+  if (commentsConfig) {
+    initCommentsConfig({ ...config, comments: commentsConfig }, { basePath })
+  }
+
+  // Inject compiled UI styles (await to prevent late restyle / FOUC)
+  await injectUIStyles()
+
+  // Load toolbar config from the unified store.
+  // The unified store already has core defaults merged with client overrides.
+  // Fall back to legacy merging if unified store wasn't seeded.
   const { deepMerge } = await import('./loader.js')
-  const defaultConfig = (await import('../toolbar.config.json')).default
-  let toolbarConfig = config.toolbar
-    ? deepMerge(defaultConfig, config.toolbar)
-    : { ...defaultConfig }
+  let toolbarConfig = uc.toolbar && Object.keys(uc.toolbar).length > 0
+    ? { ...uc.toolbar }
+    : null
 
-  // Inject repository URL from storyboard.config.json into the toolbar config
-  if (config.repository?.owner && config.repository?.name) {
-    const repoUrl = `https://github.com/${config.repository.owner}/${config.repository.name}`
+  if (!toolbarConfig) {
+    // Legacy path: unified store not seeded, merge manually
+    const defaultConfig = (await import('../toolbar.config.json')).default
+    const clientOverrides = consumeClientToolbarOverrides()
+    const explicitToolbar = config.toolbar
+
+    if (explicitToolbar && clientOverrides) {
+      toolbarConfig = deepMerge(deepMerge(defaultConfig, clientOverrides), explicitToolbar)
+    } else if (explicitToolbar) {
+      toolbarConfig = deepMerge(defaultConfig, explicitToolbar)
+    } else if (clientOverrides) {
+      toolbarConfig = deepMerge(defaultConfig, clientOverrides)
+    } else {
+      toolbarConfig = { ...defaultConfig }
+    }
+  }
+
+  // Inject repository URL into the toolbar config
+  const repo = uc.repository || config.repository
+  if (repo?.owner && repo?.name) {
+    const repoUrl = `https://github.com/${repo.owner}/${repo.name}`
 
     // New tools schema
     if (toolbarConfig.tools?.repository) {
@@ -185,7 +262,51 @@ export async function mountStoryboardCore(config = {}, options = {}) {
 
   // Skip all UI mounting when loaded inside a prototype embed iframe
   const isEmbed = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('_sb_embed')
-  if (isEmbed) return
+  if (isEmbed) {
+    // Broadcast route and hash changes to the parent canvas via postMessage
+    if (window.parent !== window) {
+      let lastHref = window.location.pathname + window.location.hash
+      function broadcastNavigation() {
+        const currentHref = window.location.pathname + window.location.hash
+        if (currentHref !== lastHref) {
+          lastHref = currentHref
+          const basePath = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
+          const pathname = window.location.pathname
+          const hash = window.location.hash
+          const stripped = basePath && pathname.startsWith(basePath)
+            ? pathname.slice(basePath.length) || '/'
+            : pathname.replace(/^\/branch--[^/]+/, '') || '/'
+          const src = stripped + hash
+          window.parent.postMessage({ type: 'storyboard:embed:navigate', src }, '*')
+        }
+      }
+      // Intercept pushState/replaceState, popstate, and hashchange
+      const origPush = history.pushState.bind(history)
+      const origReplace = history.replaceState.bind(history)
+      history.pushState = (...args) => { origPush(...args); broadcastNavigation() }
+      history.replaceState = (...args) => { origReplace(...args); broadcastNavigation() }
+      window.addEventListener('popstate', broadcastNavigation)
+      window.addEventListener('hashchange', broadcastNavigation)
+    }
+
+    // Forward cmd+wheel events to parent so canvas zoom works while
+    // an iframe is focused. The parent's wheel handler on `document`
+    // can't see events fired inside the iframe's document.
+    if (window.parent !== window) {
+      document.addEventListener('wheel', (e) => {
+        if (!e.metaKey && !e.ctrlKey) return
+        e.preventDefault()
+        window.parent.postMessage({
+          type: 'storyboard:embed:wheel',
+          deltaY: e.deltaY,
+          clientX: e.clientX,
+          clientY: e.clientY,
+        }, '*')
+      }, { passive: false })
+    }
+
+    return
+  }
 
   // Dynamically import the compiled UI bundle.
   // Uses the package self-reference so resolution differs by context:
@@ -208,6 +329,23 @@ export async function mountStoryboardCore(config = {}, options = {}) {
 
   // Show pending workshop notifications (e.g. canvas created before Vite reload)
   showPendingNotification(basePath)
+
+  // Handle pending navigation (e.g. after PageSelector created a new canvas page)
+  handlePendingNavigation()
+}
+
+/**
+ * Check sessionStorage for a pending navigation target.
+ * Used by PageSelector when creating a new canvas page — Vite does a full-reload
+ * after detecting the new file, so we stash the target URL and navigate after reload.
+ */
+function handlePendingNavigation() {
+  try {
+    const target = sessionStorage.getItem('sb-pending-navigate')
+    if (!target) return
+    sessionStorage.removeItem('sb-pending-navigate')
+    window.location.href = target
+  } catch { /* ignore */ }
 }
 
 /**
@@ -216,21 +354,27 @@ export async function mountStoryboardCore(config = {}, options = {}) {
  * success message is lost. This shows a temporary toast with the link.
  */
 function showPendingNotification(basePath) {
-  const KEYS = ['sb-canvas-created', 'sb-prototype-created', 'sb-flow-created']
+  const KEYS = ['sb-canvas-created', 'sb-prototype-created', 'sb-flow-created', 'sb-story-created']
   for (const key of KEYS) {
     try {
       const raw = sessionStorage.getItem(key)
       if (!raw) continue
       sessionStorage.removeItem(key)
-      const { success: message, route } = JSON.parse(raw)
+      const { success: message, route, path: filePath } = JSON.parse(raw)
       if (!message) continue
-      showToast(message, route, basePath)
+      // Skip toast if we're already on the created page
+      if (route) {
+        const currentPath = window.location.pathname
+        const fullRoute = route.startsWith('/') ? (basePath.replace(/\/$/, '') + route) : route
+        if (currentPath === fullRoute || currentPath === fullRoute + '/') continue
+      }
+      showToast(message, route, basePath, filePath)
       return
     } catch { /* ignore malformed session entry */ }
   }
 }
 
-function showToast(message, route, basePath) {
+function showToast(message, route, basePath, filePath) {
   const toast = document.createElement('div')
   Object.assign(toast.style, {
     position: 'fixed',
@@ -242,7 +386,7 @@ function showToast(message, route, basePath) {
     background: 'var(--sb--color-popover, #fff)',
     color: 'var(--sb--color-foreground, #1e293b)',
     fontSize: '0.8125rem',
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
+    fontFamily: "'Mona Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
     boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
     border: '1px solid var(--sb--color-border, #cbd5e1)',
     display: 'flex',
@@ -250,12 +394,18 @@ function showToast(message, route, basePath) {
     gap: '0.25rem',
     opacity: '0',
     transition: 'opacity 0.15s ease',
-    maxWidth: '280px',
+    maxWidth: '320px',
   })
 
   const href = route?.startsWith('/') ? (basePath.replace(/\/$/, '') + route) : route
-  toast.innerHTML = `<span style="font-weight:500">✓ ${message.replace(/</g, '&lt;')}</span>`
-    + (href ? `<a href="${href}" style="color:var(--sb--color-primary, #0969da);text-decoration:underline;font-size:0.8125rem">Open canvas</a>` : '')
+  let html = `<span style="font-weight:500">✓ ${message.replace(/</g, '&lt;')}</span>`
+  if (href) {
+    html += `<a href="${href}" style="color:var(--sb--color-primary, #0969da);text-decoration:underline;font-size:0.8125rem">Open canvas</a>`
+  }
+  if (filePath) {
+    html += `<span style="font-size:0.75rem;color:var(--sb--color-muted, #64748b)">To edit your component, go to <code style="background:var(--sb--color-muted-bg, #f1f5f9);padding:1px 4px;border-radius:3px;font-size:0.75rem">${filePath.replace(/</g, '&lt;')}</code></span>`
+  }
+  toast.innerHTML = html
 
   document.body.appendChild(toast)
   requestAnimationFrame(() => { toast.style.opacity = '1' })

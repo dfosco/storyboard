@@ -1,12 +1,12 @@
 import Root, {
-	buttonVariants,
-	wrapperVariants,
-} from "./button.svelte";
+buttonVariants,
+wrapperVariants,
+} from "./button.jsx";
 
 export {
-	Root,
-	//
-	Root as Button,
-	buttonVariants,
-	wrapperVariants,
+Root,
+//
+Root as Button,
+buttonVariants,
+wrapperVariants,
 };

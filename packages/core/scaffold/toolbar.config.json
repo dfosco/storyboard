@@ -1,4 +1,4 @@
 {
-  "_comment": "Client toolbar overrides. Deep-merged with core defaults. See @dfosco/storyboard-core/toolbar.config.json for all options. Tools use 'surface' to target where they render (main-toolbar, canvas-toolbar, command-list) and 'handler' to reference their logic (core:name for built-in, custom:name for custom handlers).",
+  "_comment": "Client toolbar overrides. Deep-merged with core defaults. See @dfosco/storyboard-core/toolbar.config.json for all options. Tools use 'surface' to target where they render (command-toolbar, canvas-toolbar, command-palette) and 'handler' to reference their logic (core:name for built-in, custom:name for custom handlers).",
   "tools": {}
 }

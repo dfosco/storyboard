@@ -1,0 +1,332 @@
+/**
+ * Storyboard Server — persistent Node.js process that manages dev sessions.
+ *
+ * Runs independently of Vite. Manages:
+ * - Vite child processes (one per active branch)
+ * - /_storyboard/ API (workshop, canvas, comments, worktrees, branch switching)
+ * - Caddy proxy route registration
+ *
+ * Architecture:
+ *   Browser → Caddy → Vite (serves app + static)
+ *   Browser → Caddy → Storyboard Server (serves /_storyboard/ API)
+ *   Storyboard Server → spawns/manages Vite processes
+ */
+
+import http from 'node:http'
+import { spawn } from 'node:child_process'
+import { existsSync, readFileSync, mkdirSync } from 'node:fs'
+import { resolve, join, dirname } from 'node:path'
+import { getPort, portsFilePath, repoRoot, worktreeDir, listWorktrees } from '../worktree/port.js'
+import { generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, reloadCaddy, readDevDomain } from '../cli/proxy.js'
+import { compactAll } from '../canvas/compact.js'
+import { register, unregister, generateId } from '../worktree/serverRegistry.js'
+
+const SERVER_PORT_BASE = 4100
+
+/**
+ * Derive a deterministic server port from the devDomain.
+ * Each repo (identified by its devDomain) gets its own port.
+ */
+function deriveServerPort(domain) {
+  let h = 0
+  for (let i = 0; i < domain.length; i++) {
+    h = ((h << 5) - h + domain.charCodeAt(i)) | 0
+  }
+  // Map to port range 4100-4199
+  return SERVER_PORT_BASE + (Math.abs(h) % 100)
+}
+
+const DEV_DOMAIN = readDevDomain()
+export const SERVER_PORT = deriveServerPort(DEV_DOMAIN)
+const HEALTH_TIMEOUT = 30_000
+const HEALTH_INTERVAL = 300
+
+/** Active Vite processes: branch name → { child, port, status, cwd } */
+const processes = new Map()
+
+/** Route handlers: prefix → handler function */
+const routeHandlers = new Map()
+
+// ─── JSON helpers ───
+
+function sendJson(res, status, data) {
+  const body = JSON.stringify(data)
+  res.writeHead(status, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
+  res.end(body)
+}
+
+async function parseBody(req) {
+  const chunks = []
+  for await (const chunk of req) chunks.push(chunk)
+  try { return JSON.parse(Buffer.concat(chunks).toString()) }
+  catch { return {} }
+}
+
+// ─── Vite Process Management ───
+
+function resolveWorktreeCwd(branch) {
+  const root = repoRoot()
+  if (branch === 'main') return root
+  const wtDir = join(root, '.worktrees', branch)
+  if (existsSync(wtDir)) return wtDir
+  return null
+}
+
+function isPortReady(port) {
+  return new Promise((resolve) => {
+    const req = http.get(`http://localhost:${port}`, () => resolve(true))
+    req.on('error', () => resolve(false))
+    req.setTimeout(1000, () => { req.destroy(); resolve(false) })
+  })
+}
+
+async function waitForPort(port, timeout = HEALTH_TIMEOUT) {
+  const start = Date.now()
+  while (Date.now() - start < timeout) {
+    if (await isPortReady(port)) return true
+    await new Promise(r => setTimeout(r, HEALTH_INTERVAL))
+  }
+  return false
+}
+
+function buildBasePath(branch) {
+  return branch === 'main' ? '/' : `/branch--${branch}/`
+}
+
+function spawnVite(branch) {
+  const cwd = resolveWorktreeCwd(branch)
+  if (!cwd) throw new Error(`Worktree not found for branch: ${branch}`)
+
+  const port = getPort(branch)
+  const basePath = buildBasePath(branch)
+  const localVite = resolve(cwd, 'node_modules', '.bin', 'vite')
+  const useLocalVite = existsSync(localVite)
+
+  // Compact canvas files before starting
+  try { compactAll(cwd) } catch { /* non-critical */ }
+
+  const viteArgs = ['--port', String(port)]
+  const child = useLocalVite
+    ? spawn(localVite, viteArgs, {
+        cwd,
+        env: { ...process.env, VITE_BASE_PATH: basePath },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+    : spawn('npx', ['vite', ...viteArgs], {
+        cwd,
+        env: { ...process.env, VITE_BASE_PATH: basePath },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+
+  const entry = { child, port, status: 'starting', cwd, branch, serverId: generateId() }
+  processes.set(branch, entry)
+
+  // Register in persistent server registry
+  register({ id: entry.serverId, worktree: branch, pid: child.pid, port, background: true })
+
+  // Detect ready state from stdout
+  child.stdout.on('data', (data) => {
+    const text = data.toString()
+    const portMatch = text.match(/localhost:(\d+)/)
+    if (portMatch) {
+      entry.port = Number(portMatch[1])
+    }
+    if (text.includes('ready in')) {
+      entry.status = 'ready'
+      registerCaddyRoute(branch, entry.port)
+    }
+  })
+
+  child.stderr.on('data', () => { /* suppress */ })
+
+  child.on('exit', (code) => {
+    entry.status = 'stopped'
+    processes.delete(branch)
+    unregister(entry.serverId)
+  })
+
+  return entry
+}
+
+function stopVite(branch) {
+  const entry = processes.get(branch)
+  if (!entry) return
+  try { entry.child.kill('SIGTERM') } catch { /* */ }
+  processes.delete(branch)
+}
+
+function registerCaddyRoute(branch, port) {
+  try {
+    const routeConfig = generateRouteConfig({ [branch]: port })
+    if (isCaddyRunning() && upsertCaddyRoute(routeConfig)) {
+      generateCaddyfile({ [branch]: port })
+    } else {
+      const caddyfilePath = generateCaddyfile({ [branch]: port })
+      if (isCaddyRunning()) reloadCaddy(caddyfilePath)
+    }
+  } catch { /* Caddy not available */ }
+}
+
+// ─── API Routes ───
+
+// POST /_storyboard/switch-branch
+routeHandlers.set('switch-branch', async (req, res, ctx) => {
+  if (ctx.method !== 'POST') {
+    sendJson(res, 405, { error: 'POST required' })
+    return
+  }
+
+  const { branch } = ctx.body
+  if (!branch) {
+    sendJson(res, 400, { error: 'branch is required' })
+    return
+  }
+
+  const devDomain = readDevDomain()
+  const targetUrl = branch === 'main'
+    ? `http://${devDomain}/`
+    : `http://${devDomain}/branch--${branch}/`
+
+  try {
+    // Check if already running
+    const existing = processes.get(branch)
+    if (existing && existing.status === 'ready') {
+      const alive = await isPortReady(existing.port)
+      if (alive) {
+        sendJson(res, 200, { url: targetUrl, status: 'already_running' })
+        return
+      }
+      // Stale entry — remove it
+      processes.delete(branch)
+    }
+
+    // Check if Vite is already running on the assigned port (started outside this server)
+    const port = getPort(branch)
+    if (await isPortReady(port)) {
+      registerCaddyRoute(branch, port)
+      sendJson(res, 200, { url: targetUrl, status: 'already_running' })
+      return
+    }
+
+    // Check worktree exists
+    const cwd = resolveWorktreeCwd(branch)
+    if (!cwd) {
+      sendJson(res, 404, { error: `Worktree not found: ${branch}. Create it with: npx storyboard dev ${branch}` })
+      return
+    }
+
+    // Spawn Vite
+    const entry = spawnVite(branch)
+
+    // Wait for ready
+    const ready = await waitForPort(entry.port, HEALTH_TIMEOUT)
+    if (!ready) {
+      stopVite(branch)
+      sendJson(res, 504, { error: `Vite server for ${branch} did not become ready in time` })
+      return
+    }
+
+    sendJson(res, 200, { url: targetUrl, status: 'started' })
+  } catch (err) {
+    sendJson(res, 500, { error: err.message })
+  }
+})
+
+// GET /_storyboard/worktrees
+routeHandlers.set('worktrees', async (req, res) => {
+  try {
+    const pf = portsFilePath()
+    if (!existsSync(pf)) { sendJson(res, 200, []); return }
+    const ports = JSON.parse(readFileSync(pf, 'utf8'))
+    const branches = Object.keys(ports).map(name => ({
+      branch: name,
+      folder: name === 'main' ? '' : `branch--${name}/`,
+      port: ports[name],
+      running: processes.has(name) ? processes.get(name).status : null,
+    }))
+    sendJson(res, 200, branches)
+  } catch { sendJson(res, 200, []) }
+})
+
+// GET /_storyboard/server/status
+routeHandlers.set('server', async (req, res, ctx) => {
+  if (ctx.path === '/status' || ctx.path === '/') {
+    const active = []
+    for (const [branch, entry] of processes) {
+      active.push({ branch, port: entry.port, status: entry.status })
+    }
+    sendJson(res, 200, { active, serverPort: SERVER_PORT })
+    return
+  }
+  sendJson(res, 404, { error: 'Unknown server route' })
+})
+
+// ─── HTTP Server ───
+
+const server = http.createServer(async (req, res) => {
+  // CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    })
+    res.end()
+    return
+  }
+
+  const url = new URL(req.url, `http://localhost:${SERVER_PORT}`)
+  const pathname = url.pathname
+
+  // Route /_storyboard/{prefix}/{rest}
+  if (pathname.startsWith('/_storyboard/')) {
+    const after = pathname.slice('/_storyboard/'.length)
+    const slashIdx = after.indexOf('/')
+    const prefix = slashIdx === -1 ? after : after.slice(0, slashIdx)
+    const restPath = slashIdx === -1 ? '/' : after.slice(slashIdx)
+
+    const handler = routeHandlers.get(prefix)
+    if (handler) {
+      let body = {}
+      if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+        body = await parseBody(req)
+      }
+      try {
+        await handler(req, res, { body, path: restPath, method: req.method })
+      } catch (err) {
+        console.error(`[storyboard-server] Error in ${prefix}:`, err)
+        sendJson(res, 500, { error: err.message })
+      }
+      return
+    }
+  }
+
+  // Health check
+  if (pathname === '/health') {
+    sendJson(res, 200, { ok: true, devDomain: DEV_DOMAIN })
+    return
+  }
+
+  sendJson(res, 404, { error: 'Not found' })
+})
+
+export function startServer(port = SERVER_PORT) {
+  server.listen(port, () => {
+    // port logged by CLI via onReady; suppress here to avoid duplicate output
+  })
+  return server
+}
+
+/** Public API for spawning Vite from CLI (with stdout piping) */
+export function spawnViteForBranch(branch, { pipeOutput = false } = {}) {
+  const entry = spawnVite(branch)
+
+  if (pipeOutput) {
+    entry.child.stdout.pipe(process.stdout)
+    entry.child.stderr.pipe(process.stderr)
+  }
+
+  return entry
+}
+
+export { processes, routeHandlers, waitForPort, isPortReady }

@@ -46,6 +46,7 @@ import {
   isGitHubEmbedUrl,
 } from './githubEmbeds.js'
 import { stampBounds, stampBoundsAll } from './collision.js'
+import { devLog } from '../logger/devLogger.js'
 import widgetsConfig from '../../widgets.config.json' with { type: 'json' }
 
 /**
@@ -325,7 +326,7 @@ export function createCanvasHandler(ctx) {
         })
       }
     } catch (err) {
-      console.warn(`[storyboard] Failed to update terminal connections: ${err.message}`)
+      devLog().logEvent('warn', 'Failed to update terminal connections', { error: err.message })
     }
   }
 
@@ -639,7 +640,7 @@ export function createCanvasHandler(ctx) {
             const { orphanTerminalSession } = await import('./terminal-server.js')
             orphanTerminalSession(widgetId)
           } catch (err) {
-            console.warn(`[storyboard] Failed to orphan terminal session for ${widgetId}:`, err.message)
+            devLog().logEvent('warn', `Failed to orphan terminal session for ${widgetId}`, { widgetId, error: err.message })
           }
         }
 
@@ -1840,7 +1841,7 @@ export function Default() {
           execSync(`tmux set-option -t "${tmuxName}" set-clipboard off`, { stdio: 'ignore' })
         } catch (err) {
           // Session may already exist
-          console.warn(`[storyboard] tmux session create:`, err.message)
+          devLog().logEvent('warn', 'tmux session create failed', { tmuxName, error: err.message })
         }
 
         // Set environment variables at tmux session level (inherited by new panes)
@@ -1887,7 +1888,7 @@ export function Default() {
             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })
             execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
           } catch (err) {
-            console.warn(`[storyboard] Failed to launch copilot:`, err.message)
+            devLog().logEvent('warn', 'Failed to launch copilot', { tmuxName, error: err.message })
           }
           // Poll for copilot readiness, then send /autopilot + Enter once
           let sent = false
@@ -2155,7 +2156,7 @@ export function Default() {
             }
           }
         } catch (err) {
-          console.warn(`[storyboard] Failed to resolve prompt connections: ${err.message}`)
+          devLog().logEvent('warn', 'Failed to resolve prompt connections', { error: err.message })
         }
 
         if (__viteWs) {

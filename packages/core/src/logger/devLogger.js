@@ -209,4 +209,30 @@ export function createDevLogger({ root, devDomain = null, branch = null, verbose
   return { logResponse, logEvent, logsDir, _extractContext: extractContext }
 }
 
+// ─── Module-level singleton ───
+// Set once by server-plugin.js, then any server-side module can call devLog().
+
+let _instance = null
+
+/**
+ * Register the global dev logger instance.
+ * Called once during server startup (server-plugin.js configureServer).
+ */
+export function setDevLogger(logger) {
+  _instance = logger
+}
+
+/**
+ * Get the global dev logger. Returns a no-op logger if not yet initialized.
+ * Safe to call from any server-side module without constructor plumbing.
+ */
+export function devLog() {
+  return _instance || _noop
+}
+
+const _noop = {
+  logResponse() {},
+  logEvent() {},
+}
+
 export { extractContext, pruneOldLogs, dateStamp }

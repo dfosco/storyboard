@@ -26,6 +26,7 @@ import { execSync } from 'node:child_process'
 import { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync, unlinkSync } from 'node:fs'
 import { resolve, join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
+import { devLog } from '../logger/devLogger.js'
 
 let WebSocketServer
 try {
@@ -369,7 +370,7 @@ function tmuxSessionExists(name) {
 export function orphanTerminalSession(widgetId) {
   const tmuxName = findTmuxNameForWidget(widgetId)
   if (!tmuxName) {
-    console.warn(`[storyboard] orphanTerminalSession: no registry entry for widget ${widgetId}`)
+    devLog().logEvent('warn', 'orphanTerminalSession: no registry entry for widget', { widgetId })
     legacyKillSession(widgetId)
     return
   }
@@ -410,8 +411,8 @@ function legacyKillSession(widgetId) {
  */
 export function setupTerminalServer(httpServer, base = '/', branch = 'unknown', hotPoolManager = null) {
   if (!pty || !WebSocketServer) {
-    if (!pty) console.warn('[storyboard] node-pty not available — terminal widgets disabled')
-    if (!WebSocketServer) console.warn('[storyboard] ws not available — terminal widgets disabled')
+    if (!pty) devLog().logEvent('warn', 'node-pty not available — terminal widgets disabled')
+    if (!WebSocketServer) devLog().logEvent('warn', 'ws not available — terminal widgets disabled')
     return
   }
 
@@ -1015,7 +1016,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
     })
   }
   } catch (spawnErr) {
-    console.error(`[storyboard] terminal spawn failed: ${spawnErr.message}`)
+    devLog().logEvent('error', 'Terminal spawn failed', { error: spawnErr.message })
     if (ws.readyState === ws.OPEN) {
       ws.send(`\r\n\x1b[31m✖ Terminal failed to start: ${spawnErr.message}\x1b[0m\r\n`)
       ws.send(`\x1b[2mTry: chmod +x node_modules/node-pty/prebuilds/darwin-*/spawn-helper\x1b[0m\r\n`)
@@ -1205,10 +1206,10 @@ async function executeStartupSequence(tmuxName, ws, sequence) {
           break
 
         default:
-          console.warn(`[storyboard] Unknown startup step type: ${step.type}`)
+          devLog().logEvent('warn', `Unknown startup step type: ${step.type}`, { stepType: step.type })
       }
     } catch (err) {
-      console.warn(`[storyboard] Startup sequence step ${i} (${step.type}) failed:`, err.message)
+      devLog().logEvent('warn', `Startup sequence step ${i} (${step.type}) failed`, { step: i, stepType: step.type, error: err.message })
       // Non-fatal — continue to next step
     }
 

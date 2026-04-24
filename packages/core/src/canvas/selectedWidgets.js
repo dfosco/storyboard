@@ -19,6 +19,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { toCanvasId } from './identity.js'
+import { devLog } from '../logger/devLogger.js'
 
 const DIR_NAME = '.storyboard'
 const FILE_NAME = '.selectedwidgets.json'
@@ -84,7 +85,7 @@ function writeSelectedWidgets(root, data) {
     fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2) + '\n', 'utf-8')
     fs.renameSync(tmpPath, filePath)
   } catch (err) {
-    console.error('[storyboard] Failed to write .selectedwidgets.json:', err.message)
+    devLog().logEvent('warn', 'Failed to write .selectedwidgets.json', { error: err.message })
   }
 }
 

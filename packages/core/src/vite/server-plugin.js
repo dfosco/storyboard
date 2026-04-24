@@ -14,7 +14,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { parse as parseJsonc } from 'jsonc-parser'
 import { getConfig } from '../configSchema.js'
-import { createDevLogger } from '../logger/devLogger.js'
+import { createDevLogger, setDevLogger } from '../logger/devLogger.js'
 import { serverFeatures as workshopFeatures } from '../workshop/features/registry-server.js'
 import { docsHandler, collectFiles } from './docs-handler.js'
 import { createCanvasHandler } from '../canvas/server.js'
@@ -206,7 +206,20 @@ export default function storyboardServer() {
       try { currentBranch = cpExecSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim() } catch {}
       const logVerbose = config.featureFlags?.['dev-logs'] || false
       const devLogger = createDevLogger({ root, devDomain, branch: currentBranch, verbose: logVerbose })
+      setDevLogger(devLogger) // make available to all server-side modules via devLog()
       const sendJsonLogged = createLoggedSendJson(devLogger)
+
+      // Listen for browser-side console errors forwarded via HMR
+      server.hot.on('storyboard:client-error', (data) => {
+        devLogger.logEvent(data.level || 'error', data.message || 'Unknown browser error', {
+          source: 'browser',
+          url: data.url || null,
+          line: data.line || null,
+          col: data.col || null,
+          stack: data.stack || null,
+          route: data.route || null,
+        })
+      })
 
       const workshopConfig = config.workshop || {}
       const enabledFeatures = workshopConfig.features || {}
@@ -238,7 +251,6 @@ export default function storyboardServer() {
       const wsSend = server.ws.send.bind(server.ws)
       const hotPool = new HotPoolManager({ root, config: hotPoolConfig, agentsConfig, wsSend })
       hotPool.start().catch((err) => {
-        console.error('[hot-pool] Failed to start:', err.message)
         devLogger.logEvent('error', 'Hot pool failed to start', { error: err.message })
       })
 
@@ -486,7 +498,6 @@ export default function storyboardServer() {
           }
           await handler(req, res, { body, path: restPath, method: req.method, __viteWs: server.ws })
         } catch (err) {
-          console.error(`[storyboard-server] Error in ${prefix}:`, err)
           sendJsonLogged(res, 500, { error: err.message || 'Internal server error' })
         }
       })
@@ -500,6 +511,46 @@ export default function storyboardServer() {
         tags.push({
           tag: 'script',
           children: 'window.__SB_LOCAL_DEV__=true',
+          injectTo: 'head',
+        })
+
+        // Browser error bridge — forwards console.error/warn and uncaught
+        // exceptions to the dev server via HMR for structured o11y logging
+        tags.push({
+          tag: 'script',
+          attrs: { type: 'module' },
+          children: `
+(function() {
+  if (!import.meta.hot) return;
+  var MAX_LEN = 2000;
+  function trunc(s) { return typeof s === 'string' && s.length > MAX_LEN ? s.slice(0, MAX_LEN) + '…' : s; }
+  function route() { return location.pathname + location.hash; }
+  function send(level, msg, extra) {
+    try { import.meta.hot.send('storyboard:client-error', Object.assign({ level: level, message: trunc(msg), route: route() }, extra || {})); } catch {}
+  }
+  // Patch console.error and console.warn
+  ['error', 'warn'].forEach(function(level) {
+    var orig = console[level];
+    console[level] = function() {
+      orig.apply(console, arguments);
+      var parts = [];
+      for (var i = 0; i < arguments.length; i++) {
+        try { parts.push(typeof arguments[i] === 'string' ? arguments[i] : JSON.stringify(arguments[i])); } catch { parts.push(String(arguments[i])); }
+      }
+      send(level, parts.join(' '));
+    };
+  });
+  // Uncaught errors
+  window.addEventListener('error', function(e) {
+    send('error', e.message || 'Uncaught error', { url: e.filename, line: e.lineno, col: e.colno, stack: trunc(e.error && e.error.stack) });
+  });
+  // Unhandled promise rejections
+  window.addEventListener('unhandledrejection', function(e) {
+    var msg = e.reason ? (e.reason.message || String(e.reason)) : 'Unhandled rejection';
+    send('error', msg, { stack: trunc(e.reason && e.reason.stack) });
+  });
+})();
+`.trim(),
           injectTo: 'head',
         })
       }

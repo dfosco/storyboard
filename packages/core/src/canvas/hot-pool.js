@@ -46,6 +46,7 @@
 import { execSync } from 'node:child_process'
 import { writeFileSync, existsSync, unlinkSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { devLog } from '../logger/devLogger.js'
 
 /**
  * @typedef {Object} WarmSession
@@ -679,14 +680,18 @@ export class HotPoolManager {
 
     // Shell pools start immediately in parallel
     await Promise.all(shellPools.map(([, pool]) =>
-      pool.start().catch(err => console.error(`[hot-pool:${pool.poolId}] Failed to start:`, err.message))
+      pool.start().catch(err => {
+        devLog().logEvent('error', `Hot pool ${pool.poolId} failed to start`, { poolId: pool.poolId, error: err.message })
+      })
     ))
 
     // Agent pools start with stagger
     for (let i = 0; i < agentPools.length; i++) {
       const [, pool] = agentPools[i]
       if (i > 0) await new Promise(r => setTimeout(r, STAGGER_DELAY_MS))
-      pool.start().catch(err => console.error(`[hot-pool:${pool.poolId}] Failed to start:`, err.message))
+      pool.start().catch(err => {
+        devLog().logEvent('error', `Hot pool ${pool.poolId} failed to start`, { poolId: pool.poolId, error: err.message })
+      })
     }
   }
 

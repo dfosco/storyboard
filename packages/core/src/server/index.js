@@ -342,7 +342,6 @@ const server = http.createServer(async (req, res) => {
       try {
         await handler(req, res, { body, path: restPath, method: req.method })
       } catch (err) {
-        console.error(`[storyboard-server] Error in ${prefix}:`, err)
         sendJsonLogged(res, 500, { error: err.message })
       }
       return

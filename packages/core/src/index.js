@@ -114,5 +114,8 @@ export {
 // Recent artifacts (command palette recents)
 export { trackRecent, getRecent, clearRecent } from './recentArtifacts.js'
 
+// Fuzzy search (scoring used by command palette custom filter)
+export { scoreMatch } from './fuzzySearch.js'
+
 // Icon component for UI rendering
 export { Icon, default as IconDefault } from './svelte-plugin-ui/components/Icon.jsx'

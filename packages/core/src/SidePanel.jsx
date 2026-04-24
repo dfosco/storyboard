@@ -20,7 +20,6 @@ const MAX_WIDTH = 900
 const MIN_HEIGHT = 200
 const MAX_HEIGHT = 600
 
-const LazyDocPanel = lazy(() => import('./DocPanel.jsx'))
 const LazyInspectorPanel = lazy(() => import('./InspectorPanel.jsx'))
 
 function OcticonSvg({ name, size = 16 }) {
@@ -31,7 +30,7 @@ function OcticonSvg({ name, size = 16 }) {
 }
 
 export default function SidePanel({ resizable = true, onClose }) {
-  const [panelState, setPanelState] = useState({ open: false, activeTab: 'docs' })
+  const [panelState, setPanelState] = useState({ open: false, activeTab: 'inspector' })
   const [panelWidth, setPanelWidth] = useState(420)
   const [panelHeight, setPanelHeight] = useState(300)
   const [panelPosition, setPanelPosition] = useState('side')
@@ -218,7 +217,7 @@ export default function SidePanel({ resizable = true, onClose }) {
       {/* Header */}
       <div className="sb-sidepanel-header">
         <span className="sb-sidepanel-title">
-          {panelState.activeTab === 'docs' ? 'Docs' : panelState.activeTab === 'inspector' ? 'Inspector' : ''}
+          {panelState.activeTab === 'inspector' ? 'Inspector' : ''}
         </span>
         <div className="sb-sidepanel-actions">
           <button
@@ -253,7 +252,6 @@ export default function SidePanel({ resizable = true, onClose }) {
       {/* Content */}
       <div className="sb-sidepanel-body">
         <Suspense fallback={loading}>
-          {panelState.activeTab === 'docs' && <LazyDocPanel />}
           {panelState.activeTab === 'inspector' && <LazyInspectorPanel />}
         </Suspense>
       </div>

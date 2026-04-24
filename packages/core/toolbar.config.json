@@ -199,16 +199,14 @@
       "url": ""
     },
     "docs": {
-      "label": "Documentation",
-      "ariaLabel": "Documentation",
+      "label": "Storyboard Docs",
+      "ariaLabel": "Storyboard Docs",
       "icon": "primer/book",
-      "render": "sidepanel",
+      "render": "link",
       "surface": "command-palette",
-      "sidepanel": "docs",
-      "handler": "core:docs",
       "modes": ["*"],
       "prod": true,
-      "shortcut": { "key": "d", "label": "cmd + D" }
+      "url": "https://github.com/dfosco/storyboard/blob/main/DOCS.md"
     },    
     "devtools": {
       "label": "Devtools",

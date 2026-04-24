@@ -20,6 +20,7 @@ import {
   setTheme,
   getTheme,
   isExcludedByRoute,
+  scoreMatch,
 } from '@dfosco/storyboard-core'
 import { widgetTypes } from '../canvas/widgets/widgetConfig.js'
 import CreateDialog from './CreateDialog.jsx'
@@ -1076,6 +1077,18 @@ export default function StoryboardCommandPalette({ basePath }) {
     return parts.filter(Boolean).join(' ')
   }
 
+  // Custom filter using scoreMatch for better ranking.
+  // scoreMatch tiers: prefix (100) > word-boundary (75) > substring (50) > fuzzy (5-25).
+  // Normalizes to 0-1 for cmdk; weak fuzzy matches (score < 10) are hidden to
+  // prevent garbage results from dominating above exact matches in other groups.
+  const MAX_SCORE = 110
+  const cmdkFilter = useCallback((value, search) => {
+    if (!search) return 1
+    const score = scoreMatch(value, search.toLowerCase().trim())
+    if (score < 10) return 0
+    return Math.min(1, score / MAX_SCORE)
+  }, [])
+
   return (
     <>
     <Command.Dialog
@@ -1084,6 +1097,7 @@ export default function StoryboardCommandPalette({ basePath }) {
       label="Command Menu"
       className="command-palette"
       shouldFilter={activePage === 'root'}
+      filter={cmdkFilter}
       aria-describedby={undefined}
       onKeyDown={(e) => {
         if (e.key === 'Escape' && activePage !== 'root') {

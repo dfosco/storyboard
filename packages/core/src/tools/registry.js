@@ -9,7 +9,6 @@ export const coreHandlers = {
   theme:                () => import('./handlers/theme.js'),
   comments:             () => import('./handlers/comments.js'),
   flows:                () => import('./handlers/flows.js'),
-  docs:                 () => import('./handlers/docs.js'),
   inspector:            () => import('./handlers/inspector.js'),
   devtools:             () => import('./handlers/devtools.js'),
   'feature-flags':      () => import('./handlers/featureFlags.js'),

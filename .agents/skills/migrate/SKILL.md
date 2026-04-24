@@ -15,35 +15,49 @@ Walks through all breaking changes between storyboard versions and applies the n
 
 ## Migrations
 
-### From 4.2.x → 4.3.0
+### From 4.1.x / 4.2.x → 4.3.0
 
 #### 1. Homepage route: `/viewfinder` → `/workspace`
 
-The storyboard homepage URL changed from `/viewfinder` to `/workspace`. The old route still works as a redirect, but all config should be updated.
+The storyboard homepage URL changed from `/viewfinder` to `/workspace`. The old route still works as a redirect for one release cycle.
 
-**Check and update:**
+**Steps:**
 
-1. If the client has a custom `src/prototypes/viewfinder.jsx`, rename it to `src/prototypes/workspace.jsx`
+1. If the client has `src/prototypes/viewfinder.jsx`, rename it to `src/prototypes/workspace.jsx`
 2. Search `storyboard.config.json` for any `"/viewfinder"` strings and replace with `"/workspace"`
-3. Search toolbar/command palette config overrides for `"viewfinder"` tool ID references and update to `"workspace"`
-4. If the client has `customerMode.protoHomepage` configured, no change needed — that overrides the homepage entirely
+3. Search any custom toolbar or command palette config overrides for `"viewfinder"` tool ID references and replace with `"workspace"`
+4. If the client has `customerMode.protoHomepage`, no change needed — that overrides the homepage entirely
 
-**localStorage keys also changed** (migrated automatically at runtime):
+**localStorage keys migrated automatically at runtime** — no manual action needed:
 - `sb-viewfinder-starred` → `sb-workspace-starred`
 - `sb-viewfinder-recent` → `sb-workspace-recent`
 - `sb-viewfinder-group-folders` → `sb-workspace-group-folders`
 
-Users' starred items and recent history are migrated automatically on first load — no manual action needed.
+---
 
-#### 2. Canvas agents config (required for agentic features)
+#### 2. Canvas config — terminal + agents + hot pool
 
-Canvas agent widgets (Copilot CLI, Claude Code, Codex, etc.) require a `canvas.agents` block in `storyboard.config.json`. Without it, the "Add Agent" menu won't appear on canvases.
+Clients on 4.1.x likely have no `canvas` block at all. The full canvas config is required for terminal widgets, agent widgets, and prompt widgets to work on canvases.
 
-**Check if `canvas.agents` exists in `storyboard.config.json`.** If missing, add it:
+**Read the client's `storyboard.config.json`.** If the `canvas` key is missing or incomplete, merge the missing sections. Here is the complete reference config — adapt values to the client's environment:
 
-```json
+```jsonc
 {
   "canvas": {
+    // Terminal widget settings (the plain terminal, not agents)
+    "terminal": {
+      "fontSize": 18,
+      "fontFamily": "'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
+      "prompt": "❯ ",
+      "startupCommand": null,
+      "defaultStartupSequence": null,
+      "resizable": true,
+      "defaultWidth": 1000,
+      "defaultHeight": 600
+    },
+
+    // Agent widgets — each key becomes an entry in the "Add Agent" menu
+    // Remove any agents the client doesn't have installed
     "agents": {
       "copilot": {
         "label": "Copilot CLI",
@@ -51,6 +65,7 @@ Canvas agent widgets (Copilot CLI, Claude Code, Codex, etc.) require a `canvas.a
         "icon": "primer/copilot",
         "startupCommand": "copilot --agent terminal-agent",
         "resumeCommand": "copilot --resume",
+        "postStartup": "/allow-all on",
         "readinessSignal": "Environment loaded:",
         "resizable": true
       },
@@ -70,37 +85,63 @@ Canvas agent widgets (Copilot CLI, Claude Code, Codex, etc.) require a `canvas.a
         "configFiles": [".codex/config.toml"],
         "resizable": true
       }
-    }
+    },
+
+    // Set to true to show agent entries in the canvas "+" add menu
+    // Set to false to only show them in the command palette
+    "showAgentsInAddMenu": false
   }
 }
 ```
 
-**Agent config properties:**
+**How to customize for the client:**
+
+| Setting | How to adapt |
+|---------|-------------|
+| `terminal.fontFamily` | Match the client's preferred monospace font. Remove `'Ghostty'` if they don't use it. |
+| `terminal.fontSize` | `14`–`18` is typical. `18` for presentation-style canvases, `14` for compact. |
+| `terminal.defaultWidth/Height` | Pixel dimensions for new terminal widgets. `1000×600` is a good default. |
+| `agents.copilot.postStartup` | `/allow-all on` auto-approves Copilot tool calls. Remove if the client wants manual approval. |
+| `agents.copilot.readinessSignal` | The string to look for in CLI output that means the agent is ready. Must match exactly. |
+| `agents.*.configFiles` | Array of config files the agent needs (e.g. `.codex/config.toml`). Only relevant for Codex. |
+| `agents` keys | Remove agents the client doesn't have installed. Each key must be a CLI command available in PATH. |
+
+**Agent config property reference:**
+
 | Property | Required | Description |
 |----------|----------|-------------|
 | `label` | yes | Display name in the Add Agent menu |
-| `icon` | no | Icon name (e.g. `primer/copilot`, `claude`, `codex`) |
-| `startupCommand` | yes | Command to start the agent CLI |
-| `resumeCommand` | no | Command to resume an existing agent session |
-| `postStartup` | no | Text sent after the agent starts (e.g. `/allow-all on`) |
-| `readinessSignal` | no | String to wait for in output before marking agent ready |
-| `configFiles` | no | Array of config file paths the agent needs |
-| `resizable` | no | Whether the agent widget can be resized |
-| `default` | no | If true, this agent is pre-selected in the menu |
+| `icon` | no | Icon name (`primer/copilot`, `claude`, `codex`, or any Icon.jsx name) |
+| `startupCommand` | yes | Shell command to start the agent |
+| `resumeCommand` | no | Shell command to resume an existing session |
+| `postStartup` | no | Text sent to the agent's stdin after it starts |
+| `readinessSignal` | no | Substring to wait for in output before marking agent as ready |
+| `configFiles` | no | Array of config file paths the agent requires |
+| `resizable` | no | Whether the agent widget can be resized (default `false`) |
+| `defaultWidth` | no | Default widget width in pixels |
+| `defaultHeight` | no | Default widget height in pixels |
+| `default` | no | If `true`, this agent is pre-selected in menus |
 
-#### 3. Hot pool config (recommended for agentic features)
+---
 
-For instant agent startup, configure hot pooling. This pre-warms agent sessions in the background.
+#### 3. Hot pool config (recommended)
 
-**Check if `hotPool` exists in `storyboard.config.json`.** If missing and the client uses canvas agents, add:
+Hot pooling pre-warms agent sessions in the background so they start instantly when a user adds a widget. Without it, there's a cold-start delay every time.
 
-```json
+**Add this to `storyboard.config.json` if missing:**
+
+```jsonc
 {
   "hotPool": {
     "enabled": true,
+    "verbose": false,
     "default_pool_size": 1,
     "default_max_pool_size": 3,
+    "load_balancer": true,
+    "load_balancer_cooldown_mins": 10,
     "pools": {
+      // One pool per widget type. Keys must match agent IDs above
+      // plus "terminal" and "prompt" for built-in types.
       "terminal": { "pool_size": 1 },
       "copilot": { "pool_size": 1 },
       "claude": { "pool_size": 1 },
@@ -111,30 +152,81 @@ For instant agent startup, configure hot pooling. This pre-warms agent sessions 
 }
 ```
 
-Each pool key must match an agent ID from `canvas.agents` (plus `terminal` and `prompt` for built-in widget types).
+**How to customize:**
 
-#### 4. Prompt widget support (new in 4.3.0)
+| Setting | How to adapt |
+|---------|-------------|
+| `default_pool_size` | Number of sessions pre-warmed per agent type. `1` is fine for most teams. |
+| `default_max_pool_size` | Maximum concurrent sessions per type. `3` handles parallel use. |
+| `pools.*.pool_size` | Override pool size for specific types. Remove entries for agents the client doesn't use. |
+| `load_balancer` | Distributes sessions across pools. Set `false` if only one agent type is used. |
+| `load_balancer_cooldown_mins` | Minutes between load balancer rebalance cycles. `10` is sensible. |
 
-The prompt widget enables single-shot AI tasks on canvas. It uses a lighter agent model than terminal agents.
+**Important:** Every key in `pools` must either be a built-in type (`terminal`, `prompt`) or match an agent ID defined in `canvas.agents`. Mismatched keys are silently ignored.
 
-No config changes required — the prompt widget is built-in. However, the `prompt` pool in `hotPool.pools` improves startup time.
+---
+
+#### 4. Agent definition files (`.agents/`)
+
+Canvas agents need agent definition files to provide instructions. These are scaffolded automatically by `storyboard setup`, but if the client doesn't have them:
+
+**Check if `.agents/agents/` exists.** If missing, create these two files:
+
+**`.agents/agents/terminal-agent.agent.md`** — Instructions for terminal-based agents (Copilot, Claude, Codex). The `--agent terminal-agent` flag in the startup commands references this file.
+
+**`.agents/agents/prompt-agent.agent.md`** — Instructions for single-shot prompt agents.
+
+Both files are scaffolded from `packages/core/scaffold/agents/`. Run `npx storyboard setup` to auto-create them, or copy them manually from the storyboard-core package.
+
+---
+
+#### 5. Customer mode config (optional)
+
+If the client deploys storyboard for external users (not just internal design), they may want customer mode:
+
+```json
+{
+  "customerMode": {
+    "enabled": false,
+    "hideChrome": false,
+    "hideHomepage": false,
+    "protoHomepage": ""
+  }
+}
+```
+
+| Setting | Description |
+|---------|-------------|
+| `enabled` | Master toggle for customer mode |
+| `hideChrome` | Hides all toolbars, branch bar, cmd+k, cmd+. |
+| `hideHomepage` | Removes the workspace homepage (leaves empty page) |
+| `protoHomepage` | Internal `/path` that replaces homepage; redirects from `/` and `/workspace` |
+
+This block is optional. Only add it if the client needs to customize the chrome visibility.
 
 ---
 
 ## Procedure
 
-### Step 1: Detect current version
+### Step 1: Read the client's current config
 
-Read the client's `package.json` for the installed `@dfosco/storyboard-core` and `@dfosco/storyboard-react` versions.
+Read `storyboard.config.json` and `package.json` to understand what version they're on and what config blocks already exist.
 
-### Step 2: Run applicable migrations
+### Step 2: Apply migrations in order
 
-For each migration section above (ordered by version), check if the change has already been applied. If not, apply it. Ask the user before making changes to `storyboard.config.json`.
+For each section above, check if the change has already been applied. If not:
+- For config additions: show the client what will be added and ask before writing
+- For renames: apply directly (they're mechanical)
+- For `.agents/` scaffolding: run `npx storyboard setup` or create files manually
 
-### Step 3: Verify
+### Step 3: Run `npx storyboard setup`
 
-After all migrations, run `npm run build` to verify nothing is broken.
+This ensures `.agents/`, `.storyboard/`, asset directories, and proxy configuration are all up to date.
 
-### Step 4: Summary
+### Step 4: Verify
 
-Print a summary of all changes made and any manual steps the user needs to take.
+Run `npm run build` to verify nothing is broken.
+
+### Step 5: Summary
+
+Print a summary of all changes made.

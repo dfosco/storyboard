@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Command } from 'cmdk'
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
 import Icon from '../Icon.jsx'
 import {
   buildPrototypeIndex,
@@ -1082,6 +1084,7 @@ export default function StoryboardCommandPalette({ basePath }) {
       label="Command Menu"
       className="command-palette"
       shouldFilter={activePage === 'root'}
+      aria-describedby={undefined}
       onKeyDown={(e) => {
         if (e.key === 'Escape' && activePage !== 'root') {
           e.preventDefault()
@@ -1091,6 +1094,10 @@ export default function StoryboardCommandPalette({ basePath }) {
         }
       }}
     >
+      <VisuallyHidden.Root asChild>
+        <DialogPrimitive.Title>Command Menu</DialogPrimitive.Title>
+      </VisuallyHidden.Root>
+      <DialogPrimitive.Description className="sr-only" style={{ display: 'none' }} />
       <Command.Input
         placeholder={activePage === 'root'
           ? 'Search commands, prototypes, canvases, stories...'

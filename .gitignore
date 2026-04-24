@@ -52,6 +52,7 @@ agent-browser.json
 src/canvas/images/~*
 assets/canvas/images/~*
 assets/canvas/snapshots/~*
+assets/.storyboard-public/terminal-snapshots/~*
 .sync-target
 
 # Integration test results (ephemeral local artifacts)

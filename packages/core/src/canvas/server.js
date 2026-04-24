@@ -29,6 +29,8 @@
  *   POST   /image    — upload a pasted image to src/canvas/images/
  *   GET    /images/* — serve an image file from src/canvas/images/
  *   POST   /image/toggle-private — toggle ~prefix on image filename
+ *   GET    /terminal-buffer/:id — read private terminal buffer (with ?length=N)
+ *   GET    /terminal-snapshot/:id — read public terminal snapshot
  */
 
 import fs from 'node:fs'
@@ -2326,7 +2328,34 @@ export function Default() {
       return
     }
 
-    // GET /terminal-snapshot/:widgetId — read terminal snapshot JSON
+    // GET /terminal-buffer/:widgetId — read terminal buffer JSON
+    // Accepts optional ?length=N query param to truncate scrollback
+    if (routePath.startsWith('/terminal-buffer/') && method === 'GET') {
+      const widgetId = routePath.slice('/terminal-buffer/'.length).split('?')[0]
+      if (!widgetId || widgetId.includes('..') || widgetId.includes('/')) {
+        sendJson(res, 400, { error: 'Invalid widgetId' })
+        return
+      }
+
+      const urlObj = new URL(req.url, 'http://localhost')
+      const lengthParam = urlObj.searchParams.get('length')
+      const maxLength = lengthParam ? parseInt(lengthParam, 10) : undefined
+
+      try {
+        const { readTerminalBuffer } = await import('./terminal-server.js')
+        const buffer = readTerminalBuffer(widgetId, { maxLength: maxLength || undefined })
+        if (buffer) {
+          sendJson(res, 200, buffer)
+          return
+        }
+        sendJson(res, 404, { error: 'Buffer not found' })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to read buffer: ${err.message}` })
+      }
+      return
+    }
+
+    // GET /terminal-snapshot/:widgetId — read terminal snapshot JSON (new + legacy fallback)
     if (routePath.startsWith('/terminal-snapshot/') && method === 'GET') {
       const widgetId = routePath.slice('/terminal-snapshot/'.length)
       if (!widgetId || widgetId.includes('..') || widgetId.includes('/')) {
@@ -2334,22 +2363,29 @@ export function Default() {
         return
       }
 
-      // Search all canvas subdirectories for this widget's snapshot
-      const snapshotsRoot = path.join(root, '.storyboard', 'terminal-snapshots')
       try {
-        if (!fs.existsSync(snapshotsRoot)) {
-          sendJson(res, 404, { error: 'No snapshots found' })
+        const { readTerminalSnapshot } = await import('./terminal-server.js')
+
+        // Try new path first
+        const snapshot = readTerminalSnapshot(widgetId)
+        if (snapshot) {
+          sendJson(res, 200, snapshot)
           return
         }
-        const dirs = fs.readdirSync(snapshotsRoot, { withFileTypes: true })
-        for (const d of dirs) {
-          if (!d.isDirectory()) continue
-          const filePath = path.join(snapshotsRoot, d.name, `${widgetId}.json`)
-          if (fs.existsSync(filePath)) {
-            const data = fs.readFileSync(filePath, 'utf8')
-            res.writeHead(200, { 'Content-Type': 'application/json' })
-            res.end(data)
-            return
+
+        // Legacy fallback: .storyboard/terminal-snapshots/<canvasDir>/<widgetId>.json
+        const snapshotsRoot = path.join(root, '.storyboard', 'terminal-snapshots')
+        if (fs.existsSync(snapshotsRoot)) {
+          const dirs = fs.readdirSync(snapshotsRoot, { withFileTypes: true })
+          for (const d of dirs) {
+            if (!d.isDirectory()) continue
+            const filePath = path.join(snapshotsRoot, d.name, `${widgetId}.json`)
+            if (fs.existsSync(filePath)) {
+              const data = fs.readFileSync(filePath, 'utf8')
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(data)
+              return
+            }
           }
         }
         sendJson(res, 404, { error: 'Snapshot not found' })

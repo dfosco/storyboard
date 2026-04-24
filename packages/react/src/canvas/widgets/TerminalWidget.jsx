@@ -350,9 +350,9 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
       const cw = term.renderer?.charWidth
       const ch = term.renderer?.charHeight
       if (!cw || !ch) return
-      // 40px top bar
+      // expandContainerRef is .expandTerminal, already below the top bar
       const availW = el.clientWidth
-      const availH = el.clientHeight - 40
+      const availH = el.clientHeight
       const cols = Math.max(10, Math.floor(availW / cw))
       const rows = Math.max(4, Math.floor(availH / ch))
       term.resize?.(cols, rows)

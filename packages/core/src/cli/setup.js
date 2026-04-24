@@ -319,16 +319,27 @@ p.note(
 )
 
 // Offer branch guide
-const wantBranch = await p.confirm({
-  message: 'Want to work from a specific branch?',
-  initialValue: false,
-})
+{
+  let currentBranchName = 'main'
+  try {
+    currentBranchName = execSync('git branch --show-current', { encoding: 'utf8' }).trim() || 'main'
+  } catch {}
 
-if (!p.isCancel(wantBranch) && wantBranch) {
-  const { runBranchGuide } = await import('./branch.js')
-  await runBranchGuide()
-} else {
-  console.log()
-  console.log(mascot())
-  p.outro('')
+  const wantBranch = await p.select({
+    message: 'Want to work from a different branch?',
+    options: [
+      { value: true, label: 'Yes (help me create it)' },
+      { value: false, label: `No (stay on current branch ${bold(currentBranchName)})` },
+    ],
+    initialValue: false,
+  })
+
+  if (!p.isCancel(wantBranch) && wantBranch) {
+    const { runBranchGuide } = await import('./branch.js')
+    await runBranchGuide()
+  } else {
+    console.log()
+    console.log(mascot())
+    p.outro('')
+  }
 }

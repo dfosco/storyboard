@@ -66,7 +66,24 @@ export async function runBranchGuide(branchArg) {
 
   if (!targetBranch) {
     if (existing.length > 0) {
-      p.log.info(`${dim('Existing worktrees:')} ${existing.map(w => cyan(w)).join(', ')}`)
+      // Render as columns that fit the terminal width
+      const maxLen = Math.max(...existing.map(w => w.length))
+      const colWidth = maxLen + 2
+      const termWidth = process.stdout.columns || 80
+      const cols = Math.max(1, Math.floor(termWidth / colWidth))
+      const rows = Math.ceil(existing.length / cols)
+      const lines = []
+      for (let r = 0; r < rows; r++) {
+        const parts = []
+        for (let c = 0; c < cols; c++) {
+          const idx = c * rows + r
+          if (idx < existing.length) {
+            parts.push(cyan(existing[idx].padEnd(colWidth)))
+          }
+        }
+        lines.push(`  ${parts.join('')}`)
+      }
+      p.log.info(`${dim('Existing worktrees:')}\n${lines.join('\n')}`)
     }
 
     const result = await p.text({

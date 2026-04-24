@@ -370,6 +370,37 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     return () => clearTimeout(timer)
   }, [width, height])
 
+  const isAgent = id.startsWith('agent-')
+  const typeLabel = isAgent ? 'Agent' : 'Terminal'
+  const titleLabel = `${typeLabel} · ${prettyName || '…'}`
+  const connectedEmbed = expanded ? findConnectedSplitTarget(id) : null
+  const embedUrl = expanded ? buildSplitUrl(connectedEmbed) : null
+  const hasSplit = Boolean(connectedEmbed)
+  const isSecondaryTerminal = connectedEmbed?.type === 'terminal' || connectedEmbed?.type === 'terminal-read' || connectedEmbed?.type === 'agent'
+  const [activePane, setActivePane] = useState('left')
+
+  const paneOrder = useMemo(
+    () => (hasSplit ? getPaneOrder(id, connectedEmbed) : { primaryIsLeft: true }),
+    [hasSplit, id, connectedEmbed],
+  )
+  const primaryWidget = useMemo(() => ({ type: isAgent ? 'agent' : 'terminal', props: { prettyName } }), [prettyName, isAgent])
+  const primaryLabel = useMemo(() => getSplitPaneLabel(primaryWidget), [primaryWidget])
+  const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedEmbed), [connectedEmbed])
+  const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel
+  const rightLabel = paneOrder.primaryIsLeft ? secondaryLabel : primaryLabel
+
+  // Reparent secondary terminal/agent DOM into the split pane
+  const secondaryTermRef = useRef(null)
+  const secondaryCleanupRef = useRef(null)
+  useEffect(() => {
+    if (!expanded || !hasSplit || !isSecondaryTerminal || !secondaryTermRef.current) return
+    secondaryCleanupRef.current = reparentTerminalInto(connectedEmbed.id, secondaryTermRef.current)
+    return () => {
+      secondaryCleanupRef.current?.()
+      secondaryCleanupRef.current = null
+    }
+  }, [expanded, hasSplit, isSecondaryTerminal, connectedEmbed?.id])
+
   // Resize for expand — use real cell metrics, observe viewport changes
   useEffect(() => {
     if (!expanded || !expandContainerRef.current) return
@@ -472,37 +503,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
       setConnectAttempt(c => c + 1)
     }, 1500)
   }, [])
-
-  const isAgent = id.startsWith('agent-')
-  const typeLabel = isAgent ? 'Agent' : 'Terminal'
-  const titleLabel = `${typeLabel} · ${prettyName || '…'}`
-  const connectedEmbed = expanded ? findConnectedSplitTarget(id) : null
-  const embedUrl = expanded ? buildSplitUrl(connectedEmbed) : null
-  const hasSplit = Boolean(connectedEmbed)
-  const isSecondaryTerminal = connectedEmbed?.type === 'terminal' || connectedEmbed?.type === 'terminal-read' || connectedEmbed?.type === 'agent'
-  const [activePane, setActivePane] = useState('left')
-
-  const paneOrder = useMemo(
-    () => (hasSplit ? getPaneOrder(id, connectedEmbed) : { primaryIsLeft: true }),
-    [hasSplit, id, connectedEmbed],
-  )
-  const primaryWidget = useMemo(() => ({ type: isAgent ? 'agent' : 'terminal', props: { prettyName } }), [prettyName, isAgent])
-  const primaryLabel = useMemo(() => getSplitPaneLabel(primaryWidget), [primaryWidget])
-  const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedEmbed), [connectedEmbed])
-  const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel
-  const rightLabel = paneOrder.primaryIsLeft ? secondaryLabel : primaryLabel
-
-  // Reparent secondary terminal/agent DOM into the split pane
-  const secondaryTermRef = useRef(null)
-  const secondaryCleanupRef = useRef(null)
-  useEffect(() => {
-    if (!expanded || !hasSplit || !isSecondaryTerminal || !secondaryTermRef.current) return
-    secondaryCleanupRef.current = reparentTerminalInto(connectedEmbed.id, secondaryTermRef.current)
-    return () => {
-      secondaryCleanupRef.current?.()
-      secondaryCleanupRef.current = null
-    }
-  }, [expanded, hasSplit, isSecondaryTerminal, connectedEmbed?.id])
 
 
   return (

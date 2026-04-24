@@ -7,7 +7,6 @@ import { ScreenNormalIcon } from '@primer/octicons-react'
 import { useOverride } from '../../hooks/useOverride.js'
 import { getSplitPaneLabel, findConnectedSplitTarget, buildSecondaryIframeUrl as buildSplitUrl, getPaneOrder, reparentTerminalInto } from './expandUtils.js'
 import SplitScreenTopBar from './SplitScreenTopBar.jsx'
-import ResizeHandle from './ResizeHandle.jsx'
 import styles from './TerminalWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -141,7 +140,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   // Snapped dimensions computed from ghostty's actual cell metrics (set after open)
   const [snappedHeight, setSnappedHeight] = useState(null)
   const [snappedWidth, setSnappedWidth] = useState(null)
-  const isResizingRef = useRef(false)
 
   const containerRef = useRef(null)
   const termRef = useRef(null)
@@ -189,27 +187,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   useEffect(() => {
     if (multiSelected && interactive) setInteractive(false)
   }, [multiSelected])
-
-  const handleResize = useCallback((w, h) => {
-    onUpdate?.({ width: w, height: h })
-  }, [onUpdate])
-
-  const handleResizeStart = useCallback(() => {
-    isResizingRef.current = true
-    setSnappedHeight(null)
-  }, [])
-
-  const handleResizeEnd = useCallback((w, h) => {
-    isResizingRef.current = false
-    // Snap to cell grid on release
-    const ch = termRef.current?.renderer?.charHeight
-    if (ch) {
-      const pad = 34
-      const dims = calcDimensions(w, h, fontSize)
-      setSnappedHeight(Math.round(dims.rows * ch) + pad)
-      onUpdate?.({ width: w, height: Math.round(dims.rows * ch) + pad })
-    }
-  }, [fontSize, onUpdate])
 
   // Connect terminal + WebSocket
   useEffect(() => {
@@ -349,12 +326,10 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         wrap.style.setProperty('--term-cols', dims.cols)
         wrap.style.setProperty('--term-rows', dims.rows)
       }
-      // Re-snap to cell grid (skip during active drag — snap happens on release)
-      if (!isResizingRef.current) {
-        const pad = 34
-        if (ch) setSnappedHeight(Math.round(dims.rows * ch) + pad)
-        if (cw) setSnappedWidth(Math.round(dims.cols * cw) + pad)
-      }
+      // Re-snap to cell grid
+      const pad = 34
+      if (ch) setSnappedHeight(Math.round(dims.rows * ch) + pad)
+      if (cw) setSnappedWidth(Math.round(dims.cols * cw) + pad)
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
       }
@@ -362,21 +337,41 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     return () => clearTimeout(timer)
   }, [width, height])
 
-  // Resize for expand
+  // Resize for expand — use real cell metrics, observe viewport changes
   useEffect(() => {
     if (!expanded || !termRef.current || !expandContainerRef.current) return
-    const timer = setTimeout(() => {
+
+    function fitToContainer() {
       const el = expandContainerRef.current
-      if (!el) return
-      const dims = calcDimensions(el.clientWidth, el.clientHeight - 40, fontSize)
-      termRef.current?.resize?.(dims.cols, dims.rows)
+      const term = termRef.current
+      if (!el || !term) return
+      const cw = term.renderer?.charWidth
+      const ch = term.renderer?.charHeight
+      if (!cw || !ch) return
+      // 40px top bar
+      const availW = el.clientWidth
+      const availH = el.clientHeight - 40
+      const cols = Math.max(10, Math.floor(availW / cw))
+      const rows = Math.max(4, Math.floor(availH / ch))
+      term.resize?.(cols, rows)
       if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
+        wsRef.current.send(JSON.stringify({ type: 'resize', cols, rows }))
       }
+    }
+
+    const timer = setTimeout(() => {
+      fitToContainer()
       setInteractive(true)
       termRef.current?.focus?.()
     }, 100)
-    return () => clearTimeout(timer)
+
+    const ro = new ResizeObserver(() => fitToContainer())
+    ro.observe(expandContainerRef.current)
+
+    return () => {
+      clearTimeout(timer)
+      ro.disconnect()
+    }
   }, [expanded])
 
   // Restore size on collapse
@@ -558,16 +553,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           <div className={styles.loading}>Connecting…</div>
         )}
       </div>
-      {resizable && (
-        <ResizeHandle
-          targetRef={terminalRef}
-          onResize={handleResize}
-          onResizeStart={handleResizeStart}
-          onResizeEnd={handleResizeEnd}
-          axis="vertical"
-          minHeight={200}
-        />
-      )}
     </div>
     {createPortal(
       <div

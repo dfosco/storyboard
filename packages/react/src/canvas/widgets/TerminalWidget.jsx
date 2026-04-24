@@ -223,6 +223,18 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         term.open(containerRef.current)
         termRef.current = term
 
+        // Expose ghostty's actual computed cell metrics as CSS variables
+        const cw = term.renderer?.charWidth
+        const ch = term.renderer?.charHeight
+        const el = containerRef.current
+        if (el && cw) el.style.setProperty('--term-char-width', `${cw}px`)
+        if (el && ch) el.style.setProperty('--term-char-height', `${ch}px`)
+        if (el) {
+          el.style.setProperty('--term-cols', dims.cols)
+          el.style.setProperty('--term-rows', dims.rows)
+          el.style.setProperty('--term-font-size', `${cfg.fontSize ?? 13}px`)
+        }
+
         // SGR mouse wheel for tmux scroll in alternate screen
         term.attachCustomWheelEventHandler((e) => {
           if (!(term.wasmTerm?.isAlternateScreen?.() ?? false)) return false
@@ -297,6 +309,16 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     const timer = setTimeout(() => {
       const dims = calcDimensions(width, height, fontSize)
       termRef.current?.resize?.(dims.cols, dims.rows)
+      // Update CSS variables after resize
+      const el = containerRef.current
+      const cw = termRef.current?.renderer?.charWidth
+      const ch = termRef.current?.renderer?.charHeight
+      if (el && cw) el.style.setProperty('--term-char-width', `${cw}px`)
+      if (el && ch) el.style.setProperty('--term-char-height', `${ch}px`)
+      if (el) {
+        el.style.setProperty('--term-cols', dims.cols)
+        el.style.setProperty('--term-rows', dims.rows)
+      }
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
       }

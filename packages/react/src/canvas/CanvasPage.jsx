@@ -1051,6 +1051,67 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     }
   }, [canvasId, localWidgets, undoRedo])
 
+  // Duplicate all selected widgets in one undo step (Cmd+D)
+  const handleDuplicateSelected = useCallback(async () => {
+    const widgets = (localWidgets ?? []).filter((w) => selectedWidgetIds.has(w.id))
+    if (widgets.length === 0) return
+
+    // Single undo snapshot for the entire batch
+    undoRedo.snapshot(stateRef.current, 'add')
+
+    // Compute occupied positions to find free offset
+    const occupied = new Set(
+      (localWidgets ?? []).map((w) => `${w.position?.x ?? 0},${w.position?.y ?? 0}`)
+    )
+    let offset = 1
+    const anyOccupied = () => widgets.some((w) => {
+      const bx = (w.position?.x ?? 0) + offset * 40
+      const by = (w.position?.y ?? 0) + offset * 40
+      return occupied.has(`${bx},${by}`)
+    })
+    while (anyOccupied()) offset++
+
+    const newWidgets = []
+    for (const widget of widgets) {
+      const position = {
+        x: (widget.position?.x ?? 0) + offset * 40,
+        y: (widget.position?.y ?? 0) + offset * 40,
+      }
+      const isTerminal = widget.type === 'terminal' || widget.type === 'agent'
+      try {
+        const copyProps = { ...widget.props }
+        if (isTerminal) delete copyProps.prettyName
+        if (widget.type === 'image' && copyProps.src) {
+          try {
+            const dupResult = await duplicateImage(copyProps.src)
+            if (dupResult.success) copyProps.src = dupResult.filename
+          } catch { /* use original src as fallback */ }
+        }
+        const result = await addWidgetApi(canvasId, {
+          type: widget.type,
+          props: copyProps,
+          position,
+        })
+        if (result.success && result.widget) {
+          newWidgets.push(result.widget)
+        }
+      } catch (err) {
+        console.error('[canvas] Failed to duplicate widget:', err)
+      }
+    }
+
+    if (newWidgets.length > 0) {
+      setLocalWidgets((prev) => [...(prev || []), ...newWidgets])
+      setSelectedWidgetIds(new Set(newWidgets.map((w) => w.id)))
+    }
+  }, [canvasId, localWidgets, selectedWidgetIds, undoRedo])
+
+  // Select all widgets (Cmd+A)
+  const handleSelectAll = useCallback(() => {
+    const allIds = (localWidgets ?? []).map((w) => w.id)
+    if (allIds.length > 0) setSelectedWidgetIds(new Set(allIds))
+  }, [localWidgets])
+
   const showMissingGhBanner = useCallback(() => {
     setShowGhInstallBanner(true)
   }, [])
@@ -2167,7 +2228,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     )
   }, [canvasId, debouncedSave, debouncedSourceSave, undoRedo])
 
-  // Keyboard shortcuts — dev-only (Cmd+Z / Cmd+Shift+Z)
+  // Keyboard shortcuts — dev-only (Cmd+Z / Cmd+Shift+Z / Cmd+D / Cmd+A)
   useEffect(() => {
     if (!import.meta.hot) return
     function handleKeyDown(e) {
@@ -2182,10 +2243,18 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         e.preventDefault()
         handleRedo()
       }
+      if (mod && e.key === 'd') {
+        e.preventDefault()
+        handleDuplicateSelected()
+      }
+      if (mod && e.key === 'a') {
+        e.preventDefault()
+        handleSelectAll()
+      }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleUndo, handleRedo])
+  }, [handleUndo, handleRedo, handleDuplicateSelected, handleSelectAll])
 
   // Listen for undo/redo from CoreUIBar (Svelte toolbar)
   useEffect(() => {

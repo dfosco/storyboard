@@ -32,7 +32,7 @@
   position: relative;
   border-radius: var(--base-size-16, 16px);
   overflow: hidden;
-  background: var(--term-bg, #0d1117);
+  background: var(--term-bg, #181b22);
   border: 1px solid var(--borderColor-default, #30363d);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
   padding: var(--base-size-16, 16px);
@@ -43,17 +43,18 @@
   width: 100%;
   height: 100%;
   box-sizing: border-box;
+  background: var(--term-bg, #181b22);
 }
 
 /* ghostty-web / xterm.js container overrides */
 .xtermContainer :global(.xterm) {
   width: 100%;
   height: 100%;
-  background: var(--term-bg, #0d1117);
+  background: var(--term-bg, #181b22);
 }
 
 .xtermContainer :global(.xterm) canvas {
-  background: var(--term-bg, #0d1117);
+  background: var(--term-bg, #181b22);
 }
 
 /* Hide the native caret on ghostty-web's helper textarea —
@@ -98,7 +99,7 @@
   color: #8b949e;
   font-size: 13px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: var(--term-bg, #0d1117);
+  background: var(--term-bg, #181b22);
   z-index: 1;
 }
 
@@ -111,7 +112,7 @@
   color: #f85149;
   font-size: 13px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: var(--term-bg, #0d1117);
+  background: var(--term-bg, #181b22);
   z-index: 1;
 }
 

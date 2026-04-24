@@ -82,6 +82,7 @@ function helpScreen(version) {
     cmd('terminal open --id <name>', 'Attach to a session'),
     cmd('terminal remove --id <name>', 'Permanently destroy a session'),
     cmd('terminal --all', 'Show sessions across all branches'),
+    cmd('terminal reset', 'Kill tmux server, clear registry & snapshots'),
     '',
     `  ${bold(cyan('Setup'))}`,
     cmd('setup', 'Install deps, Caddy proxy, start proxy'),

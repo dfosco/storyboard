@@ -1,24 +1,31 @@
 {
   "name": "@dfosco/storyboard-react",
-  "version": "3.8.2",
+  "version": "4.2.0-alpha.16",
   "type": "module",
   "dependencies": {
-    "@dfosco/storyboard-core": "3.8.2",
-    "@dfosco/tiny-canvas": "^1.1.0",
+    "@base-ui/react": "^1.4.0",
+    "@dfosco/storyboard-core": "4.2.0-alpha.16",
+    "@dfosco/tiny-canvas": "4.2.0-alpha.16",
     "@neodrag/react": "^2.3.1",
+    "ansi-to-html": "^0.7.2",
+    "ghostty-web": "^0.4.0",
     "glob": "^11.0.0",
-    "jsonc-parser": "^3.3.1"
+    "jsonc-parser": "^3.3.1",
+    "remark": "^15.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-html": "^16.0.1"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dfosco/storyboard-source.git",
+    "url": "https://github.com/dfosco/storyboard.git",
     "directory": "packages/react"
   },
   "files": [
     "src"
   ],
   "peerDependencies": {
+    "@primer/octicons-react": ">=19",
     "react": ">=18",
     "react-router-dom": ">=6",
     "vite": ">=5"

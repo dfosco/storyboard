@@ -1,7 +1,7 @@
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import storyboardDataPlugin, { resolveTemplateVars, computeTemplateVars } from './data-plugin.js'
+import storyboardDataPlugin, { resolveTemplateVars, computeTemplateVars, parseDataFile } from './data-plugin.js'
 
 const RESOLVED_ID = '\0virtual:storyboard-data-index'
 
@@ -53,6 +53,14 @@ describe('storyboardDataPlugin', () => {
     expect(config.optimizeDeps.exclude).toContain('@dfosco/storyboard-react')
   })
 
+  it('config() includes remark stack in optimizeDeps so Vite pre-bundles transitive CJS deps', () => {
+    const plugin = storyboardDataPlugin()
+    const config = plugin.config()
+    expect(config.optimizeDeps.include).toContain('remark')
+    expect(config.optimizeDeps.include).toContain('remark-gfm')
+    expect(config.optimizeDeps.include).toContain('remark-html')
+  })
+
   it("resolveId returns resolved ID for 'virtual:storyboard-data-index'", () => {
     const plugin = createPlugin()
     expect(plugin.resolveId('virtual:storyboard-data-index')).toBe(RESOLVED_ID)
@@ -69,13 +77,13 @@ describe('storyboardDataPlugin', () => {
     const code = plugin.load(RESOLVED_ID)
 
     expect(code).toContain("import { init } from '@dfosco/storyboard-core'")
-    expect(code).toContain('init({ flows, objects, records, prototypes, folders, canvases })')
+    expect(code).toContain('init({ flows, objects, records, prototypes, folders, canvases, stories })')
     expect(code).toContain('"Test"')
     expect(code).toContain('"Jane"')
     expect(code).toContain('"First"')
     // Backward-compat alias
     expect(code).toContain('const scenes = flows')
-    expect(code).toContain('export { flows, scenes, objects, records, prototypes, folders, canvases }')
+    expect(code).toContain('export { flows, scenes, objects, records, prototypes, folders, canvases, canvasAliases, stories }')
   })
 
   it('load returns null for other IDs', () => {
@@ -161,7 +169,7 @@ describe('storyboardDataPlugin', () => {
 
     // .scene.json files should be normalized to the flows category
     expect(code).toContain('"Legacy Scene"')
-    expect(code).toContain('init({ flows, objects, records, prototypes, folders, canvases })')
+    expect(code).toContain('init({ flows, objects, records, prototypes, folders, canvases, stories })')
   })
 
   it('buildStart resets the index cache', () => {
@@ -358,7 +366,7 @@ describe('flow route inference', () => {
     expect(code).not.toContain('"_route"')
   })
 
-  it('logs info when multiple flows share the same route', () => {
+  it('does not log info when multiple flows share the same route', () => {
     mkdirSync(path.join(tmpDir, 'src', 'prototypes', 'Dashboard'), { recursive: true })
     writeFileSync(
       path.join(tmpDir, 'src', 'prototypes', 'Dashboard', 'happy.flow.json'),
@@ -376,7 +384,7 @@ describe('flow route inference', () => {
     const routeLog = logSpy.mock.calls.find(call =>
       typeof call[0] === 'string' && call[0].includes('Route "/Dashboard" has 2 flows')
     )
-    expect(routeLog).toBeTruthy()
+    expect(routeLog).toBeUndefined()
     logSpy.mockRestore()
   })
 
@@ -819,5 +827,397 @@ describe('template variable integration', () => {
     )
     expect(warnCall).toBeTruthy()
     warnSpy.mockRestore()
+  })
+})
+
+// ── Canvas watcher / HMR tests ──────────────────────────────────────
+
+describe('canvas watcher behavior', () => {
+  /** Helper: create a mock Vite dev server for configureServer */
+  function createMockServer(root) {
+    const listeners = {}
+    const wsSent = []
+    const invalidatedModules = []
+
+    return {
+      wsSent,
+      invalidatedModules,
+      listeners,
+      config: { root, base: '/' },
+      watcher: {
+        add: vi.fn(),
+        on(event, fn) {
+          if (!listeners[event]) listeners[event] = []
+          listeners[event].push(fn)
+        },
+      },
+      moduleGraph: {
+        getModuleById(id) {
+          if (id === RESOLVED_ID) return { id: RESOLVED_ID }
+          return null
+        },
+        invalidateModule(mod) {
+          invalidatedModules.push(mod.id)
+        },
+      },
+      ws: {
+        send(msg) { wsSent.push(msg) },
+      },
+      middlewares: {
+        use: vi.fn(),
+      },
+    }
+  }
+
+  /** Emit a watcher event on the mock server */
+  function emit(server, event, filePath) {
+    for (const fn of (server.listeners[event] || [])) {
+      fn(filePath)
+    }
+  }
+
+  function writeCanvasFile(dir, name, title) {
+    const canvasDir = path.join(dir, 'src', 'canvas')
+    mkdirSync(canvasDir, { recursive: true })
+    const evt = { event: 'canvas_created', title: title || name, timestamp: Date.now() }
+    writeFileSync(path.join(canvasDir, `${name}.canvas.jsonl`), JSON.stringify(evt) + '\n')
+  }
+
+  it('soft-invalidates virtual module on canvas content change (no full-reload)', () => {
+    writeCanvasFile(tmpDir, 'test-canvas', 'Original Title')
+    const plugin = createPlugin()
+    // Force initial buildResult
+    plugin.load(RESOLVED_ID)
+
+    const server = createMockServer(tmpDir)
+    plugin.configureServer(server)
+
+    // Simulate a canvas file content change
+    const canvasPath = path.join(tmpDir, 'src', 'canvas', 'test-canvas.canvas.jsonl')
+    emit(server, 'change', canvasPath)
+
+    // Should have sent custom HMR event (not full-reload)
+    const customEvents = server.wsSent.filter(m => m.type === 'custom')
+    const fullReloads = server.wsSent.filter(m => m.type === 'full-reload')
+
+    expect(customEvents.length).toBe(1)
+    expect(customEvents[0].event).toBe('storyboard:canvas-file-changed')
+    expect(customEvents[0].data.canvasId).toBe('test-canvas')
+    expect(fullReloads.length).toBe(0)
+
+    // Should have invalidated the virtual module
+    expect(server.invalidatedModules).toContain(RESOLVED_ID)
+  })
+
+  it('includes metadata in HMR event for canvas content changes', () => {
+    writeCanvasFile(tmpDir, 'meta-canvas', 'My Canvas Title')
+    const plugin = createPlugin()
+    plugin.load(RESOLVED_ID)
+
+    const server = createMockServer(tmpDir)
+    plugin.configureServer(server)
+
+    emit(server, 'change', path.join(tmpDir, 'src', 'canvas', 'meta-canvas.canvas.jsonl'))
+
+    const event = server.wsSent.find(m => m.type === 'custom')
+    expect(event.data.metadata).toBeDefined()
+    expect(event.data.metadata.title).toBe('My Canvas Title')
+  })
+
+  it('soft-invalidates on canvas file add (new canvas)', () => {
+    const plugin = createPlugin()
+    plugin.load(RESOLVED_ID)
+
+    const server = createMockServer(tmpDir)
+    plugin.configureServer(server)
+
+    // Create the file after the server is configured
+    writeCanvasFile(tmpDir, 'new-canvas', 'Brand New')
+    emit(server, 'add', path.join(tmpDir, 'src', 'canvas', 'new-canvas.canvas.jsonl'))
+
+    const customEvents = server.wsSent.filter(m => m.type === 'custom')
+    const fullReloads = server.wsSent.filter(m => m.type === 'full-reload')
+
+    expect(customEvents.length).toBe(1)
+    expect(customEvents[0].data.canvasId).toBe('new-canvas')
+    expect(customEvents[0].data.metadata).toBeDefined()
+    expect(fullReloads.length).toBe(0)
+    expect(server.invalidatedModules).toContain(RESOLVED_ID)
+  })
+
+  it('soft-invalidates on canvas file unlink after timeout (true delete)', async () => {
+    writeCanvasFile(tmpDir, 'doomed-canvas', 'Gone Soon')
+    const plugin = createPlugin()
+    plugin.load(RESOLVED_ID)
+
+    const server = createMockServer(tmpDir)
+    plugin.configureServer(server)
+
+    emit(server, 'unlink', path.join(tmpDir, 'src', 'canvas', 'doomed-canvas.canvas.jsonl'))
+
+    // Immediately after unlink — no event yet (deferred by 1500ms)
+    expect(server.wsSent.length).toBe(0)
+
+    // Wait for deferred timer
+    await new Promise(resolve => setTimeout(resolve, 1600))
+
+    const customEvents = server.wsSent.filter(m => m.type === 'custom')
+    expect(customEvents.length).toBe(1)
+    expect(customEvents[0].data.canvasId).toBe('doomed-canvas')
+    expect(customEvents[0].data.removed).toBe(true)
+    expect(server.invalidatedModules).toContain(RESOLVED_ID)
+  })
+
+  it('cancels deferred unlink on add (atomic write / in-place save)', async () => {
+    writeCanvasFile(tmpDir, 'saved-canvas', 'Saved')
+    const plugin = createPlugin()
+    plugin.load(RESOLVED_ID)
+
+    const server = createMockServer(tmpDir)
+    plugin.configureServer(server)
+
+    const canvasPath = path.join(tmpDir, 'src', 'canvas', 'saved-canvas.canvas.jsonl')
+
+    // Simulate atomic write: unlink then add within 1500ms
+    emit(server, 'unlink', canvasPath)
+    emit(server, 'add', canvasPath)
+
+    // Should have sent one event immediately (the add cancelling the unlink)
+    const customEvents = server.wsSent.filter(m => m.type === 'custom')
+    expect(customEvents.length).toBe(1)
+    expect(customEvents[0].data.canvasId).toBe('saved-canvas')
+    expect(customEvents[0].data.removed).toBeUndefined()
+    expect(server.invalidatedModules).toContain(RESOLVED_ID)
+
+    // Wait past the unlink timer — should NOT get a second event
+    await new Promise(resolve => setTimeout(resolve, 1600))
+    const allCustom = server.wsSent.filter(m => m.type === 'custom')
+    expect(allCustom.length).toBe(1)
+  })
+
+  it('handleHotUpdate returns empty array for canvas files (suppresses full-reload)', () => {
+    const plugin = createPlugin()
+    const result = plugin.handleHotUpdate({
+      file: path.join(tmpDir, 'src', 'canvas', 'test.canvas.jsonl'),
+      server: createMockServer(tmpDir),
+      modules: [],
+    })
+    expect(result).toEqual([])
+  })
+
+  it('handleHotUpdate does not send duplicate HMR events', () => {
+    const plugin = createPlugin()
+    const server = createMockServer(tmpDir)
+    plugin.handleHotUpdate({
+      file: path.join(tmpDir, 'src', 'canvas', 'test.canvas.jsonl'),
+      server,
+      modules: [],
+    })
+    // handleHotUpdate should NOT send events (invalidate() handles it)
+    expect(server.wsSent.length).toBe(0)
+  })
+
+  it('generated virtual module includes HMR listener for canvas updates', () => {
+    writeCanvasFile(tmpDir, 'hmr-canvas', 'HMR Test')
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('import.meta.hot')
+    expect(code).toContain('storyboard:canvas-file-changed')
+    expect(code).toContain('data.removed')
+    expect(code).toContain('data.metadata')
+    // Should merge into existing entries to preserve build-time fields
+    expect(code).toContain('Object.assign')
+  })
+
+  it('page refresh after canvas add yields updated module with new canvas', () => {
+    const plugin = createPlugin()
+    // First load — no canvases
+    const code1 = plugin.load(RESOLVED_ID)
+    expect(code1).not.toContain('"refresh-canvas"')
+
+    // Simulate adding a canvas and clearing buildResult (what softInvalidate does)
+    writeCanvasFile(tmpDir, 'refresh-canvas', 'After Refresh')
+
+    // Manually clear buildResult by loading a fresh plugin instance with the same root
+    const plugin2 = createPlugin()
+    const code2 = plugin2.load(RESOLVED_ID)
+    expect(code2).toContain('"refresh-canvas"')
+    expect(code2).toContain('After Refresh')
+  })
+
+  // ── Story file discovery ──────────────────────────────────────────
+
+  it('discovers .story.jsx files and generates _storyImport', () => {
+    writeDataFiles(tmpDir)
+    writeFileSync(
+      path.join(tmpDir, 'button-patterns.story.jsx'),
+      'export function Primary() { return null }',
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"button-patterns"')
+    expect(code).toContain('_storyModule')
+    expect(code).toContain('_storyImport')
+    expect(code).toContain('.story.jsx')
+  })
+
+  it('discovers .story.tsx files', () => {
+    writeDataFiles(tmpDir)
+    writeFileSync(
+      path.join(tmpDir, 'card.story.tsx'),
+      'export function Default() { return null }',
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"card"')
+    expect(code).toContain('card.story.tsx')
+  })
+
+  it('skips _-prefixed story files', () => {
+    writeDataFiles(tmpDir)
+    writeFileSync(
+      path.join(tmpDir, '_draft.story.jsx'),
+      'export function Draft() { return null }',
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).not.toContain('"_draft"')
+  })
+
+  it('throws on duplicate story names', () => {
+    writeDataFiles(tmpDir)
+    mkdirSync(path.join(tmpDir, 'a'), { recursive: true })
+    mkdirSync(path.join(tmpDir, 'b'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'a', 'dupe.story.jsx'),
+      'export function A() { return null }',
+    )
+    writeFileSync(
+      path.join(tmpDir, 'b', 'dupe.story.jsx'),
+      'export function B() { return null }',
+    )
+    const plugin = createPlugin()
+    expect(() => plugin.load(RESOLVED_ID)).toThrow(/Duplicate story "dupe"/)
+  })
+
+  it('includes stories in the init() call and exports', () => {
+    writeDataFiles(tmpDir)
+    writeFileSync(
+      path.join(tmpDir, 'test.story.jsx'),
+      'export function Test() { return null }',
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('const stories = {')
+    expect(code).toContain('init({ flows, objects, records, prototypes, folders, canvases, stories })')
+    expect(code).toContain('export { flows, scenes, objects, records, prototypes, folders, canvases, canvasAliases, stories }')
+  })
+
+  it('infers /components/ route for stories in src/canvas/', () => {
+    writeDataFiles(tmpDir)
+    mkdirSync(path.join(tmpDir, 'src', 'canvas'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'canvas', 'button-patterns.story.jsx'),
+      'export function Primary() { return null }',
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"button-patterns"')
+    expect(code).toContain('"/components/button-patterns"')
+    expect(code).toContain('_route')
+  })
+
+  it('infers /components/ route for stories in src/components/', () => {
+    writeDataFiles(tmpDir)
+    mkdirSync(path.join(tmpDir, 'src', 'components'), { recursive: true })
+    writeFileSync(
+      path.join(tmpDir, 'src', 'components', 'text-input.story.jsx'),
+      'export function Default() { return null }',
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"text-input"')
+    expect(code).toContain('"/components/text-input"')
+  })
+
+  it('stories outside src/canvas/ or src/components/ have no inferred route', () => {
+    writeDataFiles(tmpDir)
+    writeFileSync(
+      path.join(tmpDir, 'orphan.story.jsx'),
+      'export function Default() { return null }',
+    )
+    const plugin = createPlugin()
+    const code = plugin.load(RESOLVED_ID)
+
+    expect(code).toContain('"orphan"')
+    // Should not have _route since it's not in a recognized directory
+    expect(code).not.toContain('"/orphan"')
+  })
+})
+
+describe('parseDataFile — canvas path-based IDs', () => {
+  it('flat canvas in src/canvas/ gets basename-only ID', () => {
+    const result = parseDataFile('src/canvas/overview.canvas.jsonl')
+    expect(result.name).toBe('overview')
+    expect(result.inferredRoute).toBe('/canvas/overview')
+    expect(result.group).toBeNull()
+  })
+
+  it('canvas inside .folder/ gets path-based ID', () => {
+    const result = parseDataFile('src/canvas/research.folder/interviews.canvas.jsonl')
+    expect(result.name).toBe('research/interviews')
+    expect(result.inferredRoute).toBe('/canvas/research/interviews')
+    expect(result.group).toBe('research')
+  })
+
+  it('duplicate basenames in different folders get distinct IDs', () => {
+    const a = parseDataFile('src/canvas/alpha.folder/overview.canvas.jsonl')
+    const b = parseDataFile('src/canvas/beta.folder/overview.canvas.jsonl')
+    expect(a.name).toBe('alpha/overview')
+    expect(b.name).toBe('beta/overview')
+    expect(a.name).not.toBe(b.name)
+  })
+
+  it('prototype-scoped canvas gets path-based ID', () => {
+    const result = parseDataFile('src/prototypes/Dashboard/plan.canvas.jsonl')
+    expect(result.name).toBe('Dashboard/plan')
+    expect(result.inferredRoute).toBe('/canvas/Dashboard/plan')
+  })
+
+  it('prototype inside .folder/ strips folder from ID', () => {
+    const result = parseDataFile('src/prototypes/main.folder/Dashboard/plan.canvas.jsonl')
+    expect(result.name).toBe('Dashboard/plan')
+    expect(result.inferredRoute).toBe('/canvas/Dashboard/plan')
+  })
+
+  it('skips _-prefixed canvas files', () => {
+    expect(parseDataFile('src/canvas/_draft.canvas.jsonl')).toBeNull()
+  })
+
+  it('skips canvas files in _-prefixed directories', () => {
+    expect(parseDataFile('src/canvas/_hidden/public.canvas.jsonl')).toBeNull()
+  })
+
+  it('canvas outside known directories gets basename-only ID', () => {
+    const result = parseDataFile('random/path/notes.canvas.jsonl')
+    expect(result.name).toBe('notes')
+    expect(result.inferredRoute).toBeNull()
+  })
+
+  it('sets group for grouped canvases', () => {
+    const result = parseDataFile('src/canvas/ux.folder/onboarding.canvas.jsonl')
+    expect(result.group).toBe('ux')
+  })
+
+  it('sets group to null for ungrouped canvases', () => {
+    const result = parseDataFile('src/canvas/standalone.canvas.jsonl')
+    expect(result.group).toBeNull()
   })
 })

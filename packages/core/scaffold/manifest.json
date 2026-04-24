@@ -16,6 +16,11 @@
       "mode": "scaffold"
     },
     {
+      "source": "scaffold/commandpalette.config.json",
+      "target": "commandpalette.config.json",
+      "mode": "scaffold"
+    },
+    {
       "source": "scaffold/scripts/link.sh",
       "target": "scripts/link.sh",
       "mode": "updateable"
@@ -28,6 +33,22 @@
     {
       "source": "scaffold/skills/",
       "target": ".github/skills/",
+      "mode": "updateable",
+      "directory": true
+    },
+    {
+      "source": "scaffold/deploy.yml",
+      "target": ".github/workflows/deploy.yml",
+      "mode": "scaffold"
+    },
+    {
+      "source": "scaffold/preview.yml",
+      "target": ".github/workflows/preview.yml",
+      "mode": "scaffold"
+    },
+    {
+      "source": "scaffold/githooks/",
+      "target": ".githooks/",
       "mode": "updateable",
       "directory": true
     }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, Suspense, lazy } from 'react'
 import { useParams, useLocation } from 'react-router-dom'
-// Named import seeds the core data index via init() AND provides canvas route data
-import { canvases } from 'virtual:storyboard-data-index'
+// Named import seeds the core data index via init() AND provides canvas/story route data
+import { canvases, canvasAliases, stories } from 'virtual:storyboard-data-index'
 import { loadFlow, flowExists, findRecord, deepMerge, setFlowClass, installBodyClassSync, resolveFlowName, resolveRecordName, isModesEnabled } from '@dfosco/storyboard-core'
 import { StoryboardContext } from './StoryboardContext.js'
 import styles from './FlowError.module.css'
@@ -9,17 +9,91 @@ import styles from './FlowError.module.css'
 export { StoryboardContext }
 
 const CanvasPageLazy = lazy(() => import('./canvas/CanvasPage.jsx'))
+const StoryPageLazy = lazy(() => import('./story/StoryPage.jsx'))
+const CommandPaletteLazy = lazy(() => import('./CommandPalette/CommandPalette.jsx'))
 
 // Build a map from canvas route paths → canvas names at module load time
 const canvasRouteMap = new Map()
+// Build a map from group name → array of { name, route, title } for page selector
+const canvasGroupMap = new Map()
 for (const [name, data] of Object.entries(canvases || {})) {
-  const route = (data?._route || `/${name}`).replace(/\/+$/, '')
+  const route = (data?._route || `/canvas/${name}`).replace(/\/+$/, '')
   canvasRouteMap.set(route, name)
+  const group = data?._group
+  if (group) {
+    if (!canvasGroupMap.has(group)) canvasGroupMap.set(group, [])
+    canvasGroupMap.get(group).push({
+      name,
+      route,
+      title: data?.title || name.split('/').pop(),
+      _canvasMeta: data?._canvasMeta || null,
+    })
+  }
+}
+// Sort each group's pages by pageOrder from .meta.json (if available)
+for (const [, pages] of canvasGroupMap) {
+  const pageOrder = pages[0]?._canvasMeta?.pageOrder
+  if (Array.isArray(pageOrder)) {
+    const orderMap = new Map()
+    pageOrder.forEach((entry, idx) => {
+      if (typeof entry === 'string' && !entry.startsWith('sep-')) orderMap.set(entry, idx)
+    })
+    pages.sort((a, b) => {
+      const ai = orderMap.has(a.name) ? orderMap.get(a.name) : Infinity
+      const bi = orderMap.has(b.name) ? orderMap.get(b.name) : Infinity
+      return ai - bi
+    })
+  }
+}
+
+// Build a map from story route paths → story names at module load time
+const storyRouteMap = new Map()
+for (const [name, data] of Object.entries(stories || {})) {
+  if (data?._route) {
+    const route = data._route.replace(/\/+$/, '')
+    storyRouteMap.set(route, name)
+  }
 }
 
 function matchCanvasRoute(pathname) {
-  const normalized = pathname.replace(/\/+$/, '') || '/'
+  const normalized = stripBasePath(pathname)
   return canvasRouteMap.get(normalized) || null
+}
+
+function matchStoryRoute(pathname) {
+  const normalized = stripBasePath(pathname)
+  return storyRouteMap.get(normalized) || null
+}
+
+/**
+ * Strip the app's sub-path prefix (e.g. /storyboard) from the pathname.
+ * React Router's basename strips the branch prefix but not the app name prefix
+ * when the app runs under a nested base path.
+ */
+function stripBasePath(pathname) {
+  let p = pathname.replace(/\/+$/, '') || '/'
+  // BASE_URL includes branch prefix + app path (e.g. /branch--name/storyboard/)
+  // React Router strips the branch prefix but may leave the app sub-path
+  const base = (import.meta.env?.BASE_URL || '/').replace(/\/+$/, '')
+  if (base && base !== '/') {
+    // Extract just the last segment(s) after the branch prefix
+    const withoutBranch = base.replace(/^\/branch--[^/]+/, '')
+    const subPath = withoutBranch.replace(/\/+$/, '')
+    if (subPath && p.startsWith(subPath)) {
+      p = p.slice(subPath.length) || '/'
+    }
+  }
+  return p
+}
+
+function isCanvasPath(pathname) {
+  const normalized = stripBasePath(pathname)
+  return normalized === '/canvas' || normalized.startsWith('/canvas/')
+}
+
+function isStoryPath(pathname) {
+  const normalized = stripBasePath(pathname)
+  return normalized === '/components' || normalized.startsWith('/components/')
 }
 
 /**
@@ -57,20 +131,51 @@ function getPageFlowName(pathname) {
  * The matched record entry is injected under the "record" key in flow data.
  */
 export default function StoryboardProvider({ flowName, sceneName, recordName, recordParam, children }) {
+  const basePath = import.meta.env?.BASE_URL || '/'
+
+  return (
+    <>
+      <StoryboardProviderInner
+        flowName={flowName}
+        sceneName={sceneName}
+        recordName={recordName}
+        recordParam={recordParam}
+      >
+        {children}
+      </StoryboardProviderInner>
+      <Suspense fallback={null}>
+        <CommandPaletteLazy basePath={basePath} />
+      </Suspense>
+    </>
+  )
+}
+
+function StoryboardProviderInner({ flowName, sceneName, recordName, recordParam, children }) {
   const location = useLocation()
   const params = useParams()
 
   // Canvas route detection — matches current URL against registered canvas routes
-  const canvasName = useMemo(() => matchCanvasRoute(location.pathname), [location.pathname])
+  const canvasId = useMemo(() => matchCanvasRoute(location.pathname), [location.pathname])
+  const isMissingCanvasRoute = useMemo(
+    () => isCanvasPath(location.pathname) && !canvasId && !matchStoryRoute(location.pathname),
+    [location.pathname, canvasId],
+  )
+
+  // Story route detection — matches current URL against registered story routes
+  const storyName = useMemo(() => matchStoryRoute(location.pathname), [location.pathname])
+  const isMissingStoryRoute = useMemo(
+    () => isStoryPath(location.pathname) && !storyName,
+    [location.pathname, storyName],
+  )
 
   const searchParams = new URLSearchParams(location.search)
   const sceneParam = searchParams.get('flow') || searchParams.get('scene')
   const prototypeName = getPrototypeName(location.pathname)
   const pageFlow = getPageFlowName(location.pathname)
 
-  // Resolve flow name with prototype scoping (skip for canvas pages)
+  // Resolve flow name with prototype scoping (skip for canvas/story pages)
   const activeFlowName = useMemo(() => {
-    if (canvasName) return null
+    if (canvasId || isMissingCanvasRoute || storyName || isMissingStoryRoute) return null
     const requested = sceneParam || flowName || sceneName
     if (requested) {
       // Allow fully-scoped flow names from URLs/widgets without re-prefixing
@@ -94,10 +199,31 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     // 4. Global default — or null if no flow exists at all
     if (flowExists('default')) return 'default'
     return null
-  }, [canvasName, sceneParam, flowName, sceneName, prototypeName, pageFlow])
+  }, [canvasId, isMissingCanvasRoute, storyName, isMissingStoryRoute, sceneParam, flowName, sceneName, prototypeName, pageFlow])
 
   // Auto-install body class sync (sb-key--value classes on <body>)
   useEffect(() => installBodyClassSync(), [])
+
+  // Update document.title to reflect the current artifact
+  useEffect(() => {
+    const base = import.meta.env?.BASE_URL || '/'
+    const branchMatch = base.match(/\/branch--([^/]+)/)
+    const branchSuffix = branchMatch ? ` (${branchMatch[1]})` : ''
+
+    let title
+    if (canvasId) {
+      const canvasData = canvases?.[canvasId]
+      const meta = canvasData?._canvasMeta
+      const pageTitle = canvasData?.title || canvasId.split('/').pop()
+      title = (meta?.title || pageTitle) + ' · Storyboard'
+    } else if (prototypeName) {
+      title = prototypeName + ' · Storyboard'
+    } else {
+      title = 'Storyboard'
+    }
+
+    document.title = title + branchSuffix
+  }, [canvasId, prototypeName])
 
   // Mount design modes UI when enabled in storyboard.config.json
   useEffect(() => {
@@ -115,9 +241,9 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     return () => cleanup?.()
   }, [])
 
-  // Skip flow loading for canvas pages and flow-less pages
+  // Skip flow loading for canvas/story pages and flow-less pages
   const { data, error } = useMemo(() => {
-    if (canvasName) return { data: null, error: null }
+    if (canvasId || isMissingCanvasRoute || storyName || isMissingStoryRoute) return { data: null, error: null }
     if (!activeFlowName) return { data: {}, error: null }
     try {
       let flowData = loadFlow(activeFlowName)
@@ -136,10 +262,18 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     } catch (err) {
       return { data: null, error: err.message }
     }
-  }, [canvasName, activeFlowName, recordName, recordParam, params, prototypeName])
+  }, [canvasId, isMissingCanvasRoute, storyName, isMissingStoryRoute, activeFlowName, recordName, recordParam, params, prototypeName])
 
   // Canvas pages get their own rendering path — no flow data needed
-  if (canvasName) {
+  if (canvasId) {
+    const canvasData = canvases?.[canvasId]
+    const group = canvasData?._group
+    // Include the current canvas as a sibling even if it's the only page in its group,
+    // so the PageSelector can render and allow adding new pages.
+    const siblingPages = group
+      ? canvasGroupMap.get(group) || []
+      : [{ name: canvasId, route: canvasData?._route || `/canvas/${canvasId}`, title: canvasData?.title || canvasId.split('/').pop() }]
+    const canvasMeta = canvasData?._canvasMeta || null
     const canvasValue = {
       data: null,
       error: null,
@@ -151,9 +285,70 @@ export default function StoryboardProvider({ flowName, sceneName, recordName, re
     return (
       <StoryboardContext.Provider value={canvasValue}>
         <Suspense fallback={null}>
-          <CanvasPageLazy name={canvasName} />
+          <CanvasPageLazy canvasId={canvasId} siblingPages={siblingPages} canvasMeta={canvasMeta} />
         </Suspense>
       </StoryboardContext.Provider>
+    )
+  }
+
+  // Story pages get their own rendering path — no flow data needed
+  if (storyName) {
+    const storyValue = {
+      data: null,
+      error: null,
+      loading: false,
+      flowName: null,
+      sceneName: null,
+      prototypeName: null,
+    }
+    return (
+      <StoryboardContext.Provider value={storyValue}>
+        <Suspense fallback={null}>
+          <StoryPageLazy name={storyName} />
+        </Suspense>
+      </StoryboardContext.Provider>
+    )
+  }
+
+  if (isMissingCanvasRoute) {
+    const currentUrl = `${location.pathname}${location.search}`
+    const truncatedUrl = currentUrl.length > 60
+      ? currentUrl.slice(0, 60) + '…'
+      : currentUrl
+
+    return (
+      <main className={styles.container}>
+        <div className={styles.banner}>
+          <strong>Canvas not found</strong>
+          No canvas matches this route.
+        </div>
+        <p className={styles.meta}>
+          Tried to open{' '}
+          <a href={currentUrl} title={currentUrl}>{truncatedUrl}</a>
+        </p>
+        <a className={styles.homeLink} href="/">← Go to index page</a>
+      </main>
+    )
+  }
+
+  if (isMissingStoryRoute) {
+    const currentUrl = `${location.pathname}${location.search}`
+    const truncatedUrl = currentUrl.length > 60
+      ? currentUrl.slice(0, 60) + '…'
+      : currentUrl
+
+    return (
+      <main className={styles.container}>
+        <div className={styles.banner}>
+          <strong>Story not found</strong>
+          No story matches this route.
+        </div>
+        <p className={styles.meta}>
+          Tried to open{' '}
+          <a href={currentUrl} title={currentUrl}>{truncatedUrl}</a>
+        </p>
+        <a className={styles.homeLink} href="/">← Go to index page</a>
+      </main>
     )
   }
 

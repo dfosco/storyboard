@@ -22,7 +22,9 @@
 [data-core-ui-bar],
 [data-sidepanel],
 [data-slot="dropdown-menu-content"],
-[data-slot="dropdown-menu-sub-content"] {
+[data-slot="dropdown-menu-sub-content"],
+[data-slot="command-palette-content"],
+[data-slot="dialog-overlay"] {
   color-scheme: light;
 
   /* shadcn / Tailwind semantic tokens — pinned to light values */
@@ -71,7 +73,9 @@
 :root[data-sb-toolbar-theme^="dark"] [data-core-ui-bar],
 :root[data-sb-toolbar-theme^="dark"] [data-sidepanel],
 :root[data-sb-toolbar-theme^="dark"] [data-slot="dropdown-menu-content"],
-:root[data-sb-toolbar-theme^="dark"] [data-slot="dropdown-menu-sub-content"] {
+:root[data-sb-toolbar-theme^="dark"] [data-slot="dropdown-menu-sub-content"],
+:root[data-sb-toolbar-theme^="dark"] [data-slot="command-palette-content"],
+:root[data-sb-toolbar-theme^="dark"] [data-slot="dialog-overlay"] {
   color-scheme: dark;
 
   --color-background: #161b22;

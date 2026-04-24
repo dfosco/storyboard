@@ -12,7 +12,7 @@ importance: high
 
 This is the barrel export for `@dfosco/storyboard-core` — the framework-agnostic data layer of the storyboard system. It re-exports every public API from the core package's internal modules, providing a single import path for consumers. Any frontend framework (React, Vue, Svelte, vanilla JS) can use these utilities directly without framework-specific bindings.
 
-The file organizes exports into logical groups: data initialization, flow/record loading, scoped name resolution, prototype metadata, dot-notation path utilities, URL hash session state, localStorage persistence, hide mode (clean URLs with undo/redo), hash change subscriptions, body class sync, design modes, tool registry, dev tools, viewfinder utilities, feature flags, plugin configuration, and comments system.
+The file organizes exports into logical groups: data initialization, flow/record/object loading, scoped name resolution, prototype and folder metadata, canvas data, dot-notation path utilities, URL hash session state, localStorage persistence, hide mode (clean URLs with undo/redo), hash change subscriptions, body class sync, design modes, tool registries (both legacy and declarative), toolbar config and state, dev tools, viewfinder utilities, feature flags, command actions, plugin configuration, UI config, and comments system.
 
 ## Composition
 
@@ -23,11 +23,15 @@ The file is purely re-exports with no local logic. Key export groups:
 export { init } from './loader.js'
 
 // Flow, object & record loading
-export { loadFlow, listFlows, flowExists, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
+export { loadFlow, listFlows, flowExists, getFlowsForPrototype, loadRecord, findRecord, loadObject, deepMerge } from './loader.js'
 // Scoped name resolution
-export { resolveFlowName, resolveRecordName } from './loader.js'
+export { resolveFlowName, resolveRecordName, resolveObjectName } from './loader.js'
 // Prototype metadata
 export { listPrototypes, getPrototypeMetadata } from './loader.js'
+// Folder metadata
+export { listFolders, getFolderMetadata } from './loader.js'
+// Canvas data
+export { listCanvases, getCanvasData } from './loader.js'
 // Deprecated scene aliases
 export { loadScene, listScenes, sceneExists } from './loader.js'
 
@@ -38,7 +42,7 @@ export { getByPath, setByPath, deepClone } from './dotPath.js'
 export { getParam, setParam, getAllParams, removeParam } from './session.js'
 
 // localStorage persistence
-export { getLocal, setLocal, removeLocal, getAllLocal, subscribeToStorage, getStorageSnapshot } from './localStorage.js'
+export { getLocal, setLocal, removeLocal, getAllLocal, subscribeToStorage, getStorageSnapshot, notifyChange } from './localStorage.js'
 
 // Hide mode (clean URLs)
 export { isHideMode, activateHideMode, deactivateHideMode, getShadow, setShadow, removeShadow, getAllShadows, pushSnapshot, getOverrideHistory, getCurrentSnapshot, getCurrentRoute, getCurrentIndex, getNextIndex, canUndo, canRedo, undo, redo, syncHashToHistory, installHistorySync } from './hideMode.js'
@@ -49,23 +53,45 @@ export { subscribeToHash, getHashSnapshot } from './hashSubscribe.js'
 
 // Body class sync (overrides + flow → <body> classes)
 export { installBodyClassSync, setFlowClass, syncOverrideClasses } from './bodyClasses.js'
+export { setSceneClass } from './bodyClasses.js'  // deprecated
 
 // Design modes (mode registry, switching, event bus)
-export { registerMode, unregisterMode, getRegisteredModes, getCurrentMode, activateMode, deactivateMode, subscribeToMode, getModeSnapshot, syncModeClasses, on, off, emit, initModesConfig, isModesEnabled } from './modes.js'
+export { registerMode, unregisterMode, getRegisteredModes, getCurrentMode, activateMode, deactivateMode, subscribeToMode, getModeSnapshot, syncModeClasses, on, off, emit, initModesConfig, isModesEnabled, getLockedMode, isModeSwitcherVisible } from './modes.js'
 
-// Tool registry
+// Tool registry (legacy, declared in modes.config.json)
 export { initTools, setToolAction, setToolState, getToolState, getToolsForMode, subscribeToTools, getToolsSnapshot } from './modes.js'
 
-// Dev tools & viewfinder
-export { mountDevTools } from './devtools.js'
-export { mountFlowDebug } from './sceneDebug.js'
+// Dev tools (delegates to compiled Svelte UI bundle)
+export { mountDevTools } from './devtools-consumer.js'
+export { mountFlowDebug, mountSceneDebug } from './sceneDebug.js'
+
+// Single entry point for consumer apps
+export { mountStoryboardCore } from './mountStoryboardCore.js'
+
+// Viewfinder utilities
 export { hash, resolveFlowRoute, getFlowMeta, buildPrototypeIndex } from './viewfinder.js'
+export { resolveSceneRoute, getSceneMeta } from './viewfinder.js'  // deprecated
 
 // Feature flags
 export { initFeatureFlags, getFlag, setFlag, toggleFlag, getAllFlags, resetFlags, getFlagKeys, syncFlagBodyClasses } from './featureFlags.js'
 
+// Command actions (config-driven command menu entries)
+export { initCommandActions, registerCommandAction, unregisterCommandAction, setDynamicActions, clearDynamicActions, getActionsForMode, executeAction, getActionChildren, hasChildrenProvider, subscribeToCommandActions, getCommandActionsSnapshot, setRoutingBasePath, isExcludedByRoute } from './commandActions.js'
+
 // Plugin configuration
 export { initPlugins, isPluginEnabled, getPluginsConfig } from './plugins.js'
+
+// UI config (project-level chrome overrides)
+export { initUIConfig, isMenuHidden, getHiddenItems } from './uiConfig.js'
+
+// Tool registry (declarative tool system)
+export { initToolRegistry, registerToolModule, setToolComponent, setToolGuardResult, getToolComponent, getToolModule, getToolsForToolbar, getToolConfig, getAllToolConfigs, subscribeToToolRegistry, getToolRegistrySnapshot } from './toolRegistry.js'
+
+// Toolbar config store (reactive layered overrides)
+export { initToolbarConfig, setPrototypeToolbarConfig, clearPrototypeToolbarConfig, getToolbarConfig, subscribeToToolbarConfig, getToolbarConfigSnapshot } from './toolbarConfigStore.js'
+
+// Toolbar tool state management
+export { TOOL_STATES, initToolbarToolStates, setToolbarToolState, getToolbarToolState, isToolbarToolLocalOnly, subscribeToToolbarToolStates, getToolbarToolStatesSnapshot } from './toolStateStore.js'
 
 // Comments system
 export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comments/config.js'
@@ -73,7 +99,7 @@ export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comm
 
 ## Dependencies
 
-- [`packages/core/src/loader.js`](./loader.js.md) — Flow/record loading and data index
+- [`packages/core/src/loader.js`](./loader.js.md) — Flow/record/object loading, data index, scoped name resolution, prototype/folder/canvas metadata
 - [`packages/core/src/dotPath.js`](./dotPath.js.md) — Dot-notation path utilities
 - [`packages/core/src/session.js`](./session.js.md) — URL hash session state
 - [`packages/core/src/localStorage.js`](./localStorage.js.md) — localStorage persistence
@@ -81,12 +107,18 @@ export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comm
 - [`packages/core/src/interceptHideParams.js`](./interceptHideParams.js.md) — URL param interception
 - [`packages/core/src/hashSubscribe.js`](./hashSubscribe.js.md) — Hash change subscription
 - [`packages/core/src/bodyClasses.js`](./bodyClasses.js.md) — Body class sync
-- [`packages/core/src/modes.js`](./modes.js.md) — Design modes and tool registry
-- [`packages/core/src/devtools.js`](./devtools.js.md) — DevTools UI
+- [`packages/core/src/modes.js`](./modes.js.md) — Design modes, event bus, and legacy tool registry
+- [`packages/core/src/devtools-consumer.js`](./devtools-consumer.js.md) — DevTools UI (delegates to compiled Svelte bundle)
 - [`packages/core/src/sceneDebug.js`](./sceneDebug.js.md) — Flow debug panel
+- [`packages/core/src/mountStoryboardCore.js`](./mountStoryboardCore.js.md) — Single entry point for consumer apps
 - [`packages/core/src/viewfinder.js`](./viewfinder.js.md) — Viewfinder utilities
 - [`packages/core/src/featureFlags.js`](./featureFlags.js.md) — Feature flags
+- [`packages/core/src/commandActions.js`](./commandActions.js.md) — Command actions for command menu
 - [`packages/core/src/plugins.js`](./plugins.js.md) — Plugin configuration
+- [`packages/core/src/uiConfig.js`](./uiConfig.js.md) — UI config (chrome overrides)
+- [`packages/core/src/toolRegistry.js`](./toolRegistry.js.md) — Declarative tool registry
+- [`packages/core/src/toolbarConfigStore.js`](./toolbarConfigStore.js.md) — Toolbar config store (layered overrides)
+- [`packages/core/src/toolStateStore.js`](./toolStateStore.js.md) — Toolbar tool state management
 - `packages/core/src/comments/config.js` — Comments system config
 
 ## Dependents

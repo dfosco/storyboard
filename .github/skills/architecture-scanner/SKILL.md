@@ -8,7 +8,7 @@ metadata:
 
 # Architecture Scanner Skill
 
-> Triggered by: "scan the codebase architecture", "update the architecture", "update arch", "generate architecture docs", "scan arch"
+> Triggered by: "scan the codebase architecture", "update the architecture", "update arch", "generate architecture docs", "scan arch", "full update", "full architecture update", "full refresh architecture"
 
 ## What This Does
 
@@ -19,6 +19,20 @@ Generates documentation files in `.github/architecture/` that describe every arc
 
 ## How to Execute
 
+### Step 0: Inventory package topology (required)
+
+Before discovery, identify **every** `package.json` in the repo (root + workspace packages), excluding `node_modules`, and read each manifest:
+
+```bash
+find . -name package.json \
+  -not -path './node_modules/*' \
+  -not -path './packages/*/node_modules/*' \
+  -not -path './.worktrees/*' \
+  | sort
+```
+
+Use this inventory to build your architecture mental model (package names, responsibilities, and internal package dependencies). This step is mandatory and prevents stale assumptions like "the repo only has two packages."
+
 ### Step 1: Discover files
 
 ```bash
@@ -26,6 +40,8 @@ Generates documentation files in `.github/architecture/` that describe every arc
 ```
 
 This scans the repo using discovery rules and creates or updates `files.json` in the skill folder. If `files.json` doesn't exist yet, it creates it with default priorities. If it already exists, it **adds new files** and **removes deleted files**, but **preserves user-set `importance` values** — those are never overwritten.
+
+Discovery includes the root `package.json` and every workspace package manifest at `packages/*/package.json`, so package-level architecture is always represented in the docs.
 
 Run this first to ensure the file list is current.
 
@@ -37,14 +53,28 @@ Run `--stale` to get the incremental manifest. This is the **default for all run
 .github/skills/architecture-scanner/scan.sh --stale
 ```
 
-This uses **git history** to detect changes: it finds the most recent commit that touched `.github/architecture/`, then diffs against `HEAD` to identify which tracked source files have changed since then. It also includes any uncommitted (staged or unstaged) changes. Each entry includes a `"status"` field: `"missing"` (no doc exists) or `"stale"` (source changed since last architecture update).
+This uses **git history** to detect changes: it finds the most recent commit that touched `.github/architecture/`, then diffs against `HEAD` to identify changed source files, and also includes uncommitted (staged/unstaged) changes.
 
-If the output is an empty array `[]`, all docs are up to date — skip to Step 4.
+`--stale` returns a JSON object with three incremental buckets:
 
-**When `--stale` suggests a full scan:** If more than 50% of documented files need updates, the output wraps the file list in an object with `"suggestion": "full_scan"` and a message. In this case, switch to a full scan:
+- **`files`** — docs to create/update:
+  - `"missing"` = source exists but doc does not (added/new file docs)
+  - `"stale"` = source changed since last architecture update
+- **`removed`** — docs to delete because source was removed/moved or is no longer tracked
+- **`index`** — whether `architecture.index.md` should be regenerated (`"status": "stale"`) and why
+
+If `files` and `removed` are both empty and `index.status` is `"fresh"`, docs are up to date.
+
+**When `--stale` suggests a full scan:** If more than 50% of documented files need updates, output includes `"suggestion": "full_scan"` and a message. In this case, switch to a full scan:
 
 ```bash
 .github/skills/architecture-scanner/scan.sh --manifest
+```
+
+You can also force a full scan explicitly with:
+
+```bash
+.github/skills/architecture-scanner/scan.sh --full
 ```
 
 This outputs every non-low file regardless of change status. Use this for:
@@ -52,12 +82,13 @@ This outputs every non-low file regardless of change status. Use this for:
 - **Template changes** (when the doc format itself changed, so all docs need regeneration)
 - **When `--stale` suggests it** (many files changed across multiple commits)
 - **When the user explicitly requests a full scan**
+- **When the user says natural-language variants like "full update" / "full refresh"**
 
 **Low importance files are excluded from both manifests and should NOT get architecture docs.**
 
 ### Step 3: Generate or update documentation for each file
 
-For each entry in the manifest, produce a markdown file at:
+For each entry in `files` (from `--stale`) or each entry in the full manifest (`--manifest`/`--full`), produce a markdown file at:
 
 ```
 .github/architecture/{filepath}.md
@@ -79,6 +110,10 @@ The doc already exists but the source file has changed. Follow this process:
 2. **Read the existing doc file** to see what's already documented
 3. **Use the edit tool** to update only the sections that are affected by the source changes — preserve the existing structure and any manually-added context that's still accurate
 4. Do NOT recreate the file from scratch — make surgical updates
+
+#### For REMOVED files (status `"removed"` in `removed` array):
+
+Delete the stale architecture doc file referenced by the entry's `doc` field. If any docs are deleted, regenerate the index in Step 4.
 
 **What to check when updating a stale doc:**
 - Has the file's purpose changed? → Update **Goal**
@@ -143,6 +178,8 @@ importance: {importance}
 
 This reads the generated doc files and creates `architecture.index.md` with a categorized table of contents.
 
+Run this whenever `--stale` reports `index.status: "stale"` (including when files were changed, added, or removed).
+
 **After the script generates the index**, you MUST enhance it by adding a prose overview for each category section. Read the `categories` array in `files.json` to determine category order, display names, and priority levels. The final index should follow this structure:
 
 ```markdown
@@ -182,11 +219,13 @@ This reads the generated doc files and creates `architecture.index.md` with a ca
 - Each category section gets an architectural overview — length determined by `priority`
 - Each link gets a brief one-line description (pulled from the file doc's Goal section)
 - **Cross-link file references** — every file path mentioned in the overview text must link to its architecture doc (same rule as per-file docs)
+- The opening architecture narrative must reflect the **full package inventory** from Step 0 (all `package.json` files), not just the packages currently documented in one category
 - Write for someone unfamiliar with the codebase — the index is the entry point to understanding the architecture
 
 ### Step 5: Verify
 
 - Confirm every file in the manifest has a corresponding `.md` doc
+- Confirm every entry in `removed` had its doc file deleted
 - Confirm `architecture.index.md` links to all docs
 - Confirm every doc has a backlink to the index
 

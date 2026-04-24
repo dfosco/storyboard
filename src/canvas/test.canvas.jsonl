@@ -1,0 +1,9 @@
+{"event":"canvas_created","timestamp":"2026-04-17T15:07:40.597Z","title":"Test","grid":true,"gridSize":24,"colorMode":"auto","widgets":[]}
+{"event":"widget_added","timestamp":"2026-04-17T16:24:37.367Z","widget":{"id":"image-nynxvv","type":"image","position":{"x":980,"y":897},"props":{"src":"test--2026-04-17--18-24-37.png","private":false,"width":600,"height":455}}}
+{"event":"widget_removed","timestamp":"2026-04-17T16:26:40.043Z","widgetId":"image-nynxvv"}
+{"event":"settings_updated","timestamp":"2026-04-17T16:27:48.145Z","settings":{"snapToGrid":true}}
+{"event":"settings_updated","timestamp":"2026-04-17T16:27:48.162Z","settings":{"snapToGrid":true}}
+{"event":"widget_added","timestamp":"2026-04-17T16:27:53.390Z","widget":{"id":"markdown-2azxqi","type":"markdown","position":{"x":1015,"y":526},"props":{"content":"canvas-undo-redo\""}}}
+{"event":"widget_removed","timestamp":"2026-04-17T16:35:22.200Z","widgetId":"markdown-2azxqi"}
+{"event":"settings_updated","timestamp":"2026-04-17T16:45:23.936Z","settings":{"snapToGrid":false}}
+{"event":"settings_updated","timestamp":"2026-04-17T16:45:23.957Z","settings":{"snapToGrid":false}}

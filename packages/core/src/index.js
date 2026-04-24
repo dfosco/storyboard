@@ -18,6 +18,8 @@ export { listPrototypes, getPrototypeMetadata } from './loader.js'
 export { listFolders, getFolderMetadata } from './loader.js'
 // Canvas data
 export { listCanvases, getCanvasData } from './loader.js'
+// Story data
+export { listStories, getStoryData } from './loader.js'
 // Deprecated scene aliases
 export { loadScene, listScenes, sceneExists } from './loader.js'
 
@@ -80,10 +82,34 @@ export { initUIConfig, isMenuHidden, getHiddenItems } from './uiConfig.js'
 export { initToolRegistry, registerToolModule, setToolComponent, setToolGuardResult, getToolComponent, getToolModule, getToolsForToolbar, getToolConfig, getAllToolConfigs, subscribeToToolRegistry, getToolRegistrySnapshot } from './toolRegistry.js'
 
 // Toolbar config store (reactive layered overrides: core → custom → prototype → user)
-export { initToolbarConfig, setPrototypeToolbarConfig, clearPrototypeToolbarConfig, getToolbarConfig, subscribeToToolbarConfig, getToolbarConfigSnapshot } from './toolbarConfigStore.js'
+export { initToolbarConfig, setPrototypeToolbarConfig, clearPrototypeToolbarConfig, getToolbarConfig, subscribeToToolbarConfig, getToolbarConfigSnapshot, setClientToolbarOverrides } from './toolbarConfigStore.js'
 
 // Toolbar tool state management (runtime state for toolbar tools)
 export { TOOL_STATES, initToolbarToolStates, setToolbarToolState, getToolbarToolState, isToolbarToolLocalOnly, subscribeToToolbarToolStates, getToolbarToolStatesSnapshot } from './toolStateStore.js'
 
 // Comments system
 export { initCommentsConfig, getCommentsConfig, isCommentsEnabled } from './comments/config.js'
+
+// Canvas config (paste rules, canvas-level overrides)
+export { initCanvasConfig, getPasteRules, getTerminalConfig } from './canvasConfig.js'
+export { getCommandPaletteConfig } from './commandPaletteConfig.js'
+
+// Unified config store
+export { initConfig, getConfig, setOverrides, clearOverrides, clearAllOverrides, subscribeToConfig, getConfigSnapshot } from './configStore.js'
+
+// Customer mode config
+export { initCustomerModeConfig, getCustomerModeConfig, isCustomerMode } from './customerModeConfig.js'
+
+// Theme
+export {
+  setTheme,
+  getTheme,
+  themeState,
+  themeSyncState,
+  THEMES,
+  getThemeSyncTargets,
+  setThemeSyncTarget,
+} from './stores/themeStore.js'
+
+// Recent artifacts (command palette recents)
+export { trackRecent, getRecent, clearRecent } from './recentArtifacts.js'

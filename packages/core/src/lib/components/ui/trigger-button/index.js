@@ -1,6 +1,6 @@
-import Root from "./trigger-button.svelte";
+import Root from "./trigger-button.jsx";
 
 export {
-  Root,
-  Root as TriggerButton,
+Root,
+Root as TriggerButton,
 };

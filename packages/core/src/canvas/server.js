@@ -12,14 +12,83 @@
  *   GET    /list     — list all canvases
  *   GET    /folders  — list canvas folders
  *   PUT    /update   — append update events (widgets, sources, settings)
+ *   PUT    /rename-page — rename a canvas page file
+ *   PUT    /reorder-pages — save page order for a canvas folder
+ *   GET    /page-order — read page order for a folder
+ *   PUT    /update-folder-meta — update folder .meta.json title
  *   POST   /widget   — append a widget_added event
+ *   PATCH  /widget   — update a single widget's props/position
  *   DELETE /widget   — append a widget_removed event
+ *   POST   /connector — append a connector_added event
+ *   DELETE /connector — append a connector_removed event
  *   POST   /create   — create a new .canvas.jsonl file
+ *   GET    /stories  — list all .story.{jsx,tsx} files with exports
+ *   POST   /create-story — scaffold a new .story.{jsx,tsx} file
+ *   GET    /github/available — check if local gh CLI is installed
+ *   POST   /github/embed — fetch GitHub issue/discussion/PR/comment metadata via gh
+ *   POST   /image    — upload a pasted image to src/canvas/images/
+ *   GET    /images/* — serve an image file from src/canvas/images/
+ *   POST   /image/toggle-private — toggle ~prefix on image filename
  */
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { Buffer } from 'node:buffer'
 import { materializeFromText, serializeEvent } from './materializer.js'
+import { toCanvasId, parseCanvasId } from './identity.js'
+import {
+  GH_INSTALL_URL,
+  GitHubEmbedError,
+  fetchGitHubEmbedSnapshot,
+  isGhCliAvailable,
+  isGitHubEmbedUrl,
+} from './githubEmbeds.js'
+import { stampBounds, stampBoundsAll } from './collision.js'
+
+/**
+ * Scan src/canvas/ for directories containing .meta.json files.
+ * Returns an object keyed by directory name (without .folder suffix).
+ */
+function findCanvasMeta(root) {
+  const canvasDir = path.join(root, 'src', 'canvas')
+  const groups = {}
+  if (!fs.existsSync(canvasDir)) return groups
+
+  const entries = fs.readdirSync(canvasDir, { withFileTypes: true })
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue
+    const dirName = entry.name.replace(/\.folder$/, '')
+    const metaPath = path.join(canvasDir, entry.name, `${dirName}.meta.json`)
+    if (fs.existsSync(metaPath)) {
+      try {
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
+        groups[dirName] = meta
+      } catch { /* skip invalid meta */ }
+    }
+  }
+  return groups
+}
+
+/**
+ * Read .meta.json from a canvas folder directory.
+ */
+function readFolderMeta(folderDir) {
+  const dirName = path.basename(folderDir).replace(/\.folder$/, '')
+  const metaPath = path.join(folderDir, `${dirName}.meta.json`)
+  if (fs.existsSync(metaPath)) {
+    try { return JSON.parse(fs.readFileSync(metaPath, 'utf-8')) } catch { /* ignore */ }
+  }
+  return {}
+}
+
+/**
+ * Write .meta.json to a canvas folder directory.
+ */
+function writeFolderMeta(folderDir, meta) {
+  const dirName = path.basename(folderDir).replace(/\.folder$/, '')
+  const metaPath = path.join(folderDir, `${dirName}.meta.json`)
+  fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+}
 
 /**
  * Recursively find all .canvas.jsonl files in the project.
@@ -48,17 +117,69 @@ function findCanvasFiles(root) {
 }
 
 /**
- * Find a canvas JSONL file by name.
+ * Recursively find all .story.{jsx,tsx} files in routable directories
+ * (src/canvas/ and src/components/) and extract their named exports.
  */
-function findCanvasPath(root, name) {
+function findStoryFiles(root) {
+  const results = []
+  const ignore = new Set(['node_modules', 'dist', '.git', '.worktrees'])
+  const ROUTABLE_DIRS = ['src/canvas', 'src/components']
+
+  function walk(dir, rel) {
+    let entries
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }) } catch { return }
+    for (const entry of entries) {
+      if (ignore.has(entry.name)) continue
+      if (entry.name.startsWith('_')) continue
+      const fullPath = path.join(dir, entry.name)
+      const relPath = rel ? `${rel}/${entry.name}` : entry.name
+      if (entry.isDirectory()) {
+        walk(fullPath, relPath)
+      } else if (/\.story\.(jsx|tsx)$/.test(entry.name)) {
+        const name = entry.name.replace(/\.story\.(jsx|tsx)$/, '')
+        const exports = parseExportNames(fullPath)
+        results.push({ name, path: relPath, exports })
+      }
+    }
+  }
+
+  for (const dir of ROUTABLE_DIRS) {
+    const absDir = path.join(root, dir)
+    if (fs.existsSync(absDir)) {
+      walk(absDir, dir)
+    }
+  }
+  return results
+}
+
+/**
+ * Parse named function/const exports from a JSX/TSX file.
+ */
+function parseExportNames(filePath) {
+  try {
+    const src = fs.readFileSync(filePath, 'utf-8')
+    const names = []
+    const re = /export\s+(?:function|const|class)\s+([A-Z]\w*)/g
+    let m
+    while ((m = re.exec(src)) !== null) names.push(m[1])
+    return names
+  } catch { return [] }
+}
+
+/**
+ * Find a canvas JSONL file by canonical ID.
+ * Only matches canonical path-based IDs from toCanvasId().
+ */
+function findCanvasPath(root, canvasId) {
   const files = findCanvasFiles(root)
+
   for (const file of files) {
-    const base = path.basename(file)
-    const match = base.match(/^(.+)\.canvas\.jsonl$/)
-    if (match && match[1] === name) {
+    const id = toCanvasId(file)
+    if (id === canvasId) {
       return path.resolve(root, file)
     }
   }
+
   return null
 }
 
@@ -91,12 +212,80 @@ function generateWidgetId(type) {
 export function createCanvasHandler(ctx) {
   const { root, sendJson } = ctx
 
+  /**
+   * Update terminal configs when connectors change.
+   * Finds all terminal widgets in the canvas, computes their connected widget IDs
+   * from the current connector list, and updates their config files.
+   */
+  async function updateTerminalConnectionsForCanvas(root, canvasName, canvasData, connectors) {
+    try {
+      const { updateTerminalConnections, initTerminalConfig } = await import('./terminal-config.js')
+      const { execSync } = await import('node:child_process')
+      initTerminalConfig(root)
+
+      let branch = 'unknown'
+      try {
+        branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
+      } catch {}
+
+      const widgets = canvasData.widgets || []
+      const widgetMap = new Map(widgets.map(w => [w.id, w]))
+      const terminalWidgets = widgets.filter((w) => w.type === 'terminal')
+
+      for (const tw of terminalWidgets) {
+        const connectedIds = new Set()
+        for (const conn of connectors) {
+          if (conn.start?.widgetId === tw.id) connectedIds.add(conn.end?.widgetId)
+          if (conn.end?.widgetId === tw.id) connectedIds.add(conn.start?.widgetId)
+        }
+        connectedIds.delete(undefined)
+        connectedIds.delete(null)
+
+        // Resolve full widget objects for connected widgets
+        const connectedWidgets = [...connectedIds]
+          .map(id => widgetMap.get(id))
+          .filter(Boolean)
+          .map(w => ({ id: w.id, type: w.type, props: w.props, position: w.position }))
+
+        updateTerminalConnections({
+          branch,
+          canvasId: canvasName,
+          widgetId: tw.id,
+          connectedWidgets,
+        })
+      }
+    } catch (err) {
+      console.warn(`[storyboard] Failed to update terminal connections: ${err.message}`)
+    }
+  }
+
   // Append an event to an existing canvas file.
   // The data plugin already skips .canvas.jsonl `change` events to avoid
   // a save → reload → lost-editing-state feedback loop, so we just write
   // directly without touching the watcher.
   function appendEvent(filePath, event) {
     appendEventRaw(filePath, event)
+  }
+
+  /**
+   * Push live canvas update to connected clients via Vite HMR.
+   * Reads the full materialized state from disk and sends it as a custom
+   * event so useCanvas can update in-place without a page refresh.
+   */
+  function pushCanvasUpdate(canvasName, filePath, viteWs) {
+    if (!viteWs) return
+    try {
+      const data = readCanvas(filePath)
+      viteWs.send({
+        type: 'custom',
+        event: 'storyboard:canvas-file-changed',
+        data: { canvasId: canvasName, name: canvasName, metadata: data },
+      })
+
+      // Refresh terminal config files on every canvas change so agents
+      // always see up-to-date connectedWidgets and widget props.
+      updateTerminalConnectionsForCanvas(root, canvasName, data, data.connectors || [])
+    } catch { /* best effort — watcher will catch it eventually */ }
   }
 
   // Write a new JSONL file with a single creation event.
@@ -106,16 +295,27 @@ export function createCanvasHandler(ctx) {
     fs.writeFileSync(filePath, serializeEvent(event) + '\n', 'utf-8')
   }
 
-  return async (req, res, { body, path: routePath, method }) => {
+  return async (req, res, { body, path: routePath, method, __viteWs }) => {
     // GET /folders — list available canvas folders
     if (routePath === '/folders' && method === 'GET') {
       const canvasDir = path.join(root, 'src', 'canvas')
       let folders = []
       try {
         if (fs.existsSync(canvasDir)) {
-          folders = fs.readdirSync(canvasDir, { withFileTypes: true })
+          const entries = fs.readdirSync(canvasDir, { withFileTypes: true })
+          // .folder directories (existing behavior)
+          const folderDirs = entries
             .filter((d) => d.isDirectory() && d.name.endsWith('.folder'))
             .map((d) => d.name.replace('.folder', ''))
+          // Plain directories containing .canvas.jsonl files
+          const plainDirs = entries
+            .filter((d) => {
+              if (!d.isDirectory() || d.name.endsWith('.folder') || d.name.startsWith('_')) return false
+              const files = fs.readdirSync(path.join(canvasDir, d.name))
+              return files.some((f) => f.endsWith('.canvas.jsonl'))
+            })
+            .map((d) => d.name)
+          folders = [...folderDirs, ...plainDirs]
         }
       } catch { /* empty */ }
       sendJson(res, 200, { folders })
@@ -137,7 +337,17 @@ export function createCanvasHandler(ctx) {
       }
       try {
         const data = readCanvas(filePath)
-        sendJson(res, 200, data)
+        const widgetFilter = url.searchParams.get('widget')
+        if (widgetFilter) {
+          const widget = (data.widgets || []).find((w) => w.id === widgetFilter)
+          if (!widget) {
+            sendJson(res, 404, { error: `Widget "${widgetFilter}" not found in canvas "${name}"` })
+            return
+          }
+          sendJson(res, 200, { ...data, widgets: [widget] })
+        } else {
+          sendJson(res, 200, data)
+        }
       } catch (err) {
         sendJson(res, 500, { error: `Failed to read canvas: ${err.message}` })
       }
@@ -148,22 +358,48 @@ export function createCanvasHandler(ctx) {
     if (routePath === '/list' && method === 'GET') {
       const files = findCanvasFiles(root)
       const canvases = files.map((file) => {
-        const base = path.basename(file)
-        const match = base.match(/^(.+)\.canvas\.jsonl$/)
-        if (!match) return null
+        const id = toCanvasId(file)
+        if (!id) return null
+        const { segments } = parseCanvasId(id)
+        const group = segments.length > 1 ? segments.slice(0, -1).join('/') : null
         try {
           const data = readCanvas(path.resolve(root, file))
           return {
-            name: match[1],
-            title: data.title || match[1],
+            name: id,
+            title: data.title || segments[segments.length - 1],
             path: file,
             widgetCount: (data.widgets || []).length + (data.sources || []).length,
+            group,
           }
         } catch {
-          return { name: match[1], title: match[1], path: file, widgetCount: 0 }
+          return { name: id, title: segments[segments.length - 1], path: file, widgetCount: 0, group }
         }
       }).filter(Boolean)
-      sendJson(res, 200, { canvases })
+      const groups = findCanvasMeta(root)
+
+      // Sort canvases within each group by saved pageOrder from .meta.json
+      const groupOrderMaps = new Map()
+      for (const [groupName, meta] of Object.entries(groups)) {
+        if (Array.isArray(meta.pageOrder)) {
+          const orderMap = new Map()
+          meta.pageOrder.forEach((entry, idx) => {
+            if (typeof entry === 'string' && !entry.startsWith('sep-')) orderMap.set(entry, idx)
+          })
+          groupOrderMaps.set(groupName, orderMap)
+        }
+      }
+      if (groupOrderMaps.size > 0) {
+        canvases.sort((a, b) => {
+          if (a.group !== b.group) return 0
+          const orderMap = a.group ? groupOrderMaps.get(a.group) : null
+          if (!orderMap) return 0
+          const ai = orderMap.has(a.name) ? orderMap.get(a.name) : Infinity
+          const bi = orderMap.has(b.name) ? orderMap.get(b.name) : Infinity
+          return ai - bi
+        })
+      }
+
+      sendJson(res, 200, { canvases, groups })
       return
     }
 
@@ -186,7 +422,23 @@ export function createCanvasHandler(ctx) {
         const ts = new Date().toISOString()
 
         if (widgets) {
-          appendEvent(filePath, { event: 'widgets_replaced', timestamp: ts, widgets })
+          // Guard against accidental canvas wipes: if the incoming widget count
+          // is much smaller than the current canvas, reject unless explicitly confirmed.
+          // This protects against agents/scripts that accidentally send a partial widget
+          // array to the widgets_replaced endpoint (which replaces ALL widgets).
+          const current = readCanvas(filePath)
+          const currentCount = (current.widgets || []).length
+          if (currentCount > 1 && widgets.length < currentCount * 0.5 && body.replaceAll !== true) {
+            sendJson(res, 400, {
+              error: `Refusing to replace ${currentCount} widgets with ${widgets.length}. `
+                + `This would delete ${currentCount - widgets.length} widgets. `
+                + `Use PATCH /_storyboard/canvas/widget to update individual widgets, `
+                + `or pass "replaceAll": true to confirm full replacement.`,
+            })
+            return
+          }
+          const stamped = stampBoundsAll(widgets)
+          appendEvent(filePath, { event: 'widgets_replaced', timestamp: ts, widgets: stamped })
         }
 
         if (sources) {
@@ -196,7 +448,7 @@ export function createCanvasHandler(ctx) {
         if (settings) {
           const filtered = {}
           for (const [key, value] of Object.entries(settings)) {
-            if (['title', 'description', 'grid', 'gridSize', 'colorMode', 'dotted', 'centered', 'author'].includes(key)) {
+            if (['title', 'description', 'grid', 'gridSize', 'colorMode', 'dotted', 'centered', 'author', 'snapToGrid'].includes(key)) {
               filtered[key] = value
             }
           }
@@ -206,6 +458,7 @@ export function createCanvasHandler(ctx) {
         }
 
         sendJson(res, 200, { success: true, name })
+        pushCanvasUpdate(name, filePath, __viteWs)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to update canvas: ${err.message}` })
       }
@@ -233,7 +486,16 @@ export function createCanvasHandler(ctx) {
 
       try {
         const widgetId = generateWidgetId(type)
-        const widget = { id: widgetId, type, position, props }
+
+        // Auto-assign a pretty name for terminal widgets
+        if (type === 'terminal' && !props.prettyName) {
+          try {
+            const { generateFriendlyName } = await import('./terminal-registry.js')
+            props.prettyName = generateFriendlyName()
+          } catch { /* registry not initialized yet — will get a name on session connect */ }
+        }
+
+        const widget = stampBounds({ id: widgetId, type, position, props })
 
         appendEvent(filePath, {
           event: 'widget_added',
@@ -242,6 +504,7 @@ export function createCanvasHandler(ctx) {
         })
 
         sendJson(res, 201, { success: true, widget })
+        pushCanvasUpdate(name, filePath, __viteWs)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to add widget: ${err.message}` })
       }
@@ -266,8 +529,8 @@ export function createCanvasHandler(ctx) {
       try {
         // Verify the widget exists before appending the removal event
         const data = readCanvas(filePath)
-        const exists = (data.widgets || []).some((w) => w.id === widgetId)
-        if (!exists) {
+        const widget = (data.widgets || []).find((w) => w.id === widgetId)
+        if (!widget) {
           sendJson(res, 404, { error: `Widget "${widgetId}" not found in canvas "${name}"` })
           return
         }
@@ -278,24 +541,473 @@ export function createCanvasHandler(ctx) {
           widgetId,
         })
 
+        // Orphan terminal session when a terminal widget is deleted (not killed)
+        if (widget.type === 'terminal') {
+          try {
+            const { orphanTerminalSession } = await import('./terminal-server.js')
+            orphanTerminalSession(widgetId)
+          } catch (err) {
+            console.warn(`[storyboard] Failed to orphan terminal session for ${widgetId}:`, err.message)
+          }
+        }
+
         sendJson(res, 200, { success: true, removed: 1 })
+        pushCanvasUpdate(name, filePath, __viteWs)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to remove widget: ${err.message}` })
       }
       return
     }
 
+    // PATCH /widget — update a single widget's props
+    if (routePath === '/widget' && method === 'PATCH') {
+      const { name, widgetId, props, position } = body
+
+      if (!name || !widgetId) {
+        sendJson(res, 400, { error: 'Canvas name and widgetId are required' })
+        return
+      }
+      if (!props && !position) {
+        sendJson(res, 400, { error: 'At least one of props or position is required' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      try {
+        const data = readCanvas(filePath)
+        const widget = (data.widgets || []).find((w) => w.id === widgetId)
+        if (!widget) {
+          sendJson(res, 404, { error: `Widget "${widgetId}" not found in canvas "${name}"` })
+          return
+        }
+
+        const ts = new Date().toISOString()
+
+        if (props) {
+          appendEvent(filePath, {
+            event: 'widget_updated',
+            timestamp: ts,
+            widgetId,
+            props,
+          })
+        }
+
+        if (position) {
+          appendEvent(filePath, {
+            event: 'widget_moved',
+            timestamp: ts,
+            widgetId,
+            position,
+          })
+        }
+
+        // Return the merged widget for convenience
+        const merged = {
+          ...widget,
+          props: { ...widget.props, ...(props || {}) },
+          position: position || widget.position,
+        }
+        sendJson(res, 200, { success: true, widget: merged })
+        pushCanvasUpdate(name, filePath, __viteWs)
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to update widget: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /connector — append a connector_added event
+    if (routePath === '/connector' && method === 'POST') {
+      const { name, startWidgetId, startAnchor, endWidgetId, endAnchor, connectorType = 'default' } = body
+
+      if (!name) {
+        sendJson(res, 400, { error: 'Canvas name is required' })
+        return
+      }
+      if (!startWidgetId || !endWidgetId) {
+        sendJson(res, 400, { error: 'startWidgetId and endWidgetId are required' })
+        return
+      }
+      const validAnchors = ['top', 'bottom', 'left', 'right']
+      if (!validAnchors.includes(startAnchor) || !validAnchors.includes(endAnchor)) {
+        sendJson(res, 400, { error: `Anchors must be one of: ${validAnchors.join(', ')}` })
+        return
+      }
+      if (startWidgetId === endWidgetId) {
+        sendJson(res, 400, { error: 'Cannot connect a widget to itself' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      try {
+        const data = readCanvas(filePath)
+        const widgetIds = new Set((data.widgets || []).map((w) => w.id))
+        if (!widgetIds.has(startWidgetId)) {
+          sendJson(res, 404, { error: `Widget "${startWidgetId}" not found` })
+          return
+        }
+        if (!widgetIds.has(endWidgetId)) {
+          sendJson(res, 404, { error: `Widget "${endWidgetId}" not found` })
+          return
+        }
+
+        const connectorId = generateWidgetId('connector')
+        const connector = {
+          id: connectorId,
+          type: 'connector',
+          connectorType,
+          start: { widgetId: startWidgetId, anchor: startAnchor },
+          end: { widgetId: endWidgetId, anchor: endAnchor },
+          meta: {},
+        }
+
+        appendEvent(filePath, {
+          event: 'connector_added',
+          timestamp: new Date().toISOString(),
+          connector,
+        })
+
+        sendJson(res, 201, { success: true, connector })
+        pushCanvasUpdate(name, filePath, __viteWs)
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to add connector: ${err.message}` })
+      }
+      return
+    }
+
+    // DELETE /connector — append a connector_removed event
+    if (routePath === '/connector' && method === 'DELETE') {
+      const { name, connectorId } = body
+
+      if (!name || !connectorId) {
+        sendJson(res, 400, { error: 'Canvas name and connectorId are required' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      try {
+        const data = readCanvas(filePath)
+        const exists = (data.connectors || []).some((c) => c.id === connectorId)
+        if (!exists) {
+          sendJson(res, 404, { error: `Connector "${connectorId}" not found in canvas "${name}"` })
+          return
+        }
+
+        appendEvent(filePath, {
+          event: 'connector_removed',
+          timestamp: new Date().toISOString(),
+          connectorId,
+        })
+
+        sendJson(res, 200, { success: true, removed: 1 })
+        pushCanvasUpdate(name, filePath, __viteWs)
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to remove connector: ${err.message}` })
+      }
+      return
+    }
+
+    // PUT /rename-page — rename a canvas page file
+    if (routePath === '/rename-page' && method === 'PUT') {
+      const { name, newTitle } = body
+
+      if (!name || !newTitle) {
+        sendJson(res, 400, { error: 'Canvas name and newTitle are required' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      const kebab = newTitle
+        .replace(/[^a-zA-Z0-9\s_-]/g, '')
+        .trim()
+        .replace(/[\s_]+/g, '-')
+        .toLowerCase()
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+
+      if (!kebab) {
+        sendJson(res, 400, { error: 'newTitle must contain at least one alphanumeric character' })
+        return
+      }
+
+      try {
+        const dir = path.dirname(filePath)
+        const newFilename = `${kebab}.canvas.jsonl`
+        const newPath = path.join(dir, newFilename)
+
+        if (newPath !== filePath && fs.existsSync(newPath)) {
+          sendJson(res, 409, { error: `A canvas file named "${newFilename}" already exists in this directory` })
+          return
+        }
+
+        fs.renameSync(filePath, newPath)
+
+        const newCanonicalId = toCanvasId(path.relative(root, newPath).replace(/\\/g, '/'))
+
+        appendEvent(newPath, {
+          event: 'settings_updated',
+          timestamp: new Date().toISOString(),
+          settings: { title: newTitle },
+        })
+
+        // Update pageOrder in .meta.json if it exists
+        const metaForOrder = readFolderMeta(dir)
+        if (metaForOrder?.pageOrder) {
+          try {
+            const updated = metaForOrder.pageOrder.map((entry) =>
+              typeof entry === 'string' && entry === name ? newCanonicalId : entry
+            )
+            metaForOrder.pageOrder = updated
+            writeFolderMeta(dir, metaForOrder)
+          } catch { /* skip */ }
+        }
+
+        sendJson(res, 200, { success: true, name: newCanonicalId, route: '/canvas/' + newCanonicalId })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to rename page: ${err.message}` })
+      }
+      return
+    }
+
+    // PUT /reorder-pages — save page order for a canvas folder
+    if (routePath === '/reorder-pages' && method === 'PUT') {
+      const { folder, order } = body
+
+      if (!folder || !Array.isArray(order)) {
+        sendJson(res, 400, { error: 'folder (string) and order (array) are required' })
+        return
+      }
+
+      const canvasDir = path.join(root, 'src', 'canvas')
+      const folderDir = fs.existsSync(path.join(canvasDir, `${folder}.folder`))
+        ? path.join(canvasDir, `${folder}.folder`)
+        : fs.existsSync(path.join(canvasDir, folder))
+          ? path.join(canvasDir, folder)
+          : null
+
+      if (!folderDir) {
+        sendJson(res, 404, { error: `Folder "${folder}" not found` })
+        return
+      }
+
+      try {
+        const meta = readFolderMeta(folderDir)
+        meta.pageOrder = order
+        writeFolderMeta(folderDir, meta)
+        sendJson(res, 200, { success: true })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to save page order: ${err.message}` })
+      }
+      return
+    }
+
+    // GET /page-order?folder=... — read page order for a folder
+    if (routePath.startsWith('/page-order') && method === 'GET') {
+      const pageOrderUrl = new URL(routePath, 'http://localhost')
+      const folder = pageOrderUrl.searchParams.get('folder')
+
+      if (!folder) {
+        sendJson(res, 400, { error: 'folder query parameter is required' })
+        return
+      }
+
+      const canvasDir = path.join(root, 'src', 'canvas')
+      const folderDir = fs.existsSync(path.join(canvasDir, `${folder}.folder`))
+        ? path.join(canvasDir, `${folder}.folder`)
+        : fs.existsSync(path.join(canvasDir, folder))
+          ? path.join(canvasDir, folder)
+          : null
+
+      if (!folderDir) {
+        sendJson(res, 404, { error: `Folder "${folder}" not found` })
+        return
+      }
+
+      try {
+        const meta = readFolderMeta(folderDir)
+        sendJson(res, 200, { order: meta?.pageOrder || null })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to read page order: ${err.message}` })
+      }
+      return
+    }
+
+    // PUT /update-folder-meta — update folder .meta.json title
+    if (routePath === '/update-folder-meta' && method === 'PUT') {
+      const { folder, title } = body
+
+      if (!folder || !title) {
+        sendJson(res, 400, { error: 'folder and title are required' })
+        return
+      }
+
+      const kebab = title
+        .replace(/[^a-zA-Z0-9\s_-]/g, '')
+        .trim()
+        .replace(/[\s_]+/g, '-')
+        .toLowerCase()
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+
+      if (!kebab) {
+        sendJson(res, 400, { error: 'title must contain at least one alphanumeric character' })
+        return
+      }
+
+      const canvasDir = path.join(root, 'src', 'canvas')
+      const isFolderSuffix = fs.existsSync(path.join(canvasDir, `${folder}.folder`))
+      const folderDir = isFolderSuffix
+        ? path.join(canvasDir, `${folder}.folder`)
+        : fs.existsSync(path.join(canvasDir, folder))
+          ? path.join(canvasDir, folder)
+          : null
+
+      if (!folderDir) {
+        sendJson(res, 404, { error: `Folder "${folder}" not found` })
+        return
+      }
+
+      try {
+        const meta = readFolderMeta(folderDir)
+        const dirName = path.basename(folderDir).replace(/\.folder$/, '')
+        meta.title = title
+
+        // Rename folder directory if the kebab name differs
+        const needsRename = kebab !== dirName
+        let newDirName = dirName
+
+        if (needsRename) {
+          const suffix = isFolderSuffix ? '.folder' : ''
+          const newFolderDir = path.join(canvasDir, `${kebab}${suffix}`)
+          if (fs.existsSync(newFolderDir)) {
+            sendJson(res, 409, { error: `A folder named "${kebab}" already exists` })
+            return
+          }
+          // Write updated meta, rename file to match new dir name, rename dir
+          writeFolderMeta(folderDir, meta)
+          const metaPath = path.join(folderDir, `${dirName}.meta.json`)
+          const newMetaPath = path.join(folderDir, `${kebab}.meta.json`)
+          if (newMetaPath !== metaPath) {
+            fs.renameSync(metaPath, newMetaPath)
+          }
+          fs.renameSync(folderDir, newFolderDir)
+          newDirName = kebab
+        } else {
+          writeFolderMeta(folderDir, meta)
+        }
+
+        sendJson(res, 200, { success: true, folder: newDirName, renamed: needsRename })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to update folder meta: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /duplicate — duplicate an existing canvas page with its widgets
+    if (routePath === '/duplicate' && method === 'POST') {
+      const { name, newTitle } = body
+
+      if (!name || !newTitle) {
+        sendJson(res, 400, { error: 'Canvas name and newTitle are required' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      const kebab = newTitle
+        .replace(/[^a-zA-Z0-9\s_-]/g, '')
+        .trim()
+        .replace(/[\s_]+/g, '-')
+        .toLowerCase()
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+
+      if (!kebab) {
+        sendJson(res, 400, { error: 'newTitle must contain at least one alphanumeric character' })
+        return
+      }
+
+      try {
+        const sourceData = readCanvas(filePath)
+        const dir = path.dirname(filePath)
+        const newFilename = `${kebab}.canvas.jsonl`
+        const newPath = path.join(dir, newFilename)
+
+        if (fs.existsSync(newPath)) {
+          sendJson(res, 409, { error: `A canvas file named "${newFilename}" already exists` })
+          return
+        }
+
+        // Re-ID all widgets to avoid collisions
+        const widgets = (sourceData.widgets || []).map(w => ({
+          ...w,
+          id: generateWidgetId(w.type || 'widget'),
+        }))
+
+        const creationEvent = {
+          event: 'canvas_created',
+          timestamp: new Date().toISOString(),
+          title: newTitle,
+          grid: sourceData.grid ?? true,
+          gridSize: sourceData.gridSize ?? 24,
+          colorMode: sourceData.colorMode ?? 'auto',
+          widgets,
+        }
+
+        writeNewCanvas(newPath, creationEvent)
+
+        const relPath = path.relative(root, newPath).replace(/\\/g, '/')
+        const canonicalName = toCanvasId(relPath) || kebab
+
+        sendJson(res, 201, {
+          success: true,
+          name: canonicalName,
+          path: relPath,
+          route: `/canvas/${canonicalName}`,
+        })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to duplicate canvas: ${err.message}` })
+      }
+      return
+    }
+
     // POST /create — create a new .canvas.jsonl file
+    // Supports `convertFrom` to convert a single-page canvas into a multi-page folder.
     if (routePath === '/create' && method === 'POST') {
       const {
         name,
         title,
         folder,
+        convertFrom,
         author,
+        description,
+        meta,
         grid = true,
         gridSize = 24,
         colorMode = 'auto',
-        includeJsx = false,
       } = body
 
       if (!name || typeof name !== 'string') {
@@ -316,17 +1028,141 @@ export function createCanvasHandler(ctx) {
         return
       }
 
+      // ── Convert single-page canvas to multi-page folder ──────────────
+      if (convertFrom && typeof convertFrom === 'string') {
+        // Only allow flat root canvases (no path segments, no proto:)
+        if (convertFrom.includes('/') || convertFrom.startsWith('proto:')) {
+          sendJson(res, 400, { error: 'convertFrom only supports flat root canvases (no path segments or proto: prefix)' })
+          return
+        }
+
+        const canvasDir = path.join(root, 'src', 'canvas')
+        const existingPath = findCanvasPath(root, convertFrom)
+        if (!existingPath) {
+          sendJson(res, 404, { error: `Canvas "${convertFrom}" not found` })
+          return
+        }
+
+        // Verify it's actually a flat file in src/canvas/ (not already in a folder)
+        const existingRel = path.relative(canvasDir, existingPath).replace(/\\/g, '/')
+        if (existingRel.includes('/')) {
+          sendJson(res, 400, { error: `Canvas "${convertFrom}" is already inside a folder` })
+          return
+        }
+
+        const newDir = path.join(canvasDir, convertFrom)
+        const dotFolderDir = path.join(canvasDir, `${convertFrom}.folder`)
+
+        // Preflight: check for collisions
+        if (fs.existsSync(newDir)) {
+          sendJson(res, 409, { error: `Directory "${convertFrom}" already exists in src/canvas/` })
+          return
+        }
+        if (fs.existsSync(dotFolderDir)) {
+          sendJson(res, 409, { error: `Directory "${convertFrom}.folder" already exists in src/canvas/` })
+          return
+        }
+
+        // Read the existing canvas to extract metadata for .meta.json
+        let existingData
+        try {
+          existingData = readCanvas(existingPath)
+        } catch (err) {
+          sendJson(res, 500, { error: `Failed to read existing canvas: ${err.message}` })
+          return
+        }
+
+        const existingBasename = path.basename(existingPath)
+
+        const movedCanvasPath = path.join(newDir, existingBasename)
+        const newPagePath = path.join(newDir, `${kebab}.canvas.jsonl`)
+
+        if (existingBasename === `${kebab}.canvas.jsonl`) {
+          sendJson(res, 409, { error: `New page name "${kebab}" collides with existing canvas filename` })
+          return
+        }
+
+        // Perform the conversion with rollback on failure
+        const rollbackOps = []
+        try {
+          // 1. Create the directory
+          fs.mkdirSync(newDir, { recursive: true })
+          rollbackOps.push(() => { try { fs.rmdirSync(newDir) } catch { /* ignore */ } })
+
+          // 2. Move the existing canvas file
+          fs.renameSync(existingPath, movedCanvasPath)
+          rollbackOps.push(() => { try { fs.renameSync(movedCanvasPath, existingPath) } catch { /* ignore */ } })
+
+          // 3. Write .meta.json with metadata from the existing canvas
+          const metaObj = { title: existingData?.title || convertFrom }
+          if (existingData?.description) metaObj.description = existingData.description
+          if (existingData?.author) metaObj.author = existingData.author
+          const metaPath = path.join(newDir, `${convertFrom}.meta.json`)
+          fs.writeFileSync(metaPath, JSON.stringify(metaObj, null, 2) + '\n', 'utf-8')
+          rollbackOps.push(() => { try { fs.unlinkSync(metaPath) } catch { /* ignore */ } })
+
+          // 4. Create the new page
+          const creationEvent = {
+            event: 'canvas_created',
+            timestamp: new Date().toISOString(),
+            title: title || kebab.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' '),
+            grid,
+            gridSize,
+            colorMode,
+            widgets: [],
+          }
+          writeNewCanvas(newPagePath, creationEvent)
+
+          const relPath = path.relative(root, newPagePath).replace(/\\/g, '/')
+          const canonicalName = toCanvasId(relPath) || kebab
+
+          sendJson(res, 201, {
+            success: true,
+            converted: true,
+            name: canonicalName,
+            path: relPath,
+            route: `/canvas/${canonicalName}`,
+          })
+        } catch (err) {
+          // Rollback in reverse order
+          for (let i = rollbackOps.length - 1; i >= 0; i--) {
+            rollbackOps[i]()
+          }
+          sendJson(res, 500, { error: `Failed to convert canvas to folder: ${err.message}` })
+        }
+        return
+      }
+
+      // ── Standard canvas creation ─────────────────────────────────────
       // Determine target directory
       const canvasDir = path.join(root, 'src', 'canvas')
       let targetDir = canvasDir
 
       if (folder) {
-        const folderDir = path.join(canvasDir, `${folder}.folder`)
-        if (!fs.existsSync(folderDir)) {
-          sendJson(res, 400, { error: `Folder "${folder}" does not exist` })
-          return
+        const dotFolderDir = path.join(canvasDir, `${folder}.folder`)
+        const plainDir = path.join(canvasDir, folder)
+
+        if (fs.existsSync(dotFolderDir)) {
+          // Existing .folder/ directory
+          targetDir = dotFolderDir
+        } else if (fs.existsSync(plainDir) && fs.statSync(plainDir).isDirectory()) {
+          // Existing plain directory
+          targetDir = plainDir
+        } else {
+          // Create new plain directory
+          try {
+            fs.mkdirSync(plainDir, { recursive: true })
+            // Write .meta.json if meta was provided
+            if (meta && typeof meta === 'object') {
+              const metaPath = path.join(plainDir, `${folder}.meta.json`)
+              fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n', 'utf-8')
+            }
+          } catch (err) {
+            sendJson(res, 500, { error: `Failed to create directory: ${err.message}` })
+            return
+          }
+          targetDir = plainDir
         }
-        targetDir = folderDir
       }
 
       const canvasPath = path.join(targetDir, `${kebab}.canvas.jsonl`)
@@ -349,46 +1185,559 @@ export function createCanvasHandler(ctx) {
         creationEvent.author = author
       }
 
-      if (includeJsx) {
-        creationEvent.jsx = `${kebab}.canvas.jsx`
+      if (description) {
+        creationEvent.description = description
       }
 
       try {
         fs.mkdirSync(targetDir, { recursive: true })
         writeNewCanvas(canvasPath, creationEvent)
 
+        const relPath = path.relative(root, canvasPath).replace(/\\/g, '/')
+        const canonicalName = toCanvasId(relPath) || kebab
+
         const result = {
           success: true,
-          name: kebab,
-          path: path.relative(root, canvasPath),
-          route: `/canvas/${kebab}`,
-        }
-
-        // Optionally create starter JSX file
-        if (includeJsx) {
-          const jsxPath = path.join(targetDir, `${kebab}.canvas.jsx`)
-          const componentName = kebab.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')
-          const jsxContent = `/**
- * Canvas components for ${creationEvent.title}.
- * Each named export becomes a draggable widget on the canvas.
- */
-
-export function ${componentName}Example() {
-  return (
-    <div style={{ padding: '1rem', minWidth: 200 }}>
-      <h3>${creationEvent.title}</h3>
-      <p>Edit this component in the .canvas.jsx file.</p>
-    </div>
-  )
-}
-`
-          fs.writeFileSync(jsxPath, jsxContent, 'utf-8')
-          result.jsxPath = path.relative(root, jsxPath)
+          name: canonicalName,
+          path: relPath,
+          route: `/canvas/${canonicalName}`,
         }
 
         sendJson(res, 201, result)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to create canvas: ${err.message}` })
+      }
+      return
+    }
+
+    // ── Story routes ──────────────────────────────────────────────────
+
+    // GET /stories — list all .story.{jsx,tsx} files with their exports
+    if (routePath === '/stories' && method === 'GET') {
+      try {
+        const storyFiles = findStoryFiles(root)
+        sendJson(res, 200, { stories: storyFiles })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to list stories: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /create-story — scaffold a new .story.jsx/.tsx file
+    if (routePath === '/create-story' && method === 'POST') {
+      const { name, location, format = 'jsx', canvasName: storyCanvasName } = body
+
+      if (!name || typeof name !== 'string') {
+        sendJson(res, 400, { error: 'Component name is required' })
+        return
+      }
+
+      const kebab = name
+        .replace(/[^a-zA-Z0-9\s_-]/g, '')
+        .trim()
+        .replace(/[\s_]+/g, '-')
+        .toLowerCase()
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+
+      if (!kebab) {
+        sendJson(res, 400, { error: 'Name must contain at least one alphanumeric character' })
+        return
+      }
+
+      const ext = format === 'tsx' ? 'tsx' : 'jsx'
+
+      // Resolve target directory from location + canvas name
+      let targetDir
+      if (location === 'components') {
+        targetDir = path.join(root, 'src', 'components')
+      } else if (storyCanvasName) {
+        const canvasPath = findCanvasPath(root, storyCanvasName)
+        targetDir = canvasPath ? path.dirname(canvasPath) : path.join(root, 'src', 'canvas')
+      } else {
+        targetDir = path.join(root, 'src', 'canvas')
+      }
+
+      const storyPath = path.join(targetDir, `${kebab}.story.${ext}`)
+      if (fs.existsSync(storyPath)) {
+        sendJson(res, 409, { error: `Story "${kebab}.story.${ext}" already exists at ${path.relative(root, targetDir)}` })
+        return
+      }
+
+      // Check for duplicate story name anywhere in the project (Vite data plugin
+      // enforces global uniqueness and would fail the build on duplicates)
+      const existing = findStoryFiles(root)
+      if (existing.some(s => s.name === kebab)) {
+        sendJson(res, 409, { error: `A story named "${kebab}" already exists in the project` })
+        return
+      }
+
+      const componentName = kebab.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('')
+      const content = `/**
+ * ${componentName} component stories.
+ * Each named export becomes a draggable widget on the canvas.
+ */
+
+export function Default() {
+  return (
+    <div style={{ padding: '1.5rem', minWidth: 200 }}>
+      <h3>${componentName}</h3>
+      <p>Edit this file to build your component.</p>
+    </div>
+  )
+}
+`
+
+      try {
+        fs.mkdirSync(targetDir, { recursive: true })
+        fs.writeFileSync(storyPath, content, 'utf-8')
+
+        const relPath = path.relative(root, storyPath)
+        sendJson(res, 201, {
+          success: true,
+          name: kebab,
+          path: relPath,
+          storyId: kebab,
+        })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to create story: ${err.message}` })
+      }
+      return
+    }
+
+    // GET /github/available — check if gh CLI is installed locally
+    if (routePath === '/github/available' && method === 'GET') {
+      sendJson(res, 200, {
+        available: isGhCliAvailable(),
+        installUrl: GH_INSTALL_URL,
+      })
+      return
+    }
+
+    // POST /github/embed — fetch metadata for GitHub issue/discussion/comment links
+    if (routePath === '/github/embed' && method === 'POST') {
+      const rawUrl = typeof body?.url === 'string' ? body.url.trim() : ''
+
+      if (!rawUrl) {
+        sendJson(res, 400, { code: 'invalid_url', error: 'url is required' })
+        return
+      }
+
+      if (!isGitHubEmbedUrl(rawUrl)) {
+        sendJson(res, 400, {
+          code: 'unsupported_url',
+          error: 'Only GitHub issue, discussion, and comment URLs are supported.',
+        })
+        return
+      }
+
+      try {
+        const snapshot = fetchGitHubEmbedSnapshot(rawUrl)
+        sendJson(res, 200, { success: true, snapshot })
+      } catch (error) {
+        if (error instanceof GitHubEmbedError) {
+          sendJson(res, error.status ?? 500, {
+            code: error.code,
+            error: error.message,
+            installUrl: error.code === 'gh_unavailable' ? GH_INSTALL_URL : undefined,
+          })
+          return
+        }
+
+        sendJson(res, 500, {
+          code: 'gh_fetch_failed',
+          error: error?.message || 'Failed to fetch GitHub metadata.',
+        })
+      }
+      return
+    }
+
+    // ── Image routes ──────────────────────────────────────────────────
+
+    const imagesDir = path.join(root, 'assets', 'canvas', 'images')
+    const snapshotsDir = path.join(root, 'assets', 'canvas', 'snapshots')
+
+    const MIME_TO_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' }
+    const EXT_TO_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' }
+    const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5 MB
+
+    // Route snapshot uploads (snapshot-* prefix) to the snapshots directory
+    function resolveWriteDir(canvasName) {
+      return canvasName?.startsWith('snapshot-') ? snapshotsDir : imagesDir
+    }
+
+    function resolveImagePath(filename) {
+      // Check snapshots dir first, then images
+      const snapshotPath = path.join(snapshotsDir, filename)
+      if (fs.existsSync(snapshotPath)) return snapshotPath
+      const imagePath = path.join(imagesDir, filename)
+      if (fs.existsSync(imagePath)) return imagePath
+      return null
+    }
+
+    // POST /image — upload a pasted image (base64 data URL)
+    if (routePath === '/image' && method === 'POST') {
+      const { dataUrl, canvasName } = body
+
+      if (!dataUrl || typeof dataUrl !== 'string') {
+        sendJson(res, 400, { error: 'dataUrl is required' })
+        return
+      }
+
+      const match = dataUrl.match(/^data:(image\/[a-z+]+);base64,(.+)$/i)
+      if (!match) {
+        sendJson(res, 400, { error: 'Invalid data URL format' })
+        return
+      }
+
+      const mime = match[1].toLowerCase()
+      const ext = MIME_TO_EXT[mime]
+      if (!ext) {
+        sendJson(res, 400, { error: `Unsupported image type: ${mime}` })
+        return
+      }
+
+      const base64 = match[2]
+      const buffer = Buffer.from(base64, 'base64')
+
+      if (buffer.length > MAX_IMAGE_SIZE) {
+        sendJson(res, 413, { error: `Image exceeds ${MAX_IMAGE_SIZE / 1024 / 1024}MB limit` })
+        return
+      }
+
+      const now = new Date()
+      const pad = (n) => String(n).padStart(2, '0')
+      const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}--${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
+      const prefix = canvasName ? `${canvasName.replace(/[/:]/g, '--')}--` : ''
+
+      // Support explicit filename for snapshot uploads (stable naming)
+      const explicitName = body.filename
+      let filename
+      if (explicitName && /^snapshot-[a-z0-9_-]+--(latest|light|dark)\.webp$/i.test(explicitName)) {
+        filename = explicitName
+      } else {
+        filename = `${prefix}${dateStr}.${ext}`
+      }
+      const targetDir = resolveWriteDir(canvasName || '')
+
+      try {
+        fs.mkdirSync(targetDir, { recursive: true })
+        fs.writeFileSync(path.join(targetDir, filename), buffer)
+        sendJson(res, 201, { success: true, filename })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to save image: ${err.message}` })
+      }
+      return
+    }
+
+    // GET /images/<filename> — serve an image file
+    if (routePath.startsWith('/images/') && method === 'GET') {
+      // Strip query string (e.g. ?v=123 cache busters) from filename
+      let filename = routePath.slice('/images/'.length)
+      const qIdx = filename.indexOf('?')
+      if (qIdx !== -1) filename = filename.slice(0, qIdx)
+
+      // Block path traversal
+      if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        sendJson(res, 400, { error: 'Invalid filename' })
+        return
+      }
+
+      const filePath = resolveImagePath(filename)
+      if (!filePath) {
+        sendJson(res, 404, { error: 'Image not found' })
+        return
+      }
+
+      const ext = path.extname(filename).slice(1).toLowerCase()
+      const contentType = EXT_TO_MIME[ext] || 'application/octet-stream'
+
+      try {
+        const data = fs.readFileSync(filePath)
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Content-Length': data.length,
+          'Cache-Control': 'no-cache',
+        })
+        res.end(data)
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to serve image: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /image/toggle-private — toggle tilde prefix on image filename
+    if (routePath === '/image/toggle-private' && method === 'POST') {
+      const { filename } = body
+
+      if (!filename || typeof filename !== 'string') {
+        sendJson(res, 400, { error: 'filename is required' })
+        return
+      }
+
+      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        sendJson(res, 400, { error: 'Invalid filename' })
+        return
+      }
+
+      const isPrivate = filename.startsWith('~')
+      const newFilename = isPrivate ? filename.slice(1) : `~${filename}`
+      const oldPath = resolveImagePath(filename)
+      if (!oldPath) {
+        sendJson(res, 404, { error: 'Image not found' })
+        return
+      }
+      const parentDir = path.dirname(oldPath)
+      const newPath = path.join(parentDir, newFilename)
+
+      try {
+        fs.renameSync(oldPath, newPath)
+        sendJson(res, 200, { success: true, filename: newFilename, private: !isPrivate })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to toggle private: ${err.message}` })
+      }
+      return
+    }
+
+    // ── Agent Signal API ──────────────────────────────────────────────────
+
+    // POST /agent/signal — agent signals status (done/error/running)
+    if (routePath === '/agent/signal' && method === 'POST') {
+      const { widgetId, canvasId, branch, status, message, data: payload } = body
+
+      if (!widgetId || !status) {
+        sendJson(res, 400, { error: 'widgetId and status are required' })
+        return
+      }
+
+      const validStatuses = ['done', 'error', 'running']
+      if (!validStatuses.includes(status)) {
+        sendJson(res, 400, { error: `status must be one of: ${validStatuses.join(', ')}` })
+        return
+      }
+
+      try {
+        const { updateAgentStatus, initTerminalConfig } = await import('./terminal-config.js')
+        initTerminalConfig(root)
+        updateAgentStatus({
+          branch: branch || 'unknown',
+          canvasId: canvasId || 'unknown',
+          widgetId,
+          status,
+          message: message || null,
+          data: payload || null,
+        })
+
+        // Push status to canvas clients via Vite WS custom event
+        if (__viteWs) {
+          __viteWs.send({
+            type: 'custom',
+            event: 'storyboard:agent-status',
+            data: { widgetId, canvasId, status, message, timestamp: new Date().toISOString() },
+          })
+        }
+
+        sendJson(res, 200, { success: true, status })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to update agent status: ${err.message}` })
+      }
+      return
+    }
+
+    // GET /agent/status — poll agent status for a widget
+    if (routePath === '/agent/status' && method === 'GET') {
+      const url = new URL(req.url, 'http://localhost')
+      const widgetId = url.searchParams.get('widgetId')
+      const canvasId = url.searchParams.get('canvasId') || 'unknown'
+      const branch = url.searchParams.get('branch') || 'unknown'
+
+      if (!widgetId) {
+        sendJson(res, 400, { error: 'widgetId query parameter is required' })
+        return
+      }
+
+      try {
+        const { readTerminalConfig, initTerminalConfig } = await import('./terminal-config.js')
+        initTerminalConfig(root)
+        const config = readTerminalConfig({ branch, canvasId, widgetId })
+        sendJson(res, 200, { agentStatus: config?.agentStatus || null })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to read agent status: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /agent/spawn — spawn a headless agent session
+    if (routePath === '/agent/spawn' && method === 'POST') {
+      const { canvasId, widgetId, prompt, autopilot = true, branch: reqBranch } = body
+
+      if (!canvasId || !widgetId || !prompt) {
+        sendJson(res, 400, { error: 'canvasId, widgetId, and prompt are required' })
+        return
+      }
+
+      try {
+        const { execSync } = await import('node:child_process')
+        const { writeTerminalConfig, updateAgentStatus, initTerminalConfig } = await import('./terminal-config.js')
+        const { generateTmuxName, registerSession } = await import('./terminal-registry.js')
+        const fsModule = await import('node:fs')
+
+        initTerminalConfig(root)
+
+        let branch = reqBranch || 'unknown'
+        try {
+          branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
+        } catch {}
+
+        const tmuxName = generateTmuxName(branch, canvasId, widgetId)
+
+        // Register in session registry
+        registerSession({ branch, canvasId, widgetId, prettyName: null })
+
+        // Write terminal config with connected widget context
+        writeTerminalConfig({ branch, canvasId, widgetId })
+
+        // Mark as running
+        updateAgentStatus({ branch, canvasId, widgetId, status: 'running', message: 'Agent spawning...' })
+
+        // Push running status to clients
+        if (__viteWs) {
+          __viteWs.send({
+            type: 'custom',
+            event: 'storyboard:agent-status',
+            data: { widgetId, canvasId, status: 'running', timestamp: new Date().toISOString() },
+          })
+        }
+
+        // Build server URL for agent env vars
+        const serverUrl = `http://localhost:${req.socket?.localPort || 1234}`
+
+        // Create headless tmux session
+        try {
+          execSync(`tmux new-session -d -s "${tmuxName}" -c "${root}"`, { stdio: 'ignore' })
+          execSync(`tmux set-option -t "${tmuxName}" status off`, { stdio: 'ignore' })
+          execSync(`tmux set-option -t "${tmuxName}" mouse on`, { stdio: 'ignore' })
+          execSync(`tmux set-option -t "${tmuxName}" set-clipboard off`, { stdio: 'ignore' })
+        } catch (err) {
+          // Session may already exist
+          console.warn(`[storyboard] tmux session create:`, err.message)
+        }
+
+        // Set environment variables at tmux session level (inherited by new panes)
+        const envMap = {
+          STORYBOARD_WIDGET_ID: widgetId,
+          STORYBOARD_CANVAS_ID: canvasId,
+          STORYBOARD_BRANCH: branch,
+          STORYBOARD_SERVER_URL: serverUrl,
+        }
+        for (const [key, val] of Object.entries(envMap)) {
+          execSync(`tmux setenv -t "${tmuxName}" ${key} "${val}"`, { stdio: 'ignore' })
+        }
+
+        // Write env file for this terminal session — sourced before copilot launch
+        // This avoids race conditions with tmux send-keys export
+        const envFile = join(root, '.storyboard', 'terminals', `${tmuxName}.env`)
+        const envContent = Object.entries(envMap).map(([k, v]) => `export ${k}=${JSON.stringify(v)}`).join('\n') + '\n'
+        fsModule.writeFileSync(envFile, envContent)
+
+        // Launch copilot by sourcing the env file first (short, reliable command)
+        const copilotBase = autopilot
+          ? `copilot -p "${prompt.replace(/"/g, '\\"')}"`
+          : `copilot`
+        const copilotCmd = `source ${envFile} && ${copilotBase}`
+        setTimeout(() => {
+          try {
+            execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })
+            execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+          } catch (err) {
+            console.warn(`[storyboard] Failed to launch copilot:`, err.message)
+          }
+          // Poll for copilot readiness, then send /autopilot + Enter once
+          let sent = false
+          const poll = setInterval(() => {
+            if (sent) { clearInterval(poll); return }
+            try {
+              const pane = execSync(`tmux capture-pane -t "${tmuxName}" -p`, { encoding: 'utf8', timeout: 1000 })
+              if (pane.includes('Environment loaded:')) {
+                sent = true
+                clearInterval(poll)
+                setTimeout(() => {
+                  try {
+                    execSync(`tmux send-keys -t "${tmuxName}" -l "/allow-all on"`, { stdio: 'ignore' })
+                    execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+                  } catch {}
+                }, 500)
+              }
+            } catch {}
+          }, 1000)
+          setTimeout(() => { if (!sent) { sent = true; clearInterval(poll) } }, 15000)
+        }, 500)
+
+        // Set up idle timeout (5 minutes)
+        const IDLE_TIMEOUT = 5 * 60 * 1000
+        setTimeout(async () => {
+          try {
+            const { readTerminalConfig } = await import('./terminal-config.js')
+            const config = readTerminalConfig({ branch, canvasId, widgetId })
+            if (config?.agentStatus?.status === 'running') {
+              updateAgentStatus({ branch, canvasId, widgetId, status: 'error', message: 'Agent timed out (5 min idle)' })
+              if (__viteWs) {
+                __viteWs.send({
+                  type: 'custom',
+                  event: 'storyboard:agent-status',
+                  data: { widgetId, canvasId, status: 'error', message: 'Agent timed out', timestamp: new Date().toISOString() },
+                })
+              }
+            }
+          } catch {}
+        }, IDLE_TIMEOUT)
+
+        sendJson(res, 200, { success: true, tmuxName, status: 'running' })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to spawn agent: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /agent/peek — reconnect a headless agent session to a visible terminal widget
+    if (routePath === '/agent/peek' && method === 'POST') {
+      const { widgetId, canvasId } = body
+
+      if (!widgetId) {
+        sendJson(res, 400, { error: 'widgetId is required' })
+        return
+      }
+
+      try {
+        const { execSync } = await import('node:child_process')
+        const { generateTmuxName } = await import('./terminal-registry.js')
+
+        let branch = 'unknown'
+        try {
+          branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
+        } catch {}
+
+        const tmuxName = generateTmuxName(branch, canvasId || 'unknown', widgetId)
+
+        // Check if the tmux session exists
+        try {
+          execSync(`tmux has-session -t "${tmuxName}"`, { stdio: 'ignore' })
+        } catch {
+          sendJson(res, 404, { error: `No tmux session found for widget ${widgetId}` })
+          return
+        }
+
+        // The session exists — return info so the client can create a terminal widget
+        // that connects to it
+        sendJson(res, 200, {
+          success: true,
+          tmuxName,
+          widgetId,
+          canvasId: canvasId || 'unknown',
+          message: 'Session is alive. Create a terminal widget to connect.',
+        })
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to peek agent session: ${err.message}` })
       }
       return
     }

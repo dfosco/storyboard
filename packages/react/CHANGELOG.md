@@ -1,5 +1,445 @@
 # @dfosco/storyboard-react
 
+## 4.2.0-alpha.12
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.12
+    -   @dfosco/tiny-canvas@4.2.0-alpha.12
+
+## 4.2.0-alpha.11
+
+### Patch Changes
+
+-   Fix live canvas updates — HMR handler was silently dropping all events due to wrong destructuring
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.11
+    -   @dfosco/tiny-canvas@4.2.0-alpha.11
+
+## 4.2.0-alpha.10
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.10
+    -   @dfosco/tiny-canvas@4.2.0-alpha.10
+
+## 4.2.0-alpha.9
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.9
+    -   @dfosco/tiny-canvas@4.2.0-alpha.9
+
+## 4.2.0-alpha.8
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.8
+    -   @dfosco/tiny-canvas@4.2.0-alpha.8
+
+## 4.2.0-alpha.7
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.7
+    -   @dfosco/tiny-canvas@4.2.0-alpha.7
+
+## 4.2.0-alpha.6
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.6
+    -   @dfosco/tiny-canvas@4.2.0-alpha.6
+
+## 4.2.0-alpha.5
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-alpha.5
+    -   @dfosco/tiny-canvas@4.2.0-alpha.5
+
+## 4.2.0-beta.4
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-beta.4
+    -   @dfosco/tiny-canvas@4.2.0-beta.4
+
+## 4.2.0-beta.3
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-beta.3
+    -   @dfosco/tiny-canvas@4.2.0-beta.3
+
+## 4.2.0-beta.2
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-beta.2
+    -   @dfosco/tiny-canvas@4.2.0-beta.2
+
+## 4.2.0-beta.1
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-beta.1
+    -   @dfosco/tiny-canvas@4.2.0-beta.1
+
+## 4.2.0-beta.0
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-beta.0
+    -   @dfosco/tiny-canvas@4.2.0-beta.0
+
+## 4.1.0
+
+### Patch Changes
+
+-   Updated dependencies [[`eaa140a`](https://github.com/dfosco/storyboard/commit/eaa140a17ea26b9fc71dd3e662bd963b5874c8c3), [`bb07137`](https://github.com/dfosco/storyboard/commit/bb071379b888c793080b869679b0f405dd2a0cf3), [`eb1b084`](https://github.com/dfosco/storyboard/commit/eb1b084b577a69832eda08b6ae8c1a231cd8c65f), [`a51b237`](https://github.com/dfosco/storyboard/commit/a51b237037062bc6cb2502ef33dfc738b943155d)]:
+    -   @dfosco/storyboard-core@4.1.0
+    -   @dfosco/tiny-canvas@4.1.0
+
+## 4.1.0-beta.3
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.1.0-beta.3
+    -   @dfosco/tiny-canvas@4.1.0-beta.3
+
+## 4.1.0-beta.2
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.1.0-beta.2
+    -   @dfosco/tiny-canvas@4.1.0-beta.2
+
+## 4.1.0-beta.1
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.1.0-beta.1
+    -   @dfosco/tiny-canvas@4.1.0-beta.1
+
+## 4.1.0-beta.0
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.1.0-beta.0
+    -   @dfosco/tiny-canvas@4.1.0-beta.0
+
+## 4.0.0
+
+Storyboard 4.0.0 — canvas system, command palette, toolbar tools, and customer mode.
+
+-   **Canvas system**: multi-page canvases, marquee multi-select, widget snap/alignment, paste rules, prototype embeds with zoom, canvas theme sync across all Primer themes
+-   **Command palette**: ported to @dfosco/storyboard-react, config extracted to commandpalette.config.json, author search, tool sub-pages, frecency ranking
+-   **Toolbar tools**: declarative config-driven system (toolbar.config.json), tool registry, tool state store, surface/handler architecture, per-prototype overrides
+-   **Customer mode**: new config for hiding chrome, homepage, and setting a prototype homepage redirect
+-   **BranchBar**: ported to React, hidden in embeds, branch switching UI
+-   **AuthModal**: ported to React with Primer theme support, BaseUI Dialog
+-   **Workshop**: create actions for prototypes, flows, canvases
+-   **Selected widgets bridge** for Copilot context
+-   **Smooth-corners** paint worklet support
+-   **Inspector/highlighter** system
+-   **Comments system** with GitHub Discussions
+
+### Beta releases
+
+#### beta.0
+
+-   Storyboard CLI with Caddy proxy for clean dev URLs, worktree port registry, and project scaffolding
+-   Canvas multi-select, drag, snap-to-grid, undo/redo, zoom-to-fit, and config-driven widget resize
+-   Widget chrome with toolbar, image paste, Figma embed, viewport persistence, and HMR guard
+
+#### beta.1–2
+
+-   Paste non-URL text to create markdown widgets on canvas
+-   Add `update`, `update:beta`, `update:alpha` CLI commands and `devDomain` config key
+
+#### beta.3
+
+-   Canvas skill with rename watcher for embed URL sync
+-   Caddy admin API for multi-repo route isolation; CNAME from `customDomain` config
+
+#### beta.4
+
+-   Batch git calls and scope glob patterns for faster dev server startup
+
+#### beta.5–6
+
+-   Canvas read CLI with widget query docs; iframe-isolate component widgets
+-   Prompt-based root-to-worktree conversion and `sb code` command
+-   Use remark with GitHub Flavored Markdown for markdown widgets
+
+#### beta.7–8
+
+-   Copy widget URL/ID with keyboard shortcuts
+-   Collision detection utility for widget positioning
+
+#### beta.10–11
+
+-   Add image drag-and-drop from Finder to canvas
+-   Embed click-to-interact overlay; fix multi-select and space-pan conflicts
+
+#### beta.12
+
+-   Fix canvas image emission in production builds
+-   Fix widget menu/toolbar alignment and HMR metadata merge
+
+#### beta.13
+
+-   Advanced copy-paste with `canvasName/widgetId` clipboard format
+-   Add `{ optional }` flag for `useFlowData`
+
+#### beta.15
+
+-   Story widget system with multi-page canvas and page selector
+-   Config-driven paste rule engine, Figma embed, and snapshot lazy-loading
+-   Markdown code blocks with syntax highlighting; canvas folder `.meta.json` support
+
+#### beta.16–18
+
+-   Fix highlight.js ESM/CJS compatibility for Vite builds
+
+#### beta.19
+
+-   Mobile experience — toolbar in command menu, PWA install, pull-to-refresh prevention
+-   Storyboard snapshots CLI for batch preview generation
+-   Canvas viewport persistence with zoom-to-fit fallback
+
+#### beta.21–22
+
+-   Server-side widget filtering for canvas read
+-   CI-based snapshot generation with stable naming and dirty detection
+
+#### beta.25
+
+-   In-browser iframe snapshot capture with dual-theme support
+-   Gate iframe mounts behind interaction (load on click)
+-   Migrate canvas identity to canonical path-based `canvasId`
+
+#### beta.26
+
+-   Eliminate zoom re-render cascade and optimize snapshot capture
+
+#### beta.28–29
+
+-   GitHub embed widget — issue/PR/discussion cards with full markdown, signed images, and videos
+-   CodePen embed widget with header bar showing pen title and author
+-   Canvas embed snapshot wave-refresh with theme-aware captures
+
+#### beta.30
+
+-   JSONL compaction command and auto-compact on dev start
+
+#### beta.35–36
+
+-   Remove entire snapshot system from prototype embeds — iframes load directly
+
+#### beta.37
+
+-   Viewfinder redesign — SaaS homescreen with cards, folders, Base UI type scale
+-   Standalone storyboard server with branch switching API
+-   Command palette ported from Svelte to React with react-cmdk
+
+#### beta.38
+
+-   Multi-repo dev server support scoped by `devDomain`
+-   Link-preview card redesign with editable title and OG image
+
+#### beta.40
+
+-   Multi-widget copy/paste on canvas
+-   Consolidate PAT auth into single React modal
+-   Scaffold agent-browser, ship, and canvas skills
+
+#### beta.41–42
+
+-   Fully config-driven command palette with tool sub-pages, author search, and Primer theming
+-   Hide-toolbars inline action and `hideInCommandPalette` property
+
+#### beta.44
+
+-   Port CommandPalette to `@dfosco/storyboard-react` (auto-renders for all consumers)
+-   Marquee multi-select drag on canvas background
+-   Selected widgets bridge for Copilot context
+
+#### beta.45
+
+-   Port AuthModal and BranchBar to `@dfosco/storyboard-react`
+
+#### beta.47
+
+-   Extract command palette config to `commandpalette.config.json`
+-   Add `customerMode` config and canvas theme vars for all Primer themes including high contrast
+-   Fix command palette dark mode; migrate AuthModal to BaseUI Dialog
+
+#### beta.48
+
+-   Hide React BranchBar in embeds via `_sb_embed` and `_sb_hide_branch_bar` params
+
+## 3.11.0
+
+### Patch Changes
+
+-   Updated dependencies [[`62538dd`](https://github.com/dfosco/storyboard/commit/62538dd30dc7052a386be4729f214a5664758869), [`3715731`](https://github.com/dfosco/storyboard/commit/3715731be4e7559b958af9e0f550f895ae759d85), [`542d59d`](https://github.com/dfosco/storyboard/commit/542d59d5cb3028ea77d7b8a55b888cf19f7bbd7b), [`917bd74`](https://github.com/dfosco/storyboard/commit/917bd74fdbc20ea29b4cf1ff73350056934f111a), [`79b55bf`](https://github.com/dfosco/storyboard/commit/79b55bfe4ada902df569afbf2753d3cd6ebae276), [`709917c`](https://github.com/dfosco/storyboard/commit/709917c4d85fec150515882e4992e3b27034a18b), [`0bb755e`](https://github.com/dfosco/storyboard/commit/0bb755e23cd9d797ce2e09d5b55c148737732d43), [`c781179`](https://github.com/dfosco/storyboard/commit/c781179eb51ce0efed1f68af2265d82633a56740), [`7994b34`](https://github.com/dfosco/storyboard/commit/7994b343bf2bc9a6160f3442c1b9944bdc55ca0b), [`444e732`](https://github.com/dfosco/storyboard/commit/444e73206abc444295d00e9a40cd682d92d8ac98), [`3800568`](https://github.com/dfosco/storyboard/commit/3800568a0585ce61a7811d00b6c26c82aebab07c), [`e97a4de`](https://github.com/dfosco/storyboard/commit/e97a4def7fc4cd1412aa3700ea727bfd99cb69b9)]:
+    -   @dfosco/storyboard-core@3.11.0
+    -   @dfosco/tiny-canvas@3.11.0
+
+## 3.11.0-beta.12
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.12
+    -   @dfosco/tiny-canvas@3.11.0-beta.12
+
+## 3.11.0-beta.11
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.11
+    -   @dfosco/tiny-canvas@3.11.0-beta.11
+
+## 3.11.0-beta.10
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.10
+    -   @dfosco/tiny-canvas@3.11.0-beta.10
+
+## 3.11.0-beta.9
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.9
+    -   @dfosco/tiny-canvas@3.11.0-beta.9
+
+## 3.11.0-beta.8
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.8
+    -   @dfosco/tiny-canvas@3.11.0-beta.8
+
+## 3.11.0-beta.7
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.7
+    -   @dfosco/tiny-canvas@3.11.0-beta.7
+
+## 3.11.0-beta.6
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.6
+    -   @dfosco/tiny-canvas@3.11.0-beta.6
+
+## 3.11.0-beta.4
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.4
+    -   @dfosco/tiny-canvas@3.11.0-beta.4
+
+## 3.11.0-beta.3
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.3
+    -   @dfosco/tiny-canvas@3.11.0-beta.3
+
+## 3.11.0-beta.2
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.2
+    -   @dfosco/tiny-canvas@3.11.0-beta.2
+
+## 3.11.0-beta.1
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.1
+    -   @dfosco/tiny-canvas@3.11.0-beta.1
+
+## 3.11.0-beta.0
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.11.0-beta.0
+    -   @dfosco/tiny-canvas@3.11.0-beta.0
+
+## 3.10.0
+
+### Patch Changes
+
+-   Updated dependencies [[`8e0bd21`](https://github.com/dfosco/storyboard/commit/8e0bd21841db2fd0c231eed82c71f8e3cb7dbf1b), [`092c28c`](https://github.com/dfosco/storyboard/commit/092c28ca0a07bf49e1b55b546b248888af259c60)]:
+    -   @dfosco/storyboard-core@3.10.0
+    -   @dfosco/tiny-canvas@3.10.0
+
+## 3.10.0-beta.1
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.10.0-beta.1
+    -   @dfosco/tiny-canvas@3.10.0-beta.1
+
+## 3.10.0-beta.0
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.10.0-beta.0
+    -   @dfosco/tiny-canvas@3.10.0-beta.0
+
+## 3.9.1
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.9.1
+    -   @dfosco/tiny-canvas@3.9.1
+
+## 3.9.0
+
+### Patch Changes
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@3.9.0
+
 ## 3.8.2
 
 ### Patch Changes

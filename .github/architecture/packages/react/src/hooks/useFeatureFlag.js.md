@@ -16,18 +16,16 @@ React hook for reading a feature flag value. Re-renders when the flag changes vi
 
 ```js
 export function useFeatureFlag(key) {
-  useSyncExternalStore(subscribeToHash, getHashSnapshot)
   useSyncExternalStore(subscribeToStorage, getStorageSnapshot)
   return getFlag(key)
 }
 ```
 
-Subscribes to both hash and storage changes since flags can be set in either location (hash for user overrides, localStorage for config defaults).
+Subscribes to localStorage changes via `useSyncExternalStore` so the component re-renders when a flag value changes. The core `getFlag` function reads the resolved flag value using the `"flag."` prefix convention.
 
 ## Dependencies
 
 - [`packages/core/src/featureFlags.js`](../../../core/src/featureFlags.js.md) — `getFlag` for reading flag values
-- [`packages/core/src/hashSubscribe.js`](../../../core/src/hashSubscribe.js.md) — `subscribeToHash`, `getHashSnapshot` for hash reactivity
 - [`packages/core/src/localStorage.js`](../../../core/src/localStorage.js.md) — `subscribeToStorage`, `getStorageSnapshot` for storage reactivity
 
 ## Dependents

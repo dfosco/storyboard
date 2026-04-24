@@ -1,15 +1,15 @@
 ---
 name: create
-description: Walks users through creating any Storyboard asset — prototype, external prototype, flow, canvas, object, or record. Use when asked to "create", "new", or "scaffold" anything in storyboard.
+description: Walks users through creating any Storyboard asset — prototype, external prototype, flow, canvas, component, object, or record. Use when asked to "create", "new", or "scaffold" anything in storyboard.
 ---
 
 # Create
 
-> Triggered by: "create a new prototype", "scaffold a prototype", "new prototype", "create prototype", "new flow", "create flow", "new page", "create page", "new canvas", "create canvas", "new object", "create object", "new record", "create record", "create new", "scaffold", "add external prototype", "link external prototype"
+> Triggered by: "create a new prototype", "scaffold a prototype", "new prototype", "create prototype", "new flow", "create flow", "new page", "create page", "new canvas", "create canvas", "new component", "create component", "new object", "create object", "new record", "create record", "create new", "scaffold", "add external prototype", "link external prototype"
 
 ## What This Does
 
-Guides the user through creating a new Storyboard **prototype**, **external prototype**, **flow**, **page**, **canvas**, **object**, or **record** by collecting inputs interactively, then writing the files directly or calling the scaffolding API.
+Guides the user through creating a new Storyboard **prototype**, **external prototype**, **flow**, **page**, **canvas**, **component**, **object**, or **record** by collecting inputs interactively, then writing the files directly or calling the scaffolding API.
 
 ## Procedure
 
@@ -25,6 +25,7 @@ Provide choices:
 - "Flow" — A new prototype-scoped flow data file (.flow.json)
 - "Page" — A new page inside an existing prototype
 - "Canvas" — A new freeform canvas (.canvas.jsonl)
+- "Component" — A story-format component (.story.jsx) that renders at /components/name
 - "Object" — A reusable data fragment (.object.json)
 - "Record" — A parameterized collection (.record.json)
 
@@ -86,6 +87,12 @@ Use `ask_user` to ask:
 
 > What's your GitHub username? (for the author field — comma-separate multiple authors)
 
+### Step P5b: Ask for description (optional)
+
+Use `ask_user` to ask:
+
+> Any description for this prototype? (optional — leave blank to skip)
+
 ### Step P6: Ask about flow file
 
 Use `ask_user` to ask:
@@ -101,12 +108,13 @@ A flow file is useful if the prototype will use flow data (navigation, user prof
 Build and execute the command with the gathered values:
 
 ```bash
-npm run create -- --name <name> --title "<title>" [--folder <folder>] [--recipe <recipe>] [--author <author>] [--flow]
+npm run create -- --name <name> --title "<title>" [--folder <folder>] [--recipe <recipe>] [--author <author>] [--description "<description>"] [--flow]
 ```
 
 Only include optional flags when the user provided values:
 - Omit `--folder` if standalone was chosen
 - Omit `--flow` if the user said no
+- Omit `--description` if not provided
 - Always include `--recipe` (default is `bare`)
 
 ### Step P8: Confirm and suggest next steps
@@ -172,6 +180,12 @@ Use `ask_user` to ask:
 
 > What's your GitHub username? (for the author field — comma-separate multiple authors, or leave blank)
 
+### Step E5b: Ask for description (optional)
+
+Use `ask_user` to ask:
+
+> Any description for this external prototype? (optional — leave blank to skip)
+
 ### Step E6: Create the external prototype
 
 Determine the target directory:
@@ -235,6 +249,12 @@ Use `ask_user` with a humanized default:
 
 > What's the human-readable title for this flow?
 
+### Step F3b: Ask for description (optional)
+
+Use `ask_user` to ask:
+
+> Any description for this flow? (optional — leave blank to skip)
+
 ### Step F4: Ask about copying from an existing flow (optional)
 
 From the same API response, filter `flows` to the selected prototype (+ same folder when present).
@@ -275,6 +295,7 @@ POST /_storyboard/workshop/flows
 {
   "name": "<kebab-name>",
   "title": "<title>",
+  "description": "<description-if-provided>",
   "prototype": "<prototype>",
   "folder": "<folder-if-any>",
   "copyFrom": "<relative-flow-path-if-selected>",
@@ -379,6 +400,12 @@ Use `ask_user` with a humanized default:
 
 > What's the human-readable title for this canvas?
 
+### Step C2b: Ask for description (optional)
+
+Use `ask_user` to ask:
+
+> Any description for this canvas? (optional — leave blank to skip)
+
 ### Step C3: Ask about folder placement
 
 Check existing canvas folders:
@@ -413,13 +440,13 @@ Use the canvas creation API via curl:
 ```bash
 curl -s -X POST "http://localhost:$(cat .port 2>/dev/null || echo 1234)/_storyboard/canvas/create" \
   -H "Content-Type: application/json" \
-  -d '{"name":"<name>","title":"<title>","folder":"<folder>","grid":true,"includeJsx":<bool>}'
+  -d '{"name":"<name>","title":"<title>","description":"<description-if-provided>","folder":"<folder>","grid":true,"includeJsx":<bool>}'
 ```
 
 Or if the dev server isn't running, create the file directly at `src/canvas/<name>.canvas.jsonl`:
 
 ```jsonl
-{"event":"canvas_created","timestamp":"<ISO date>","title":"<Title>","grid":true,"gridSize":24,"colorMode":"auto","widgets":[]}
+{"event":"canvas_created","timestamp":"<ISO date>","title":"<Title>","description":"<description-if-provided>","grid":true,"gridSize":24,"colorMode":"auto","widgets":[]}
 ```
 
 ### Step C6: Confirm and suggest next steps
@@ -588,3 +615,57 @@ Create `<name>.record.json` with the generated entries. Always include at least 
 - **Data files must live inside the prototype folder.** Every prototype must contain its own copies of any `.record.json`, `.object.json`, or `.flow.json` files it needs — never reference or import data files from other prototypes. Each prototype is an independent sandbox.
 - **Records must be arrays** with each entry having a unique identifier field (default: `id`)
 - **Objects are plain JSON** — no special keys required, any shape works
+- **Widget URL verification:** Whenever this skill (or any process it triggers) adds a widget to a canvas, the response **must** include the widget ID. Provide a direct URL: `{baseURL}canvas/{canvasName}#{widgetId}` where `baseURL` is the proxy or direct URL for the current worktree (see **canvas skill** Step 5 for construction details). If no widget ID is returned, treat it as a creation failure and retry.
+
+---
+
+## Component Path
+
+> Triggered when user selects "Component" or says "create a component", "new component", "create story", "edit component", "edit a story", "add embeded component"
+
+### Step C1: Ask for the component name
+
+Use `ask_user`:
+> What should the component be called?
+
+The name must be **kebab-case** (e.g., `button-patterns`, `user-card`).
+
+### Step C2: Create the component directory and story file
+
+**Every component must live in its own directory.** Create `src/components/<PascalName>/` containing:
+
+- `<PascalName>.jsx` — The component file (atomic, self-contained)
+- `<PascalName>.module.css` — CSS Module styles
+- `<name>.story.jsx` — Story file that **imports the local component** and exposes it as named exports
+
+Convert the kebab-case name to PascalCase for the directory and component files (e.g., `button-patterns` → `ButtonPatterns/ButtonPatterns.jsx`). The story file stays kebab-case.
+
+Each named export in the story becomes a renderable variant at the component's route URL.
+
+**Story files must import the component from the same directory** — never import Primer primitives directly as the story subject. Example:
+
+```jsx
+// src/components/UserCard/user-card.story.jsx
+import UserCard from './UserCard.jsx'
+
+export function Default() {
+  return <UserCard name="Jane Doe" role="admin" />
+}
+```
+
+**Never place component files flat in `src/components/` — always use a subdirectory.**
+
+### Step C3: Confirm and suggest next steps
+
+1. Show the created directory and file paths
+2. Suggest next steps:
+   - Visit `/components/<name>` to see the rendered component
+   - Add more named exports for different variants
+   - Paste the component URL on any canvas to embed it as a widget
+   - Use the CLI: `storyboard canvas add story --canvas <name>` to add programmatically
+
+### CLI shortcut
+
+```bash
+storyboard create component --name my-component
+```

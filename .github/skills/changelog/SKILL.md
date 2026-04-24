@@ -1,3 +1,8 @@
+---
+name: changelog
+description: Generates formatted changelog entries from commit ranges. Use when asked to generate a changelog, list what changed, or summarize commits between versions.
+---
+
 # Changelog Skill
 
 > Triggered by: "generate changelog", "create changelog", "changelog since", "changelog between", "what changed since"

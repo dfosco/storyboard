@@ -76,7 +76,7 @@ export function createMouseMode(options = {}) {
       backgroundColor: 'var(--sb--color-purple, #7655a4)',
       color: '#fff',
       fontSize: '11px',
-      fontFamily: '"Ioskeley Mono", ui-monospace, monospace',
+      fontFamily: '"Hubot Sans", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace',
       fontWeight: '600',
       padding: '3px 8px',
       borderRadius: '4px',

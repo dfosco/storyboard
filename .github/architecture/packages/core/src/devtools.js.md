@@ -10,31 +10,58 @@ importance: high
 
 ## Goal
 
-Implements the Storyboard DevTools — a vanilla JS floating toolbar for development. Framework-agnostic: mounts itself directly to the DOM with no React/Vue dependency. Provides a beaker button (bottom-right corner) that opens a dropdown menu with actions: show flow info (overlay with resolved flow JSON), navigate to viewfinder, reset all hash params, toggle hide mode, and manage feature flags. Toggleable with `Cmd+.` / `Ctrl+.`. Also dynamically loads comments menu items when the comments system is enabled. Respects the plugin configuration — skips mounting when `devtools` is disabled via `storyboard.config.json`.
+Implements the Storyboard Core UI Bar — a Svelte-based floating toolbar for development. Mounts the `CoreUIBar` Svelte component into the DOM via dynamic `import()` to avoid breaking non-Svelte test environments. Contains the command menu and mode-specific buttons (workshop, etc.). Also injects an accessible skip-link as the first child of `<body>` for keyboard navigation to the toolbar controls. Respects embed mode — skips mounting when `?_sb_embed` is present.
 
 ## Composition
 
-**`mountDevTools(options?)`** — Mount the devtools to the DOM. Idempotent (safe to call multiple times). Accepts `{ container, basePath, plugins }` options. If `plugins` is passed, calls `initPlugins()` to avoid timing issues.
+**`mountDevTools(options?)`** — Mount the Core UI Bar to the DOM. Idempotent (safe to call multiple times). Accepts `{ container, basePath, toolbarConfig, customHandlers }` options. Skips mounting inside prototype embed iframes.
 
-The function builds the entire DOM structure imperatively:
-- Floating trigger button with beaker icon
-- Dropdown menu with viewfinder, flow info, reset, and hide mode toggle buttons
-- Feature flags panel (shown when flags are configured)
-- Overlay panel for displaying resolved flow JSON
-- Keyboard shortcut handler (`Cmd+.` / `Ctrl+.`)
-- Dynamic comments menu items via lazy import
+```js
+export async function mountDevTools(options = {}) {
+  const container = options.container || document.body
+  const basePath = options.basePath || '/'
+  if (wrapper) return  // prevent double-mount
+  if (new URLSearchParams(window.location.search).has('_sb_embed')) return
 
-All CSS is defined as a template string constant (`STYLES`) and injected via a `<style>` element. SVG icons are inline strings to avoid external dependencies.
+  const { mount } = await import('svelte')
+  const { default: CoreUIBar } = await import('./CoreUIBar.svelte')
+
+  // Inject accessible skip link as first child of <body>
+  skipLink = document.createElement('a')
+  skipLink.href = '#storyboard-controls'
+  // ...inline focus/blur styles for framework-agnostic styling
+
+  wrapper = document.createElement('div')
+  wrapper.id = 'sb-core-ui'
+  container.appendChild(wrapper)
+
+  instance = mount(CoreUIBar, {
+    target: wrapper,
+    props: { basePath, toolbarConfig: options.toolbarConfig, customHandlers: options.customHandlers },
+  })
+}
+```
+
+**`unmountDevTools()`** — Removes the Core UI Bar, skip link, and Svelte instance from the DOM.
+
+**`mountFlowDebug(options?)`** / **`mountSceneDebug(options?)`** — Deprecated aliases for `mountDevTools`.
+
+The skip link uses inline styles (no CSS framework dependency) with focus/blur handlers that toggle visibility — hidden by default via `clip-path: inset(50%)`, visible on focus with a styled card appearance.
 
 ## Dependencies
 
-- [`packages/core/src/loader.js`](./loader.js.md) — `loadFlow` for displaying flow data in the info panel
-- [`packages/core/src/hideMode.js`](./hideMode.js.md) — `isHideMode`, `activateHideMode`, `deactivateHideMode` for hide mode toggle
-- [`packages/core/src/featureFlags.js`](./featureFlags.js.md) — `getAllFlags`, `toggleFlag`, `getFlagKeys` for the feature flags panel
-- [`packages/core/src/plugins.js`](./plugins.js.md) — `isPluginEnabled`, `initPlugins` for gating devtools mounting
-- `packages/core/src/comments/config.js` — `isCommentsEnabled` for conditional comments menu
+- `svelte` — Dynamic import for `mount`/`unmount` lifecycle
+- `./CoreUIBar.svelte` — The Svelte toolbar component (dynamically imported)
 
 ## Dependents
 
-- [`packages/core/src/index.js`](./index.js.md) — Re-exports `mountDevTools`
-- [`src/index.jsx`](../../../src/index.jsx.md) — Calls `mountDevTools()` at app startup
+- [`packages/core/src/index.js`](./index.js.md) — Re-exports `mountDevTools` (note: via `devtools-consumer.js`, not directly)
+- [`packages/core/src/devtools-consumer.js`](./devtools-consumer.js.md) — Consumer wrapper that delegates to this module
+- [`src/index.jsx`](../../../src/index.jsx.md) — Indirectly used via `mountStoryboardCore`
+
+## Notes
+
+- Uses dynamic `import()` for Svelte and CoreUIBar.svelte to avoid breaking non-Svelte test environments (jsdom).
+- The skip link is injected as the very first child of `<body>` to ensure it's first in tab order, regardless of where the toolbar wrapper is mounted.
+- Skip link inline styles avoid depending on any CSS framework — works in both the source repo and consumer repos.
+- The `_sb_embed` query parameter check prevents toolbar mounting inside prototype embed iframes.

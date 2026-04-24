@@ -1,0 +1,116 @@
+/*
+ * Theme overrides for react-cmdk to match storyboard core-ui styling.
+ * The z-index is set above the CoreUIBar (9999) so the palette overlays everything.
+ */
+.command-palette {
+  z-index: 10001 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+/*
+ * Light mode overrides for react-cmdk.
+ * react-cmdk uses @media (prefers-color-scheme: dark) with Tailwind dark:
+ * utilities. When the OS is dark but the app theme is light, those media
+ * queries fire and the palette renders dark. We override every dark: utility
+ * back to light values when data-color-mode="light".
+ */
+html[data-color-mode="light"] .command-palette .dark\:bg-gray-900,
+html[data-color-mode="light"] .command-palette .dark\:bg-gray-800 {
+  background-color: rgb(255 255 255) !important;
+}
+
+html[data-color-mode="light"] .command-palette .dark\:text-white {
+  color: inherit !important;
+}
+
+html[data-color-mode="light"] .command-palette .dark\:text-gray-600 {
+  color: rgb(107 114 128) !important;
+}
+
+html[data-color-mode="light"] .command-palette .dark\:hover\:bg-gray-800:hover {
+  background-color: rgb(243 244 246) !important;
+}
+
+html[data-color-mode="light"] .command-palette .dark\:hover\:text-gray-300:hover {
+  color: rgb(107 114 128) !important;
+}
+
+html[data-color-mode="light"] .command-palette .dark\:divide-gray-800 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(229 231 235) !important;
+}
+
+/*
+ * Dark mode overrides for react-cmdk.
+ * react-cmdk uses @media (prefers-color-scheme: dark) internally,
+ * but we drive dark mode via data-color-mode on <html> (set by themeStore).
+ * Primer may also mirror it to <body>, so we target both.
+ */
+body[data-color-mode="dark"] .command-palette,
+html[data-color-mode="dark"] .command-palette {
+  color-scheme: dark;
+}
+
+body[data-color-mode="dark"] .command-palette .command-palette-content,
+html[data-color-mode="dark"] .command-palette .command-palette-content {
+  color: #e6edf3 !important;
+}
+
+/* Panel background */
+body[data-color-mode="dark"] .command-palette .bg-white,
+html[data-color-mode="dark"] .command-palette .bg-white {
+  background-color: #2d333b !important;
+}
+
+/* Hover highlight */
+body[data-color-mode="dark"] .command-palette .hover\:bg-gray-100:hover,
+html[data-color-mode="dark"] .command-palette .hover\:bg-gray-100:hover {
+  background-color: #373e47 !important;
+}
+
+/* Selected/active item highlight */
+body[data-color-mode="dark"] .command-palette .bg-gray-200\/50,
+html[data-color-mode="dark"] .command-palette .bg-gray-200\/50 {
+  background-color: rgba(99, 110, 123, 0.4) !important;
+}
+
+/* Muted text (headings, badges, "Action" labels) */
+body[data-color-mode="dark"] .command-palette .text-gray-400,
+body[data-color-mode="dark"] .command-palette .text-gray-500,
+html[data-color-mode="dark"] .command-palette .text-gray-400,
+html[data-color-mode="dark"] .command-palette .text-gray-500 {
+  color: #768390 !important;
+}
+
+/* Input text */
+body[data-color-mode="dark"] .command-palette input,
+html[data-color-mode="dark"] .command-palette input {
+  color: #e6edf3 !important;
+}
+body[data-color-mode="dark"] .command-palette .placeholder-gray-500::placeholder,
+html[data-color-mode="dark"] .command-palette .placeholder-gray-500::placeholder {
+  color: #636e7b !important;
+}
+body[data-color-mode="dark"] .command-palette .placeholder-gray-500::-moz-placeholder,
+html[data-color-mode="dark"] .command-palette .placeholder-gray-500::-moz-placeholder {
+  color: #636e7b !important;
+}
+
+/* Borders / dividers */
+body[data-color-mode="dark"] .command-palette .divide-y > :not([hidden]) ~ :not([hidden]),
+body[data-color-mode="dark"] .command-palette .border-t,
+body[data-color-mode="dark"] .command-palette .border-b,
+html[data-color-mode="dark"] .command-palette .divide-y > :not([hidden]) ~ :not([hidden]),
+html[data-color-mode="dark"] .command-palette .border-t,
+html[data-color-mode="dark"] .command-palette .border-b {
+  border-color: #444c56 !important;
+}
+
+/* Hide "Action" / "Link" type labels on all list items */
+.command-palette .command-palette-list-item .text-gray-500.text-sm {
+  display: none !important;
+}
+
+/* Medium weight for item text */
+.command-palette .command-palette-list-item {
+  font-weight: 500 !important;
+}

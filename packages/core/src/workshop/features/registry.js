@@ -14,6 +14,7 @@ import * as createPrototype from './createPrototype/index.js'
 import * as createFlow from './createFlow/index.js'
 import * as createPage from './createPage/index.js'
 import * as createCanvas from './createCanvas/index.js'
+import * as createStory from './createStory/index.js'
 
 /**
  * All available workshop features, keyed by config name.
@@ -23,4 +24,5 @@ export const features = {
   createFlow,
   createPage,
   createCanvas,
+  createStory,
 }

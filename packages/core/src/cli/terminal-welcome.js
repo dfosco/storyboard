@@ -17,8 +17,8 @@
 
 import * as p from '@clack/prompts'
 import { execSync, spawn } from 'node:child_process'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readFileSync, existsSync } from 'node:fs'
+import { resolve, join } from 'node:path'
 import { parseFlags } from './flags.js'
 import { dim, cyan, bold } from './intro.js'
 
@@ -73,6 +73,62 @@ function resetTerminal() {
   // Leave alternate screen, show cursor, reset attributes
   process.stdout.write('\x1b[?1049l\x1b[?25h\x1b[0m')
   try { execSync('stty sane 2>/dev/null', { stdio: 'ignore' }) } catch {}
+}
+
+/**
+ * Resolve the aliases file path for the current widget.
+ * Returns the path if found, null otherwise.
+ */
+function resolveAliasFile() {
+  const widgetId = process.env.STORYBOARD_WIDGET_ID
+  if (!widgetId) return null
+  const aliasFile = join(process.cwd(), '.storyboard', 'terminals', `${widgetId}.aliases.sh`)
+  return existsSync(aliasFile) ? aliasFile : null
+}
+
+/**
+ * Spawn an interactive shell with storyboard aliases pre-loaded.
+ * Sources the alias file via an --rcfile wrapper (zsh/bash) so that
+ * `start`, `copilot`, `claude`, `codex` are available in the child shell.
+ */
+function spawnShellWithAliases() {
+  const shell = process.env.SHELL || '/bin/zsh'
+  const aliasFile = resolveAliasFile()
+
+  if (aliasFile) {
+    // Spawn shell with init command that sources aliases after normal startup
+    // zsh: use -i (interactive) with STORYBOARD_ALIASES env var + .zshrc hook
+    // Most portable: use --init-extra-command-like behavior via env + exec
+    // Simplest: spawn shell, then inject source command via tmux send-keys
+    const child = spawn(shell, ['-i'], { stdio: 'inherit' })
+
+    // Give the shell time to initialize, then inject the source command
+    setTimeout(() => {
+      try {
+        execSync(`tmux send-keys -l ${JSON.stringify(`source "${aliasFile}"`)}`, { stdio: 'ignore' })
+        execSync(`tmux send-keys Enter`, { stdio: 'ignore' })
+        // Clear so the source command doesn't clutter the screen
+        setTimeout(() => {
+          try {
+            execSync(`tmux send-keys -l "clear"`, { stdio: 'ignore' })
+            execSync(`tmux send-keys Enter`, { stdio: 'ignore' })
+          } catch {}
+        }, 200)
+      } catch {}
+    }, 500)
+
+    return new Promise((resolve) => {
+      child.on('close', resolve)
+      child.on('error', resolve)
+    })
+  }
+
+  // Fallback: plain shell without aliases
+  const child = spawn(shell, ['-i'], { stdio: 'inherit' })
+  return new Promise((resolve) => {
+    child.on('close', resolve)
+    child.on('error', resolve)
+  })
 }
 
 /**
@@ -143,15 +199,10 @@ async function welcomeLoop() {
       firstIteration = false
 
       if (startupCmd === 'shell') {
-        // Plain shell — spawn interactive shell, return to welcome on exit
+        // Plain shell — spawn interactive shell with aliases, return to welcome on exit
         setMouse(true)
         try {
-          const shell = process.env.SHELL || '/bin/zsh'
-          const child = spawn(shell, [], { stdio: 'inherit' })
-          await new Promise((resolve) => {
-            child.on('close', resolve)
-            child.on('error', resolve)
-          })
+          await spawnShellWithAliases()
         } catch {}
         resetTerminal()
         continue
@@ -229,14 +280,9 @@ async function welcomeLoop() {
     if (action === 'shell') {
       p.outro(dim('Opening shell... Enter any command below.'))
       setMouse(true)
-      // Spawn an interactive shell; when it exits, loop back to welcome
+      // Spawn an interactive shell with aliases; when it exits, loop back to welcome
       try {
-        const shell = process.env.SHELL || '/bin/zsh'
-        const child = spawn(shell, [], { stdio: 'inherit' })
-        await new Promise((resolve) => {
-          child.on('close', resolve)
-          child.on('error', resolve)
-        })
+        await spawnShellWithAliases()
       } catch {}
       continue
     }

@@ -87,6 +87,25 @@ The `connectedWidgets` array is your **primary context**. These widgets tell you
 
 **Image widgets are high-priority context.** When a prompt is connected to an image, the user almost always wants you to implement or analyze what's in that image. Always load image files before starting work.
 
+### Resolving widget references across the connection graph
+
+When the task refers to a widget by type — e.g. "the connected image", "implement the connected sticky note" — the widget may **not** be directly in your `connectedWidgets`. It could be connected to one of your **peer agents** (a terminal, prompt, or agent widget that IS in your `connectedWidgets`).
+
+**Resolution order:**
+1. Search your own `connectedWidgets` for widgets matching the referenced type
+2. If not found, check peer agents: for each terminal/prompt/agent in your `connectedWidgets`, read their config to discover their connections:
+   ```bash
+   cat .storyboard/terminals/<peerWidgetId>.json | jq '.connectedWidgets'
+   ```
+3. Collect all matches across your direct connections AND peer connections
+
+**Disambiguation rules:**
+- **One match found** (anywhere in the graph) → use it directly.
+- **Multiple matches found** → signal error listing the options so the user can re-run with a specific reference. Include widget type, a snippet of content, and which agent it's connected to.
+- **No matches found** → signal error explaining no widget of that type was found in any connection.
+
+**Never guess.** If there are multiple possible matches, do not pick one at random — signal error with the options.
+
 ## Step 3: Execute your task
 
 You received your task as the `-p` argument. Interpret it in light of connected widgets.

@@ -60,6 +60,25 @@ The `connectedWidgets` array contains the FULL props of every widget connected t
 
 Interpret the user's prompt in light of these connected widgets.
 
+### Resolving widget references across the connection graph
+
+When the user refers to a widget by type — e.g. "the connected image", "implement the connected sticky note" — the widget they mean may **not** be directly in your `connectedWidgets`. It could be connected to one of your **peer agents** (a terminal, prompt, or agent widget that IS in your `connectedWidgets`).
+
+**Resolution order:**
+1. Search your own `connectedWidgets` for widgets matching the referenced type
+2. If not found, check peer agents: for each terminal/prompt/agent in your `connectedWidgets`, read their config to discover their connections:
+   ```bash
+   cat .storyboard/terminals/<peerWidgetId>.json | jq '.connectedWidgets'
+   ```
+3. Collect all matches across your direct connections AND peer connections
+
+**Disambiguation rules:**
+- **One match found** (anywhere in the graph) → use it directly. No need to ask.
+- **Multiple matches found** → ask the user which one they mean. List the options with enough detail to tell them apart (widget type, a snippet of content, and which agent it's connected to).
+- **No matches found** → tell the user no widget of that type was found in any connection.
+
+**Never pick randomly.** If there's ambiguity, always ask for clarification.
+
 ## Step 3: Prefer CLI commands for canvas operations
 
 **Always prefer `npx storyboard` CLI commands over HTTP API calls.** CLI commands run directly in the worktree and resolve the dev server automatically — no port numbers or URLs needed.

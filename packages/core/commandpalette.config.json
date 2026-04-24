@@ -22,7 +22,8 @@
         },
         {
           "id": "hide-toolbars",
-          "label": "Hide Toolbars"
+          "label": "Hide Toolbars",
+          "closeOnSelect": true
         }
       ]
     },

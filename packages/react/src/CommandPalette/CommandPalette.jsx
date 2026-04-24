@@ -603,12 +603,13 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
     for (const entry of section.toolIds) {
       const toolId = typeof entry === 'string' ? entry : entry.id
       const customLabel = typeof entry === 'object' ? entry.label : null
+      const closeOnSelect = typeof entry === 'object' ? entry.closeOnSelect : undefined
       const tool = tools[toolId]
       if (!tool) continue
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
       if (isHiddenInPalette(tool, basePath)) continue
-      entries.push({ toolId, tool, label: customLabel || tool.label || toolId, toolIcon: tool.icon })
+      entries.push({ toolId, tool, label: customLabel || tool.label || toolId, toolIcon: tool.icon, closeOnSelect: closeOnSelect ?? tool.closeOnSelect })
     }
   } else {
     for (const [toolId, tool] of Object.entries(tools)) {
@@ -616,7 +617,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       const state = getToolbarToolState(toolId)
       if (state === 'disabled' || state === 'hidden') continue
       if (isHiddenInPalette(tool, basePath)) continue
-      entries.push({ toolId, tool, label: tool.label || toolId, toolIcon: tool.icon })
+      entries.push({ toolId, tool, label: tool.label || toolId, toolIcon: tool.icon, closeOnSelect: tool.closeOnSelect })
     }
   }
 
@@ -625,7 +626,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
   const items = []
   const subPages = []
 
-  for (const { toolId, tool, label, toolIcon } of entries) {
+  for (const { toolId, tool, label, toolIcon, closeOnSelect: entryCloseOnSelect } of entries) {
     // Inline actions
     if (tool.inlineAction === 'toggle-chrome') {
       const isHidden = document.documentElement.classList.contains('storyboard-chrome-hidden')
@@ -638,6 +639,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
         </span>,
         keywords: [label, toolId, 'hide', 'show', 'toolbar'].filter(Boolean),
         showType: false,
+        closeOnSelect: entryCloseOnSelect,
         onClick: () => {
           document.documentElement.classList.toggle('storyboard-chrome-hidden')
           setRefreshKey(k => k + 1)
@@ -666,6 +668,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
         children: label,
         keywords: [label, toolId].filter(Boolean),
         url: resolvedUrl,
+        closeOnSelect: entryCloseOnSelect,
         onClick: () => {
           window.location.href = resolvedUrl
         },
@@ -753,6 +756,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
         id: `cfg:${section.id}:${toolId}`,
         children: label,
         keywords: [label, toolId].filter(Boolean),
+        closeOnSelect: entryCloseOnSelect,
         onClick: () => { if (action) executeAction(action.id) },
       })
       continue
@@ -762,6 +766,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
       id: `cfg:${section.id}:${toolId}`,
       children: label,
       keywords: [label, toolId].filter(Boolean),
+      closeOnSelect: entryCloseOnSelect,
       onClick: () => executeAction(toolId),
     })
   }

@@ -101,10 +101,10 @@ When the task refers to a widget by type — e.g. "the connected image", "implem
 
 **Disambiguation rules:**
 - **One match found** (anywhere in the graph) → use it directly.
-- **Multiple matches found** → signal error listing the options so the user can re-run with a specific reference. Include widget type, a snippet of content, and which agent it's connected to.
-- **No matches found** → signal error explaining no widget of that type was found in any connection.
+- **Multiple matches found** → pick the most contextually relevant one and run with it. Prefer the widget closest to your own prompt (direct connection over peer connection), and prefer content-rich widgets (e.g. an image with a filename over an empty sticky note). Mention which widget you chose in your completion signal.
+- **No matches found** → proceed without that context. Do your best with what you have.
 
-**Never guess.** If there are multiple possible matches, do not pick one at random — signal error with the options.
+**Prompts are optimistic.** Always assume the best interpretation and execute. If the user wants fine-grained control over disambiguation, they should use a terminal agent instead.
 
 ## Step 3: Execute your task
 

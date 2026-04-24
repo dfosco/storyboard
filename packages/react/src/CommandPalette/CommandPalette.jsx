@@ -383,8 +383,8 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
         items.push({
           id: 'create-widget:agent',
           children: 'Agent',
-          keywords: ['add', 'widget', 'create', 'agent', 'copilot', 'claude', 'codex'],
-          itemType: 'create',
+          keywords: ['add', 'widget', 'create', 'agent'],
+          itemType: 'agent',
           onClick: () => onNavigateToPage?.(pageId),
           closeOnSelect: false,
         })
@@ -974,6 +974,7 @@ export default function StoryboardCommandPalette({ basePath }) {
       items: (menu.options || []).map((opt, i) => ({
         id: `subpage:${menu.id}:${i}`,
         label: opt.label,
+        icon: opt.icon,
         isToggle: opt.type === 'toggle',
         isActiveToggle: opt.type === 'toggle' && opt.active,
         isActiveTheme: opt.toolHandler === 'core:theme' && opt.value === currentTheme,
@@ -1119,6 +1120,7 @@ export default function StoryboardCommandPalette({ basePath }) {
                     value={itemValue(item)}
                     onSelect={item.onSelect}
                   >
+                    {item.icon && <Icon name={item.icon} size={ICON_SIZE} color="var(--fgColor-muted, #656d76)" />}
                     <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>{item.label}</span>
                       {(item.isActiveToggle || item.isActiveTheme) && <span>✓</span>}
@@ -1167,6 +1169,7 @@ export default function StoryboardCommandPalette({ basePath }) {
                     setActivePage('root')
                   }}
                 >
+                  {opt.icon && <Icon name={opt.icon} size={ICON_SIZE} color="var(--fgColor-muted, #656d76)" />}
                   {opt.toolHandler === 'core:theme' && opt.value === currentTheme
                     ? <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}><span>{opt.label}</span><span>✓</span></span>
                     : opt.label}

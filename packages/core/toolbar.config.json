@@ -135,7 +135,7 @@
       "modes": ["*"],
       "menuWidth": "220px",
       "excludeRoutes": ["^/$", "/viewfinder"],
-      "hideInCommandPalette": ["^(?!/canvas)"]
+      "hideInCommandPalette": [".*"]
     },
     "canvas-zoom": {
       "ariaLabel": "Zoom controls",

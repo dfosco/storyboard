@@ -102,7 +102,7 @@
  * @property {boolean} enabled       — master toggle for customer mode
  * @property {boolean} hideChrome    — hides all toolbars (except canvas tools), branchbar, cmd+k, cmd+.
  * @property {boolean} hideHomepage  — removes the storyboard homepage (leaves empty page)
- * @property {string}  protoHomepage — internal /path that replaces homepage; redirects from / and /viewfinder
+ * @property {string}  protoHomepage — internal /path that replaces homepage; redirects from / and /workspace
  */
 
 /**

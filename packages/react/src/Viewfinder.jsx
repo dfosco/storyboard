@@ -94,10 +94,10 @@ function useGitHubUser(basePath) {
 
 /* ─── localStorage helpers ─── */
 
-const STARRED_KEY = 'sb-viewfinder-starred'
-const RECENT_KEY = 'sb-viewfinder-recent'
+const STARRED_KEY = 'sb-workspace-starred'
+const RECENT_KEY = 'sb-workspace-recent'
 const MAX_RECENT = 30
-const GROUP_BY_FOLDERS_KEY = 'sb-viewfinder-group-folders'
+const GROUP_BY_FOLDERS_KEY = 'sb-workspace-group-folders'
 
 function readJSON(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) || fallback }
@@ -1179,7 +1179,7 @@ export default function Viewfinder({
   const knownRoutes = useMemo(() =>
     Object.keys(pageModules)
       .map(p => p.replace('/src/prototypes/', '').replace('.jsx', ''))
-      .filter(n => !n.startsWith('_') && n !== 'index' && n !== 'viewfinder'),
+      .filter(n => !n.startsWith('_') && n !== 'index' && n !== 'workspace' && n !== 'viewfinder'),
     [pageModules],
   )
 

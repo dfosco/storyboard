@@ -1,17 +1,13 @@
-import { flows } from 'virtual:storyboard-data-index'
-import { Viewfinder } from '@dfosco/storyboard-react'
+import { useEffect } from 'react'
 
-const pageModules = import.meta.glob('/src/prototypes/*.jsx')
-
-export default function ViewfinderPage() {
-  return (
-    <Viewfinder
-      title="Storyboard"
-      subtitle="Where design work goes"
-      flows={flows}
-      hideDefaultFlow={true}
-      pageModules={pageModules}
-      basePath={import.meta.env.BASE_URL}
-    />
-  )
+/**
+ * Backward-compat redirect: /viewfinder → /workspace
+ * Kept for one release cycle so existing bookmarks and links still work.
+ */
+export default function ViewfinderRedirect() {
+  useEffect(() => {
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '')
+    window.location.replace(`${base}/workspace${window.location.hash}`)
+  }, [])
+  return null
 }

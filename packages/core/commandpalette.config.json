@@ -13,7 +13,7 @@
       "source": "tools",
       "toolIds": [
         {
-          "id": "viewfinder",
+          "id": "workspace",
           "label": "Homepage"
         },
         {
@@ -55,11 +55,13 @@
         },
         {
           "id": "devtools",
-          "label": "Devtools"
+          "label": "Devtools",
+          "meta": { "strokeWeight": 1.6, "scale": 1.1 }
         },
         {
           "id": "feature-flags",
-          "label": "Feature Flags"
+          "label": "Feature Flags",
+          "meta": { "strokeWeight": 1.6, "scale": 1.1 }
         },
         {
           "id": "autosync",
@@ -92,7 +94,8 @@
     {
       "id": "prototypes",
       "title": "Prototypes",
-      "source": "prototypes"
+      "source": "prototypes",
+      "meta": { "strokeWeight": 1.6, "scale": 1.1 }
     },
     {
       "id": "sep4",
@@ -101,7 +104,8 @@
     {
       "id": "canvases",
       "title": "Canvas",
-      "source": "canvases"
+      "source": "canvases",
+      "meta": { "strokeWeight": 1.6, "scale": 1.1 }
     },
     {
       "id": "sep5",

@@ -28,6 +28,24 @@ let _mounted = false
 const CHROME_HIDDEN_KEY = 'sb-chrome-hidden'
 
 /**
+ * Migrate localStorage keys renamed in 4.3.0.
+ * Runs once at startup, idempotent: only copies if new key doesn't exist yet.
+ */
+function migrateLocalStorageKeys() {
+  if (typeof localStorage === 'undefined') return
+  const renames = [
+    ['sb-viewfinder-starred', 'sb-workspace-starred'],
+    ['sb-viewfinder-recent', 'sb-workspace-recent'],
+    ['sb-viewfinder-group-folders', 'sb-workspace-group-folders'],
+  ]
+  for (const [oldKey, newKey] of renames) {
+    if (localStorage.getItem(newKey) === null && localStorage.getItem(oldKey) !== null) {
+      localStorage.setItem(newKey, localStorage.getItem(oldKey))
+    }
+  }
+}
+
+/**
  * Restore the saved chrome-hidden state immediately, before React mounts.
  * Prevents a flash of toolbars appearing then disappearing.
  */
@@ -165,6 +183,9 @@ export async function mountStoryboardCore(config = {}, options = {}) {
 
   const basePath = options.basePath || '/'
   const customHandlers = options.handlers || {}
+
+  // Migrate renamed localStorage keys (4.3.0: viewfinder → workspace)
+  migrateLocalStorageKeys()
 
   // Apply saved chrome-hidden state immediately — before React mount
   applyEarlyChromeState()

@@ -359,7 +359,7 @@ describe('locked mode', () => {
 describe('tool registry', () => {
   const SAMPLE_TOOLS = {
     '*': [
-      { id: 'viewfinder', label: 'Viewfinder', group: 'dev' },
+      { id: 'workspace', label: 'Workspace', group: 'dev' },
       { id: 'reset-params', label: 'Reset all params', group: 'dev' },
     ],
     'present': [
@@ -372,14 +372,14 @@ describe('tool registry', () => {
       initTools(SAMPLE_TOOLS)
       const tools = getToolsForMode('present')
       const ids = tools.map(t => t.id)
-      expect(ids).toContain('viewfinder')
+      expect(ids).toContain('workspace')
       expect(ids).toContain('comments-toggle')
     })
 
     it('wildcard tools appear in all modes', () => {
       initTools(SAMPLE_TOOLS)
       const protoTools = getToolsForMode('prototype')
-      expect(protoTools.map(t => t.id)).toContain('viewfinder')
+      expect(protoTools.map(t => t.id)).toContain('workspace')
     })
 
     it('mode-specific tools only appear in their mode', () => {
@@ -390,7 +390,7 @@ describe('tool registry', () => {
 
     it('tools start with default state', () => {
       initTools(SAMPLE_TOOLS)
-      const state = getToolState('viewfinder')
+      const state = getToolState('workspace')
       expect(state).toEqual({
         enabled: true,
         active: false,

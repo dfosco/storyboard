@@ -35,8 +35,8 @@
       "prod": true,
       "menuWidth": "280px",
       "handler": "core:flows",
-      "excludeRoutes": ["^/$", "/viewfinder", "/canvas/", "/components/", "/notebook/"],
-      "hideInCommandPalette": ["^/$", "/viewfinder", "/canvas/", "/components/", "/notebook/"]
+      "excludeRoutes": ["^/$", "/workspace", "/viewfinder", "/canvas/", "/components/", "/notebook/"],
+      "hideInCommandPalette": ["^/$", "/workspace", "/viewfinder", "/canvas/", "/components/", "/notebook/"]
     },    
     "theme": {
       "label": "Theme",
@@ -67,8 +67,8 @@
       "handler": "core:comments",
       "modes": ["*"],
       "prod": true,
-      "excludeRoutes": ["^/$", "/viewfinder"],
-      "hideInCommandPalette": ["^/$", "/viewfinder"]
+      "excludeRoutes": ["^/$", "/workspace", "/viewfinder"],
+      "hideInCommandPalette": ["^/$", "/workspace", "/viewfinder"]
     },
     "inspector": {
       "ariaLabel": "Inspect components",
@@ -79,8 +79,8 @@
       "handler": "core:inspector",
       "modes": ["*"],
       "prod": true,
-      "excludeRoutes": ["^/$", "/viewfinder", "/canvas/", "/components/", "/notebook/"],
-      "hideInCommandPalette": ["^/$", "/viewfinder", "/canvas/", "/components/", "/notebook/"],
+      "excludeRoutes": ["^/$", "/workspace", "/viewfinder", "/canvas/", "/components/", "/notebook/"],
+      "hideInCommandPalette": ["^/$", "/workspace", "/viewfinder", "/canvas/", "/components/", "/notebook/"],
       "meta": { "strokeWeight": 2, "scale": 1.1 },
       "shortcut": { "key": "i", "label": "cmd + I" }
     },    
@@ -122,7 +122,7 @@
       "modes": ["*"],
       "meta": { "strokeWeight": 2, "scale": 1.2 },
       "menuWidth": "300px",
-      "excludeRoutes": ["^/$", "/viewfinder"],
+      "excludeRoutes": ["^/$", "/workspace", "/viewfinder"],
       "hideInCommandPalette": [".*"]
     },
     "canvas-agents": {
@@ -134,7 +134,7 @@
       "handler": "core:canvas-agents",
       "modes": ["*"],
       "menuWidth": "220px",
-      "excludeRoutes": ["^/$", "/viewfinder"],
+      "excludeRoutes": ["^/$", "/workspace", "/viewfinder"],
       "hideInCommandPalette": [".*"]
     },
     "canvas-zoom": {
@@ -180,8 +180,8 @@
       "modes": ["*"],
       "hideInCommandPalette": [".*"]
     },
-    "viewfinder": {
-      "label": "Go to index page",
+    "workspace": {
+      "label": "Go to workspace",
       "icon": "primer/home-fill",
       "render": "link",
       "surface": "command-palette",

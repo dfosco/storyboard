@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 
-// Mock loader and viewfinder before importing providers
+// Mock loader and workspace before importing providers
 vi.mock('./loader.js', () => ({
   listStories: vi.fn(() => ['button', 'card']),
   getStoryData: vi.fn((name) => ({
@@ -34,7 +34,7 @@ vi.mock('./loader.js', () => ({
 
 vi.mock('./commandActions.js', () => ({
   getActionsForMode: vi.fn(() => [
-    { id: 'core/viewfinder', label: 'Go to Viewfinder', type: 'link', url: '/', toolKey: 'viewfinder' },
+    { id: 'core/workspace', label: 'Go to Workspace', type: 'link', url: '/', toolKey: 'workspace' },
     { id: 'core/docs', label: 'Documentation', type: 'default', toolKey: 'docs' },
     { id: 'core/devtools', label: 'DevTools', type: 'submenu', toolKey: 'devtools' },
     { type: 'header', label: 'Command Menu' },

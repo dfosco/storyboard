@@ -414,7 +414,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
 
   // --- Starred source (reads from viewfinder localStorage) ---
   if (section.source === 'starred') {
-    const STARRED_KEY = 'sb-viewfinder-starred'
+    const STARRED_KEY = 'sb-workspace-starred'
     let starredIds = []
     try { starredIds = JSON.parse(localStorage.getItem(STARRED_KEY)) || [] } catch {}
     if (starredIds.length === 0) return null

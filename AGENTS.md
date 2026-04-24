@@ -80,6 +80,8 @@ The default location is in `.agents/plans`, but the user may ask for a specific 
 
 - **agent-browser** (`.agents/skills/agent-browser/SKILL.md`) — Browser inspection during development using `agent-browser` CLI. Snapshots, screenshots, console errors, element inspection.
 
+- **migrate** (`.agents/skills/migrate/SKILL.md`) — Migrates client projects between storyboard versions. Handles breaking changes in config, routes, and features.
+
 ---
 
 ## Build & Development

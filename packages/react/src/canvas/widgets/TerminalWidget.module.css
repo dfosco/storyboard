@@ -32,10 +32,10 @@
   position: relative;
   border-radius: var(--base-size-16, 16px);
   overflow: hidden;
-  background: #0d1117;
+  background: var(--term-bg, #0d1117);
   border: 1px solid var(--borderColor-default, #30363d);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.24);
-  padding: var(--base-size-8, 8px);
+  padding: var(--base-size-16, 16px);
   box-sizing: border-box;
 }
 
@@ -49,11 +49,11 @@
 .xtermContainer :global(.xterm) {
   width: 100%;
   height: 100%;
-  background: #0d1117;
+  background: var(--term-bg, #0d1117);
 }
 
 .xtermContainer :global(.xterm) canvas {
-  background: #0d1117;
+  background: var(--term-bg, #0d1117);
 }
 
 /* Hide the native caret on ghostty-web's helper textarea —
@@ -98,7 +98,7 @@
   color: #8b949e;
   font-size: 13px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #0d1117;
+  background: var(--term-bg, #0d1117);
   z-index: 1;
 }
 
@@ -111,7 +111,7 @@
   color: #f85149;
   font-size: 13px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #0d1117;
+  background: var(--term-bg, #0d1117);
   z-index: 1;
 }
 
@@ -217,7 +217,7 @@
   position: fixed;
   inset: 0;
   z-index: 100000;
-  background: #0d1117;
+  background: var(--term-bg, #0d1117);
   display: flex;
   flex-direction: column;
   animation: expandFadeIn 0.15s ease;
@@ -290,7 +290,7 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  background: #0d1117;
+  background: var(--term-bg, #0d1117);
 }
 
 .expandTerminal :global(.xterm) {

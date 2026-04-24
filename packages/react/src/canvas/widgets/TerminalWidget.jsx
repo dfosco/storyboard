@@ -232,6 +232,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           wrap.style.setProperty('--term-cols', dims.cols)
           wrap.style.setProperty('--term-rows', dims.rows)
           wrap.style.setProperty('--term-font-size', `${cfg.fontSize ?? 13}px`)
+          const theme = { ...DEFAULT_THEME, ...cfg.theme }
+          wrap.style.setProperty('--term-bg', theme.background)
         }
 
         // Snap container to exact cell grid using real metrics
@@ -528,7 +530,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         {sessionEnded && (
           <div
             className={overlayStyles.interactOverlay}
-            style={{ backgroundColor: '#0d1117', flexDirection: 'column', gap: 0 }}
+            style={{ backgroundColor: 'var(--term-bg, #0d1117)', flexDirection: 'column', gap: 0 }}
             onClick={handleStartSession}
             role="button"
             tabIndex={0}

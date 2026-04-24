@@ -71,8 +71,8 @@
   "hotPool": {
     "enabled": true,
     "verbose": false,
-    "pool_size": 1,
-    "max_pool_size": 3,
+    "default_pool_size": 1,
+    "default_max_pool_size": 3,
     "load_balancer": true,
     "load_balancer_cooldown_mins": 10,
     "pools": {

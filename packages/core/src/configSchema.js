@@ -51,8 +51,8 @@
  * @typedef {object} HotPoolConfig
  * @property {boolean} [enabled]       — enable/disable all pools (default: true)
  * @property {boolean} [verbose]       — log to Vite terminal (default: false)
- * @property {number}  [pool_size]     — default baseline per pool (default: 1)
- * @property {number}  [max_pool_size] — default surge cap per pool (default: 3)
+ * @property {number}  [default_pool_size]     — default baseline per pool (default: 1)
+ * @property {number}  [default_max_pool_size] — default surge cap per pool (default: 3)
  * @property {boolean} [load_balancer] — enable auto-scaling (default: true)
  * @property {number}  [load_balancer_cooldown_mins] — minutes idle before scale-down (default: 10)
  * @property {Record<string, { pool_size?: number, max_pool_size?: number }>} [pools] — per-pool overrides (terminal, prompt, copilot, claude, codex)

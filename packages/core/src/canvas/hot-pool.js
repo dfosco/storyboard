@@ -29,8 +29,8 @@
  *
  *   hotPool.enabled         — enable/disable all pools (default: true)
  *   hotPool.verbose         — log to Vite terminal (default: false)
- *   hotPool.pool_size       — default baseline per pool (default: 1)
- *   hotPool.max_pool_size   — default surge cap per pool (default: 3)
+ *   hotPool.default_pool_size       — default baseline per pool (default: 1)
+ *   hotPool.default_max_pool_size   — default surge cap per pool (default: 3)
  *   hotPool.load_balancer   — enable auto-scaling (default: true)
  *   hotPool.load_balancer_cooldown_mins — minutes idle before scale-down (default: 10)
  *   hotPool.pools.terminal  — per-pool overrides for terminal { pool_size, max_pool_size }
@@ -569,8 +569,8 @@ export class HotPoolManager {
 
     // Merge per-pool config with top-level defaults
     const mergeConfig = (poolId) => ({
-      pool_size: poolsConfig[poolId]?.pool_size ?? config.pool_size ?? DEFAULT_POOL_SIZE,
-      max_pool_size: poolsConfig[poolId]?.max_pool_size ?? config.max_pool_size ?? DEFAULT_MAX_POOL_SIZE,
+      pool_size: poolsConfig[poolId]?.pool_size ?? config.default_pool_size ?? DEFAULT_POOL_SIZE,
+      max_pool_size: poolsConfig[poolId]?.max_pool_size ?? config.default_max_pool_size ?? DEFAULT_MAX_POOL_SIZE,
       load_balancer_cooldown_mins: config.load_balancer_cooldown_mins ?? DEFAULT_COOLDOWN_MINS,
       load_balancer: config.load_balancer !== false,
       enabled: this.#enabled,
@@ -659,8 +659,8 @@ export class HotPoolManager {
     const poolsConfig = config.pools || {}
     for (const [id, pool] of this.#pools) {
       const poolConfig = {
-        pool_size: poolsConfig[id]?.pool_size ?? config.pool_size,
-        max_pool_size: poolsConfig[id]?.max_pool_size ?? config.max_pool_size,
+        pool_size: poolsConfig[id]?.pool_size ?? config.default_pool_size,
+        max_pool_size: poolsConfig[id]?.max_pool_size ?? config.default_max_pool_size,
         load_balancer_cooldown_mins: config.load_balancer_cooldown_mins,
         load_balancer: config.load_balancer,
         enabled: config.enabled,

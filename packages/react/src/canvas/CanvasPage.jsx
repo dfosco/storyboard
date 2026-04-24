@@ -2236,6 +2236,8 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     function handleKeyDown(e) {
       const tag = e.target.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return
+      // Don't intercept shortcuts when the command palette is open
+      if (e.target.closest?.('[cmdk-root]')) return
       const mod = e.metaKey || e.ctrlKey
       if (mod && e.key === 'z' && !e.shiftKey) {
         e.preventDefault()

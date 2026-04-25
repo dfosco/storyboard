@@ -155,26 +155,6 @@ export default function ExpandedPane({ initialPanes, variant = 'modal', onClose,
     return () => document.removeEventListener('keydown', handleKeyDown, true)
   }, [onClose])
 
-  // ── Pane operations ──
-  const handleRemovePane = useCallback((index) => {
-    setPanes(prev => {
-      const next = prev.filter((_, i) => i !== index)
-      if (next.length === 0) {
-        onClose()
-        return prev
-      }
-      onPanesChange?.(next)
-      return next
-    })
-    setColumnSizes(prev => prev.filter((_, i) => i !== index))
-    setActivePaneIndex(prev => Math.min(prev, panes.length - 2))
-  }, [panes.length, onClose, onPanesChange])
-
-  const handleAddPane = useCallback(() => {
-    // Placeholder: in the future, this opens a WidgetPicker in an empty slot
-    // For now, it's a no-op until WidgetPicker is built
-  }, [])
-
   // ── Drag-to-resize dividers ──
   const dragState = useRef(null)
 
@@ -302,8 +282,6 @@ export default function ExpandedPane({ initialPanes, variant = 'modal', onClose,
         panes={panes}
         activePaneIndex={activePaneIndex}
         onClose={onClose}
-        onRemovePane={isSplit ? handleRemovePane : undefined}
-        onAddPane={isSplit ? handleAddPane : undefined}
       />
       {isSplit ? (
         <div

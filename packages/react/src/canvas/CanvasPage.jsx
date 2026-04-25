@@ -6,7 +6,7 @@ import { shouldPreventCanvasTextSelection } from './textSelection.js'
 import { getCanvasThemeVars, getCanvasPrimerAttrs } from './canvasTheme.js'
 import { getWidgetComponent } from './widgets/index.js'
 import { schemas, getDefaults } from './widgets/widgetProps.js'
-import { getFeatures, isResizable, isExpandable, getAnchorState, canAcceptConnection } from './widgets/widgetConfig.js'
+import { getFeatures, isResizable, isExpandable, getAnchorState, canAcceptConnection, isSplitScreenCapable } from './widgets/widgetConfig.js'
 import { createPasteContext, resolvePaste } from './widgets/pasteRules.js'
 import { getPasteRules } from '@dfosco/storyboard-core'
 import { isTerminalResizable, getTerminalDimensions } from '@dfosco/storyboard-core'
@@ -14,7 +14,7 @@ import { getFlag } from '@dfosco/storyboard-core'
 import { registerSmoothCorners } from '@dfosco/storyboard-core/smooth-corners'
 import { registerHotPoolDevLogs } from './hotPoolDevLogs.js'
 import { isGitHubEmbedUrl } from './widgets/githubUrl.js'
-import { findConnectedSplitTarget } from './widgets/expandUtils.js'
+
 import WidgetChrome from './widgets/WidgetChrome.jsx'
 import ComponentWidget from './widgets/ComponentWidget.jsx'
 import useUndoRedo from './useUndoRedo.js'
@@ -346,9 +346,15 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
       return f
     }).filter(Boolean)
 
-    // Add dynamic "Split Screen" action when a connected split target exists
+    // Add dynamic "Split Screen" action when a connected split target exists.
+    // Uses connectorCount/allWidgets props (reactive) instead of the global
+    // bridge state which may be stale during React render.
     if (isExpandable(widget.type)) {
-      const hasConnected = Boolean(findConnectedSplitTarget(widget.id))
+      const hasConnected = (connectorCount || []).some((c) => {
+        const otherId = c.start?.widgetId === widget.id ? c.end?.widgetId : c.start?.widgetId
+        const otherWidget = (allWidgets || []).find((w) => w.id === otherId)
+        return otherWidget && isSplitScreenCapable(otherWidget.type)
+      })
       if (hasConnected) {
         // Insert before the first menu-only feature
         const insertIdx = adjusted.findIndex((f) => f.menu)
@@ -400,7 +406,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
     }
 
     return adjusted
-  }, [rawFeatures, widget.props?.github, widget.props?.collapsed, widget.type, widget.id, connectorCount])
+  }, [rawFeatures, widget.props?.github, widget.props?.collapsed, widget.type, widget.id, connectorCount, allWidgets])
 
   const handleAction = useCallback((actionId) => {
     if (actionId === 'delete') {
@@ -1893,9 +1899,9 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     }))
   }, [canvasId, zoom])
 
-  // Keep bridge in sync with widgets/connectors for expand features
-  // Sync synchronously (not in useEffect) so child widgets see current
-  // data when they call findConnectedSplitTarget during render.
+  // Keep bridge in sync with widgets/connectors for expand features.
+  // Child widgets now use props directly for split-screen gating, but
+  // FigmaEmbed/PrototypeEmbed/etc. still read this bridge at expand time.
   useMemo(() => {
     const bridge = window[CANVAS_BRIDGE_STATE_KEY] || {}
     bridge.widgets = localWidgets

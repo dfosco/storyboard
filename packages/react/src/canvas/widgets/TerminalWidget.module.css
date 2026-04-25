@@ -1,3 +1,7 @@
+:root {
+  --term-bg: #181b22;
+}
+
 .container {
   position: relative;
   padding-bottom: 0;

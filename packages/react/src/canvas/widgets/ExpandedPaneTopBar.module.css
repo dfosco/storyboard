@@ -4,8 +4,8 @@
   display: flex;
   align-items: center;
   height: 40px;
-  padding: 0 8px 0 12px;
-  gap: 8px;
+  padding: 0 12px;
+  gap: 12px;
   background: var(--bgColor-muted, #f6f8fa);
   border-bottom: 1px solid var(--borderColor-muted, #d8dee4);
   flex-shrink: 0;
@@ -15,35 +15,19 @@
   user-select: none;
 }
 
-.labels {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 6px;
+.leftLabel {
   white-space: nowrap;
   overflow: hidden;
-  max-width: 300px;
-  cursor: default;
-  transition: background 100ms;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
-.label:hover {
-  background: var(--bgColor-neutral-muted, #eaeef233);
-}
-
-.labelText {
+.rightLabel {
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+  margin-left: auto;
 }
 
 .active {
@@ -54,39 +38,6 @@
   color: var(--fgColor-muted, #656d76);
 }
 
-.removeBtn {
-  all: unset;
-  cursor: pointer;
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  color: var(--fgColor-muted, #656d76);
-  opacity: 0;
-  transition: opacity 100ms, background 100ms, color 100ms;
-}
-
-.label:hover .removeBtn {
-  opacity: 1;
-}
-
-.removeBtn:hover {
-  background: var(--bgColor-neutral-muted, #eaeef2);
-  color: var(--fgColor-default, #1f2328);
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-.addBtn,
 .closeBtn {
   all: unset;
   cursor: pointer;
@@ -101,7 +52,6 @@
   transition: background 100ms, color 100ms;
 }
 
-.addBtn:hover,
 .closeBtn:hover {
   background: var(--bgColor-neutral-muted, #eaeef2);
   color: var(--fgColor-default, #1f2328);

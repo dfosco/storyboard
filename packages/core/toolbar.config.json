@@ -226,6 +226,15 @@
       "prod": true,
       "handler": "core:devtools"
     },
+    "palette-theme": {
+      "label": "Switch theme",
+      "icon": "primer/sun",
+      "render": "submenu",
+      "surface": "command-palette",
+      "modes": ["*"],
+      "prod": true,
+      "handler": "core:palette-theme"
+    },
     "feature-flags": {
       "label": "Feature Flags",
       "icon": "iconoir/white-flag",

@@ -10,6 +10,7 @@ import { getFeatures, isResizable, isExpandable, getAnchorState, canAcceptConnec
 import { createPasteContext, resolvePaste } from './widgets/pasteRules.js'
 import { getPasteRules } from '@dfosco/storyboard-core'
 import { isTerminalResizable, getTerminalDimensions } from '@dfosco/storyboard-core'
+import { getFlag } from '@dfosco/storyboard-core'
 import { registerSmoothCorners } from '@dfosco/storyboard-core/smooth-corners'
 import { registerHotPoolDevLogs } from './hotPoolDevLogs.js'
 import { isGitHubEmbedUrl } from './widgets/githubUrl.js'
@@ -138,16 +139,16 @@ function getViewportStorageKey(canvasId) {
 function loadViewportState(canvasId) {
   try {
     const raw = localStorage.getItem(getViewportStorageKey(canvasId))
-    if (!raw) { console.log('[viewport] no saved state for', canvasId); return null }
+    if (!raw) { if (getFlag('dev-logs')) console.log('[viewport] no saved state for', canvasId); return null }
     const state = JSON.parse(raw)
     const timestamp = typeof state.timestamp === 'number' ? state.timestamp : 0
     const age = Date.now() - timestamp
     if (age > VIEWPORT_TTL_MS) {
-      console.log('[viewport] stale state for', canvasId, '— age:', Math.round(age / 1000), 's')
+      if (getFlag('dev-logs')) console.log('[viewport] stale state for', canvasId, '— age:', Math.round(age / 1000), 's')
       localStorage.removeItem(getViewportStorageKey(canvasId))
       return null
     }
-    console.log('[viewport] loaded state for', canvasId, '— age:', Math.round(age / 1000), 's, zoom:', state.zoom, 'scroll:', state.scrollLeft, state.scrollTop)
+    if (getFlag('dev-logs')) console.log('[viewport] loaded state for', canvasId, '— age:', Math.round(age / 1000), 's, zoom:', state.zoom, 'scroll:', state.scrollLeft, state.scrollTop)
     return {
       zoom: typeof state.zoom === 'number' ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, state.zoom)) : null,
       scrollLeft: typeof state.scrollLeft === 'number' ? state.scrollLeft : null,
@@ -753,7 +754,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
   if (canvas !== trackedCanvas) {
     const isCanvasSwitch = trackedCanvas && canvas && trackedCanvas._route !== canvas._route
-    console.log('[viewport] canvas changed —', isCanvasSwitch ? 'new canvas, resetting viewport' : 'same canvas, updating widgets only')
+    if (getFlag('dev-logs')) console.log('[viewport] canvas changed —', isCanvasSwitch ? 'new canvas, resetting viewport' : 'same canvas, updating widgets only')
     setTrackedCanvas(canvas)
 
     // Skip replacing local state with server data when optimistic edits are
@@ -1341,13 +1342,13 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     if (!el || loading) return
     const saved = pendingScrollRestore.current
     if (saved) {
-      console.log('[viewport] restoring saved viewport — zoom:', saved.zoom, 'scroll:', saved.scrollLeft, saved.scrollTop)
+      if (getFlag('dev-logs')) console.log('[viewport] restoring saved viewport — zoom:', saved.zoom, 'scroll:', saved.scrollLeft, saved.scrollTop)
       // Fresh saved viewport — restore exactly
       if (saved.scrollLeft != null) el.scrollLeft = saved.scrollLeft
       if (saved.scrollTop != null) el.scrollTop = saved.scrollTop
       pendingScrollRestore.current = null
     } else {
-      console.log('[viewport] no saved viewport — fitting to objects')
+      if (getFlag('dev-logs')) console.log('[viewport] no saved viewport — fitting to objects')
       // No saved state or stale — zoom-to-fit all objects
       const bounds = computeCanvasBounds(localWidgets, componentEntries)
       if (bounds && el.clientWidth > 0 && el.clientHeight > 0) {
@@ -1431,7 +1432,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   useEffect(() => {
     if (viewportInitName.current !== canvasId) return
     const el = scrollRef.current
-    console.log('[viewport] saving — zoom:', zoom, 'scroll:', el?.scrollLeft, el?.scrollTop)
+    if (getFlag('dev-logs')) console.log('[viewport] saving — zoom:', zoom, 'scroll:', el?.scrollLeft, el?.scrollTop)
     // Read current scroll so the zoom entry doesn't zero-out position,
     // but the authoritative scroll save comes from the scroll handler.
     saveViewportState(canvasId, {

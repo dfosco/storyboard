@@ -128,7 +128,9 @@ function useExternalStore(store) {
 }
 
 export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandlers = {} }) {
-  const [visible, setVisible] = useState(true)
+  const [visible, setVisible] = useState(
+    () => !document.documentElement.classList.contains('storyboard-chrome-hidden')
+  )
   const [toolComponents, setToolComponents] = useState({})
   const [toolData, setToolData] = useState({})
   const [navVersion, setNavVersion] = useState(0)

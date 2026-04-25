@@ -106,4 +106,14 @@ describe('fuzzySearch', () => {
     const results = fuzzySearch(data, 'val')
     expect(results).toHaveLength(1)
   })
+
+  it('ranks agent keyword matches above fuzzy component matches for "cop"', () => {
+    const data = [
+      { label: 'Component add widget create component component' },
+      { label: 'Agent add widget create agent copilot Copilot CLI' },
+    ]
+    const results = fuzzySearch(data, 'cop')
+    expect(results[0].item.label).toContain('Agent')
+    expect(results[0].score).toBeGreaterThan(results[1].score)
+  })
 })

@@ -377,8 +377,8 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
         const pageId = 'create-widget:agents'
         subPages.push({
           id: pageId,
-          label: 'Agent',
-          title: 'Add Agent',
+          label: 'Add agent to canvas',
+          title: 'Add agent to canvas',
           keywords: ['agent', 'add', 'widget', 'copilot', 'claude', 'codex'],
           options: agentEntries.map(([id, cfg]) => ({
             label: cfg.label || id,
@@ -403,6 +403,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
           children: 'Agent',
           keywords: ['add', 'widget', 'create', 'agent'],
           itemType: 'agent',
+          hideFromSearch: true,
           onClick: () => onNavigateToPage?.(pageId),
           closeOnSelect: false,
         })
@@ -1125,13 +1126,35 @@ export default function StoryboardCommandPalette({ basePath }) {
 
         {activePage === 'root' ? (
           <>
+            {/* Sub-page options flattened for root search — rendered first
+                so high-scoring items (e.g. "Copilot CLI" for query "cop")
+                appear above weaker matches in later groups. */}
+            {search && subPageGroups.map(group => (
+              <Command.Group key={group.id} heading={group.heading}>
+                {group.items.map(item => (
+                  <Command.Item
+                    key={item.id}
+                    value={itemValue(item)}
+                    onSelect={item.onSelect}
+                  >
+                    {item.icon && <Icon name={item.icon} size={ICON_SIZE} color="var(--fgColor-muted, #656d76)" />}
+                    <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>{item.label}</span>
+                      {(item.isActiveToggle || item.isActiveTheme) && <span>✓</span>}
+                    </span>
+                  </Command.Item>
+                ))}
+              </Command.Group>
+            ))}
+
             {/* Main config-driven groups */}
             {cleanedItems.map((list) => (
               list.id?.startsWith('cfg:sep') ? (
                 !search && <Command.Separator key={list.id} />
               ) : (
                 <Command.Group key={list.id} heading={list.heading}>
-                  {list.items.map(({ id, children, keywords, onClick, itemType, toolIcon, toolMeta, closeOnSelect, url, ...rest }) => {
+                  {list.items.map(({ id, children, keywords, onClick, itemType, toolIcon, toolMeta, closeOnSelect, hideFromSearch, url, ...rest }) => {
+                    if (search && hideFromSearch) return null
                     if (hiddenFromSearchIds.size > 0) {
                       for (const toolId of hiddenFromSearchIds) {
                         if (id?.includes(toolId)) return null
@@ -1160,25 +1183,6 @@ export default function StoryboardCommandPalette({ basePath }) {
                   })}
                 </Command.Group>
               )
-            ))}
-
-            {/* Sub-page options flattened for root search */}
-            {search && subPageGroups.map(group => (
-              <Command.Group key={group.id} heading={group.heading}>
-                {group.items.map(item => (
-                  <Command.Item
-                    key={item.id}
-                    value={itemValue(item)}
-                    onSelect={item.onSelect}
-                  >
-                    {item.icon && <Icon name={item.icon} size={ICON_SIZE} color="var(--fgColor-muted, #656d76)" />}
-                    <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>{item.label}</span>
-                      {(item.isActiveToggle || item.isActiveTheme) && <span>✓</span>}
-                    </span>
-                  </Command.Item>
-                ))}
-              </Command.Group>
             ))}
 
             {/* Author groups */}

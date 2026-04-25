@@ -108,7 +108,7 @@ function getCommentKindLabel(github) {
   return 'Comment'
 }
 
-function GitHubIssueCard({ id, url, title, github, width, collapsed, expanded, onCloseExpand }) {
+function GitHubIssueCard({ id, url, title, github, width, collapsed, expanded, expandMode, onCloseExpand }) {
   const authors = Array.isArray(github?.authors)
     ? github.authors.filter((a) => typeof a === 'string' && a.trim())
     : []
@@ -211,6 +211,7 @@ function GitHubIssueCard({ id, url, title, github, width, collapsed, expanded, o
       <LinkPreviewExpandPane
         widgetId={id}
         label={`${kindLabel}: ${titleText || url || 'GitHub'}`}
+        splitMode={expandMode === 'split'}
         onClose={onCloseExpand}
       >
         <div className={styles.expandedIssue}>
@@ -254,11 +255,13 @@ export default forwardRef(function LinkPreview({ id, props, onUpdate, resizable 
   const cardRef = useRef(null)
   const inputRef = useRef(null)
   const [editing, setEditing] = useState(false)
-  const [expanded, setExpanded] = useState(false)
+  const [expandMode, setExpandMode] = useState(null)
+  const expanded = expandMode !== null
 
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
-      if (actionId === 'expand' || actionId === 'split-screen') { setExpanded(true); return true }
+      if (actionId === 'expand') { setExpandMode('single'); return true }
+      if (actionId === 'split-screen') { setExpandMode('split'); return true }
       if (actionId === 'open-external') {
         if (url) window.open(url, '_blank', 'noopener')
         return true
@@ -293,7 +296,8 @@ export default forwardRef(function LinkPreview({ id, props, onUpdate, resizable 
         width={width}
         collapsed={!!props?.collapsed}
         expanded={expanded}
-        onCloseExpand={() => setExpanded(false)}
+        expandMode={expandMode}
+        onCloseExpand={() => setExpandMode(null)}
       />
     )
   }
@@ -367,7 +371,8 @@ export default forwardRef(function LinkPreview({ id, props, onUpdate, resizable 
       <LinkPreviewExpandPane
         widgetId={id}
         label={title || hostname || 'Link Preview'}
-        onClose={() => setExpanded(false)}
+        splitMode={expandMode === 'split'}
+        onClose={() => setExpandMode(null)}
       >
         <div className={styles.expandedLink}>
           {ogImage && <img className={styles.expandedOgImage} src={ogImage} alt="" loading="lazy" />}
@@ -384,10 +389,10 @@ export default forwardRef(function LinkPreview({ id, props, onUpdate, resizable 
 /**
  * Builds pane configs and renders ExpandedPane for an expanded link-preview widget.
  */
-function LinkPreviewExpandPane({ widgetId, label, onClose, children }) {
+function LinkPreviewExpandPane({ widgetId, label, splitMode, onClose, children }) {
   const connectedWidget = useMemo(
-    () => findConnectedSplitTarget(widgetId),
-    [widgetId],
+    () => splitMode ? findConnectedSplitTarget(widgetId) : null,
+    [widgetId, splitMode],
   )
 
   const primaryPane = useMemo(() => ({

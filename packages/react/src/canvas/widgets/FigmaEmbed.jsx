@@ -57,7 +57,8 @@ export default forwardRef(function FigmaEmbed({ id: widgetId, props, onUpdate, r
 
   const [interactive, setInteractive] = useState(false)
   const [showIframe, setShowIframe] = useState(true)
-  const [expanded, setExpanded] = useState(false)
+  const [expandMode, setExpandMode] = useState(null)
+  const expanded = expandMode !== null
 
   const iframeRef = useRef(null)
   const embedRef = useRef(null)
@@ -144,9 +145,12 @@ export default forwardRef(function FigmaEmbed({ id: widgetId, props, onUpdate, r
     handleAction(actionId) {
       if (actionId === 'open-external') {
         if (url) window.open(url, '_blank', 'noopener')
-      } else if (actionId === 'expand' || actionId === 'split-screen') {
+      } else if (actionId === 'expand') {
         setShowIframe(true)
-        setExpanded(true)
+        setExpandMode('single')
+      } else if (actionId === 'split-screen') {
+        setShowIframe(true)
+        setExpandMode('split')
       }
     },
   }), [url])
@@ -238,7 +242,8 @@ export default forwardRef(function FigmaEmbed({ id: widgetId, props, onUpdate, r
       <FigmaExpandPane
         widgetId={widgetId}
         modalContainerRef={modalContainerRef}
-        onClose={() => setExpanded(false)}
+        splitMode={expandMode === 'split'}
+        onClose={() => setExpandMode(null)}
       />
     )}
     </>
@@ -249,10 +254,10 @@ export default forwardRef(function FigmaEmbed({ id: widgetId, props, onUpdate, r
  * Builds pane configs and renders ExpandedPane for an expanded Figma widget.
  * The primary pane is an external pane that receives the iframe via reparenting.
  */
-function FigmaExpandPane({ widgetId, modalContainerRef, onClose }) {
+function FigmaExpandPane({ widgetId, modalContainerRef, splitMode, onClose }) {
   const connectedWidget = useMemo(
-    () => findConnectedSplitTarget(widgetId),
-    [widgetId],
+    () => splitMode ? findConnectedSplitTarget(widgetId) : null,
+    [widgetId, splitMode],
   )
   const primaryWidget = useMemo(() => {
     const bridge = window.__storyboardCanvasBridgeState

@@ -172,14 +172,16 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const wsRef = useRef(null)
 
   const [ready, setReady] = useState(false)
+  const [revealed, setRevealed] = useState(false)
   const [error, setError] = useState(null)
   const [sessionEnded, setSessionEnded] = useState(false)
   const [connectAttempt, setConnectAttempt] = useState(0)
   const [interactive, setInteractive] = useState(false)
   const [expandedOverride, setExpandedOverride, clearExpandedOverride] = useOverride(`_terminal_expanded_${id}`)
-  const expanded = expandedOverride === 'true'
-  const setExpanded = useCallback((val) => {
-    if (val) setExpandedOverride('true')
+  const expandMode = expandedOverride === 'single' || expandedOverride === 'split' ? expandedOverride : expandedOverride === 'true' ? 'split' : null
+  const expanded = expandMode !== null
+  const setExpanded = useCallback((mode) => {
+    if (mode) setExpandedOverride(mode)
     else clearExpandedOverride()
   }, [setExpandedOverride, clearExpandedOverride])
   const [waking, setWaking] = useState(false)
@@ -189,7 +191,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
-      if (actionId === 'expand' || actionId === 'split-screen') { setExpanded(true); return true }
+      if (actionId === 'expand') { setExpanded('single'); return true }
+      if (actionId === 'split-screen') { setExpanded('split'); return true }
       if (actionId === 'toggle-private') {
         const isPrivate = !!props?.private
         onUpdate?.({ private: !isPrivate })
@@ -295,7 +298,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         ws.onopen = () => {
           if (disposed) return
           setReady(true)
-          setInteractive(true)
           ws.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }))
         }
 
@@ -373,6 +375,19 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     return () => clearTimeout(timer)
   }, [width, height])
 
+  // Reveal mask — hide terminal for 750ms after ready to mask startup flash
+  useEffect(() => {
+    if (!ready) {
+      setRevealed(false)
+      return
+    }
+    const timer = setTimeout(() => {
+      setRevealed(true)
+      setInteractive(true)
+    }, 750)
+    return () => clearTimeout(timer)
+  }, [ready])
+
   const isAgent = id.startsWith('agent-')
   const typeLabel = isAgent ? 'Agent' : 'Terminal'
   const titleLabel = `${typeLabel} · ${prettyName || '…'}`
@@ -410,7 +425,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
   const handleClick = useCallback(() => {
     if (sessionEnded || multiSelected) return
-    if (ready) {
+    if (revealed) {
       setInteractive(true)
       const scrollEl = terminalRef.current?.closest('[class*="canvasScroll"]')
       const scrollTop = scrollEl?.scrollTop
@@ -421,7 +436,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         scrollEl.scrollLeft = scrollLeft
       }
     }
-  }, [sessionEnded, multiSelected, ready])
+  }, [sessionEnded, multiSelected, revealed])
 
   const handleTerminalPointerDown = useCallback((e) => {
     if (!interactive) return
@@ -482,10 +497,10 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
             <span>⚠ {error}</span>
           </div>
         )}
-        <div ref={containerRef} className={styles.xtermContainer} />
+        <div ref={containerRef} className={styles.xtermContainer} style={{ opacity: revealed ? 1 : 0 }} />
 
         {/* Live but not interactive */}
-        {ready && !interactive && !sessionEnded && (
+        {revealed && !interactive && !sessionEnded && (
           <div
             className={overlayStyles.interactOverlay}
             style={{ backgroundColor: 'transparent' }}
@@ -527,9 +542,11 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           </div>
         )}
 
-        {/* Connecting */}
-        {!ready && !error && !sessionEnded && (
-          <div className={styles.loading}>Connecting…</div>
+        {/* Connecting / reveal mask */}
+        {!revealed && !error && !sessionEnded && (
+          <div className={styles.loading}>
+            <div className={styles.spinner} />
+          </div>
         )}
       </div>
     </div>
@@ -539,7 +556,8 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         expandContainerRef={expandContainerRef}
         prettyName={prettyName}
         isAgent={isAgent}
-        onClose={() => setExpanded(false)}
+        splitMode={expandMode === 'split'}
+        onClose={() => setExpanded(null)}
       />
     )}
     </>
@@ -550,10 +568,10 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
  * Builds pane configs and renders ExpandedPane for an expanded terminal widget.
  * Primary pane is an external pane that receives the xterm container + handles fit.
  */
-function TerminalExpandPane({ widgetId, expandContainerRef, prettyName, isAgent, onClose }) {
+function TerminalExpandPane({ widgetId, expandContainerRef, prettyName, isAgent, splitMode, onClose }) {
   const connectedWidget = useMemo(
-    () => findConnectedSplitTarget(widgetId),
-    [widgetId],
+    () => splitMode ? findConnectedSplitTarget(widgetId) : null,
+    [widgetId, splitMode],
   )
 
   const primaryPane = useMemo(() => ({

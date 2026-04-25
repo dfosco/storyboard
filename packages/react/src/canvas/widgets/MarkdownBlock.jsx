@@ -73,7 +73,8 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
   const collapsed = !!props?.collapsed
   const canEdit = typeof onUpdate === 'function'
   const [editing, setEditing] = useState(false)
-  const [expanded, setExpanded] = useState(false)
+  const [expandMode, setExpandMode] = useState(null)
+  const expanded = expandMode !== null
   const editingActive = canEdit && editing
   const textareaRef = useRef(null)
   const blockRef = useRef(null)
@@ -81,7 +82,8 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
 
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
-      if (actionId === 'expand' || actionId === 'split-screen') { setExpanded(true); return true }
+      if (actionId === 'expand') { setExpandMode('single'); return true }
+      if (actionId === 'split-screen') { setExpandMode('split'); return true }
       return false
     },
   }), [])
@@ -213,7 +215,8 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
       <MarkdownExpandPane
         widgetId={id}
         renderedHtml={renderedHtml}
-        onClose={() => setExpanded(false)}
+        splitMode={expandMode === 'split'}
+        onClose={() => setExpandMode(null)}
       />
     )}
     </>
@@ -223,10 +226,10 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
 /**
  * Builds pane configs and renders ExpandedPane for an expanded markdown widget.
  */
-function MarkdownExpandPane({ widgetId, renderedHtml, onClose }) {
+function MarkdownExpandPane({ widgetId, renderedHtml, splitMode, onClose }) {
   const connectedWidget = useMemo(
-    () => findConnectedSplitTarget(widgetId),
-    [widgetId],
+    () => splitMode ? findConnectedSplitTarget(widgetId) : null,
+    [widgetId, splitMode],
   )
   const primaryWidget = useMemo(() => {
     const bridge = window.__storyboardCanvasBridgeState

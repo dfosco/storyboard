@@ -65,7 +65,8 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
 
   const [editing, setEditing] = useState(false)
   const [interactive, setInteractive] = useState(false)
-  const [expanded, setExpanded] = useState(false)
+  const [expandMode, setExpandMode] = useState(null)
+  const expanded = expandMode !== null
   const [filter, setFilter] = useState('')
   const [canvasTheme, setCanvasTheme] = useState(() => resolveCanvasThemeFromStorage())
   const inputRef = useRef(null)
@@ -248,8 +249,10 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     handleAction(actionId) {
       if (actionId === 'edit') {
         setEditing(true)
-      } else if (actionId === 'expand' || actionId === 'split-screen') {
-        setExpanded(true)
+      } else if (actionId === 'expand') {
+        setExpandMode('single')
+      } else if (actionId === 'split-screen') {
+        setExpandMode('split')
       } else if (actionId === 'open-external') {
         if (rawSrc) window.open(rawSrc, '_blank', 'noopener')
       } else if (actionId === 'zoom-in') {
@@ -407,7 +410,8 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
       <PrototypeExpandPane
         widgetId={widgetId}
         modalContainerRef={modalContainerRef}
-        onClose={() => setExpanded(false)}
+        splitMode={expandMode === 'split'}
+        onClose={() => setExpandMode(null)}
       />
     )}
     </>
@@ -418,10 +422,10 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
  * Builds pane configs and renders ExpandedPane for an expanded prototype widget.
  * The primary pane is an external pane that receives the iframe via reparenting.
  */
-function PrototypeExpandPane({ widgetId, modalContainerRef, onClose }) {
+function PrototypeExpandPane({ widgetId, modalContainerRef, splitMode, onClose }) {
   const connectedWidget = useMemo(
-    () => findConnectedSplitTarget(widgetId),
-    [widgetId],
+    () => splitMode ? findConnectedSplitTarget(widgetId) : null,
+    [widgetId, splitMode],
   )
   const primaryWidget = useMemo(() => {
     const bridge = window.__storyboardCanvasBridgeState

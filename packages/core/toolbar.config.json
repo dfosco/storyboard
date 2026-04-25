@@ -12,14 +12,14 @@
 
   "tools": {
     "hide-chrome": {
-      "ariaLabel": "Toggle toolbars",
+      "ariaLabel": "Hide toolbars",
       "icon": "primer/light-bulb",
       "render": "button",
       "surface": "command-toolbar",
       "handler": "core:hide-chrome",
       "modes": ["*"],
       "prod": true,
-      "shortcut": { "key": ".", "label": "cmd + ." },
+      "shortcut": { "key": ".", "label": "cmd ." },
       "hideInCommandPalette": [".*"],
       "alwaysVisible": true
     },
@@ -81,7 +81,7 @@
       "excludeRoutes": ["^/$", "^/workspace", "^/viewfinder", "/canvas/", "/components/", "/notebook/"],
       "hideInCommandPalette": ["^/$", "^/workspace", "^/viewfinder", "/canvas/", "/components/", "/notebook/"],
       "meta": { "strokeWeight": 2, "scale": 1.1 },
-      "shortcut": { "key": "i", "label": "cmd + I" }
+      "shortcut": { "key": "i", "label": "cmd + i" }
     },    
     "create": {
       "disabled": true,
@@ -223,7 +223,8 @@
       "surface": "command-palette",
       "modes": ["*"],
       "prod": true,
-      "handler": "core:devtools"
+      "handler": "core:devtools",
+      "hideFromCommandPaletteSearch": true
     },
     "palette-theme": {
       "label": "Switch theme",
@@ -243,6 +244,16 @@
       "prod": true,
       "handler": "core:feature-flags"
     },
+    "hide-toolbars": {
+      "label": "Hide toolbars",
+      "icon": "primer/light-bulb",
+      "render": "button",
+      "surface": "command-palette",
+      "modes": ["*"],
+      "prod": true,
+      "inlineAction": "toggle-chrome",
+      "shortcut": { "key": ".", "label": "cmd + ." }
+    },
     "command-palette": {
       "ariaLabel": "Command palette",
       "icon": "iconoir/key-command",
@@ -255,16 +266,6 @@
       "prod": true,
       "shortcut": { "key": "k", "label": "cmd + K" },
       "hideInCommandPalette": [".*"]
-    },
-    "hide-toolbars": {
-      "label": "Hide toolbars",
-      "icon": "primer/light-bulb",
-      "render": "button",
-      "surface": "command-palette",
-      "modes": ["*"],
-      "prod": true,
-      "inlineAction": "toggle-chrome",
-      "shortcut": { "key": ".", "label": "cmd + ." }
     }
   }
 }

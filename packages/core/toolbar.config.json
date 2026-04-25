@@ -49,6 +49,7 @@
       "modes": ["*"],
       "prod": true,
       "menuWidth": "260px",
+      "hideInCommandPalette": [".*"],
       "options": [
         { "label": "System", "value": "system" },
         { "label": "Light", "value": "light" },

@@ -10,7 +10,7 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
   z-index: 10000;
-  animation: cmdk-fade-in 120ms ease-out;
+  animation: cmdk-overlay-in 120ms ease-out;
 }
 
 /* ─── Dialog content (Radix Content wrapper) ─── */
@@ -30,10 +30,15 @@
   border: 1px solid var(--borderColor-muted, #d1d9e0);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   outline: none;
-  animation: cmdk-fade-in 120ms ease-out;
+  animation: cmdk-dialog-in 120ms ease-out;
 }
 
-@keyframes cmdk-fade-in {
+@keyframes cmdk-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes cmdk-dialog-in {
   from { opacity: 0; transform: translateX(-50%) scale(0.97); }
   to   { opacity: 1; transform: translateX(-50%) scale(1); }
 }

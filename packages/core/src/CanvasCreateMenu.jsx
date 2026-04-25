@@ -9,6 +9,7 @@ import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
 import { Button } from './lib/components/ui/button/index.js'
 import { Input } from './lib/components/ui/input/index.js'
 import { Label } from './lib/components/ui/label/index.js'
+import { SearchableList } from './lib/components/ui/searchable-list.jsx'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
 import { getConfig } from './configStore.js'
 
@@ -30,6 +31,7 @@ export default function CanvasCreateMenu({ config = {}, data, canvasName = '', z
   const [view, setView] = useState('menu')
   const [stories, setStories] = useState([])
   const [storiesLoaded, setStoriesLoaded] = useState(false)
+  const componentSearchRef = useRef(null)
 
   const showAgentsInMenu = useMemo(() => {
     const canvasConfig = getConfig('canvas')
@@ -243,28 +245,45 @@ export default function CanvasCreateMenu({ config = {}, data, canvasName = '', z
 
             <DropdownMenu.Sub>
               <DropdownMenu.SubTrigger>Component</DropdownMenu.SubTrigger>
-              <DropdownMenu.SubContent className="min-w-[200px] max-h-[320px] overflow-y-auto">
-                <button
-                  className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground w-full text-left bg-transparent border-none"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); showCreateForm() }}
-                  onPointerDown={(e) => e.stopPropagation()}
-                >
-                  <span className="font-medium">Create new component…</span>
-                </button>
-                {stories.length > 0 && (
-                  <>
-                    <DropdownMenu.Separator />
-                    <DropdownMenu.Label>Existing stories</DropdownMenu.Label>
-                    {stories.map((story) => (
-                      <DropdownMenu.Item key={story.name} onClick={() => addStoryWidget(story.name)}>
-                        <span className="flex flex-col">
-                          <span>{story.name}</span>
-                          <span className="text-xs text-muted-foreground">{story.path}</span>
-                        </span>
-                      </DropdownMenu.Item>
-                    ))}
-                  </>
-                )}
+              <DropdownMenu.SubContent
+                className="min-w-[200px]"
+                onOpenAutoFocus={(e) => {
+                  e.preventDefault()
+                }}
+              >
+                <SearchableList
+                  items={stories}
+                  loading={!storiesLoaded}
+                  filterFn={(story, q) =>
+                    story.name.toLowerCase().includes(q) ||
+                    story.path.toLowerCase().includes(q)
+                  }
+                  renderItem={(story) => (
+                    <DropdownMenu.Item key={story.name} onClick={() => addStoryWidget(story.name)}>
+                      <span className="flex flex-col">
+                        <span>{story.name}</span>
+                        <span className="text-xs text-muted-foreground">{story.path}</span>
+                      </span>
+                    </DropdownMenu.Item>
+                  )}
+                  placeholder="Filter components…"
+                  emptyMessage="No components found"
+                  loadingMessage="Loading components…"
+                  listClassName="max-h-[260px]"
+                  inputRef={componentSearchRef}
+                  header={
+                    <>
+                      <button
+                        className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground w-full text-left bg-transparent border-none"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); showCreateForm() }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                      >
+                        <span className="font-medium">Create new component…</span>
+                      </button>
+                      {stories.length > 0 && <DropdownMenu.Separator />}
+                    </>
+                  }
+                />
               </DropdownMenu.SubContent>
             </DropdownMenu.Sub>
 

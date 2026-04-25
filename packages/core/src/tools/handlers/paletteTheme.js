@@ -18,12 +18,6 @@ export async function handler() {
       const current = themeState.theme
       const sync = getThemeSyncTargets()
       return [
-        // "Theme settings" navigates to sync target checkboxes
-        {
-          id: 'theme:settings',
-          label: 'Theme settings',
-          navigateTo: THEME_SETTINGS_PAGE_ID,
-        },
         // Theme options
         ...THEMES.map(t => ({
           id: `theme:${t.value}`,
@@ -32,6 +26,12 @@ export async function handler() {
           active: current === t.value,
           execute: () => setTheme(t.value),
         })),
+        // "Theme settings" navigates to sync target checkboxes
+        {
+          id: 'theme:settings',
+          label: 'Theme settings',
+          navigateTo: THEME_SETTINGS_PAGE_ID,
+        },
       ]
     },
     subPages: [

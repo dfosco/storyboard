@@ -921,8 +921,11 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
             // Plain shell — route through welcome with --startup shell so it
             // returns to the welcome screen on exit
             setTimeout(() => {
-              const cmd = `${welcomeBase} --startup shell\r`
-              ptyProcess.write(cmd)
+              const cmd = `${welcomeBase} --startup shell`
+              try {
+                execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(cmd)}`, { stdio: 'ignore' })
+                execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+              } catch {}
             }, 800)
           } else if (agentCfg || startupCommand !== 'shell') {
             // Agent or custom command — route through welcome with --startup
@@ -933,7 +936,10 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
 
             setTimeout(() => {
               const welcomeCmd = `${welcomeBase} --startup ${JSON.stringify(cmd)}`
-              ptyProcess.write(welcomeCmd + '\r')
+              try {
+                execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(welcomeCmd)}`, { stdio: 'ignore' })
+                execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+              } catch {}
 
               if (readinessSignal) {
                 // Poll for readiness, then send postStartup command and deliver messages
@@ -973,9 +979,15 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
             }, 900)
           }
         } else {
-          // No startupCommand — show the welcome screen as before
+          // No startupCommand — show the welcome screen as before.
+          // Use tmux send-keys (not ptyProcess.write) so the command goes through
+          // the same input path as the env exports, avoiding interleave races.
+          // Prepend 'clear' so the exported env vars are cleared from the screen.
           setTimeout(() => {
-            ptyProcess.write(`${welcomeBase}\r`)
+            try {
+              execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(`clear && ${welcomeBase}`)}`, { stdio: 'ignore' })
+              execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+            } catch {}
           }, 800)
         }
       }

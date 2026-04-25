@@ -21,6 +21,7 @@ import { readFileSync, existsSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { parseFlags } from './flags.js'
 import { dim, cyan, bold } from './intro.js'
+import { takePendingMessages } from '../canvas/terminal-config.js'
 
 const blue = (s) => `\x1b[34m${s}\x1b[0m`
 
@@ -46,6 +47,8 @@ function loadAgents() {
       label: cfg.label || id,
       startupCommand: cfg.startupCommand || null,
       resumeCommand: cfg.resumeCommand || null,
+      readinessSignal: cfg.readinessSignal || null,
+      postStartup: cfg.postStartup || null,
     })).filter(a => a.startupCommand)
   } catch { return [] }
 }
@@ -115,10 +118,67 @@ function spawnShell() {
 }
 
 /**
- * Launch an agent by spawning its startupCommand via the user's shell.
- * If the command starts with `copilot`, also polls for readiness and sends /allow-all.
+ * Get the current tmux session name (safe — returns null outside tmux).
  */
-async function launchAgent(agent) {
+function getTmuxName() {
+  try {
+    return execSync('tmux display-message -p "#{session_name}"', { encoding: 'utf8', timeout: 1000 }).trim() || null
+  } catch { return null }
+}
+
+/**
+ * Inject [System] identity message into the running agent via tmux send-keys.
+ * Mirrors the identity injection in terminal-server.js so agents launched from
+ * the welcome menu receive the same initial context.
+ */
+function injectIdentityMessage(tmuxName) {
+  const widgetId = process.env.STORYBOARD_WIDGET_ID
+  if (!tmuxName || !widgetId) return
+
+  const canvasId = process.env.STORYBOARD_CANVAS_ID || canvas
+  const serverUrl = process.env.STORYBOARD_SERVER_URL || ''
+  const displayName = prettyName || widgetId
+  const configFile = `.storyboard/terminals/${widgetId}.json`
+
+  const msg = `[System] Your terminal identity has been set. widgetId=${widgetId} displayName=${displayName} canvasId=${canvasId} configFile=${configFile} serverUrl=${serverUrl} — this is a configuration step, no response needed.`
+  try {
+    execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(msg)}`, { stdio: 'ignore' })
+    execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+  } catch {}
+}
+
+/**
+ * Deliver pending messages to the running agent via tmux send-keys.
+ * Uses takePendingMessages for atomic read+clear.
+ */
+function deliverPendingMessages(tmuxName) {
+  const widgetId = process.env.STORYBOARD_WIDGET_ID
+  if (!tmuxName || !widgetId) return
+
+  const messages = takePendingMessages(widgetId)
+  messages.forEach((msg, i) => {
+    setTimeout(() => {
+      try {
+        const excerpt = msg.message.length > 200 ? msg.message.slice(0, 200) + '…' : msg.message
+        const formatted = `📩 [${msg.fromName || msg.from || 'unknown'} → you]\n\`\`\`\n${excerpt}\n\`\`\`${msg.from ? `\nFull context: cat .storyboard/terminals/${msg.from}.json | jq '.latestOutput.content'` : ''}`
+        execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(formatted)}`, { stdio: 'ignore' })
+        execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+      } catch {}
+    }, i * 1500)
+  })
+}
+
+/**
+ * Launch an agent by spawning its startupCommand via the user's shell.
+ * After the agent reaches readiness, injects identity context and pending
+ * messages — same treatment as the terminal-server cold path.
+ *
+ * @param {Object} agent - Agent config with label, startupCommand, readinessSignal, postStartup
+ * @param {Object} [opts]
+ * @param {boolean} [opts.isInitialStartup=false] - Skip context injection on the first
+ *   --startup iteration (terminal-server.js handles it independently).
+ */
+async function launchAgent(agent, { isInitialStartup = false } = {}) {
   // Show metadata after selection
   const meta = [
     prettyName ? `${dim('name:')} ${blue(prettyName)}` : null,
@@ -133,39 +193,79 @@ async function launchAgent(agent) {
     const shell = process.env.SHELL || '/bin/zsh'
     const child = spawn(shell, ['-lc', agent.startupCommand], { stdio: 'inherit' })
 
-    // For copilot, poll for readiness and pre-type /allow-all
+    // Context injection — inject identity, postStartup, and pending messages
+    // after the agent reaches readiness. Skip on initial --startup since
+    // terminal-server.js handles that path independently.
     let pollInterval = null
-    const firstWord = agent.startupCommand.trim().split(/\s+/)[0]
-    if (firstWord === 'copilot') {
-      let autopilotSent = false
-      pollInterval = setInterval(() => {
-        if (autopilotSent) { clearInterval(pollInterval); return }
-        try {
-          const paneContent = execSync(`tmux capture-pane -p`, { encoding: 'utf8', timeout: 1000 })
-          if (paneContent.includes('Environment loaded:') || paneContent.match(/^[>❯]\s*$/m)) {
-            autopilotSent = true
-            clearInterval(pollInterval)
-            setTimeout(() => {
-              try {
-                execSync(`tmux send-keys -l "/allow-all on"`, { stdio: 'ignore' })
-                execSync(`tmux send-keys Enter`, { stdio: 'ignore' })
-              } catch {}
-            }, 500)
-          }
-        } catch {}
-      }, 1000)
+    const tmuxName = !isInitialStartup ? getTmuxName() : null
+    const widgetId = process.env.STORYBOARD_WIDGET_ID
 
-      setTimeout(() => {
-        if (!autopilotSent) {
-          autopilotSent = true
-          clearInterval(pollInterval)
-        }
-      }, 15000)
+    if (tmuxName && widgetId) {
+      const readinessSignal = agent.readinessSignal
+      const firstWord = agent.startupCommand.trim().split(/\s+/)[0]
+
+      if (readinessSignal) {
+        let contextSent = false
+        pollInterval = setInterval(() => {
+          if (contextSent) { clearInterval(pollInterval); pollInterval = null; return }
+          try {
+            const paneContent = execSync(
+              `tmux capture-pane -t "${tmuxName}" -p`,
+              { encoding: 'utf8', timeout: 1000 }
+            )
+            // Check configured readiness signal + copilot prompt fallback
+            const isReady = paneContent.includes(readinessSignal) ||
+              (firstWord === 'copilot' && paneContent.match(/^[>❯]\s*$/m))
+            if (isReady) {
+              contextSent = true
+              clearInterval(pollInterval)
+              pollInterval = null
+              setTimeout(() => {
+                if (agent.postStartup) {
+                  try {
+                    execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(agent.postStartup)}`, { stdio: 'ignore' })
+                    execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+                  } catch {}
+                }
+                injectIdentityMessage(tmuxName)
+                setTimeout(() => deliverPendingMessages(tmuxName), 2000)
+              }, 500)
+            }
+          } catch {}
+        }, 2000)
+        // Timeout after 30s — don't wait forever
+        setTimeout(() => {
+          if (!contextSent) {
+            contextSent = true
+            if (pollInterval) { clearInterval(pollInterval); pollInterval = null }
+          }
+        }, 30000)
+      } else {
+        // No readiness signal configured — inject after a delay
+        const delayTimer = setTimeout(() => {
+          injectIdentityMessage(tmuxName)
+          setTimeout(() => deliverPendingMessages(tmuxName), 2000)
+        }, 5000)
+        // Store reference for cleanup
+        pollInterval = { clear: () => clearTimeout(delayTimer) }
+      }
     }
 
     await new Promise((resolve) => {
-      child.on('close', () => { if (pollInterval) clearInterval(pollInterval); resolve() })
-      child.on('error', () => { if (pollInterval) clearInterval(pollInterval); resolve() })
+      child.on('close', () => {
+        if (pollInterval) {
+          if (typeof pollInterval.clear === 'function') pollInterval.clear()
+          else clearInterval(pollInterval)
+        }
+        resolve()
+      })
+      child.on('error', () => {
+        if (pollInterval) {
+          if (typeof pollInterval.clear === 'function') pollInterval.clear()
+          else clearInterval(pollInterval)
+        }
+        resolve()
+      })
     })
   } catch {
     p.log.error(`Failed to start ${agent.label}. Is it installed?`)
@@ -194,7 +294,7 @@ async function welcomeLoop() {
         startupCmd.startsWith(a.startupCommand?.split(' ')[0])
       )
       const agent = matchedAgent || { label: startupCmd.split(/\s+/)[0], startupCommand: startupCmd }
-      await launchAgent(agent)
+      await launchAgent(agent, { isInitialStartup: true })
       resetTerminal()
       continue
     }

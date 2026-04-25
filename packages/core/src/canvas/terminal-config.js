@@ -295,6 +295,26 @@ export function updatePendingMessages(widgetId, msg) {
 }
 
 /**
+ * Atomically read and clear pending messages from a terminal config.
+ * Returns the messages array (empty if none). Safe to call from any process.
+ * @param {string} widgetId
+ * @returns {Array<{ from: string|null, fromName: string, message: string, createdAt: string }>}
+ */
+export function takePendingMessages(widgetId) {
+  const config = readTerminalConfigById(widgetId)
+  if (!config?.pendingMessages?.length) return []
+
+  const messages = config.pendingMessages
+  config.pendingMessages = []
+  config.updatedAt = new Date().toISOString()
+
+  // Write back via hash path (not symlink) to preserve symlink integrity
+  const fp = configPath(config.branch || 'unknown', config.canvasId || 'unknown', widgetId)
+  atomicWrite(fp, config)
+  return messages
+}
+
+/**
  * Save the latest output from an agent for peers to read.
  * @param {string} widgetId
  * @param {{ content: string, summary: string, updatedAt: string }} output

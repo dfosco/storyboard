@@ -1,12 +1,11 @@
 import { forwardRef, useImperativeHandle, useMemo, useCallback, useState, useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetConfig.js'
 import { toFigmaEmbedUrl, getFigmaTitle, getFigmaType, isFigmaUrl } from './figmaUrl.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
-import { findConnectedSplitTarget, getPaneOrder, buildSecondaryIframeUrl, reparentTerminalInto, getSplitPaneLabel } from './expandUtils.js'
-import SplitScreenTopBar from './SplitScreenTopBar.jsx'
+import { findConnectedSplitTarget, getPaneOrder, getSplitPaneLabel, buildPaneForWidget } from './expandUtils.js'
+import ExpandedPane from './ExpandedPane.jsx'
 import styles from './FigmaEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -106,19 +105,6 @@ export default forwardRef(function FigmaEmbed({ id: widgetId, props, onUpdate, r
   }, [interactive, expanded])
 
   useEffect(() => () => clearTimeout(teardownTimerRef.current), [])
-
-  // Close expanded modal on Escape
-  useEffect(() => {
-    if (!expanded) return
-    function handleKeyDown(e) {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        setExpanded(false)
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown, true)
-    return () => document.removeEventListener('keydown', handleKeyDown, true)
-  }, [expanded])
 
   // Reparent iframe DOM node between inline container and modal.
   // Uses moveBefore() (Chrome 133+) which preserves the iframe's
@@ -248,102 +234,60 @@ export default forwardRef(function FigmaEmbed({ id: widgetId, props, onUpdate, r
         />
       )}
     </WidgetWrapper>
-    {createPortal(
-      <FigmaExpandModal
-        expanded={expanded && !!embedUrl}
-        onClose={() => setExpanded(false)}
-        modalContainerRef={modalContainerRef}
+    {expanded && !!embedUrl && (
+      <FigmaExpandPane
         widgetId={widgetId}
-      />,
-      document.body
+        modalContainerRef={modalContainerRef}
+        onClose={() => setExpanded(false)}
+      />
     )}
     </>
   )
 })
 
-function FigmaExpandModal({ expanded, onClose, modalContainerRef, widgetId }) {
+/**
+ * Builds pane configs and renders ExpandedPane for an expanded Figma widget.
+ * The primary pane is an external pane that receives the iframe via reparenting.
+ */
+function FigmaExpandPane({ widgetId, modalContainerRef, onClose }) {
   const connectedWidget = useMemo(
-    () => (expanded ? findConnectedSplitTarget(widgetId) : null),
-    [expanded, widgetId],
+    () => findConnectedSplitTarget(widgetId),
+    [widgetId],
   )
-  const hasSplit = Boolean(connectedWidget)
-  const paneOrder = useMemo(
-    () => (hasSplit ? getPaneOrder(widgetId, connectedWidget) : { primaryIsLeft: true }),
-    [hasSplit, widgetId, connectedWidget],
-  )
-  const secondaryUrl = useMemo(() => buildSecondaryIframeUrl(connectedWidget), [connectedWidget])
-  const isTerminalSecondary = connectedWidget?.type === 'terminal' || connectedWidget?.type === 'terminal-read' || connectedWidget?.type === 'agent'
-  const terminalRef = useRef(null)
-  const cleanupRef = useRef(null)
-  const [activePane, setActivePane] = useState('left')
-
   const primaryWidget = useMemo(() => {
     const bridge = window.__storyboardCanvasBridgeState
     return bridge?.widgets?.find((w) => w.id === widgetId) || { type: 'figma-embed', props: {} }
-  }, [widgetId, expanded])
+  }, [widgetId])
 
-  const primaryLabel = useMemo(() => getSplitPaneLabel(primaryWidget), [primaryWidget])
-  const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedWidget), [connectedWidget])
-  const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel
-  const rightLabel = paneOrder.primaryIsLeft ? secondaryLabel : primaryLabel
+  const primaryPane = useMemo(() => ({
+    id: widgetId,
+    label: getSplitPaneLabel(primaryWidget),
+    kind: 'external',
+    attach: (container) => {
+      // Store ref for iframe reparenting
+      modalContainerRef.current = container
+      return () => { modalContainerRef.current = null }
+    },
+  }), [widgetId, primaryWidget, modalContainerRef])
 
-  useEffect(() => {
-    if (!isTerminalSecondary || !expanded || !terminalRef.current) return
-    cleanupRef.current = reparentTerminalInto(connectedWidget.id, terminalRef.current)
-    return () => { cleanupRef.current?.(); cleanupRef.current = null }
-  }, [isTerminalSecondary, expanded, connectedWidget?.id])
-
-  const primaryPane = (
-    <div
-      ref={modalContainerRef}
-      className={hasSplit ? styles.expandContainerSplit : styles.expandContainer}
-      onClick={(e) => e.stopPropagation()}
-      onPointerDown={() => setActivePane(paneOrder.primaryIsLeft ? 'left' : 'right')}
-    >
-      {!hasSplit && <button className={styles.expandClose} onClick={onClose} aria-label="Close expanded view" autoFocus>✕</button>}
-    </div>
+  const secondaryPane = useMemo(
+    () => buildPaneForWidget(connectedWidget),
+    [connectedWidget],
   )
 
-  let secondaryPane = null
-  const secondarySide = paneOrder.primaryIsLeft ? 'right' : 'left'
-  if (hasSplit) {
-    if (secondaryUrl) {
-      secondaryPane = <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()} onPointerDown={() => setActivePane(secondarySide)}><iframe src={secondaryUrl} className={styles.expandSecondaryIframe} title="Connected widget" /></div>
-    } else if (isTerminalSecondary) {
-      secondaryPane = <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()} onPointerDown={() => setActivePane(secondarySide)}><div ref={terminalRef} className={styles.expandTerminal} /></div>
-    }
-  }
-
-  const leftPane = paneOrder.primaryIsLeft ? primaryPane : secondaryPane
-  const rightPane = paneOrder.primaryIsLeft ? secondaryPane : primaryPane
+  const panes = useMemo(() => {
+    if (!secondaryPane) return [primaryPane]
+    const paneOrder = getPaneOrder(widgetId, connectedWidget)
+    return paneOrder.primaryIsLeft
+      ? [primaryPane, secondaryPane]
+      : [secondaryPane, primaryPane]
+  }, [primaryPane, secondaryPane, widgetId, connectedWidget])
 
   return (
-    <div
-      className={styles.expandBackdrop}
-      style={expanded ? undefined : { display: 'none' }}
-      onClick={onClose}
-      onPointerDown={(e) => e.stopPropagation()}
-      onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Escape') onClose() }}
-      onWheel={(e) => e.stopPropagation()}
-      tabIndex={-1}
-      ref={(el) => { if (el && expanded) el.focus() }}
-    >
-      {hasSplit ? (
-        <div className={styles.expandSplitBody}>
-          <SplitScreenTopBar
-            leftLabel={leftLabel}
-            rightLabel={rightLabel}
-            activePane={activePane}
-            onClose={onClose}
-          />
-          <div className={styles.expandSplitPanes}>
-            <div className={styles.expandSplitLeft}>{leftPane}</div>
-            <div className={styles.expandSplitRight}>{rightPane}</div>
-          </div>
-        </div>
-      ) : (
-        primaryPane
-      )}
-    </div>
+    <ExpandedPane
+      initialPanes={panes}
+      variant="modal"
+      onClose={onClose}
+    />
   )
 }

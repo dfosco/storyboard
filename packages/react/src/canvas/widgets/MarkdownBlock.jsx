@@ -6,7 +6,8 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetConfig.js'
-import SplitExpandModal from './SplitExpandModal.jsx'
+import ExpandedPane from './ExpandedPane.jsx'
+import { findConnectedSplitTarget, getPaneOrder, getSplitPaneLabel, buildPaneForWidget } from './expandUtils.js'
 import styles from './MarkdownBlock.module.css'
 
 const markdownSchema = schemas['markdown']
@@ -208,19 +209,62 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
         )}
       </div>
     </WidgetWrapper>
-    <SplitExpandModal
-      expanded={expanded}
-      onClose={() => setExpanded(false)}
-      widgetId={id}
-      title="Markdown"
-    >
+    {expanded && (
+      <MarkdownExpandPane
+        widgetId={id}
+        renderedHtml={renderedHtml}
+        onClose={() => setExpanded(false)}
+      />
+    )}
+    </>
+  )
+})
+
+/**
+ * Builds pane configs and renders ExpandedPane for an expanded markdown widget.
+ */
+function MarkdownExpandPane({ widgetId, renderedHtml, onClose }) {
+  const connectedWidget = useMemo(
+    () => findConnectedSplitTarget(widgetId),
+    [widgetId],
+  )
+  const primaryWidget = useMemo(() => {
+    const bridge = window.__storyboardCanvasBridgeState
+    return bridge?.widgets?.find((w) => w.id === widgetId) || null
+  }, [widgetId])
+
+  const primaryPane = useMemo(() => ({
+    id: widgetId,
+    label: getSplitPaneLabel(primaryWidget) || 'Markdown',
+    kind: 'react',
+    render: () => (
       <div
         className={styles.expandedPreview}
         dangerouslySetInnerHTML={{
           __html: renderedHtml || '<p>No content</p>',
         }}
       />
-    </SplitExpandModal>
-    </>
+    ),
+  }), [widgetId, primaryWidget, renderedHtml])
+
+  const secondaryPane = useMemo(
+    () => buildPaneForWidget(connectedWidget),
+    [connectedWidget],
   )
-})
+
+  const panes = useMemo(() => {
+    if (!secondaryPane) return [primaryPane]
+    const paneOrder = getPaneOrder(widgetId, connectedWidget)
+    return paneOrder.primaryIsLeft
+      ? [primaryPane, secondaryPane]
+      : [secondaryPane, primaryPane]
+  }, [primaryPane, secondaryPane, widgetId, connectedWidget])
+
+  return (
+    <ExpandedPane
+      initialPanes={panes}
+      variant="modal"
+      onClose={onClose}
+    />
+  )
+}

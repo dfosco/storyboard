@@ -31,6 +31,7 @@ function loadGhostty() {
 
 // Global registry so split-screen can look up any terminal's ghostty + WS by widget ID
 const terminalRegistry = new Map()
+if (typeof window !== 'undefined') window.__storyboardTerminalRegistry = terminalRegistry
 
 function getWsUrl(sessionId, prettyName, startupCommand) {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'

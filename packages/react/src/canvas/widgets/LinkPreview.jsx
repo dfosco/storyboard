@@ -6,7 +6,8 @@ import { MarkGithubIcon } from '@primer/octicons-react'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, linkPreviewSchema } from './widgetProps.js'
-import SplitExpandModal from './SplitExpandModal.jsx'
+import ExpandedPane from './ExpandedPane.jsx'
+import { findConnectedSplitTarget, getPaneOrder, getSplitPaneLabel, buildPaneForWidget } from './expandUtils.js'
 import styles from './LinkPreview.module.css'
 
 const VIDEO_EXT_RE = /\.(mp4|mov|webm|ogg)(\?[^)]*)?$/i
@@ -206,33 +207,34 @@ function GitHubIssueCard({ id, url, title, github, width, collapsed, expanded, o
         )}
       </div>
     </WidgetWrapper>
-    <SplitExpandModal
-      expanded={expanded}
-      onClose={onCloseExpand}
-      widgetId={id}
-      title={`${kindLabel}: ${titleText || url || 'GitHub'}`}
-    >
-      <div className={styles.expandedIssue}>
-        <header className={styles.expandedIssueHeader}>
-          <h2 className={styles.expandedIssueTitle}>
-            <a href={url || '#'} target="_blank" rel="noopener noreferrer">
-              {titleText || url}
-              {issueNumber && <span className={styles.expandedIssueNumber}> {issueNumber}</span>}
-            </a>
-          </h2>
-          <div className={styles.expandedByline}>
-            {primaryAuthor && (
-              <a href={`https://github.com/${primaryAuthor}`} target="_blank" rel="noopener noreferrer" className={styles.expandedAuthor}>
-                <img src={`https://github.com/${primaryAuthor}.png?size=40`} alt="" width="20" height="20" className={styles.avatar} loading="lazy" />
-                {primaryAuthor}
+    {expanded && (
+      <LinkPreviewExpandPane
+        widgetId={id}
+        label={`${kindLabel}: ${titleText || url || 'GitHub'}`}
+        onClose={onCloseExpand}
+      >
+        <div className={styles.expandedIssue}>
+          <header className={styles.expandedIssueHeader}>
+            <h2 className={styles.expandedIssueTitle}>
+              <a href={url || '#'} target="_blank" rel="noopener noreferrer">
+                {titleText || url}
+                {issueNumber && <span className={styles.expandedIssueNumber}> {issueNumber}</span>}
               </a>
-            )}
-            {createdAgo && <span className={styles.expandedBylineText}>{primaryAuthor ? ` opened ${createdAgo}` : `Opened ${createdAgo}`}</span>}
-          </div>
-        </header>
-        {bodyHtml && <div className={styles.expandedIssueBody} dangerouslySetInnerHTML={{ __html: bodyHtml }} />}
-      </div>
-    </SplitExpandModal>
+            </h2>
+            <div className={styles.expandedByline}>
+              {primaryAuthor && (
+                <a href={`https://github.com/${primaryAuthor}`} target="_blank" rel="noopener noreferrer" className={styles.expandedAuthor}>
+                  <img src={`https://github.com/${primaryAuthor}.png?size=40`} alt="" width="20" height="20" className={styles.avatar} loading="lazy" />
+                  {primaryAuthor}
+                </a>
+              )}
+              {createdAgo && <span className={styles.expandedBylineText}>{primaryAuthor ? ` opened ${createdAgo}` : `Opened ${createdAgo}`}</span>}
+            </div>
+          </header>
+          {bodyHtml && <div className={styles.expandedIssueBody} dangerouslySetInnerHTML={{ __html: bodyHtml }} />}
+        </div>
+      </LinkPreviewExpandPane>
+    )}
     </>
   )
 }
@@ -361,19 +363,58 @@ export default forwardRef(function LinkPreview({ id, props, onUpdate, resizable 
       </div>
       {resizable && <ResizeHandle targetRef={cardRef} width={width} height={height} onResize={handleResize} />}
     </div>
-    <SplitExpandModal
-      expanded={expanded}
-      onClose={() => setExpanded(false)}
-      widgetId={id}
-      title={title || hostname || 'Link Preview'}
-    >
-      <div className={styles.expandedLink}>
-        {ogImage && <img className={styles.expandedOgImage} src={ogImage} alt="" loading="lazy" />}
-        <h2 className={styles.expandedTitle}>{title || hostname || url || 'Untitled'}</h2>
-        {description && <p className={styles.expandedDescription}>{description}</p>}
-        {url && <a href={url} target="_blank" rel="noopener noreferrer" className={styles.expandedUrl}>{url}</a>}
-      </div>
-    </SplitExpandModal>
+    {expanded && (
+      <LinkPreviewExpandPane
+        widgetId={id}
+        label={title || hostname || 'Link Preview'}
+        onClose={() => setExpanded(false)}
+      >
+        <div className={styles.expandedLink}>
+          {ogImage && <img className={styles.expandedOgImage} src={ogImage} alt="" loading="lazy" />}
+          <h2 className={styles.expandedTitle}>{title || hostname || url || 'Untitled'}</h2>
+          {description && <p className={styles.expandedDescription}>{description}</p>}
+          {url && <a href={url} target="_blank" rel="noopener noreferrer" className={styles.expandedUrl}>{url}</a>}
+        </div>
+      </LinkPreviewExpandPane>
+    )}
     </>
   )
 })
+
+/**
+ * Builds pane configs and renders ExpandedPane for an expanded link-preview widget.
+ */
+function LinkPreviewExpandPane({ widgetId, label, onClose, children }) {
+  const connectedWidget = useMemo(
+    () => findConnectedSplitTarget(widgetId),
+    [widgetId],
+  )
+
+  const primaryPane = useMemo(() => ({
+    id: widgetId,
+    label,
+    kind: 'react',
+    render: () => children,
+  }), [widgetId, label, children])
+
+  const secondaryPane = useMemo(
+    () => buildPaneForWidget(connectedWidget),
+    [connectedWidget],
+  )
+
+  const panes = useMemo(() => {
+    if (!secondaryPane) return [primaryPane]
+    const paneOrder = getPaneOrder(widgetId, connectedWidget)
+    return paneOrder.primaryIsLeft
+      ? [primaryPane, secondaryPane]
+      : [secondaryPane, primaryPane]
+  }, [primaryPane, secondaryPane, widgetId, connectedWidget])
+
+  return (
+    <ExpandedPane
+      initialPanes={panes}
+      variant="modal"
+      onClose={onClose}
+    />
+  )
+}

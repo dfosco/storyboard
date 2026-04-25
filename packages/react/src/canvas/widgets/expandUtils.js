@@ -6,6 +6,158 @@
  */
 import { isSplitScreenCapable, getWidgetMeta } from './widgetConfig.js'
 
+// Re-export for convenience
+export { isSplitScreenCapable }
+
+/**
+ * Build a pane config for a connected widget to use with ExpandedPane.
+ * Returns a ReactPane or ExternalPane config depending on the widget type.
+ *
+ * @param {{ id: string, type: string, props: Object }} widget
+ * @returns {import('./ExpandedPane.jsx').PaneConfig | null}
+ */
+export function buildPaneForWidget(widget) {
+  if (!widget) return null
+
+  const label = getSplitPaneLabel(widget)
+
+  // Terminal/agent: external pane with DOM reparenting
+  if (widget.type === 'terminal' || widget.type === 'terminal-read' || widget.type === 'agent') {
+    return {
+      id: widget.id,
+      label,
+      kind: 'external',
+      attach: (container) => reparentTerminalInto(widget.id, container),
+      onResize: (rect) => {
+        // fitTerminalToElement is in TerminalWidget.jsx (module-level).
+        // We call it via the global registry if available.
+        if (typeof window !== 'undefined' && window.__storyboardTerminalRegistry) {
+          const entry = window.__storyboardTerminalRegistry.get(widget.id)
+          if (entry) {
+            const { term, ws } = entry
+            const cw = term.renderer?.charWidth
+            const ch = term.renderer?.charHeight
+            if (cw && ch && rect.width > 50 && rect.height > 50) {
+              const cols = Math.max(10, Math.floor(rect.width / cw))
+              const rows = Math.max(4, Math.floor(rect.height / ch))
+              term.resize?.(cols, rows)
+              if (ws?.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'resize', cols, rows }))
+              }
+            }
+          }
+        }
+      },
+    }
+  }
+
+  // iframe-embeddable types: build iframe URL
+  const iframeUrl = buildSecondaryIframeUrl(widget)
+  if (iframeUrl) {
+    return {
+      id: widget.id,
+      label,
+      kind: 'react',
+      render: () => {
+        // Dynamic import to avoid circular deps
+        const React = require('react')
+        return React.createElement('iframe', {
+          src: iframeUrl,
+          style: { border: 'none', width: '100%', height: '100%', display: 'block' },
+          title: label,
+        })
+      },
+    }
+  }
+
+  // Markdown: render content
+  if (widget.type === 'markdown') {
+    const content = widget.props?.content || ''
+    return {
+      id: widget.id,
+      label,
+      kind: 'react',
+      render: () => {
+        const React = require('react')
+        return React.createElement(LazyMarkdownPane, { content })
+      },
+    }
+  }
+
+  // Link-preview
+  if (widget.type === 'link-preview') {
+    return {
+      id: widget.id,
+      label,
+      kind: 'react',
+      render: () => {
+        const React = require('react')
+        return React.createElement(LazyLinkPreviewPane, { widget })
+      },
+    }
+  }
+
+  return null
+}
+
+/**
+ * Lazy markdown renderer for secondary panes (avoids bundling remark eagerly).
+ */
+function LazyMarkdownPane({ content }) {
+  const { useRef, useEffect } = require('react')
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!ref.current || !content) return
+    let cancelled = false
+    ;(async () => {
+      const { remark } = await import('remark')
+      const remarkGfm = (await import('remark-gfm')).default
+      const remarkHtml = (await import('remark-html')).default
+      if (cancelled) return
+      const result = remark().use(remarkGfm).use(remarkHtml, { sanitize: false }).processSync(content)
+      let html = String(result).replace(/<a\s/g, '<a target="_blank" rel="noopener noreferrer" ')
+      if (ref.current) ref.current.innerHTML = html
+    })()
+    return () => { cancelled = true }
+  }, [content])
+  const React = require('react')
+  return React.createElement('div', {
+    ref,
+    style: {
+      padding: '32px 40px',
+      fontSize: '15px',
+      lineHeight: 1.7,
+      color: 'var(--fgColor-default, #1f2328)',
+      maxWidth: '800px',
+      margin: '0 auto',
+    },
+  })
+}
+
+/**
+ * Lazy link-preview renderer for secondary panes.
+ */
+function LazyLinkPreviewPane({ widget }) {
+  const { useRef, useEffect } = require('react')
+  const React = require('react')
+  const { url, title, github } = widget.props || {}
+  const bodyRef = useRef(null)
+  useEffect(() => {
+    if (bodyRef.current && github?.bodyHtml) bodyRef.current.innerHTML = github.bodyHtml
+  }, [github?.bodyHtml])
+
+  if (github) {
+    return React.createElement('div', { style: { height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bgColor-default, #ffffff)' } },
+      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 24px', fontSize: '18px', fontWeight: 600, borderBottom: '1px solid var(--borderColor-muted, #d8dee4)' } }, title || url || 'GitHub'),
+      github.bodyHtml && React.createElement('div', { ref: bodyRef, style: { flex: 1, overflow: 'auto', padding: '24px', fontSize: '15px', lineHeight: 1.7 } }),
+    )
+  }
+  return React.createElement('div', { style: { padding: '32px 40px' } },
+    React.createElement('p', { style: { fontSize: '18px', fontWeight: 600, margin: '0 0 8px' } }, title || url || 'Link'),
+    url && React.createElement('a', { href: url, target: '_blank', rel: 'noopener noreferrer', style: { fontSize: '14px', color: 'var(--fgColor-accent, #0969da)' } }, url),
+  )
+}
+
 /**
  * Find a connected widget that is split-screen capable.
  * Returns the first match, or null.

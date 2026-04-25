@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
-import { createPortal } from 'react-dom'
 import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
-import { findConnectedSplitTarget, getPaneOrder, buildSecondaryIframeUrl, reparentTerminalInto, getSplitPaneLabel, getWidgetX } from './expandUtils.js'
-import SplitScreenTopBar from './SplitScreenTopBar.jsx'
+import { findConnectedSplitTarget, getPaneOrder, getSplitPaneLabel, buildPaneForWidget } from './expandUtils.js'
+import ExpandedPane from './ExpandedPane.jsx'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -192,19 +191,6 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     document.addEventListener('storyboard:theme:changed', readToolbarTheme)
     return () => document.removeEventListener('storyboard:theme:changed', readToolbarTheme)
   }, [])
-
-  // Close expanded modal on Escape
-  useEffect(() => {
-    if (!expanded) return
-    function handleKeyDown(e) {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        setExpanded(false)
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown, true)
-    return () => document.removeEventListener('keydown', handleKeyDown, true)
-  }, [expanded])
 
   // Reparent iframe between inline and modal
   useEffect(() => {
@@ -417,172 +403,59 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
       </div>
       {resizable && <ResizeHandle targetRef={embedRef} width={width} height={height} onResize={handleResize} />}
     </WidgetWrapper>
-    {createPortal(
-      <PrototypeExpandModal
-        expanded={expanded}
-        onClose={() => setExpanded(false)}
-        modalContainerRef={modalContainerRef}
+    {expanded && (
+      <PrototypeExpandPane
         widgetId={widgetId}
-      />,
-      document.body
+        modalContainerRef={modalContainerRef}
+        onClose={() => setExpanded(false)}
+      />
     )}
     </>
   )
 })
 
 /**
- * PrototypeExpandModal — the existing expand modal with split-screen support.
- * Keeps iframe reparenting in the primary pane, adds a secondary pane if connected.
+ * Builds pane configs and renders ExpandedPane for an expanded prototype widget.
+ * The primary pane is an external pane that receives the iframe via reparenting.
  */
-function PrototypeExpandModal({ expanded, onClose, modalContainerRef, widgetId }) {
+function PrototypeExpandPane({ widgetId, modalContainerRef, onClose }) {
   const connectedWidget = useMemo(
-    () => (expanded ? findConnectedSplitTarget(widgetId) : null),
-    [expanded, widgetId],
+    () => findConnectedSplitTarget(widgetId),
+    [widgetId],
   )
-  const hasSplit = Boolean(connectedWidget)
-  const paneOrder = useMemo(
-    () => (hasSplit ? getPaneOrder(widgetId, connectedWidget) : { primaryIsLeft: true }),
-    [hasSplit, widgetId, connectedWidget],
-  )
-  const secondaryUrl = useMemo(() => buildSecondaryIframeUrl(connectedWidget), [connectedWidget])
-  const isTerminalSecondary = connectedWidget?.type === 'terminal' || connectedWidget?.type === 'terminal-read' || connectedWidget?.type === 'agent'
-  const terminalRef = useRef(null)
-  const cleanupRef = useRef(null)
-  const [activePane, setActivePane] = useState('left')
-
-  // Build labels for the top bar
   const primaryWidget = useMemo(() => {
     const bridge = window.__storyboardCanvasBridgeState
     return bridge?.widgets?.find((w) => w.id === widgetId) || { type: 'prototype', props: {} }
-  }, [widgetId, expanded])
+  }, [widgetId])
 
-  const primaryLabel = useMemo(() => getSplitPaneLabel(primaryWidget), [primaryWidget])
-  const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedWidget), [connectedWidget])
-  const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel
-  const rightLabel = paneOrder.primaryIsLeft ? secondaryLabel : primaryLabel
+  const primaryPane = useMemo(() => ({
+    id: widgetId,
+    label: getSplitPaneLabel(primaryWidget),
+    kind: 'external',
+    attach: (container) => {
+      modalContainerRef.current = container
+      return () => { modalContainerRef.current = null }
+    },
+  }), [widgetId, primaryWidget, modalContainerRef])
 
-  // Reparent terminal DOM for split
-  useEffect(() => {
-    if (!isTerminalSecondary || !expanded || !terminalRef.current) return
-    cleanupRef.current = reparentTerminalInto(connectedWidget.id, terminalRef.current)
-    return () => {
-      cleanupRef.current?.()
-      cleanupRef.current = null
-    }
-  }, [isTerminalSecondary, expanded, connectedWidget?.id])
-
-  const primaryPane = (
-    <div
-      ref={modalContainerRef}
-      className={hasSplit ? styles.expandContainerSplit : styles.expandContainer}
-      onClick={(e) => e.stopPropagation()}
-      onPointerDown={() => setActivePane(paneOrder.primaryIsLeft ? 'left' : 'right')}
-    >
-      {!hasSplit && <button className={styles.expandClose} onClick={onClose} aria-label="Close expanded view" autoFocus>✕</button>}
-    </div>
+  const secondaryPane = useMemo(
+    () => buildPaneForWidget(connectedWidget),
+    [connectedWidget],
   )
 
-  let secondaryPane = null
-  const secondarySide = paneOrder.primaryIsLeft ? 'right' : 'left'
-  if (hasSplit) {
-    if (secondaryUrl) {
-      secondaryPane = (
-        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()} onPointerDown={() => setActivePane(secondarySide)}>
-          <iframe src={secondaryUrl} className={styles.expandIframe} title="Connected widget" />
-        </div>
-      )
-    } else if (isTerminalSecondary) {
-      secondaryPane = (
-        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()} onPointerDown={() => setActivePane(secondarySide)}>
-          <div ref={terminalRef} className={styles.expandTerminal} />
-        </div>
-      )
-    } else if (connectedWidget?.type === 'markdown') {
-      secondaryPane = (
-        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()} onPointerDown={() => setActivePane(secondarySide)}>
-          <MarkdownSecondaryPane content={connectedWidget.props?.content} />
-        </div>
-      )
-    } else if (connectedWidget?.type === 'link-preview') {
-      secondaryPane = (
-        <div className={styles.expandSecondary} onClick={(e) => e.stopPropagation()} onPointerDown={() => setActivePane(secondarySide)}>
-          <LinkPreviewSecondaryPane widget={connectedWidget} />
-        </div>
-      )
-    }
-  }
-
-  const leftPane = paneOrder.primaryIsLeft ? primaryPane : secondaryPane
-  const rightPane = paneOrder.primaryIsLeft ? secondaryPane : primaryPane
+  const panes = useMemo(() => {
+    if (!secondaryPane) return [primaryPane]
+    const paneOrder = getPaneOrder(widgetId, connectedWidget)
+    return paneOrder.primaryIsLeft
+      ? [primaryPane, secondaryPane]
+      : [secondaryPane, primaryPane]
+  }, [primaryPane, secondaryPane, widgetId, connectedWidget])
 
   return (
-    <div
-      className={styles.expandBackdrop}
-      style={expanded ? undefined : { display: 'none' }}
-      onClick={onClose}
-      onPointerDown={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
-      onWheel={(e) => e.stopPropagation()}
-    >
-      {hasSplit ? (
-        <div className={styles.expandSplitBody}>
-          <SplitScreenTopBar
-            leftLabel={leftLabel}
-            rightLabel={rightLabel}
-            activePane={activePane}
-            onClose={onClose}
-          />
-          <div className={styles.expandSplitPanes}>
-            <div className={styles.expandSplitLeft}>{leftPane}</div>
-            <div className={styles.expandSplitRight}>{rightPane}</div>
-          </div>
-        </div>
-      ) : (
-        primaryPane
-      )}
-    </div>
-  )
-}
-
-/** Minimal markdown renderer for secondary pane */
-function MarkdownSecondaryPane({ content }) {
-  const ref = useRef(null)
-  useEffect(() => {
-    if (!ref.current || !content) return
-    let cancelled = false
-    ;(async () => {
-      const { remark } = await import('remark')
-      const remarkGfm = (await import('remark-gfm')).default
-      const remarkHtml = (await import('remark-html')).default
-      if (cancelled) return
-      const result = remark().use(remarkGfm).use(remarkHtml, { sanitize: false }).processSync(content)
-      if (ref.current) ref.current.innerHTML = String(result).replace(/<a\s/g, '<a target="_blank" rel="noopener noreferrer" ')
-    })()
-    return () => { cancelled = true }
-  }, [content])
-  return <div ref={ref} className={styles.expandMarkdownContent} />
-}
-
-/** Link preview secondary pane (GitHub card or plain) */
-function LinkPreviewSecondaryPane({ widget }) {
-  const { url, title, github } = widget.props || {}
-  const bodyRef = useRef(null)
-  useEffect(() => {
-    if (bodyRef.current && github?.bodyHtml) bodyRef.current.innerHTML = github.bodyHtml
-  }, [github?.bodyHtml])
-
-  if (github) {
-    return (
-      <div className={styles.expandGithubCard}>
-        <div className={styles.expandGithubHeader}>{title || url || 'GitHub'}</div>
-        {github.bodyHtml && <div ref={bodyRef} className={styles.expandGithubBody} />}
-      </div>
-    )
-  }
-  return (
-    <div className={styles.expandLinkCard}>
-      <p className={styles.expandLinkTitle}>{title || url || 'Link'}</p>
-      {url && <a href={url} target="_blank" rel="noopener noreferrer">{url}</a>}
-    </div>
+    <ExpandedPane
+      initialPanes={panes}
+      variant="modal"
+      onClose={onClose}
+    />
   )
 }

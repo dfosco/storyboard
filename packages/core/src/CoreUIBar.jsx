@@ -235,7 +235,6 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
         }
         return true
       })
-      .reverse()
   }, [orderedMenus, navVersion, toolStateVersion, currentModeState.mode, toolComponents])
 
   const cleanedMenus = useMemo(() => {

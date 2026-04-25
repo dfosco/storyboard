@@ -491,9 +491,136 @@ DELETE /_storyboard/canvas/connector
 
 The connector must exist on the canvas. Response: `{ "success": true, "removed": 1 }`.
 
+### Updating a connector
+
+```
+PATCH /_storyboard/canvas/connector
+```
+
+Update a connector's anchors and/or metadata without deleting it. The connector keeps its ID, widget connections, and messaging state.
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | ✅ | Canvas name |
+| `connectorId` | string | ✅ | ID of the connector to update |
+| `startAnchor` | string | ❌ | New anchor on start widget (`top`/`right`/`bottom`/`left`) |
+| `endAnchor` | string | ❌ | New anchor on end widget (`top`/`right`/`bottom`/`left`) |
+| `meta` | object | ❌ | Metadata updates (e.g. `messagingMode`) |
+
+At least one of `startAnchor`, `endAnchor`, or `meta` should be provided. Omitted anchor fields keep their current value.
+
+**Example — swap anchors:**
+```bash
+curl -X PATCH http://localhost:{PORT}/_storyboard/canvas/connector \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "my-canvas",
+    "connectorId": "connector-abc123",
+    "startAnchor": "bottom",
+    "endAnchor": "top"
+  }'
+```
+
+Response: `{ "success": true }`
+
 ### Direction
 
 Connectors are directional: they go **from** `start` **to** `end`. The `startAnchor` determines which side of the source widget the line exits, and `endAnchor` determines which side of the target widget the line enters. For example, `startAnchor: "right"` + `endAnchor: "left"` draws a left-to-right connection.
+
+### Anchor Optimization
+
+**Do not hardcode anchors.** Always calculate the optimal anchor pair based on the spatial relationship between the two connected widgets. The goal is to avoid connectors that overlap other widgets or cross each other.
+
+#### Relative Orientation
+
+Every connector between widgets A (start) and B (end) has a `relativeOrientation` — derived from where A's **center point** sits relative to B's **bounds** on a 3×3 spatial grid.
+
+Widget B occupies the center cell. Widget A can be in any of the 8 surrounding cells:
+
+```
+ ┌──────────────┬──────────────┬──────────────┐
+ │   top-left   │  top-center  │  top-right   │
+ ├──────────────┼──────────────┼──────────────┤
+ │ center-left  │      B       │ center-right │
+ ├──────────────┼──────────────┼──────────────┤
+ │ bottom-left  │bottom-center │ bottom-right │
+ └──────────────┴──────────────┴──────────────┘
+```
+
+#### Calculating the sector
+
+**Sector boundaries** come from B's `bounds`:
+- Left: `B.bounds.startX` — Right: `B.bounds.endX`
+- Top: `B.bounds.startY` — Bottom: `B.bounds.endY`
+
+**A's test point** is its center: `(A.bounds.startX + A.bounds.width / 2, A.bounds.startY + A.bounds.height / 2)`. Using the center (not top-left corner) avoids edge cases where large widgets straddle sector boundaries.
+
+Let `Ax, Ay` = A's center coordinates:
+
+| Condition | Horizontal sector |
+|-----------|------------------|
+| `Ax < B.bounds.startX` | left |
+| `Ax >= B.bounds.startX && Ax <= B.bounds.endX` | center |
+| `Ax > B.bounds.endX` | right |
+
+| Condition | Vertical sector |
+|-----------|----------------|
+| `Ay < B.bounds.startY` | top |
+| `Ay >= B.bounds.startY && Ay <= B.bounds.endY` | center |
+| `Ay > B.bounds.endY` | bottom |
+
+Combine: `{vertical}-{horizontal}` → e.g. `top-left`, `center-right`, `bottom-center`.
+
+#### Orientation → Anchor Map
+
+Each grid position produces a `relativeOrientation` that maps to an ideal anchor pair. The connector exits the side of A facing B, and enters the side of B facing A:
+
+```
+ ┌──────────────────┬──────────────────┬──────────────────┐
+ │    top-left      │   top-center     │    top-right     │
+ │  A anchor: right │  A anchor: bottom│  A anchor: left  │
+ │  B anchor: top   │  B anchor: top   │  B anchor: top   │
+ ├──────────────────┼──────────────────┼──────────────────┤
+ │   center-left    │        B         │   center-right   │
+ │  A anchor: right │                  │  A anchor: left  │
+ │  B anchor: left  │                  │  B anchor: right │
+ ├──────────────────┼──────────────────┼──────────────────┤
+ │   bottom-left    │  bottom-center   │   bottom-right   │
+ │  A anchor: right │  A anchor: top   │  A anchor: left  │
+ │  B anchor: bottom│  B anchor: bottom│  B anchor: bottom│
+ └──────────────────┴──────────────────┴──────────────────┘
+```
+
+**Summary table:**
+
+| A's grid position | relativeOrientation | A anchor (start) | B anchor (end) |
+|-------------------|---------------------|------------------|----------------|
+| top-left          | top-to-right        | right            | top            |
+| top-center        | top-to-bottom       | bottom           | top            |
+| top-right         | top-to-left         | left             | top            |
+| center-left       | left-to-right       | right            | left           |
+| center-right      | right-to-left       | left             | right          |
+| bottom-left       | bottom-to-right     | right            | bottom         |
+| bottom-center     | bottom-to-top       | top              | bottom         |
+| bottom-right      | bottom-to-left      | left             | bottom         |
+
+**Key directive:** Connector positioning is calculated AFTER all widgets have been positioned. **Never reposition widgets** to accommodate better connector layout — only adjust anchors.
+
+### When to Recalculate Anchors
+
+Recalculate anchors in two scenarios:
+
+1. **After creating new connectors** — compute the `relativeOrientation` for each new A→B pair and set the anchors accordingly when calling `POST /connector`
+2. **After moving any widget that has connectors** — re-read all connectors attached to the moved widget, recompute orientations for each pair, and `PATCH /connector` any whose ideal anchors have changed
+
+**Procedure:**
+1. Read the canvas state (get all widgets with bounds + all connectors)
+2. For each connector, find the start and end widgets
+3. Calculate A's center point and determine which sector it falls in relative to B's bounds
+4. Look up the ideal anchor pair from the orientation table
+5. If the current anchors differ from the ideal, PATCH the connector with the new anchors
 
 ### Example: Single connector
 
@@ -511,46 +638,51 @@ curl -X POST http://localhost:{PORT}/_storyboard/canvas/connector \
 
 ### Pattern: 1→n (one source to many targets)
 
-Create multiple connectors sequentially from the same source widget/anchor to different targets:
+Create multiple connectors from the same source widget to different targets. **Calculate anchors per-pair** using the orientation table — each target may be in a different sector relative to the source:
 
 ```bash
-# Connect source to three targets
+# Connect source to three targets — anchors depend on relative positions
+# (These examples assume targets are to the right; adjust per orientation)
 curl -X POST http://localhost:{PORT}/_storyboard/canvas/connector \
   -H 'Content-Type: application/json' \
   -d '{"name":"my-canvas","startWidgetId":"source-widget","endWidgetId":"target-1","startAnchor":"right","endAnchor":"left"}'
 
 curl -X POST http://localhost:{PORT}/_storyboard/canvas/connector \
   -H 'Content-Type: application/json' \
-  -d '{"name":"my-canvas","startWidgetId":"source-widget","endWidgetId":"target-2","startAnchor":"right","endAnchor":"left"}'
+  -d '{"name":"my-canvas","startWidgetId":"source-widget","endWidgetId":"target-2","startAnchor":"bottom","endAnchor":"top"}'
 
 curl -X POST http://localhost:{PORT}/_storyboard/canvas/connector \
   -H 'Content-Type: application/json' \
-  -d '{"name":"my-canvas","startWidgetId":"source-widget","endWidgetId":"target-3","startAnchor":"right","endAnchor":"left"}'
+  -d '{"name":"my-canvas","startWidgetId":"source-widget","endWidgetId":"target-3","startAnchor":"right","endAnchor":"top"}'
 ```
 
 ### Pattern: n→1 (many sources to one target)
 
-Connect multiple source widgets to a single target:
+Connect multiple source widgets to a single target. Each source may be in a different sector relative to the target — **calculate anchors per-pair**:
 
 ```bash
+# source-1 is to the left of target → left-to-right
 curl -X POST http://localhost:{PORT}/_storyboard/canvas/connector \
   -H 'Content-Type: application/json' \
   -d '{"name":"my-canvas","startWidgetId":"source-1","endWidgetId":"target-widget","startAnchor":"right","endAnchor":"left"}'
 
+# source-2 is above target → top-to-bottom
 curl -X POST http://localhost:{PORT}/_storyboard/canvas/connector \
   -H 'Content-Type: application/json' \
-  -d '{"name":"my-canvas","startWidgetId":"source-2","endWidgetId":"target-widget","startAnchor":"right","endAnchor":"left"}'
+  -d '{"name":"my-canvas","startWidgetId":"source-2","endWidgetId":"target-widget","startAnchor":"bottom","endAnchor":"top"}'
 ```
 
 ### Pattern: n→n (many to many)
 
-Create connectors between arbitrary pairs — each call is independent:
+Create connectors between arbitrary pairs — each call is independent. **Always calculate anchors from the orientation table** based on widget positions:
 
 ```bash
+# widget-a is above widget-b → top-to-bottom
 curl -X POST http://localhost:{PORT}/_storyboard/canvas/connector \
   -H 'Content-Type: application/json' \
   -d '{"name":"my-canvas","startWidgetId":"widget-a","endWidgetId":"widget-b","startAnchor":"bottom","endAnchor":"top"}'
 
+# widget-c is to the left of widget-d → left-to-right
 curl -X POST http://localhost:{PORT}/_storyboard/canvas/connector \
   -H 'Content-Type: application/json' \
   -d '{"name":"my-canvas","startWidgetId":"widget-c","endWidgetId":"widget-d","startAnchor":"right","endAnchor":"left"}'

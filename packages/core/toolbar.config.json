@@ -35,8 +35,8 @@
       "prod": true,
       "menuWidth": "280px",
       "handler": "core:flows",
-      "excludeRoutes": ["^/$", "/workspace", "/viewfinder", "/canvas/", "/components/", "/notebook/"],
-      "hideInCommandPalette": ["^/$", "/workspace", "/viewfinder", "/canvas/", "/components/", "/notebook/"]
+      "excludeRoutes": ["^/$", "^/workspace", "^/viewfinder", "/canvas/", "/components/", "/notebook/"],
+      "hideInCommandPalette": ["^/$", "^/workspace", "^/viewfinder", "/canvas/", "/components/", "/notebook/"]
     },    
     "theme": {
       "label": "Theme",
@@ -67,8 +67,8 @@
       "handler": "core:comments",
       "modes": ["*"],
       "prod": true,
-      "excludeRoutes": ["^/$", "/workspace", "/viewfinder"],
-      "hideInCommandPalette": ["^/$", "/workspace", "/viewfinder"]
+      "excludeRoutes": ["^/$", "^/workspace", "^/viewfinder"],
+      "hideInCommandPalette": ["^/$", "^/workspace", "^/viewfinder"]
     },
     "inspector": {
       "ariaLabel": "Inspect components",
@@ -79,8 +79,8 @@
       "handler": "core:inspector",
       "modes": ["*"],
       "prod": true,
-      "excludeRoutes": ["^/$", "/workspace", "/viewfinder", "/canvas/", "/components/", "/notebook/"],
-      "hideInCommandPalette": ["^/$", "/workspace", "/viewfinder", "/canvas/", "/components/", "/notebook/"],
+      "excludeRoutes": ["^/$", "^/workspace", "^/viewfinder", "/canvas/", "/components/", "/notebook/"],
+      "hideInCommandPalette": ["^/$", "^/workspace", "^/viewfinder", "/canvas/", "/components/", "/notebook/"],
       "meta": { "strokeWeight": 2, "scale": 1.1 },
       "shortcut": { "key": "i", "label": "cmd + I" }
     },    
@@ -122,7 +122,7 @@
       "modes": ["*"],
       "meta": { "strokeWeight": 2, "scale": 1.2 },
       "menuWidth": "300px",
-      "excludeRoutes": ["^/$", "/workspace", "/viewfinder"],
+      "excludeRoutes": ["^/$", "^/workspace", "^/viewfinder"],
       "hideInCommandPalette": [".*"]
     },
     "canvas-agents": {
@@ -134,7 +134,7 @@
       "handler": "core:canvas-agents",
       "modes": ["*"],
       "menuWidth": "220px",
-      "excludeRoutes": ["^/$", "/workspace", "/viewfinder"],
+      "excludeRoutes": ["^/$", "^/workspace", "^/viewfinder"],
       "hideInCommandPalette": [".*"]
     },
     "canvas-zoom": {

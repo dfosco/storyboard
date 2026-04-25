@@ -4,6 +4,10 @@ function getProdModeItem(children) {
   return children.find(item => item.id === 'core/prod-mode')
 }
 
+function getCanvasHmrItem(children) {
+  return children.find(item => item.id === 'core/canvas-hmr')
+}
+
 describe('devtools production mode toggle', () => {
   const originalLocalDev = window.__SB_LOCAL_DEV__
 
@@ -45,5 +49,29 @@ describe('devtools production mode toggle', () => {
     const prodModeItem = getProdModeItem(devtools.getChildren())
 
     expect(prodModeItem).toBeUndefined()
+  })
+})
+
+describe('devtools canvas HMR toggle', () => {
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/')
+  })
+
+  it('shows the toggle as inactive by default', async () => {
+    const devtools = await createDevtoolsHandler({})
+    const item = getCanvasHmrItem(devtools.getChildren())
+
+    expect(item).toBeTruthy()
+    expect(item.type).toBe('toggle')
+    expect(item.active).toBe(false)
+  })
+
+  it('shows the toggle as active when ?canvas-hmr is present', async () => {
+    window.history.replaceState({}, '', '/?canvas-hmr')
+
+    const devtools = await createDevtoolsHandler({})
+    const item = getCanvasHmrItem(devtools.getChildren())
+
+    expect(item.active).toBe(true)
   })
 })

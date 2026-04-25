@@ -100,6 +100,21 @@ export async function handler(ctx) {
           execute: () => { ff.toggleFlag('dev-logs') },
         })
       }
+      children.push({
+        id: 'core/canvas-hmr',
+        label: 'Canvas HMR',
+        type: 'toggle',
+        active: new URLSearchParams(window.location.search).has('canvas-hmr'),
+        execute: () => {
+          const url = new URL(window.location.href)
+          if (url.searchParams.has('canvas-hmr')) {
+            url.searchParams.delete('canvas-hmr')
+          } else {
+            url.searchParams.set('canvas-hmr', '')
+          }
+          window.location.replace(url.toString())
+        },
+      })
       return children
     },
   }

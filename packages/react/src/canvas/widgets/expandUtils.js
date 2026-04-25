@@ -4,8 +4,10 @@
  * Reads the canvas bridge state to find connected widgets eligible
  * for split-screen, and builds iframe URLs for secondary panes.
  */
-import { createElement, useRef, useEffect } from 'react'
+import { createElement, useRef, useEffect, useState, useCallback } from 'react'
 import { isSplitScreenCapable, getWidgetMeta } from './widgetConfig.js'
+import markdownStyles from './MarkdownBlock.module.css'
+import linkStyles from './LinkPreview.module.css'
 
 // Re-export for convenience
 export { isSplitScreenCapable }
@@ -92,12 +94,15 @@ export function buildPaneForWidget(widget) {
 }
 
 /**
- * Lazy markdown renderer for secondary panes (avoids bundling remark eagerly).
+ * Markdown renderer for expanded panes — matches the primary expanded rendering
+ * used when markdown triggers its own expand/split-screen.
  */
 function LazyMarkdownPane({ content }) {
   const ref = useRef(null)
+  const [html, setHtml] = useState('')
+
   useEffect(() => {
-    if (!ref.current || !content) return
+    if (!content) return
     let cancelled = false
     ;(async () => {
       const { remark } = await import('remark')
@@ -105,44 +110,106 @@ function LazyMarkdownPane({ content }) {
       const remarkHtml = (await import('remark-html')).default
       if (cancelled) return
       const result = remark().use(remarkGfm).use(remarkHtml, { sanitize: false }).processSync(content)
-      let html = String(result).replace(/<a\s/g, '<a target="_blank" rel="noopener noreferrer" ')
-      if (ref.current) ref.current.innerHTML = html
+      let rendered = String(result).replace(/<a\s/g, '<a target="_blank" rel="noopener noreferrer" ')
+
+      // Syntax-highlight fenced code blocks (same as primary rendering)
+      if (rendered.includes('<code class="language-')) {
+        try {
+          const { createInspectorHighlighter } = await import('@dfosco/storyboard-core/inspector/highlighter')
+          if (cancelled) return
+          const hl = await createInspectorHighlighter()
+          if (cancelled) return
+          rendered = rendered.replace(
+            /<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/g,
+            (match, lang, code) => {
+              try {
+                const decoded = code
+                  .replace(/&#x3C;/gi, '<').replace(/&#x3E;/gi, '>')
+                  .replace(/&#x26;/gi, '&').replace(/&#x22;/gi, '"').replace(/&#x27;/gi, "'")
+                  .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                  .replace(/&quot;/g, '"').replace(/&amp;/g, '&')
+                return hl.codeToHtml(decoded, { lang })
+              } catch { return match }
+            }
+          )
+        } catch { /* highlighter unavailable — render without */ }
+      }
+
+      if (!cancelled) setHtml(rendered)
     })()
     return () => { cancelled = true }
   }, [content])
+
   return createElement('div', {
     ref,
-    style: {
-      padding: '32px 40px',
-      fontSize: '15px',
-      lineHeight: 1.7,
-      color: 'var(--fgColor-default, #1f2328)',
-      maxWidth: '800px',
-      margin: '0 auto',
-    },
+    className: markdownStyles.expandedPreview,
+    dangerouslySetInnerHTML: html ? { __html: html } : undefined,
   })
 }
 
 /**
- * Lazy link-preview renderer for secondary panes.
+ * Link-preview renderer for expanded panes — matches the primary expanded
+ * rendering used when link-preview triggers its own expand/split-screen.
  */
 function LazyLinkPreviewPane({ widget }) {
-  const { url, title, github } = widget.props || {}
-  const bodyRef = useRef(null)
-  useEffect(() => {
-    if (bodyRef.current && github?.bodyHtml) bodyRef.current.innerHTML = github.bodyHtml
-  }, [github?.bodyHtml])
+  const { url, title, github, ogImage, description } = widget.props || {}
+
+  let hostname = ''
+  try { hostname = new URL(url).hostname } catch { /* */ }
 
   if (github) {
-    return createElement('div', { style: { height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bgColor-default, #ffffff)' } },
-      createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 24px', fontSize: '18px', fontWeight: 600, borderBottom: '1px solid var(--borderColor-muted, #d8dee4)' } }, title || url || 'GitHub'),
-      github.bodyHtml && createElement('div', { ref: bodyRef, style: { flex: 1, overflow: 'auto', padding: '24px', fontSize: '15px', lineHeight: 1.7 } }),
+    const titleText = title || github.title || ''
+    const issueNumber = github.number ? `#${github.number}` : ''
+    const primaryAuthor = github.author || ''
+    const createdAgo = github.createdAgo || ''
+    const bodyHtml = github.bodyHtml || ''
+
+    return createElement('div', { className: linkStyles.expandedIssue },
+      createElement('header', { className: linkStyles.expandedIssueHeader },
+        createElement('h2', { className: linkStyles.expandedIssueTitle },
+          createElement('a', { href: url || '#', target: '_blank', rel: 'noopener noreferrer' },
+            titleText || url,
+            issueNumber && createElement('span', { className: linkStyles.expandedIssueNumber }, ` ${issueNumber}`),
+          ),
+        ),
+        createElement('div', { className: linkStyles.expandedByline },
+          primaryAuthor && createElement('a', {
+            href: `https://github.com/${primaryAuthor}`,
+            target: '_blank',
+            rel: 'noopener noreferrer',
+            className: linkStyles.expandedAuthor,
+          },
+            createElement('img', {
+              src: `https://github.com/${primaryAuthor}.png?size=40`,
+              alt: '', width: '20', height: '20',
+              className: linkStyles.avatar, loading: 'lazy',
+            }),
+            primaryAuthor,
+          ),
+          createdAgo && createElement('span', { className: linkStyles.expandedBylineText },
+            primaryAuthor ? ` opened ${createdAgo}` : `Opened ${createdAgo}`,
+          ),
+        ),
+      ),
+      bodyHtml && createElement(DangerousHtmlDiv, { html: bodyHtml, className: linkStyles.expandedIssueBody }),
     )
   }
-  return createElement('div', { style: { padding: '32px 40px' } },
-    createElement('p', { style: { fontSize: '18px', fontWeight: 600, margin: '0 0 8px' } }, title || url || 'Link'),
-    url && createElement('a', { href: url, target: '_blank', rel: 'noopener noreferrer', style: { fontSize: '14px', color: 'var(--fgColor-accent, #0969da)' } }, url),
+
+  return createElement('div', { className: linkStyles.expandedLink },
+    ogImage && createElement('img', { className: linkStyles.expandedOgImage, src: ogImage, alt: '', loading: 'lazy' }),
+    createElement('h2', { className: linkStyles.expandedTitle }, title || hostname || url || 'Untitled'),
+    description && createElement('p', { className: linkStyles.expandedDescription }, description),
+    url && createElement('a', {
+      href: url, target: '_blank', rel: 'noopener noreferrer',
+      className: linkStyles.expandedUrl,
+    }, url),
   )
+}
+
+/** Renders raw HTML into a div via a callback ref (avoids ref-during-render lint). */
+function DangerousHtmlDiv({ html, className }) {
+  const setRef = useCallback((el) => { if (el) el.innerHTML = html }, [html])
+  return createElement('div', { ref: setRef, className })
 }
 
 /**

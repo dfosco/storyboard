@@ -4,9 +4,9 @@
  * Reads the canvas bridge state to find connected widgets eligible
  * for split-screen, and builds iframe URLs for secondary panes.
  */
-import { createElement, useRef, useEffect, useState, useCallback } from 'react'
+import { createElement, useCallback } from 'react'
 import { isSplitScreenCapable, getWidgetMeta } from './widgetConfig.js'
-import markdownStyles from './MarkdownBlock.module.css'
+import { ExpandedMarkdownEditor } from './MarkdownBlock.jsx'
 import linkStyles from './LinkPreview.module.css'
 
 // Re-export for convenience
@@ -69,14 +69,14 @@ export function buildPaneForWidget(widget) {
     }
   }
 
-  // Markdown: render content
+  // Markdown: use the same editable component as the primary expand
   if (widget.type === 'markdown') {
     const content = widget.props?.content || ''
     return {
       id: widget.id,
       label,
       kind: 'react',
-      render: () => createElement(LazyMarkdownPane, { content }),
+      render: () => createElement(ExpandedMarkdownEditor, { content }),
     }
   }
 
@@ -91,60 +91,6 @@ export function buildPaneForWidget(widget) {
   }
 
   return null
-}
-
-/**
- * Markdown renderer for expanded panes — matches the primary expanded rendering
- * used when markdown triggers its own expand/split-screen.
- */
-function LazyMarkdownPane({ content }) {
-  const ref = useRef(null)
-  const [html, setHtml] = useState('')
-
-  useEffect(() => {
-    if (!content) return
-    let cancelled = false
-    ;(async () => {
-      const { remark } = await import('remark')
-      const remarkGfm = (await import('remark-gfm')).default
-      const remarkHtml = (await import('remark-html')).default
-      if (cancelled) return
-      const result = remark().use(remarkGfm).use(remarkHtml, { sanitize: false }).processSync(content)
-      let rendered = String(result).replace(/<a\s/g, '<a target="_blank" rel="noopener noreferrer" ')
-
-      // Syntax-highlight fenced code blocks (same as primary rendering)
-      if (rendered.includes('<code class="language-')) {
-        try {
-          const { createInspectorHighlighter } = await import('@dfosco/storyboard-core/inspector/highlighter')
-          if (cancelled) return
-          const hl = await createInspectorHighlighter()
-          if (cancelled) return
-          rendered = rendered.replace(
-            /<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/g,
-            (match, lang, code) => {
-              try {
-                const decoded = code
-                  .replace(/&#x3C;/gi, '<').replace(/&#x3E;/gi, '>')
-                  .replace(/&#x26;/gi, '&').replace(/&#x22;/gi, '"').replace(/&#x27;/gi, "'")
-                  .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-                  .replace(/&quot;/g, '"').replace(/&amp;/g, '&')
-                return hl.codeToHtml(decoded, { lang })
-              } catch { return match }
-            }
-          )
-        } catch { /* highlighter unavailable — render without */ }
-      }
-
-      if (!cancelled) setHtml(rendered)
-    })()
-    return () => { cancelled = true }
-  }, [content])
-
-  return createElement('div', {
-    ref,
-    className: markdownStyles.expandedPreview,
-    dangerouslySetInnerHTML: html ? { __html: html } : undefined,
-  })
 }
 
 /**

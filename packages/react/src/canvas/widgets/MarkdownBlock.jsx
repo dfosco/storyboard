@@ -214,9 +214,10 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
     {expanded && (
       <MarkdownExpandPane
         widgetId={id}
-        renderedHtml={renderedHtml}
+        content={content}
         splitMode={expandMode === 'split'}
         onClose={() => setExpandMode(null)}
+        onUpdate={onUpdate}
       />
     )}
     </>
@@ -226,7 +227,7 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
 /**
  * Builds pane configs and renders ExpandedPane for an expanded markdown widget.
  */
-function MarkdownExpandPane({ widgetId, renderedHtml, splitMode, onClose }) {
+function MarkdownExpandPane({ widgetId, content, splitMode, onClose, onUpdate }) {
   const connectedWidgets = useMemo(
     () => splitMode ? findAllConnectedSplitTargets(widgetId) : [],
     [widgetId, splitMode],
@@ -243,17 +244,15 @@ function MarkdownExpandPane({ widgetId, renderedHtml, splitMode, onClose }) {
         label: getSplitPaneLabel(primaryWidget) || 'Markdown',
         kind: 'react',
         render: () => (
-          <div
-            className={styles.expandedPreview}
-            dangerouslySetInnerHTML={{
-              __html: renderedHtml || '<p>No content</p>',
-            }}
+          <ExpandedMarkdownEditor
+            content={content}
+            onUpdate={onUpdate}
           />
         ),
       }
     }
     return buildPaneForWidget(widget)
-  }, [widgetId, primaryWidget, renderedHtml])
+  }, [widgetId, primaryWidget, content, onUpdate])
 
   const layout = useMemo(
     () => buildSplitLayout(primaryWidget, connectedWidgets, buildPaneFn),
@@ -266,5 +265,77 @@ function MarkdownExpandPane({ widgetId, renderedHtml, splitMode, onClose }) {
       variant={layout.flat().length <= 1 ? 'modal' : 'full'}
       onClose={onClose}
     />
+  )
+}
+
+/**
+ * Editable markdown view for expanded/split-screen panes.
+ * Self-contained: renders markdown from raw content with syntax highlighting.
+ * Double-click preview to edit; Escape or click "Preview" to return.
+ */
+export function ExpandedMarkdownEditor({ content, onUpdate }) {
+  const [editing, setEditing] = useState(false)
+  const textareaRef = useRef(null)
+  const canEdit = typeof onUpdate === 'function'
+
+  const rawHtml = useMemo(() => renderMarkdown(content), [content])
+  const [renderedHtml, setRenderedHtml] = useState(rawHtml)
+
+  useEffect(() => {
+    setRenderedHtml(rawHtml)
+    if (!rawHtml.includes('<code class="language-')) return
+    let cancelled = false
+    highlightCodeBlocks(rawHtml).then((highlighted) => {
+      if (!cancelled) setRenderedHtml(highlighted)
+    })
+    return () => { cancelled = true }
+  }, [rawHtml])
+
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      const len = textareaRef.current.value.length
+      textareaRef.current.setSelectionRange(len, len)
+      textareaRef.current.focus({ preventScroll: true })
+    }
+  }, [editing])
+
+  if (editing && canEdit) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div className={styles.expandedToolbar}>
+          <button className={styles.expandedToolbarBtn} onClick={() => setEditing(false)}>
+            Preview
+          </button>
+        </div>
+        <textarea
+          ref={textareaRef}
+          className={styles.expandedEditor}
+          value={content}
+          onChange={(e) => onUpdate({ content: e.target.value })}
+          onKeyDown={(e) => { if (e.key === 'Escape') setEditing(false) }}
+          placeholder="Write markdown…"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {canEdit && (
+        <div className={styles.expandedToolbar}>
+          <button className={styles.expandedToolbarBtn} onClick={() => setEditing(true)}>
+            Edit
+          </button>
+        </div>
+      )}
+      <div
+        className={styles.expandedPreview}
+        style={{ flex: 1, overflow: 'auto' }}
+        onDoubleClick={canEdit ? () => setEditing(true) : undefined}
+        dangerouslySetInnerHTML={{
+          __html: renderedHtml || '<p>No content</p>',
+        }}
+      />
+    </div>
   )
 }

@@ -949,37 +949,11 @@ const TAB_FILTERS = ['All', 'Recent', 'Starred']
 /* ─── Branch Navigation ─── */
 
 function BranchNav({ basePath }) {
-  const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
   const { branches, currentBranch, branchBasePath } = useBranches(basePath)
 
   if (!branches || branches.length === 0) return null
 
   const branchNames = branches.map(b => b.branch)
-
-  const navigate = async (branch) => {
-    const target = branches.find(b => b.branch === branch)
-    const folder = target?.folder || (branch === 'main' ? '' : `branch--${branch}/`)
-
-    if (isLocalDev) {
-      // Dev: ask server for the correct URL (handles port-per-branch on localhost)
-      const apiBase = (basePath || '/').replace(/\/$/, '')
-      try {
-        const res = await fetch(`${apiBase}/_storyboard/switch-branch`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ branch }),
-        })
-        const data = await res.json()
-        if (res.ok && data.url) {
-          window.location.href = data.url
-          return
-        }
-      } catch { /* fall through to direct navigation */ }
-    }
-
-    // Prod or fallback: navigate directly
-    window.location.href = `${branchBasePath}${folder}`
-  }
 
   return (
     <div className={css.branchNav}>
@@ -987,7 +961,12 @@ function BranchNav({ basePath }) {
       <BranchSelect
         branches={branchNames}
         value={currentBranch}
-        onChange={(e) => navigate(e.target.value)}
+        onChange={(e) => {
+          const branch = e.target.value
+          const target = branches.find(b => b.branch === branch)
+          const folder = target?.folder || (branch === 'main' ? '' : `branch--${branch}/`)
+          window.location.href = `${branchBasePath}${folder}`
+        }}
       />
     </div>
   )

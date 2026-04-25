@@ -949,26 +949,57 @@ const TAB_FILTERS = ['All', 'Recent', 'Starred']
 /* ─── Branch Navigation ─── */
 
 function BranchNav({ basePath }) {
+  const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
   const { branches, currentBranch, branchBasePath } = useBranches(basePath)
+  const [switching, setSwitching] = useState(null)
 
   if (!branches || branches.length === 0) return null
 
   const branchNames = branches.map(b => b.branch)
 
+  const navigate = async (branch) => {
+    if (switching) return
+    const target = branches.find(b => b.branch === branch)
+    const folder = target?.folder || (branch === 'main' ? '' : `branch--${branch}/`)
+    const directUrl = `${branchBasePath}${folder}`
+
+    if (!isLocalDev) {
+      window.location.href = directUrl
+      return
+    }
+
+    // Local dev: ask server to spin up the branch, then navigate
+    setSwitching(branch)
+    const apiBase = (basePath || '/').replace(/\/$/, '')
+    try {
+      const res = await fetch(`${apiBase}/_storyboard/switch-branch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ branch }),
+      })
+      const data = await res.json()
+      window.location.href = (res.ok && data.url) ? data.url : directUrl
+    } catch {
+      window.location.href = directUrl
+    }
+  }
+
   return (
-    <div className={css.branchNav}>
-      <GitBranchIcon size={14} />
-      <BranchSelect
-        branches={branchNames}
-        value={currentBranch}
-        onChange={(e) => {
-          const branch = e.target.value
-          const target = branches.find(b => b.branch === branch)
-          const folder = target?.folder || (branch === 'main' ? '' : `branch--${branch}/`)
-          window.location.href = `${branchBasePath}${folder}`
-        }}
-      />
-    </div>
+    <>
+      <div className={css.branchNav}>
+        <GitBranchIcon size={14} />
+        <BranchSelect
+          branches={branchNames}
+          value={currentBranch}
+          onChange={(e) => navigate(e.target.value)}
+          disabled={!!switching}
+        />
+      </div>
+      {switching && <div className={css.switchOverlay}>
+        <div className={css.switchSpinner} />
+        <span>Starting {switching}…</span>
+      </div>}
+    </>
   )
 }
 

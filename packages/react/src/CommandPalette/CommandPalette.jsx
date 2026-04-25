@@ -445,6 +445,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
         children: artifact.name,
         keywords: ['starred', 'star', artifact.name.toLowerCase()],
         itemType: artifact._type === 'canvas' ? 'canvas' : 'prototype',
+        url: route,
         onClick: () => {
           if (artifact.isExternal) {
             window.open(route, '_blank')
@@ -516,17 +517,20 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
       group: {
         heading: section.title,
         id: `cfg:${section.id}`,
-        items: items.map(entry => ({
-          id: `cfg:${section.id}:${entry.type}:${entry.key}`,
-          children: entry.label,
-          keywords: [entry.type, entry.key, entry.label],
-          itemType: entry.type,
-          onClick: () => {
-            trackRecent(entry.type, entry.key, entry.label)
-            const route = resolveRecentRoute(entry, prefix)
-            if (route) window.location.href = route
-          },
-      })),
+        items: items.map(entry => {
+          const route = resolveRecentRoute(entry, prefix)
+          return {
+            id: `cfg:${section.id}:${entry.type}:${entry.key}`,
+            children: entry.label,
+            keywords: [entry.type, entry.key, entry.label],
+            itemType: entry.type,
+            url: route || undefined,
+            onClick: () => {
+              trackRecent(entry.type, entry.key, entry.label)
+              if (route) window.location.href = route
+            },
+          }
+        }),
       },
     }
   }
@@ -581,6 +585,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
         children: item.name,
         keywords: [item.name, item.id, item.type],
         itemType: item.type,
+        url: item.route,
         onClick: () => {
           trackRecent(item.type, item.id, item.name)
           window.location.href = item.route
@@ -889,16 +894,21 @@ export default function StoryboardCommandPalette({ basePath }) {
   const [currentTheme, setCurrentTheme] = useState(() => getTheme())
   const [refreshKey, setRefreshKey] = useState(0)
 
-  // Track cmd/ctrl modifier for opening links in new tabs
+  // Track modifier keys for link items (cmd/ctrl → new tab, alt → copy link).
+  // Updated from the most recent keyboard/mouse event via a capturing listener
+  // on the document so it fires before cmdk's own handlers.
   const modifierHeldRef = useRef(false)
+  const altHeldRef = useRef(false)
   useEffect(() => {
-    const down = (e) => { modifierHeldRef.current = e.metaKey || e.ctrlKey }
-    const up = () => { modifierHeldRef.current = false }
-    window.addEventListener('keydown', down)
-    window.addEventListener('keyup', up)
+    const track = (e) => { modifierHeldRef.current = e.metaKey || e.ctrlKey; altHeldRef.current = e.altKey }
+    const reset = () => { modifierHeldRef.current = false; altHeldRef.current = false }
+    document.addEventListener('keydown', track, true)
+    document.addEventListener('keyup', reset, true)
+    document.addEventListener('mousedown', track, true)
     return () => {
-      window.removeEventListener('keydown', down)
-      window.removeEventListener('keyup', up)
+      document.removeEventListener('keydown', track, true)
+      document.removeEventListener('keyup', reset, true)
+      document.removeEventListener('mousedown', track, true)
     }
   }, [])
 
@@ -1045,6 +1055,7 @@ export default function StoryboardCommandPalette({ basePath }) {
           id: `author:${item.id}`,
           label: item.name,
           type: item.type,
+          url: item.route,
           keywords: [item.name, item.id, item.type, author, `@${author}`],
           onSelect: () => {
             trackRecent(item.type.toLowerCase(), item.id, item.name)
@@ -1090,6 +1101,27 @@ export default function StoryboardCommandPalette({ basePath }) {
     if (score < 10) return 0
     return Math.min(1, score / MAX_SCORE)
   }, [])
+
+  function showCenterToast(message) {
+    const el = document.createElement('div')
+    Object.assign(el.style, {
+      position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+      zIndex: '10000', padding: '0.625rem 1rem', borderRadius: '0.5rem',
+      background: 'var(--bgColor-emphasis, #1f2328)', color: 'var(--fgColor-onEmphasis, #fff)',
+      fontSize: '0.8125rem', fontFamily: 'var(--fontStack-sansSerif, system-ui)',
+      opacity: '0', transition: 'opacity 0.15s ease',
+      pointerEvents: 'none',
+    })
+    el.textContent = message
+    document.body.appendChild(el)
+    requestAnimationFrame(() => { el.style.opacity = '1' })
+    setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 200) }, 1800)
+  }
+
+  function copyLinkToClipboard(url) {
+    const fullUrl = url.startsWith('/') ? window.location.origin + url : url
+    navigator.clipboard.writeText(fullUrl).then(() => showCenterToast('Link copied to clipboard'))
+  }
 
   return (
     <>
@@ -1166,7 +1198,9 @@ export default function StoryboardCommandPalette({ basePath }) {
                         key={id}
                         value={itemValue({ children, keywords })}
                         onSelect={() => {
-                          if (url && modifierHeldRef.current) {
+                          if (url && altHeldRef.current) {
+                            copyLinkToClipboard(url)
+                          } else if (url && modifierHeldRef.current) {
                             window.open(url, '_blank')
                           } else {
                             onClick?.()
@@ -1193,7 +1227,19 @@ export default function StoryboardCommandPalette({ basePath }) {
                   <Command.Item
                     key={item.id}
                     value={itemValue(item)}
-                    onSelect={item.onSelect}
+                    onSelect={() => {
+                      if (item.url && altHeldRef.current) {
+                        copyLinkToClipboard(item.url)
+                        setOpen(false)
+                        setActivePage('root')
+                      } else if (item.url && modifierHeldRef.current) {
+                        window.open(item.url, '_blank')
+                        setOpen(false)
+                        setActivePage('root')
+                      } else {
+                        item.onSelect()
+                      }
+                    }}
                   >
                     <AvatarIcon username={group.author} />
                     <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -119,3 +119,6 @@ export { scoreMatch } from './fuzzySearch.js'
 
 // Icon component for UI rendering
 export { Icon, default as IconDefault } from './svelte-plugin-ui/components/Icon.jsx'
+
+// Shared UI components
+export { default as BranchSelect } from './BranchSelect.jsx'

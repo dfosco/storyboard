@@ -5,11 +5,12 @@
  * Formerly known as Viewfinder — renamed to match the /workspace route.
  */
 import { useState, useEffect, useRef, useMemo, useCallback, useSyncExternalStore } from 'react'
-import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal } from '@dfosco/storyboard-core'
+import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal, BranchSelect } from '@dfosco/storyboard-core'
 import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, PlusIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon, StackIcon, TrashIcon, ShieldLockIcon, KebabHorizontalIcon, PencilIcon } from '@primer/octicons-react'
 import { Menu } from '@base-ui/react/menu'
 import { Dialog } from '@base-ui/react/dialog'
 import Icon from './Icon.jsx'
+import { useBranches } from './BranchBar/useBranches.js'
 import css from './Viewfinder.module.css'
 
 /* ─── Theme sync: read toolbar theme from DOM and apply to Primer/BaseUI ─── */
@@ -945,164 +946,29 @@ const NAV_ITEMS = [
 
 const TAB_FILTERS = ['All', 'Recent', 'Starred']
 
-/* ─── Branch Dropdown ─── */
+/* ─── Branch Navigation ─── */
 
-function useBranches(basePath) {
-  const [branches, setBranches] = useState(() => {
-    if (typeof window !== 'undefined' && Array.isArray(window.__SB_BRANCHES__)) {
-      return window.__SB_BRANCHES__
-    }
-    return null
-  })
-
-  const [gitUser, setGitUser] = useState(null)
-
-  useEffect(() => {
-    const apiBase = (basePath || '/').replace(/\/$/, '')
-
-    // Fetch git user info for "my branches" filtering
-    fetch(`${apiBase}/_storyboard/git-user`).then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.name) setGitUser(data.name) })
-      .catch(() => {})
-
-    // Always fetch live branch list from server API
-    fetch(`${apiBase}/_storyboard/worktrees`).then(r => r.ok ? r.json() : null)
-      .then(data => { if (Array.isArray(data) && data.length > 0) setBranches(data) })
-      .catch(() => {})
-  }, [])
-
-  const currentBranch = useMemo(() => {
-    const m = (basePath || '').match(/\/branch--([^/]+)\/?$/)
-    return m ? m[1] : 'main'
-  }, [basePath])
-
-  const branchBasePath = (basePath || '/').replace(/\/branch--[^/]*\/$/, '/')
-
-  return { branches, currentBranch, branchBasePath, gitUser }
-}
-
-function BranchDropdown({ basePath }) {
-  const isLocalDev = typeof window !== 'undefined' && window.__SB_LOCAL_DEV__ === true
-  const { branches, currentBranch, branchBasePath, gitUser } = useBranches(basePath)
-  const [showAll, setShowAll] = useState(false)
-  const [switching, setSwitching] = useState(null)
-  const [switchError, setSwitchError] = useState(null)
+function BranchNav({ basePath }) {
+  const { branches, currentBranch, branchBasePath } = useBranches(basePath)
 
   if (!branches || branches.length === 0) return null
 
-  const twoWeeksAgo = Date.now() - 14 * 24 * 60 * 60 * 1000
-
-  // Split into "my branches" vs others
-  const myBranches = gitUser
-    ? branches.filter(b => b.author === gitUser || b.branch === currentBranch)
-    : branches.filter(b => b.branch === currentBranch)
-
-  const otherBranches = branches.filter(b => !myBranches.some(m => m.branch === b.branch))
-
-  // Recent = last 2 weeks (or all if showAll)
-  const recentBranches = showAll
-    ? [...otherBranches].sort((a, b) => (a.branch || '').localeCompare(b.branch || ''))
-    : otherBranches
-        .filter(b => !b.lastModified || new Date(b.lastModified).getTime() > twoWeeksAgo)
-        .sort((a, b) => (a.branch || '').localeCompare(b.branch || ''))
-
-  const switchBranch = async (branch) => {
-    if (switching) return
-    setSwitching(branch)
-    setSwitchError(null)
-    const target = branches?.find(b => b.branch === branch)
-    const folder = target?.folder || (branch === 'main' ? '' : `branch--${branch}/`)
-
-    if (isLocalDev) {
-      // Dev: call switch-branch API to spin up the server if needed
-      const apiBase = (basePath || '/').replace(/\/$/, '')
-      try {
-        const res = await fetch(`${apiBase}/_storyboard/switch-branch`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ branch }),
-        })
-        const data = await res.json()
-        if (res.ok && data.url) {
-          window.location.href = data.url
-        } else {
-          setSwitchError(data.error || 'Failed to switch')
-          setSwitching(null)
-        }
-      } catch {
-        // Fallback to direct navigation if API unavailable
-        window.location.href = `${branchBasePath}${folder}`
-      }
-    } else {
-      window.location.href = `${branchBasePath}${folder}`
-    }
-  }
+  const branchNames = branches.map(b => b.branch)
 
   return (
-    <Menu.Root>
-      <Menu.Trigger className={css.branchBtn} disabled={!!switching}>
-        <GitBranchIcon size={14} />
-        <span className={css.branchBtnText}>{switching ? `Switching to ${switching}…` : currentBranch}</span>
-        {!switching && <ChevronDownIcon size={12} />}
-      </Menu.Trigger>
-      <Menu.Portal>
-        <Menu.Positioner className={css.branchPositioner} side="bottom" align="end" sideOffset={4}>
-          <Menu.Popup className={css.branchPopup}>
-            {myBranches.length > 0 && (
-              <>
-                <div className={css.branchSectionLabel}>My branches</div>
-                {myBranches.map(b => (
-                  <Menu.Item
-                    key={b.branch}
-                    className={`${css.branchItem}${b.branch === currentBranch ? ` ${css.branchItemActive}` : ''}`}
-                    onClick={() => switchBranch(b.branch)}
-                  >
-                    <GitBranchIcon size={12} />
-                    {b.branch}
-                  </Menu.Item>
-                ))}
-              </>
-            )}
-
-            {myBranches.length > 0 && recentBranches.length > 0 && (
-              <div className={css.branchSeparator} />
-            )}
-
-            {recentBranches.length > 0 && (
-              <>
-                <div className={css.branchSectionLabel}>
-                  {showAll ? 'All branches' : 'Recent branches'}
-                </div>
-                <Menu.Viewport className={css.branchViewport}>
-                  {recentBranches.map(b => (
-                    <Menu.Item
-                      key={b.branch}
-                      className={`${css.branchItem}${b.branch === currentBranch ? ` ${css.branchItemActive}` : ''}`}
-                      onClick={() => switchBranch(b.branch)}
-                    >
-                      <GitBranchIcon size={12} />
-                      {b.branch}
-                    </Menu.Item>
-                  ))}
-                </Menu.Viewport>
-              </>
-            )}
-
-            {!showAll && otherBranches.length > recentBranches.length && (
-              <>
-                <div className={css.branchSeparator} />
-                <button
-                  className={css.branchShowAll}
-                  onClick={(e) => { e.stopPropagation(); setShowAll(true) }}
-                >
-                  See all branches ({otherBranches.length})
-                </button>
-              </>
-            )}
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
-    </Menu.Root>
+    <div className={css.branchNav}>
+      <GitBranchIcon size={14} />
+      <BranchSelect
+        branches={branchNames}
+        value={currentBranch}
+        onChange={(e) => {
+          const branch = e.target.value
+          const target = branches.find(b => b.branch === branch)
+          const folder = target?.folder || (branch === 'main' ? '' : `branch--${branch}/`)
+          window.location.href = `${branchBasePath}${folder}`
+        }}
+      />
+    </div>
   )
 }
 
@@ -1415,7 +1281,7 @@ export default function Workspace({
           </div>
         </div>
         <div className={css.topActions}>
-          <BranchDropdown basePath={basePath} />
+          <BranchNav basePath={basePath} />
           {isLocalDev && (
             <Menu.Root open={showCreate} onOpenChange={setShowCreate}>
               <Menu.Trigger className={css.createBtn}>

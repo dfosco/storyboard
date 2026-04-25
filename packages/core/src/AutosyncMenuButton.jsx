@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
 import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
+import BranchSelect from './BranchSelect.jsx'
 
 export default function AutosyncMenuButton({ config = {}, basePath = '/', tabindex = -1 }) {
   const apiBase = (basePath === '/' ? '' : basePath.replace(/\/$/, '')) + '/_storyboard/autosync'
@@ -189,21 +190,15 @@ export default function AutosyncMenuButton({ config = {}, basePath = '/', tabind
         {/* Branch selector */}
         <div className="branchRow">
           <label className="branchLabel" htmlFor="autosync-branch">Branch</label>
-          <select
+          <BranchSelect
             id="autosync-branch"
             ref={branchSelectRef}
-            className="branchSelect"
+            branches={branches}
             value={selectedBranch}
             onChange={(e) => setSelectedBranch(e.target.value)}
             disabled={hasEnabled(enabledScopes) || loading}
-          >
-            {branches.length === 0 && (
-              <option value="" disabled>No non-main branches available</option>
-            )}
-            {branches.map((branch) => (
-              <option key={branch} value={branch}>{branch}</option>
-            ))}
-          </select>
+            placeholder="No non-main branches available"
+          />
         </div>
 
         <DropdownMenu.Separator />

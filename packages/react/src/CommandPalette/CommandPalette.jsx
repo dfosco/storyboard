@@ -647,7 +647,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
         id: `cfg:${section.id}:${toolId}`,
         toolIcon: isHidden ? 'primer/light-bulb' : 'primer/light-bulb',
         children: <span style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>{isHidden ? 'Show toolbars' : 'Hide toolbars'}</span>
+          <span>Hide toolbars</span>
           <span>{isHidden ? '✓' : ''}</span>
         </span>,
         keywords: [label, toolId, 'hide', 'show', 'toolbar'].filter(Boolean),

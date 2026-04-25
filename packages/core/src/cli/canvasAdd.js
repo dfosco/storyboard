@@ -44,13 +44,14 @@ async function canvasAdd() {
 
   const flagMode = hasFlags(rest) || Boolean(widgetType)
   const { flags, errors } = flagMode ? parseFlags(flagTokens, widgetSchema) : { flags: {}, errors: [] }
+  const jsonOutput = flags.json || false
 
   if (errors.length) {
     for (const e of errors) p.log.error(e)
     process.exit(1)
   }
 
-  p.intro('storyboard canvas add')
+  if (!jsonOutput) p.intro('storyboard canvas add')
   await ensureDevServer()
 
   // Widget type
@@ -167,6 +168,24 @@ async function canvasAdd() {
   }
 
   // Submit
+  if (jsonOutput) {
+    // JSON mode: no spinners/clack UI, just raw JSON output for scripting
+    try {
+      const result = await serverPost('/_storyboard/canvas/widget', {
+        name: canvasName,
+        type: widgetType,
+        props,
+        position: { x, y },
+      })
+      const widget = result.widget || result
+      console.log(JSON.stringify(widget))
+    } catch (err) {
+      console.error(JSON.stringify({ error: err.message }))
+      process.exit(1)
+    }
+    return
+  }
+
   const s = p.spinner()
   s.start(`Adding ${widgetType} widget...`)
 
@@ -178,8 +197,9 @@ async function canvasAdd() {
       position: { x, y },
     })
     s.stop(`Widget added!`)
-    if (result.id) {
-      p.log.success(`  ${widgetType} → ${canvasName} (id: ${result.id})`)
+    const widgetId = result.widget?.id || result.id
+    if (widgetId) {
+      p.log.success(`  ${widgetType} → ${canvasName} (id: ${widgetId})`)
     } else {
       p.log.success(`  ${widgetType} → ${canvasName}`)
     }

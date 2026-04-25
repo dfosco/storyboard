@@ -87,6 +87,10 @@ npx storyboard canvas update {widgetId} --canvas {canvasId} --x 100 --y 200
 ### Adding a widget
 ```bash
 npx storyboard canvas add sticky-note --canvas {canvasId} --props '{"text":"Hello"}'
+
+# Use --json to get the widget ID back (for scripting / creating connectors)
+npx storyboard canvas add sticky-note --canvas {canvasId} --json --props '{"text":"Hello"}'
+# Outputs: {"id":"sticky-note-abc123","type":"sticky-note","position":{"x":0,"y":0},"props":{...}}
 ```
 
 **Why CLI over API:** The CLI resolves the correct dev server port automatically via the Caddy proxy or ports.json. You never need to know the port number.

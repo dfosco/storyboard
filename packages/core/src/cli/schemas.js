@@ -187,6 +187,11 @@ export const widgetSchema = {
     description: 'Path to a JSON file containing widget props (avoids shell escaping)',
     aliases: ['pf'],
   },
+  json: {
+    type: 'boolean',
+    default: false,
+    description: 'Output result as JSON (includes widget id)',
+  },
 }
 
 /** @type {FlagSchema} */

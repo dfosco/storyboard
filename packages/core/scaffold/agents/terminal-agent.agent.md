@@ -23,9 +23,9 @@ Before signaling done, you must have done **at least one** of:
 If you wrote code that isn't surfaced through any of these paths, **add a summary widget** to the canvas describing what you did:
 
 ```bash
-RESPONSE=$(curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/${STORYBOARD_CANVAS_ID}/widgets" \
+RESPONSE=$(curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/widget" \
   -H "Content-Type: application/json" \
-  -d '{"type":"markdown","props":{"content":"# Done\n\nCreated `src/components/LoginForm/LoginForm.jsx` with email + password fields.\n\n```jsx\nimport LoginForm from \"./components/LoginForm/LoginForm\"\n```"}}')
+  -d "{\"name\":\"${STORYBOARD_CANVAS_ID}\",\"type\":\"markdown\",\"props\":{\"content\":\"# Done\\n\\nCreated LoginForm component.\"}}")
 
 NEW_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 
@@ -149,6 +149,10 @@ npx storyboard canvas update <widget-id> --canvas <canvas-name> --x 100 --y 200
 ```bash
 npx storyboard canvas add sticky-note --canvas <canvas-name> --props '{"text":"Hello"}'
 npx storyboard canvas add markdown --canvas <canvas-name> --x 100 --y 200
+
+# Use --json to get the widget ID back (for scripting / creating connectors)
+npx storyboard canvas add sticky-note --canvas <canvas-name> --json --props '{"text":"Hello"}'
+# Outputs: {"id":"sticky-note-abc123","type":"sticky-note","position":{"x":0,"y":0},"props":{...}}
 ```
 
 **Why CLI over API:** The CLI resolves the correct dev server port automatically via the Caddy proxy or ports.json. You never need to know the port number. All commands work from any worktree directory.
@@ -163,9 +167,10 @@ The connector API is HTTP-only (CLI doesn't support connectors yet). Use `$STORY
 
 ```bash
 # 1. Create the widget — capture its ID from the response
-RESPONSE=$(curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/${STORYBOARD_CANVAS_ID}/widgets" \
+# Endpoint: POST /_storyboard/canvas/widget  (canvas name goes in the body as "name")
+RESPONSE=$(curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/widget" \
   -H "Content-Type: application/json" \
-  -d '{"type":"sticky-note","props":{"text":"Hello from terminal"}}')
+  -d "{\"name\":\"${STORYBOARD_CANVAS_ID}\",\"type\":\"sticky-note\",\"position\":{\"x\":100,\"y\":200},\"props\":{\"text\":\"Hello from terminal\"}}")
 
 NEW_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 
@@ -178,9 +183,9 @@ curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/connector" \
 ### Example: Create a markdown block and connect it
 
 ```bash
-RESPONSE=$(curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/${STORYBOARD_CANVAS_ID}/widgets" \
+RESPONSE=$(curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/widget" \
   -H "Content-Type: application/json" \
-  -d '{"type":"markdown","props":{"content":"# Plan\n- Step 1\n- Step 2"}}')
+  -d "{\"name\":\"${STORYBOARD_CANVAS_ID}\",\"type\":\"markdown\",\"position\":{\"x\":100,\"y\":200},\"props\":{\"content\":\"# Plan\\n- Step 1\\n- Step 2\"}}")
 
 NEW_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 
@@ -195,9 +200,9 @@ When creating several widgets, connect each one back to the terminal individuall
 
 ```bash
 for i in 1 2 3; do
-  RESPONSE=$(curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/${STORYBOARD_CANVAS_ID}/widgets" \
+  RESPONSE=$(curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/widget" \
     -H "Content-Type: application/json" \
-    -d "{\"type\":\"sticky-note\",\"props\":{\"text\":\"Task $i\"}}")
+    -d "{\"name\":\"${STORYBOARD_CANVAS_ID}\",\"type\":\"sticky-note\",\"position\":{\"x\":$((i * 300)),\"y\":200},\"props\":{\"text\":\"Task $i\"}}")
 
   NEW_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 
@@ -281,6 +286,14 @@ Check your `messaging.peers` array to see which peers you can message and in whi
 ## HTTP API Reference (fallback only)
 
 If the CLI fails, use these endpoints. The `serverUrl` is in your terminal config or `$STORYBOARD_SERVER_URL`.
+
+### Safe: Create a widget (POST)
+```bash
+curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/widget" \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"${STORYBOARD_CANVAS_ID}\",\"type\":\"sticky-note\",\"position\":{\"x\":100,\"y\":200},\"props\":{\"text\":\"Hello\"}}"
+# Returns: {"success":true,"widget":{"id":"sticky-note-abc123","type":"sticky-note","position":{"x":100,"y":200},"props":{...}}}
+```
 
 ### Safe: Update a single widget (PATCH)
 ```bash

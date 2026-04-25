@@ -160,8 +160,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     handleAction(actionId) {
       if (actionId === 'show-code') toggleShowCode()
       else if (actionId === 'copy-code') copyCode()
-      else if (actionId === 'expand') setExpandMode('split')
-      else if (actionId === 'expand-single') setExpandMode('single')
+      else if (actionId === 'expand' || actionId === 'expand-single') setExpandMode('single')
       else if (actionId === 'split-screen') setExpandMode('split')
       else if (actionId === 'open-external') {
         const story = getStoryData(storyId)

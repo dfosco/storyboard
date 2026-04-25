@@ -145,10 +145,7 @@ export default forwardRef(function FigmaEmbed({ id: widgetId, props, onUpdate, r
     handleAction(actionId) {
       if (actionId === 'open-external') {
         if (url) window.open(url, '_blank', 'noopener')
-      } else if (actionId === 'expand') {
-        setShowIframe(true)
-        setExpandMode('split')
-      } else if (actionId === 'expand-single') {
+      } else if (actionId === 'expand' || actionId === 'expand-single') {
         setShowIframe(true)
         setExpandMode('single')
       } else if (actionId === 'split-screen') {

@@ -9,7 +9,6 @@
     "label:copy-png": "Copy as image",
     "label:copy-path": "Copy file path",
     "label:expand": "Expand",
-    "label:expand-single": "Expand (no split)",
     "label:copy-id": "Copy widget ID",
     "label:copy-text": "Copy text"
   },
@@ -170,11 +169,7 @@
           "action": "expand",
           "label": "$label:expand",
           "icon": "expand",
-          "prod": true,
-          "alt": {
-            "action": "expand-single",
-            "label": "$label:expand-single"
-          }
+          "prod": true
         },
         {
           "id": "toggle-collapse",
@@ -309,11 +304,7 @@
           "action": "expand",
           "label": "$label:expand",
           "icon": "expand",
-          "prod": true,
-          "alt": {
-            "action": "expand-single",
-            "label": "$label:expand-single"
-          }
+          "prod": true
         },
         {
           "id": "copy",
@@ -405,11 +396,7 @@
           "action": "expand",
           "label": "$label:expand",
           "icon": "expand",
-          "prod": true,
-          "alt": {
-            "action": "expand-single",
-            "label": "$label:expand-single"
-          }
+          "prod": true
         },
         {
           "id": "copy",
@@ -501,11 +488,7 @@
           "action": "expand",
           "label": "$label:expand",
           "icon": "expand",
-          "prod": true,
-          "alt": {
-            "action": "expand-single",
-            "label": "$label:expand-single"
-          }
+          "prod": true
         },
         {
           "id": "copy",
@@ -612,11 +595,7 @@
           "action": "expand",
           "label": "$label:expand",
           "icon": "expand",
-          "prod": true,
-          "alt": {
-            "action": "expand-single",
-            "label": "$label:expand-single"
-          }
+          "prod": true
         },
         {
           "id": "toggle-collapse",
@@ -780,11 +759,7 @@
           "action": "expand",
           "label": "$label:expand",
           "icon": "expand",
-          "prod": true,
-          "alt": {
-            "action": "expand-single",
-            "label": "$label:expand-single"
-          }
+          "prod": true
         },
         {
           "id": "show-code",
@@ -1106,11 +1081,7 @@
           "type": "action",
           "action": "expand",
           "label": "$label:expand",
-          "icon": "expand",
-          "alt": {
-            "action": "expand-single",
-            "label": "$label:expand-single"
-          }
+          "icon": "expand"
         },
         {
           "id": "copy",
@@ -1185,11 +1156,7 @@
           "type": "action",
           "action": "expand",
           "label": "$label:expand",
-          "icon": "expand",
-          "alt": {
-            "action": "expand-single",
-            "label": "$label:expand-single"
-          }
+          "icon": "expand"
         },
         {
           "id": "copy-link",
@@ -1261,11 +1228,7 @@
           "type": "action",
           "action": "expand",
           "label": "$label:expand",
-          "icon": "expand",
-          "alt": {
-            "action": "expand-single",
-            "label": "$label:expand-single"
-          }
+          "icon": "expand"
         },
         {
           "id": "copy",

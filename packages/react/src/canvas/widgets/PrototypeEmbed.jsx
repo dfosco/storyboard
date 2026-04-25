@@ -249,9 +249,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
     handleAction(actionId) {
       if (actionId === 'edit') {
         setEditing(true)
-      } else if (actionId === 'expand') {
-        setExpandMode('split')
-      } else if (actionId === 'expand-single') {
+      } else if (actionId === 'expand' || actionId === 'expand-single') {
         setExpandMode('single')
       } else if (actionId === 'split-screen') {
         setExpandMode('split')

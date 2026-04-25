@@ -155,23 +155,18 @@ export function findConnectedSplitTarget(widgetId) {
   const bridge = window.__storyboardCanvasBridgeState
   if (!bridge?.connectors || !bridge?.widgets) return null
 
-  // Only allow split-screen when this widget has exactly one connection
-  const myConnections = bridge.connectors.filter(
-    (c) => c.start?.widgetId === widgetId || c.end?.widgetId === widgetId,
-  )
-  if (myConnections.length !== 1) return null
+  // Find all widgets connected to this one
+  const connectedIds = new Set()
+  for (const c of bridge.connectors) {
+    if (c.start?.widgetId === widgetId && c.end?.widgetId) connectedIds.add(c.end.widgetId)
+    if (c.end?.widgetId === widgetId && c.start?.widgetId) connectedIds.add(c.start.widgetId)
+  }
+  if (connectedIds.size === 0) return null
 
-  const conn = myConnections[0]
-  const otherId = conn.start?.widgetId === widgetId ? conn.end?.widgetId : conn.start?.widgetId
-
-  // The other widget must also have exactly one connection
-  const otherConnections = bridge.connectors.filter(
-    (c) => c.start?.widgetId === otherId || c.end?.widgetId === otherId,
-  )
-  if (otherConnections.length !== 1) return null
-
-  const other = bridge.widgets.find((w) => w.id === otherId)
-  if (other && isSplitScreenCapable(other.type)) return other
+  // Return the first connected widget that is split-screen capable
+  for (const w of bridge.widgets) {
+    if (connectedIds.has(w.id) && isSplitScreenCapable(w.type)) return w
+  }
   return null
 }
 

@@ -161,4 +161,80 @@ describe('ExpandedPane', () => {
       expect(container.innerHTML).toBe('')
     })
   })
+
+  describe('initialLayout (2D layout)', () => {
+    it('renders 2 columns from initialLayout', () => {
+      const layout = [
+        [makeReactPane('a', 'Left')],
+        [makeReactPane('b', 'Right')],
+      ]
+      const { container } = render(
+        <ExpandedPane initialLayout={layout} variant="full" onClose={vi.fn()} />
+      )
+      expect(screen.getByText('Left content')).toBeTruthy()
+      expect(screen.getByText('Right content')).toBeTruthy()
+      const grid = container.querySelector('[class*="grid"]')
+      expect(grid).toBeTruthy()
+    })
+
+    it('renders 3 panes: 1 column + 2-row column', () => {
+      const layout = [
+        [makeReactPane('a', 'Left')],
+        [makeReactPane('b', 'Top Right'), makeReactPane('c', 'Bottom Right')],
+      ]
+      render(
+        <ExpandedPane initialLayout={layout} variant="full" onClose={vi.fn()} />
+      )
+      expect(screen.getByText('Left content')).toBeTruthy()
+      expect(screen.getByText('Top Right content')).toBeTruthy()
+      expect(screen.getByText('Bottom Right content')).toBeTruthy()
+    })
+
+    it('renders 4 panes in 2×2 grid', () => {
+      const layout = [
+        [makeReactPane('a', 'TL'), makeReactPane('b', 'BL')],
+        [makeReactPane('c', 'TR'), makeReactPane('d', 'BR')],
+      ]
+      render(
+        <ExpandedPane initialLayout={layout} variant="full" onClose={vi.fn()} />
+      )
+      expect(screen.getByText('TL content')).toBeTruthy()
+      expect(screen.getByText('BL content')).toBeTruthy()
+      expect(screen.getByText('TR content')).toBeTruthy()
+      expect(screen.getByText('BR content')).toBeTruthy()
+    })
+
+    it('renders column divider between columns', () => {
+      const layout = [
+        [makeReactPane('a')],
+        [makeReactPane('b')],
+      ]
+      const { container } = render(
+        <ExpandedPane initialLayout={layout} variant="full" onClose={vi.fn()} />
+      )
+      const vSeparators = container.querySelectorAll('[role="separator"][aria-orientation="vertical"]')
+      expect(vSeparators.length).toBe(1)
+    })
+
+    it('renders row dividers within 2-row columns', () => {
+      const layout = [
+        [makeReactPane('a'), makeReactPane('b')],
+        [makeReactPane('c'), makeReactPane('d')],
+      ]
+      const { container } = render(
+        <ExpandedPane initialLayout={layout} variant="full" onClose={vi.fn()} />
+      )
+      const hSeparators = container.querySelectorAll('[role="separator"][aria-orientation="horizontal"]')
+      expect(hSeparators.length).toBe(2) // one per 2-row column
+    })
+
+    it('renders single-pane modal from 1-element layout', () => {
+      const layout = [[makeReactPane('a', 'Only Pane')]]
+      render(
+        <ExpandedPane initialLayout={layout} variant="modal" onClose={vi.fn()} />
+      )
+      expect(screen.getByText('Only Pane')).toBeTruthy()
+      expect(screen.getByLabelText('Close expanded view')).toBeTruthy()
+    })
+  })
 })

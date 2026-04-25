@@ -5,7 +5,7 @@ import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, prototypeEmbedSchema } from './widgetProps.js'
 import { getEmbedChromeVars } from './embedTheme.js'
 import { useIframeDevLogs } from './iframeDevLogs.js'
-import { findConnectedSplitTarget, getPaneOrder, getSplitPaneLabel, buildPaneForWidget } from './expandUtils.js'
+import { findAllConnectedSplitTargets, getSplitPaneLabel, buildPaneForWidget, buildSplitLayout } from './expandUtils.js'
 import ExpandedPane from './ExpandedPane.jsx'
 import styles from './PrototypeEmbed.module.css'
 import overlayStyles from './embedOverlay.module.css'
@@ -423,42 +423,39 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
  * The primary pane is an external pane that receives the iframe via reparenting.
  */
 function PrototypeExpandPane({ widgetId, modalContainerRef, splitMode, onClose }) {
-  const connectedWidget = useMemo(
-    () => splitMode ? findConnectedSplitTarget(widgetId) : null,
+  const connectedWidgets = useMemo(
+    () => splitMode ? findAllConnectedSplitTargets(widgetId) : [],
     [widgetId, splitMode],
   )
   const primaryWidget = useMemo(() => {
     const bridge = window.__storyboardCanvasBridgeState
-    return bridge?.widgets?.find((w) => w.id === widgetId) || { type: 'prototype', props: {} }
+    return bridge?.widgets?.find((w) => w.id === widgetId) || { id: widgetId, type: 'prototype', position: { x: 0, y: 0 }, props: {} }
   }, [widgetId])
 
-  const primaryPane = useMemo(() => ({
-    id: widgetId,
-    label: getSplitPaneLabel(primaryWidget),
-    kind: 'external',
-    attach: (container) => {
-      modalContainerRef.current = container
-      return () => { modalContainerRef.current = null }
-    },
-  }), [widgetId, primaryWidget, modalContainerRef])
+  const buildPaneFn = useCallback((widget) => {
+    if (widget.id === widgetId) {
+      return {
+        id: widgetId,
+        label: getSplitPaneLabel(primaryWidget),
+        kind: 'external',
+        attach: (container) => {
+          modalContainerRef.current = container
+          return () => { modalContainerRef.current = null }
+        },
+      }
+    }
+    return buildPaneForWidget(widget)
+  }, [widgetId, primaryWidget, modalContainerRef])
 
-  const secondaryPane = useMemo(
-    () => buildPaneForWidget(connectedWidget),
-    [connectedWidget],
+  const layout = useMemo(
+    () => buildSplitLayout(primaryWidget, connectedWidgets, buildPaneFn),
+    [primaryWidget, connectedWidgets, buildPaneFn],
   )
-
-  const panes = useMemo(() => {
-    if (!secondaryPane) return [primaryPane]
-    const paneOrder = getPaneOrder(widgetId, connectedWidget)
-    return paneOrder.primaryIsLeft
-      ? [primaryPane, secondaryPane]
-      : [secondaryPane, primaryPane]
-  }, [primaryPane, secondaryPane, widgetId, connectedWidget])
 
   return (
     <ExpandedPane
-      initialPanes={panes}
-      variant="modal"
+      initialLayout={layout}
+      variant={layout.flat().length <= 1 ? 'modal' : 'full'}
       onClose={onClose}
     />
   )

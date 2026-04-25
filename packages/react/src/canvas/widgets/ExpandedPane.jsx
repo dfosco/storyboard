@@ -6,6 +6,10 @@
  *   - "full"  — fixed inset 0, no border-radius (terminal, agent)
  *
  * Multi-pane (split-screen) always uses "full" layout with CSS grid columns.
+ * Each column can contain 1 or 2 panes stacked vertically (row split).
+ *
+ * Layout is a 2D array: PaneConfig[][] where outer = columns, inner = rows.
+ * Supports up to 2 columns × 2 rows (4 panes max).
  *
  * Each pane provides either:
  *   - kind: 'react' + render prop (for normal React content)
@@ -21,6 +25,7 @@ import ExpandedPaneTopBar from './ExpandedPaneTopBar.jsx'
 import styles from './ExpandedPane.module.css'
 
 const MIN_PANE_WIDTH_PX = 120
+const MIN_PANE_HEIGHT_PX = 80
 
 /**
  * @typedef {Object} ReactPane
@@ -45,15 +50,29 @@ const MIN_PANE_WIDTH_PX = 120
 
 /**
  * @param {Object} props
- * @param {PaneConfig[]} props.initialPanes — initial pane configurations
+ * @param {PaneConfig[]} [props.initialPanes] — flat pane list (backward compat, each becomes a single-row column)
+ * @param {PaneConfig[][]} [props.initialLayout] — 2D layout: outer = columns, inner = rows within column
  * @param {'modal' | 'full'} [props.variant='modal'] — single-pane display variant
  * @param {() => void} props.onClose — close callback
  * @param {((panes: PaneConfig[]) => void)} [props.onPanesChange] — notify parent of pane changes
  */
-export default function ExpandedPane({ initialPanes, variant = 'modal', onClose, onPanesChange }) {
-  const [panes, setPanes] = useState(() => initialPanes)
-  const [columnSizes, setColumnSizes] = useState(() => initialPanes.map(() => '1fr'))
-  const [activePaneIndex, setActivePaneIndex] = useState(0)
+export default function ExpandedPane({ initialPanes, initialLayout, variant = 'modal', onClose, onPanesChange }) {
+  // Normalize to 2D layout: outer = columns, inner = rows
+  const [layout, setLayout] = useState(() => {
+    if (initialLayout) return initialLayout
+    if (initialPanes) return initialPanes.map((p) => [p])
+    return []
+  })
+
+  // Flat list of all panes (for attach/detach and ResizeObserver)
+  const allPanes = useMemo(() => layout.flat(), [layout])
+
+  const [columnSizes, setColumnSizes] = useState(() => layout.map(() => '1fr'))
+  // Row ratios per column: rowRatios[colIdx] = [ratio, ratio, ...] (flex values)
+  const [rowRatios, setRowRatios] = useState(() =>
+    layout.map((col) => col.map(() => 1)),
+  )
+  const [activePaneId, setActivePaneId] = useState(null)
 
   // Ref map: paneId → container DOM element (callback refs)
   const containerRefs = useRef(new Map())
@@ -62,23 +81,21 @@ export default function ExpandedPane({ initialPanes, variant = 'modal', onClose,
   // Ref map: paneId → ResizeObserver
   const observerRefs = useRef(new Map())
 
-  const isSplit = panes.length >= 2
+  const totalPanes = allPanes.length
+  const isSplit = totalPanes >= 2
   const useFullLayout = isSplit || variant === 'full'
 
   // ── External pane attach/detach via useLayoutEffect ──
-  // Keyed by pane id to avoid teardown on reorder.
   useLayoutEffect(() => {
-    for (const pane of panes) {
+    for (const pane of allPanes) {
       if (pane.kind !== 'external') continue
       const container = containerRefs.current.get(pane.id)
       if (!container) continue
-      // Already attached to this container
       if (detachRefs.current.has(pane.id)) continue
       const detach = pane.attach(container)
       detachRefs.current.set(pane.id, detach)
     }
     return () => {
-      // On unmount, detach all external panes
       for (const [id, detach] of detachRefs.current) {
         detach?.()
       }
@@ -88,9 +105,8 @@ export default function ExpandedPane({ initialPanes, variant = 'modal', onClose,
 
   // Handle pane list changes: attach new external panes, detach removed ones
   useLayoutEffect(() => {
-    const currentIds = new Set(panes.map(p => p.id))
+    const currentIds = new Set(allPanes.map((p) => p.id))
 
-    // Detach removed panes
     for (const [id, detach] of detachRefs.current) {
       if (!currentIds.has(id)) {
         detach?.()
@@ -100,8 +116,7 @@ export default function ExpandedPane({ initialPanes, variant = 'modal', onClose,
       }
     }
 
-    // Attach new external panes
-    for (const pane of panes) {
+    for (const pane of allPanes) {
       if (pane.kind !== 'external') continue
       if (detachRefs.current.has(pane.id)) continue
       const container = containerRefs.current.get(pane.id)
@@ -113,7 +128,7 @@ export default function ExpandedPane({ initialPanes, variant = 'modal', onClose,
 
   // ── ResizeObserver per external pane ──
   useEffect(() => {
-    for (const pane of panes) {
+    for (const pane of allPanes) {
       if (pane.kind !== 'external' || !pane.onResize) continue
       if (observerRefs.current.has(pane.id)) continue
       const container = containerRefs.current.get(pane.id)
@@ -132,7 +147,7 @@ export default function ExpandedPane({ initialPanes, variant = 'modal', onClose,
       }
       observerRefs.current.clear()
     }
-  }, [panes])
+  }, [allPanes])
 
   // ── Callback ref factory: stable per pane id ──
   const getContainerRef = useCallback((paneId) => (el) => {
@@ -155,41 +170,36 @@ export default function ExpandedPane({ initialPanes, variant = 'modal', onClose,
     return () => document.removeEventListener('keydown', handleKeyDown, true)
   }, [onClose])
 
-  // ── Drag-to-resize dividers ──
+  // ── Column drag-to-resize dividers ──
   const dragState = useRef(null)
 
-  const handleDividerPointerDown = useCallback((e, dividerIndex) => {
+  const handleColumnDividerPointerDown = useCallback((e, dividerIndex) => {
     e.preventDefault()
     const gridEl = e.target.closest(`.${styles.grid}`)
     if (!gridEl) return
-    const gridWidth = gridEl.getBoundingClientRect().width
-    const dividerCount = panes.length - 1
 
-    // Convert current columnSizes to pixel widths
     const currentCols = Array.from(gridEl.children)
-      .filter(el => !el.classList.contains(styles.divider))
-      .map(el => el.getBoundingClientRect().width)
+      .filter((el) => !el.classList.contains(styles.divider))
+      .map((el) => el.getBoundingClientRect().width)
 
     dragState.current = {
+      kind: 'column',
       dividerIndex,
       startX: e.clientX,
       startWidths: currentCols,
-      gridWidth,
-      dividerCount,
     }
 
     function handleMove(ev) {
-      if (!dragState.current) return
-      const { dividerIndex: di, startX, startWidths, gridWidth: gw } = dragState.current
+      if (!dragState.current || dragState.current.kind !== 'column') return
+      const { dividerIndex: di, startX, startWidths } = dragState.current
       const dx = ev.clientX - startX
       const leftW = Math.max(MIN_PANE_WIDTH_PX, startWidths[di] + dx)
       const rightW = Math.max(MIN_PANE_WIDTH_PX, startWidths[di + 1] - dx)
       const newWidths = [...startWidths]
       newWidths[di] = leftW
       newWidths[di + 1] = rightW
-      // Convert to fr units relative to grid
       const total = newWidths.reduce((a, b) => a + b, 0)
-      setColumnSizes(newWidths.map(w => `${(w / total * panes.length).toFixed(3)}fr`))
+      setColumnSizes(newWidths.map((w) => `${((w / total) * layout.length).toFixed(3)}fr`))
     }
 
     function handleUp() {
@@ -200,19 +210,60 @@ export default function ExpandedPane({ initialPanes, variant = 'modal', onClose,
 
     document.addEventListener('pointermove', handleMove)
     document.addEventListener('pointerup', handleUp)
-  }, [panes.length])
+  }, [layout.length])
 
-  // ── Build grid-template-columns including divider widths ──
+  // ── Row drag-to-resize dividers (vertical splits within a column) ──
+  const handleRowDividerPointerDown = useCallback((e, colIndex) => {
+    e.preventDefault()
+    const columnEl = e.target.closest(`.${styles.column}`)
+    if (!columnEl) return
+
+    const paneEls = Array.from(columnEl.children).filter(
+      (el) => !el.classList.contains(styles.rowDivider),
+    )
+    const startHeights = paneEls.map((el) => el.getBoundingClientRect().height)
+
+    dragState.current = {
+      kind: 'row',
+      colIndex,
+      startY: e.clientY,
+      startHeights,
+    }
+
+    function handleMove(ev) {
+      if (!dragState.current || dragState.current.kind !== 'row') return
+      const { colIndex: ci, startY, startHeights: sh } = dragState.current
+      const dy = ev.clientY - startY
+      const topH = Math.max(MIN_PANE_HEIGHT_PX, sh[0] + dy)
+      const bottomH = Math.max(MIN_PANE_HEIGHT_PX, sh[1] - dy)
+      const total = topH + bottomH
+      setRowRatios((prev) => {
+        const next = [...prev]
+        next[ci] = [topH / total, bottomH / total]
+        return next
+      })
+    }
+
+    function handleUp() {
+      dragState.current = null
+      document.removeEventListener('pointermove', handleMove)
+      document.removeEventListener('pointerup', handleUp)
+    }
+
+    document.addEventListener('pointermove', handleMove)
+    document.addEventListener('pointerup', handleUp)
+  }, [])
+
+  // ── Build grid-template-columns ──
   const gridTemplateColumns = useMemo(() => {
-    if (!isSplit) return undefined
-    // Interleave pane columns with thin divider columns
+    if (layout.length < 2) return undefined
     const parts = []
     for (let i = 0; i < columnSizes.length; i++) {
-      if (i > 0) parts.push('0px') // divider takes no grid space, it overlaps
+      if (i > 0) parts.push('0px')
       parts.push(columnSizes[i])
     }
     return parts.join(' ')
-  }, [isSplit, columnSizes])
+  }, [layout.length, columnSizes])
 
   // ── Render pane content ──
   function renderPaneContent(pane) {
@@ -221,25 +272,65 @@ export default function ExpandedPane({ initialPanes, variant = 'modal', onClose,
         <div
           ref={getContainerRef(pane.id)}
           className={styles.paneContent}
-          onPointerDown={() => setActivePaneIndex(panes.indexOf(pane))}
+          onPointerDown={() => setActivePaneId(pane.id)}
         >
           {pane.render()}
         </div>
       )
     }
-    // External panes get an empty container that attach() populates
     return (
       <div
         ref={getContainerRef(pane.id)}
         className={styles.paneContent}
-        onPointerDown={() => setActivePaneIndex(panes.indexOf(pane))}
+        onPointerDown={() => setActivePaneId(pane.id)}
       />
+    )
+  }
+
+  // ── Render a single column (1 or 2 panes stacked) ──
+  function renderColumn(column, colIndex, isLastCol) {
+    if (column.length === 1) {
+      const pane = column[0]
+      return (
+        <div className={styles.pane} key={pane.id}>
+          <ExpandedPaneTopBar
+            label={pane.label}
+            showClose={isLastCol}
+            onClose={onClose}
+          />
+          {renderPaneContent(pane)}
+        </div>
+      )
+    }
+
+    // Multi-row column
+    const ratios = rowRatios[colIndex] || column.map(() => 1)
+    return (
+      <div className={styles.column} key={`col-${colIndex}`}>
+        {column.map((pane, rowIdx) => (
+          <PaneWithRowDivider
+            key={pane.id}
+            pane={pane}
+            flex={ratios[rowIdx] ?? 1}
+            isLast={rowIdx === column.length - 1}
+            colIndex={colIndex}
+            onRowDividerPointerDown={handleRowDividerPointerDown}
+          >
+            <ExpandedPaneTopBar
+              label={pane.label}
+              showClose={isLastCol && rowIdx === 0}
+              onClose={onClose}
+            />
+            {renderPaneContent(pane)}
+          </PaneWithRowDivider>
+        ))}
+      </div>
     )
   }
 
   // ── Single-pane modal variant ──
   if (!isSplit && variant === 'modal') {
-    const pane = panes[0]
+    const pane = allPanes[0]
     if (!pane) return null
     return createPortal(
       <div
@@ -283,32 +374,29 @@ export default function ExpandedPane({ initialPanes, variant = 'modal', onClose,
           className={styles.grid}
           style={{ gridTemplateColumns }}
         >
-          {panes.map((pane, i) => (
-            <PaneWithDivider
-              key={pane.id}
-              pane={pane}
-              index={i}
-              isLast={i === panes.length - 1}
-              onDividerPointerDown={handleDividerPointerDown}
-            >
-              <ExpandedPaneTopBar
-                label={pane.label}
-                showClose={i === panes.length - 1}
-                onClose={onClose}
-              />
-              {renderPaneContent(pane)}
-            </PaneWithDivider>
-          ))}
+          {layout.map((column, colIdx) => {
+            const isLastCol = colIdx === layout.length - 1
+            return (
+              <ColumnWithDivider
+                key={`col-${colIdx}`}
+                colIndex={colIdx}
+                isLast={isLastCol}
+                onDividerPointerDown={handleColumnDividerPointerDown}
+              >
+                {renderColumn(column, colIdx, isLastCol)}
+              </ColumnWithDivider>
+            )
+          })}
         </div>
       ) : (
         <>
           <ExpandedPaneTopBar
-            label={panes[0]?.label}
+            label={allPanes[0]?.label}
             showClose
             onClose={onClose}
           />
           <div className={styles.singleFull}>
-            {renderPaneContent(panes[0])}
+            {renderPaneContent(allPanes[0])}
           </div>
         </>
       )}
@@ -318,20 +406,39 @@ export default function ExpandedPane({ initialPanes, variant = 'modal', onClose,
 }
 
 /**
- * Renders a pane cell in the grid, optionally followed by a divider.
+ * Wraps a column cell in the grid, optionally followed by a vertical divider.
  */
-function PaneWithDivider({ pane, index, isLast, onDividerPointerDown, children }) {
+function ColumnWithDivider({ colIndex, isLast, onDividerPointerDown, children }) {
   return (
     <>
-      <div className={styles.pane}>
+      {children}
+      {!isLast && (
+        <div
+          className={styles.divider}
+          onPointerDown={(e) => onDividerPointerDown(e, colIndex)}
+          role="separator"
+          aria-orientation="vertical"
+        />
+      )}
+    </>
+  )
+}
+
+/**
+ * Renders a pane within a row-split column, optionally followed by a horizontal row divider.
+ */
+function PaneWithRowDivider({ pane, flex, isLast, colIndex, onRowDividerPointerDown, children }) {
+  return (
+    <>
+      <div className={styles.pane} style={{ flex }}>
         {children}
       </div>
       {!isLast && (
         <div
-          className={styles.divider}
-          onPointerDown={(e) => onDividerPointerDown(e, index)}
+          className={styles.rowDivider}
+          onPointerDown={(e) => onRowDividerPointerDown(e, colIndex)}
           role="separator"
-          aria-orientation="vertical"
+          aria-orientation="horizontal"
         />
       )}
     </>

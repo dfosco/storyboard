@@ -7,7 +7,7 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, linkPreviewSchema } from './widgetProps.js'
 import ExpandedPane from './ExpandedPane.jsx'
-import { findConnectedSplitTarget, getPaneOrder, getSplitPaneLabel, buildPaneForWidget } from './expandUtils.js'
+import { findAllConnectedSplitTargets, getSplitPaneLabel, buildPaneForWidget, buildSplitLayout } from './expandUtils.js'
 import styles from './LinkPreview.module.css'
 
 const VIDEO_EXT_RE = /\.(mp4|mov|webm|ogg)(\?[^)]*)?$/i
@@ -390,35 +390,37 @@ export default forwardRef(function LinkPreview({ id, props, onUpdate, resizable 
  * Builds pane configs and renders ExpandedPane for an expanded link-preview widget.
  */
 function LinkPreviewExpandPane({ widgetId, label, splitMode, onClose, children }) {
-  const connectedWidget = useMemo(
-    () => splitMode ? findConnectedSplitTarget(widgetId) : null,
+  const connectedWidgets = useMemo(
+    () => splitMode ? findAllConnectedSplitTargets(widgetId) : [],
     [widgetId, splitMode],
   )
 
-  const primaryPane = useMemo(() => ({
-    id: widgetId,
-    label,
-    kind: 'react',
-    render: () => children,
-  }), [widgetId, label, children])
+  const primaryWidget = useMemo(() => {
+    const bridge = window.__storyboardCanvasBridgeState
+    return bridge?.widgets?.find((w) => w.id === widgetId) || { id: widgetId, type: 'link-preview', position: { x: 0, y: 0 }, props: {} }
+  }, [widgetId])
 
-  const secondaryPane = useMemo(
-    () => buildPaneForWidget(connectedWidget),
-    [connectedWidget],
+  const buildPaneFn = useCallback((widget) => {
+    if (widget.id === widgetId) {
+      return {
+        id: widgetId,
+        label,
+        kind: 'react',
+        render: () => children,
+      }
+    }
+    return buildPaneForWidget(widget)
+  }, [widgetId, label, children])
+
+  const layout = useMemo(
+    () => buildSplitLayout(primaryWidget, connectedWidgets, buildPaneFn),
+    [primaryWidget, connectedWidgets, buildPaneFn],
   )
-
-  const panes = useMemo(() => {
-    if (!secondaryPane) return [primaryPane]
-    const paneOrder = getPaneOrder(widgetId, connectedWidget)
-    return paneOrder.primaryIsLeft
-      ? [primaryPane, secondaryPane]
-      : [secondaryPane, primaryPane]
-  }, [primaryPane, secondaryPane, widgetId, connectedWidget])
 
   return (
     <ExpandedPane
-      initialPanes={panes}
-      variant="modal"
+      initialLayout={layout}
+      variant={layout.flat().length <= 1 ? 'modal' : 'full'}
       onClose={onClose}
     />
   )

@@ -171,6 +171,147 @@ export function findConnectedSplitTarget(widgetId) {
 }
 
 /**
+ * Find ALL connected widgets that are split-screen capable.
+ * If more than maxCount, picks the nearest by Euclidean distance from primary.
+ * @param {string} widgetId — the primary (expanded) widget's ID
+ * @param {number} [maxCount=3] — max connected widgets to return
+ * @returns {Array<{ id: string, type: string, position: { x: number, y: number }, props: Object }>}
+ */
+export function findAllConnectedSplitTargets(widgetId, maxCount = 3) {
+  const bridge = window.__storyboardCanvasBridgeState
+  if (!bridge?.connectors || !bridge?.widgets) return []
+
+  const connectedIds = new Set()
+  for (const c of bridge.connectors) {
+    if (c.start?.widgetId === widgetId && c.end?.widgetId) connectedIds.add(c.end.widgetId)
+    if (c.end?.widgetId === widgetId && c.start?.widgetId) connectedIds.add(c.start.widgetId)
+  }
+  if (connectedIds.size === 0) return []
+
+  const candidates = bridge.widgets.filter(
+    (w) => connectedIds.has(w.id) && isSplitScreenCapable(w.type),
+  )
+
+  if (candidates.length <= maxCount) return candidates
+
+  // Too many — pick the nearest by Euclidean distance from primary
+  const primary = bridge.widgets.find((w) => w.id === widgetId)
+  const px = primary?.position?.x ?? 0
+  const py = primary?.position?.y ?? 0
+  return candidates
+    .map((w) => {
+      const dx = (w.position?.x ?? 0) - px
+      const dy = (w.position?.y ?? 0) - py
+      return { widget: w, dist: dx * dx + dy * dy }
+    })
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, maxCount)
+    .map((e) => e.widget)
+}
+
+/**
+ * Build a 2D split layout (PaneConfig[][]) from a primary widget and connected widgets.
+ * Uses quadrant-based spatial assignment: compute centroid, assign each widget to
+ * TL/TR/BL/BR, then build columns (left = TL+BL, right = TR+BR).
+ *
+ * @param {{ id: string, type: string, position?: { x: number, y: number }, props: Object }} primaryWidget
+ * @param {Array<{ id: string, type: string, position?: { x: number, y: number }, props: Object }>} connectedWidgets
+ * @param {(widget: Object) => import('./ExpandedPane.jsx').PaneConfig | null} buildPaneFn — builds a PaneConfig for a widget
+ * @returns {import('./ExpandedPane.jsx').PaneConfig[][]} — 2D layout: outer = columns, inner = rows
+ */
+export function buildSplitLayout(primaryWidget, connectedWidgets, buildPaneFn) {
+  const allWidgets = [primaryWidget, ...connectedWidgets]
+
+  // Build panes, filter nulls, keep widget reference for positioning
+  const entries = allWidgets
+    .map((w) => ({ widget: w, pane: buildPaneFn(w) }))
+    .filter((e) => e.pane !== null)
+
+  if (entries.length === 0) return []
+  if (entries.length === 1) return [[entries[0].pane]]
+
+  // Assign to quadrants
+  const assigned = assignToQuadrants(entries.map((e) => ({
+    x: e.widget.position?.x ?? 0,
+    y: e.widget.position?.y ?? 0,
+    data: e.pane,
+  })))
+
+  // Build columns: left = TL + BL (top first), right = TR + BR (top first)
+  const leftCol = [assigned.tl, assigned.bl].filter(Boolean)
+  const rightCol = [assigned.tr, assigned.br].filter(Boolean)
+
+  const layout = []
+  if (leftCol.length > 0) layout.push(leftCol)
+  if (rightCol.length > 0) layout.push(rightCol)
+  return layout
+}
+
+/**
+ * Assign items to a 2×2 quadrant grid using centroid splitting.
+ * Falls back to TL→TR→BL→BR cycling when positions are degenerate (all same x or y).
+ *
+ * @template T
+ * @param {Array<{ x: number, y: number, data: T }>} items — 2-4 positioned items
+ * @returns {{ tl: T|null, tr: T|null, bl: T|null, br: T|null }}
+ */
+export function assignToQuadrants(items) {
+  const result = { tl: null, tr: null, bl: null, br: null }
+  if (items.length === 0) return result
+
+  // Centroid
+  const cx = items.reduce((s, i) => s + i.x, 0) / items.length
+  const cy = items.reduce((s, i) => s + i.y, 0) / items.length
+
+  // Check if all x or all y are identical (degenerate)
+  const allSameX = items.every((i) => i.x === items[0].x)
+  const allSameY = items.every((i) => i.y === items[0].y)
+
+  if (allSameX && allSameY) {
+    // All positions identical — cycle TL→TR→BL→BR
+    const slots = ['tl', 'tr', 'bl', 'br']
+    for (let i = 0; i < Math.min(items.length, 4); i++) {
+      result[slots[i]] = items[i].data
+    }
+    return result
+  }
+
+  // Assign to quadrants based on centroid
+  // Use buckets to handle collisions (multiple items in same quadrant)
+  const buckets = { tl: [], tr: [], bl: [], br: [] }
+  for (const item of items) {
+    const col = item.x < cx ? 'l' : 'r'
+    const row = item.y < cy ? 't' : 'b'
+    buckets[`${row}${col}`].push(item)
+  }
+
+  // If centroid splits are degenerate (e.g. 2 items with same x = centroid),
+  // we may have empty quadrants and overflow. Redistribute overflow.
+  const filled = []
+  const overflow = []
+  for (const [slot, bucket] of Object.entries(buckets)) {
+    if (bucket.length > 0) {
+      // Sort by position for deterministic order: top-left first
+      bucket.sort((a, b) => a.y - b.y || a.x - b.x)
+      result[slot] = bucket[0].data
+      filled.push(slot)
+      for (let i = 1; i < bucket.length; i++) overflow.push(bucket[i])
+    }
+  }
+
+  // Place overflow into empty quadrant slots
+  if (overflow.length > 0) {
+    const allSlots = ['tl', 'tr', 'bl', 'br']
+    const emptySlots = allSlots.filter((s) => result[s] === null)
+    for (let i = 0; i < Math.min(overflow.length, emptySlots.length); i++) {
+      result[emptySlots[i]] = overflow[i].data
+    }
+  }
+
+  return result
+}
+
+/**
  * Get the x-coordinate position of a widget from bridge state.
  * @param {string} widgetId
  * @returns {number}

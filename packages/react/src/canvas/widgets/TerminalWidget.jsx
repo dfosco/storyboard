@@ -3,7 +3,7 @@ import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
 import { getTerminalConfig, getTerminalDimensions } from '@dfosco/storyboard-core'
 import { useOverride } from '../../hooks/useOverride.js'
-import { getSplitPaneLabel, findConnectedSplitTarget, getPaneOrder, buildPaneForWidget } from './expandUtils.js'
+import { getSplitPaneLabel, findAllConnectedSplitTargets, buildPaneForWidget, buildSplitLayout } from './expandUtils.js'
 import ExpandedPane from './ExpandedPane.jsx'
 import styles from './TerminalWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
@@ -569,50 +569,56 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
  * Primary pane is an external pane that receives the xterm container + handles fit.
  */
 function TerminalExpandPane({ widgetId, expandContainerRef, prettyName, isAgent, splitMode, onClose }) {
-  const connectedWidget = useMemo(
-    () => splitMode ? findConnectedSplitTarget(widgetId) : null,
+  const connectedWidgets = useMemo(
+    () => splitMode ? findAllConnectedSplitTargets(widgetId) : [],
     [widgetId, splitMode],
   )
 
-  const primaryPane = useMemo(() => ({
-    id: widgetId,
-    label: getSplitPaneLabel({ type: isAgent ? 'agent' : 'terminal', props: { prettyName } }),
-    kind: 'external',
-    attach: (container) => {
-      expandContainerRef.current = container
-      // Staggered fit timers for ghostty-web layout settling
-      const t1 = setTimeout(() => fitTerminalToElement(widgetId, container), 150)
-      const t2 = setTimeout(() => fitTerminalToElement(widgetId, container), 400)
-      return () => {
-        clearTimeout(t1)
-        clearTimeout(t2)
-        expandContainerRef.current = null
-      }
-    },
-    onResize: (rect) => {
-      // Re-fit terminal when pane resizes (e.g. drag divider)
-      if (expandContainerRef.current) {
-        fitTerminalToElement(widgetId, expandContainerRef.current)
-      }
-    },
-  }), [widgetId, prettyName, isAgent, expandContainerRef])
+  const primaryWidget = useMemo(() => {
+    const bridge = window.__storyboardCanvasBridgeState
+    return bridge?.widgets?.find((w) => w.id === widgetId) || {
+      id: widgetId,
+      type: isAgent ? 'agent' : 'terminal',
+      position: { x: 0, y: 0 },
+      props: { prettyName },
+    }
+  }, [widgetId, isAgent, prettyName])
 
-  const secondaryPane = useMemo(
-    () => buildPaneForWidget(connectedWidget),
-    [connectedWidget],
+  // Custom pane builder for the primary widget (external pane with terminal fit)
+  const buildPaneFn = useCallback((widget) => {
+    if (widget.id === widgetId) {
+      return {
+        id: widgetId,
+        label: getSplitPaneLabel({ type: isAgent ? 'agent' : 'terminal', props: { prettyName } }),
+        kind: 'external',
+        attach: (container) => {
+          expandContainerRef.current = container
+          const t1 = setTimeout(() => fitTerminalToElement(widgetId, container), 150)
+          const t2 = setTimeout(() => fitTerminalToElement(widgetId, container), 400)
+          return () => {
+            clearTimeout(t1)
+            clearTimeout(t2)
+            expandContainerRef.current = null
+          }
+        },
+        onResize: () => {
+          if (expandContainerRef.current) {
+            fitTerminalToElement(widgetId, expandContainerRef.current)
+          }
+        },
+      }
+    }
+    return buildPaneForWidget(widget)
+  }, [widgetId, prettyName, isAgent, expandContainerRef])
+
+  const layout = useMemo(
+    () => buildSplitLayout(primaryWidget, connectedWidgets, buildPaneFn),
+    [primaryWidget, connectedWidgets, buildPaneFn],
   )
-
-  const panes = useMemo(() => {
-    if (!secondaryPane) return [primaryPane]
-    const paneOrder = getPaneOrder(widgetId, connectedWidget)
-    return paneOrder.primaryIsLeft
-      ? [primaryPane, secondaryPane]
-      : [secondaryPane, primaryPane]
-  }, [primaryPane, secondaryPane, widgetId, connectedWidget])
 
   return (
     <ExpandedPane
-      initialPanes={panes}
+      initialLayout={layout}
       variant="full"
       onClose={onClose}
     />

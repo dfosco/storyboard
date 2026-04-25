@@ -7,7 +7,7 @@ import ResizeHandle from './ResizeHandle.jsx'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetConfig.js'
 import ExpandedPane from './ExpandedPane.jsx'
-import { findConnectedSplitTarget, getPaneOrder, getSplitPaneLabel, buildPaneForWidget } from './expandUtils.js'
+import { findAllConnectedSplitTargets, getSplitPaneLabel, buildPaneForWidget, buildSplitLayout } from './expandUtils.js'
 import styles from './MarkdownBlock.module.css'
 
 const markdownSchema = schemas['markdown']
@@ -227,46 +227,43 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
  * Builds pane configs and renders ExpandedPane for an expanded markdown widget.
  */
 function MarkdownExpandPane({ widgetId, renderedHtml, splitMode, onClose }) {
-  const connectedWidget = useMemo(
-    () => splitMode ? findConnectedSplitTarget(widgetId) : null,
+  const connectedWidgets = useMemo(
+    () => splitMode ? findAllConnectedSplitTargets(widgetId) : [],
     [widgetId, splitMode],
   )
   const primaryWidget = useMemo(() => {
     const bridge = window.__storyboardCanvasBridgeState
-    return bridge?.widgets?.find((w) => w.id === widgetId) || null
+    return bridge?.widgets?.find((w) => w.id === widgetId) || { id: widgetId, type: 'markdown', position: { x: 0, y: 0 }, props: {} }
   }, [widgetId])
 
-  const primaryPane = useMemo(() => ({
-    id: widgetId,
-    label: getSplitPaneLabel(primaryWidget) || 'Markdown',
-    kind: 'react',
-    render: () => (
-      <div
-        className={styles.expandedPreview}
-        dangerouslySetInnerHTML={{
-          __html: renderedHtml || '<p>No content</p>',
-        }}
-      />
-    ),
-  }), [widgetId, primaryWidget, renderedHtml])
+  const buildPaneFn = useCallback((widget) => {
+    if (widget.id === widgetId) {
+      return {
+        id: widgetId,
+        label: getSplitPaneLabel(primaryWidget) || 'Markdown',
+        kind: 'react',
+        render: () => (
+          <div
+            className={styles.expandedPreview}
+            dangerouslySetInnerHTML={{
+              __html: renderedHtml || '<p>No content</p>',
+            }}
+          />
+        ),
+      }
+    }
+    return buildPaneForWidget(widget)
+  }, [widgetId, primaryWidget, renderedHtml])
 
-  const secondaryPane = useMemo(
-    () => buildPaneForWidget(connectedWidget),
-    [connectedWidget],
+  const layout = useMemo(
+    () => buildSplitLayout(primaryWidget, connectedWidgets, buildPaneFn),
+    [primaryWidget, connectedWidgets, buildPaneFn],
   )
-
-  const panes = useMemo(() => {
-    if (!secondaryPane) return [primaryPane]
-    const paneOrder = getPaneOrder(widgetId, connectedWidget)
-    return paneOrder.primaryIsLeft
-      ? [primaryPane, secondaryPane]
-      : [secondaryPane, primaryPane]
-  }, [primaryPane, secondaryPane, widgetId, connectedWidget])
 
   return (
     <ExpandedPane
-      initialPanes={panes}
-      variant="modal"
+      initialLayout={layout}
+      variant={layout.flat().length <= 1 ? 'modal' : 'full'}
       onClose={onClose}
     />
   )

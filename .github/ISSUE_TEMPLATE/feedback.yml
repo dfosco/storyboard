@@ -1,0 +1,43 @@
+name: Feedback
+description: Submit feedback or report a bug for Storyboard
+title: "[Feedback] "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This is a feedback form for the open-source [Storyboard](https://github.com/dfosco/storyboard) tool.**
+
+        If you're having problems with a specific prototype, please reach out to the author of the prototype instead.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      description: Is this a bug report or general feedback?
+      options:
+        - Bug report
+        - Feedback
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: area
+    attributes:
+      label: Area
+      description: Which area of Storyboard does this relate to?
+      options:
+        - label: Workspace (home page)
+        - label: Rendering (prototypes)
+        - label: Canvas
+        - label: Tools
+        - label: Other
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the bug or feedback in as much detail as you'd like.
+      placeholder: Tell us what happened or what you'd like to see improved...
+    validations:
+      required: true

@@ -207,6 +207,15 @@
       "modes": ["*"],
       "prod": true,
       "url": "https://github.com/dfosco/storyboard/blob/main/DOCS.md"
+    },
+    "submit-feedback": {
+      "label": "Submit feedback",
+      "icon": "primer/megaphone",
+      "render": "link",
+      "surface": "command-palette",
+      "modes": ["*"],
+      "prod": true,
+      "url": "https://github.com/dfosco/storyboard/issues/new?template=feedback.yml"
     },    
     "devtools": {
       "label": "Devtools",

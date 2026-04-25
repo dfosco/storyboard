@@ -779,9 +779,9 @@ export function createCanvasHandler(ctx) {
       return
     }
 
-    // PATCH /connector — update connector meta (e.g. messagingMode)
+    // PATCH /connector — update connector anchors and/or meta
     if (routePath === '/connector' && method === 'PATCH') {
-      const { name, connectorId, meta } = body
+      const { name, connectorId, meta, startAnchor, endAnchor } = body
 
       if (!name || !connectorId) {
         sendJson(res, 400, { error: 'Canvas name and connectorId are required' })
@@ -802,11 +802,26 @@ export function createCanvasHandler(ctx) {
           return
         }
 
+        const validAnchors = ['top', 'right', 'bottom', 'left']
+        if (startAnchor && !validAnchors.includes(startAnchor)) {
+          sendJson(res, 400, { error: `Invalid startAnchor "${startAnchor}". Must be one of: ${validAnchors.join(', ')}` })
+          return
+        }
+        if (endAnchor && !validAnchors.includes(endAnchor)) {
+          sendJson(res, 400, { error: `Invalid endAnchor "${endAnchor}". Must be one of: ${validAnchors.join(', ')}` })
+          return
+        }
+
+        const updates = {}
+        if (meta) updates.meta = { ...meta }
+        if (startAnchor) updates.startAnchor = startAnchor
+        if (endAnchor) updates.endAnchor = endAnchor
+
         appendEvent(filePath, {
           event: 'connector_updated',
           timestamp: new Date().toISOString(),
           connectorId,
-          updates: { meta: { ...(meta || {}) } },
+          updates,
         })
 
         sendJson(res, 200, { success: true })

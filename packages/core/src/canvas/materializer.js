@@ -185,17 +185,24 @@ export function materialize(events) {
       case 'connector_updated': {
         state.connectors = (state.connectors || []).map((c) => {
           if (c.id !== evt.connectorId) return c
-          const updates = evt.updates || {}
+          const { startAnchor, endAnchor, meta, ...rest } = evt.updates || {}
           // Deep-merge meta so per-widget messaging settings accumulate
-          const mergedMeta = { ...(c.meta || {}), ...(updates.meta || {}) }
-          if (updates.meta?.messaging) {
-            mergedMeta.messaging = { ...(c.meta?.messaging || {}), ...updates.meta.messaging }
+          const mergedMeta = { ...(c.meta || {}), ...(meta || {}) }
+          if (meta?.messaging) {
+            mergedMeta.messaging = { ...(c.meta?.messaging || {}), ...meta.messaging }
           }
           // Clear messagingMode if explicitly set to null (switching from two-way to per-widget)
-          if (updates.meta && updates.meta.messagingMode === null) {
+          if (meta && meta.messagingMode === null) {
             delete mergedMeta.messagingMode
           }
-          return { ...c, ...updates, meta: mergedMeta, id: c.id, start: c.start, end: c.end }
+          // Apply anchor updates if provided, preserving widget connections
+          const start = startAnchor
+            ? { ...c.start, anchor: startAnchor }
+            : c.start
+          const end = endAnchor
+            ? { ...c.end, anchor: endAnchor }
+            : c.end
+          return { ...c, ...rest, meta: mergedMeta, id: c.id, start, end }
         })
         break
       }

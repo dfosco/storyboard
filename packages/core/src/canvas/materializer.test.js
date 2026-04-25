@@ -278,6 +278,62 @@ describe('connectors', () => {
     ])
     expect(state.connectors).toHaveLength(1)
   })
+
+  it('updates connector anchors in-place via connector_updated', () => {
+    const state = materialize([
+      ...baseEvents,
+      { event: 'connector_added', timestamp: '2', connector },
+      { event: 'connector_updated', timestamp: '3', connectorId: 'connector-001', updates: {
+        startAnchor: 'bottom',
+        endAnchor: 'top',
+      } },
+    ])
+    expect(state.connectors).toHaveLength(1)
+    expect(state.connectors[0].start.widgetId).toBe('w1')
+    expect(state.connectors[0].start.anchor).toBe('bottom')
+    expect(state.connectors[0].end.widgetId).toBe('w2')
+    expect(state.connectors[0].end.anchor).toBe('top')
+  })
+
+  it('updates only startAnchor when endAnchor is omitted', () => {
+    const state = materialize([
+      ...baseEvents,
+      { event: 'connector_added', timestamp: '2', connector },
+      { event: 'connector_updated', timestamp: '3', connectorId: 'connector-001', updates: {
+        startAnchor: 'top',
+      } },
+    ])
+    expect(state.connectors[0].start.anchor).toBe('top')
+    expect(state.connectors[0].end.anchor).toBe('left')
+  })
+
+  it('does not leak startAnchor/endAnchor as top-level connector properties', () => {
+    const state = materialize([
+      ...baseEvents,
+      { event: 'connector_added', timestamp: '2', connector },
+      { event: 'connector_updated', timestamp: '3', connectorId: 'connector-001', updates: {
+        startAnchor: 'bottom',
+        endAnchor: 'top',
+      } },
+    ])
+    expect(state.connectors[0]).not.toHaveProperty('startAnchor')
+    expect(state.connectors[0]).not.toHaveProperty('endAnchor')
+  })
+
+  it('preserves meta when updating anchors', () => {
+    const state = materialize([
+      ...baseEvents,
+      { event: 'connector_added', timestamp: '2', connector },
+      { event: 'connector_updated', timestamp: '3', connectorId: 'connector-001', updates: {
+        meta: { messagingMode: 'two-way' },
+      } },
+      { event: 'connector_updated', timestamp: '4', connectorId: 'connector-001', updates: {
+        startAnchor: 'bottom',
+      } },
+    ])
+    expect(state.connectors[0].start.anchor).toBe('bottom')
+    expect(state.connectors[0].meta.messagingMode).toBe('two-way')
+  })
 })
 
 describe('materializeFromText', () => {

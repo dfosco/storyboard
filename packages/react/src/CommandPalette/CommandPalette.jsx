@@ -1118,9 +1118,19 @@ export default function StoryboardCommandPalette({ basePath }) {
     setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 200) }, 1800)
   }
 
-  function copyLinkToClipboard(url) {
+  function copyLinkToClipboard(url, itemType) {
     const fullUrl = url.startsWith('/') ? window.location.origin + url : url
-    navigator.clipboard.writeText(fullUrl).then(() => showCenterToast('Link copied to clipboard'))
+    const isCanvasRoute = typeof window !== 'undefined' && window.location.pathname.includes('/canvas/')
+    const isPasteable = itemType === 'prototype' || itemType === 'story'
+    const shouldPaste = isCanvasRoute && isPasteable
+
+    navigator.clipboard.writeText(fullUrl).then(() => {
+      showCenterToast(shouldPaste ? 'Link copied and pasted' : 'Link copied to clipboard')
+    })
+
+    if (shouldPaste) {
+      document.dispatchEvent(new CustomEvent('storyboard:canvas:paste-url', { detail: { url: fullUrl } }))
+    }
   }
 
   return (
@@ -1199,7 +1209,7 @@ export default function StoryboardCommandPalette({ basePath }) {
                         value={itemValue({ children, keywords })}
                         onSelect={() => {
                           if (url && altHeldRef.current) {
-                            copyLinkToClipboard(url)
+                            copyLinkToClipboard(url, itemType)
                           } else if (url && modifierHeldRef.current) {
                             window.open(url, '_blank')
                           } else {
@@ -1229,7 +1239,7 @@ export default function StoryboardCommandPalette({ basePath }) {
                     value={itemValue(item)}
                     onSelect={() => {
                       if (item.url && altHeldRef.current) {
-                        copyLinkToClipboard(item.url)
+                        copyLinkToClipboard(item.url, item.type?.toLowerCase())
                         setOpen(false)
                         setActivePage('root')
                       } else if (item.url && modifierHeldRef.current) {

@@ -2173,10 +2173,33 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       }
 
       e.preventDefault()
+      await pasteTextAsWidget(text, pasteCtx)
+    }
+
+    // Shared helper: resolve pasted text into a widget and add it to the canvas.
+    // Used by both native paste and the programmatic paste-url event.
+    async function pasteTextAsWidget(text, pasteCtx) {
       const resolved = resolvePaste(text, pasteCtx, getPasteRules())
       if (!resolved) return
-      const { type } = resolved
+      let { type } = resolved
       let props = resolved.props
+
+      // Component/story URLs → story widget (instead of prototype embed)
+      if (type === 'prototype' && props?.src) {
+        const srcPath = props.src.replace(/[?#].*$/, '').replace(/\/+$/, '')
+        const storyId = storyRouteIndex.get(srcPath)
+        if (storyId) {
+          type = 'story'
+          const parsed = pasteCtx.parseUrl(text)
+          const searchParams = new URLSearchParams(parsed?.search || '')
+          props = {
+            storyId,
+            exportName: searchParams.get('export') || '',
+            width: 600,
+            height: 400,
+          }
+        }
+      }
 
       if (type === 'link-preview' && isGitHubEmbedUrl(props?.url || text)) {
         const githubUpdates = await buildGitHubPreviewUpdates(props?.url || text)
@@ -2201,8 +2224,19 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       }
     }
 
+    // Listen for programmatic paste-url events from the command palette
+    function handlePasteUrl(e) {
+      const text = e.detail?.url?.trim()
+      if (!text) return
+      pasteTextAsWidget(text, pasteCtx)
+    }
+
     document.addEventListener('paste', handlePaste)
-    return () => document.removeEventListener('paste', handlePaste)
+    document.addEventListener('storyboard:canvas:paste-url', handlePasteUrl)
+    return () => {
+      document.removeEventListener('paste', handlePaste)
+      document.removeEventListener('storyboard:canvas:paste-url', handlePasteUrl)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasId, undoRedo, localWidgets])
 

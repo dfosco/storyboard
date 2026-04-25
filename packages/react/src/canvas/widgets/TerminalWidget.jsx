@@ -1,12 +1,10 @@
 import { useRef, useEffect, useCallback, useState, useMemo, forwardRef, useImperativeHandle } from 'react'
-import { createPortal } from 'react-dom'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
 import { getTerminalConfig, getTerminalDimensions } from '@dfosco/storyboard-core'
-import { ScreenNormalIcon } from '@primer/octicons-react'
 import { useOverride } from '../../hooks/useOverride.js'
-import { getSplitPaneLabel, findConnectedSplitTarget, buildSecondaryIframeUrl as buildSplitUrl, getPaneOrder, reparentTerminalInto } from './expandUtils.js'
-import SplitScreenTopBar from './SplitScreenTopBar.jsx'
+import { getSplitPaneLabel, findConnectedSplitTarget, getPaneOrder, buildPaneForWidget } from './expandUtils.js'
+import ExpandedPane from './ExpandedPane.jsx'
 import styles from './TerminalWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -378,71 +376,17 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const isAgent = id.startsWith('agent-')
   const typeLabel = isAgent ? 'Agent' : 'Terminal'
   const titleLabel = `${typeLabel} · ${prettyName || '…'}`
-  const connectedEmbed = findConnectedSplitTarget(id)
-  const embedUrl = expanded ? buildSplitUrl(connectedEmbed) : null
-  const hasSplit = Boolean(connectedEmbed)
-  const isSecondaryTerminal = connectedEmbed?.type === 'terminal' || connectedEmbed?.type === 'terminal-read' || connectedEmbed?.type === 'agent'
-  const [activePane, setActivePane] = useState('left')
 
-  const paneOrder = useMemo(
-    () => (hasSplit ? getPaneOrder(id, connectedEmbed) : { primaryIsLeft: true }),
-    [hasSplit, id, connectedEmbed],
-  )
-  const primaryWidget = useMemo(() => ({ type: isAgent ? 'agent' : 'terminal', props: { prettyName } }), [prettyName, isAgent])
-  const primaryLabel = useMemo(() => getSplitPaneLabel(primaryWidget), [primaryWidget])
-  const secondaryLabel = useMemo(() => getSplitPaneLabel(connectedEmbed), [connectedEmbed])
-  const leftLabel = paneOrder.primaryIsLeft ? primaryLabel : secondaryLabel
-  const rightLabel = paneOrder.primaryIsLeft ? secondaryLabel : primaryLabel
-
-  // Reparent secondary terminal/agent DOM into the split pane
-  const secondaryTermRef = useRef(null)
-  const secondaryCleanupRef = useRef(null)
+  // Reparent terminal DOM between inline and expand container
   useEffect(() => {
-    if (!expanded || !hasSplit || !isSecondaryTerminal || !secondaryTermRef.current) return
-    secondaryCleanupRef.current = reparentTerminalInto(connectedEmbed.id, secondaryTermRef.current)
-    return () => {
-      secondaryCleanupRef.current?.()
-      secondaryCleanupRef.current = null
+    const xtermEl = containerRef.current
+    if (!xtermEl) return
+    if (expanded && expandContainerRef.current) {
+      expandContainerRef.current.appendChild(xtermEl)
+    } else if (!expanded && terminalRef.current) {
+      terminalRef.current.appendChild(xtermEl)
     }
-  }, [expanded, hasSplit, isSecondaryTerminal, connectedEmbed?.id])
-
-  // Resize for expand — use real cell metrics, observe viewport changes
-  useEffect(() => {
-    if (!expanded || !expandContainerRef.current) return
-
-    function fitAll() {
-      // Fit primary terminal
-      fitTerminalToElement(id, expandContainerRef.current)
-      // Fit secondary terminal if in split-screen
-      if (isSecondaryTerminal && secondaryTermRef.current && connectedEmbed?.id) {
-        fitTerminalToElement(connectedEmbed.id, secondaryTermRef.current)
-      }
-    }
-
-    // Initial fit after DOM has settled (reparent + flex layout)
-    const t1 = setTimeout(fitAll, 150)
-    // Second pass catches late layout (e.g. secondary reparent finishing)
-    const t2 = setTimeout(fitAll, 400)
-
-    const ro = new ResizeObserver(() => fitAll())
-    ro.observe(expandContainerRef.current)
-    if (isSecondaryTerminal && secondaryTermRef.current) {
-      ro.observe(secondaryTermRef.current)
-    }
-
-    // Set interactive after first fit
-    const t3 = setTimeout(() => {
-      setInteractive(true)
-      termRef.current?.focus?.()
-    }, 200)
-
-    return () => {
-      clearTimeout(t1)
-      clearTimeout(t2)
-      clearTimeout(t3)
-      ro.disconnect()
-    }
-  }, [expanded, isSecondaryTerminal, connectedEmbed?.id])
+  }, [expanded])
 
   // Restore size on collapse
   useEffect(() => {
@@ -457,14 +401,10 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     return () => clearTimeout(timer)
   }, [expanded, width, height])
 
-  // Reparent terminal DOM between inline and expand
+  // Focus terminal on expand
   useEffect(() => {
-    const xtermEl = containerRef.current
-    if (!xtermEl) return
     if (expanded && expandContainerRef.current) {
-      expandContainerRef.current.appendChild(xtermEl)
-    } else if (!expanded && terminalRef.current) {
-      terminalRef.current.appendChild(xtermEl)
+      fitTerminalToElement(id, expandContainerRef.current)
     }
   }, [expanded])
 
@@ -593,61 +533,70 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
         )}
       </div>
     </div>
-    {createPortal(
-      <div
-        className={styles.expandBackdrop}
-        style={expanded ? undefined : { display: 'none' }}
-        onPointerDown={(e) => e.stopPropagation()}
-        onKeyDown={(e) => { if (e.key === 'Escape') setExpanded(false) }}
-        onWheel={(e) => e.stopPropagation()}
-      >
-        {hasSplit ? (
-          <SplitScreenTopBar
-            leftLabel={leftLabel}
-            rightLabel={rightLabel}
-            activePane={activePane}
-            onClose={() => setExpanded(false)}
-          />
-        ) : (
-          <div className={styles.expandTopBar}>
-            <span className={styles.expandTitle}>{titleLabel}</span>
-            <button className={styles.expandClose} onClick={() => setExpanded(false)} aria-label="Close expanded view" autoFocus><ScreenNormalIcon size={16} /></button>
-          </div>
-        )}
-        <div className={`${styles.expandBody}${hasSplit ? ` ${styles.expandSplit}` : ''}`}>
-          {hasSplit ? (
-            <>
-              {paneOrder.primaryIsLeft ? (
-                <>
-                  <div ref={expandContainerRef} className={styles.expandTerminal} onPointerDown={() => setActivePane('left')} />
-                  {isSecondaryTerminal ? (
-                    <div ref={secondaryTermRef} className={styles.expandTerminal} onPointerDown={() => setActivePane('right')} />
-                  ) : (
-                    <div className={styles.expandEmbed} onPointerDown={() => setActivePane('right')}>
-                      {embedUrl ? <iframe src={embedUrl} className={styles.expandIframe} title="Connected embed" /> : null}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  {isSecondaryTerminal ? (
-                    <div ref={secondaryTermRef} className={styles.expandTerminal} onPointerDown={() => setActivePane('left')} />
-                  ) : (
-                    <div className={styles.expandEmbed} onPointerDown={() => setActivePane('left')}>
-                      {embedUrl ? <iframe src={embedUrl} className={styles.expandIframe} title="Connected embed" /> : null}
-                    </div>
-                  )}
-                  <div ref={expandContainerRef} className={styles.expandTerminal} onPointerDown={() => setActivePane('right')} />
-                </>
-              )}
-            </>
-          ) : (
-            <div ref={expandContainerRef} className={styles.expandTerminal} />
-          )}
-        </div>
-      </div>,
-      document.body
+    {expanded && (
+      <TerminalExpandPane
+        widgetId={id}
+        expandContainerRef={expandContainerRef}
+        prettyName={prettyName}
+        isAgent={isAgent}
+        onClose={() => setExpanded(false)}
+      />
     )}
     </>
   )
 })
+
+/**
+ * Builds pane configs and renders ExpandedPane for an expanded terminal widget.
+ * Primary pane is an external pane that receives the xterm container + handles fit.
+ */
+function TerminalExpandPane({ widgetId, expandContainerRef, prettyName, isAgent, onClose }) {
+  const connectedWidget = useMemo(
+    () => findConnectedSplitTarget(widgetId),
+    [widgetId],
+  )
+
+  const primaryPane = useMemo(() => ({
+    id: widgetId,
+    label: getSplitPaneLabel({ type: isAgent ? 'agent' : 'terminal', props: { prettyName } }),
+    kind: 'external',
+    attach: (container) => {
+      expandContainerRef.current = container
+      // Staggered fit timers for ghostty-web layout settling
+      const t1 = setTimeout(() => fitTerminalToElement(widgetId, container), 150)
+      const t2 = setTimeout(() => fitTerminalToElement(widgetId, container), 400)
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+        expandContainerRef.current = null
+      }
+    },
+    onResize: (rect) => {
+      // Re-fit terminal when pane resizes (e.g. drag divider)
+      if (expandContainerRef.current) {
+        fitTerminalToElement(widgetId, expandContainerRef.current)
+      }
+    },
+  }), [widgetId, prettyName, isAgent, expandContainerRef])
+
+  const secondaryPane = useMemo(
+    () => buildPaneForWidget(connectedWidget),
+    [connectedWidget],
+  )
+
+  const panes = useMemo(() => {
+    if (!secondaryPane) return [primaryPane]
+    const paneOrder = getPaneOrder(widgetId, connectedWidget)
+    return paneOrder.primaryIsLeft
+      ? [primaryPane, secondaryPane]
+      : [secondaryPane, primaryPane]
+  }, [primaryPane, secondaryPane, widgetId, connectedWidget])
+
+  return (
+    <ExpandedPane
+      initialPanes={panes}
+      variant="full"
+      onClose={onClose}
+    />
+  )
+}

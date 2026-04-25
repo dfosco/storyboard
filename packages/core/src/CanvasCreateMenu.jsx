@@ -182,10 +182,12 @@ export default function CanvasCreateMenu({ config = {}, data, canvasName = '', z
 
   function handleOpenChange(open) {
     setMenuOpen(open)
-    if (!open && view !== 'menu') {
-      setView('menu')
-      setNotificationPath(null)
-      resetCreateForm()
+    if (!open) {
+      if (view !== 'menu') {
+        setView('menu')
+        setNotificationPath(null)
+        resetCreateForm()
+      }
     }
   }
 
@@ -244,7 +246,9 @@ export default function CanvasCreateMenu({ config = {}, data, canvasName = '', z
             )}
 
             <DropdownMenu.Sub>
-              <DropdownMenu.SubTrigger>Component</DropdownMenu.SubTrigger>
+              <DropdownMenu.SubTrigger>
+                Component
+              </DropdownMenu.SubTrigger>
               <DropdownMenu.SubContent
                 className="min-w-[200px]"
                 onOpenAutoFocus={(e) => {

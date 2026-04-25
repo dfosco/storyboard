@@ -3,51 +3,43 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import ExpandedPaneTopBar from './ExpandedPaneTopBar.jsx'
 
 describe('ExpandedPaneTopBar', () => {
-  const basePanes = [
-    { id: 'pane-a', label: 'Terminal · pearl-wren' },
-    { id: 'pane-b', label: 'Prototype · /Signup' },
-  ]
-
-  it('renders left and right pane labels', () => {
+  it('renders pane label left-aligned', () => {
     render(
-      <ExpandedPaneTopBar panes={basePanes} activePaneIndex={0} onClose={vi.fn()} />
+      <ExpandedPaneTopBar label="Terminal · pearl-wren" onClose={vi.fn()} />
     )
     expect(screen.getByText('Terminal · pearl-wren')).toBeTruthy()
-    expect(screen.getByText('Prototype · /Signup')).toBeTruthy()
   })
 
-  it('renders a single pane label when only one pane exists', () => {
+  it('renders close button when showClose is true', () => {
     render(
-      <ExpandedPaneTopBar panes={[basePanes[0]]} activePaneIndex={0} onClose={vi.fn()} />
+      <ExpandedPaneTopBar label="Terminal · pearl-wren" showClose onClose={vi.fn()} />
     )
-    expect(screen.getByText('Terminal · pearl-wren')).toBeTruthy()
-    expect(screen.queryByText('Prototype · /Signup')).toBeNull()
+    expect(screen.getByLabelText('Close expanded view')).toBeTruthy()
   })
 
-  it('applies active style to focused pane and muted to unfocused', () => {
-    const { container } = render(
-      <ExpandedPaneTopBar panes={basePanes} activePaneIndex={1} onClose={vi.fn()} />
+  it('does not render close button when showClose is false', () => {
+    render(
+      <ExpandedPaneTopBar label="Terminal · pearl-wren" onClose={vi.fn()} />
     )
-    const leftLabel = container.querySelector('[class*="leftLabel"]')
-    const rightLabel = container.querySelector('[class*="rightLabel"]')
-    expect(leftLabel.className).toMatch(/muted/)
-    expect(rightLabel.className).toMatch(/active/)
+    expect(screen.queryByLabelText('Close expanded view')).toBeNull()
   })
 
   it('calls onClose when close button is clicked', () => {
     const onClose = vi.fn()
     render(
-      <ExpandedPaneTopBar panes={basePanes} activePaneIndex={0} onClose={onClose} />
+      <ExpandedPaneTopBar label="Terminal · pearl-wren" showClose onClose={onClose} />
     )
     fireEvent.click(screen.getByLabelText('Close expanded view'))
     expect(onClose).toHaveBeenCalledOnce()
   })
 
-  it('does not render add or remove buttons', () => {
-    render(
-      <ExpandedPaneTopBar panes={basePanes} activePaneIndex={0} onClose={vi.fn()} />
+  it('has dark background styling', () => {
+    const { container } = render(
+      <ExpandedPaneTopBar label="Agent · wren" showClose onClose={vi.fn()} />
     )
-    expect(screen.queryByLabelText('Add pane')).toBeNull()
-    expect(screen.queryAllByLabelText(/Remove .+ pane/).length).toBe(0)
+    const bar = container.firstChild
+    expect(bar).toBeTruthy()
+    // Bar should have the dark background class
+    expect(bar.className).toMatch(/bar/)
   })
 })

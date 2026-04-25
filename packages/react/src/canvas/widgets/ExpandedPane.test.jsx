@@ -103,10 +103,15 @@ describe('ExpandedPane', () => {
       expect(screen.getByText('Pane C content')).toBeTruthy()
     })
 
-    it('shows remove buttons in split mode', () => {
-      const panes = [makeReactPane('a', 'Pane A'), makeReactPane('b', 'Pane B')]
-      render(<ExpandedPane initialPanes={panes} variant="full" onClose={vi.fn()} />)
-      expect(screen.getAllByLabelText(/Remove .+ pane/).length).toBe(2)
+    it('renders both pane labels in their respective panes', () => {
+      const paneA = makeReactPane('term-1', 'Terminal · wren')
+      const paneB = makeReactPane('proto-1', 'Prototype · /Signup')
+      render(
+        <ExpandedPane initialPanes={[paneA, paneB]} variant="full" onClose={vi.fn()} />
+      )
+      // Each pane has its own title bar with left-aligned label
+      expect(screen.getByText('Terminal · wren')).toBeTruthy()
+      expect(screen.getByText('Prototype · /Signup')).toBeTruthy()
     })
 
     it('renders divider between panes', () => {

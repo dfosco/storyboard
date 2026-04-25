@@ -278,11 +278,6 @@ export default function ExpandedPane({ initialPanes, variant = 'modal', onClose,
       onKeyDown={(e) => e.stopPropagation()}
       onWheel={(e) => e.stopPropagation()}
     >
-      <ExpandedPaneTopBar
-        panes={panes}
-        activePaneIndex={activePaneIndex}
-        onClose={onClose}
-      />
       {isSplit ? (
         <div
           className={styles.grid}
@@ -296,14 +291,26 @@ export default function ExpandedPane({ initialPanes, variant = 'modal', onClose,
               isLast={i === panes.length - 1}
               onDividerPointerDown={handleDividerPointerDown}
             >
+              <ExpandedPaneTopBar
+                label={pane.label}
+                showClose={i === panes.length - 1}
+                onClose={onClose}
+              />
               {renderPaneContent(pane)}
             </PaneWithDivider>
           ))}
         </div>
       ) : (
-        <div className={styles.singleFull}>
-          {renderPaneContent(panes[0])}
-        </div>
+        <>
+          <ExpandedPaneTopBar
+            label={panes[0]?.label}
+            showClose
+            onClose={onClose}
+          />
+          <div className={styles.singleFull}>
+            {renderPaneContent(panes[0])}
+          </div>
+        </>
       )}
     </div>,
     document.body,

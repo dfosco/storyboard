@@ -740,7 +740,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
         continue
       }
 
-      // Menu tool without sub-items or options — click toolbar button
+      // Menu tool without sub-items or options — dispatch open event, fall back to clicking toolbar button
       const ariaLabel = tool.ariaLabel || tool.label || toolId
       items.push({
         id: `cfg:${section.id}:${toolId}`,
@@ -749,6 +749,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
         showType: false,
         onClick: () => {
           setTimeout(() => {
+            document.dispatchEvent(new CustomEvent(`storyboard:open-${toolId}`))
             const btn = document.querySelector(`[aria-label="${ariaLabel}"]`)
             if (btn) btn.click()
           }, 100)

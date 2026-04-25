@@ -124,16 +124,27 @@ export default function AutosyncMenuButton({ config = {}, basePath = '/', tabind
     }
   }
 
+  const branchSelectRef = useRef(null)
+
   function handleOpenChange(open) {
     setMenuOpen(open)
     if (open) {
       fetchBranches()
       fetchStatus()
       startPolling()
+      // Focus the branch selector after the menu mounts
+      requestAnimationFrame(() => branchSelectRef.current?.focus())
     } else if (!hasEnabled(enabledScopesRef.current)) {
       stopPolling()
     }
   }
+
+  // Allow command palette to open this menu via custom event
+  useEffect(() => {
+    const open = () => handleOpenChange(true)
+    document.addEventListener('storyboard:open-autosync', open)
+    return () => document.removeEventListener('storyboard:open-autosync', open)
+  }, [])
 
   function formatSyncTime(iso) {
     if (!iso) return ''
@@ -180,6 +191,7 @@ export default function AutosyncMenuButton({ config = {}, basePath = '/', tabind
           <label className="branchLabel" htmlFor="autosync-branch">Branch</label>
           <select
             id="autosync-branch"
+            ref={branchSelectRef}
             className="branchSelect"
             value={selectedBranch}
             onChange={(e) => setSelectedBranch(e.target.value)}

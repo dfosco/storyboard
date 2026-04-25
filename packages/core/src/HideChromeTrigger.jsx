@@ -1,7 +1,7 @@
 /**
  * HideChromeTrigger — toolbar button that toggles toolbar/branch bar visibility.
- * Always visible (even in hide mode). Uses the ⌘ icon.
- * In hide mode: shrinks to regular size and goes 50% opacity.
+ * Always visible (even in hide mode). Uses the lightbulb icon.
+ * In hide mode: goes 50% opacity.
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -29,11 +29,11 @@ export default function HideChromeTrigger({ config = {}, tabindex }) {
     <span style={{ opacity: hidden ? 0.5 : 1, transition: 'opacity 0.15s' }}>
       <TriggerButton
         aria-label={config.ariaLabel || 'Toggle toolbars'}
-        size={hidden ? 'icon-xl' : (config.size || 'icon-2xl')}
+        size={config.size || 'icon-xl'}
         tabIndex={tabindex}
         onClick={toggle}
       >
-        <Icon name={config.icon || 'iconoir/key-command'} size={16} {...(config.meta || {})} />
+        <Icon name={config.icon || 'primer/light-bulb'} size={16} {...(config.meta || {})} />
       </TriggerButton>
     </span>
   )

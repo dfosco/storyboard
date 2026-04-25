@@ -750,6 +750,28 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
         onKeyDown={handleToolbarKeydown}
         ref={toolbarEl}
       >
+        {/* Always-visible tools (left) */}
+        {cleanedMenus.map((menu, i) => {
+          if (!menu.alwaysVisible || !toolComponents[menu.key]) return null
+          const ToolComponent = toolComponents[menu.key]
+          return (
+            <Tooltip.Root key={menu.key}>
+              <Tooltip.Trigger>
+                <ToolComponent
+                  config={menu}
+                  data={toolData[menu.key]}
+                  tabIndex={getTabindex(i)}
+                  localOnly={isToolbarToolLocalOnly(menu.key)}
+                  basePath={basePath}
+                />
+              </Tooltip.Trigger>
+              <Tooltip.Content side="top">
+                {menu.ariaLabel || menu.key}{menu.shortcut?.label ? ` · ${menu.shortcut.label}` : ''}
+              </Tooltip.Content>
+            </Tooltip.Root>
+          )
+        })}
+
         {visible && !isMobileState && cleanedMenus.map((menu, i) => {
           if (menu.alwaysVisible) return null
           if (menu.render === 'separator') {
@@ -799,27 +821,6 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
           )
         })}
 
-        {/* Always-visible tools */}
-        {cleanedMenus.map((menu, i) => {
-          if (!menu.alwaysVisible || !toolComponents[menu.key]) return null
-          const ToolComponent = toolComponents[menu.key]
-          return (
-            <Tooltip.Root key={menu.key}>
-              <Tooltip.Trigger>
-                <ToolComponent
-                  config={menu}
-                  data={toolData[menu.key]}
-                  tabIndex={getTabindex(i)}
-                  localOnly={isToolbarToolLocalOnly(menu.key)}
-                  basePath={basePath}
-                />
-              </Tooltip.Trigger>
-              <Tooltip.Content side="top">
-                {menu.ariaLabel || menu.key}{menu.shortcut?.label ? ` · ${menu.shortcut.label}` : ''}
-              </Tooltip.Content>
-            </Tooltip.Root>
-          )
-        })}
       </div>
 
       {/* Side panel */}

@@ -15,11 +15,11 @@ export default function CommandPaletteTrigger({ config = {}, tabindex }) {
   return (
     <TriggerButton
       aria-label="Command palette"
-      size="icon-xl"
+      size={config.size || 'icon-xl'}
       tabIndex={tabindex}
       onClick={openPalette}
     >
-      <Icon name={config.icon || 'iconoir/select-point-3d'} size={16} {...(config.meta || {})} />
+      <Icon name={config.icon || 'iconoir/key-command'} size={16} {...(config.meta || {})} />
     </TriggerButton>
   )
 }

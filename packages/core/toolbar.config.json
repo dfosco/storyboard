@@ -13,11 +13,9 @@
   "tools": {
     "hide-chrome": {
       "ariaLabel": "Toggle toolbars",
-      "icon": "iconoir/key-command",
-      "meta": { "strokeWeight": 2 },
+      "icon": "primer/light-bulb",
       "render": "button",
       "surface": "command-toolbar",
-      "size": "icon-2xl",
       "handler": "core:hide-chrome",
       "modes": ["*"],
       "prod": true,
@@ -247,10 +245,11 @@
     },
     "command-palette": {
       "ariaLabel": "Command palette",
-      "icon": "iconoir/select-point-3d",
+      "icon": "iconoir/key-command",
       "meta": { "strokeWeight": 2 },
       "render": "button",
       "surface": "command-toolbar",
+      "size": "icon-2xl",
       "handler": "core:command-palette",
       "modes": ["*"],
       "prod": true,

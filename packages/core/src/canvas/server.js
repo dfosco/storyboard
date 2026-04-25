@@ -691,11 +691,13 @@ export function createCanvasHandler(ctx) {
         }
 
         if (position) {
+          // Merge with existing position so partial updates (only --x or --y) are safe
+          const mergedPosition = { ...widget.position, ...position }
           appendEvent(filePath, {
             event: 'widget_moved',
             timestamp: ts,
             widgetId,
-            position,
+            position: mergedPosition,
           })
         }
 
@@ -703,7 +705,7 @@ export function createCanvasHandler(ctx) {
         const merged = {
           ...widget,
           props: { ...widget.props, ...(props || {}) },
-          position: position || widget.position,
+          position: position ? { ...widget.position, ...position } : widget.position,
         }
         sendJson(res, 200, { success: true, widget: merged })
         pushCanvasUpdate(name, filePath, __viteWs)

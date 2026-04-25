@@ -231,10 +231,15 @@
 /* ── Expanded preview in modal ──────────────────────────────────── */
 
 .expandedPreview {
+  --sb--markdown-bg: var(--bgColor-default, #ffffff);
+  --sb--markdown-fg: var(--fgColor-default, #1f2328);
+  --sb--markdown-muted: var(--fgColor-muted, #656d76);
+  --sb--markdown-accent: var(--bgColor-accent-emphasis, #2f81f7);
   padding: 32px 40px;
   font-size: 15px;
   line-height: 1.7;
   color: var(--sb--markdown-fg);
+  background: var(--sb--markdown-bg);
   font-family: var(--tc-font-stack, system-ui, -apple-system, sans-serif);
   max-width: 800px;
   margin: 0 auto;

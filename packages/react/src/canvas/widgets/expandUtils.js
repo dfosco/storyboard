@@ -4,6 +4,7 @@
  * Reads the canvas bridge state to find connected widgets eligible
  * for split-screen, and builds iframe URLs for secondary panes.
  */
+import { createElement, useRef, useEffect } from 'react'
 import { isSplitScreenCapable, getWidgetMeta } from './widgetConfig.js'
 
 // Re-export for convenience

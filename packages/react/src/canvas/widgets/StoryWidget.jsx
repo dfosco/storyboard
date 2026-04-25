@@ -14,6 +14,8 @@ import { createInspectorHighlighter } from '@dfosco/storyboard-core/inspector/hi
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { useIframeDevLogs } from './iframeDevLogs.js'
+import { findAllConnectedSplitTargets, getSplitPaneLabel, buildPaneForWidget, buildSplitLayout, buildSecondaryIframeUrl } from './expandUtils.js'
+import ExpandedPane from './ExpandedPane.jsx'
 import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
@@ -58,6 +60,8 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   const height = props?.height
 
   const containerRef = useRef(null)
+  const [expandMode, setExpandMode] = useState(null)
+  const expanded = expandMode !== null
   const iframeRef = useRef(null)
   const [interactive, setInteractive] = useState(false)
   const [showCode, setShowCode] = useState(!!props?.showCode)
@@ -156,6 +160,9 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     handleAction(actionId) {
       if (actionId === 'show-code') toggleShowCode()
       else if (actionId === 'copy-code') copyCode()
+      else if (actionId === 'expand') setExpandMode('split')
+      else if (actionId === 'expand-single') setExpandMode('single')
+      else if (actionId === 'split-screen') setExpandMode('split')
       else if (actionId === 'open-external') {
         const story = getStoryData(storyId)
         if (story?._route) {
@@ -213,6 +220,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
   if (typeof height === 'number') sizeStyle.height = `${height}px`
 
   return (
+    <>
     <WidgetWrapper>
       <div ref={containerRef} className={styles.container} style={sizeStyle}>
         <div className={styles.header}>
@@ -276,5 +284,55 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
       </div>
       {resizable && <ResizeHandle targetRef={containerRef} width={width} height={height} onResize={handleResize} />}
     </WidgetWrapper>
+    {expanded && (
+      <StoryExpandPane
+        widgetId={widgetId}
+        storyId={storyId}
+        exportName={exportName}
+        splitMode={expandMode === 'split'}
+        onClose={() => setExpandMode(null)}
+      />
+    )}
+    </>
   )
 })
+
+function StoryExpandPane({ widgetId, storyId, exportName, splitMode, onClose }) {
+  const connectedWidgets = useMemo(
+    () => splitMode ? findAllConnectedSplitTargets(widgetId) : [],
+    [widgetId, splitMode],
+  )
+
+  const primaryWidget = useMemo(() => {
+    const bridge = window.__storyboardCanvasBridgeState
+    return bridge?.widgets?.find((w) => w.id === widgetId) || { id: widgetId, type: 'story', position: { x: 0, y: 0 }, props: { storyId, exportName } }
+  }, [widgetId, storyId, exportName])
+
+  const buildPaneFn = useCallback((widget) => {
+    if (widget.id === widgetId) {
+      const url = buildSecondaryIframeUrl({ type: 'story', props: { storyId, exportName } })
+      return {
+        id: widgetId,
+        label: getSplitPaneLabel({ type: 'story', props: { storyId, exportName } }),
+        kind: 'react',
+        render: () => url
+          ? <iframe src={url} style={{ border: 'none', width: '100%', height: '100%', display: 'block' }} title={storyId} />
+          : <div style={{ padding: 32, color: 'var(--fgColor-muted)' }}>Story "{storyId}" not found</div>,
+      }
+    }
+    return buildPaneForWidget(widget)
+  }, [widgetId, storyId, exportName])
+
+  const layout = useMemo(
+    () => buildSplitLayout(primaryWidget, connectedWidgets, buildPaneFn),
+    [primaryWidget, connectedWidgets, buildPaneFn],
+  )
+
+  return (
+    <ExpandedPane
+      initialLayout={layout}
+      variant={layout.flat().length <= 1 ? 'modal' : 'full'}
+      onClose={onClose}
+    />
+  )
+}

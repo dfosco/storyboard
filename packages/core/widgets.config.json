@@ -9,6 +9,7 @@
     "label:copy-png": "Copy as image",
     "label:copy-path": "Copy file path",
     "label:expand": "Expand",
+    "label:expand-single": "Expand (no split)",
     "label:copy-id": "Copy widget ID",
     "label:copy-text": "Copy text"
   },
@@ -169,7 +170,11 @@
           "action": "expand",
           "label": "$label:expand",
           "icon": "expand",
-          "prod": true
+          "prod": true,
+          "alt": {
+            "action": "expand-single",
+            "label": "$label:expand-single"
+          }
         },
         {
           "id": "toggle-collapse",
@@ -304,7 +309,11 @@
           "action": "expand",
           "label": "$label:expand",
           "icon": "expand",
-          "prod": true
+          "prod": true,
+          "alt": {
+            "action": "expand-single",
+            "label": "$label:expand-single"
+          }
         },
         {
           "id": "copy",
@@ -396,7 +405,11 @@
           "action": "expand",
           "label": "$label:expand",
           "icon": "expand",
-          "prod": true
+          "prod": true,
+          "alt": {
+            "action": "expand-single",
+            "label": "$label:expand-single"
+          }
         },
         {
           "id": "copy",
@@ -488,7 +501,11 @@
           "action": "expand",
           "label": "$label:expand",
           "icon": "expand",
-          "prod": true
+          "prod": true,
+          "alt": {
+            "action": "expand-single",
+            "label": "$label:expand-single"
+          }
         },
         {
           "id": "copy",
@@ -595,7 +612,11 @@
           "action": "expand",
           "label": "$label:expand",
           "icon": "expand",
-          "prod": true
+          "prod": true,
+          "alt": {
+            "action": "expand-single",
+            "label": "$label:expand-single"
+          }
         },
         {
           "id": "toggle-collapse",
@@ -754,6 +775,18 @@
       },
       "features": [
         {
+          "id": "expand",
+          "type": "action",
+          "action": "expand",
+          "label": "$label:expand",
+          "icon": "expand",
+          "prod": true,
+          "alt": {
+            "action": "expand-single",
+            "label": "$label:expand-single"
+          }
+        },
+        {
           "id": "show-code",
           "type": "action",
           "action": "show-code",
@@ -818,12 +851,16 @@
           "*"
         ],
         "exclude": []
-      }
+      },
+      "expandable": true
     },
     "prompt": {
       "label": "Prompt",
       "icon": "zap",
-      "resize": { "enabled": true, "prod": false },
+      "resize": {
+        "enabled": true,
+        "prod": false
+      },
       "execution": {
         "default": "copilot",
         "agents": {
@@ -836,20 +873,89 @@
         }
       },
       "props": {
-        "text":           { "type": "text",   "label": "Prompt text",      "category": "content",  "default": "" },
-        "status":         { "type": "text",   "label": "Status",           "category": "settings", "default": "idle" },
-        "sessionId":      { "type": "text",   "label": "Session ID",       "category": "settings", "default": "" },
-        "resultWidgetId": { "type": "text",   "label": "Result Widget ID", "category": "settings", "default": "" },
-        "errorMessage":   { "type": "text",   "label": "Error Message",    "category": "settings", "default": "" },
-        "connections":    { "type": "text",   "label": "Connections",      "category": "settings", "default": "" },
-        "width":          { "type": "number", "label": "Width",            "category": "size",     "default": 320, "min": 200 },
-        "height":         { "type": "number", "label": "Height",           "category": "size",     "default": 180, "min": 80 }
+        "text": {
+          "type": "text",
+          "label": "Prompt text",
+          "category": "content",
+          "default": ""
+        },
+        "status": {
+          "type": "text",
+          "label": "Status",
+          "category": "settings",
+          "default": "idle"
+        },
+        "sessionId": {
+          "type": "text",
+          "label": "Session ID",
+          "category": "settings",
+          "default": ""
+        },
+        "resultWidgetId": {
+          "type": "text",
+          "label": "Result Widget ID",
+          "category": "settings",
+          "default": ""
+        },
+        "errorMessage": {
+          "type": "text",
+          "label": "Error Message",
+          "category": "settings",
+          "default": ""
+        },
+        "connections": {
+          "type": "text",
+          "label": "Connections",
+          "category": "settings",
+          "default": ""
+        },
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "default": 320,
+          "min": 200
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "default": 180,
+          "min": 80
+        }
       },
       "features": [
-        { "id": "copy",           "type": "action", "action": "copy",           "label": "$label:duplicate",  "icon": "copy" },
-        { "id": "expand-output",  "type": "action", "action": "expand-output",  "label": "Show output",       "icon": "unfold" },
-        { "id": "copy-link",      "type": "action", "action": "copy-link",      "label": "$label:copy-link",  "icon": "link",    "menu": true, "prod": true },
-        { "id": "delete",         "type": "action", "action": "delete",         "label": "$label:delete",     "icon": "trash",   "menu": true }
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy"
+        },
+        {
+          "id": "expand-output",
+          "type": "action",
+          "action": "expand-output",
+          "label": "Show output",
+          "icon": "unfold"
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "prod": true
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
       ]
     },
     "image": {
@@ -1000,7 +1106,11 @@
           "type": "action",
           "action": "expand",
           "label": "$label:expand",
-          "icon": "expand"
+          "icon": "expand",
+          "alt": {
+            "action": "expand-single",
+            "label": "$label:expand-single"
+          }
         },
         {
           "id": "copy",
@@ -1075,7 +1185,11 @@
           "type": "action",
           "action": "expand",
           "label": "$label:expand",
-          "icon": "expand"
+          "icon": "expand",
+          "alt": {
+            "action": "expand-single",
+            "label": "$label:expand-single"
+          }
         },
         {
           "id": "copy-link",
@@ -1147,7 +1261,11 @@
           "type": "action",
           "action": "expand",
           "label": "$label:expand",
-          "icon": "expand"
+          "icon": "expand",
+          "alt": {
+            "action": "expand-single",
+            "label": "$label:expand-single"
+          }
         },
         {
           "id": "copy",

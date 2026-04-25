@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, createElement } from 'react'
 import { remark } from 'remark'
 import remarkGfm from 'remark-gfm'
 import remarkHtml from 'remark-html'
+import { PencilIcon, EyeIcon } from '@primer/octicons-react'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { readProp } from './widgetProps.js'
@@ -247,7 +248,11 @@ function MarkdownExpandPane({ widgetId, content, splitMode, onClose, onUpdate })
         label: getSplitPaneLabel(primaryWidget) || 'Markdown',
         kind: 'react',
         actions: canEdit
-          ? [{ label: editing ? 'Preview' : 'Edit', onClick: () => setEditing((v) => !v) }]
+          ? [{
+              icon: editing ? createElement(EyeIcon, { size: 14 }) : createElement(PencilIcon, { size: 14 }),
+              ariaLabel: editing ? 'Preview' : 'Edit',
+              onClick: () => setEditing((v) => !v),
+            }]
           : undefined,
         render: () => (
           <ExpandedMarkdownEditor

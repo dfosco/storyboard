@@ -15,16 +15,18 @@ import styles from './ExpandedPaneTopBar.module.css'
  * @param {Array<{ label: string, onClick: () => void }>} [props.actions] — optional action buttons
  */
 export default function ExpandedPaneTopBar({ label, showClose, onClose, actions }) {
+  const resolvedActions = typeof actions === 'function' ? actions() : actions
   return (
     <div className={styles.bar}>
       <span className={styles.label}>{label}</span>
-      {actions?.map((action, i) => (
+      {resolvedActions?.map((action, i) => (
         <button
           key={i}
           className={styles.actionBtn}
           onClick={action.onClick}
+          aria-label={action.ariaLabel}
         >
-          {action.label}
+          {action.icon || action.label}
         </button>
       ))}
       {showClose && (

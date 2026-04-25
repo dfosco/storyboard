@@ -4,13 +4,38 @@
  * Reads the canvas bridge state to find connected widgets eligible
  * for split-screen, and builds iframe URLs for secondary panes.
  */
-import { createElement, useCallback } from 'react'
+import { createElement, useCallback, useState } from 'react'
+import { PencilIcon, EyeIcon } from '@primer/octicons-react'
 import { isSplitScreenCapable, getWidgetMeta } from './widgetConfig.js'
 import { ExpandedMarkdownEditor } from './MarkdownBlock.jsx'
 import linkStyles from './LinkPreview.module.css'
 
 // Re-export for convenience
 export { isSplitScreenCapable }
+
+/**
+ * Stateful wrapper for markdown in secondary split-screen panes.
+ * Manages editing state and syncs it to the shared editingRef so
+ * the title bar actions() getter stays in sync.
+ */
+function MarkdownSecondaryPane({ widget, editingRef, onUpdate }) {
+  const [editing, setEditing] = useState(false)
+  editingRef.current = editing
+  editingRef.setter = (v) => {
+    setEditing(v)
+    // Notify ExpandedPane to re-render so the title bar action icon updates
+    document.dispatchEvent(new CustomEvent('storyboard:expanded-pane:refresh'))
+  }
+
+  const content = widget.props?.content || ''
+
+  return createElement(ExpandedMarkdownEditor, {
+    content,
+    onUpdate,
+    editing,
+    onToggleEdit: () => editingRef.setter(!editing),
+  })
+}
 
 /**
  * Build a pane config for a connected widget to use with ExpandedPane.
@@ -69,14 +94,26 @@ export function buildPaneForWidget(widget) {
     }
   }
 
-  // Markdown: use the same component as the primary expand (read-only in secondary)
+  // Markdown: same editable pane as primary, updates via custom event
   if (widget.type === 'markdown') {
-    const content = widget.props?.content || ''
+    // Shared mutable ref for editing state — lets `actions()` and `render()` stay in sync
+    const editingRef = { current: false, setter: null }
+    const toggleEdit = () => { editingRef.setter?.(!editingRef.current) }
+    const onUpdate = (updates) => {
+      document.dispatchEvent(new CustomEvent('storyboard:canvas:update-widget', {
+        detail: { widgetId: widget.id, updates },
+      }))
+    }
     return {
       id: widget.id,
       label,
       kind: 'react',
-      render: () => createElement(ExpandedMarkdownEditor, { content, editing: false }),
+      actions: () => [{
+        icon: createElement(editingRef.current ? EyeIcon : PencilIcon, { size: 14 }),
+        ariaLabel: editingRef.current ? 'Preview' : 'Edit',
+        onClick: toggleEdit,
+      }],
+      render: () => createElement(MarkdownSecondaryPane, { widget, editingRef, onUpdate }),
     }
   }
 

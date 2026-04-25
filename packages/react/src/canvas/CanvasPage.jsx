@@ -33,6 +33,7 @@ import {
   addConnector as addConnectorApi,
   removeConnector as removeConnectorApi,
   updateConnector as updateConnectorApi,
+  batchOperations,
 } from './canvasApi.js'
 import PageSelector from './PageSelector.jsx'
 import Icon from '../Icon.jsx'
@@ -1115,6 +1116,129 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     }
   }, [canvasId, localWidgets, selectedWidgetIds, undoRedo])
 
+  // Duplicate selected widgets WITH connectors (Cmd+Shift+D)
+  // Uses the batch API for atomic operation — all widgets and connectors
+  // are created in a single request with $ref resolution.
+  const handleDuplicateWithConnectors = useCallback(async () => {
+    const widgets = (localWidgets ?? []).filter((w) => selectedWidgetIds.has(w.id))
+    if (widgets.length === 0) return
+
+    undoRedo.snapshot(stateRef.current, 'add')
+
+    // Compute offset — same logic as handleDuplicateSelected
+    const occupied = new Set(
+      (localWidgets ?? []).map((w) => `${w.position?.x ?? 0},${w.position?.y ?? 0}`)
+    )
+    let offset = 1
+    const anyOccupied = () => widgets.some((w) => {
+      const bx = (w.position?.x ?? 0) + offset * 40
+      const by = (w.position?.y ?? 0) + offset * 40
+      return occupied.has(`${bx},${by}`)
+    })
+    while (anyOccupied()) offset++
+
+    // Pre-process image widgets — duplicate asset files to get unique filenames
+    const imageOverrides = new Map()
+    for (const widget of widgets) {
+      if (widget.type === 'image' && widget.props?.src) {
+        try {
+          const dupResult = await duplicateImage(widget.props.src)
+          if (dupResult.success) imageOverrides.set(widget.id, dupResult.filename)
+        } catch { /* use original src as fallback */ }
+      }
+    }
+
+    // Find all connectors touching at least one selected widget
+    const selectedIds = new Set(widgets.map((w) => w.id))
+    const relevantConnectors = (localConnectors ?? []).filter(
+      (c) => selectedIds.has(c.start?.widgetId) || selectedIds.has(c.end?.widgetId)
+    )
+
+    // Build batch operations
+    const ops = []
+
+    // 1. Create-widget ops with ref names for $ref resolution
+    for (const widget of widgets) {
+      const copyProps = { ...widget.props }
+      const isTerminal = widget.type === 'terminal' || widget.type === 'agent'
+      if (isTerminal) delete copyProps.prettyName
+      if (imageOverrides.has(widget.id)) copyProps.src = imageOverrides.get(widget.id)
+
+      ops.push({
+        op: 'create-widget',
+        ref: `clone-${widget.id}`,
+        type: widget.type,
+        props: copyProps,
+        position: {
+          x: (widget.position?.x ?? 0) + offset * 40,
+          y: (widget.position?.y ?? 0) + offset * 40,
+        },
+      })
+    }
+
+    // 2. Create-connector ops — remap selected endpoints to $ref clones
+    for (const conn of relevantConnectors) {
+      const startInSelection = selectedIds.has(conn.start?.widgetId)
+      const endInSelection = selectedIds.has(conn.end?.widgetId)
+
+      ops.push({
+        op: 'create-connector',
+        startWidgetId: startInSelection ? `$clone-${conn.start.widgetId}` : conn.start.widgetId,
+        startAnchor: conn.start.anchor,
+        endWidgetId: endInSelection ? `$clone-${conn.end.widgetId}` : conn.end.widgetId,
+        endAnchor: conn.end.anchor,
+        connectorType: conn.connectorType || 'default',
+      })
+    }
+
+    try {
+      const response = await batchOperations(canvasId, ops)
+      if (!response.success) {
+        console.error('[canvas] Batch duplicate failed:', response.error)
+        return
+      }
+
+      // Extract created widgets and connectors from results
+      const newWidgets = []
+      const newConnectors = []
+      const refMap = response.refs || {}
+
+      for (const result of response.results) {
+        if (result.op === 'create-widget' && result.widget) {
+          newWidgets.push(result.widget)
+        }
+        if (result.op === 'create-connector' && result.connectorId) {
+          // Reconstruct connector object from the operation + resolved refs
+          const origOp = ops[result.index]
+          const resolveId = (val) => {
+            if (typeof val === 'string' && val.startsWith('$')) {
+              return refMap[val.slice(1)] ?? val
+            }
+            return val
+          }
+          newConnectors.push({
+            id: result.connectorId,
+            type: 'connector',
+            connectorType: origOp.connectorType || 'default',
+            start: { widgetId: resolveId(origOp.startWidgetId), anchor: origOp.startAnchor },
+            end: { widgetId: resolveId(origOp.endWidgetId), anchor: origOp.endAnchor },
+            meta: {},
+          })
+        }
+      }
+
+      if (newWidgets.length > 0) {
+        setLocalWidgets((prev) => [...(prev || []), ...newWidgets])
+        setSelectedWidgetIds(new Set(newWidgets.map((w) => w.id)))
+      }
+      if (newConnectors.length > 0) {
+        setLocalConnectors((prev) => [...prev, ...newConnectors])
+      }
+    } catch (err) {
+      console.error('[canvas] Failed to duplicate with connectors:', err)
+    }
+  }, [canvasId, localWidgets, localConnectors, selectedWidgetIds, undoRedo])
+
   // Select all widgets (Cmd+A)
   const handleSelectAll = useCallback(() => {
     const allIds = (localWidgets ?? []).map((w) => w.id)
@@ -1764,7 +1888,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     }
   }, [canvasId, undoRedo])
 
-  // Listen for CoreUIBar add-widget events
+  // Listen for CoreUIBar add-widget and update-widget events
   useEffect(() => {
     function handleAddWidget(e) {
       addWidget(e.detail.type, e.detail.props)
@@ -1772,13 +1896,19 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     function handleAddStoryWidget(e) {
       addStoryWidget(e.detail.storyId)
     }
+    function handleUpdateWidget(e) {
+      const { widgetId, updates } = e.detail || {}
+      if (widgetId && updates) handleWidgetUpdate(widgetId, updates)
+    }
     document.addEventListener('storyboard:canvas:add-widget', handleAddWidget)
     document.addEventListener('storyboard:canvas:add-story-widget', handleAddStoryWidget)
+    document.addEventListener('storyboard:canvas:update-widget', handleUpdateWidget)
     return () => {
       document.removeEventListener('storyboard:canvas:add-widget', handleAddWidget)
       document.removeEventListener('storyboard:canvas:add-story-widget', handleAddStoryWidget)
+      document.removeEventListener('storyboard:canvas:update-widget', handleUpdateWidget)
     }
-  }, [addWidget, addStoryWidget])
+  }, [addWidget, addStoryWidget, handleWidgetUpdate])
 
   // Listen for zoom changes from CoreUIBar
   useEffect(() => {
@@ -2354,7 +2484,10 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         e.preventDefault()
         handleRedo()
       }
-      if (mod && e.key === 'd') {
+      if (mod && e.key === 'd' && e.shiftKey) {
+        e.preventDefault()
+        handleDuplicateWithConnectors()
+      } else if (mod && e.key === 'd' && !e.shiftKey) {
         e.preventDefault()
         handleDuplicateSelected()
       }
@@ -2365,7 +2498,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleUndo, handleRedo, handleDuplicateSelected, handleSelectAll])
+  }, [handleUndo, handleRedo, handleDuplicateSelected, handleDuplicateWithConnectors, handleSelectAll])
 
   // Listen for undo/redo from CoreUIBar (Svelte toolbar)
   useEffect(() => {
@@ -2535,6 +2668,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     zoomRef: zoomRef,
     setSelectedWidgetIds,
     widgets: localWidgets,
+    connectors: localConnectors,
     componentEntries,
     fallbackSizes: WIDGET_FALLBACK_SIZES,
     spaceHeld,

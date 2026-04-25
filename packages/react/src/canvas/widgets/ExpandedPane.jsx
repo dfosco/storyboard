@@ -68,6 +68,15 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
   useEffect(() => {
     if (initialLayout) setLayout(initialLayout)
   }, [initialLayout])
+
+  // Force re-render when pane actions change (e.g. markdown edit toggle)
+  const [, forceUpdate] = useState(0)
+  useEffect(() => {
+    const handler = () => forceUpdate((n) => n + 1)
+    document.addEventListener('storyboard:expanded-pane:refresh', handler)
+    return () => document.removeEventListener('storyboard:expanded-pane:refresh', handler)
+  }, [])
+
   const allPanes = useMemo(() => layout.flat(), [layout])
 
   const [columnSizes, setColumnSizes] = useState(() => layout.map(() => '1fr'))

@@ -351,32 +351,7 @@
   margin-left: -24px;
 }
 
-/* ── Expanded toolbar + editor ──────────────────────────────────── */
-
-.expandedToolbar {
-  display: flex;
-  align-items: center;
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--borderColor-muted, #d8dee4);
-  flex-shrink: 0;
-}
-
-.expandedToolbarBtn {
-  all: unset;
-  cursor: pointer;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--fgColor-muted, #656d76);
-  transition: background 100ms, color 100ms;
-}
-
-.expandedToolbarBtn:hover {
-  background: var(--bgColor-neutral-muted, #eaeef2);
-  color: var(--fgColor-default, #1f2328);
-}
+/* ── Expanded editor ─────────────────────────────────────────────── */
 
 .expandedEditor {
   flex: 1;

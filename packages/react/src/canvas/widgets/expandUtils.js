@@ -69,14 +69,14 @@ export function buildPaneForWidget(widget) {
     }
   }
 
-  // Markdown: use the same editable component as the primary expand
+  // Markdown: use the same component as the primary expand (read-only in secondary)
   if (widget.type === 'markdown') {
     const content = widget.props?.content || ''
     return {
       id: widget.id,
       label,
       kind: 'react',
-      render: () => createElement(ExpandedMarkdownEditor, { content }),
+      render: () => createElement(ExpandedMarkdownEditor, { content, editing: false }),
     }
   }
 

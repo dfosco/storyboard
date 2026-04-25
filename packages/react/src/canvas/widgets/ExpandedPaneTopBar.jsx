@@ -12,11 +12,21 @@ import styles from './ExpandedPaneTopBar.module.css'
  * @param {string} props.label — pane display label
  * @param {boolean} [props.showClose] — show close button (rightmost pane)
  * @param {() => void} [props.onClose] — close entire ExpandedPane
+ * @param {Array<{ label: string, onClick: () => void }>} [props.actions] — optional action buttons
  */
-export default function ExpandedPaneTopBar({ label, showClose, onClose }) {
+export default function ExpandedPaneTopBar({ label, showClose, onClose, actions }) {
   return (
     <div className={styles.bar}>
       <span className={styles.label}>{label}</span>
+      {actions?.map((action, i) => (
+        <button
+          key={i}
+          className={styles.actionBtn}
+          onClick={action.onClick}
+        >
+          {action.label}
+        </button>
+      ))}
       {showClose && (
         <button className={styles.closeBtn} onClick={onClose} aria-label="Close expanded view" autoFocus>
           <ScreenNormalIcon size={16} />

@@ -64,7 +64,10 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
     return []
   })
 
-  // Flat list of all panes (for attach/detach and ResizeObserver)
+  // Sync layout when initialLayout changes (preserves column/row sizes)
+  useEffect(() => {
+    if (initialLayout) setLayout(initialLayout)
+  }, [initialLayout])
   const allPanes = useMemo(() => layout.flat(), [layout])
 
   const [columnSizes, setColumnSizes] = useState(() => layout.map(() => '1fr'))
@@ -295,6 +298,7 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
         <div className={styles.pane} key={pane.id}>
           <ExpandedPaneTopBar
             label={pane.label}
+            actions={pane.actions}
             showClose={isLastCol}
             onClose={onClose}
           />
@@ -318,6 +322,7 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
           >
             <ExpandedPaneTopBar
               label={pane.label}
+              actions={pane.actions}
               showClose={isLastCol && rowIdx === 0}
               onClose={onClose}
             />

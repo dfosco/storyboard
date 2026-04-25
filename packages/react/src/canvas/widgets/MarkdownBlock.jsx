@@ -228,6 +228,9 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
  * Builds pane configs and renders ExpandedPane for an expanded markdown widget.
  */
 function MarkdownExpandPane({ widgetId, content, splitMode, onClose, onUpdate }) {
+  const [editing, setEditing] = useState(false)
+  const canEdit = typeof onUpdate === 'function'
+
   const connectedWidgets = useMemo(
     () => splitMode ? findAllConnectedSplitTargets(widgetId) : [],
     [widgetId, splitMode],
@@ -243,16 +246,21 @@ function MarkdownExpandPane({ widgetId, content, splitMode, onClose, onUpdate })
         id: widgetId,
         label: getSplitPaneLabel(primaryWidget) || 'Markdown',
         kind: 'react',
+        actions: canEdit
+          ? [{ label: editing ? 'Preview' : 'Edit', onClick: () => setEditing((v) => !v) }]
+          : undefined,
         render: () => (
           <ExpandedMarkdownEditor
             content={content}
             onUpdate={onUpdate}
+            editing={editing}
+            onToggleEdit={() => setEditing((v) => !v)}
           />
         ),
       }
     }
     return buildPaneForWidget(widget)
-  }, [widgetId, primaryWidget, content, onUpdate])
+  }, [widgetId, primaryWidget, content, onUpdate, canEdit, editing])
 
   const layout = useMemo(
     () => buildSplitLayout(primaryWidget, connectedWidgets, buildPaneFn),
@@ -271,10 +279,9 @@ function MarkdownExpandPane({ widgetId, content, splitMode, onClose, onUpdate })
 /**
  * Editable markdown view for expanded/split-screen panes.
  * Self-contained: renders markdown from raw content with syntax highlighting.
- * Double-click preview to edit; Escape or click "Preview" to return.
+ * Editing state is controlled externally via props (toggle button lives in the title bar).
  */
-export function ExpandedMarkdownEditor({ content, onUpdate }) {
-  const [editing, setEditing] = useState(false)
+export function ExpandedMarkdownEditor({ content, onUpdate, editing, onToggleEdit }) {
   const textareaRef = useRef(null)
   const canEdit = typeof onUpdate === 'function'
 
@@ -301,41 +308,25 @@ export function ExpandedMarkdownEditor({ content, onUpdate }) {
 
   if (editing && canEdit) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <div className={styles.expandedToolbar}>
-          <button className={styles.expandedToolbarBtn} onClick={() => setEditing(false)}>
-            Preview
-          </button>
-        </div>
-        <textarea
-          ref={textareaRef}
-          className={styles.expandedEditor}
-          value={content}
-          onChange={(e) => onUpdate({ content: e.target.value })}
-          onKeyDown={(e) => { if (e.key === 'Escape') setEditing(false) }}
-          placeholder="Write markdown…"
-        />
-      </div>
+      <textarea
+        ref={textareaRef}
+        className={styles.expandedEditor}
+        value={content}
+        onChange={(e) => onUpdate({ content: e.target.value })}
+        onKeyDown={(e) => { if (e.key === 'Escape') onToggleEdit?.() }}
+        placeholder="Write markdown…"
+      />
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {canEdit && (
-        <div className={styles.expandedToolbar}>
-          <button className={styles.expandedToolbarBtn} onClick={() => setEditing(true)}>
-            Edit
-          </button>
-        </div>
-      )}
-      <div
-        className={styles.expandedPreview}
-        style={{ flex: 1, overflow: 'auto' }}
-        onDoubleClick={canEdit ? () => setEditing(true) : undefined}
-        dangerouslySetInnerHTML={{
-          __html: renderedHtml || '<p>No content</p>',
-        }}
-      />
-    </div>
+    <div
+      className={styles.expandedPreview}
+      style={{ flex: 1, overflow: 'auto' }}
+      onDoubleClick={canEdit ? onToggleEdit : undefined}
+      dangerouslySetInnerHTML={{
+        __html: renderedHtml || '<p>No content</p>',
+      }}
+    />
   )
 }

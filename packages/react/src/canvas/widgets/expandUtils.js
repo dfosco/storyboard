@@ -58,15 +58,11 @@ export function buildPaneForWidget(widget) {
       id: widget.id,
       label,
       kind: 'react',
-      render: () => {
-        // Dynamic import to avoid circular deps
-        const React = require('react')
-        return React.createElement('iframe', {
-          src: iframeUrl,
-          style: { border: 'none', width: '100%', height: '100%', display: 'block' },
-          title: label,
-        })
-      },
+      render: () => createElement('iframe', {
+        src: iframeUrl,
+        style: { border: 'none', width: '100%', height: '100%', display: 'block' },
+        title: label,
+      }),
     }
   }
 
@@ -77,10 +73,7 @@ export function buildPaneForWidget(widget) {
       id: widget.id,
       label,
       kind: 'react',
-      render: () => {
-        const React = require('react')
-        return React.createElement(LazyMarkdownPane, { content })
-      },
+      render: () => createElement(LazyMarkdownPane, { content }),
     }
   }
 
@@ -90,10 +83,7 @@ export function buildPaneForWidget(widget) {
       id: widget.id,
       label,
       kind: 'react',
-      render: () => {
-        const React = require('react')
-        return React.createElement(LazyLinkPreviewPane, { widget })
-      },
+      render: () => createElement(LazyLinkPreviewPane, { widget }),
     }
   }
 
@@ -104,7 +94,6 @@ export function buildPaneForWidget(widget) {
  * Lazy markdown renderer for secondary panes (avoids bundling remark eagerly).
  */
 function LazyMarkdownPane({ content }) {
-  const { useRef, useEffect } = require('react')
   const ref = useRef(null)
   useEffect(() => {
     if (!ref.current || !content) return
@@ -120,8 +109,7 @@ function LazyMarkdownPane({ content }) {
     })()
     return () => { cancelled = true }
   }, [content])
-  const React = require('react')
-  return React.createElement('div', {
+  return createElement('div', {
     ref,
     style: {
       padding: '32px 40px',
@@ -138,8 +126,6 @@ function LazyMarkdownPane({ content }) {
  * Lazy link-preview renderer for secondary panes.
  */
 function LazyLinkPreviewPane({ widget }) {
-  const { useRef, useEffect } = require('react')
-  const React = require('react')
   const { url, title, github } = widget.props || {}
   const bodyRef = useRef(null)
   useEffect(() => {
@@ -147,14 +133,14 @@ function LazyLinkPreviewPane({ widget }) {
   }, [github?.bodyHtml])
 
   if (github) {
-    return React.createElement('div', { style: { height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bgColor-default, #ffffff)' } },
-      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 24px', fontSize: '18px', fontWeight: 600, borderBottom: '1px solid var(--borderColor-muted, #d8dee4)' } }, title || url || 'GitHub'),
-      github.bodyHtml && React.createElement('div', { ref: bodyRef, style: { flex: 1, overflow: 'auto', padding: '24px', fontSize: '15px', lineHeight: 1.7 } }),
+    return createElement('div', { style: { height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bgColor-default, #ffffff)' } },
+      createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 24px', fontSize: '18px', fontWeight: 600, borderBottom: '1px solid var(--borderColor-muted, #d8dee4)' } }, title || url || 'GitHub'),
+      github.bodyHtml && createElement('div', { ref: bodyRef, style: { flex: 1, overflow: 'auto', padding: '24px', fontSize: '15px', lineHeight: 1.7 } }),
     )
   }
-  return React.createElement('div', { style: { padding: '32px 40px' } },
-    React.createElement('p', { style: { fontSize: '18px', fontWeight: 600, margin: '0 0 8px' } }, title || url || 'Link'),
-    url && React.createElement('a', { href: url, target: '_blank', rel: 'noopener noreferrer', style: { fontSize: '14px', color: 'var(--fgColor-accent, #0969da)' } }, url),
+  return createElement('div', { style: { padding: '32px 40px' } },
+    createElement('p', { style: { fontSize: '18px', fontWeight: 600, margin: '0 0 8px' } }, title || url || 'Link'),
+    url && createElement('a', { href: url, target: '_blank', rel: 'noopener noreferrer', style: { fontSize: '14px', color: 'var(--fgColor-accent, #0969da)' } }, url),
   )
 }
 

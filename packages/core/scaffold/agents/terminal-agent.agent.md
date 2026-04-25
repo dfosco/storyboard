@@ -10,6 +10,12 @@ tools:
 
 # Terminal Agent Context
 
+> **⚠️ API URL rule:** Canvas endpoints use FLAT paths. The canvas name goes in the **request body** as `"name"`, NEVER in the URL.
+> - ✅ `POST /_storyboard/canvas/widget` with body `{"name":"my-canvas", ...}`
+> - ✅ `POST /_storyboard/canvas/connector` with body `{"name":"my-canvas", ...}`
+> - ✅ `POST /_storyboard/canvas/batch` with body `{"name":"my-canvas", ...}`
+> - ❌ `POST /_storyboard/canvas/my-canvas/widgets` — **DOES NOT EXIST**
+
 ## ⚠️ Prime Directive: Results MUST be visible on the canvas
 
 **You CANNOT signal completion unless the user can see your result on the canvas.** This is non-negotiable. If you did work but the canvas looks the same as before, you failed.
@@ -118,103 +124,98 @@ When the user refers to a widget by type — e.g. "the connected image", "implem
 
 **Never pick randomly.** If there's ambiguity, always ask for clarification.
 
-## Step 3: Prefer CLI commands for canvas operations
+## Step 3: Canvas operations — CLI first, batch for multiples
 
-**Always prefer `npx storyboard` CLI commands over HTTP API calls.** CLI commands run directly in the worktree and resolve the dev server automatically — no port numbers or URLs needed.
+**Always use the CLI.** It resolves the dev server automatically — no ports or URLs needed.
+
+If the CLI says the dev server is unreachable, verify before falling back to HTTP:
+```bash
+curl -s -m 3 "${STORYBOARD_SERVER_URL}/_storyboard/canvas/read?name=${STORYBOARD_CANVAS_ID}" | jq '.widgets | length'
+```
+If this also fails, the dev server is genuinely down — tell the user.
+
+### ⚡ Creating widgets — use `--near` for automatic positioning
+
+**`--near` places a widget next to another widget with collision avoidance.** No manual coordinate math needed. This is the preferred way to create widgets.
+
+```bash
+# Create a sticky to the right of your terminal widget — position is computed automatically
+npx storyboard canvas add sticky-note --canvas ${STORYBOARD_CANVAS_ID} \
+  --near ${STORYBOARD_WIDGET_ID} --direction right --props '{"text":"Hello","color":"yellow"}'
+
+# Directions: right (default), left, above, below
+npx storyboard canvas add markdown --canvas ${STORYBOARD_CANVAS_ID} \
+  --near ${STORYBOARD_WIDGET_ID} --direction below --props '{"content":"# Notes"}'
+```
+
+For explicit coordinates (when you know exactly where), use `--x` and `--y`. Add `--resolve` to avoid overlaps:
+```bash
+npx storyboard canvas add sticky-note --canvas ${STORYBOARD_CANVAS_ID} --x 500 --y 200 --resolve --props '{"text":"Hello"}'
+```
+
+### ⚡ Batch — THE way to create multiple widgets + connectors
+
+**When creating 2+ widgets, ALWAYS use `canvas batch`.** One command, one HMR push, automatic `$ref` resolution. Do NOT loop individual `canvas add` calls.
+
+```bash
+# Create 3 stickies near terminal + connect them — ONE command
+npx storyboard canvas batch --canvas ${STORYBOARD_CANVAS_ID} --ops '[
+  {"op":"create-widget","ref":"s1","type":"sticky-note","near":"'${STORYBOARD_WIDGET_ID}'","direction":"right","props":{"text":"Task 1","color":"yellow"}},
+  {"op":"create-widget","ref":"s2","type":"sticky-note","near":"$s1","direction":"below","props":{"text":"Task 2","color":"blue"}},
+  {"op":"create-widget","ref":"s3","type":"sticky-note","near":"$s2","direction":"below","props":{"text":"Task 3","color":"green"}},
+  {"op":"create-connector","startWidgetId":"'${STORYBOARD_WIDGET_ID}'","endWidgetId":"$s1","startAnchor":"right","endAnchor":"left"},
+  {"op":"create-connector","startWidgetId":"'${STORYBOARD_WIDGET_ID}'","endWidgetId":"$s2","startAnchor":"right","endAnchor":"left"},
+  {"op":"create-connector","startWidgetId":"'${STORYBOARD_WIDGET_ID}'","endWidgetId":"$s3","startAnchor":"right","endAnchor":"left"}
+]'
+```
+
+**Key concepts:**
+- `"ref":"s1"` registers the widget's ID → later ops reference it as `"$s1"`
+- `"near":"$s1"` positions relative to a just-created widget (with collision avoidance)
+- `"near":"widget-id"` positions relative to an existing widget
+- Connectors must come after the widgets they reference
+
+**Supported ops:** `create-widget`, `update-widget`, `move-widget`, `delete-widget`, `create-connector`, `delete-connector`
+
+For large batches, write ops to a file:
+```bash
+npx storyboard canvas batch --canvas ${STORYBOARD_CANVAS_ID} --ops-file /tmp/ops.json
+```
 
 ### Reading canvas state
 ```bash
-npx storyboard canvas read <canvas-name> --json
-npx storyboard canvas read <canvas-name> --id <widget-id> --json
+npx storyboard canvas read ${STORYBOARD_CANVAS_ID} --json
+npx storyboard canvas read ${STORYBOARD_CANVAS_ID} --id <widget-id> --json
 ```
 
 ### Updating a widget
 ```bash
-# Update text on a sticky note
-npx storyboard canvas update <widget-id> --canvas <canvas-name> --text "New text"
+npx storyboard canvas update <widget-id> --canvas ${STORYBOARD_CANVAS_ID} --text "New text"
+npx storyboard canvas update <widget-id> --canvas ${STORYBOARD_CANVAS_ID} --content "# Heading"
+npx storyboard canvas update <widget-id> --canvas ${STORYBOARD_CANVAS_ID} --props '{"key":"value"}'
 
-# Update markdown content
-npx storyboard canvas update <widget-id> --canvas <canvas-name> --content "# New heading"
-
-# Update arbitrary props
-npx storyboard canvas update <widget-id> --canvas <canvas-name> --props '{"key":"value"}'
-
-# Move a widget
-npx storyboard canvas update <widget-id> --canvas <canvas-name> --x 100 --y 200
-
-# Shorthand flags: --text, --content, --src, --url, --color
+# Move — ALWAYS provide both --x and --y (omitting one zeros it out)
+npx storyboard canvas update <widget-id> --canvas ${STORYBOARD_CANVAS_ID} --x 100 --y 200
 ```
-
-### Adding a widget
-```bash
-npx storyboard canvas add sticky-note --canvas <canvas-name> --props '{"text":"Hello"}'
-npx storyboard canvas add markdown --canvas <canvas-name> --x 100 --y 200
-
-# Use --json to get the widget ID back (for scripting / creating connectors)
-npx storyboard canvas add sticky-note --canvas <canvas-name> --json --props '{"text":"Hello"}'
-# Outputs: {"id":"sticky-note-abc123","type":"sticky-note","position":{"x":0,"y":0},"props":{...}}
-```
-
-**Why CLI over API:** The CLI resolves the correct dev server port automatically via the Caddy proxy or ports.json. You never need to know the port number. All commands work from any worktree directory.
 
 ## Step 4: Connect every widget you create
 
-**After creating ANY widget on the canvas, always create a connector from the terminal widget to the new widget.** This keeps the canvas graph intact — every object the terminal creates must be visually linked back to it.
+**Every widget you create MUST be connected back to your terminal widget.** Use batch (shown above) for widget+connector creation in one command.
 
-The connector API is HTTP-only (CLI doesn't support connectors yet). Use `$STORYBOARD_SERVER_URL`, `$STORYBOARD_CANVAS_ID`, and `$STORYBOARD_WIDGET_ID` from your environment.
-
-### Example: Create a sticky note and connect it
-
+To connect an **already existing** widget individually:
 ```bash
-# 1. Create the widget — capture its ID from the response
-# Endpoint: POST /_storyboard/canvas/widget  (canvas name goes in the body as "name")
-RESPONSE=$(curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/widget" \
-  -H "Content-Type: application/json" \
-  -d "{\"name\":\"${STORYBOARD_CANVAS_ID}\",\"type\":\"sticky-note\",\"position\":{\"x\":100,\"y\":200},\"props\":{\"text\":\"Hello from terminal\"}}")
-
-NEW_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-
-# 2. Connect terminal → new widget
 curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/connector" \
   -H "Content-Type: application/json" \
-  -d "{\"name\":\"${STORYBOARD_CANVAS_ID}\",\"startWidgetId\":\"${STORYBOARD_WIDGET_ID}\",\"endWidgetId\":\"${NEW_ID}\",\"startAnchor\":\"right\",\"endAnchor\":\"left\"}"
+  -d "{\"name\":\"${STORYBOARD_CANVAS_ID}\",\"startWidgetId\":\"${STORYBOARD_WIDGET_ID}\",\"endWidgetId\":\"<target-id>\",\"startAnchor\":\"right\",\"endAnchor\":\"left\"}"
 ```
 
-### Example: Create a markdown block and connect it
+**Anchor guidance:** Use `"right"` → `"left"` by default. Adjust if layout calls for a different direction.
 
-```bash
-RESPONSE=$(curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/widget" \
-  -H "Content-Type: application/json" \
-  -d "{\"name\":\"${STORYBOARD_CANVAS_ID}\",\"type\":\"markdown\",\"position\":{\"x\":100,\"y\":200},\"props\":{\"content\":\"# Plan\\n- Step 1\\n- Step 2\"}}")
+### Positioning reference
 
-NEW_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+For complex layout operations (rearranging, grid layouts, spatial queries), read `.agents/skills/canvas/SKILL.md` — it covers collision detection, relational positioning, bounds queries, and grid snapping.
 
-curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/connector" \
-  -H "Content-Type: application/json" \
-  -d "{\"name\":\"${STORYBOARD_CANVAS_ID}\",\"startWidgetId\":\"${STORYBOARD_WIDGET_ID}\",\"endWidgetId\":\"${NEW_ID}\",\"startAnchor\":\"right\",\"endAnchor\":\"left\"}"
-```
-
-### Pattern: 1→n — terminal creates multiple widgets
-
-When creating several widgets, connect each one back to the terminal individually:
-
-```bash
-for i in 1 2 3; do
-  RESPONSE=$(curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/widget" \
-    -H "Content-Type: application/json" \
-    -d "{\"name\":\"${STORYBOARD_CANVAS_ID}\",\"type\":\"sticky-note\",\"position\":{\"x\":$((i * 300)),\"y\":200},\"props\":{\"text\":\"Task $i\"}}")
-
-  NEW_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-
-  curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/connector" \
-    -H "Content-Type: application/json" \
-    -d "{\"name\":\"${STORYBOARD_CANVAS_ID}\",\"startWidgetId\":\"${STORYBOARD_WIDGET_ID}\",\"endWidgetId\":\"${NEW_ID}\",\"startAnchor\":\"right\",\"endAnchor\":\"left\"}"
-done
-```
-
-**Anchor guidance:** Use `"right"` → `"left"` by default (terminal on left, new widgets to the right). Adjust if the spatial layout calls for a different direction.
-
-> For the full connector API (delete, direction, validation rules), see the **Connectors** section in the canvas skill docs.
+**Do NOT use Python** for positioning, layout, or JSON parsing — use `jq` for API responses and bash arithmetic (`$((...))`) for calculations. Only use Python for complex geometry (circles, spirals, radial trees).
 
 ## Step 5: Signal completion
 
@@ -268,6 +269,16 @@ npx storyboard terminal status <peerWidgetId>
 ```bash
 cat .storyboard/terminals/<peerWidgetId>.json | jq '.latestOutput'
 ```
+
+### Read a peer's terminal buffer (screen output)
+
+When the user asks you to "read the output", "check what's happening", or "see the results" from another terminal/session/agent, read the plain-text buffer file:
+
+```bash
+cat .storyboard/terminal-buffers/<peerWidgetId>.buffer.txt
+```
+
+This contains the ANSI-stripped terminal screen and scrollback history — updated every few seconds while the terminal is alive. Use this instead of `.latestOutput` when you need the **actual terminal content** rather than a structured messaging response.
 
 ### Messaging modes
 Messaging is controlled by the user via the 💬 menu on terminal widgets:
@@ -330,7 +341,10 @@ curl -s -X PATCH "${STORYBOARD_SERVER_URL}/_storyboard/canvas/widget" \
 
 ### Safe: Read canvas state (GET)
 ```bash
-curl -s "${STORYBOARD_SERVER_URL}/_storyboard/canvas/<canvasId>"
+curl -s "${STORYBOARD_SERVER_URL}/_storyboard/canvas/read?name=${STORYBOARD_CANVAS_ID}"
+# Returns: {"widgets":[...],"connectors":[...],"settings":{...}}
+# Parse with jq, NOT Python:
+curl -s "${STORYBOARD_SERVER_URL}/_storyboard/canvas/read?name=${STORYBOARD_CANVAS_ID}" | jq '.widgets[] | select(.id == "my-widget-id") | .position'
 ```
 
 ### ⚠️ NEVER use `PUT /_storyboard/canvas/update` with a `widgets` array

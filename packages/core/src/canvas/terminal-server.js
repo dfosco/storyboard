@@ -287,6 +287,28 @@ function captureSnapshot({ tmuxName, widgetId, canvasId, prettyName, cols, rows,
     try { if (existsSync(bufferTmpPath)) unlinkSync(bufferTmpPath) } catch {}
   }
 
+  // ── Plain-text buffer (.storyboard/terminal-buffers/<widgetId>.buffer.txt) ──
+  // Agent-readable raw text: screen first, then scrollback history.
+  const txtPath = join(bDir, `${widgetId}.buffer.txt`)
+  const txtTmpPath = txtPath + '.tmp'
+  try {
+    const screen = stripAnsi(paneContent).replace(/\r\n/g, '\n').replace(/\n+$/, '')
+    const history = stripAnsi(rawTail).replace(/\r\n/g, '\n').replace(/\n+$/, '')
+
+    let txt = `[${widgetId}${prettyName ? ' | ' + prettyName : ''} | ${now}]\n\n`
+    txt += '--- screen ---\n'
+    txt += (screen || '(empty)') + '\n'
+    if (history) {
+      txt += '\n--- scrollback ---\n'
+      txt += history + '\n'
+    }
+
+    writeFileSync(txtTmpPath, txt, 'utf8')
+    renameSync(txtTmpPath, txtPath)
+  } catch {
+    try { if (existsSync(txtTmpPath)) unlinkSync(txtTmpPath) } catch {}
+  }
+
   // ── Public snapshot (assets/.storyboard-public/terminal-snapshots/<widgetId>.snapshot.json) ──
   const isPrivate = isWidgetPrivate(widgetId, canvasId)
   const sDir = publicSnapshotDir()

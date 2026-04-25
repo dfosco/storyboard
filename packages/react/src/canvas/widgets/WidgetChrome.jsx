@@ -353,13 +353,35 @@ function DropdownFeature({ feature, onAction }) {
 }
 
 /**
- * ColorPicker feature button — shows a dot that reveals color options on hover.
+ * ColorPicker feature button — shows a dot that reveals color options on click.
+ * Closes on click-outside or Escape.
  */
 function ColorPickerFeature({ currentColor, options, onColorChange }) {
   const palette = STICKY_NOTE_COLORS[currentColor] ?? STICKY_NOTE_COLORS.yellow
+  const [open, setOpen] = useState(false)
+  const wrapperRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClickOutside(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    function handleEscape(e) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', handleClickOutside, true)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('pointerdown', handleClickOutside, true)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [open])
 
   return (
     <div
+      ref={wrapperRef}
       className={styles.colorPickerWrapper}
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
@@ -369,10 +391,11 @@ function ColorPickerFeature({ currentColor, options, onColorChange }) {
         style={{ background: palette.dot }}
         aria-label="Change color"
         title="Change color"
+        onClick={() => setOpen((prev) => !prev)}
       >
         <span className={styles.colorDotInner} style={{ background: palette.dot }} />
       </button>
-      <div className={styles.colorPopup}>
+      <div className={`${styles.colorPopup} ${open ? styles.colorPopupOpen : ''}`}>
         {(options || Object.keys(STICKY_NOTE_COLORS)).map((colorName) => {
           const c = STICKY_NOTE_COLORS[colorName]
           if (!c) return null
@@ -384,6 +407,7 @@ function ColorPickerFeature({ currentColor, options, onColorChange }) {
               onClick={(e) => {
                 e.stopPropagation()
                 onColorChange(colorName)
+                setOpen(false)
               }}
               title={colorName}
               aria-label={`Set color to ${colorName}`}

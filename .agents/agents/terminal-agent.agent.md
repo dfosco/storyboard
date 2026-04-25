@@ -139,8 +139,10 @@ npx storyboard canvas update <widget-id> --canvas <canvas-name> --content "# New
 # Update arbitrary props
 npx storyboard canvas update <widget-id> --canvas <canvas-name> --props '{"key":"value"}'
 
-# Move a widget
+# Move a widget — ALWAYS provide both --x and --y
 npx storyboard canvas update <widget-id> --canvas <canvas-name> --x 100 --y 200
+# ⚠️ Omitting --x or --y zeros out the missing axis. Read the widget's current
+# position first (via `canvas read --id`), then provide both coordinates.
 
 # Shorthand flags: --text, --content, --src, --url, --color
 ```

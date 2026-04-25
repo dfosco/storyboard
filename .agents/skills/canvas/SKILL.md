@@ -207,8 +207,10 @@ npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --content "# Heading"
 # Arbitrary props as JSON
 npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --props '{"key":"value"}'
 
-# Move a widget
+# Move a widget — ALWAYS provide both --x and --y
 npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --x 100 --y 200
+# ⚠️ Omitting --x or --y zeros out the missing axis. Always read the widget's
+# current position first, then provide both coordinates.
 
 # Shorthand flags: --text, --content, --src, --url, --color
 ```
@@ -286,14 +288,12 @@ npx storyboard canvas add {TYPE} --canvas {NAME} --x {X} --y {Y} --props '{JSON}
 ```
 
 **Moving a widget:**
-1. Read canvas state → get widgets array
-2. Find the target widget by ID
-3. Update its `position` field
-4. PUT the full array back:
+1. Read the widget's current position first (`canvas read --id {WIDGET_ID}`)
+2. Calculate new coordinates — **always provide both x and y**
+3. Use the CLI (preferred):
 ```bash
-curl -X PUT http://localhost:{PORT}/_storyboard/canvas/update \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"{CANVAS}","widgets":[...updated array...]}'
+npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --x {NEW_X} --y {NEW_Y}
+# ⚠️ Both --x and --y are REQUIRED — omitting one zeros out the missing axis
 ```
 
 **Updating widget props** (text, color, size, content, etc.):

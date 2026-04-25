@@ -13,8 +13,7 @@
     }
   },
   "featureFlags": {
-    "show-banner": true,
-    "dev-logs": false
+    "show-banner": true
   },
   "workshop": {
     "features": {

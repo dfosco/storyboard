@@ -1,16 +1,14 @@
 /**
  * Hot Pool browser devlogs — listens for server HMR events and
  * logs them to the browser console when DevTools "Dev logs" is on.
- *
- * The `dev-logs` feature flag is checked via the body class that
- * featureFlags.js syncs: `sb-ff-dev-logs`.
  */
+
+import { getFlag } from '@dfosco/storyboard-core'
 
 let registered = false
 
 function isDevLogsEnabled() {
-  return typeof document !== 'undefined' &&
-    document.body.classList.contains('sb-ff-dev-logs')
+  return getFlag('dev-logs')
 }
 
 export function registerHotPoolDevLogs() {

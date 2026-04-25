@@ -291,6 +291,32 @@ Check your `messaging.peers` array to see which peers you can message and in whi
 
 If the CLI fails, use these endpoints. The `serverUrl` is in your terminal config or `$STORYBOARD_SERVER_URL`.
 
+### Batch operations (POST /batch) — preferred for multi-widget work
+
+**Use batch when creating/updating/connecting multiple widgets.** One request, one HMR push.
+
+Operations reference earlier results via `$index` (auto) or `$refName` (opt-in). Every create op gets an automatic `$0`, `$1`, etc. ref by its position in the array.
+
+```bash
+curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/batch" \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"${STORYBOARD_CANVAS_ID}\",\"operations\":[
+    {\"op\":\"create-widget\",\"type\":\"sticky-note\",\"position\":{\"x\":100,\"y\":200},\"props\":{\"text\":\"A\"}},
+    {\"op\":\"create-widget\",\"type\":\"sticky-note\",\"position\":{\"x\":400,\"y\":200},\"props\":{\"text\":\"B\"}},
+    {\"op\":\"update-widget\",\"widgetId\":\"\$0\",\"props\":{\"text\":\"Updated A\"}},
+    {\"op\":\"create-connector\",\"startWidgetId\":\"${STORYBOARD_WIDGET_ID}\",\"endWidgetId\":\"\$0\",\"startAnchor\":\"right\",\"endAnchor\":\"left\"},
+    {\"op\":\"create-connector\",\"startWidgetId\":\"${STORYBOARD_WIDGET_ID}\",\"endWidgetId\":\"\$1\",\"startAnchor\":\"right\",\"endAnchor\":\"left\"}
+  ]}"
+```
+
+**Supported ops:** `create-widget`, `update-widget`, `move-widget`, `delete-widget`, `create-connector`, `delete-connector`
+
+**CLI equivalent:**
+```bash
+npx storyboard canvas batch --canvas <canvas-name> --ops '[...]'
+npx storyboard canvas batch --canvas <canvas-name> --ops-file ops.json
+```
+
 ### Safe: Create a widget (POST)
 ```bash
 curl -s -X POST "${STORYBOARD_SERVER_URL}/_storyboard/canvas/widget" \

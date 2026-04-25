@@ -72,6 +72,7 @@ function helpScreen(version) {
     `                              ${dim('types: sticky-note, markdown, prototype')}`,
     cmd('canvas update <id>', 'Update a widget\'s props or position'),
     cmd('canvas read [name]', 'Read canvas state and list widgets'),
+    cmd('canvas batch', 'Execute multiple canvas operations in one call'),
     cmd('compact [name]', 'Compact canvas JSONL files (removes bloat)'),
     cmd('compact --all', 'Force compact all canvases'),
     '',
@@ -141,6 +142,8 @@ switch (command) {
       import('./canvasRead.js')
     } else if (process.argv[3] === 'bounds') {
       import('./canvasBounds.js')
+    } else if (process.argv[3] === 'batch') {
+      import('./canvasBatch.js')
     } else {
       const version = getVersion()
       console.log(helpScreen(version))

@@ -21,6 +21,7 @@
  *   DELETE /widget   — append a widget_removed event
  *   POST   /connector — append a connector_added event
  *   DELETE /connector — append a connector_removed event
+ *   POST   /batch    — execute multiple operations in one request (refs, single HMR push)
  *   POST   /create   — create a new .canvas.jsonl file
  *   GET    /stories  — list all .story.{jsx,tsx} files with exports
  *   POST   /create-story — scaffold a new .story.{jsx,tsx} file
@@ -914,6 +915,191 @@ export function createCanvasHandler(ctx) {
         pushCanvasUpdate(name, filePath, __viteWs)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to remove connector: ${err.message}` })
+      }
+      return
+    }
+
+    // POST /batch — execute multiple canvas operations in a single request.
+    // Reads the canvas once, appends all events, pushes ONE HMR update at the end.
+    // Operations reference earlier results via $index (auto) or $refName (opt-in).
+    if (routePath === '/batch' && method === 'POST') {
+      const { name, operations } = body
+
+      if (!name) {
+        sendJson(res, 400, { error: 'Canvas name is required' })
+        return
+      }
+      if (!Array.isArray(operations) || operations.length === 0) {
+        sendJson(res, 400, { error: 'operations must be a non-empty array' })
+        return
+      }
+      if (operations.length > 200) {
+        sendJson(res, 400, { error: 'Maximum 200 operations per batch' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      try {
+        const canvasData = readCanvas(filePath)
+        const widgetIds = new Set((canvasData.widgets || []).map((w) => w.id))
+        const connectorIds = new Set((canvasData.connectors || []).map((c) => c.id))
+        const widgetMap = new Map((canvasData.widgets || []).map((w) => [w.id, { ...w }]))
+
+        const refs = {}
+        const results = []
+        const validAnchors = ['top', 'bottom', 'left', 'right']
+
+        // Resolve $ref strings — "$0", "$myName", etc.
+        function resolveRef(val) {
+          if (typeof val !== 'string' || !val.startsWith('$')) return val
+          const refName = val.slice(1)
+          if (refs[refName] !== undefined) return refs[refName]
+          throw new Error(`Unknown ref "${val}"`)
+        }
+
+        for (let i = 0; i < operations.length; i++) {
+          const op = operations[i]
+          const ts = new Date().toISOString()
+
+          try {
+            switch (op.op) {
+              case 'create-widget': {
+                const { type, position = { x: 0, y: 0 }, props = {}, ref } = op
+                if (!type) throw new Error('type is required')
+
+                const widgetId = generateWidgetId(type)
+                const widget = stampBounds({ id: widgetId, type, position, props })
+
+                appendEvent(filePath, { event: 'widget_added', timestamp: ts, widget })
+
+                widgetIds.add(widgetId)
+                widgetMap.set(widgetId, widget)
+                refs[String(i)] = widgetId
+                if (ref) refs[ref] = widgetId
+
+                results.push({ index: i, op: 'create-widget', ref: ref || undefined, widgetId, widget })
+                break
+              }
+
+              case 'update-widget': {
+                const widgetId = resolveRef(op.widgetId)
+                const { props } = op
+                if (!widgetId) throw new Error('widgetId is required')
+                if (!props) throw new Error('props is required')
+                if (!widgetIds.has(widgetId)) throw new Error(`Widget "${widgetId}" not found`)
+
+                appendEvent(filePath, { event: 'widget_updated', timestamp: ts, widgetId, props })
+
+                const existing = widgetMap.get(widgetId)
+                if (existing) existing.props = { ...existing.props, ...props }
+
+                results.push({ index: i, op: 'update-widget', widgetId, success: true })
+                break
+              }
+
+              case 'move-widget': {
+                const widgetId = resolveRef(op.widgetId)
+                const { position } = op
+                if (!widgetId) throw new Error('widgetId is required')
+                if (!position) throw new Error('position is required')
+                if (!widgetIds.has(widgetId)) throw new Error(`Widget "${widgetId}" not found`)
+
+                const existing = widgetMap.get(widgetId)
+                const mergedPosition = { ...(existing?.position || {}), ...position }
+
+                appendEvent(filePath, { event: 'widget_moved', timestamp: ts, widgetId, position: mergedPosition })
+
+                if (existing) existing.position = mergedPosition
+
+                results.push({ index: i, op: 'move-widget', widgetId, success: true })
+                break
+              }
+
+              case 'delete-widget': {
+                const widgetId = resolveRef(op.widgetId)
+                if (!widgetId) throw new Error('widgetId is required')
+                if (!widgetIds.has(widgetId)) throw new Error(`Widget "${widgetId}" not found`)
+
+                appendEvent(filePath, { event: 'widget_removed', timestamp: ts, widgetId })
+
+                widgetIds.delete(widgetId)
+                widgetMap.delete(widgetId)
+
+                results.push({ index: i, op: 'delete-widget', widgetId, success: true })
+                break
+              }
+
+              case 'create-connector': {
+                const startWidgetId = resolveRef(op.startWidgetId)
+                const endWidgetId = resolveRef(op.endWidgetId)
+                const { startAnchor = 'right', endAnchor = 'left', connectorType = 'default', ref } = op
+
+                if (!startWidgetId || !endWidgetId) throw new Error('startWidgetId and endWidgetId are required')
+                if (!validAnchors.includes(startAnchor) || !validAnchors.includes(endAnchor)) {
+                  throw new Error(`Anchors must be one of: ${validAnchors.join(', ')}`)
+                }
+                if (startWidgetId === endWidgetId) throw new Error('Cannot connect a widget to itself')
+                if (!widgetIds.has(startWidgetId)) throw new Error(`Widget "${startWidgetId}" not found`)
+                if (!widgetIds.has(endWidgetId)) throw new Error(`Widget "${endWidgetId}" not found`)
+
+                const connectorId = generateWidgetId('connector')
+                const connector = {
+                  id: connectorId,
+                  type: 'connector',
+                  connectorType,
+                  start: { widgetId: startWidgetId, anchor: startAnchor },
+                  end: { widgetId: endWidgetId, anchor: endAnchor },
+                  meta: {},
+                }
+
+                appendEvent(filePath, { event: 'connector_added', timestamp: ts, connector })
+
+                connectorIds.add(connectorId)
+                refs[String(i)] = connectorId
+                if (ref) refs[ref] = connectorId
+
+                results.push({ index: i, op: 'create-connector', ref: ref || undefined, connectorId, success: true })
+                break
+              }
+
+              case 'delete-connector': {
+                const connectorId = resolveRef(op.connectorId)
+                if (!connectorId) throw new Error('connectorId is required')
+                if (!connectorIds.has(connectorId)) throw new Error(`Connector "${connectorId}" not found`)
+
+                appendEvent(filePath, { event: 'connector_removed', timestamp: ts, connectorId })
+                connectorIds.delete(connectorId)
+
+                results.push({ index: i, op: 'delete-connector', connectorId, success: true })
+                break
+              }
+
+              default:
+                throw new Error(`Unknown operation "${op.op}"`)
+            }
+          } catch (opErr) {
+            // Fail-fast: push what we have so far, then return the error
+            pushCanvasUpdate(name, filePath, __viteWs)
+            sendJson(res, 400, {
+              success: false,
+              error: `Operation ${i} (${op.op}) failed: ${opErr.message}`,
+              failedAt: i,
+              results,
+              refs,
+            })
+            return
+          }
+        }
+
+        sendJson(res, 200, { success: true, results, refs })
+        pushCanvasUpdate(name, filePath, __viteWs)
+      } catch (err) {
+        sendJson(res, 500, { error: `Batch failed: ${err.message}` })
       }
       return
     }

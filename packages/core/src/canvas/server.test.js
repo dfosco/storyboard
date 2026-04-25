@@ -138,3 +138,242 @@ describe('POST /create with convertFrom', () => {
     expect(lastResponse.body.error).toContain('collides')
   })
 })
+
+// ──────────────────────────────────────────────────
+// POST /batch
+// ──────────────────────────────────────────────────
+
+describe('POST /batch', () => {
+  let root, canvasDir, invoke, lastResponse
+
+  beforeEach(() => {
+    ({ invoke, root, canvasDir, lastResponse } = setup())
+    writeCanvas(canvasDir, 'test-canvas')
+  })
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true })
+  })
+
+  it('creates multiple widgets in one batch', async () => {
+    await invoke('/batch', 'POST', {
+      name: 'test-canvas',
+      operations: [
+        { op: 'create-widget', type: 'sticky-note', props: { text: 'A' } },
+        { op: 'create-widget', type: 'sticky-note', props: { text: 'B' } },
+        { op: 'create-widget', type: 'sticky-note', props: { text: 'C' } },
+      ],
+    })
+
+    expect(lastResponse.status).toBe(200)
+    expect(lastResponse.body.success).toBe(true)
+    expect(lastResponse.body.results).toHaveLength(3)
+    expect(lastResponse.body.results[0].widget.props.text).toBe('A')
+    expect(lastResponse.body.results[1].widget.props.text).toBe('B')
+    expect(lastResponse.body.results[2].widget.props.text).toBe('C')
+  })
+
+  it('auto-assigns index refs ($0, $1, ...)', async () => {
+    await invoke('/batch', 'POST', {
+      name: 'test-canvas',
+      operations: [
+        { op: 'create-widget', type: 'sticky-note', props: { text: 'first' } },
+        { op: 'create-widget', type: 'sticky-note', props: { text: 'second' } },
+      ],
+    })
+
+    expect(lastResponse.body.success).toBe(true)
+    const { refs } = lastResponse.body
+    expect(refs['0']).toBe(lastResponse.body.results[0].widgetId)
+    expect(refs['1']).toBe(lastResponse.body.results[1].widgetId)
+  })
+
+  it('supports named refs alongside index refs', async () => {
+    await invoke('/batch', 'POST', {
+      name: 'test-canvas',
+      operations: [
+        { op: 'create-widget', type: 'sticky-note', ref: 'header', props: { text: 'H' } },
+      ],
+    })
+
+    expect(lastResponse.body.success).toBe(true)
+    const { refs } = lastResponse.body
+    const widgetId = lastResponse.body.results[0].widgetId
+    expect(refs['0']).toBe(widgetId)
+    expect(refs['header']).toBe(widgetId)
+  })
+
+  it('resolves $index refs in create-connector', async () => {
+    // First create a widget to act as the "existing" terminal widget
+    await invoke('/widget', 'POST', { name: 'test-canvas', type: 'terminal', props: {} })
+    const terminalId = lastResponse.body.widget.id
+
+    await invoke('/batch', 'POST', {
+      name: 'test-canvas',
+      operations: [
+        { op: 'create-widget', type: 'sticky-note', props: { text: 'target' } },
+        { op: 'create-connector', startWidgetId: terminalId, endWidgetId: '$0', startAnchor: 'right', endAnchor: 'left' },
+      ],
+    })
+
+    expect(lastResponse.body.success).toBe(true)
+    expect(lastResponse.body.results).toHaveLength(2)
+    expect(lastResponse.body.results[1].op).toBe('create-connector')
+    expect(lastResponse.body.results[1].connectorId).toBeTruthy()
+  })
+
+  it('resolves $named refs in update-widget', async () => {
+    await invoke('/batch', 'POST', {
+      name: 'test-canvas',
+      operations: [
+        { op: 'create-widget', type: 'sticky-note', ref: 'note', props: { text: 'before' } },
+        { op: 'update-widget', widgetId: '$note', props: { text: 'after' } },
+      ],
+    })
+
+    expect(lastResponse.body.success).toBe(true)
+    expect(lastResponse.body.results[1].op).toBe('update-widget')
+    expect(lastResponse.body.results[1].success).toBe(true)
+  })
+
+  it('supports move-widget with ref resolution', async () => {
+    await invoke('/batch', 'POST', {
+      name: 'test-canvas',
+      operations: [
+        { op: 'create-widget', type: 'sticky-note', position: { x: 0, y: 0 }, props: { text: 'X' } },
+        { op: 'move-widget', widgetId: '$0', position: { x: 500, y: 300 } },
+      ],
+    })
+
+    expect(lastResponse.body.success).toBe(true)
+    expect(lastResponse.body.results[1].op).toBe('move-widget')
+    expect(lastResponse.body.results[1].success).toBe(true)
+  })
+
+  it('supports delete-widget with ref resolution', async () => {
+    await invoke('/batch', 'POST', {
+      name: 'test-canvas',
+      operations: [
+        { op: 'create-widget', type: 'sticky-note', props: { text: 'temp' } },
+        { op: 'delete-widget', widgetId: '$0' },
+      ],
+    })
+
+    expect(lastResponse.body.success).toBe(true)
+    expect(lastResponse.body.results[1].op).toBe('delete-widget')
+    expect(lastResponse.body.results[1].success).toBe(true)
+  })
+
+  it('fails fast on unknown ref', async () => {
+    await invoke('/batch', 'POST', {
+      name: 'test-canvas',
+      operations: [
+        { op: 'create-widget', type: 'sticky-note', props: { text: 'ok' } },
+        { op: 'update-widget', widgetId: '$nonexistent', props: { text: 'fail' } },
+      ],
+    })
+
+    expect(lastResponse.status).toBe(400)
+    expect(lastResponse.body.success).toBe(false)
+    expect(lastResponse.body.failedAt).toBe(1)
+    expect(lastResponse.body.error).toContain('Unknown ref')
+    // First operation's result should still be returned
+    expect(lastResponse.body.results).toHaveLength(1)
+    expect(lastResponse.body.results[0].op).toBe('create-widget')
+  })
+
+  it('fails fast on unknown operation type', async () => {
+    await invoke('/batch', 'POST', {
+      name: 'test-canvas',
+      operations: [
+        { op: 'explode-widget' },
+      ],
+    })
+
+    expect(lastResponse.status).toBe(400)
+    expect(lastResponse.body.success).toBe(false)
+    expect(lastResponse.body.failedAt).toBe(0)
+    expect(lastResponse.body.error).toContain('Unknown operation')
+  })
+
+  it('rejects empty operations array', async () => {
+    await invoke('/batch', 'POST', {
+      name: 'test-canvas',
+      operations: [],
+    })
+
+    expect(lastResponse.status).toBe(400)
+    expect(lastResponse.body.error).toContain('non-empty')
+  })
+
+  it('rejects missing canvas name', async () => {
+    await invoke('/batch', 'POST', {
+      operations: [{ op: 'create-widget', type: 'sticky-note' }],
+    })
+
+    expect(lastResponse.status).toBe(400)
+    expect(lastResponse.body.error).toContain('Canvas name')
+  })
+
+  it('rejects batch exceeding 200 operations', async () => {
+    const ops = Array.from({ length: 201 }, (_, i) => ({
+      op: 'create-widget', type: 'sticky-note', props: { text: `#${i}` },
+    }))
+
+    await invoke('/batch', 'POST', { name: 'test-canvas', operations: ops })
+
+    expect(lastResponse.status).toBe(400)
+    expect(lastResponse.body.error).toContain('200')
+  })
+
+  it('returns 404 for unknown canvas', async () => {
+    await invoke('/batch', 'POST', {
+      name: 'nonexistent',
+      operations: [{ op: 'create-widget', type: 'sticky-note' }],
+    })
+
+    expect(lastResponse.status).toBe(404)
+  })
+
+  it('supports full create-update-move-connect workflow', async () => {
+    // Create a pre-existing terminal widget for connectors
+    await invoke('/widget', 'POST', { name: 'test-canvas', type: 'terminal', props: {} })
+    const termId = lastResponse.body.widget.id
+
+    await invoke('/batch', 'POST', {
+      name: 'test-canvas',
+      operations: [
+        { op: 'create-widget', type: 'sticky-note', position: { x: 100, y: 100 }, props: { text: 'Draft' } },
+        { op: 'update-widget', widgetId: '$0', props: { text: 'Final', color: 'blue' } },
+        { op: 'move-widget', widgetId: '$0', position: { x: 500, y: 300 } },
+        { op: 'create-connector', startWidgetId: termId, endWidgetId: '$0', startAnchor: 'right', endAnchor: 'left' },
+      ],
+    })
+
+    expect(lastResponse.body.success).toBe(true)
+    expect(lastResponse.body.results).toHaveLength(4)
+    expect(lastResponse.body.results[0].op).toBe('create-widget')
+    expect(lastResponse.body.results[1].op).toBe('update-widget')
+    expect(lastResponse.body.results[2].op).toBe('move-widget')
+    expect(lastResponse.body.results[3].op).toBe('create-connector')
+  })
+
+  it('connector refs also get index refs', async () => {
+    await invoke('/widget', 'POST', { name: 'test-canvas', type: 'terminal', props: {} })
+    const termId = lastResponse.body.widget.id
+
+    await invoke('/batch', 'POST', {
+      name: 'test-canvas',
+      operations: [
+        { op: 'create-widget', type: 'sticky-note', props: { text: 'A' } },
+        { op: 'create-connector', startWidgetId: termId, endWidgetId: '$0', startAnchor: 'right', endAnchor: 'left' },
+      ],
+    })
+
+    expect(lastResponse.body.success).toBe(true)
+    const { refs } = lastResponse.body
+    // Op 0 = widget, Op 1 = connector — both get index refs
+    expect(refs['0']).toMatch(/^sticky-note-/)
+    expect(refs['1']).toMatch(/^connector-/)
+  })
+})

@@ -15,6 +15,7 @@
  *   widgets_replaced — replace the entire widgets array (bulk update)
  *   connector_added  — append a connector between two widgets
  *   connector_removed — remove a connector by id
+ *   connectors_replaced — replace the entire connectors array (bulk update, used by undo/redo)
  */
 
 /**
@@ -179,6 +180,11 @@ export function materialize(events) {
         state.connectors = (state.connectors || []).filter(
           (c) => c.id !== evt.connectorId,
         )
+        break
+      }
+
+      case 'connectors_replaced': {
+        state.connectors = evt.connectors || []
         break
       }
 

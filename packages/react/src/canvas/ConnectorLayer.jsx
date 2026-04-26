@@ -1,9 +1,9 @@
 import { useMemo, useCallback } from 'react'
 import styles from './ConnectorLayer.module.css'
 import { getConnectorDefaults, getConnectorConfig } from './widgets/widgetConfig.js'
+import { getAnchorPoint, buildPath } from './connectorGeometry.js'
 
 const connectorConfig = getConnectorDefaults()
-const CONTROL_OFFSET = connectorConfig.controlOffset
 
 /**
  * Get the effective endpoint style for a widget, merging per-widget-type
@@ -19,53 +19,6 @@ function getEndpointStyle(widgetType, side) {
   return connectorConfig[key]
 }
 
-/**
- * Compute the anchor point on a widget's edge.
- * Reads actual DOM dimensions for accuracy (widgets like markdown auto-size).
- * Falls back to props/bounds/defaults if DOM element isn't found.
- */
-function getAnchorPoint(widget, anchor) {
-  const x = widget.position?.x ?? 0
-  const y = widget.position?.y ?? 0
-
-  // Try to read actual rendered dimensions from DOM
-  let w, h
-  const el = document.getElementById(widget.id)
-  if (el) {
-    // The widget element uses CSS translate for positioning;
-    // its offsetWidth/Height give the actual rendered size
-    const firstChild = el.querySelector('[data-widget-id]') || el.firstElementChild
-    if (firstChild) {
-      w = firstChild.offsetWidth
-      h = firstChild.offsetHeight
-    }
-  }
-  // Fallback to data
-  if (!w) w = widget.props?.width ?? widget.bounds?.width ?? 270
-  if (!h) h = widget.props?.height ?? widget.bounds?.height ?? 170
-
-  switch (anchor) {
-    case 'top':    return { x: x + w / 2, y }
-    case 'bottom': return { x: x + w / 2, y: y + h }
-    case 'left':   return { x, y: y + h / 2 }
-    case 'right':  return { x: x + w, y: y + h / 2 }
-    default:       return { x: x + w / 2, y: y + h / 2 }
-  }
-}
-
-/**
- * Compute the control point offset direction for an anchor.
- */
-function getControlOffset(anchor) {
-  switch (anchor) {
-    case 'top':    return { dx: 0, dy: -CONTROL_OFFSET }
-    case 'bottom': return { dx: 0, dy: CONTROL_OFFSET }
-    case 'left':   return { dx: -CONTROL_OFFSET, dy: 0 }
-    case 'right':  return { dx: CONTROL_OFFSET, dy: 0 }
-    default:       return { dx: 0, dy: 0 }
-  }
-}
-
 const DOT_OUTSET = 8
 
 function getDotOffset(anchor) {
@@ -76,28 +29,6 @@ function getDotOffset(anchor) {
     case 'right':  return { dx: DOT_OUTSET, dy: 0 }
     default:       return { dx: 0, dy: 0 }
   }
-}
-
-/**
- * Build a cubic Bézier path string between two anchor points.
- * When `freeEnd` is true, the end control point is computed from
- * the direction vector (end→start) so the curve never bends in
- * front of the cursor during drag.
- */
-function buildPath(startPt, startAnchor, endPt, endAnchor, freeEnd = false) {
-  const c1 = getControlOffset(startAnchor)
-  let c2
-  if (freeEnd) {
-    // Point the end control toward the start so the curve approaches naturally
-    const dx = startPt.x - endPt.x
-    const dy = startPt.y - endPt.y
-    const dist = Math.hypot(dx, dy) || 1
-    const scale = Math.min(CONTROL_OFFSET, dist * 0.4)
-    c2 = { dx: (dx / dist) * scale, dy: (dy / dist) * scale }
-  } else {
-    c2 = getControlOffset(endAnchor)
-  }
-  return `M ${startPt.x} ${startPt.y} C ${startPt.x + c1.dx} ${startPt.y + c1.dy}, ${endPt.x + c2.dx} ${endPt.y + c2.dy}, ${endPt.x} ${endPt.y}`
 }
 
 /**

@@ -28,8 +28,8 @@ export function createCanvas(data) {
   return request('/create', 'POST', data)
 }
 
-export function updateCanvas(canvasId, { widgets, sources, settings }) {
-  return request('/update', 'PUT', { name: canvasId, widgets, sources, settings })
+export function updateCanvas(canvasId, { widgets, sources, settings, connectors }) {
+  return request('/update', 'PUT', { name: canvasId, widgets, sources, settings, connectors })
 }
 
 export function addWidget(canvasId, { type, props, position }) {
@@ -52,6 +52,10 @@ export function toggleImagePrivacy(filename) {
 
 export function duplicateImage(filename) {
   return request('/image/duplicate', 'POST', { filename })
+}
+
+export function batchOperations(canvasId, operations) {
+  return request('/batch', 'POST', { name: canvasId, operations })
 }
 
 export function getCanvas(canvasId) {

@@ -92,8 +92,32 @@ function EndpointShape({ x, y, startPt, endPt, style, onPointerDown }) {
   )
 }
 
+/** Shared inline style for both SVG layers (CSS vars for connector theming). */
+const svgLayerStyle = {
+  width: '100000px',
+  height: '100000px',
+  '--connector-stroke': connectorConfig.stroke,
+  '--connector-stroke-width': `${connectorConfig.strokeWidth}px`,
+  '--connector-hover-stroke': connectorConfig.hoverStroke,
+  '--connector-hover-stroke-width': `${connectorConfig.hoverStrokeWidth}px`,
+  '--connector-endpoint-fill': connectorConfig.endpointFill,
+  '--connector-endpoint-stroke': connectorConfig.endpointStroke,
+  '--connector-endpoint-stroke-width': `${connectorConfig.endpointStrokeWidth}px`,
+  '--connector-hit-area-width': `${connectorConfig.hitAreaStrokeWidth}px`,
+  '--connector-drag-stroke': connectorConfig.dragStroke,
+  '--connector-drag-stroke-width': `${connectorConfig.dragStrokeWidth}px`,
+  '--connector-drag-dasharray': connectorConfig.dragDasharray,
+  '--connector-drag-opacity': connectorConfig.dragOpacity,
+}
+
 /**
- * SVG overlay that renders connector lines between widgets.
+ * Two-layer SVG overlay for connector lines and endpoints.
+ *
+ * Stacking (bottom → top):
+ *   connectorLayer  (z-index 1) — paths, hit areas, broadcast animations
+ *   widgets         (z-index 2/3) — normal / selected
+ *   endpointLayer   (z-index 4) — anchor dots & drag targets
+ *
  * Must be placed inside the same zoom-transformed container as widgets.
  */
 export default function ConnectorLayer({
@@ -118,97 +142,78 @@ export default function ConnectorLayer({
     onRemove?.(connectorId)
   }, [onRemove])
 
+  // Pre-compute connector geometry once, shared by both SVG layers
+  const resolved = useMemo(() => connectors.map((conn) => {
+    const startWidget = widgetMap.get(conn.start?.widgetId)
+    const endWidget = widgetMap.get(conn.end?.widgetId)
+    if (!startWidget || !endWidget) return null
+    const startPt = getAnchorPoint(startWidget, conn.start.anchor)
+    const endPt = getAnchorPoint(endWidget, conn.end.anchor)
+    const d = buildPath(startPt, conn.start.anchor, endPt, conn.end.anchor)
+    const startStyle = getEndpointStyle(startWidget.type, 'start')
+    const endStyle = getEndpointStyle(endWidget.type, 'end')
+    const isBroadcast = conn.meta?.messagingMode === 'two-way'
+    const startSelected = selectedWidgetIds?.has(conn.start?.widgetId)
+    const endSelected = selectedWidgetIds?.has(conn.end?.widgetId)
+    const reverseAnim = endSelected && !startSelected
+    return { conn, startPt, endPt, d, startStyle, endStyle, isBroadcast, reverseAnim }
+  }).filter(Boolean), [connectors, widgetMap, selectedWidgetIds])
+
+  const hiddenClass = hidden ? styles.connectorLayerHidden : ''
+
   return (
-    <svg
-      className={`${styles.connectorLayer} ${hidden ? styles.connectorLayerHidden : ''}`}
-      style={{
-        width: '100000px',
-        height: '100000px',
-        '--connector-stroke': connectorConfig.stroke,
-        '--connector-stroke-width': `${connectorConfig.strokeWidth}px`,
-        '--connector-hover-stroke': connectorConfig.hoverStroke,
-        '--connector-hover-stroke-width': `${connectorConfig.hoverStrokeWidth}px`,
-        '--connector-endpoint-fill': connectorConfig.endpointFill,
-        '--connector-endpoint-stroke': connectorConfig.endpointStroke,
-        '--connector-endpoint-stroke-width': `${connectorConfig.endpointStrokeWidth}px`,
-        '--connector-hit-area-width': `${connectorConfig.hitAreaStrokeWidth}px`,
-        '--connector-drag-stroke': connectorConfig.dragStroke,
-        '--connector-drag-stroke-width': `${connectorConfig.dragStrokeWidth}px`,
-        '--connector-drag-dasharray': connectorConfig.dragDasharray,
-        '--connector-drag-opacity': connectorConfig.dragOpacity,
-      }}
-    >
-      {connectors.map((conn) => {
-        const startWidget = widgetMap.get(conn.start?.widgetId)
-        const endWidget = widgetMap.get(conn.end?.widgetId)
-        if (!startWidget || !endWidget) return null
-
-        const startPt = getAnchorPoint(startWidget, conn.start.anchor)
-        const endPt = getAnchorPoint(endWidget, conn.end.anchor)
-        const d = buildPath(startPt, conn.start.anchor, endPt, conn.end.anchor)
-        const startStyle = getEndpointStyle(startWidget.type, 'start')
-        const endStyle = getEndpointStyle(endWidget.type, 'end')
-
-        // Broadcast animation: show flowing dots when connector has two-way messaging
-        // and one of the connected widgets is selected
-        const isBroadcast = conn.meta?.messagingMode === 'two-way'
-        const startSelected = selectedWidgetIds?.has(conn.start?.widgetId)
-        const endSelected = selectedWidgetIds?.has(conn.end?.widgetId)
-        // Always show flowing dots when broadcast is active
-        // Reverse direction when the end widget is selected (dots flow FROM selected)
-        const reverseAnim = endSelected && !startSelected
-
-        return (
+    <>
+      {/* Back layer: connector paths (behind widgets) */}
+      <svg
+        className={`${styles.connectorLayer} ${hiddenClass}`}
+        style={svgLayerStyle}
+      >
+        {resolved.map(({ conn, d, isBroadcast, reverseAnim }) => (
           <g key={conn.id}>
-            {/* Invisible wider hit area for easier clicking */}
-            <path
-              d={d}
-              className={styles.connectorPathHitArea}
-              onClick={(e) => handleClick(e, conn.id)}
-            />
-            {/* Visible connector line */}
-            <path
-              d={d}
+            <path d={d} className={styles.connectorPathHitArea}
+              onClick={(e) => handleClick(e, conn.id)} />
+            <path d={d}
               className={`${styles.connectorPath}${isBroadcast ? ` ${styles.connectorBroadcast}` : ''}`}
-              onClick={(e) => handleClick(e, conn.id)}
-            />
-            {/* Broadcast animation: flowing dots along the path */}
+              onClick={(e) => handleClick(e, conn.id)} />
             {isBroadcast && (
-              <path
-                d={d}
-                className={`${styles.broadcastFlow}${reverseAnim ? ` ${styles.broadcastFlowReverse}` : ''}`}
-              />
+              <path d={d}
+                className={`${styles.broadcastFlow}${reverseAnim ? ` ${styles.broadcastFlowReverse}` : ''}`} />
             )}
-            {/* Endpoint shapes — visual only, pointer events pass through to anchor dots */}
-            <EndpointShape x={startPt.x} y={startPt.y} startPt={startPt} endPt={endPt} style={startStyle}
-              onPointerDown={onEndpointDrag ? (e) => { e.stopPropagation(); e.preventDefault(); onEndpointDrag(conn, 'start', e) } : undefined}
-            />
-            <EndpointShape x={endPt.x} y={endPt.y} startPt={startPt} endPt={endPt} style={endStyle}
-              onPointerDown={onEndpointDrag ? (e) => { e.stopPropagation(); e.preventDefault(); onEndpointDrag(conn, 'end', e) } : undefined}
-            />
           </g>
-        )
-      })}
+        ))}
 
-      {/* Drag preview — dashed when free, solid when snapped to anchor */}
-      {dragPreview && (
-        <>
+        {dragPreview && (
           <path
             d={buildPath(
-              dragPreview.startPt,
-              dragPreview.startAnchor,
-              dragPreview.endPt,
-              dragPreview.endAnchor || dragPreview.startAnchor,
+              dragPreview.startPt, dragPreview.startAnchor,
+              dragPreview.endPt, dragPreview.endAnchor || dragPreview.startAnchor,
               !dragPreview.snapTarget,
             )}
             className={dragPreview.snapTarget ? styles.connectorPath : styles.dragPreviewPath}
           />
-          {dragPreview.snapTarget && (
-            <EndpointShape x={dragPreview.endPt.x} y={dragPreview.endPt.y} startPt={dragPreview.startPt} endPt={dragPreview.endPt} style={connectorConfig.endEndpoint} />
-          )}
-        </>
-      )}
-    </svg>
+        )}
+      </svg>
+
+      {/* Front layer: endpoint anchors (above widgets) */}
+      <svg
+        className={`${styles.endpointLayer} ${hiddenClass}`}
+        style={svgLayerStyle}
+      >
+        {resolved.map(({ conn, startPt, endPt, startStyle, endStyle }) => (
+          <g key={conn.id}>
+            <EndpointShape x={startPt.x} y={startPt.y} startPt={startPt} endPt={endPt} style={startStyle}
+              onPointerDown={onEndpointDrag ? (e) => { e.stopPropagation(); e.preventDefault(); onEndpointDrag(conn, 'start', e) } : undefined} />
+            <EndpointShape x={endPt.x} y={endPt.y} startPt={startPt} endPt={endPt} style={endStyle}
+              onPointerDown={onEndpointDrag ? (e) => { e.stopPropagation(); e.preventDefault(); onEndpointDrag(conn, 'end', e) } : undefined} />
+          </g>
+        ))}
+
+        {dragPreview?.snapTarget && (
+          <EndpointShape x={dragPreview.endPt.x} y={dragPreview.endPt.y}
+            startPt={dragPreview.startPt} endPt={dragPreview.endPt} style={connectorConfig.endEndpoint} />
+        )}
+      </svg>
+    </>
   )
 }
 

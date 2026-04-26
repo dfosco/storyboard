@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { connectorIntersectsRect } from './connectorGeometry.js'
 
 /**
  * Returns the bounding-box list for all widgets on the canvas.
@@ -45,6 +46,7 @@ function rectsIntersect(a, b) {
  * @param {React.RefObject} opts.zoomRef      — ref holding current zoom (number 25-200)
  * @param {Function} opts.setSelectedWidgetIds — state setter for selected IDs (Set)
  * @param {Array} opts.widgets                — current localWidgets array
+ * @param {Array} opts.connectors             — current localConnectors array
  * @param {Array} opts.componentEntries       — current componentEntries array
  * @param {Object} opts.fallbackSizes         — WIDGET_FALLBACK_SIZES map
  * @param {boolean} opts.spaceHeld            — whether the space key is pressed (panning)
@@ -57,6 +59,7 @@ export default function useMarqueeSelect({
   zoomRef,
   setSelectedWidgetIds,
   widgets,
+  connectors,
   componentEntries,
   fallbackSizes,
   spaceHeld,
@@ -93,6 +96,8 @@ export default function useMarqueeSelect({
       startCanvasY: canvasStart.y,
       startClientX: e.clientX,
       startClientY: e.clientY,
+      shiftKey: e.shiftKey,
+      altKey: e.altKey,
     }
 
     // Minimum drag distance before showing the marquee (avoids flicker on clicks)
@@ -141,11 +146,11 @@ export default function useMarqueeSelect({
 
       if (!ms) return
 
-      // If the user barely moved, treat as a deselect click
+      // If the user barely moved, treat as a deselect click (unless shift held)
       const dx = ev.clientX - ms.startClientX
       const dy = ev.clientY - ms.startClientY
       if (Math.abs(dx) < MIN_DRAG && Math.abs(dy) < MIN_DRAG) {
-        setSelectedWidgetIds(new Set())
+        if (!ms.shiftKey) setSelectedWidgetIds(new Set())
         return
       }
 
@@ -167,14 +172,35 @@ export default function useMarqueeSelect({
         }
       }
 
-      setSelectedWidgetIds(selected)
+      // Option+marquee: also select widgets connected by intersected connectors
+      if (ms.altKey && connectors?.length) {
+        const widgetMap = new Map()
+        for (const w of (widgets ?? [])) widgetMap.set(w.id, w)
+        for (const conn of connectors) {
+          if (connectorIntersectsRect(conn, widgetMap, selRect)) {
+            if (conn.start?.widgetId) selected.add(conn.start.widgetId)
+            if (conn.end?.widgetId) selected.add(conn.end.widgetId)
+          }
+        }
+      }
+
+      // Shift+marquee merges with existing selection; plain marquee replaces it
+      if (ms.shiftKey) {
+        setSelectedWidgetIds((prev) => {
+          const merged = new Set(prev)
+          for (const id of selected) merged.add(id)
+          return merged
+        })
+      } else {
+        setSelectedWidgetIds(selected)
+      }
     }
 
     document.addEventListener('mousemove', handleMove)
     document.addEventListener('mouseup', handleUp)
     window.addEventListener('blur', handleCancel)
     cleanupRef.current = removeListeners
-  }, [isLocalDev, spaceHeld, clientToCanvas, scrollRef, setSelectedWidgetIds, widgets, componentEntries, fallbackSizes])
+  }, [isLocalDev, spaceHeld, clientToCanvas, scrollRef, setSelectedWidgetIds, widgets, connectors, componentEntries, fallbackSizes])
 
   // Clean up listeners if component unmounts mid-drag
   useEffect(() => {

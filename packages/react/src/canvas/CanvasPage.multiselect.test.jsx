@@ -94,6 +94,13 @@ vi.mock('./widgets/widgetConfig.js', async () => {
   return {
     getFeatures: () => [],
     isResizable: () => false,
+    isExpandable: () => false,
+    isSplitScreenCapable: () => false,
+    getInteractGate: () => ({ enabled: false, label: 'Click to interact' }),
+    getWidgetMeta: () => null,
+    getConnectorConfig: actual.getConnectorConfig,
+    getAnchorState: actual.getAnchorState,
+    canAcceptConnection: () => true,
     schemas: {},
     getMenuWidgetTypes: () => [],
     getConnectorDefaults: actual.getConnectorDefaults,

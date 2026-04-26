@@ -24,7 +24,7 @@ const cyan = (s) => `\x1b[36m${s}\x1b[0m`
 
 async function checkServer() {
   try {
-    await fetch(getServerUrl(), { signal: AbortSignal.timeout(2000) })
+    await fetch(`${getServerUrl()}/_storyboard/canvas/list`, { signal: AbortSignal.timeout(2000) })
     return true
   } catch {
     return false

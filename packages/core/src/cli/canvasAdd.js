@@ -52,7 +52,7 @@ async function canvasAdd() {
   }
 
   if (!jsonOutput) p.intro('storyboard canvas add')
-  await ensureDevServer()
+  await ensureDevServer({ quiet: jsonOutput })
 
   // Widget type
   if (!widgetType) {
@@ -96,6 +96,9 @@ async function canvasAdd() {
 
   const x = flags.x ?? 0
   const y = flags.y ?? 0
+  const near = flags.near || null
+  const direction = flags.direction || 'right'
+  const resolve = flags.resolve || !!near
 
   let props = {}
   if (flags['props-file']) {
@@ -171,12 +174,10 @@ async function canvasAdd() {
   if (jsonOutput) {
     // JSON mode: no spinners/clack UI, just raw JSON output for scripting
     try {
-      const result = await serverPost('/_storyboard/canvas/widget', {
-        name: canvasName,
-        type: widgetType,
-        props,
-        position: { x, y },
-      })
+      const body = { name: canvasName, type: widgetType, props, position: { x, y } }
+      if (near) { body.near = near; body.direction = direction }
+      if (resolve) body.resolve = true
+      const result = await serverPost('/_storyboard/canvas/widget', body)
       const widget = result.widget || result
       console.log(JSON.stringify(widget))
     } catch (err) {
@@ -190,12 +191,10 @@ async function canvasAdd() {
   s.start(`Adding ${widgetType} widget...`)
 
   try {
-    const result = await serverPost('/_storyboard/canvas/widget', {
-      name: canvasName,
-      type: widgetType,
-      props,
-      position: { x, y },
-    })
+    const body = { name: canvasName, type: widgetType, props, position: { x, y } }
+    if (near) { body.near = near; body.direction = direction }
+    if (resolve) body.resolve = true
+    const result = await serverPost('/_storyboard/canvas/widget', body)
     s.stop(`Widget added!`)
     const widgetId = result.widget?.id || result.id
     if (widgetId) {

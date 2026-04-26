@@ -178,6 +178,21 @@ export const widgetSchema = {
     default: 0,
     description: 'Y position',
   },
+  near: {
+    type: 'string',
+    description: 'Place near this widget ID (computes position + avoids collisions)',
+  },
+  direction: {
+    type: 'string',
+    default: 'right',
+    description: 'Direction from --near widget: right, left, above, below',
+    aliases: ['dir'],
+  },
+  resolve: {
+    type: 'boolean',
+    default: false,
+    description: 'Run server-side collision detection on the target position',
+  },
   props: {
     type: 'string',
     description: 'Widget props as JSON string',

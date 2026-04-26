@@ -54,7 +54,7 @@ async function canvasBatch() {
     process.exit(1)
   }
 
-  await ensureDevServer()
+  await ensureDevServer({ quiet: true })
 
   let operations
   try {

@@ -59,38 +59,43 @@ async function serverPost(path, body) {
   return res.json()
 }
 
-async function checkServer(url) {
+async function checkServer(url, { quiet = false } = {}) {
   const target = url || getServerUrl()
   try {
-    await fetch(target, { signal: AbortSignal.timeout(5000) })
+    await fetch(`${target}/_storyboard/canvas/list`, { signal: AbortSignal.timeout(5000) })
     return true
   } catch (err) {
-    p.log.warning(`Could not reach dev server at ${target}: ${err.message}`)
+    if (!quiet) p.log.warning(`Could not reach dev server at ${target}: ${err.message}`)
     return false
   }
 }
 
-async function ensureDevServer() {
+async function ensureDevServer({ quiet = false } = {}) {
   // 1. If STORYBOARD_SERVER_URL is explicitly set, try it first (with retry)
   if (process.env.STORYBOARD_SERVER_URL) {
     const envUrl = process.env.STORYBOARD_SERVER_URL.replace(/\/$/, '')
-    if (await checkServer(envUrl)) return
+    if (await checkServer(envUrl, { quiet })) return
 
     // Retry once after a short delay (server may be mid-restart)
     await new Promise((r) => setTimeout(r, 1000))
-    if (await checkServer(envUrl)) return
+    if (await checkServer(envUrl, { quiet })) return
 
-    p.log.warning(
-      `STORYBOARD_SERVER_URL (${envUrl}) is not reachable — falling back to auto-discovery.`
-    )
+    if (!quiet) {
+      p.log.warning(
+        `STORYBOARD_SERVER_URL (${envUrl}) is not reachable — falling back to auto-discovery.`
+      )
+    }
   }
 
   // 2. Try auto-discovered URL (Caddy → ports.json)
-  if (await checkServer()) return
+  if (await checkServer(undefined, { quiet })) return
 
   // 3. No server found — start one
-  const s = p.spinner()
-  s.start('No running dev server found — starting one...')
+  let s
+  if (!quiet) {
+    s = p.spinner()
+    s.start('No running dev server found — starting one...')
+  }
 
   const { spawn } = await import('child_process')
   const { generateCaddyfile, isCaddyRunning, reloadCaddy } = await import('./proxy.js')
@@ -118,13 +123,13 @@ async function ensureDevServer() {
         const caddyfilePath = generateCaddyfile({ [worktreeName]: port })
         if (isCaddyRunning()) reloadCaddy(caddyfilePath)
       } catch {}
-      s.stop('Dev server started')
+      if (s) s.stop('Dev server started')
       return
     } catch {
       // Not ready yet — keep waiting
     }
   }
-  s.stop('Dev server may still be starting...')
+  if (s) s.stop('Dev server may still be starting...')
 }
 
 function getProxyUrl() {

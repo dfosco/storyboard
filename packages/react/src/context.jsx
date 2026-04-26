@@ -4,6 +4,7 @@ import { useParams, useLocation } from 'react-router-dom'
 import { canvases, canvasAliases, stories } from 'virtual:storyboard-data-index'
 import { loadFlow, flowExists, findRecord, deepMerge, setFlowClass, installBodyClassSync, resolveFlowName, resolveRecordName, isModesEnabled } from '@dfosco/storyboard-core'
 import { StoryboardContext } from './StoryboardContext.js'
+import usePrototypeReloadGuard from './hooks/usePrototypeReloadGuard.js'
 import styles from './FlowError.module.css'
 
 export { StoryboardContext }
@@ -132,6 +133,9 @@ function getPageFlowName(pathname) {
  */
 export default function StoryboardProvider({ flowName, sceneName, recordName, recordParam, children }) {
   const basePath = import.meta.env?.BASE_URL || '/'
+
+  // Suppress HMR full-reloads when prototype-auto-reload flag is off
+  usePrototypeReloadGuard()
 
   return (
     <>

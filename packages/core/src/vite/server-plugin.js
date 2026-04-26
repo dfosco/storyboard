@@ -124,11 +124,17 @@ export default function storyboardServer() {
     },
 
     configureServer(server) {
-      // --- Canvas reload guard ---------------------------------------------------
-      // Suppress full-reloads and HMR updates for clients on canvas routes.
-      // Canvas pages send heartbeats via import.meta.hot; the guard auto-expires
-      // 5s after the last heartbeat so closed tabs never leave it stuck.
-      // Opt out with ?canvas-hmr in the URL when developing canvas UI code.
+      // --- Reload guard ----------------------------------------------------------
+      // Suppress full-reloads and HMR updates for guarded clients.
+      //
+      // Two guard channels:
+      //   1. Canvas guard — canvas pages send heartbeats via storyboard:canvas-hmr-guard.
+      //      Controlled by the "canvas-auto-reload" feature flag (default: false = guard ON).
+      //   2. Prototype guard — all pages send heartbeats via storyboard:prototype-reload-guard.
+      //      Controlled by the "prototype-auto-reload" feature flag (default: true = guard OFF).
+      //
+      // Both guards auto-expire 5s after the last heartbeat so closed tabs never
+      // leave them stuck. Custom storyboard events always pass through.
       {
         let recentCanvasMutationAt = 0
         const CANVAS_WINDOW_MS = 1500
@@ -143,29 +149,46 @@ export default function storyboardServer() {
         server.watcher.on('add', markCanvasMutation)
         server.watcher.on('unlink', markCanvasMutation)
 
-        const guardedClients = new Map()
+        const canvasGuardedClients = new Map()
+        const prototypeGuardedClients = new Map()
 
         server.hot.on('storyboard:canvas-hmr-guard', (data, client) => {
-          if (data.active && !data.hmrEnabled) {
-            guardedClients.set(client, Date.now() + GUARD_TTL_MS)
+          if (data.active) {
+            canvasGuardedClients.set(client, Date.now() + GUARD_TTL_MS)
           } else {
-            guardedClients.delete(client)
+            canvasGuardedClients.delete(client)
+          }
+        })
+
+        server.hot.on('storyboard:prototype-reload-guard', (data, client) => {
+          if (data.active) {
+            prototypeGuardedClients.set(client, Date.now() + GUARD_TTL_MS)
+          } else {
+            prototypeGuardedClients.delete(client)
           }
         })
 
         const cleanup = setInterval(() => {
           const now = Date.now()
-          for (const [client, until] of guardedClients) {
+          for (const [client, until] of canvasGuardedClients) {
             if (now > until || !server.ws.clients.has(client)) {
-              guardedClients.delete(client)
+              canvasGuardedClients.delete(client)
+            }
+          }
+          for (const [client, until] of prototypeGuardedClients) {
+            if (now > until || !server.ws.clients.has(client)) {
+              prototypeGuardedClients.delete(client)
             }
           }
         }, 10000)
         server.httpServer?.on('close', () => clearInterval(cleanup))
 
         function isClientGuarded(client) {
-          const until = guardedClients.get(client)
-          return until != null && Date.now() < until
+          const cu = canvasGuardedClients.get(client)
+          if (cu != null && Date.now() < cu) return true
+          const pu = prototypeGuardedClients.get(client)
+          if (pu != null && Date.now() < pu) return true
+          return false
         }
 
         const originalSend = server.ws.send.bind(server.ws)
@@ -180,7 +203,7 @@ export default function storyboardServer() {
           }
 
           // No guarded clients → broadcast normally
-          if (guardedClients.size === 0) {
+          if (canvasGuardedClients.size === 0 && prototypeGuardedClients.size === 0) {
             return originalSend(payload, ...rest)
           }
 
@@ -198,7 +221,7 @@ export default function storyboardServer() {
           return originalSend(payload, ...rest)
         }
       }
-      // --- End canvas reload guard -----------------------------------------------
+      // --- End reload guard ------------------------------------------------------
 
       // Initialize dev logger for structured o11y logging
       const devDomain = config.devDomain || null

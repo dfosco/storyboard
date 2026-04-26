@@ -16,6 +16,12 @@ import { getLocal, setLocal, removeLocal, getAllLocal } from './localStorage.js'
 const FLAG_PREFIX = 'flag.'
 const BODY_CLASS_PREFIX = 'sb-ff-'
 
+/** Built-in feature flag defaults — always available even if initFeatureFlags is never called. */
+const BUILTIN_DEFAULTS = {
+  'canvas-auto-reload': false,
+  'prototype-auto-reload': true,
+}
+
 /** Module-level storage for config defaults */
 let _defaults = {}
 
@@ -43,7 +49,7 @@ export function syncFlagBodyClasses() {
  * @param {Record<string, boolean>} defaults - Flag key → default value
  */
 export function initFeatureFlags(defaults = {}) {
-  _defaults = { ...defaults }
+  _defaults = { ...BUILTIN_DEFAULTS, ...defaults }
   for (const [key, value] of Object.entries(_defaults)) {
     if (getLocal(FLAG_PREFIX + key) === null) {
       setLocal(FLAG_PREFIX + key, String(value))
@@ -61,7 +67,7 @@ export function getFlag(key) {
   const localVal = getLocal(FLAG_PREFIX + key)
   if (localVal !== null) return localVal === 'true'
 
-  return _defaults[key] ?? false
+  return _defaults[key] ?? BUILTIN_DEFAULTS[key] ?? false
 }
 
 /**
@@ -87,10 +93,11 @@ export function toggleFlag(key) {
  * @returns {Record<string, { default: boolean, current: boolean }>}
  */
 export function getAllFlags() {
+  const allKeys = new Set([...Object.keys(BUILTIN_DEFAULTS), ...Object.keys(_defaults)])
   const result = {}
-  for (const key of Object.keys(_defaults)) {
+  for (const key of allKeys) {
     result[key] = {
-      default: _defaults[key] ?? false,
+      default: _defaults[key] ?? BUILTIN_DEFAULTS[key] ?? false,
       current: getFlag(key),
     }
   }
@@ -116,5 +123,5 @@ export function resetFlags() {
  * @returns {string[]}
  */
 export function getFlagKeys() {
-  return Object.keys(_defaults)
+  return [...new Set([...Object.keys(BUILTIN_DEFAULTS), ...Object.keys(_defaults)])]
 }

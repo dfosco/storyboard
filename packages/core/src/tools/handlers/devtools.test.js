@@ -4,8 +4,12 @@ function getProdModeItem(children) {
   return children.find(item => item.id === 'core/prod-mode')
 }
 
-function getCanvasHmrItem(children) {
-  return children.find(item => item.id === 'core/canvas-hmr')
+function getCanvasAutoReloadItem(children) {
+  return children.find(item => item.id === 'core/canvas-auto-reload')
+}
+
+function getPrototypeAutoReloadItem(children) {
+  return children.find(item => item.id === 'core/prototype-auto-reload')
 }
 
 describe('devtools production mode toggle', () => {
@@ -52,26 +56,32 @@ describe('devtools production mode toggle', () => {
   })
 })
 
-describe('devtools canvas HMR toggle', () => {
+describe('devtools canvas auto-reload toggle', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/')
   })
 
-  it('shows the toggle as inactive by default', async () => {
+  it('shows the toggle as inactive by default (guard ON)', async () => {
     const devtools = await createDevtoolsHandler({})
-    const item = getCanvasHmrItem(devtools.getChildren())
+    const item = getCanvasAutoReloadItem(devtools.getChildren())
 
     expect(item).toBeTruthy()
     expect(item.type).toBe('toggle')
     expect(item.active).toBe(false)
   })
+})
 
-  it('shows the toggle as active when ?canvas-hmr is present', async () => {
-    window.history.replaceState({}, '', '/?canvas-hmr')
+describe('devtools prototype auto-reload toggle', () => {
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/')
+  })
 
+  it('shows the toggle as active by default (reloads enabled)', async () => {
     const devtools = await createDevtoolsHandler({})
-    const item = getCanvasHmrItem(devtools.getChildren())
+    const item = getPrototypeAutoReloadItem(devtools.getChildren())
 
+    expect(item).toBeTruthy()
+    expect(item.type).toBe('toggle')
     expect(item.active).toBe(true)
   })
 })

@@ -106,7 +106,9 @@
    z-index: 2 keeps widgets above the ConnectorLayer (z-index: 1).
    Selected widgets are raised via z-index on the .tc-drag wrapper
    (data-widget-raised) instead of DOM reordering — this prevents
-   iframe widgets from remounting when selection changes. */
+   iframe widgets from remounting when selection changes.
+   The actively dragged widget (.tc-on from neodrag) floats above
+   everything so it always passes over siblings during movement. */
 :global(.tc-drag) {
   isolation: isolate;
   z-index: 2;
@@ -114,6 +116,10 @@
 
 :global(.tc-drag:has([data-widget-raised])) {
   z-index: 3;
+}
+
+:global(.tc-drag.tc-on) {
+  z-index: 4;
 }
 
 .ghInstallBanner {

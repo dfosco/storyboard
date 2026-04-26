@@ -3,7 +3,8 @@
 .grid {
   display: flex;
   flex-wrap: nowrap;
-  gap: 0;
+  gap: 12px;
+  padding: 12px;
   min-height: 100vh;
   width: max-content;
   min-width: 100%;
@@ -22,15 +23,17 @@
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  border: 2px solid transparent;
-  transition: border-color 120ms ease;
+  border: 2px solid var(--borderColor-muted, #d8dee4);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
   position: relative;
+  background: var(--bgColor-default, #ffffff);
 }
 
 /* In horizontal layout, each cell snaps to the widest component */
 .grid[data-layout="horizontal"] .cell {
   min-width: var(--cell-snap-w, 200px);
-  min-height: 100%;
 }
 
 /* In vertical layout, each cell snaps to the tallest component */
@@ -39,18 +42,9 @@
   min-width: 100%;
 }
 
-/* Dividers between cells */
-.grid[data-layout="horizontal"] .cell + .cell {
-  border-left: 1px solid var(--borderColor-muted, #d8dee4);
-}
-
-.grid[data-layout="vertical"] .cell + .cell {
-  border-top: 1px solid var(--borderColor-muted, #d8dee4);
-}
-
 .cell[data-selected] {
   border-color: var(--fgColor-accent, #0969da);
-  border-radius: 4px;
+  box-shadow: 0 0 0 1px var(--fgColor-accent, #0969da);
 }
 
 .cellLabel {
@@ -69,6 +63,8 @@
   user-select: none;
   transition: background 100ms ease, color 100ms ease;
   flex-shrink: 0;
+  /* Round top corners to match cell */
+  border-radius: 6px 6px 0 0;
 }
 
 .cellLabel:hover {

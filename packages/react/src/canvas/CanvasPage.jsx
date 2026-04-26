@@ -321,6 +321,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
   onUpdate,
   onRemove,
   onCopy,
+  onCopyWithConnectors,
   onRefreshGitHub,
   canRefreshGitHub,
   onConnectorDragStart,
@@ -409,11 +410,15 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
     return adjusted
   }, [rawFeatures, widget.props?.github, widget.props?.collapsed, widget.type, widget.id, connectorCount, allWidgets])
 
-  const handleAction = useCallback((actionId) => {
+  const handleAction = useCallback((actionId, opts) => {
     if (actionId === 'delete') {
       onRemove?.(widget.id)
     } else if (actionId === 'copy') {
-      onCopy?.(widget)
+      if (opts?.altKey && onCopyWithConnectors) {
+        onCopyWithConnectors(widget)
+      } else {
+        onCopy?.(widget)
+      }
     } else if (actionId === 'copy-text') {
       const title = widget.props?.title || ''
       const body = widget.props?.text || widget.props?.content || widget.props?.github?.body || ''
@@ -448,7 +453,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
           .catch((err) => console.error('[canvas] Failed to toggle broadcast:', err))
       }
     }
-  }, [widget, onRemove, onCopy, onRefreshGitHub])
+  }, [widget, onRemove, onCopy, onCopyWithConnectors, onRefreshGitHub])
 
   const handleWidgetFieldUpdate = useCallback((updates) => {
     onUpdate?.(widget.id, updates)
@@ -1085,6 +1090,109 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       console.error('[canvas] Failed to copy widget:', err)
     }
   }, [canvasId, localWidgets, undoRedo])
+
+  // Duplicate a single widget WITH its connectors (Alt+click on duplicate button)
+  const handleWidgetCopyWithConnectors = useCallback(async (widget) => {
+    if (!widget) return
+    const widgets = [widget]
+
+    undoRedo.snapshot(stateRef.current, 'add')
+
+    const occupied = new Set(
+      (localWidgets ?? []).map((w) => `${w.position?.x ?? 0},${w.position?.y ?? 0}`)
+    )
+    let offset = 1
+    while (occupied.has(`${(widget.position?.x ?? 0) + offset * 40},${(widget.position?.y ?? 0) + offset * 40}`)) offset++
+
+    const imageOverrides = new Map()
+    if (widget.type === 'image' && widget.props?.src) {
+      try {
+        const dupResult = await duplicateImage(widget.props.src)
+        if (dupResult.success) imageOverrides.set(widget.id, dupResult.filename)
+      } catch { /* use original src as fallback */ }
+    }
+
+    const selectedIds = new Set([widget.id])
+    const relevantConnectors = (localConnectors ?? []).filter(
+      (c) => selectedIds.has(c.start?.widgetId) || selectedIds.has(c.end?.widgetId)
+    )
+
+    const ops = []
+    for (const w of widgets) {
+      const copyProps = { ...w.props }
+      const isTerminal = w.type === 'terminal' || w.type === 'agent'
+      if (isTerminal) delete copyProps.prettyName
+      if (imageOverrides.has(w.id)) copyProps.src = imageOverrides.get(w.id)
+      ops.push({
+        op: 'create-widget',
+        ref: `clone-${w.id}`,
+        type: w.type,
+        props: copyProps,
+        position: {
+          x: (w.position?.x ?? 0) + offset * 40,
+          y: (w.position?.y ?? 0) + offset * 40,
+        },
+      })
+    }
+
+    for (const conn of relevantConnectors) {
+      const startInSelection = selectedIds.has(conn.start?.widgetId)
+      const endInSelection = selectedIds.has(conn.end?.widgetId)
+      ops.push({
+        op: 'create-connector',
+        startWidgetId: startInSelection ? `$clone-${conn.start.widgetId}` : conn.start.widgetId,
+        startAnchor: conn.start.anchor,
+        endWidgetId: endInSelection ? `$clone-${conn.end.widgetId}` : conn.end.widgetId,
+        endAnchor: conn.end.anchor,
+        connectorType: conn.connectorType || 'default',
+      })
+    }
+
+    try {
+      const response = await batchOperations(canvasId, ops)
+      if (!response.success) {
+        console.error('[canvas] Batch duplicate failed:', response.error)
+        return
+      }
+
+      const newWidgets = []
+      const newConnectors = []
+      const refMap = response.refs || {}
+
+      for (const result of response.results) {
+        if (result.op === 'create-widget' && result.widget) {
+          newWidgets.push(result.widget)
+        }
+        if (result.op === 'create-connector' && result.connectorId) {
+          const origOp = ops[result.index]
+          const resolveId = (val) => {
+            if (typeof val === 'string' && val.startsWith('$')) {
+              return refMap[val.slice(1)] ?? val
+            }
+            return val
+          }
+          newConnectors.push({
+            id: result.connectorId,
+            type: 'connector',
+            connectorType: origOp.connectorType || 'default',
+            start: { widgetId: resolveId(origOp.startWidgetId), anchor: origOp.startAnchor },
+            end: { widgetId: resolveId(origOp.endWidgetId), anchor: origOp.endAnchor },
+            meta: {},
+          })
+        }
+      }
+
+      if (newWidgets.length > 0) {
+        setLocalWidgets((prev) => [...(prev || []), ...newWidgets])
+        setSelectedWidgetIds(new Set(newWidgets.map((w) => w.id)))
+      }
+      if (newConnectors.length > 0) {
+        setLocalConnectors((prev) => [...prev, ...newConnectors])
+      }
+    } catch (err) {
+      console.error('[canvas] Failed to duplicate with connectors:', err)
+    }
+  }, [canvasId, localWidgets, localConnectors, undoRedo])
 
   // Duplicate all selected widgets in one undo step (Cmd+D)
   const handleDuplicateSelected = useCallback(async () => {
@@ -2750,6 +2858,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         id={`jsx-${exportName}`}
         data-tc-x={sourcePosition.x}
         data-tc-y={sourcePosition.y}
+        data-widget-raised={selectedWidgetIds.has(`jsx-${exportName}`) || undefined}
         {...(isLocalDev ? { 'data-tc-handle': '.tc-drag-handle, .tc-drag-surface' } : {})}
         {...canvasPrimerAttrs}
         style={canvasThemeVars}
@@ -2786,13 +2895,12 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   }
 
   // 2. JSON-defined mutable widgets (selectable, wrapped in WidgetChrome)
-  // Sort so selected widgets render last (visually on top via DOM order)
-  const sortedWidgets = (localWidgets ?? []).slice().sort((a, b) => {
-    const aSelected = selectedWidgetIds.has(a.id) ? 1 : 0
-    const bSelected = selectedWidgetIds.has(b.id) ? 1 : 0
-    return aSelected - bSelected
-  })
-  for (const widget of sortedWidgets) {
+  // Stable DOM order — visual stacking is controlled by z-index on the
+  // wrapper div (data-widget-raised), NOT by re-sorting the array.
+  // Re-sorting caused iframe widgets (stories, embeds) to remount and
+  // reload every time selection changed, because moving an iframe node
+  // in the DOM destroys its browsing context.
+  for (const widget of (localWidgets ?? [])) {
     // In production, render terminal widgets as read-only instead of hiding them
     const effectiveWidget = (!isLocalDev && (widget.type === 'terminal' || widget.type === 'agent'))
       ? { ...widget, type: 'terminal-read' }
@@ -2803,6 +2911,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         id={effectiveWidget.id}
         data-tc-x={effectiveWidget?.position?.x ?? 0}
         data-tc-y={effectiveWidget?.position?.y ?? 0}
+        data-widget-raised={selectedWidgetIds.has(widget.id) || undefined}
         {...(isLocalDev ? { 'data-tc-handle': '.tc-drag-handle, .tc-drag-surface' } : {})}
         {...canvasPrimerAttrs}
         style={canvasThemeVars}
@@ -2823,6 +2932,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           onDeselect={handleDeselectAll}
           onUpdate={isLocalDev ? handleWidgetUpdate : undefined}
           onCopy={isLocalDev ? handleWidgetCopy : undefined}
+          onCopyWithConnectors={isLocalDev ? handleWidgetCopyWithConnectors : undefined}
           onRemove={isLocalDev ? handleWidgetRemoveAndDeselect : undefined}
           onRefreshGitHub={isLocalDev ? handleRefreshGitHubWidget : undefined}
           canRefreshGitHub={isLocalDev}

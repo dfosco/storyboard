@@ -6,6 +6,7 @@
  */
 import { createElement, useCallback, useState } from 'react'
 import { PencilIcon, EyeIcon } from '@primer/octicons-react'
+import { getStoryData } from '@dfosco/storyboard-core'
 import { isSplitScreenCapable, getWidgetMeta } from './widgetConfig.js'
 import { ExpandedMarkdownEditor } from './MarkdownBlock.jsx'
 import linkStyles from './LinkPreview.module.css'
@@ -430,7 +431,7 @@ export function buildSecondaryIframeUrl(widget) {
     const storyId = widget.props?.storyId
     const exportName = widget.props?.exportName
     if (!storyId) return null
-    const storyData = typeof window !== 'undefined' && window.__storyboardStoryIndex?.[storyId]
+    const storyData = getStoryData(storyId)
     if (storyData?._route) {
       const params = new URLSearchParams()
       if (exportName) params.set('export', exportName)

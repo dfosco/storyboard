@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
-import { getTerminalConfig, getTerminalDimensions } from '@dfosco/storyboard-core'
+import { getTerminalConfig, getTerminalDimensions, getStoryData } from '@dfosco/storyboard-core'
 import { useOverride } from '../../hooks/useOverride.js'
 import { getSplitPaneLabel, findAllConnectedSplitTargets, buildPaneForWidget, buildSplitLayout } from './expandUtils.js'
 import ExpandedPane from './ExpandedPane.jsx'
@@ -109,7 +109,7 @@ function buildEmbedUrl(widget) {
     const storyId = widget.props?.storyId
     const exportName = widget.props?.exportName
     if (!storyId) return null
-    const storyData = typeof window !== 'undefined' && window.__storyboardStoryIndex?.[storyId]
+    const storyData = getStoryData(storyId)
     if (storyData?._route) {
       const route = exportName ? `${storyData._route}?export=${exportName}` : storyData._route
       return `${baseClean}${route}`

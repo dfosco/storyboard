@@ -9,7 +9,13 @@ description: Work with Storyboard canvases — add, move, update, remove, and ar
 
 ## What This Does
 
-Reads, manipulates, and arranges widgets on a Storyboard canvas. Supports absolute and relational positioning, bulk layout, content updates, and widget removal — all through the canvas server API.
+Reads, manipulates, and arranges widgets on a Storyboard canvas. Supports absolute and relational positioning, bulk layout, content updates, and widget removal.
+
+## ⚠️ CLI-First — Mandatory
+
+**Always use `npx storyboard canvas` CLI commands as your primary tool.** The CLI resolves the correct dev server port automatically via the Caddy proxy or `ports.json` — you never need to know the port number. All commands work from any worktree directory.
+
+**Only fall back to the HTTP API if the CLI does not support the operation or if a CLI command fails.** When using the API as a fallback, note the failure and explain why you're falling back.
 
 ## Prerequisites
 
@@ -99,18 +105,11 @@ Each widget type stores content in a different prop. When querying widgets, use 
 - When positioning: **snap to grid** — `Math.round(value / gridSize) * gridSize`
 - Standard gap between widgets: **1 grid unit** (= `gridSize`, usually 24px)
 
-## Reference: Server API
+## Reference: CLI Commands (Primary Interface)
 
-All endpoints are at `http://localhost:{PORT}/_storyboard/canvas/`. The port is determined by the worktree:
+**These are the commands you should use for all canvas operations.** Prefer these over the HTTP API in every case.
 
-```js
-import { detectWorktreeName, getPort } from '@dfosco/storyboard-core/worktree/port'
-const port = getPort(detectWorktreeName())
-```
-
-## Reference: CLI Commands
-
-### Read canvas state (CLI)
+### Read canvas state
 ```bash
 npx storyboard canvas read              # List all canvases
 npx storyboard canvas read my-canvas    # List all widgets with ID, content, URLs, file paths
@@ -129,7 +128,7 @@ Bounds are persisted in widget metadata and recalculated on every add, move, or 
 
 Use bounds to determine widget overlap and spatial relationships without manual size calculation.
 
-### Get widget bounds (CLI)
+### Get widget bounds
 ```bash
 npx storyboard canvas bounds my-canvas                     # Bounds for all widgets
 npx storyboard canvas bounds my-canvas --id sticky-abc123  # Bounds for one widget
@@ -139,64 +138,24 @@ npx storyboard canvas bounds --type sticky-note            # Default size for a 
 
 Returns only size and position data (no content): `id`, `type`, `width`, `height`, `startX`, `startY`, `endX`, `endY`. Useful for collision checks and spatial queries.
 
-## Reference: Server API
-
-### Read canvas state
-```
-GET /read?name={CANVAS_NAME}
-```
-Returns the materialized canvas:
-```json
-{
-  "title": "My Canvas",
-  "grid": true,
-  "gridSize": 24,
-  "widgets": [
-    {
-      "id": "sticky-note-abc123",
-      "type": "sticky-note",
-      "position": { "x": 100, "y": 200 },
-      "props": { "text": "Hello", "color": "yellow", "width": 270, "height": 170 }
-    }
-  ]
-}
-```
-
-### List canvases
-```
-GET /list
-```
-Returns `{ canvases: [{ name, title, path, widgetCount }] }`.
-
 ### Add a widget
-```
-POST /widget
-{ "name": "{CANVAS}", "type": "{TYPE}", "position": { "x": 0, "y": 0 }, "props": {} }
-```
-Or via CLI:
 ```bash
 # Simple props (no special characters)
 npx storyboard canvas add {TYPE} --canvas {NAME} --x {X} --y {Y} --props '{JSON}'
+
+# Place near an existing widget (auto-positions + avoids collisions)
+npx storyboard canvas add {TYPE} --canvas {NAME} --near {WIDGET_ID} --direction right --props '{JSON}'
 
 # Complex props (markdown, backticks, quotes) — use --props-file to avoid shell escaping
 echo '{"content":"# Hello\nSome **markdown**"}' > /tmp/widget-props.json
 npx storyboard canvas add {TYPE} --canvas {NAME} --x {X} --y {Y} --props-file /tmp/widget-props.json
 ```
 
+**Always use `--near` when placing widgets relative to another widget.** The `--near` flag computes the position automatically and runs server-side collision detection. The `--direction` flag defaults to `right` — valid values: `right`, `left`, `above`, `below`.
+
 **Always use `--props-file` for markdown widgets or any content with special characters.** Write the props JSON to a temp file first, then pass the path. This avoids all shell escaping issues with backticks, quotes, and newlines.
 
-### Remove a widget
-```
-DELETE /widget
-{ "name": "{CANVAS}", "widgetId": "{WIDGET_ID}" }
-```
-
-### Update a single widget
-```
-PATCH /widget
-{ "name": "{CANVAS}", "widgetId": "{WIDGET_ID}", "props": { ... }, "position": { "x": 0, "y": 0 } }
-```
-Or via CLI:
+### Update a widget
 ```bash
 # Update sticky note text
 npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --text "New text"
@@ -215,19 +174,29 @@ npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --x 100 --y 200
 # Shorthand flags: --text, --content, --src, --url, --color
 ```
 
-### Bulk update (move, resize, reorder, update props)
+### Add flags reference
 ```
-PUT /update
-{ "name": "{CANVAS}", "widgets": [ ...full widgets array... ] }
-```
-This replaces the entire widgets array. **Always read the current state first**, modify the array, then PUT it back.
+  Positional: <widget-type>  Widget type (sticky-note, markdown, prototype, story)
 
-### Update canvas settings
+  -c, --canvas           Target canvas name (required)
+  --x                    X position [default: 0]
+  --y                    Y position [default: 0]
+  --near                 Place near this widget ID (computes position + avoids collisions)
+  -dir, --direction      Direction from --near widget: right, left, above, below [default: right]
+  --resolve              Run server-side collision detection on the target position [default: false]
+  --props                Widget props as JSON string
+  -pf, --props-file      Path to a JSON file containing widget props (avoids shell escaping)
+  --json                 Output result as JSON (includes widget id) [default: false]
 ```
-PUT /update
-{ "name": "{CANVAS}", "settings": { "title": "...", "grid": true, "gridSize": 24, ... } }
+
+### CLI output with `--json`
+
+The `--json` flag outputs JSON, but the CLI may mix spinner characters into the output. When parsing, strip non-JSON characters before the opening `{`:
+
+```bash
+RAW=$(npx storyboard canvas add sticky-note --canvas my-canvas --near widget-id --props '{"text":"hi"}' --json 2>/dev/null)
+NEW_ID=$(echo "$RAW" | sed 's/[^{]*//' | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])" 2>/dev/null)
 ```
-Allowed setting keys: `title`, `description`, `grid`, `gridSize`, `colorMode`, `dotted`, `centered`, `author`, `snapToGrid`.
 
 ---
 
@@ -237,7 +206,7 @@ Allowed setting keys: `title`, `description`, `grid`, `gridSize`, `colorMode`, `
 
 If the user doesn't specify which canvas:
 ```bash
-curl -s http://localhost:{PORT}/_storyboard/canvas/list
+npx storyboard canvas read
 ```
 If there's one canvas, use it. If multiple, ask the user.
 
@@ -246,10 +215,10 @@ If there's one canvas, use it. If multiple, ask the user.
 **Always read the current state before any operation that involves positioning or modifying existing widgets:**
 
 ```bash
-curl -s "http://localhost:{PORT}/_storyboard/canvas/read?name={CANVAS_NAME}"
+npx storyboard canvas read {CANVAS_NAME} --json
 ```
 
-Parse the response to get the `widgets` array and `gridSize`.
+Parse the response to get the widgets and gridSize.
 
 ### Step 3: Resolve positioning (for add/move operations)
 
@@ -284,35 +253,45 @@ Where:
 
 **Adding a widget:**
 ```bash
+# With --near (preferred — auto-positions relative to a reference widget)
+npx storyboard canvas add {TYPE} --canvas {NAME} --near {REF_WIDGET_ID} --direction right --props '{JSON}' --json
+
+# With explicit coordinates (when you know exact position)
 npx storyboard canvas add {TYPE} --canvas {NAME} --x {X} --y {Y} --props '{JSON}'
 ```
 
 **Moving a widget:**
-1. Read the widget's current position first (`canvas read --id {WIDGET_ID}`)
+1. Read the widget's current position first (`canvas read --id {WIDGET_ID} --json`)
 2. Calculate new coordinates — **always provide both x and y**
-3. Use the CLI (preferred):
+3. Use the CLI:
 ```bash
 npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --x {NEW_X} --y {NEW_Y}
 # ⚠️ Both --x and --y are REQUIRED — omitting one zeros out the missing axis
 ```
 
 **Updating widget props** (text, color, size, content, etc.):
-1. Read canvas state → get widgets array
-2. Find the target widget by ID
-3. Merge new props into `widget.props`
-4. PUT the full array back
+```bash
+# Use shorthand flags for common props
+npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --text "New text"
+npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --content "# New heading"
+npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --color blue
+
+# Or pass arbitrary props as JSON
+npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --props '{"key":"value"}'
+```
 
 **Removing a widget:**
 ```bash
+# CLI does not yet support delete — use API fallback
 curl -X DELETE http://localhost:{PORT}/_storyboard/canvas/widget \
   -H 'Content-Type: application/json' \
   -d '{"name":"{CANVAS}","widgetId":"{WIDGET_ID}"}'
 ```
 
 **Rearranging / laying out multiple widgets:**
-1. Read canvas state → get widgets array
+1. Read canvas state → get widgets array via CLI (`canvas read --json`)
 2. Calculate new positions for all affected widgets using the positioning formulas
-3. PUT the full updated array back in a single call
+3. Use the API fallback: PUT the full updated array back in a single call (see Server API Fallback section)
 
 ### Step 5: Confirm
 
@@ -345,48 +324,51 @@ npx storyboard canvas add sticky-note --canvas my-canvas --x 0 --y 0 --props '{"
 
 ### Relational positioning
 User: "Add a blue sticky to the right of sticky-note-f20afo on my-canvas"
-1. Read canvas: find `sticky-note-f20afo` at `{x: 100, y: 200}` with `width: 270`
-2. Calculate: x = `100 + 270 + 24 = 394` → snap to `Math.round(394/24)*24 = 384`, y = `200`
-3. Run:
+
+**Use `--near`** — the CLI handles position calculation and collision detection automatically:
 ```bash
-npx storyboard canvas add sticky-note --canvas my-canvas --x 384 --y 200 --props '{"text":"","color":"blue"}'
+npx storyboard canvas add sticky-note --canvas my-canvas --near sticky-note-f20afo --direction right --props '{"text":"","color":"blue"}'
 ```
 
 ### Move a widget
 User: "Move sticky-note-abc123 below markdown-xyz789"
-1. Read canvas: find `markdown-xyz789` at `{x: 0, y: 0}` with `height: 240`
-2. Calculate: x = `0`, y = `0 + 240 + 24 = 264` → snap to `264`
-3. Update the widgets array, set `sticky-note-abc123.position` to `{x: 0, y: 264}`
-4. PUT the full array back
+1. Read canvas to get markdown-xyz789's position and bounds
+2. Calculate: use the positioning formulas (ref.y + ref.height + gap)
+3. Update:
+```bash
+npx storyboard canvas update sticky-note-abc123 --canvas my-canvas --x {X} --y {NEW_Y}
+```
 
 ### Update content
 User: "Change the text of sticky-note-abc123 to 'Done!'"
-1. Read canvas, find `sticky-note-abc123`
-2. Set `props.text = "Done!"`
-3. PUT the full widgets array back
+```bash
+npx storyboard canvas update sticky-note-abc123 --canvas my-canvas --text "Done!"
+```
 
 ### Row of widgets
 User: "Add three sticky notes in a row: red, blue, green"
 
-Stride = `270 + 24 = 294` → snap to `Math.round(294/24)*24 = 288`
+Use `--near` to chain positioning — each new sticky is placed to the right of the previous one:
 ```bash
-npx storyboard canvas add sticky-note --canvas my-canvas --x 0 --y 0 --props '{"color":"red"}'
-npx storyboard canvas add sticky-note --canvas my-canvas --x 288 --y 0 --props '{"color":"blue"}'
-npx storyboard canvas add sticky-note --canvas my-canvas --x 576 --y 0 --props '{"color":"green"}'
+# First sticky at a starting point
+RAW1=$(npx storyboard canvas add sticky-note --canvas my-canvas --x 0 --y 0 --props '{"color":"red"}' --json 2>/dev/null)
+ID1=$(echo "$RAW1" | sed 's/[^{]*//' | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+
+# Second sticky to the right of the first
+RAW2=$(npx storyboard canvas add sticky-note --canvas my-canvas --near "$ID1" --direction right --props '{"color":"blue"}' --json 2>/dev/null)
+ID2=$(echo "$RAW2" | sed 's/[^{]*//' | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+
+# Third sticky to the right of the second
+npx storyboard canvas add sticky-note --canvas my-canvas --near "$ID2" --direction right --props '{"color":"green"}'
 ```
 
 ### Describe canvas state
 User: "What's on my-canvas?"
 
-**Option 1 — CLI (recommended):**
 ```bash
 npx storyboard canvas read my-canvas
 ```
 This lists all widgets with their ID, type, position, content, URLs, and file paths.
-
-**Option 2 — API:**
-1. Read canvas state via API
-2. List all widgets with their type, position, key props, and ID
 
 ### Query a specific widget
 User: "What's in widget sticky-note-abc123?"
@@ -400,8 +382,8 @@ npx storyboard canvas read my-canvas --id sticky-note-abc123 --json
 
 ### Remove a widget
 User: "Delete the prototype embed on my-canvas"
-1. Read canvas, find the widget of type `prototype`
-2. Run:
+1. Read canvas via CLI, find the widget of type `prototype`
+2. Use API fallback (CLI doesn't support delete yet):
 ```bash
 curl -X DELETE http://localhost:{PORT}/_storyboard/canvas/widget \
   -H 'Content-Type: application/json' \
@@ -687,6 +669,63 @@ curl -X POST http://localhost:{PORT}/_storyboard/canvas/connector \
   -H 'Content-Type: application/json' \
   -d '{"name":"my-canvas","startWidgetId":"widget-c","endWidgetId":"widget-d","startAnchor":"right","endAnchor":"left"}'
 ```
+
+---
+
+## Reference: Server API (Fallback Only)
+
+> **⚠️ Only use these endpoints when the CLI does not support the operation or when a CLI command has failed.** Always try the CLI first.
+
+All endpoints are at `http://localhost:{PORT}/_storyboard/canvas/`. The port is determined by the worktree:
+
+```js
+import { detectWorktreeName, getPort } from '@dfosco/storyboard-core/worktree/port'
+const port = getPort(detectWorktreeName())
+```
+
+### Read canvas state
+```
+GET /read?name={CANVAS_NAME}
+```
+Returns the materialized canvas with `widgets` array, `gridSize`, etc.
+
+### List canvases
+```
+GET /list
+```
+Returns `{ canvases: [{ name, title, path, widgetCount }] }`.
+
+### Add a widget
+```
+POST /widget
+{ "name": "{CANVAS}", "type": "{TYPE}", "position": { "x": 0, "y": 0 }, "props": {} }
+```
+
+### Remove a widget
+```
+DELETE /widget
+{ "name": "{CANVAS}", "widgetId": "{WIDGET_ID}" }
+```
+
+### Update a single widget
+```
+PATCH /widget
+{ "name": "{CANVAS}", "widgetId": "{WIDGET_ID}", "props": { ... }, "position": { "x": 0, "y": 0 } }
+```
+
+### Bulk update (move, resize, reorder, update props)
+```
+PUT /update
+{ "name": "{CANVAS}", "widgets": [ ...full widgets array... ] }
+```
+This replaces the entire widgets array. **Always read the current state first**, modify the array, then PUT it back.
+
+### Update canvas settings
+```
+PUT /update
+{ "name": "{CANVAS}", "settings": { "title": "...", "grid": true, "gridSize": 24, ... } }
+```
+Allowed setting keys: `title`, `description`, `grid`, `gridSize`, `colorMode`, `dotted`, `centered`, `author`, `snapToGrid`.
 
 ---
 

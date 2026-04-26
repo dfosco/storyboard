@@ -12,7 +12,7 @@
  * `storyboard:component-set:select` to the parent window so the
  * canvas widget can track which export the user picked.
  */
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { getStoryData } from '@dfosco/storyboard-core'
 import { ThemeProvider, BaseStyles } from '@primer/react'
@@ -82,6 +82,36 @@ export default function ComponentSetPage({ name }) {
     })
   }, [isEmbed, exports])
 
+  const gridRef = useRef(null)
+
+  // Measure all cell content elements and snap cells to the largest
+  useLayoutEffect(() => {
+    const grid = gridRef.current
+    if (!grid || !exports) return
+
+    const cells = grid.querySelectorAll('[data-cell-content]')
+    if (cells.length === 0) return
+
+    function measure() {
+      let maxW = 0
+      let maxH = 0
+      for (const el of cells) {
+        maxW = Math.max(maxW, el.scrollWidth)
+        maxH = Math.max(maxH, el.scrollHeight)
+      }
+      grid.style.setProperty('--cell-snap-w', `${maxW}px`)
+      grid.style.setProperty('--cell-snap-h', `${maxH}px`)
+    }
+
+    // Measure after fonts load and initial paint
+    measure()
+    document.fonts.ready.then(() => requestAnimationFrame(measure))
+
+    const ro = new ResizeObserver(measure)
+    for (const el of cells) ro.observe(el)
+    return () => ro.disconnect()
+  }, [exports, layout])
+
   const handleSelect = useCallback((exportName) => {
     const params = new URLSearchParams(location.search)
     if (exportName === params.get('selected')) {
@@ -121,6 +151,7 @@ export default function ComponentSetPage({ name }) {
     <ThemeProvider colorMode="day">
       <BaseStyles>
         <div
+          ref={gridRef}
           className={styles.grid}
           data-layout={layout}
         >
@@ -142,7 +173,7 @@ export default function ComponentSetPage({ name }) {
                   <span className={styles.cellRadio} data-selected={isSelected || undefined} />
                   <span className={styles.cellName}>{exportName}</span>
                 </button>
-                <div className={styles.cellContent}>
+                <div className={styles.cellContent} data-cell-content>
                   <Component />
                 </div>
               </div>

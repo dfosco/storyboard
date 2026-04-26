@@ -1205,6 +1205,17 @@ export default function storyboardDataPlugin() {
         // Source files inside .folder/ dirs (jsx, css, etc.) are handled by
         // Vite's built-in HMR / React Fast Refresh — don't full-reload for them.
         if (!parsed && inFolder) return
+
+        // Story file content changes are handled by Vite's built-in HMR
+        // (React Fast Refresh). Only soft-invalidate the virtual module so
+        // the next page load picks up updated metadata — don't full-reload,
+        // which would destroy canvas state and cause embedded iframes to
+        // reload unnecessarily.
+        if (parsed?.suffix === 'story') {
+          softInvalidate()
+          return
+        }
+
         // Rebuild index and invalidate virtual module
         buildResult = null
         const mod = server.moduleGraph.getModuleById(RESOLVED_ID)

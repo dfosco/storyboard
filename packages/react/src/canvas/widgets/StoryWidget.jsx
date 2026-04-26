@@ -45,9 +45,10 @@ const _storySourcesCache = {}
 
 async function fetchStorySource(modulePath) {
   if (modulePath in _storySourcesCache) return _storySourcesCache[modulePath]
-  const url = modulePath.startsWith('/') ? modulePath : `/${modulePath}`
-  const res = await fetch(`${url}?raw`)
-  if (!res.ok) throw new Error(`Failed to fetch ${url}`)
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+  const path = modulePath.startsWith('/') ? modulePath : `/${modulePath}`
+  const res = await fetch(`${base}${path}?raw`)
+  if (!res.ok) throw new Error(`Failed to fetch ${base}${path}`)
   const code = await res.text()
   _storySourcesCache[modulePath] = code
   return code

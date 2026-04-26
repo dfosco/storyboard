@@ -267,7 +267,7 @@ export function getConnectorDefaults() {
     endpointFill: defaults.endpointFill ?? 'var(--fgColor-accent, #0969da)',
     endpointStroke: defaults.endpointStroke ?? 'var(--bgColor-default, #ffffff)',
     endpointStrokeWidth: defaults.endpointStrokeWidth ?? 3,
-    hitAreaStrokeWidth: defaults.hitAreaStrokeWidth ?? 16,
+    hitAreaStrokeWidth: defaults.hitAreaStrokeWidth ?? 32,
     dragStroke: defaults.dragStroke ?? 'var(--fgColor-accent, #0969da)',
     dragStrokeWidth: defaults.dragStrokeWidth ?? 2,
     dragDasharray: defaults.dragDasharray ?? '6 4',

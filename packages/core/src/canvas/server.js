@@ -46,7 +46,7 @@ import {
   isGhCliAvailable,
   isGitHubEmbedUrl,
 } from './githubEmbeds.js'
-import { stampBounds, stampBoundsAll } from './collision.js'
+import { stampBounds, stampBoundsAll, resolvePosition, getWidgetBounds } from './collision.js'
 import { devLog } from '../logger/devLogger.js'
 import widgetsConfig from '../../widgets.config.json' with { type: 'json' }
 
@@ -251,6 +251,31 @@ export function createCanvasHandler(ctx) {
   const { root, sendJson, hotPool } = ctx
 
   /**
+   * Compute a target position relative to a reference widget.
+   * @param {object} refWidget — widget to position near (must have position + type/props)
+   * @param {string} direction — 'right' | 'left' | 'above' | 'below'
+   * @param {string} newType — type of the widget being created (for size defaults)
+   * @param {object} newProps — props of the widget being created
+   * @param {number} gap — spacing between widgets (default 40)
+   * @returns {{ x: number, y: number }}
+   */
+  function computeNearPosition(refWidget, direction = 'right', newType = 'sticky-note', newProps = {}, gap = 40) {
+    const refBounds = getWidgetBounds(refWidget)
+    const newDefaults = getWidgetBounds({ type: newType, props: newProps, position: { x: 0, y: 0 } })
+    switch (direction) {
+      case 'left':
+        return { x: refBounds.x - newDefaults.width - gap, y: refBounds.y }
+      case 'above':
+        return { x: refBounds.x, y: refBounds.y - newDefaults.height - gap }
+      case 'below':
+        return { x: refBounds.x, y: refBounds.y + refBounds.height + gap }
+      case 'right':
+      default:
+        return { x: refBounds.x + refBounds.width + gap, y: refBounds.y }
+    }
+  }
+
+  /**
    * Update terminal configs when connectors change.
    * Finds all terminal widgets in the canvas, computes their connected widget IDs
    * from the current connector list, and updates their config files.
@@ -337,6 +362,67 @@ export function createCanvasHandler(ctx) {
   // directly without touching the watcher.
   function appendEvent(filePath, event) {
     appendEventRaw(filePath, event)
+  }
+
+  /**
+   * Prepare a terminal/agent widget: auto-assign displayName and pre-reserve identity.
+   * Shared by POST /widget and batch create-widget.
+   * @param {{ type: string, props: Object }} opts
+   * @param {string} widgetId
+   * @param {string} canvasName
+   * @param {import('node:http').IncomingMessage} [req]
+   */
+  async function prepareTerminalWidget({ type, props, widgetId, canvasName, req }) {
+    if (type !== 'terminal' && type !== 'agent') return
+
+    if (!props.prettyName) {
+      try {
+        const { generateFriendlyName } = await import('./terminal-registry.js')
+        props.prettyName = generateFriendlyName()
+      } catch { /* registry not initialized yet */ }
+    }
+
+    try {
+      const { preReserveTerminalIdentity, initTerminalConfig } = await import('./terminal-config.js')
+      initTerminalConfig(root)
+      let branch = 'unknown'
+      try {
+        const { execSync } = await import('node:child_process')
+        branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
+      } catch {}
+      const serverUrl = `http://localhost:${req?.socket?.localPort || 1234}`
+      preReserveTerminalIdentity({
+        widgetId,
+        preDisplayName: props.prettyName || null,
+        canvasId: canvasName,
+        branch,
+        serverUrl,
+      })
+    } catch { /* best effort */ }
+  }
+
+  /**
+   * Resolve which hot pool to use for a widget type + props.
+   * Agent widgets use their agentId as pool ID; terminals use 'terminal'.
+   */
+  function resolvePoolId(type, props) {
+    if (type === 'agent' && props?.agentId) return props.agentId
+    return 'terminal'
+  }
+
+  /**
+   * Try to acquire a warm session from the hot pool.
+   * @param {Object|null} hotPool — HotPoolManager instance
+   * @param {string} poolId — pool to acquire from
+   * @param {string} [mode] — 'auto' (default), 'hot', or 'cold'
+   * @returns {Object|null} acquired session or null
+   */
+  function acquireFromPool(hotPool, poolId, mode) {
+    if (!hotPool || mode === 'cold') return null
+    const effectiveMode = mode || 'auto'
+    if (effectiveMode === 'cold') return null
+    if (!hotPool.has(poolId)) return null
+    return hotPool.acquire(poolId) || null
   }
 
   /**
@@ -477,7 +563,7 @@ export function createCanvasHandler(ctx) {
 
     // PUT /update — append update events to the canvas stream
     if (routePath === '/update' && method === 'PUT') {
-      const { name, widgets, sources, settings } = body
+      const { name, widgets, sources, settings, connectors } = body
 
       if (!name) {
         sendJson(res, 400, { error: 'Canvas name is required' })
@@ -517,6 +603,10 @@ export function createCanvasHandler(ctx) {
           appendEvent(filePath, { event: 'source_updated', timestamp: ts, sources })
         }
 
+        if (connectors) {
+          appendEvent(filePath, { event: 'connectors_replaced', timestamp: ts, connectors })
+        }
+
         if (settings) {
           const filtered = {}
           for (const [key, value] of Object.entries(settings)) {
@@ -539,7 +629,8 @@ export function createCanvasHandler(ctx) {
 
     // POST /widget — append a widget_added event
     if (routePath === '/widget' && method === 'POST') {
-      const { name, type, props = {}, position = { x: 0, y: 0 } } = body
+      const { name, type, props = {}, pool, near, direction, resolve } = body
+      let position = body.position || { x: 0, y: 0 }
 
       if (!name) {
         sendJson(res, 400, { error: 'Canvas name is required' })
@@ -557,36 +648,46 @@ export function createCanvasHandler(ctx) {
       }
 
       try {
-        const widgetId = generateWidgetId(type)
-
-        // Auto-assign a pretty name for terminal widgets
-        if ((type === 'terminal' || type === 'agent') && !props.prettyName) {
-          try {
-            const { generateFriendlyName } = await import('./terminal-registry.js')
-            props.prettyName = generateFriendlyName()
-          } catch { /* registry not initialized yet — will get a name on session connect */ }
+        // --near: compute position relative to a reference widget
+        // --resolve: run collision detection on the target position
+        const needsCanvasRead = near || resolve
+        let canvasWidgets = null
+        if (needsCanvasRead) {
+          const canvasData = readCanvas(filePath)
+          canvasWidgets = canvasData.widgets || []
         }
 
-        // Pre-reserve terminal identity so hot-pool agents can find their config
-        // immediately when the widget renders (before the WebSocket connects).
-        if (type === 'terminal' || type === 'agent') {
-          try {
-            const { preReserveTerminalIdentity, initTerminalConfig } = await import('./terminal-config.js')
-            initTerminalConfig(root)
-            let branch = 'unknown'
-            try {
-              const { execSync } = await import('node:child_process')
-              branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
-            } catch {}
-            const serverUrl = `http://localhost:${req.socket?.localPort || 1234}`
-            preReserveTerminalIdentity({
-              widgetId,
-              preDisplayName: props.prettyName || null,
-              canvasId: name,
-              branch,
-              serverUrl,
-            })
-          } catch { /* best effort — writeTerminalConfig will create it on connect */ }
+        if (near) {
+          const refWidget = canvasWidgets.find((w) => w.id === near)
+          if (!refWidget) {
+            sendJson(res, 400, { error: `Widget "${near}" not found (--near)` })
+            return
+          }
+          position = computeNearPosition(refWidget, direction || 'right', type, props)
+        }
+
+        if (near || resolve) {
+          const resolved = resolvePosition({
+            x: position.x, y: position.y, type, props,
+            widgets: canvasWidgets,
+            gridSize: 24,
+          })
+          position = { x: resolved.x, y: resolved.y }
+        }
+
+        const widgetId = generateWidgetId(type)
+
+        await prepareTerminalWidget({ type, props, widgetId, canvasName: name, req })
+
+        // Hot pool acquisition for terminal/agent widgets
+        let hotSession = null
+        if ((type === 'terminal' || type === 'agent') && pool !== 'cold') {
+          const poolId = resolvePoolId(type, props)
+          hotSession = acquireFromPool(hotPool, poolId, pool)
+          if (!hotSession && pool === 'hot') {
+            sendJson(res, 409, { error: `No warm sessions available in pool "${poolId}"` })
+            return
+          }
         }
 
         const widget = stampBounds({ id: widgetId, type, position, props })
@@ -597,7 +698,9 @@ export function createCanvasHandler(ctx) {
           widget,
         })
 
-        sendJson(res, 201, { success: true, widget })
+        const response = { success: true, widget }
+        if (hotSession) response.hotSession = { id: hotSession.id, tmuxName: hotSession.tmuxName || null }
+        sendJson(res, 201, response)
         pushCanvasUpdate(name, filePath, __viteWs)
       } catch (err) {
         sendJson(res, 500, { error: `Failed to add widget: ${err.message}` })
@@ -919,6 +1022,143 @@ export function createCanvasHandler(ctx) {
       return
     }
 
+    // POST /broadcast — toggle broadcast messaging for a widget and its connections.
+    // Default: direct neighbors only. passThrough: true → BFS full connected component.
+    if (routePath === '/broadcast' && method === 'POST') {
+      const { name, widgetId, mode = 'two-way', passThrough = false } = body
+
+      if (!name || !widgetId) {
+        sendJson(res, 400, { error: 'Canvas name and widgetId are required' })
+        return
+      }
+      if (mode !== 'two-way' && mode !== 'one-way' && mode !== 'none') {
+        sendJson(res, 400, { error: 'mode must be "two-way", "one-way", or "none"' })
+        return
+      }
+
+      const filePath = findCanvasPath(root, name)
+      if (!filePath) {
+        sendJson(res, 404, { error: `Canvas "${name}" not found` })
+        return
+      }
+
+      try {
+        const data = readCanvas(filePath)
+        const widgets = data.widgets || []
+        const connectors = data.connectors || []
+        const widgetMap = new Map(widgets.map((w) => [w.id, w]))
+
+        const sourceWidget = widgetMap.get(widgetId)
+        if (!sourceWidget) {
+          sendJson(res, 404, { error: `Widget "${widgetId}" not found` })
+          return
+        }
+
+        const isTerminalType = (w) => w && (w.type === 'terminal' || w.type === 'agent')
+
+        // Find connectors to update via BFS (or direct neighbors only)
+        const affectedConnectorIds = new Set()
+        const affectedWidgetIds = new Set([widgetId])
+
+        if (passThrough) {
+          // BFS: traverse entire connected component of terminal/agent widgets
+          const visited = new Set([widgetId])
+          const queue = [widgetId]
+          while (queue.length > 0) {
+            const current = queue.shift()
+            for (const conn of connectors) {
+              let peerId = null
+              if (conn.start?.widgetId === current && conn.end?.widgetId) peerId = conn.end.widgetId
+              if (conn.end?.widgetId === current && conn.start?.widgetId) peerId = conn.start.widgetId
+              if (!peerId || visited.has(peerId)) continue
+              const peer = widgetMap.get(peerId)
+              if (!isTerminalType(peer)) continue
+              affectedConnectorIds.add(conn.id)
+              affectedWidgetIds.add(peerId)
+              visited.add(peerId)
+              queue.push(peerId)
+            }
+          }
+        } else {
+          // Direct neighbors only
+          for (const conn of connectors) {
+            let peerId = null
+            if (conn.start?.widgetId === widgetId && conn.end?.widgetId) peerId = conn.end.widgetId
+            if (conn.end?.widgetId === widgetId && conn.start?.widgetId) peerId = conn.start.widgetId
+            if (!peerId) continue
+            const peer = widgetMap.get(peerId)
+            if (!isTerminalType(peer)) continue
+            affectedConnectorIds.add(conn.id)
+            affectedWidgetIds.add(peerId)
+          }
+        }
+
+        // Update all affected connectors
+        const ts = new Date().toISOString()
+        const messagingMode = mode === 'none' ? null : mode
+        for (const connId of affectedConnectorIds) {
+          appendEvent(filePath, {
+            event: 'connector_updated',
+            timestamp: ts,
+            connectorId: connId,
+            updates: { meta: { messagingMode } },
+          })
+        }
+
+        sendJson(res, 200, {
+          success: true,
+          affectedConnectors: [...affectedConnectorIds],
+          affectedWidgets: [...affectedWidgetIds],
+        })
+        pushCanvasUpdate(name, filePath, __viteWs)
+
+        // Inject messaging skill into affected terminals
+        if (affectedConnectorIds.size > 0) {
+          try {
+            const { execSync } = await import('node:child_process')
+            const { findTmuxNameForWidget } = await import('./terminal-registry.js')
+
+            for (const wId of affectedWidgetIds) {
+              const w = widgetMap.get(wId)
+              if (!isTerminalType(w)) continue
+              const tmuxName = findTmuxNameForWidget(wId)
+              if (!tmuxName) continue
+
+              // Build peer list for this widget
+              const peers = []
+              for (const conn of connectors) {
+                let peerId = null
+                if (conn.start?.widgetId === wId) peerId = conn.end?.widgetId
+                if (conn.end?.widgetId === wId) peerId = conn.start?.widgetId
+                if (peerId && affectedWidgetIds.has(peerId) && peerId !== wId) {
+                  const peer = widgetMap.get(peerId)
+                  if (peer) peers.push(peer)
+                }
+              }
+
+              if (mode === 'none') {
+                const msg = '📡 [Broadcast disabled]'
+                try {
+                  execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(msg)}`, { stdio: 'ignore' })
+                  execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+                } catch { /* session may not be active */ }
+              } else {
+                const peerNames = peers.map((p) => p.props?.prettyName || p.id).join(', ')
+                const msg = `📡 [Broadcast ${mode} ACTIVE with ${peerNames}]`
+                try {
+                  execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(msg)}`, { stdio: 'ignore' })
+                  execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
+                } catch { /* session may not be active */ }
+              }
+            }
+          } catch { /* best effort */ }
+        }
+      } catch (err) {
+        sendJson(res, 500, { error: `Failed to update broadcast: ${err.message}` })
+      }
+      return
+    }
+
     // POST /batch — execute multiple canvas operations in a single request.
     // Reads the canvas once, appends all events, pushes ONE HMR update at the end.
     // Operations reference earlier results via $index (auto) or $refName (opt-in).
@@ -949,6 +1189,7 @@ export function createCanvasHandler(ctx) {
         const widgetIds = new Set((canvasData.widgets || []).map((w) => w.id))
         const connectorIds = new Set((canvasData.connectors || []).map((c) => c.id))
         const widgetMap = new Map((canvasData.widgets || []).map((w) => [w.id, { ...w }]))
+        const connectorMap = new Map((canvasData.connectors || []).map((c) => [c.id, { ...c }]))
 
         const refs = {}
         const results = []
@@ -969,10 +1210,38 @@ export function createCanvasHandler(ctx) {
           try {
             switch (op.op) {
               case 'create-widget': {
-                const { type, position = { x: 0, y: 0 }, props = {}, ref } = op
+                const { type, props = {}, ref, pool, near, direction, resolve: doResolve } = op
+                let position = op.position || { x: 0, y: 0 }
                 if (!type) throw new Error('type is required')
 
+                // --near: compute position relative to a reference widget
+                if (near) {
+                  const nearId = resolveRef(near)
+                  const refWidget = widgetMap.get(nearId)
+                  if (!refWidget) throw new Error(`Widget "${nearId}" not found (near)`)
+                  position = computeNearPosition(refWidget, direction || 'right', type, props)
+                }
+
+                // Collision resolution: uses live widgetMap (includes earlier batch creates)
+                if (near || doResolve) {
+                  const resolved = resolvePosition({
+                    x: position.x, y: position.y, type, props,
+                    widgets: Array.from(widgetMap.values()),
+                    gridSize: canvasData.gridSize || 24,
+                  })
+                  position = { x: resolved.x, y: resolved.y }
+                }
+
                 const widgetId = generateWidgetId(type)
+                await prepareTerminalWidget({ type, props, widgetId, canvasName: name, req })
+
+                let hotSession = null
+                if ((type === 'terminal' || type === 'agent') && pool !== 'cold') {
+                  const poolId = resolvePoolId(type, props)
+                  hotSession = acquireFromPool(hotPool, poolId, pool)
+                  if (!hotSession && pool === 'hot') throw new Error(`No warm sessions available in pool "${poolId}"`)
+                }
+
                 const widget = stampBounds({ id: widgetId, type, position, props })
 
                 appendEvent(filePath, { event: 'widget_added', timestamp: ts, widget })
@@ -982,7 +1251,9 @@ export function createCanvasHandler(ctx) {
                 refs[String(i)] = widgetId
                 if (ref) refs[ref] = widgetId
 
-                results.push({ index: i, op: 'create-widget', ref: ref || undefined, widgetId, widget })
+                const result = { index: i, op: 'create-widget', ref: ref || undefined, widgetId, widget }
+                if (hotSession) result.hotSession = { id: hotSession.id, tmuxName: hotSession.tmuxName || null }
+                results.push(result)
                 break
               }
 
@@ -1060,6 +1331,7 @@ export function createCanvasHandler(ctx) {
                 appendEvent(filePath, { event: 'connector_added', timestamp: ts, connector })
 
                 connectorIds.add(connectorId)
+                connectorMap.set(connectorId, connector)
                 refs[String(i)] = connectorId
                 if (ref) refs[ref] = connectorId
 
@@ -1074,8 +1346,84 @@ export function createCanvasHandler(ctx) {
 
                 appendEvent(filePath, { event: 'connector_removed', timestamp: ts, connectorId })
                 connectorIds.delete(connectorId)
+                connectorMap.delete(connectorId)
 
                 results.push({ index: i, op: 'delete-connector', connectorId, success: true })
+                break
+              }
+
+              case 'update-connector': {
+                const connectorId = resolveRef(op.connectorId)
+                const { meta } = op
+                if (!connectorId) throw new Error('connectorId is required')
+                if (!meta) throw new Error('meta is required')
+                if (!connectorIds.has(connectorId)) throw new Error(`Connector "${connectorId}" not found`)
+
+                appendEvent(filePath, { event: 'connector_updated', timestamp: ts, connectorId, updates: { meta } })
+
+                const existing = connectorMap.get(connectorId)
+                if (existing) existing.meta = { ...(existing.meta || {}), ...meta }
+
+                results.push({ index: i, op: 'update-connector', connectorId, success: true })
+                break
+              }
+
+              case 'broadcast': {
+                const wId = resolveRef(op.widgetId)
+                const mode = op.mode || 'two-way'
+                const passThrough = !!op.passThrough
+                if (!wId) throw new Error('widgetId is required')
+                if (!widgetIds.has(wId)) throw new Error(`Widget "${wId}" not found`)
+
+                const isTerminalType = (w) => w && (w.type === 'terminal' || w.type === 'agent')
+                const allConnectors = [...connectorMap.values()]
+                const affectedConnectorIds = new Set()
+                const affectedWidgetIds = new Set([wId])
+
+                if (passThrough) {
+                  const visited = new Set([wId])
+                  const queue = [wId]
+                  while (queue.length > 0) {
+                    const current = queue.shift()
+                    for (const conn of allConnectors) {
+                      let peerId = null
+                      if (conn.start?.widgetId === current && conn.end?.widgetId) peerId = conn.end.widgetId
+                      if (conn.end?.widgetId === current && conn.start?.widgetId) peerId = conn.start.widgetId
+                      if (!peerId || visited.has(peerId)) continue
+                      const peer = widgetMap.get(peerId)
+                      if (!isTerminalType(peer)) continue
+                      affectedConnectorIds.add(conn.id)
+                      affectedWidgetIds.add(peerId)
+                      visited.add(peerId)
+                      queue.push(peerId)
+                    }
+                  }
+                } else {
+                  for (const conn of allConnectors) {
+                    let peerId = null
+                    if (conn.start?.widgetId === wId && conn.end?.widgetId) peerId = conn.end.widgetId
+                    if (conn.end?.widgetId === wId && conn.start?.widgetId) peerId = conn.start.widgetId
+                    if (!peerId) continue
+                    const peer = widgetMap.get(peerId)
+                    if (!isTerminalType(peer)) continue
+                    affectedConnectorIds.add(conn.id)
+                    affectedWidgetIds.add(peerId)
+                  }
+                }
+
+                const messagingMode = mode === 'none' ? null : mode
+                for (const connId of affectedConnectorIds) {
+                  appendEvent(filePath, { event: 'connector_updated', timestamp: ts, connectorId: connId, updates: { meta: { messagingMode } } })
+                  const conn = connectorMap.get(connId)
+                  if (conn) conn.meta = { ...(conn.meta || {}), messagingMode }
+                }
+
+                results.push({
+                  index: i, op: 'broadcast',
+                  affectedConnectors: [...affectedConnectorIds],
+                  affectedWidgets: [...affectedWidgetIds],
+                  success: true,
+                })
                 break
               }
 

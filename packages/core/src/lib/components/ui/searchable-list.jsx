@@ -58,6 +58,7 @@ const SearchableList = forwardRef(function SearchableList(
   const [query, setQuery] = useState('')
   const internalInputRef = useRef(null)
   const inputRef = externalInputRef || internalInputRef
+  const listRef = useRef(null)
 
   // Auto-focus the input on mount — double rAF lets the host menu
   // finish its own focus management before we steal focus.
@@ -77,11 +78,40 @@ const SearchableList = forwardRef(function SearchableList(
     return items.filter((item) => filterFn(item, q))
   }, [items, query, filterFn])
 
-  // Suppress printable-key events so Radix typeahead doesn't intercept them.
-  // Navigation keys (arrows, escape, tab, etc.) pass through for menu keyboard nav.
+  // Handle keyboard navigation between input and list.
+  // Printable keys are suppressed so Radix typeahead doesn't intercept them.
   const handleKeyDown = useCallback((e) => {
+    // ArrowDown from input → focus first menu item in results
+    if (e.key === 'ArrowDown') {
+      const firstItem = listRef.current?.querySelector('[role="menuitem"]')
+      if (firstItem) {
+        e.preventDefault()
+        e.stopPropagation()
+        firstItem.focus()
+      }
+      return
+    }
+    // Tab from input → focus first menu item (keeps user in the dropdown)
+    if (e.key === 'Tab' && !e.shiftKey) {
+      const firstItem = listRef.current?.querySelector('[role="menuitem"]')
+      if (firstItem) {
+        e.preventDefault()
+        e.stopPropagation()
+        firstItem.focus()
+      }
+      return
+    }
     if (!PASSTHROUGH_KEYS.has(e.key)) {
       e.stopPropagation()
+    }
+  }, [])
+
+  // Shift+Tab from any list item → return focus to the input
+  const handleListKeyDown = useCallback((e) => {
+    if (e.key === 'Tab' && e.shiftKey) {
+      e.preventDefault()
+      e.stopPropagation()
+      inputRef.current?.focus()
     }
   }, [])
 
@@ -101,7 +131,7 @@ const SearchableList = forwardRef(function SearchableList(
           placeholder={placeholder}
           autoComplete="off"
           spellCheck={false}
-          className="h-7 text-xs"
+          className="h-9 text-xs rounded"
           aria-label={placeholder}
         />
       </div>
@@ -110,7 +140,7 @@ const SearchableList = forwardRef(function SearchableList(
       {header}
 
       {/* Scrollable results area */}
-      <div className={cn('overflow-y-auto', listClassName)}>
+      <div ref={listRef} className={cn('overflow-y-auto', listClassName)} onKeyDown={handleListKeyDown}>
         {loading ? (
           <p className="px-2 py-3 text-xs text-muted-foreground text-center">{loadingMessage}</p>
         ) : filteredItems.length > 0 ? (

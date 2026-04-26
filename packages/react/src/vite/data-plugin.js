@@ -5,7 +5,7 @@ import { globSync } from 'glob'
 import { parse as parseJsonc } from 'jsonc-parser'
 import { materializeFromText } from '@dfosco/storyboard-core/canvas/materializer'
 import { toCanvasId } from '@dfosco/storyboard-core/canvas/identity'
-import { isCanvasWriteInFlight } from '@dfosco/storyboard-core/canvas/writeGuard'
+import { isCanvasWriteInFlight } from '../../../core/src/canvas/writeGuard.js'
 import { getConfig } from '@dfosco/storyboard-core/config'
 import { list as listRunningServers } from '../../../core/src/worktree/serverRegistry.js'
 

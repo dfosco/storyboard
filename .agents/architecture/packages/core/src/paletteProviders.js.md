@@ -15,7 +15,7 @@ Adapters that produce searchable item datasets for the command palette. Each pro
 ## Composition
 
 **Provider builders:**
-- `buildCommandItems(mode, basePath)` — flattens action registry (submenus, toggles, links) into palette items
+- `buildCommandItems(mode, basePath)` — flattens action registry (submenus, toggles, links) into palette items; skips actions where `action.hideFromCommandPaletteSearch` is `true`
 - `buildPrototypeItems(basePath)` — builds from viewfinder index (handles external prototypes)
 - `buildCanvasItems(basePath)` — builds from viewfinder canvas index
 - `buildStoryItems(basePath)` — builds from story data index

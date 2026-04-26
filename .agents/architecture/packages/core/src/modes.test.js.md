@@ -30,7 +30,7 @@ Tests the modes system — a state machine for switching between app modes (prot
 
 **Locked mode** — `getLockedMode`, `activateMode` no-op when locked, `isModeSwitcherVisible`.
 
-**Tool registry** — `initTools` seeds from config, wildcard `*` tools in all modes, mode-specific tools scoped, default tool state, `setToolAction`/`setToolState`, `getToolsForMode` sorting (group then order), hidden tool exclusion, `subscribeToTools`/`getToolsSnapshot`.
+**Tool registry** — `initTools` seeds from config, wildcard `*` tools in all modes, mode-specific tools scoped, default tool state, `setToolAction`/`setToolState`, `getToolsForMode` sorting (group then order), hidden tool exclusion, `subscribeToTools`/`getToolsSnapshot`. Sample tool IDs/labels use `workspace`/`Workspace` naming (renamed from `viewfinder`/`Viewfinder` in 4.3.0).
 
 ```js
 registerMode('present', { label: 'Present' })

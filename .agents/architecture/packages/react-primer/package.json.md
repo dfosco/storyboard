@@ -19,7 +19,7 @@ This package exists so that `@dfosco/storyboard-react` stays UI-library-agnostic
 ### Identity
 
 - **name:** `@dfosco/storyboard-react-primer`
-- **version:** `4.2.0-alpha.16`
+- **version:** `4.2.0-beta.17`
 - **type:** `module`
 - **license:** MIT
 
@@ -37,7 +37,7 @@ Single entry point re-exporting all Primer-integrated components.
 
 ```json
 "dependencies": {
-    "@dfosco/storyboard-react": "4.2.0-alpha.16"
+    "@dfosco/storyboard-react": "4.2.0-beta.17"
 }
 ```
 

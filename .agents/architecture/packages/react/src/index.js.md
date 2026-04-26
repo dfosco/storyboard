@@ -45,15 +45,18 @@ export { useConfig } from './hooks/useConfig.js'
 ```js
 export { installHashPreserver } from './hashPreserver.js'
 export { FormContext } from './context/FormContext.js'
-export { default as Viewfinder } from './Viewfinder.jsx'
+export { default as Workspace } from './Workspace.jsx'
+// Deprecated alias — use Workspace instead
+export { default as Viewfinder } from './Workspace.jsx'
 export { default as StoryboardCommandPalette } from './CommandPalette/CommandPalette.jsx'
 export { default as BranchBar } from './BranchBar/BranchBar.jsx'
 export { default as AuthModal } from './AuthModal/AuthModal.jsx'
 export { default as CanvasPage } from './canvas/CanvasPage.jsx'
 export { useCanvas } from './canvas/useCanvas.js'
+export { default as Icon } from './Icon.jsx'
 ```
 
-Deprecated aliases: `useSceneData` → `useFlowData`, `useSceneLoading` → `useFlowLoading`, `useSession` → `useOverride`.
+Deprecated aliases: `useSceneData` → `useFlowData`, `useSceneLoading` → `useFlowLoading`, `useSession` → `useOverride`, `Viewfinder` → `Workspace`.
 
 ## Dependencies
 

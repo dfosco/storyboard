@@ -34,7 +34,16 @@ Vite plugin that discovers all storyboard data files (flows, objects, records, p
 
 **Virtual module exports:** `flows`, `scenes`, `objects`, `records`, `prototypes`, `folders`, `canvases`, `canvasAliases`, `stories`.
 
-**HMR:** Watches data files and triggers full module reload on changes.
+**HMR:**
+- Data file changes trigger full module reload.
+- Canvas JSONL changes check `isCanvasWriteInFlight(absPath)` before emitting HMR events — prevents duplicate events when the canvas server API already pushed an update.
+- Story file (`*.story.*`) changes use soft-invalidate instead of full-reload — preserves canvas state and prevents iframe reload.
+
+**Branch injection (`transformIndexHtml`):** Injects `__SB_BRANCHES__` using `listRunningServers()` from server registry instead of reading stale `.worktrees/ports.json`.
+
+**Exported plugin:** `terminalSnapshotPlugin()` — copies terminal snapshots into build output for production. Reads from two sources: public snapshots (`assets/.storyboard-public/terminal-snapshots/`) and legacy snapshots (`.storyboard/terminal-snapshots/`). Emits to `_storyboard/terminal-snapshots/` in the build.
+
+**Pre-bundle config:** `optimizeDeps.include` lists `cmdk`, `remark`, `remark-gfm`, `remark-html`, `use-sync-external-store/shim`, and `use-sync-external-store/shim/with-selector`.
 
 **Named test exports:** `resolveTemplateVars`, `computeTemplateVars`, `parseDataFile`.
 
@@ -45,7 +54,9 @@ Vite plugin that discovers all storyboard data files (flows, objects, records, p
 - `jsonc-parser` (parseJsonc)
 - `@dfosco/storyboard-core/canvas/materializer` — materializeFromText
 - `@dfosco/storyboard-core/canvas/identity` — toCanvasId
+- `@dfosco/storyboard-core/canvas/writeGuard` — `isCanvasWriteInFlight` (prevents duplicate HMR events when the canvas server API already pushed an update)
 - `@dfosco/storyboard-core/config` — getConfig
+- `@dfosco/storyboard-core/worktree/serverRegistry` — `listRunningServers` (live server list for branch injection, replaces stale `ports.json`)
 
 ## Dependents
 
@@ -53,4 +64,4 @@ None directly import this file. It is configured as a Vite plugin in `vite.confi
 
 ## Notes
 
-This is a ~1400-line file with significant complexity around canvas routing, story route generation, prototype metadata extraction, and config merging. Canvas JSONL files are materialized at build time. Duplicate name+suffix combinations within the same scope cause a build error.
+This is a ~1450-line file with significant complexity around canvas routing, story route generation, prototype metadata extraction, and config merging. Canvas JSONL files are materialized at build time. Duplicate name+suffix combinations within the same scope cause a build error. The `terminalSnapshotPlugin` is a separate exported plugin (not part of the main data plugin) that must be registered independently in `vite.config.js`.

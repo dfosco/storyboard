@@ -20,7 +20,7 @@ function Draggable({ children, dragId, initialPosition, onDragStart, onDrag, onD
 
 **Drag gate:** Intercepts `pointerdown` in capture phase on the handle element. Both a time delay (`DRAG_DELAY_MS = 150`) and a distance threshold (`DRAG_DISTANCE_PX = 8`) must be met before re-dispatching a synthetic `pointerdown` to neodrag. This prevents accidental drags on quick clicks.
 
-**Boundary clamping:** Uses neodrag's `transform` callback to clamp positions to `boundaryPad` minimum, avoiding one-frame flicker from React re-render lag.
+**Boundary clamping:** Uses neodrag's `transform` callback to clamp positions to `boundaryPad` minimum, avoiding one-frame flicker from React re-render lag. The article element also receives an inline `transform: translate3d(${position.x}px, ${position.y}px, 0)` style for CSS transform-based positioning.
 
 **Persistence:** Calls `saveDrag(dragId, x, y)` on drag end (only if moved past `PERSIST_DEADZONE_PX = 4`).
 

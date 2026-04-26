@@ -24,6 +24,9 @@ For embed iframes (`?_sb_embed`), it skips UI mounting and instead installs `pos
   - `options.handlers` — custom tool handler lazy loaders
 
 **Internal functions:**
+- `migrateLocalStorageKeys()` — migrates renamed localStorage keys (4.3.0: viewfinder → workspace). Renames: `sb-viewfinder-starred` → `sb-workspace-starred`, `sb-viewfinder-recent` → `sb-workspace-recent`, `sb-viewfinder-group-folders` → `sb-workspace-group-folders`. Idempotent — only copies if the new key doesn't exist yet.
+- `applyEarlyChromeState()` — restores saved chrome-hidden state from localStorage (`sb-chrome-hidden`) immediately before React mounts, preventing a flash of toolbars appearing then disappearing.
+- `installChromeStatePersistence()` — `MutationObserver` on `document.documentElement` that watches class attribute changes and persists `storyboard-chrome-hidden` class state to localStorage.
 - `applyEarlyTheme()` — reads `sb-color-scheme` from localStorage and sets `data-color-mode`, `data-sb-theme`, etc. on `<html>` before any framework mounts
 - `injectUIStyles()` — dynamically imports `@dfosco/storyboard-core/ui-runtime/style.css`
 - `handlePendingNavigation()` — checks `sessionStorage` for `sb-pending-navigate`
@@ -58,6 +61,8 @@ mountStoryboardCore(storyboardConfig, { basePath: import.meta.env.BASE_URL })
 
 ## Notes
 
+- Boot sequence order: `migrateLocalStorageKeys()` → `applyEarlyChromeState()` → `applyEarlyTheme()` → URL listeners → `installChromeStatePersistence()` → subsystem init → UI mount.
 - The theme is applied synchronously before any async work to prevent flash of wrong theme.
+- Chrome-hidden state is restored before React mounts and persisted via a `MutationObserver`, so toolbar visibility survives page reloads regardless of which code path toggles the class.
 - Embed detection (`?_sb_embed`) short-circuits all UI mounting — only `postMessage` bridges are installed.
 - Toolbar config merging has a legacy path (manual merge from `toolbar.config.json` + client overrides) and a unified store path.

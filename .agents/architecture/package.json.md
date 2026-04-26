@@ -45,6 +45,7 @@ This enables npm workspace resolution for all five packages:
 | `build` | `vite build` | Production build |
 | `lint` | `eslint . && npm run check:imports -w @dfosco/storyboard-core` | Lint + import check |
 | `test` | `vitest run` | Run all tests |
+| `test:integration` | `vitest run --config vitest.integration.config.js` | Run integration tests |
 | `test:core` | `vitest run packages/core` | Test core package only |
 | `test:react` | `vitest run packages/react` | Test react package only |
 | `version` | `changeset version && node scripts/sync-root-version.js` | Bump versions via changesets |
@@ -66,6 +67,8 @@ Key app-level dependencies (consumed by `src/` prototypes and components):
 | `@primer/primitives` | ^11.3.2 — Design tokens |
 | `reshaped` | ^3.9.0 — Alternative UI library |
 | `styled-components` | ^6.1.19 — Required peer dep for Primer |
+| `@radix-ui/react-*` | Radix UI primitives (avatar, checkbox, collapsible, dialog, dropdown-menu, label, popover, select, separator, slot, toggle, toggle-group, tooltip) |
+| `cmdk` | Command palette component |
 | `ghostty-web` | ^0.4.0 — Terminal emulation |
 | `node-pty` | ^1.1.0 — PTY for terminal widgets |
 | `ws` | ^8.20.0 — WebSocket for dev server |
@@ -79,12 +82,10 @@ Key app-level dependencies (consumed by `src/` prototypes and components):
 | `eslint` | ^9.39.2 — Linting |
 | `@changesets/cli` | ^2.29.8 — Version management |
 | `@vitejs/plugin-react` | ^5.1.2 — React Vite plugin |
-| `@sveltejs/vite-plugin-svelte` | ^6.2.4 — Svelte Vite plugin |
 | `@tailwindcss/vite` | ^4.2.2 — Tailwind CSS |
 | `tailwindcss` | ^4.2.2 — Tailwind CSS engine |
-| `svelte` | ^5.53.9 — Svelte compiler |
 | `jsdom` | ^28.1.0 — Test DOM environment |
-| `@testing-library/*` | Test utilities (dom, react, svelte, user-event) |
+| `@testing-library/*` | Test utilities (dom, react, user-event) |
 
 ## Dependencies
 

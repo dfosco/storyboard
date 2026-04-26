@@ -19,7 +19,7 @@ This is the primary package consumed by prototype pages and components. It depen
 ### Identity
 
 - **name:** `@dfosco/storyboard-react`
-- **version:** `4.2.0-alpha.16`
+- **version:** `4.2.0-beta.17`
 - **type:** `module`
 - **license:** MIT
 
@@ -45,14 +45,14 @@ This is the primary package consumed by prototype pages and components. It depen
 
 | Package | Purpose |
 |---------|---------|
-| `@dfosco/storyboard-core` | `4.2.0-alpha.16` — Core data loading, hash session |
-| `@dfosco/tiny-canvas` | `4.2.0-alpha.16` — Canvas rendering engine |
+| `@dfosco/storyboard-core` | `4.2.0-beta.17` — Core data loading, hash session |
+| `@dfosco/tiny-canvas` | `4.2.0-beta.17` — Canvas rendering engine |
 | `@base-ui/react` | ^1.4.0 — Base UI primitives |
 | `@neodrag/react` | ^2.3.1 — Drag interaction |
 | `glob` | ^11.0.0 — File pattern matching (data plugin) |
 | `jsonc-parser` | ^3.3.1 — JSONC parsing |
 | `remark` / `remark-gfm` / `remark-html` | Markdown processing for canvas widgets |
-| `react-cmdk` | ^1.3.9 — Command palette |
+| `ansi-to-html` | ANSI escape code to HTML conversion |
 | `ghostty-web` | ^0.4.0 — Terminal emulation in canvas |
 
 ### Peer Dependencies

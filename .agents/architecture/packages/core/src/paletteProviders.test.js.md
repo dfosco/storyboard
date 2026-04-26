@@ -10,7 +10,7 @@ importance: high
 
 ## Goal
 
-Tests the command palette data providers that build categorized item lists (commands, prototypes, canvases, stories, recents) and the `searchPalette` function that filters/groups them. Heavily mocks the loader, commandActions, toolStateStore, and recentArtifacts modules.
+Tests the command palette data providers that build categorized item lists (commands, prototypes, canvases, stories, recents) and the `searchPalette` function that filters/groups them. Heavily mocks the loader, workspace, commandActions, toolStateStore, and recentArtifacts modules. Mock command actions use `workspace` naming (e.g. `core/workspace`, `Go to Workspace`) — renamed from `viewfinder` in 4.3.0.
 
 ## Composition
 

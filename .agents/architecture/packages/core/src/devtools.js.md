@@ -10,7 +10,7 @@ importance: high
 
 ## Goal
 
-Mounts the CoreUIBar Svelte component into the DOM — the floating toolbar with the command menu and mode-specific buttons. This is the source-repo version that directly imports Svelte. Consumer repos use [`devtools-consumer.js`](./devtools-consumer.js.md) which delegates to the compiled UI bundle instead.
+Mounts the CoreUIBar React component into the DOM — the floating toolbar with the command menu and mode-specific buttons. This is the source-repo version that directly imports React. Consumer repos use [`devtools-consumer.js`](./devtools-consumer.js.md) which delegates to the compiled UI bundle instead.
 
 ## Composition
 
@@ -23,12 +23,15 @@ export function mountSceneDebug(options)            // Deprecated alias
 
 Options: `container` (default `document.body`), `basePath`, `toolbarConfig`, `customHandlers`.
 
-On mount, creates an accessibility skip-link as `<body>`'s first child for keyboard navigation, then mounts the Svelte `CoreUIBar` component. Skips mounting inside `_sb_embed` iframes.
+Internal state: `root` (React root), `wrapper` (DOM element), `skipLink` (accessibility element).
+
+On mount, creates an accessibility skip-link as `<body>`'s first child for keyboard navigation, then uses `createRoot` to render the React `CoreUIBar` component. Skips mounting inside `_sb_embed` iframes. On unmount, calls `root.unmount()` and removes DOM elements.
 
 ## Dependencies
 
-- `svelte` — `mount`, `unmount`
-- `CoreUIBar.svelte` — the toolbar component
+- `react` — `createElement` (dynamic import)
+- `react-dom/client` — `createRoot` (dynamic import)
+- `CoreUIBar.jsx` — the toolbar component (dynamic import)
 
 ## Dependents
 

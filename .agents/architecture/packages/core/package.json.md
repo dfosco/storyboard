@@ -10,7 +10,7 @@ importance: high
 
 ## Goal
 
-Package manifest for `@dfosco/storyboard-core` — the framework-agnostic foundation of the Storyboard system. This package provides the CLI (`storyboard` / `sb`), data loading (flows, objects, records), URL hash session management, canvas materialization, the core UI runtime (Svelte-based toolbar, viewfinder, design modes), comments system, inspector, workshop, and Vite server plugin. It has zero React dependencies and can be consumed by any frontend framework.
+Package manifest for `@dfosco/storyboard-core` — the framework-agnostic foundation of the Storyboard system. This package provides the CLI (`storyboard` / `sb`), data loading (flows, objects, records), URL hash session management, canvas materialization, the core UI runtime (toolbar, viewfinder, design modes), comments system, inspector, workshop, and Vite server plugin. It has zero React dependencies and can be consumed by any frontend framework.
 
 This is the largest and most central package in the monorepo, with ~20 export sub-paths covering everything from data utilities to visual tooling.
 
@@ -19,7 +19,7 @@ This is the largest and most central package in the monorepo, with ~20 export su
 ### Identity
 
 - **name:** `@dfosco/storyboard-core`
-- **version:** `4.2.0-alpha.16`
+- **version:** `4.2.0-beta.17`
 - **type:** `module`
 - **license:** MIT
 
@@ -64,6 +64,8 @@ The package exposes ~20 sub-path exports:
 | `./inspector/highlighter` | `./src/inspector/highlighter.js` | DOM element highlighter |
 | `./smooth-corners` | `./src/smoothCorners.js` | Smooth corner rendering |
 | `./worktree/port` | `./src/worktree/port.js` | Worktree port allocation |
+| `./worktree/serverRegistry` | `./src/worktree/serverRegistry.js` | Worktree server registry |
+| `./canvas/writeGuard` | `./src/canvas/writeGuard.js` | Canvas write guard |
 
 ### Dependencies
 
@@ -76,11 +78,12 @@ The package exposes ~20 sub-path exports:
 | `html-to-image` | Canvas snapshot capture |
 | `iconoir` | Icon set |
 | `jsonc-parser` | JSONC parsing (comments in JSON) |
+| `lucide-react` | Icon library |
 | `ws` | WebSocket server for dev tools |
 
 ### Dev Dependencies
 
-Svelte toolchain (`svelte`, `@sveltejs/vite-plugin-svelte`), Tailwind CSS (`tailwindcss`, `@tailwindcss/cli`, `@tailwindcss/vite`), Svelte UI libraries (`bits-ui`, `shadcn-svelte`), and styling utilities (`clsx`, `tailwind-merge`, `tailwind-variants`).
+Svelte toolchain (`svelte`, `@sveltejs/vite-plugin-svelte`), Tailwind CSS (`tailwindcss`, `@tailwindcss/cli`, `@tailwindcss/vite`), UI libraries (`bits-ui`, `shadcn-svelte`), and styling utilities (`clsx`, `tailwind-merge`, `tailwind-variants`).
 
 ### Optional Dependencies
 
@@ -107,7 +110,7 @@ This package has no internal workspace dependencies — it is the foundation lay
 
 ## Dependents
 
-- [`@dfosco/storyboard-react`](../react/package.json.md) — depends on `@dfosco/storyboard-core` (version `4.2.0-alpha.16`)
+- [`@dfosco/storyboard-react`](../react/package.json.md) — depends on `@dfosco/storyboard-core` (version `4.2.0-beta.17`)
 - [`vite.config.js`](../../vite.config.js.md) — aliases all `@dfosco/storyboard-core/*` imports to local source
 - [`src/index.jsx`](../../src/index.jsx.md) — imports `mountStoryboardCore` and comment layout CSS
 - Dozens of files across `packages/react/src/`, `packages/react-primer/src/`, and `packages/core/src/` import from this package

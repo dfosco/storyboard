@@ -19,7 +19,7 @@ Unlike the other packages that ship source, tiny-canvas ships a **pre-compiled b
 ### Identity
 
 - **name:** `@dfosco/tiny-canvas`
-- **version:** `4.2.0-alpha.16`
+- **version:** `4.2.0-beta.17`
 - **type:** `module`
 - **license:** MIT
 - **description:** "A lightweight React canvas with draggable elements and persistent positions"
@@ -78,7 +78,7 @@ No internal workspace dependencies — this is a standalone canvas library.
 
 ## Dependents
 
-- [`@dfosco/storyboard-react`](../react/package.json.md) — depends on `@dfosco/tiny-canvas` (version `4.2.0-alpha.16`)
+- [`@dfosco/storyboard-react`](../react/package.json.md) — depends on `@dfosco/tiny-canvas` (version `4.2.0-beta.17`)
 - [`packages/react/src/canvas/CanvasPage.jsx`](../react/src/canvas/CanvasPage.jsx.md) — imports the canvas component
 - [`vite.config.js`](../../vite.config.js.md) — aliases `@dfosco/tiny-canvas` to local `packages/tiny-canvas/src/index.js` for development
 

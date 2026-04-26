@@ -17,7 +17,7 @@ Package manifest for `@dfosco/storyboard-react-reshaped` — a thin integration 
 ### Identity
 
 - **name:** `@dfosco/storyboard-react-reshaped`
-- **version:** `4.2.0-alpha.16`
+- **version:** `4.2.0-beta.17`
 - **type:** `module`
 - **license:** MIT
 
@@ -33,7 +33,7 @@ Package manifest for `@dfosco/storyboard-react-reshaped` — a thin integration 
 
 ```json
 "dependencies": {
-    "@dfosco/storyboard-react": "4.2.0-alpha.16"
+    "@dfosco/storyboard-react": "4.2.0-beta.17"
 }
 ```
 

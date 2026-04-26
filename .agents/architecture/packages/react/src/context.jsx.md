@@ -12,7 +12,7 @@ importance: high
 
 The `StoryboardProvider` component — the top-level React context provider for the storyboard data system. It resolves which flow to load based on the current URL (query params, pathname, prototype scope), loads the flow data synchronously from the core data index, and provides it to the component tree via [`StoryboardContext`](./StoryboardContext.js.md).
 
-Also handles canvas page routing, story page routing, document title updates, design modes UI mounting, and error/404 states for missing canvases and stories.
+Also handles canvas page routing, story page routing, document title updates, design modes UI mounting, HMR reload suppression (via [`usePrototypeReloadGuard`](./hooks/usePrototypeReloadGuard.js.md)), and error/404 states for missing canvases and stories.
 
 ## Composition
 
@@ -45,6 +45,7 @@ Also handles canvas page routing, story page routing, document title updates, de
 - `react`, `react-router-dom` (useParams, useLocation)
 - `virtual:storyboard-data-index` — build-time data from [`data-plugin.js`](./vite/data-plugin.js.md)
 - `@dfosco/storyboard-core` — loadFlow, flowExists, findRecord, deepMerge, setFlowClass, resolveFlowName, resolveRecordName, isModesEnabled, installBodyClassSync
+- [`usePrototypeReloadGuard`](./hooks/usePrototypeReloadGuard.js.md) — suppresses Vite HMR full-reloads when feature flag is off
 - [`StoryboardContext`](./StoryboardContext.js.md)
 - `@dfosco/storyboard-core/ui-runtime` (lazy, optional — design modes UI)
 
@@ -55,3 +56,5 @@ Also handles canvas page routing, story page routing, document title updates, de
 ## Notes
 
 Canvas and story pages bypass flow loading entirely — they render `CanvasPageLazy` / `StoryPageLazy` with a null-data context. The `CommandPaletteLazy` is always rendered alongside children via `Suspense`. Flow loading is synchronous (no async/await) because the core data index is pre-loaded at build time.
+
+`usePrototypeReloadGuard()` is called at the top level of `StoryboardProvider` (before `StoryboardProviderInner`) to suppress HMR full-reloads when the `prototype-auto-reload` feature flag is off.

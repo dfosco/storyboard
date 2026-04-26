@@ -26,8 +26,14 @@ export { getByPath, setByPath, deepClone } from './dotPath.js'
 // URL session
 export { getParam, setParam, getAllParams, removeParam } from './session.js'
 
+// localStorage persistence
+export { getLocal, setLocal, removeLocal, getAllLocal, subscribeToStorage, getStorageSnapshot, notifyChange } from './localStorage.js'
+
 // Reactivity
 export { subscribeToHash, getHashSnapshot } from './hashSubscribe.js'
+
+// Canvas config (paste rules, terminal, agents)
+export { initCanvasConfig, getPasteRules, getTerminalConfig, getAgentsConfig, isTerminalResizable, getTerminalDimensions } from './canvasConfig.js'
 
 // Body classes, modes, tools, feature flags, config, devtools, etc.
 ```
@@ -35,8 +41,8 @@ export { subscribeToHash, getHashSnapshot } from './hashSubscribe.js'
 ## Dependencies
 
 All sibling modules in `packages/core/src/`:
-- [`loader.js`](./loader.js.md), [`dotPath.js`](./dotPath.js.md), [`hashSubscribe.js`](./hashSubscribe.js.md), [`bodyClasses.js`](./bodyClasses.js.md), [`featureFlags.js`](./featureFlags.js.md), [`commandActions.js`](./commandActions.js.md), [`canvasConfig.js`](./canvasConfig.js.md), [`commandPaletteConfig.js`](./commandPaletteConfig.js.md), [`configStore.js`](./configStore.js.md), [`customerModeConfig.js`](./customerModeConfig.js.md), [`devtools-consumer.js`](./devtools-consumer.js.md), [`fuzzySearch.js`](./fuzzySearch.js.md)
-- Also: `session.js`, `localStorage.js`, `hideMode.js`, `interceptHideParams.js`, `modes.js`, `sceneDebug.js`, `mountStoryboardCore.js`, `viewfinder.js`, `plugins.js`, `uiConfig.js`, `toolRegistry.js`, `toolbarConfigStore.js`, `toolStateStore.js`, `comments/config.js`, `stores/themeStore.js`, `recentArtifacts.js`
+- [`loader.js`](./loader.js.md), [`dotPath.js`](./dotPath.js.md), [`hashSubscribe.js`](./hashSubscribe.js.md), [`bodyClasses.js`](./bodyClasses.js.md), [`featureFlags.js`](./featureFlags.js.md), [`commandActions.js`](./commandActions.js.md), [`canvasConfig.js`](./canvasConfig.js.md), [`commandPaletteConfig.js`](./commandPaletteConfig.js.md), [`configStore.js`](./configStore.js.md), [`customerModeConfig.js`](./customerModeConfig.js.md), [`devtools-consumer.js`](./devtools-consumer.js.md), [`fuzzySearch.js`](./fuzzySearch.js.md), `localStorage.js`
+- Also: `session.js`, `hideMode.js`, `interceptHideParams.js`, `modes.js`, `sceneDebug.js`, `mountStoryboardCore.js`, `viewfinder.js`, `plugins.js`, `uiConfig.js`, `toolRegistry.js`, `toolbarConfigStore.js`, `toolStateStore.js`, `comments/config.js`, `stores/themeStore.js`, `recentArtifacts.js`
 
 ## Dependents
 

@@ -18,7 +18,7 @@ Config-driven state management for toolbar tools. Every tool is declared in `too
 - `initToolRegistry(config)` — seeds from toolbar config's `tools` object
 
 **Module registration:**
-- `registerToolModule(id, mod)` — register `{ component?, handler?, setup?, guard? }`
+- `registerToolModule(id, mod)` — register `{ component?, handler?, setup?, guard? }` (e.g. `mod.component = () => import('./SomeComponent.jsx')`)
 - `setToolComponent(id, component)` — store resolved lazy component
 - `setToolGuardResult(id, result)` — store guard evaluation result
 

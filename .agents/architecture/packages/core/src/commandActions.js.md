@@ -31,7 +31,7 @@ export function clearDynamicActions(group)                    // Remove group
 // Resolution
 export function setRoutingBasePath(basePath)                  // Set base path for route matching
 export function isExcludedByRoute(item)                       // Check excludeRoutes patterns
-export function getActionsForMode(mode)                       // Get resolved actions for a mode
+export function getActionsForMode(mode)                       // Get resolved actions (includes hideFromCommandPaletteSearch)
 export function executeAction(id)                             // Execute handler by id
 export function getActionChildren(id)                         // Get submenu children
 export function hasChildrenProvider(id)                       // Check for getChildren on handler
@@ -48,10 +48,10 @@ None (zero npm dependencies). Uses `window.location.pathname` for route matching
 ## Dependents
 
 - [`index.js`](./index.js.md) — re-exports all public APIs
-- `CoreUIBar.svelte`, `CommandMenu.svelte`, `ActionMenuButton.svelte`, `CreateMenuButton.svelte` — Svelte UI components
+- `CoreUIBar.jsx`, `CommandMenu.jsx`, `ActionMenuButton.jsx`, `CreateMenuButton.jsx` — React UI components
 - `paletteProviders.js` — command palette integration
 
 ## Notes
 
-- `getActionsForMode` filters config actions by `modes` array and `excludeRoutes`, then inserts dynamic actions before any `footer`-type action.
+- `getActionsForMode` filters config actions by `modes` array and `excludeRoutes`, then inserts dynamic actions before any `footer`-type action. Each returned action object includes a `hideFromCommandPaletteSearch` boolean (defaults to `false`) so the command palette can exclude specific actions from search results.
 - Route exclusion strips `_basePath` before testing regex patterns, so patterns match against app-relative paths.

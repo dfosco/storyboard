@@ -10,7 +10,7 @@ importance: high
 
 ## Goal
 
-Root Vite configuration for the Storyboard prototyping app. Configures the entire dev/build pipeline: React + Svelte compilation, file-based routing via generouted, storyboard data discovery, PostCSS processing with Primer Design Tokens, Tailwind CSS, and production chunk splitting. Critically, it maps all `@dfosco/storyboard-*` package imports to local source paths so that git worktrees resolve to their own source rather than the main worktree's `node_modules`.
+Root Vite configuration for the Storyboard prototyping app. Configures the entire dev/build pipeline: React compilation, file-based routing via generouted, storyboard data discovery, PostCSS processing with Primer Design Tokens, Tailwind CSS, and production chunk splitting. Critically, it maps all `@dfosco/storyboard-*` package imports to local source paths so that git worktrees resolve to their own source rather than the main worktree's `node_modules`.
 
 This file is the single source of truth for how the app is served in development (`port 1234`) and how it is built for production, including manual vendor chunk splitting for React, Primer, Octicons, and Reshaped.
 
@@ -36,11 +36,10 @@ alias: {
 1. **`tailwindcss()`** — Tailwind CSS v4 Vite plugin
 2. **`storyboardData()`** — Custom Vite plugin from [`packages/react/src/vite/data-plugin.js`](./packages/react/src/vite/data-plugin.js.md) that discovers `.flow.json`, `.object.json`, `.record.json`, `.canvas.jsonl` files and generates a virtual module
 3. **`storyboardServer()`** — Custom Vite plugin from [`packages/core/src/vite/server-plugin.js`](./packages/core/src/vite/server-plugin.js.md) that adds WebSocket and middleware to the dev server
-4. **`svelte()`** — Svelte compiler for core UI components
-5. **`react()`** — React Fast Refresh
-6. **`generouted()`** — File-based routing scanning `src/prototypes/**/*.{jsx,tsx,mdx}`
-7. **`prototypes-watcher`** (inline) — Sends full-reload on prototype file add/unlink since generouted only watches `/src/pages/`
-8. **`base-redirect`** (inline) — Redirects requests that don't include the `base` prefix
+4. **`react()`** — React Fast Refresh
+5. **`generouted()`** — File-based routing scanning `src/prototypes/**/*.{jsx,tsx,mdx}`
+6. **`prototypes-watcher`** (inline) — Sends full-reload on prototype file add/unlink since generouted only watches `/src/pages/`
+7. **`base-redirect`** (inline) — Redirects requests that don't include the `base` prefix
 
 ### Server Config
 
@@ -67,7 +66,6 @@ server: {
 | Import | Purpose |
 |--------|---------|
 | `@vitejs/plugin-react` | React Fast Refresh + JSX transform |
-| `@sveltejs/vite-plugin-svelte` | Svelte component compilation |
 | `@tailwindcss/vite` | Tailwind CSS v4 plugin |
 | `@generouted/react-router/plugin` | File-based routing generation |
 | [`packages/react/src/vite/data-plugin.js`](./packages/react/src/vite/data-plugin.js.md) | Storyboard data discovery (relative import) |

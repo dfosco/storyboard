@@ -10,7 +10,7 @@ importance: high
 
 ## Goal
 
-Tests the command menu (devtools) mount/unmount lifecycle. Mocks the Svelte component to avoid jsdom issues and verifies DOM element creation, custom containers, idempotent mounting, and cleanup on unmount.
+Tests the command menu (devtools) mount/unmount lifecycle. Mocks the React component to avoid jsdom issues and verifies DOM element creation, custom containers, idempotent mounting, and cleanup on unmount.
 
 ## Composition
 
@@ -29,8 +29,8 @@ Uses `vi.doMock` with `vi.resetModules()` per test for fresh module state.
 
 ## Dependencies
 
-- `./devtools.js` (`mountDevTools`, `unmountDevTools`)
-- Mocked: `svelte` (`mount`, `unmount`), `./CommandMenu.svelte`
+- [`./devtools.js`](./devtools.js.md) (`mountDevTools`, `unmountDevTools`)
+- Mocked: `react` (`createElement`), `react-dom/client` (`createRoot`), `./CommandMenu.jsx`
 
 ## Dependents
 

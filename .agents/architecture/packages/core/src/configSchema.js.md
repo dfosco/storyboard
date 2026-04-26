@@ -22,13 +22,14 @@ export function getConfig(raw = {})       // Deep-merge user config over default
 export function getConfigDefaults()       // Return bare defaults copy
 ```
 
-**JSDoc typedefs:** `PasteRule`, `CanvasTerminalConfig`, `CanvasConfig`, `CommandPaletteConfig`, `CommandPaletteSection`, `CommandPaletteSectionItem`, `CommandPaletteOption`, `CustomerModeConfig`, `StoryboardConfig`.
+**JSDoc typedefs:** `PasteRule`, `CanvasTerminalConfig` (includes `resizable`, `defaultWidth`, `defaultHeight`), `CanvasAgentConfig` (label, icon, startupCommand, resumeCommand, postStartup, readinessSignal, readinessFile, resizable, defaultWidth, defaultHeight), `CanvasConfig` (now includes `agents` and `terminal` properties), `HotPoolConfig` (enabled, verbose, pool sizes, load balancer, per-pool overrides), `CommandPaletteConfig`, `CommandPaletteSection`, `CommandPaletteSectionItem`, `CommandPaletteOption`, `CustomerModeConfig` (`protoHomepage` redirects from `/workspace`), `StoryboardConfig` (now includes `hotPool`).
 
 Internal helper: `mergeConfig(defaults, overrides)` — deep-merges with array replacement (not concatenation).
 
 **Key defaults:**
 - `modes.enabled: false`
 - `canvas.pasteRules`: Figma embed rule
+- `canvas.terminal`: `{ resizable: false, defaultWidth: 800, defaultHeight: 450 }`
 - `commandPalette.ranking: 'frecency'`
 - `customerMode.enabled: false`
 

@@ -6,6 +6,7 @@ import { themeState, setTheme, getTheme, THEMES, themeSyncState, getThemeSyncTar
 
 export default function ThemeMenuButton({ config = {}, data, localOnly, tabindex = -1 }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [canvasActive, setCanvasActive] = useState(false)
   const [theme, setThemeState] = useState(getTheme)
   const [syncState, setSyncState] = useState(getThemeSyncTargets)
@@ -23,8 +24,13 @@ export default function ThemeMenuButton({ config = {}, data, localOnly, tabindex
   useEffect(() => {
     function handleCanvasMounted() { setCanvasActive(true) }
     function handleCanvasUnmounted() { setCanvasActive(false) }
+    function handleOpenSettings() {
+      setMenuOpen(true)
+      setSettingsOpen(true)
+    }
     document.addEventListener('storyboard:canvas:mounted', handleCanvasMounted)
     document.addEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
+    document.addEventListener('storyboard:open-theme-settings', handleOpenSettings)
 
     const state = window.__storyboardCanvasBridgeState
     const active = state?.active === true
@@ -36,8 +42,14 @@ export default function ThemeMenuButton({ config = {}, data, localOnly, tabindex
     return () => {
       document.removeEventListener('storyboard:canvas:mounted', handleCanvasMounted)
       document.removeEventListener('storyboard:canvas:unmounted', handleCanvasUnmounted)
+      document.removeEventListener('storyboard:open-theme-settings', handleOpenSettings)
     }
   }, [])
+
+  function handleMenuOpenChange(open) {
+    setMenuOpen(open)
+    if (!open) setSettingsOpen(false)
+  }
 
   function handleSelect(value) {
     setTheme(value)
@@ -50,7 +62,7 @@ export default function ThemeMenuButton({ config = {}, data, localOnly, tabindex
   }
 
   return (
-    <DropdownMenu.Root open={menuOpen} onOpenChange={setMenuOpen}>
+    <DropdownMenu.Root open={menuOpen} onOpenChange={handleMenuOpenChange}>
       <DropdownMenu.Trigger>
           <TriggerButton
             active={menuOpen}
@@ -85,7 +97,7 @@ export default function ThemeMenuButton({ config = {}, data, localOnly, tabindex
 
         <DropdownMenu.Separator />
 
-        <DropdownMenu.Sub>
+        <DropdownMenu.Sub open={settingsOpen} onOpenChange={setSettingsOpen}>
           <DropdownMenu.SubTrigger>Theme settings</DropdownMenu.SubTrigger>
           <DropdownMenu.SubContent className="min-w-[180px]">
             <DropdownMenu.Label>Apply theme to</DropdownMenu.Label>

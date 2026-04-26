@@ -4,7 +4,7 @@
  * Maps string icon names from widgets.config.json to React components.
  * Used by both WidgetChrome (canvas toolbar) and ExpandedPaneTopBar (fullscreen/split titlebars).
  */
-import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode, UnwrapIcon as OcticonUnwrap, ImageIcon as OcticonImage, UnfoldIcon as OcticonUnfold, FoldIcon as OcticonFold, ScreenFullIcon as OcticonScreenFull, ScreenNormalIcon as OcticonScreenNormal, BroadcastIcon as OcticonBroadcast, CheckIcon as OcticonCheck } from '@primer/octicons-react'
+import { EyeIcon as OcticonEye, EyeClosedIcon as OcticonEyeClosed, CodeIcon as OcticonCode, UnwrapIcon as OcticonUnwrap, ImageIcon as OcticonImage, UnfoldIcon as OcticonUnfold, FoldIcon as OcticonFold, ScreenFullIcon as OcticonScreenFull, ScreenNormalIcon as OcticonScreenNormal, BroadcastIcon as OcticonBroadcast, CheckIcon as OcticonCheck, MirrorIcon as OcticonMirror } from '@primer/octicons-react'
 
 function DeleteIcon() {
   return (
@@ -148,6 +148,18 @@ function BroadcastIcon() {
   return <OcticonBroadcast size={12} />
 }
 
+function MirrorIcon() {
+  return <OcticonMirror size={12} />
+}
+
+function CropIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M3.75 1a.75.75 0 0 1 .75.75V3.5h7a1.75 1.75 0 0 1 1.75 1.75v7h1.75a.75.75 0 0 1 0 1.5H13.25v1.5a.75.75 0 0 1-1.5 0v-1.5h-7A1.75 1.75 0 0 1 3 12.5v-7H1.25a.75.75 0 0 1 0-1.5H3V1.75A.75.75 0 0 1 3.75 1ZM4.5 5.25v7c0 .138.112.25.25.25h7V5.25a.25.25 0 0 0-.25-.25h-7Z" />
+    </svg>
+  )
+}
+
 /** Maps icon name strings from config to React components. */
 export const ICON_REGISTRY = {
   'trash': DeleteIcon,
@@ -173,4 +185,6 @@ export const ICON_REGISTRY = {
   'columns': ColumnsIcon,
   'broadcast': BroadcastIcon,
   'check': CheckMarkIcon,
+  'crop': CropIcon,
+  'mirror': MirrorIcon,
 }

@@ -92,12 +92,14 @@ export default forwardRef(function ComponentSetWidget({ id: widgetId, props, onU
       if (actionId === 'flip-layout') {
         const next = layout === 'horizontal' ? 'vertical' : 'horizontal'
         onUpdate?.({ layout: next })
+        return true
       } else if (actionId === 'open-external') {
         const story = getStoryData(storyId)
         if (story?._route) {
           const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
           window.open(`${base}${story._route}`, '_blank', 'noopener')
         }
+        return true
       }
     },
   }), [storyId, layout, onUpdate])
@@ -166,6 +168,7 @@ export default forwardRef(function ComponentSetWidget({ id: widgetId, props, onU
             src={iframeSrc}
             className={styles.iframe}
             title={`${displayName} component set`}
+            onLoad={(e) => e.target.blur()}
           />
         </div>
         {!interactive && (

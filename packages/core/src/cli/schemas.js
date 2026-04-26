@@ -170,22 +170,20 @@ export const widgetSchema = {
   },
   x: {
     type: 'number',
-    default: 0,
-    description: 'X position',
+    description: 'X position (omit for auto-positioning)',
   },
   y: {
     type: 'number',
-    default: 0,
-    description: 'Y position',
+    description: 'Y position (omit for auto-positioning)',
   },
   near: {
     type: 'string',
-    description: 'Place near this widget ID (computes position + avoids collisions)',
+    description: 'Place near this widget ID (default: auto-selects last widget). Use --near false to disable',
   },
   direction: {
     type: 'string',
     default: 'right',
-    description: 'Direction from --near widget: right, left, above, below',
+    description: 'Direction from reference widget: right, left, above, below',
     aliases: ['dir'],
   },
   resolve: {

@@ -5,6 +5,7 @@ import { globSync } from 'glob'
 import { parse as parseJsonc } from 'jsonc-parser'
 import { materializeFromText } from '@dfosco/storyboard-core/canvas/materializer'
 import { toCanvasId } from '@dfosco/storyboard-core/canvas/identity'
+import { isCanvasWriteInFlight } from '@dfosco/storyboard-core/canvas/writeGuard'
 import { getConfig } from '@dfosco/storyboard-core/config'
 import { list as listRunningServers } from '../../../core/src/worktree/serverRegistry.js'
 
@@ -1154,14 +1155,20 @@ export default function storyboardDataPlugin() {
         // custom HMR event with updated metadata so the canvas page and
         // viewfinder can react in place.
         if (/\.canvas\.jsonl$/.test(normalized)) {
-          const parsed = parseDataFile(filePath)
-          if (parsed?.suffix === 'canvas' && parsed?.id) {
-            const metadata = readCanvasMetadata(filePath, parsed)
-            server.ws.send({
-              type: 'custom',
-              event: 'storyboard:canvas-file-changed',
-              data: { canvasId: parsed.id, name: parsed.id, ...(metadata ? { metadata } : {}) },
-            })
+          // If this file change was caused by the canvas server API, it has
+          // already pushed an HMR event via pushCanvasUpdate(). Skip the
+          // duplicate watcher-triggered event to prevent stale-data rollbacks.
+          const absPath = path.resolve(root, filePath)
+          if (!isCanvasWriteInFlight(absPath)) {
+            const parsed = parseDataFile(filePath)
+            if (parsed?.suffix === 'canvas' && parsed?.id) {
+              const metadata = readCanvasMetadata(filePath, parsed)
+              server.ws.send({
+                type: 'custom',
+                event: 'storyboard:canvas-file-changed',
+                data: { canvasId: parsed.id, name: parsed.id, ...(metadata ? { metadata } : {}) },
+              })
+            }
           }
           softInvalidate()
           return

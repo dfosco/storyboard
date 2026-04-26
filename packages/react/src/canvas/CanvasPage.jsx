@@ -673,9 +673,15 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   // preventing early clears when multiple writes are queued in sequence.
   const inflightWritesRef = useRef(0)
 
+  // Grace period timer — after all writes complete, dirtyRef stays true for a
+  // brief window to absorb delayed file-watcher HMR events that arrive after
+  // the server's immediate push. Defense-in-depth for the write guard.
+  const dirtyGraceTimerRef = useRef(null)
+
   // Serialized write queue — ensures JSONL events land in the right order
   const writeQueueRef = useRef(Promise.resolve())
   function queueWrite(fn) {
+    clearTimeout(dirtyGraceTimerRef.current)
     inflightWritesRef.current += 1
     writeQueueRef.current = writeQueueRef.current
       .then(fn)
@@ -686,7 +692,14 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           console.warn('[canvas] Write queue counter underflow — resetting')
           inflightWritesRef.current = 0
         }
-        if (inflightWritesRef.current === 0) dirtyRef.current = false
+        if (inflightWritesRef.current === 0) {
+          // Grace period — absorb delayed watcher HMR events before clearing
+          dirtyGraceTimerRef.current = setTimeout(() => {
+            if (inflightWritesRef.current === 0) {
+              dirtyRef.current = false
+            }
+          }, 600)
+        }
       })
     return writeQueueRef.current
   }

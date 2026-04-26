@@ -116,6 +116,20 @@ export function readCurrentViewport(root) {
 }
 
 /**
+ * Read the full `.selectedwidgets.json` bridge state.
+ * Returns { canvasId, selectedWidgetIds, widgets, viewport } or null.
+ *
+ * @param {string} root — project root directory
+ */
+export function readSelectedWidgets(root) {
+  const filePath = path.join(root, DIR_NAME, FILE_NAME)
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8')
+    return JSON.parse(raw)
+  } catch { return null }
+}
+
+/**
  * Set up the selected-widgets bridge on a Vite dev server.
  *
  * @param {import('vite').ViteDevServer} server

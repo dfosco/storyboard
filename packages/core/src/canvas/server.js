@@ -47,6 +47,7 @@ import {
   isGitHubEmbedUrl,
 } from './githubEmbeds.js'
 import { stampBounds, stampBoundsAll, resolvePosition, getWidgetBounds } from './collision.js'
+import { markCanvasWrite, unmarkCanvasWrite } from './writeGuard.js'
 import { devLog } from '../logger/devLogger.js'
 import widgetsConfig from '../../widgets.config.json' with { type: 'json' }
 
@@ -276,6 +277,61 @@ export function createCanvasHandler(ctx) {
   }
 
   /**
+   * Compute a smart default position when no --near or explicit x,y is given.
+   * Priority chain:
+   *   1. Active agent/terminal (source widget ID from request)
+   *   2. User-selected widget (from .selectedwidgets.json, same canvas)
+   *   3. Viewport center (from .selectedwidgets.json)
+   *   4. Last widget on canvas
+   *   5. Origin (0, 0) — empty canvas, no viewport
+   *
+   * @param {object[]} canvasWidgets — current widgets on the canvas
+   * @param {string} type — widget type being created
+   * @param {object} props — widget props
+   * @param {string} projectRoot — project root directory
+   * @param {string|null} canvasName — canvas ID for matching selectedwidgets context
+   * @param {string|null} sourceWidgetId — caller's widget ID (agent/terminal creating this widget)
+   */
+  async function computeAutoPosition(canvasWidgets, type, props, projectRoot, canvasName, sourceWidgetId) {
+    const widgetMap = new Map((canvasWidgets || []).map(w => [w.id, w]))
+
+    // 1. Place near the source agent/terminal widget
+    if (sourceWidgetId && widgetMap.has(sourceWidgetId)) {
+      return computeNearPosition(widgetMap.get(sourceWidgetId), 'right', type, props)
+    }
+
+    // 2–3. Read .selectedwidgets.json for selection + viewport context
+    try {
+      const { readSelectedWidgets } = await import('./selectedWidgets.js')
+      const sw = readSelectedWidgets(projectRoot)
+      if (sw && sw.canvasId === canvasName) {
+        // 2. Place near the selected widget
+        if (sw.selectedWidgetIds?.length > 0) {
+          const selectedId = sw.selectedWidgetIds[0]
+          if (widgetMap.has(selectedId)) {
+            return computeNearPosition(widgetMap.get(selectedId), 'right', type, props)
+          }
+        }
+
+        // 3. Place at viewport center
+        const vp = sw.viewport
+        if (vp && vp.centerX != null && vp.centerY != null) {
+          return { x: Math.round(vp.centerX / 24) * 24, y: Math.round(vp.centerY / 24) * 24 }
+        }
+      }
+    } catch { /* selectedWidgets bridge may not be initialized */ }
+
+    // 4. Place near the last widget on the canvas
+    if (canvasWidgets && canvasWidgets.length > 0) {
+      const lastWidget = canvasWidgets[canvasWidgets.length - 1]
+      return computeNearPosition(lastWidget, 'right', type, props)
+    }
+
+    // 5. Truly empty canvas, no viewport
+    return { x: 0, y: 0 }
+  }
+
+  /**
    * Update terminal configs when connectors change.
    * Finds all terminal widgets in the canvas, computes their connected widget IDs
    * from the current connector list, and updates their config files.
@@ -357,11 +413,15 @@ export function createCanvasHandler(ctx) {
   }
 
   // Append an event to an existing canvas file.
-  // The data plugin already skips .canvas.jsonl `change` events to avoid
-  // a save → reload → lost-editing-state feedback loop, so we just write
-  // directly without touching the watcher.
+  // Marks the file in the write guard so the data plugin's watcher handler
+  // skips sending a duplicate HMR event (the server pushes its own via
+  // pushCanvasUpdate after the write).
   function appendEvent(filePath, event) {
+    markCanvasWrite(filePath)
     appendEventRaw(filePath, event)
+    // Unmark after enough time for the watcher to fire and be suppressed.
+    // macOS FSEvents latency is typically 100-500ms; 1s covers edge cases.
+    setTimeout(() => unmarkCanvasWrite(filePath), 1000)
   }
 
   /**
@@ -629,8 +689,14 @@ export function createCanvasHandler(ctx) {
 
     // POST /widget — append a widget_added event
     if (routePath === '/widget' && method === 'POST') {
-      const { name, type, props = {}, pool, near, direction, resolve } = body
+      const { name, type, props = {}, pool, near, direction, resolve, source } = body
       let position = body.position || { x: 0, y: 0 }
+
+      // Detect whether the caller provided an explicit position.
+      // `near === false` is the explicit opt-out ("put it exactly here").
+      const hasExplicitPosition = body.position && (body.position.x !== 0 || body.position.y !== 0)
+      const hasNearOptOut = near === false
+      const needsAutoPosition = !near && !hasExplicitPosition && !hasNearOptOut
 
       if (!name) {
         sendJson(res, 400, { error: 'Canvas name is required' })
@@ -648,12 +714,12 @@ export function createCanvasHandler(ctx) {
       }
 
       try {
-        // --near: compute position relative to a reference widget
-        // --resolve: run collision detection on the target position
-        const needsCanvasRead = near || resolve
+        // Always read canvas when we need near, resolve, or auto-positioning
+        const needsCanvasRead = near || resolve || needsAutoPosition
         let canvasWidgets = null
+        let canvasData = null
         if (needsCanvasRead) {
-          const canvasData = readCanvas(filePath)
+          canvasData = readCanvas(filePath)
           canvasWidgets = canvasData.widgets || []
         }
 
@@ -666,11 +732,16 @@ export function createCanvasHandler(ctx) {
           position = computeNearPosition(refWidget, direction || 'right', type, props)
         }
 
-        if (near || resolve) {
+        // Auto-position: no --near, no explicit x,y → smart default
+        if (needsAutoPosition && !near) {
+          position = await computeAutoPosition(canvasWidgets, type, props, root, name, source || null)
+        }
+
+        if (near || resolve || needsAutoPosition) {
           const resolved = resolvePosition({
             x: position.x, y: position.y, type, props,
             widgets: canvasWidgets,
-            gridSize: 24,
+            gridSize: (canvasData && canvasData.gridSize) || 24,
           })
           position = { x: resolved.x, y: resolved.y }
         }
@@ -1210,9 +1281,14 @@ export function createCanvasHandler(ctx) {
           try {
             switch (op.op) {
               case 'create-widget': {
-                const { type, props = {}, ref, pool, near, direction, resolve: doResolve } = op
+                const { type, props = {}, ref, pool, near, direction, resolve: doResolve, source: opSource } = op
                 let position = op.position || { x: 0, y: 0 }
                 if (!type) throw new Error('type is required')
+
+                // Detect whether an explicit position was provided
+                const hasExplicitPos = op.position && (op.position.x !== 0 || op.position.y !== 0)
+                const hasNearOptOut = near === false
+                const needsAuto = !near && !hasExplicitPos && !hasNearOptOut
 
                 // --near: compute position relative to a reference widget
                 if (near) {
@@ -1222,8 +1298,14 @@ export function createCanvasHandler(ctx) {
                   position = computeNearPosition(refWidget, direction || 'right', type, props)
                 }
 
+                // Auto-position: no --near, no explicit x,y → smart default
+                if (needsAuto && !near) {
+                  const currentWidgets = Array.from(widgetMap.values())
+                  position = await computeAutoPosition(currentWidgets, type, props, root, name, opSource || null)
+                }
+
                 // Collision resolution: uses live widgetMap (includes earlier batch creates)
-                if (near || doResolve) {
+                if (near || doResolve || needsAuto) {
                   const resolved = resolvePosition({
                     x: position.x, y: position.y, type, props,
                     widgets: Array.from(widgetMap.values()),

@@ -1,10 +1,20 @@
 /**
  * storyboard canvas add <widget-type> — Add a widget to an existing canvas.
  *
+ * Widgets are auto-positioned by default near (in priority order):
+ * 1. The active agent/terminal running the command ($STORYBOARD_WIDGET_ID)
+ * 2. The user's currently selected widget
+ * 3. The center of the user's viewport
+ * 4. The last widget on the canvas
+ *
+ * Use --x/--y for explicit coordinates, or --near <widget-id> to place
+ * relative to a specific widget. Use --near false to opt out entirely.
+ *
  * Usage:
  *   storyboard canvas add sticky-note --canvas my-canvas
- *   storyboard canvas add markdown --canvas my-canvas --x 100 --y 200
- *   storyboard canvas add prototype --canvas my-canvas --props '{"src":"my-proto"}'
+ *   storyboard canvas add markdown --canvas my-canvas --near widget-abc
+ *   storyboard canvas add prototype --canvas my-canvas --x 100 --y 200
+ *   storyboard canvas add sticky-note --canvas my-canvas --near false --x 0 --y 0
  *
  * Known widget types: sticky-note, markdown, prototype
  * The server accepts any type string — new widget types work automatically.
@@ -94,11 +104,23 @@ async function canvasAdd() {
     return v
   })()
 
+  // Position flags: only send explicit position if user provided --x/--y.
+  // --near=false explicitly opts out of auto-positioning.
+  const hasExplicitX = flags.x !== undefined && flags.x !== null
+  const hasExplicitY = flags.y !== undefined && flags.y !== null
+  const hasExplicitPosition = hasExplicitX || hasExplicitY
   const x = flags.x ?? 0
   const y = flags.y ?? 0
-  const near = flags.near || null
+
+  // --near: string widget ID, or literal "false" to opt out
+  const nearRaw = flags.near
+  const nearOptOut = nearRaw === 'false' || nearRaw === false
+  const near = (nearRaw && !nearOptOut) ? nearRaw : null
   const direction = flags.direction || 'right'
   const resolve = flags.resolve || !!near
+
+  // Pass the calling agent/terminal's widget ID so the server can auto-position near it
+  const source = process.env.STORYBOARD_WIDGET_ID || null
 
   let props = {}
   if (flags['props-file']) {
@@ -174,9 +196,12 @@ async function canvasAdd() {
   if (jsonOutput) {
     // JSON mode: no spinners/clack UI, just raw JSON output for scripting
     try {
-      const body = { name: canvasName, type: widgetType, props, position: { x, y } }
+      const body = { name: canvasName, type: widgetType, props }
+      if (hasExplicitPosition) body.position = { x, y }
+      if (nearOptOut) body.near = false
       if (near) { body.near = near; body.direction = direction }
       if (resolve) body.resolve = true
+      if (source) body.source = source
       const result = await serverPost('/_storyboard/canvas/widget', body)
       const widget = result.widget || result
       console.log(JSON.stringify(widget))
@@ -191,9 +216,12 @@ async function canvasAdd() {
   s.start(`Adding ${widgetType} widget...`)
 
   try {
-    const body = { name: canvasName, type: widgetType, props, position: { x, y } }
+    const body = { name: canvasName, type: widgetType, props }
+    if (hasExplicitPosition) body.position = { x, y }
+    if (nearOptOut) body.near = false
     if (near) { body.near = near; body.direction = direction }
     if (resolve) body.resolve = true
+    if (source) body.source = source
     const result = await serverPost('/_storyboard/canvas/widget', body)
     s.stop(`Widget added!`)
     const widgetId = result.widget?.id || result.id

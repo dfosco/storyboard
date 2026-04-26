@@ -56,6 +56,7 @@
     "./worktree/serverRegistry": "./src/worktree/serverRegistry.js",
     "./canvas/collision": "./src/canvas/collision.js",
     "./canvas/identity": "./src/canvas/identity.js",
+    "./canvas/writeGuard": "./src/canvas/writeGuard.js",
     "./config": "./src/configSchema.js",
     "./inspector/highlighter": "./src/inspector/highlighter.js",
     "./smooth-corners": "./src/smoothCorners.js"

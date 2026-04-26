@@ -140,18 +140,32 @@ Returns only size and position data (no content): `id`, `type`, `width`, `height
 
 ### Add a widget
 ```bash
-# Simple props (no special characters)
+# Auto-positioned (default — places near the active agent, selected widget, or viewport center)
+npx storyboard canvas add {TYPE} --canvas {NAME} --props '{JSON}'
+
+# Place near a specific widget (explicit --near)
+npx storyboard canvas add {TYPE} --canvas {NAME} --near {WIDGET_ID} --direction right --props '{JSON}'
+
+# Explicit coordinates (overrides auto-positioning)
 npx storyboard canvas add {TYPE} --canvas {NAME} --x {X} --y {Y} --props '{JSON}'
 
-# Place near an existing widget (auto-positions + avoids collisions)
-npx storyboard canvas add {TYPE} --canvas {NAME} --near {WIDGET_ID} --direction right --props '{JSON}'
+# Disable auto-positioning entirely (place at 0,0)
+npx storyboard canvas add {TYPE} --canvas {NAME} --near false --props '{JSON}'
 
 # Complex props (markdown, backticks, quotes) — use --props-file to avoid shell escaping
 echo '{"content":"# Hello\nSome **markdown**"}' > /tmp/widget-props.json
-npx storyboard canvas add {TYPE} --canvas {NAME} --x {X} --y {Y} --props-file /tmp/widget-props.json
+npx storyboard canvas add {TYPE} --canvas {NAME} --props-file /tmp/widget-props.json
 ```
 
-**Always use `--near` when placing widgets relative to another widget.** The `--near` flag computes the position automatically and runs server-side collision detection. The `--direction` flag defaults to `right` — valid values: `right`, `left`, `above`, `below`.
+**Widgets are auto-positioned by default.** When no `--x`/`--y` or `--near` is provided, the server picks a smart position using this priority chain:
+
+1. **Active agent/terminal** — if `$STORYBOARD_WIDGET_ID` is set (i.e., the command runs from an agent), places near that widget
+2. **Selected widget** — the widget the user has selected in the browser
+3. **Viewport center** — the center of the user's current view
+4. **Last widget on canvas** — to the right of the most recently added widget
+5. **Origin (0, 0)** — only for truly empty canvases with no viewport data
+
+Use `--near {WIDGET_ID}` to override auto-positioning with a specific reference widget. The `--direction` flag defaults to `right` — valid values: `right`, `left`, `above`, `below`. Use `--near false` to disable auto-positioning and place at explicit `--x`/`--y` (or 0,0).
 
 **Always use `--props-file` for markdown widgets or any content with special characters.** Write the props JSON to a temp file first, then pass the path. This avoids all shell escaping issues with backticks, quotes, and newlines.
 
@@ -179,10 +193,10 @@ npx storyboard canvas update {WIDGET_ID} --canvas {NAME} --x 100 --y 200
   Positional: <widget-type>  Widget type (sticky-note, markdown, prototype, story)
 
   -c, --canvas           Target canvas name (required)
-  --x                    X position [default: 0]
-  --y                    Y position [default: 0]
-  --near                 Place near this widget ID (computes position + avoids collisions)
-  -dir, --direction      Direction from --near widget: right, left, above, below [default: right]
+  --x                    X position (omit for auto-positioning)
+  --y                    Y position (omit for auto-positioning)
+  --near                 Place near this widget ID (default: auto-selects best reference). Use --near false to disable
+  -dir, --direction      Direction from reference widget: right, left, above, below [default: right]
   --resolve              Run server-side collision detection on the target position [default: false]
   --props                Widget props as JSON string
   -pf, --props-file      Path to a JSON file containing widget props (avoids shell escaping)
@@ -244,20 +258,36 @@ Where:
 
 **Implicit reference** — If the user says "to the right of the blue sticky" without an ID, read the canvas state and find the matching widget by type + props (e.g. a sticky-note with `color: "blue"`). If ambiguous, ask.
 
-**No position given** — Place near the user's viewport:
-1. Read `.storyboard/.selectedwidgets.json` and check the `viewport` field
-2. If viewport exists, place near `viewport.centerX, viewport.centerY` (offset slightly to avoid overlap with existing widgets)
-3. If no viewport data, fall back to: empty canvas → `(0, 0)`, otherwise → right of rightmost widget or below last row
+**No position given** — **The server auto-positions by default.** You do NOT need to calculate a position manually. Just omit `--x`, `--y`, and `--near`:
+
+```bash
+npx storyboard canvas add sticky-note --canvas {NAME} --props '{"text":"hello"}'
+```
+
+The server uses this priority chain:
+1. **Active agent/terminal** — if `$STORYBOARD_WIDGET_ID` is set, places near that widget
+2. **Selected widget** — the widget the user has selected in the browser
+3. **Viewport center** — the center of the user's current view
+4. **Last widget on canvas** — to the right of the most recently added widget
+5. **Origin (0, 0)** — only for truly empty canvases with no viewport data
+
+All auto-positioned widgets go through collision detection automatically.
 
 ### Step 4: Execute the operation
 
 **Adding a widget:**
 ```bash
-# With --near (preferred — auto-positions relative to a reference widget)
+# Auto-positioned (default — just specify type, canvas, and props)
+npx storyboard canvas add {TYPE} --canvas {NAME} --props '{JSON}' --json
+
+# With explicit --near (relative to a specific widget)
 npx storyboard canvas add {TYPE} --canvas {NAME} --near {REF_WIDGET_ID} --direction right --props '{JSON}' --json
 
-# With explicit coordinates (when you know exact position)
+# With explicit coordinates (overrides auto-positioning)
 npx storyboard canvas add {TYPE} --canvas {NAME} --x {X} --y {Y} --props '{JSON}'
+
+# Disable auto-positioning (force 0,0)
+npx storyboard canvas add {TYPE} --canvas {NAME} --near false --x 0 --y 0 --props '{JSON}'
 ```
 
 **Moving a widget:**
@@ -698,8 +728,18 @@ Returns `{ canvases: [{ name, title, path, widgetCount }] }`.
 ### Add a widget
 ```
 POST /widget
-{ "name": "{CANVAS}", "type": "{TYPE}", "position": { "x": 0, "y": 0 }, "props": {} }
+{ "name": "{CANVAS}", "type": "{TYPE}", "props": {} }
 ```
+
+**Auto-positioned by default.** Omit `position` to let the server place it automatically using the priority chain (source agent → selected widget → viewport → last widget). Optional fields:
+
+| Field | Description |
+|-------|-------------|
+| `position` | `{ "x": N, "y": N }` — explicit coordinates, overrides auto-positioning |
+| `near` | Widget ID to position near. Set to `false` to disable auto-positioning |
+| `direction` | `right`, `left`, `above`, `below` (default: `right`) |
+| `resolve` | `true` to run collision detection on explicit coordinates |
+| `source` | Caller's widget ID (agent/terminal) — highest auto-position priority |
 
 ### Remove a widget
 ```

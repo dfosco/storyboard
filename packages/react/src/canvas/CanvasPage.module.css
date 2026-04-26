@@ -103,10 +103,17 @@
 
 /* Each widget gets its own stacking context so internal z-index
    (chrome toolbars, resize handles, overlays) never leaks to siblings.
-   Visual stacking between widgets is controlled by DOM order — selected
-   widgets are rendered last so they appear on top. */
+   z-index: 2 keeps widgets above the ConnectorLayer (z-index: 1).
+   Selected widgets are raised via z-index on the .tc-drag wrapper
+   (data-widget-raised) instead of DOM reordering — this prevents
+   iframe widgets from remounting when selection changes. */
 :global(.tc-drag) {
   isolation: isolate;
+  z-index: 2;
+}
+
+:global(.tc-drag:has([data-widget-raised])) {
+  z-index: 3;
 }
 
 .ghInstallBanner {

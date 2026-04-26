@@ -1,4 +1,4 @@
-import { useEffect, useMemo, Suspense, lazy } from 'react'
+import { useState, useEffect, useMemo, Suspense, lazy } from 'react'
 import { useParams, useLocation } from 'react-router-dom'
 // Named import seeds the core data index via init() AND provides canvas/story route data
 import { canvases, canvasAliases, stories } from 'virtual:storyboard-data-index'
@@ -47,23 +47,35 @@ for (const [, pages] of canvasGroupMap) {
   }
 }
 
-// Build a map from story route paths → story names at module load time
-const storyRouteMap = new Map()
-for (const [name, data] of Object.entries(stories || {})) {
-  if (data?._route) {
-    const route = data._route.replace(/\/+$/, '')
-    storyRouteMap.set(route, name)
-  }
-}
-
 function matchCanvasRoute(pathname) {
   const normalized = stripBasePath(pathname)
   return canvasRouteMap.get(normalized) || null
 }
 
+/**
+ * Live-lookup a story route against the current `stories` object.
+ *
+ * Unlike the canvas route map (built once at module scope), this iterates
+ * the `stories` object on every call so it always reflects HMR mutations
+ * (the virtual-module HMR handler mutates `stories` in place).
+ *
+ * Also strips encoded query strings (%3F / %3f) that can leak into the
+ * pathname when an iframe src is percent-encoded incorrectly.
+ */
 function matchStoryRoute(pathname) {
-  const normalized = stripBasePath(pathname)
-  return storyRouteMap.get(normalized) || null
+  let normalized = stripBasePath(pathname)
+  // Strip encoded query strings that leaked into the path (%3F / %3f = ?)
+  const encodedIdx = normalized.search(/%3f/i)
+  if (encodedIdx !== -1) normalized = normalized.substring(0, encodedIdx)
+  const literalIdx = normalized.indexOf('?')
+  if (literalIdx !== -1) normalized = normalized.substring(0, literalIdx)
+
+  for (const [name, data] of Object.entries(stories || {})) {
+    if (data?._route && data._route.replace(/\/+$/, '') === normalized) {
+      return name
+    }
+  }
+  return null
 }
 
 /**
@@ -158,18 +170,30 @@ function StoryboardProviderInner({ flowName, sceneName, recordName, recordParam,
   const location = useLocation()
   const params = useParams()
 
-  // Canvas route detection — matches current URL against registered canvas routes
-  const canvasId = useMemo(() => matchCanvasRoute(location.pathname), [location.pathname])
-  const isMissingCanvasRoute = useMemo(
-    () => isCanvasPath(location.pathname) && !canvasId && !matchStoryRoute(location.pathname),
-    [location.pathname, canvasId],
-  )
+  // Re-evaluate story route detection when the data index changes via HMR.
+  // The virtual-module HMR handler mutates `stories` in place and dispatches
+  // this event; bumping the key forces useMemo deps to re-fire.
+  const [storyIndexKey, setStoryIndexKey] = useState(0)
+  useEffect(() => {
+    const handler = () => setStoryIndexKey((k) => k + 1)
+    document.addEventListener('storyboard:story-index-changed', handler)
+    return () => document.removeEventListener('storyboard:story-index-changed', handler)
+  }, [])
 
   // Story route detection — matches current URL against registered story routes
-  const storyName = useMemo(() => matchStoryRoute(location.pathname), [location.pathname])
+  // storyIndexKey forces re-evaluation when HMR mutates the stories object in place
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const storyName = useMemo(() => matchStoryRoute(location.pathname), [location.pathname, storyIndexKey])
   const isMissingStoryRoute = useMemo(
     () => isStoryPath(location.pathname) && !storyName,
     [location.pathname, storyName],
+  )
+
+  // Canvas route detection — matches current URL against registered canvas routes
+  const canvasId = useMemo(() => matchCanvasRoute(location.pathname), [location.pathname])
+  const isMissingCanvasRoute = useMemo(
+    () => isCanvasPath(location.pathname) && !canvasId && !storyName,
+    [location.pathname, canvasId, storyName],
   )
 
   const searchParams = new URLSearchParams(location.search)

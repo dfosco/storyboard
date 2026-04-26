@@ -5,9 +5,8 @@
  * for split-screen, and builds iframe URLs for secondary panes.
  */
 import { createElement, useCallback, useState } from 'react'
-import { PencilIcon, EyeIcon } from '@primer/octicons-react'
 import { getStoryData } from '@dfosco/storyboard-core'
-import { isSplitScreenCapable, getWidgetMeta } from './widgetConfig.js'
+import { isSplitScreenCapable, getWidgetMeta, getFeaturesForSurface } from './widgetConfig.js'
 import { ExpandedMarkdownEditor } from './MarkdownBlock.jsx'
 import linkStyles from './LinkPreview.module.css'
 
@@ -17,14 +16,14 @@ export { isSplitScreenCapable }
 /**
  * Stateful wrapper for markdown in secondary split-screen panes.
  * Manages editing state and syncs it to the shared editingRef so
- * the title bar actions() getter stays in sync.
+ * the title bar features' getState stays in sync.
  */
 function MarkdownSecondaryPane({ widget, editingRef, onUpdate }) {
   const [editing, setEditing] = useState(false)
   editingRef.current = editing
   editingRef.setter = (v) => {
     setEditing(v)
-    // Notify ExpandedPane to re-render so the title bar action icon updates
+    // Notify ExpandedPane to re-render so titlebar features resolve updated toggle state
     document.dispatchEvent(new CustomEvent('storyboard:expanded-pane:refresh'))
   }
 
@@ -43,9 +42,10 @@ function MarkdownSecondaryPane({ widget, editingRef, onUpdate }) {
  * Returns a ReactPane or ExternalPane config depending on the widget type.
  *
  * @param {{ id: string, type: string, props: Object }} widget
+ * @param {'fullbar' | 'splitbar'} [surface='splitbar'] — surface for titlebar features
  * @returns {import('./ExpandedPane.jsx').PaneConfig | null}
  */
-export function buildPaneForWidget(widget) {
+export function buildPaneForWidget(widget, surface = 'splitbar') {
   if (!widget) return null
 
   const label = getSplitPaneLabel(widget)
@@ -97,7 +97,7 @@ export function buildPaneForWidget(widget) {
 
   // Markdown: same editable pane as primary, updates via custom event
   if (widget.type === 'markdown') {
-    // Shared mutable ref for editing state — lets `actions()` and `render()` stay in sync
+    // Shared mutable ref for editing state — lets getState and render stay in sync
     const editingRef = { current: false, setter: null }
     const toggleEdit = () => { editingRef.setter?.(!editingRef.current) }
     const onUpdate = (updates) => {
@@ -105,15 +105,19 @@ export function buildPaneForWidget(widget) {
         detail: { widgetId: widget.id, updates },
       }))
     }
+    const surfaceFeatures = getFeaturesForSurface('markdown', surface)
     return {
       id: widget.id,
       label,
       kind: 'react',
-      actions: () => [{
-        icon: createElement(editingRef.current ? EyeIcon : PencilIcon, { size: 14 }),
-        ariaLabel: editingRef.current ? 'Preview' : 'Edit',
-        onClick: toggleEdit,
-      }],
+      features: surfaceFeatures,
+      getState: (key) => {
+        if (key === 'editing') return editingRef.current
+        return undefined
+      },
+      onAction: (actionId) => {
+        if (actionId === 'toggle-edit') toggleEdit()
+      },
       render: () => createElement(MarkdownSecondaryPane, { widget, editingRef, onUpdate }),
     }
   }

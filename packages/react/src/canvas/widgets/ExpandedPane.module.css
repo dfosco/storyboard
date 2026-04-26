@@ -38,46 +38,6 @@
   to { transform: scale(1); opacity: 1; }
 }
 
-.modalTopBar {
-  display: flex;
-  align-items: center;
-  height: 40px;
-  padding: 0 12px;
-  background: var(--bgColor-muted, #f6f8fa);
-  border-bottom: 1px solid var(--borderColor-muted, #d8dee4);
-  flex-shrink: 0;
-}
-
-.modalTitle {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--fgColor-muted, #656d76);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.modalCloseBtn {
-  all: unset;
-  cursor: pointer;
-  margin-left: auto;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  color: var(--fgColor-muted, #656d76);
-  font-size: 14px;
-  transition: background 100ms, color 100ms;
-}
-
-.modalCloseBtn:hover {
-  background: var(--bgColor-neutral-muted, #eaeef2);
-  color: var(--fgColor-default, #1f2328);
-}
-
 .modalBody {
   flex: 1;
   min-height: 0;

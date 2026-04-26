@@ -164,6 +164,19 @@
       },
       "features": [
         {
+          "id": "toggle-edit",
+          "type": "action",
+          "action": "toggle-edit",
+          "label": "Edit",
+          "icon": "edit",
+          "surfaces": ["fullbar", "splitbar"],
+          "toggle": {
+            "stateKey": "editing",
+            "activeIcon": "eye",
+            "activeLabel": "Preview"
+          }
+        },
+        {
           "id": "expand",
           "type": "action",
           "action": "expand",

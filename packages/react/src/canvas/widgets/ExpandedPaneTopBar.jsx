@@ -3,36 +3,92 @@
  *
  * Each pane gets its own bar with a left-aligned label.
  * The rightmost (or only) pane shows the close button.
+ *
+ * Actions render as toolbar-style buttons (same as WidgetChrome) forced to dark mode.
+ * Tooltips show labels on hover (Primer <Tooltip>, not title attr).
+ *
+ * Supports two action sources:
+ *   1. `actions` array/function — legacy inline actions ({ icon, label, ariaLabel, onClick })
+ *   2. `features` array — config-driven features resolved via ICON_REGISTRY
+ *      Combined with `getState` for toggle resolution and `onAction` for dispatch.
  */
 import { ScreenNormalIcon } from '@primer/octicons-react'
+import { Tooltip } from '@primer/react'
+import { ICON_REGISTRY } from './widgetIcons.jsx'
 import styles from './ExpandedPaneTopBar.module.css'
+
+/**
+ * Resolve a feature's icon and label, applying toggle state if configured.
+ * @param {Object} feature — config feature object
+ * @param {((key: string) => any) | undefined} getState — state accessor
+ * @returns {{ Icon: Function|null, label: string }}
+ */
+function resolveFeatureDisplay(feature, getState) {
+  let Icon = ICON_REGISTRY[feature.icon]
+  let label = feature.label || feature.action
+
+  if (feature.toggle && getState) {
+    const isActive = getState(feature.toggle.stateKey)
+    if (isActive) {
+      if (feature.toggle.activeIcon) Icon = ICON_REGISTRY[feature.toggle.activeIcon] || Icon
+      if (feature.toggle.activeLabel) label = feature.toggle.activeLabel
+    }
+  }
+
+  return { Icon, label }
+}
 
 /**
  * @param {Object} props
  * @param {string} props.label — pane display label
  * @param {boolean} [props.showClose] — show close button (rightmost pane)
  * @param {() => void} [props.onClose] — close entire ExpandedPane
- * @param {Array<{ label: string, onClick: () => void }>} [props.actions] — optional action buttons
+ * @param {Array<{ label: string, onClick: () => void }>} [props.actions] — legacy action buttons
+ * @param {Array} [props.features] — config-driven features for this surface
+ * @param {(key: string) => any} [props.getState] — state accessor for toggle resolution
+ * @param {(actionId: string) => void} [props.onAction] — action dispatch callback
  */
-export default function ExpandedPaneTopBar({ label, showClose, onClose, actions }) {
+export default function ExpandedPaneTopBar({ label, showClose, onClose, actions, features, getState, onAction }) {
   const resolvedActions = typeof actions === 'function' ? actions() : actions
   return (
     <div className={styles.bar}>
       <span className={styles.label}>{label}</span>
+
+      {/* Config-driven feature actions */}
+      {features?.map((feature) => {
+        const { Icon, label: featureLabel } = resolveFeatureDisplay(feature, getState)
+        return (
+          <Tooltip key={feature.id} text={featureLabel} direction="s">
+            <button
+              className={styles.actionBtn}
+              onClick={() => onAction?.(feature.action)}
+              aria-label={featureLabel}
+            >
+              {Icon ? <Icon /> : featureLabel}
+            </button>
+          </Tooltip>
+        )
+      })}
+
+      {/* Legacy inline actions (backward compat) */}
       {resolvedActions?.map((action, i) => (
-        <button
-          key={i}
-          className={styles.actionBtn}
-          onClick={action.onClick}
-          aria-label={action.ariaLabel}
-        >
-          {action.icon || action.label}
-        </button>
+        <Tooltip key={i} text={action.label || action.ariaLabel || 'Action'} direction="s">
+          <button
+            className={styles.actionBtn}
+            onClick={action.onClick}
+            aria-label={action.ariaLabel || action.label}
+          >
+            {action.icon || action.label}
+          </button>
+        </Tooltip>
       ))}
+
       {showClose && (
-        <button className={styles.closeBtn} onClick={onClose} aria-label="Close expanded view" autoFocus>
-          <ScreenNormalIcon size={16} />
-        </button>
+        <Tooltip text="Close fullscreen" direction="s">
+          <button className={styles.actionBtn} onClick={onClose} aria-label="Close expanded view" autoFocus>
+            <ScreenNormalIcon size={12} />
+          </button>
+        </Tooltip>
       )}
     </div>
   )

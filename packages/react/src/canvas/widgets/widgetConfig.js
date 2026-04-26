@@ -50,6 +50,11 @@ function resolveFeature(feature) {
       const r = {}
       for (const [k, v] of Object.entries(val)) r[k] = resolveVar(v)
       resolved[key] = r
+    } else if (key === 'toggle' && val && typeof val === 'object') {
+      // Pass toggle config through as-is (stateKey, activeIcon, activeLabel)
+      resolved[key] = { ...val }
+    } else if (key === 'surfaces' && Array.isArray(val)) {
+      resolved[key] = val
     } else {
       resolved[key] = resolveVar(val)
     }
@@ -115,16 +120,44 @@ export const widgetTypes = buildWidgetTypes()
  * In production (or when isLocalDev is false, e.g. ?prodMode simulation),
  * only features with `prod: true` are returned.
  * In dev, all features are returned.
+ *
+ * Features with an explicit `surfaces` array that does NOT include `"toolbar"`
+ * are excluded — they only render on their declared surfaces (fullbar/splitbar).
+ * Features without a `surfaces` array default to toolbar-only.
+ *
  * @param {string} type — widget type string
  * @param {{ isLocalDev?: boolean }} [options]
  * @returns {Array} features array from config (variables resolved), or empty array
  */
 export function getFeatures(type, { isLocalDev = true } = {}) {
   const features = widgetTypes[type]?.features ?? []
+  let filtered = features.filter(f => {
+    const surfaces = f.surfaces || ['toolbar']
+    return surfaces.includes('toolbar')
+  })
   if (import.meta.env?.PROD || !isLocalDev) {
-    return features.filter(f => f.prod)
+    filtered = filtered.filter(f => f.prod)
   }
-  return features
+  return filtered
+}
+
+/**
+ * Get features for a specific rendering surface.
+ * Features without a `surfaces` array default to `["toolbar"]`.
+ * @param {string} type — widget type string
+ * @param {'toolbar' | 'fullbar' | 'splitbar'} surface — target surface
+ * @param {{ isLocalDev?: boolean }} [options]
+ * @returns {Array} filtered features for the given surface
+ */
+export function getFeaturesForSurface(type, surface, { isLocalDev = true } = {}) {
+  let features = widgetTypes[type]?.features ?? []
+  if (import.meta.env?.PROD || !isLocalDev) {
+    features = features.filter(f => f.prod)
+  }
+  return features.filter(f => {
+    const surfaces = f.surfaces || ['toolbar']
+    return surfaces.includes(surface)
+  })
 }
 
 /**

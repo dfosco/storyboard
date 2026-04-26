@@ -1,12 +1,11 @@
-import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, createElement } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { remark } from 'remark'
 import remarkGfm from 'remark-gfm'
 import remarkHtml from 'remark-html'
-import { PencilIcon, EyeIcon } from '@primer/octicons-react'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { readProp } from './widgetProps.js'
-import { schemas } from './widgetConfig.js'
+import { schemas, getFeaturesForSurface } from './widgetConfig.js'
 import ExpandedPane from './ExpandedPane.jsx'
 import { findAllConnectedSplitTargets, getSplitPaneLabel, buildPaneForWidget, buildSplitLayout } from './expandUtils.js'
 import styles from './MarkdownBlock.module.css'
@@ -241,19 +240,33 @@ function MarkdownExpandPane({ widgetId, content, splitMode, onClose, onUpdate })
     return bridge?.widgets?.find((w) => w.id === widgetId) || { id: widgetId, type: 'markdown', position: { x: 0, y: 0 }, props: {} }
   }, [widgetId])
 
+  // Surface: fullbar for single expand, splitbar for split
+  const surface = splitMode ? 'splitbar' : 'fullbar'
+  const surfaceFeatures = useMemo(
+    () => canEdit ? getFeaturesForSurface('markdown', surface) : [],
+    [canEdit, surface],
+  )
+
+  const getState = useCallback((key) => {
+    if (key === 'editing') return editing
+    return undefined
+  }, [editing])
+
+  const handleAction = useCallback((actionId) => {
+    if (actionId === 'toggle-edit') {
+      setEditing((v) => !v)
+    }
+  }, [])
+
   const buildPaneFn = useCallback((widget) => {
     if (widget.id === widgetId) {
       return {
         id: widgetId,
         label: getSplitPaneLabel(primaryWidget) || 'Markdown',
         kind: 'react',
-        actions: canEdit
-          ? [{
-              icon: editing ? createElement(EyeIcon, { size: 14 }) : createElement(PencilIcon, { size: 14 }),
-              ariaLabel: editing ? 'Preview' : 'Edit',
-              onClick: () => setEditing((v) => !v),
-            }]
-          : undefined,
+        features: surfaceFeatures,
+        getState,
+        onAction: handleAction,
         render: () => (
           <ExpandedMarkdownEditor
             content={content}
@@ -264,8 +277,8 @@ function MarkdownExpandPane({ widgetId, content, splitMode, onClose, onUpdate })
         ),
       }
     }
-    return buildPaneForWidget(widget)
-  }, [widgetId, primaryWidget, content, onUpdate, canEdit, editing])
+    return buildPaneForWidget(widget, surface)
+  }, [widgetId, primaryWidget, content, onUpdate, editing, surfaceFeatures, getState, handleAction, surface])
 
   const layout = useMemo(
     () => buildSplitLayout(primaryWidget, connectedWidgets, buildPaneFn),

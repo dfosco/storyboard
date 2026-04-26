@@ -308,6 +308,9 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
           <ExpandedPaneTopBar
             label={pane.label}
             actions={pane.actions}
+            features={pane.features}
+            getState={pane.getState}
+            onAction={pane.onAction}
             showClose={isLastCol}
             onClose={onClose}
           />
@@ -332,6 +335,9 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
             <ExpandedPaneTopBar
               label={pane.label}
               actions={pane.actions}
+              features={pane.features}
+              getState={pane.getState}
+              onAction={pane.onAction}
               showClose={isLastCol && rowIdx === 0}
               onClose={onClose}
             />
@@ -355,17 +361,15 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
         onWheel={(e) => e.stopPropagation()}
       >
         <div className={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
-          <div className={styles.modalTopBar}>
-            <span className={styles.modalTitle}>{pane.label}</span>
-            <button
-              className={styles.modalCloseBtn}
-              onClick={onClose}
-              aria-label="Close expanded view"
-              autoFocus
-            >
-              ✕
-            </button>
-          </div>
+          <ExpandedPaneTopBar
+            label={pane.label}
+            actions={pane.actions}
+            features={pane.features}
+            getState={pane.getState}
+            onAction={pane.onAction}
+            showClose
+            onClose={onClose}
+          />
           <div className={styles.modalBody}>
             {renderPaneContent(pane)}
           </div>
@@ -406,6 +410,10 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
         <>
           <ExpandedPaneTopBar
             label={allPanes[0]?.label}
+            actions={allPanes[0]?.actions}
+            features={allPanes[0]?.features}
+            getState={allPanes[0]?.getState}
+            onAction={allPanes[0]?.onAction}
             showClose
             onClose={onClose}
           />

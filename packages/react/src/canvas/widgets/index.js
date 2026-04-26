@@ -6,6 +6,7 @@ import ImageWidget from './ImageWidget.jsx'
 import FigmaEmbed from './FigmaEmbed.jsx'
 import CodePenEmbed from './CodePenEmbed.jsx'
 import StoryWidget from './StoryWidget.jsx'
+import ComponentSetWidget from './ComponentSetWidget.jsx'
 import TerminalWidget from './TerminalWidget.jsx'
 import TerminalReadWidget from './TerminalReadWidget.jsx'
 import PromptWidget from './PromptWidget.jsx'
@@ -23,6 +24,7 @@ export const widgetRegistry = {
   'figma-embed': FigmaEmbed,
   'codepen-embed': CodePenEmbed,
   'story': StoryWidget,
+  'component-set': ComponentSetWidget,
   'terminal': TerminalWidget,
   'terminal-read': TerminalReadWidget,
   'agent': TerminalWidget,

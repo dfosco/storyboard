@@ -5,11 +5,13 @@
  * When ?export=ExportName is present, renders that single export.
  * Without ?export, renders all named exports stacked.
  */
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { useLocation } from 'react-router-dom'
 import { getStoryData } from '@dfosco/storyboard-core'
 import { ThemeProvider, BaseStyles } from '@primer/react'
 import styles from './StoryPage.module.css'
+
+const ComponentSetPageLazy = lazy(() => import('./ComponentSetPage.jsx'))
 
 function StoryErrorFallback({ name, error }) {
   return (
@@ -25,12 +27,31 @@ export default function StoryPage({ name }) {
   const searchParams = new URLSearchParams(location.search)
   const exportFilter = searchParams.get('export')
   const isEmbed = searchParams.has('_sb_embed')
+  const isComponentSet = searchParams.has('_sb_component_set')
+
+  // When embedded as a canvas iframe, suppress HMR full-reloads.
+  // Story content updates via React Fast Refresh; a full-reload
+  // causes a visible flash and can create a reload loop when
+  // multiple story iframes are on the same canvas.
+  useEffect(() => {
+    if (!isEmbed || !import.meta.hot) return
+    const msg = { active: true }
+    import.meta.hot.send('storyboard:canvas-hmr-guard', msg)
+    const interval = setInterval(() => {
+      import.meta.hot.send('storyboard:canvas-hmr-guard', msg)
+    }, 3000)
+    return () => {
+      clearInterval(interval)
+      import.meta.hot.send('storyboard:canvas-hmr-guard', { active: false })
+    }
+  }, [isEmbed])
 
   const story = useMemo(() => getStoryData(name), [name])
   const [exports, setExports] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    if (isComponentSet) return
     if (!story?._storyImport) {
       Promise.resolve().then(() => setError(`Story "${name}" not found or missing import`))
       return
@@ -55,7 +76,7 @@ export default function StoryPage({ name }) {
       })
 
     return () => { cancelled = true }
-  }, [name, story])
+  }, [name, story, isComponentSet])
 
   // Signal snapshot-ready after story renders in embed mode.
   useEffect(() => {
@@ -66,6 +87,15 @@ export default function StoryPage({ name }) {
       }))
     })
   }, [isEmbed, exports])
+
+  // Delegate to ComponentSetPage for grid view (after all hooks)
+  if (isComponentSet) {
+    return (
+      <Suspense fallback={isEmbed ? null : <div className={styles.loading}>Loading component set…</div>}>
+        <ComponentSetPageLazy name={name} />
+      </Suspense>
+    )
+  }
 
   if (error) {
     return (

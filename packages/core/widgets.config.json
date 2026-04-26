@@ -678,7 +678,7 @@
     },
     "component": {
       "label": "Component",
-      "icon": "⚛️",
+      "icon": "iconoir/keyframe",
       "resize": {
         "enabled": true,
         "prod": false
@@ -842,6 +842,105 @@
       },
       "expandable": true
     },
+    "component-set": {
+      "label": "Component Set",
+      "icon": "⊞",
+      "resize": {
+        "enabled": true,
+        "prod": false
+      },
+      "interactGate": true,
+      "interactGateLabel": "Click to interact",
+      "props": {
+        "storyId": {
+          "type": "text",
+          "label": "Story",
+          "category": "content",
+          "default": ""
+        },
+        "layout": {
+          "type": "text",
+          "label": "Layout",
+          "category": "settings",
+          "default": "horizontal"
+        },
+        "selected": {
+          "type": "text",
+          "label": "Selected export",
+          "category": "state",
+          "default": ""
+        },
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "min": 200
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 120
+        }
+      },
+      "features": [
+        {
+          "id": "flip-layout",
+          "type": "action",
+          "action": "flip-layout",
+          "label": "Flip layout",
+          "icon": "mirror"
+        },
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy"
+        },
+        {
+          "id": "open-external",
+          "type": "action",
+          "action": "open-external",
+          "label": "$label:open-ext",
+          "icon": "open-external",
+          "prod": true
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "prod": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
+    },
     "prompt": {
       "label": "Prompt",
       "icon": "zap",
@@ -949,6 +1048,8 @@
     "image": {
       "label": "Image",
       "icon": "🖼️",
+      "splitScreen": true,
+      "expandable": true,
       "resize": {
         "enabled": true,
         "prod": false
@@ -988,6 +1089,13 @@
           "icon": "eye"
         },
         {
+          "id": "expand",
+          "type": "action",
+          "action": "expand",
+          "label": "$label:expand",
+          "icon": "expand"
+        },
+        {
           "id": "copy",
           "type": "action",
           "action": "copy",
@@ -1000,6 +1108,11 @@
           "icon": "image",
           "label": "Image actions",
           "items": [
+            {
+              "action": "crop-image",
+              "label": "Crop",
+              "icon": "crop"
+            },
             {
               "action": "download-image",
               "label": "$label:download",

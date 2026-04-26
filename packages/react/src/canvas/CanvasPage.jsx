@@ -669,12 +669,25 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   // Prevents HMR echoes from overwriting in-flight local state.
   const dirtyRef = useRef(false)
 
+  // Counter of in-flight writes. dirtyRef is only cleared when this reaches 0,
+  // preventing early clears when multiple writes are queued in sequence.
+  const inflightWritesRef = useRef(0)
+
   // Serialized write queue — ensures JSONL events land in the right order
   const writeQueueRef = useRef(Promise.resolve())
   function queueWrite(fn) {
-    writeQueueRef.current = writeQueueRef.current.then(fn).catch((err) =>
-      console.error('[canvas] Write queue error:', err)
-    )
+    inflightWritesRef.current += 1
+    writeQueueRef.current = writeQueueRef.current
+      .then(fn)
+      .catch((err) => console.error('[canvas] Write queue error:', err))
+      .finally(() => {
+        inflightWritesRef.current -= 1
+        if (inflightWritesRef.current < 0) {
+          console.warn('[canvas] Write queue counter underflow — resetting')
+          inflightWritesRef.current = 0
+        }
+        if (inflightWritesRef.current === 0) dirtyRef.current = false
+      })
     return writeQueueRef.current
   }
 
@@ -797,7 +810,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       queueWrite(() =>
         updateCanvas(canvasId, { widgets })
           .catch((err) => console.error('[canvas] Failed to save:', err))
-          .finally(() => { dirtyRef.current = false })
       )
     }, 2000)
   ).current
@@ -845,7 +857,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     queueWrite(() =>
       removeWidgetApi(canvasId, widgetId)
         .catch((err) => console.error('[canvas] Failed to remove widget:', err))
-        .finally(() => { dirtyRef.current = false })
     )
   }, [canvasId, undoRedo, debouncedSave])
 
@@ -864,6 +875,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   const handleConnectorRemove = useCallback((connectorId) => {
     undoRedo.snapshot(stateRef.current, 'connector-remove')
     setLocalConnectors((prev) => prev.filter((c) => c.id !== connectorId))
+    dirtyRef.current = true
     queueWrite(() =>
       removeConnectorApi(canvasId, connectorId).catch((err) =>
         console.error('[canvas] Failed to remove connector:', err)
@@ -1299,8 +1311,10 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
   const debouncedSourceSave = useRef(
     debounce((canvasId, sources) => {
-      updateCanvas(canvasId, { sources }).catch((err) =>
-        console.error('[canvas] Failed to save sources:', err)
+      queueWrite(() =>
+        updateCanvas(canvasId, { sources }).catch((err) =>
+          console.error('[canvas] Failed to save sources:', err)
+        )
       )
     }, 2000)
   ).current
@@ -1317,6 +1331,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       const next = current.some((s) => s?.export === exportName)
         ? current.map((s) => (s?.export === exportName ? { ...s, ...snapped } : s))
         : [...current, { export: exportName, ...snapped }]
+      dirtyRef.current = true
       debouncedSourceSave(canvasId, next)
       return next
     })
@@ -1376,7 +1391,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         queueWrite(() =>
           updateCanvas(canvasId, { widgets: next })
             .catch((err) => console.error('[canvas] Failed to save multi-move:', err))
-            .finally(() => { dirtyRef.current = false })
         )
         return next
       })
@@ -1409,7 +1423,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           queueWrite(() =>
             updateCanvas(canvasId, { sources: next })
               .catch((err) => console.error('[canvas] Failed to save multi-move sources:', err))
-              .finally(() => { dirtyRef.current = false })
           )
         }
         return changed ? next : current
@@ -1429,7 +1442,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         queueWrite(() =>
           updateCanvas(canvasId, { sources: next })
             .catch((err) => console.error('[canvas] Failed to save source position:', err))
-            .finally(() => { dirtyRef.current = false })
         )
         return next
       })
@@ -1447,7 +1459,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
       queueWrite(() =>
         updateCanvas(canvasId, { widgets: next })
           .catch((err) => console.error('[canvas] Failed to save widget position:', err))
-          .finally(() => { dirtyRef.current = false })
       )
       return next
     })
@@ -2088,6 +2099,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
           // Multi-delete — snapshot once, remove all, persist via updateCanvas
           undoRedo.snapshot(stateRef.current, 'multi-remove')
           debouncedSave.cancel()
+          dirtyRef.current = true
           setLocalWidgets((prev) => {
             if (!prev) return prev
             const next = prev.filter(w => !selectedWidgetIds.has(w.id))
@@ -2447,7 +2459,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     queueWrite(() =>
       updateCanvas(canvasId, { widgets: previous.widgets, sources: previous.sources, connectors: previous.connectors })
         .catch((err) => console.error('[canvas] Failed to persist undo:', err))
-        .finally(() => { dirtyRef.current = false })
     )
   }, [canvasId, debouncedSave, debouncedSourceSave, undoRedo])
 
@@ -2463,7 +2474,6 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
     queueWrite(() =>
       updateCanvas(canvasId, { widgets: next.widgets, sources: next.sources, connectors: next.connectors })
         .catch((err) => console.error('[canvas] Failed to persist redo:', err))
-        .finally(() => { dirtyRef.current = false })
     )
   }, [canvasId, debouncedSave, debouncedSourceSave, undoRedo])
 
@@ -2484,10 +2494,10 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         e.preventDefault()
         handleRedo()
       }
-      if (mod && e.key === 'd' && e.shiftKey) {
+      if (mod && e.key.toLowerCase() === 'd' && e.shiftKey) {
         e.preventDefault()
         handleDuplicateWithConnectors()
-      } else if (mod && e.key === 'd' && !e.shiftKey) {
+      } else if (mod && e.key.toLowerCase() === 'd' && !e.shiftKey) {
         e.preventDefault()
         handleDuplicateSelected()
       }

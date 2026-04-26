@@ -76,6 +76,12 @@
   cursor: pointer;
 }
 
+/* Trigger the visible connector's hover style from the wider hit area */
+.connectorPathHitArea:hover ~ .connectorPath {
+  stroke: var(--connector-hover-stroke, var(--fgColor-danger, #cf222e));
+  stroke-width: var(--connector-hover-stroke-width, 5px);
+}
+
 .dragPreviewPath {
   fill: none;
   stroke: var(--connector-drag-stroke, var(--fgColor-accent, #0969da));

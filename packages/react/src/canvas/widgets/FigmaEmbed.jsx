@@ -177,6 +177,7 @@ export default forwardRef(function FigmaEmbed({ id: widgetId, props, onUpdate, r
                   className={styles.iframe}
                   title={`Figma ${typeLabel}: ${title}`}
                   allowFullScreen
+                  onLoad={(e) => e.target.blur()}
                 />
               </div>
             ) : (
@@ -269,6 +270,7 @@ function FigmaExpandPane({ widgetId, modalContainerRef, splitMode, onClose }) {
       return {
         id: widgetId,
         label: getSplitPaneLabel(primaryWidget),
+        widgetType: 'figma-embed',
         kind: 'external',
         attach: (container) => {
           modalContainerRef.current = container

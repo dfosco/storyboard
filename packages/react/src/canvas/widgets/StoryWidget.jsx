@@ -11,6 +11,7 @@
 import { forwardRef, useImperativeHandle, useRef, useCallback, useState, useEffect, useMemo } from 'react'
 import { getStoryData } from '@dfosco/storyboard-core'
 import { createInspectorHighlighter } from '@dfosco/storyboard-core/inspector/highlighter'
+import Icon from '../../Icon.jsx'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { useIframeDevLogs } from './iframeDevLogs.js'
@@ -20,14 +21,7 @@ import styles from './StoryWidget.module.css'
 import overlayStyles from './embedOverlay.module.css'
 
 function ComponentIcon({ size = 36 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <path d="M5.21173 15.1113L2.52473 12.4243C2.29041 12.1899 2.29041 11.8101 2.52473 11.5757L5.21173 8.88873C5.44605 8.65442 5.82595 8.65442 6.06026 8.88873L8.74727 11.5757C8.98158 11.8101 8.98158 12.1899 8.74727 12.4243L6.06026 15.1113C5.82595 15.3456 5.44605 15.3456 5.21173 15.1113Z" />
-      <path d="M11.5757 21.475L8.88874 18.788C8.65443 18.5537 8.65443 18.1738 8.88874 17.9395L11.5757 15.2525C11.8101 15.0182 12.19 15.0182 12.4243 15.2525L15.1113 17.9395C15.3456 18.1738 15.3456 18.5537 15.1113 18.788L12.4243 21.475C12.19 21.7094 11.8101 21.7094 11.5757 21.475Z" />
-      <path d="M17.9395 15.1113L15.2525 12.4243C15.0182 12.1899 15.0182 11.8101 15.2525 11.5757L17.9395 8.88873C18.1738 8.65442 18.5537 8.65442 18.788 8.88873L21.475 11.5757C21.7094 11.8101 21.7094 12.1899 21.475 12.4243L18.788 15.1113C18.5537 15.3456 18.1738 15.3456 17.9395 15.1113Z" />
-      <path d="M11.5757 8.74727L8.88874 6.06026C8.65443 5.82595 8.65443 5.44605 8.88874 5.21173L11.5757 2.52473C11.8101 2.29041 12.19 2.29041 12.4243 2.52473L15.1113 5.21173C15.3456 5.44605 15.3456 5.82595 15.1113 6.06026L12.4243 8.74727C12.19 8.98158 11.8101 8.98158 11.5757 8.74727Z" />
-    </svg>
-  )
+  return <Icon name="iconoir/keyframe" size={size} />
 }
 
 function resolveStoryUrl(storyId, exportName) {
@@ -255,6 +249,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
                 src={effectiveSrc}
                 className={styles.iframe}
                 title={displayName}
+                onLoad={(e) => e.target.blur()}
               />
             </div>
 
@@ -314,9 +309,10 @@ function StoryExpandPane({ widgetId, storyId, exportName, splitMode, onClose }) 
       return {
         id: widgetId,
         label: getSplitPaneLabel({ type: 'story', props: { storyId, exportName } }),
+        widgetType: 'story',
         kind: 'react',
         render: () => url
-          ? <iframe src={url} style={{ border: 'none', width: '100%', height: '100%', display: 'block' }} title={storyId} />
+          ? <iframe src={url} style={{ border: 'none', width: '100%', height: '100%', display: 'block' }} title={storyId} onLoad={(e) => e.target.blur()} />
           : <div style={{ padding: 32, color: 'var(--fgColor-muted)' }}>Story "{storyId}" not found</div>,
       }
     }

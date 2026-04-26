@@ -90,6 +90,7 @@ export default function ComponentWidget({
                 className={styles.iframe}
                 title={exportName || 'Component widget'}
                 sandbox="allow-same-origin allow-scripts"
+                onLoad={(e) => e.target.blur()}
               />
             ) : (
               <div className={styles.placeholder} />

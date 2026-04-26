@@ -373,6 +373,7 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
                 }}
                 title={`${prototypeTitle} prototype`}
                 sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                onLoad={(e) => e.target.blur()}
               />
             </div>
             {!interactive && !expanded && (
@@ -437,6 +438,7 @@ function PrototypeExpandPane({ widgetId, modalContainerRef, splitMode, onClose }
       return {
         id: widgetId,
         label: getSplitPaneLabel(primaryWidget),
+        widgetType: 'prototype',
         kind: 'external',
         attach: (container) => {
           modalContainerRef.current = container

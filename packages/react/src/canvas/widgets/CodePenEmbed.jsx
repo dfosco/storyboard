@@ -198,6 +198,7 @@ export default forwardRef(function CodePenEmbed({ props, onUpdate, resizable }, 
                   title={`CodePen: ${headerTitle}`}
                   allowFullScreen
                   loading="lazy"
+                  onLoad={(e) => e.target.blur()}
                 />
               </div>
             ) : (

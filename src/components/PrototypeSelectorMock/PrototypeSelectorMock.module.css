@@ -1,0 +1,190 @@
+/* PrototypeSelectorMock — visual mock for the canvas add-widget prototype submenu */
+
+.storyFrame {
+  padding: 1.5rem;
+  max-width: 640px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  color: var(--fgColor-default, #e6edf3);
+}
+
+.storyLabel {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fgColor-muted, #8b949e);
+  margin-bottom: 0.5rem;
+}
+
+.storyCaption {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--fgColor-muted, #8b949e);
+  margin: 0 0 1rem;
+}
+
+.storyCaption code {
+  font-size: 0.75rem;
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  background: var(--bgColor-muted, rgba(110, 118, 129, 0.1));
+}
+
+/* The dropdown panel mock */
+.panel {
+  background: var(--bgColor-default, #161b22);
+  border: 1px solid var(--borderColor-default, #30363d);
+  border-radius: 12px;
+  padding: 0.5rem;
+  min-width: 260px;
+  max-width: 320px;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.searchInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.65rem;
+  margin-bottom: 0.35rem;
+  background: var(--control-bgColor-rest, #21262d);
+  border: 1px solid var(--control-borderColor-rest, #30363d);
+  border-radius: 6px;
+  color: var(--fgColor-default, #e6edf3);
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: var(--fgColor-muted, #8b949e);
+}
+
+.separator {
+  height: 1px;
+  background: var(--borderColor-muted, #21262d);
+  margin: 0.35rem 0;
+}
+
+/* Prototype group header */
+.protoHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--fgColor-default, #e6edf3);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.protoHeader:hover {
+  background: var(--control-transparent-bgColor-hover, rgba(177, 186, 196, 0.12));
+}
+
+.protoHeader.active {
+  background: var(--control-transparent-bgColor-active, rgba(177, 186, 196, 0.2));
+}
+
+.protoIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--fgColor-muted, #8b949e);
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+/* Flow sub-items under a prototype */
+.flowItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: var(--fgColor-muted, #8b949e);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.flowItem:hover {
+  background: var(--control-transparent-bgColor-hover, rgba(177, 186, 196, 0.12));
+  color: var(--fgColor-default, #e6edf3);
+}
+
+.flowDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--fgColor-muted, #8b949e);
+  flex-shrink: 0;
+}
+
+.noFlows {
+  font-size: 0.7rem;
+  color: var(--fgColor-muted, #8b949e);
+  opacity: 0.6;
+  font-style: italic;
+}
+
+/* Scrollable list area */
+.list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.list::-webkit-scrollbar-thumb {
+  background: var(--borderColor-muted, #30363d);
+  border-radius: 4px;
+}
+
+/* Comparison layout */
+.comparison {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.comparisonCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.comparisonLabel {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fgColor-muted, #8b949e);
+}
+
+/* Arrow indicating expand state */
+.chevron {
+  margin-left: auto;
+  font-size: 0.6rem;
+  color: var(--fgColor-muted, #8b949e);
+  transition: transform 0.15s;
+}
+
+.chevron.open {
+  transform: rotate(90deg);
+}
+
+/* Label section header inside the dropdown */
+.menuLabel {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fgColor-muted, #8b949e);
+  padding: 0.35rem 0.55rem 0.2rem;
+  font-weight: 600;
+}

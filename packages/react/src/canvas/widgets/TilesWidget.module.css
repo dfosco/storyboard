@@ -1,0 +1,133 @@
+.container {
+  padding: 8px;
+  user-select: none;
+  cursor: default;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0 8px;
+}
+
+.toolbarBtn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--fgColor-default, #1f2328);
+  background: var(--bgColor-muted, #f6f8fa);
+  transition: background 0.12s ease;
+}
+
+.toolbarBtn:hover {
+  background: var(--bgColor-neutral-muted, #d0d7de);
+}
+
+.toolbarBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.toolbarLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fgColor-muted, #656d76);
+  min-width: 32px;
+  text-align: center;
+}
+
+.toolbarSep {
+  width: 1px;
+  height: 16px;
+  background: var(--borderColor-muted, #d0d7de);
+  margin: 0 4px;
+}
+
+.grid {
+  display: grid;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tile {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  transition: border-color 0.12s ease, opacity 0.15s ease, transform 0.12s ease;
+  background: var(--bgColor-muted, #f6f8fa);
+}
+
+.tile:hover {
+  border-color: var(--borderColor-accent-emphasis, #0969da);
+}
+
+.selected {
+  border-color: var(--fgColor-accent, #0969da);
+  box-shadow: 0 0 0 2px var(--fgColor-accent, #0969da);
+}
+
+.pasteTarget {
+  border-color: var(--fgColor-success, #1a7f37);
+  box-shadow: 0 0 0 2px var(--fgColor-success, #1a7f37);
+  animation: pulse 1s infinite;
+}
+
+.dragOver {
+  border-color: var(--fgColor-accent, #0969da);
+  background: var(--bgColor-accent-muted, #ddf4ff);
+  transform: scale(1.04);
+}
+
+.dragging {
+  opacity: 0.4;
+}
+
+.tileImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.emptyTile {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--bgColor-muted, #f6f8fa);
+}
+
+.pasteHint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+.hint {
+  padding: 6px 0 2px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--fgColor-muted, #656d76);
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--fgColor-success, #1a7f37); }
+  50% { box-shadow: 0 0 0 4px var(--fgColor-success, #1a7f37); }
+}

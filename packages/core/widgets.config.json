@@ -33,7 +33,7 @@
   "widgets": {
     "sticky-note": {
       "label": "Sticky Note",
-      "icon": "📝",
+      "icon": "\ud83d\udcdd",
       "resize": {
         "enabled": true,
         "prod": false
@@ -133,7 +133,7 @@
     },
     "markdown": {
       "label": "Markdown",
-      "icon": "📄",
+      "icon": "\ud83d\udcc4",
       "expandable": true,
       "splitScreen": true,
       "resize": {
@@ -169,7 +169,10 @@
           "action": "toggle-edit",
           "label": "Edit",
           "icon": "edit",
-          "surfaces": ["fullbar", "splitbar"],
+          "surfaces": [
+            "fullbar",
+            "splitbar"
+          ],
           "toggle": {
             "stateKey": "editing",
             "activeIcon": "eye",
@@ -244,7 +247,7 @@
     },
     "prototype": {
       "label": "Prototype",
-      "icon": "🖥️",
+      "icon": "\ud83d\udda5\ufe0f",
       "expandable": true,
       "splitScreen": true,
       "resize": {
@@ -363,7 +366,7 @@
     },
     "figma-embed": {
       "label": "Figma Embed",
-      "icon": "🎨",
+      "icon": "\ud83c\udfa8",
       "expandable": true,
       "splitScreen": true,
       "resize": {
@@ -455,7 +458,7 @@
     },
     "codepen-embed": {
       "label": "CodePen Embed",
-      "icon": "✏️",
+      "icon": "\u270f\ufe0f",
       "expandable": true,
       "splitScreen": true,
       "resize": {
@@ -547,7 +550,7 @@
     },
     "link-preview": {
       "label": "Link Preview",
-      "icon": "🔗",
+      "icon": "\ud83d\udd17",
       "expandable": true,
       "splitScreen": true,
       "resize": {
@@ -727,7 +730,7 @@
     },
     "story": {
       "label": "Story",
-      "icon": "📖",
+      "icon": "\ud83d\udcd6",
       "splitScreen": true,
       "resize": {
         "enabled": true,
@@ -844,7 +847,7 @@
     },
     "component-set": {
       "label": "Component Set",
-      "icon": "⊞",
+      "icon": "\u229e",
       "resize": {
         "enabled": true,
         "prod": false
@@ -1047,7 +1050,7 @@
     },
     "image": {
       "label": "Image",
-      "icon": "🖼️",
+      "icon": "\ud83d\uddbc\ufe0f",
       "splitScreen": true,
       "expandable": true,
       "resize": {
@@ -1166,7 +1169,7 @@
     },
     "terminal": {
       "label": "Terminal",
-      "icon": "⬛",
+      "icon": "\u2b1b",
       "expandable": true,
       "splitScreen": true,
       "resize": {
@@ -1253,7 +1256,7 @@
     },
     "terminal-read": {
       "label": "Terminal",
-      "icon": "⬛",
+      "icon": "\u2b1b",
       "expandable": true,
       "splitScreen": true,
       "resize": {
@@ -1397,6 +1400,138 @@
         "exclude": []
       },
       "interactGate": false
+    },
+    "tiles": {
+      "label": "Tiles",
+      "icon": "\ud83d\udd32",
+      "unlisted": true,
+      "interactGate": true,
+      "interactGateLabel": "Click to interact",
+      "resize": {
+        "enabled": true,
+        "prod": false
+      },
+      "props": {
+        "tiles": {
+          "type": "text",
+          "label": "Tiles",
+          "category": "content",
+          "default": []
+        },
+        "columns": {
+          "type": "number",
+          "label": "Columns",
+          "category": "settings",
+          "default": 3,
+          "min": 1,
+          "max": 20
+        },
+        "rows": {
+          "type": "number",
+          "label": "Rows",
+          "category": "settings",
+          "default": 3,
+          "min": 1,
+          "max": 20
+        },
+        "tileSize": {
+          "type": "number",
+          "label": "Tile size",
+          "category": "settings",
+          "default": 80,
+          "min": 40,
+          "max": 300
+        },
+        "width": {
+          "type": "number",
+          "label": "Width",
+          "category": "size",
+          "min": 200
+        },
+        "height": {
+          "type": "number",
+          "label": "Height",
+          "category": "size",
+          "min": 100
+        }
+      },
+      "features": [
+        {
+          "id": "grid-actions",
+          "type": "dropdown",
+          "icon": "grid",
+          "label": "Grid",
+          "items": [
+            {
+              "action": "add-column",
+              "label": "Add column",
+              "icon": "plus"
+            },
+            {
+              "action": "remove-column",
+              "label": "Remove column",
+              "icon": "dash"
+            },
+            {
+              "action": "add-row",
+              "label": "Add row",
+              "icon": "plus"
+            },
+            {
+              "action": "remove-row",
+              "label": "Remove row",
+              "icon": "dash"
+            }
+          ]
+        },
+        {
+          "id": "randomize",
+          "type": "action",
+          "action": "randomize",
+          "label": "Randomize",
+          "icon": "sync"
+        },
+        {
+          "id": "copy",
+          "type": "action",
+          "action": "copy",
+          "label": "$label:duplicate",
+          "icon": "copy"
+        },
+        {
+          "id": "copy-link",
+          "type": "action",
+          "action": "copy-link",
+          "label": "$label:copy-link",
+          "icon": "link",
+          "menu": true,
+          "prod": true,
+          "alt": {
+            "label": "$label:copy-id",
+            "action": "copy-widget-id"
+          }
+        },
+        {
+          "id": "delete",
+          "type": "action",
+          "action": "delete",
+          "label": "$label:delete",
+          "icon": "trash",
+          "menu": true
+        }
+      ],
+      "connectors": {
+        "anchors": {
+          "top": "available",
+          "bottom": "available",
+          "left": "available",
+          "right": "available"
+        },
+        "accept": [
+          "*"
+        ],
+        "exclude": []
+      }
     }
   }
 }

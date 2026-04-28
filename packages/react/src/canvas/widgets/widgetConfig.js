@@ -221,7 +221,7 @@ export function getInteractGate(type) {
  */
 export function getMenuWidgetTypes() {
   return Object.entries(widgetTypes)
-    .filter(([type]) => type !== 'link-preview' && type !== 'image' && type !== 'figma-embed' && type !== 'codepen-embed' && type !== 'story' && type !== 'terminal-read')
+    .filter(([type, def]) => type !== 'link-preview' && type !== 'image' && type !== 'figma-embed' && type !== 'codepen-embed' && type !== 'story' && type !== 'terminal-read' && !def.unlisted)
     .map(([type, def]) => ({ type, label: def.label, icon: def.icon }))
 }
 

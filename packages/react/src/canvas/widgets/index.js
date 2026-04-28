@@ -10,6 +10,7 @@ import ComponentSetWidget from './ComponentSetWidget.jsx'
 import TerminalWidget from './TerminalWidget.jsx'
 import TerminalReadWidget from './TerminalReadWidget.jsx'
 import PromptWidget from './PromptWidget.jsx'
+import TilesWidget from './TilesWidget.jsx'
 
 /**
  * Maps widget type strings to their React components.
@@ -29,6 +30,7 @@ export const widgetRegistry = {
   'terminal-read': TerminalReadWidget,
   'agent': TerminalWidget,
   'prompt': PromptWidget,
+  'tiles': TilesWidget,
 }
 
 /**

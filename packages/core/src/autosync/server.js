@@ -6,6 +6,8 @@
  * - Enable/disable autosync per scope (canvas/prototype)
  * - Direct commit + push on the current branch (scoped files only)
  * - Push watcher: every 30s runs enabled scopes in relay sequence
+ * - Persists state to .storyboard/autosync.json to survive server restarts
+ * - Pauses on branch change, resumes when user returns to target branch
  *
  * Routes (mounted at /_storyboard/autosync/):
  *   GET    /branches — list local git branches (excludes main/master)
@@ -16,7 +18,7 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync, readFileSync, renameSync, unlinkSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 // ── Module-level watcher state (singleton, survives page reloads) ──
@@ -29,6 +31,8 @@ let lastSyncTime = null
 let lastError = null
 let syncing = false
 let syncingScope = null
+let pausedOnBranchChange = false
+let previousActiveBranch = null
 
 let enabledScopes = { canvas: false, prototype: false }
 let lastSyncByScope = { canvas: null, prototype: null }
@@ -41,6 +45,158 @@ const AUTOSYNC_SCOPES = new Set(SCOPE_ORDER)
 
 // Branch names must match git ref format — alphanumeric, hyphens, dots, slashes
 const BRANCH_NAME_RE = /^[\w][\w.\-/]*$/
+
+// ── Persistence (.storyboard/autosync.json) ──
+
+const PERSIST_DIR = '.storyboard'
+const PERSIST_FILE = 'autosync.json'
+
+/**
+ * Load persisted autosync state from disk. Returns null on missing/corrupt files.
+ */
+export function loadPersistedState(root) {
+  const filePath = join(root, PERSIST_DIR, PERSIST_FILE)
+  try {
+    if (!existsSync(filePath)) return null
+    const raw = readFileSync(filePath, 'utf-8')
+    const data = JSON.parse(raw)
+    if (!data || typeof data !== 'object') return null
+    return validatePersistedState(data)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Validate loaded state — reject invalid/protected branches and bad types.
+ */
+function validatePersistedState(data) {
+  const result = {}
+
+  if (data.targetBranch && isValidBranch(data.targetBranch) && !isProtectedBranch(data.targetBranch)) {
+    result.targetBranch = data.targetBranch
+  }
+  if (data.originalBranch && isValidBranch(data.originalBranch)) {
+    result.originalBranch = data.originalBranch
+  }
+  if (data.previousActiveBranch && isValidBranch(data.previousActiveBranch)) {
+    result.previousActiveBranch = data.previousActiveBranch
+  }
+
+  result.pausedOnBranchChange = data.pausedOnBranchChange === true
+  result.lastSyncTime = typeof data.lastSyncTime === 'string' ? data.lastSyncTime : null
+  result.lastSyncByScope = {
+    canvas: typeof data.lastSyncByScope?.canvas === 'string' ? data.lastSyncByScope.canvas : null,
+    prototype: typeof data.lastSyncByScope?.prototype === 'string' ? data.lastSyncByScope.prototype : null,
+  }
+
+  if (data.enabledScopes && typeof data.enabledScopes === 'object') {
+    result.enabledScopes = {
+      canvas: data.enabledScopes.canvas === true,
+      prototype: data.enabledScopes.prototype === true,
+    }
+  } else {
+    result.enabledScopes = { canvas: false, prototype: false }
+  }
+
+  // Must have a targetBranch and at least one enabled scope to be restorable
+  if (!result.targetBranch || (!result.enabledScopes.canvas && !result.enabledScopes.prototype)) {
+    return null
+  }
+
+  return result
+}
+
+/**
+ * Persist current autosync state to disk (atomic write via tmp + rename).
+ */
+export function persistState(root) {
+  const dirPath = join(root, PERSIST_DIR)
+  const filePath = join(dirPath, PERSIST_FILE)
+  const tmpPath = filePath + '.tmp'
+  try {
+    const currentBranch = getCurrentBranch(root)
+    const data = {
+      enabledScopes: { ...enabledScopes },
+      targetBranch,
+      originalBranch,
+      previousActiveBranch,
+      currentBranch,
+      pausedOnBranchChange,
+      lastSyncTime,
+      lastSyncByScope: { ...lastSyncByScope },
+    }
+    if (!existsSync(dirPath)) mkdirSync(dirPath, { recursive: true })
+    writeFileSync(tmpPath, JSON.stringify(data, null, 2) + '\n', 'utf-8')
+    renameSync(tmpPath, filePath)
+  } catch {
+    // Best-effort persistence — don't break autosync if disk write fails
+  }
+}
+
+/**
+ * Remove persisted state file (on explicit full disable).
+ */
+export function clearPersistedState(root) {
+  const filePath = join(root, PERSIST_DIR, PERSIST_FILE)
+  try {
+    if (existsSync(filePath)) unlinkSync(filePath)
+  } catch { /* ignore — file may already be gone */ }
+}
+
+/**
+ * Restore module-level state from a validated persisted snapshot.
+ */
+function applyPersistedState(data) {
+  enabledScopes = { ...data.enabledScopes }
+  targetBranch = data.targetBranch
+  originalBranch = data.originalBranch || data.targetBranch
+  previousActiveBranch = data.previousActiveBranch || null
+  pausedOnBranchChange = data.pausedOnBranchChange || false
+  lastSyncTime = data.lastSyncTime || null
+  lastSyncByScope = { ...data.lastSyncByScope }
+}
+
+// ── Branch reconciliation ──
+
+/**
+ * Reconcile branch state — pause on drift, resume on return.
+ * Called at server startup and on each scheduler tick.
+ * Returns true if autosync is active (not paused), false if paused.
+ */
+export function reconcileBranch(root) {
+  if (!targetBranch || !hasAnyScopeEnabled()) return true
+
+  let current
+  try {
+    current = getCurrentBranch(root)
+  } catch {
+    return false // can't determine branch — don't sync
+  }
+
+  if (current === targetBranch) {
+    // Back on the target branch — resume if we were paused
+    if (pausedOnBranchChange) {
+      pausedOnBranchChange = false
+      previousActiveBranch = null
+      persistState(root)
+    }
+    return true
+  }
+
+  // Branch drift — pause if not already paused
+  if (!pausedOnBranchChange) {
+    pausedOnBranchChange = true
+    previousActiveBranch = targetBranch
+    persistState(root)
+  }
+  return false
+}
+
+function isProtectedBranch(name) {
+  const normalized = String(name || '').toLowerCase()
+  return normalized === 'main' || normalized === 'master'
+}
 
 // ── Git helpers (argv-based, no shell) ──
 
@@ -202,6 +358,8 @@ function resetRuntimeState({ clearBranch = true } = {}) {
   enabledScopes = { canvas: false, prototype: false }
   syncing = false
   syncingScope = null
+  pausedOnBranchChange = false
+  previousActiveBranch = null
   if (clearBranch) {
     targetBranch = null
     originalBranch = null
@@ -237,6 +395,8 @@ function buildStatusPayload(root) {
     lastErrorByScope: { ...lastErrorByScope },
     syncing,
     syncingScope,
+    pausedOnBranchChange,
+    previousActiveBranch,
   }
 }
 
@@ -347,6 +507,8 @@ function runSyncCycle(root, scope) {
       lastSyncByScope[scope] = nowIso
       lastErrorByScope[scope] = null
       lastError = null
+      // Persist state after actual commit+push (committed is still true only if push succeeded)
+      if (committed) persistState(root)
     }
     syncing = false
     syncingScope = null
@@ -357,6 +519,9 @@ function runSyncCycle(root, scope) {
 
 function runRelayCycle(root, scopes = getEnabledScopesInOrder()) {
   if (syncing || scopes.length === 0) return true
+
+  // Reconcile branch state — pause on drift, resume on return
+  if (!reconcileBranch(root)) return true // paused — skip sync
 
   let ok = true
   let firstRelaySyncTime = null
@@ -392,6 +557,19 @@ function startScheduler(root) {
 // ── Route handler ──
 
 export function createAutosyncHandler({ root, sendJson }) {
+  // ── Restore persisted state on server startup ──
+  const persisted = loadPersistedState(root)
+  if (persisted) {
+    applyPersistedState(persisted)
+    reconcileBranch(root)
+
+    // Start scheduler if any scope is enabled — reconcileBranch handles
+    // pause/resume on each tick, so the scheduler runs even when paused
+    if (hasAnyScopeEnabled()) {
+      startScheduler(root)
+    }
+  }
+
   return async (req, res, { body, path: routePath, method }) => {
     // GET /branches — list local branches
     if (routePath === '/branches' && method === 'GET') {
@@ -443,9 +621,18 @@ export function createAutosyncHandler({ root, sendJson }) {
         const normalizedScope = normalizeAutosyncScope(scope)
         const hadEnabledScopes = hasAnyScopeEnabled()
 
+        // Allow retargeting when paused on a different branch
         if (hadEnabledScopes && targetBranch !== branch) {
-          sendJson(res, 409, { error: `Autosync is active on ${targetBranch}. Disable all scopes before switching branch.` })
-          return
+          if (pausedOnBranchChange) {
+            // Clear pause and retarget to the new branch
+            pausedOnBranchChange = false
+            previousActiveBranch = null
+            targetBranch = branch
+            originalBranch = currentBranch
+          } else {
+            sendJson(res, 409, { error: `Autosync is active on ${targetBranch}. Disable all scopes before switching branch.` })
+            return
+          }
         }
 
         if (!hadEnabledScopes) {
@@ -455,6 +642,9 @@ export function createAutosyncHandler({ root, sendJson }) {
 
         enabledScopes[normalizedScope] = true
         lastErrorByScope[normalizedScope] = null
+        pausedOnBranchChange = false
+        previousActiveBranch = null
+        persistState(root)
         startScheduler(root)
 
         // Immediate first sync for the enabled scope.
@@ -478,7 +668,12 @@ export function createAutosyncHandler({ root, sendJson }) {
         }
 
         if (!hasAnyScopeEnabled()) {
+          // Explicit full disable — clear persisted state entirely
           stopAutosync(root, { clearBranch: true, clearErrors: true })
+          clearPersistedState(root)
+        } else {
+          // Partial disable — persist the remaining state
+          persistState(root)
         }
 
         sendJson(res, 200, buildStatusPayload(root))

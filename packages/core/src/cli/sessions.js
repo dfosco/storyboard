@@ -19,6 +19,7 @@ import { dim, cyan, bold, yellow } from './intro.js'
 
 const blue = (s) => `\x1b[34m${s}\x1b[0m`
 const orange = (s) => `\x1b[38;5;180m${s}\x1b[0m`
+const green = (s) => `\x1b[32m${s}\x1b[0m`
 
 const flagSchema = {
   all: { type: 'boolean', description: 'Show sessions from all branches' },
@@ -126,6 +127,127 @@ function formatRow(idx, entry, isCurrent = false, showCanvas = true) {
   return `  ${dim(num)}${statusColored}${dim(modified)}${dim(created)}${summaryColored}${badges}`
 }
 
+/** Call the bulk cleanup API */
+async function cleanupSessions(worktreeName, port, statuses) {
+  const { proxyBase, directBase } = getBaseUrl(worktreeName, port)
+  for (const base of [proxyBase, directBase]) {
+    try {
+      const res = await fetch(`${base}_storyboard/terminal/sessions/cleanup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ statuses }),
+        signal: AbortSignal.timeout(5000),
+      })
+      if (res.ok) return await res.json()
+    } catch { continue }
+  }
+  return null
+}
+
+/** Wait for a single keypress and return it. Returns null if not a TTY. */
+function waitForKey() {
+  const { stdin } = process
+  if (!stdin.isTTY) return Promise.resolve(null)
+  return new Promise((resolve) => {
+    const wasRaw = stdin.isRaw
+    stdin.setRawMode(true)
+    stdin.resume()
+    stdin.once('data', (data) => {
+      stdin.setRawMode(wasRaw)
+      stdin.pause()
+      resolve(data)
+    })
+  })
+}
+
+/** Count sessions by status */
+function countByStatus(sessions) {
+  let live = 0, background = 0, archived = 0
+  for (const s of sessions) {
+    if (s.status === 'live') live++
+    else if (s.status === 'background') background++
+    else if (s.status === 'archived') archived++
+  }
+  return { live, background, archived }
+}
+
+/** Show cleanup pre-prompt. Returns true if user chose cleanup (and it was handled). */
+async function showCleanupPrompt(sessions, worktreeName, port) {
+  const { live, background, archived } = countByStatus(sessions)
+  const cleanable = background + archived
+  if (cleanable === 0) return false
+
+  const parts = []
+  if (live > 0) parts.push(blue(`${live} live`))
+  if (background > 0) parts.push(orange(`${background} background`))
+  if (archived > 0) parts.push(dim(`${archived} archived`))
+
+  p.log.info(`${sessions.length} sessions: ${parts.join(dim(' · '))}`)
+  process.stdout.write(`\n  ${dim('Press')} Tab ${dim('to clean up sessions, or')} Enter ${dim('to browse')}\n\n`)
+
+  const key = await waitForKey()
+  if (!key) return false // non-TTY, skip pre-prompt
+  const keyStr = key.toString()
+
+  // Tab = \t, Enter = \r or \n, Ctrl+C = \x03
+  if (keyStr === '\x03') {
+    p.outro(dim('Done'))
+    process.exit(0)
+  }
+
+  if (keyStr !== '\t') return false // Enter or any other key → continue to session list
+
+  // Build cleanup options
+  const options = []
+  if (archived > 0) {
+    options.push({
+      value: 'archived',
+      label: `Remove ${bold(String(archived))} archived session${archived !== 1 ? 's' : ''}`,
+    })
+  }
+  if (cleanable > 0 && (archived > 0 && background > 0)) {
+    options.push({
+      value: 'all',
+      label: `Remove ${bold(String(cleanable))} archived + background sessions`,
+    })
+  } else if (background > 0 && archived === 0) {
+    options.push({
+      value: 'all',
+      label: `Remove ${bold(String(background))} background session${background !== 1 ? 's' : ''}`,
+    })
+  }
+  options.push({ value: 'cancel', label: dim('Cancel') })
+
+  const action = await p.select({
+    message: 'Clean up sessions',
+    options,
+  })
+
+  if (p.isCancel(action) || action === 'cancel') return false
+
+  const statuses = action === 'archived' ? ['archived'] : ['archived', 'background']
+  const targetCount = action === 'archived' ? archived : cleanable
+  const statusLabel = action === 'archived' ? 'archived' : 'archived + background'
+
+  const confirm = await p.confirm({
+    message: `Remove ${bold(String(targetCount))} ${statusLabel} session${targetCount !== 1 ? 's' : ''}? This cannot be undone.`,
+  })
+  if (p.isCancel(confirm) || !confirm) return false
+
+  const result = await cleanupSessions(worktreeName, port, statuses)
+  if (result && result.success) {
+    p.log.success(green(`Removed ${result.removed} session${result.removed !== 1 ? 's' : ''}`))
+    const rem = result.remaining
+    if (rem && rem.total > 0) {
+      p.log.info(dim(`${rem.total} remaining: ${rem.live} live, ${rem.background} background, ${rem.archived} archived`))
+    }
+  } else {
+    p.log.error('Cleanup failed — could not reach dev server')
+  }
+
+  return true // handled — re-enter loop to refresh list
+}
+
 async function main() {
   const worktreeName = detectWorktreeName()
   const port = resolveRunningPort(worktreeName)
@@ -154,6 +276,10 @@ async function main() {
       p.outro('')
       process.exit(0)
     }
+
+    // Show Tab cleanup pre-prompt when there are cleanable sessions
+    const didCleanup = await showCleanupPrompt(sessions, worktreeName, port)
+    if (didCleanup) continue // re-fetch and re-render after cleanup
 
     // Determine if all sessions are from the same canvas (hide canvas name if so)
     const canvasIds = new Set(sessions.map(s => s.canvasId).filter(c => c && c !== 'unknown'))

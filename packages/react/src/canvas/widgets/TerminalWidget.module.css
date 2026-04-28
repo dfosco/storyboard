@@ -204,6 +204,85 @@
   }
 }
 
+/* ── Resource-limited overlay ── */
+
+.resourceIcon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.resourceTitle {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #d29922;
+}
+
+.resourceMessage {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  color: #8b949e;
+  text-align: center;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resourceCounts {
+  font-family: 'SF Mono', 'Fira Code', Menlo, monospace;
+  font-size: 11px;
+  color: #6e7681;
+}
+
+.resourceActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.resourceBtn {
+  all: unset;
+  cursor: pointer;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #ffffff;
+  background: #da3633;
+  transition: background 100ms;
+}
+
+.resourceBtn:hover {
+  background: #f85149;
+}
+
+.resourceBtnSecondary {
+  all: unset;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  color: #8b949e;
+  transition: color 100ms;
+}
+
+.resourceBtnSecondary:hover {
+  color: #e6edf3;
+}
+
+.resourceMuted {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  color: #6e7681;
+  text-align: center;
+  max-width: 240px;
+}
+
 /* Fullscreen expand */
 
 /* Drag hint tooltip — appears when user tries to drag the terminal body */

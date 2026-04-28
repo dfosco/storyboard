@@ -185,6 +185,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     else clearExpandedOverride()
   }, [setExpandedOverride, clearExpandedOverride])
   const [waking, setWaking] = useState(false)
+  const [resourceLimited, setResourceLimited] = useState(null)
   const [showDragHint, setShowDragHint] = useState(false)
   const expandContainerRef = useRef(null)
   const dragHintTimer = useRef(null)
@@ -308,6 +309,11 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           if (data && data.startsWith('{')) {
             try {
               const msg = JSON.parse(data)
+              if (msg.type === 'resource-limited') {
+                setResourceLimited(msg)
+                setSessionEnded(true)
+                return
+              }
               if (msg.type === 'session-info' || msg.type === 'conflict' || msg.type === 'detached') return
             } catch { /* not JSON */ }
           }
@@ -467,10 +473,38 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
     setTimeout(() => {
       setWaking(false)
       setSessionEnded(false)
+      setResourceLimited(null)
       setError(null)
       setConnectAttempt(c => c + 1)
     }, 1500)
   }, [])
+
+  const handleCleanupAndRetry = useCallback(async () => {
+    const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
+    const baseClean = base.endsWith('/') ? base : base + '/'
+    try {
+      const res = await fetch(`${baseClean}_storyboard/terminal/sessions/cleanup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ statuses: ['archived', 'background'] }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.removed > 0) {
+          handleStartSession()
+          return
+        }
+        // Nothing was removed — update counts from server
+        setResourceLimited(prev => prev ? {
+          ...prev,
+          cleanupResult: 'nothing-to-clean',
+          counts: data.remaining || prev.counts,
+        } : prev)
+        return
+      }
+    } catch { /* ignore fetch errors */ }
+    setResourceLimited(prev => prev ? { ...prev, cleanupResult: 'failed' } : prev)
+  }, [handleStartSession])
 
 
   return (
@@ -519,8 +553,47 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
           </div>
         )}
 
-        {/* Session ended */}
-        {sessionEnded && (
+        {/* Session ended — resource limited */}
+        {sessionEnded && resourceLimited && (
+          <div
+            className={overlayStyles.interactOverlay}
+            style={{ backgroundColor: 'var(--term-bg, #0d1117)', flexDirection: 'column', gap: '8px', padding: '24px' }}
+          >
+            <span className={styles.resourceIcon}>⚠</span>
+            <span className={styles.resourceTitle}>No terminal devices available</span>
+            <span className={styles.resourceMessage}>
+              Too many terminal sessions are open.
+              {resourceLimited.counts && (
+                <span className={styles.resourceCounts}>
+                  {resourceLimited.counts.live} live · {resourceLimited.counts.background} background · {resourceLimited.counts.archived} archived
+                </span>
+              )}
+            </span>
+            <div className={styles.resourceActions}>
+              {!resourceLimited.cleanupResult && (resourceLimited.counts?.background > 0 || resourceLimited.counts?.archived > 0) && (
+                <button className={styles.resourceBtn} onClick={handleCleanupAndRetry}>
+                  Close background sessions
+                </button>
+              )}
+              {resourceLimited.cleanupResult === 'nothing-to-clean' && (
+                <span className={styles.resourceMuted}>
+                  All background sessions already cleaned. Close some live terminals to free resources.
+                </span>
+              )}
+              {resourceLimited.cleanupResult === 'failed' && (
+                <span className={styles.resourceMuted}>
+                  Cleanup failed — could not reach dev server.
+                </span>
+              )}
+              <button className={styles.resourceBtnSecondary} onClick={handleStartSession}>
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Session ended — normal (zzz) */}
+        {sessionEnded && !resourceLimited && (
           <div
             className={overlayStyles.interactOverlay}
             style={{ backgroundColor: 'var(--term-bg, #0d1117)', flexDirection: 'column', gap: 0 }}
@@ -591,6 +664,7 @@ function TerminalExpandPane({ widgetId, expandContainerRef, prettyName, isAgent,
       return {
         id: widgetId,
         label: getSplitPaneLabel({ type: isAgent ? 'agent' : 'terminal', props: { prettyName } }),
+        widgetType: isAgent ? 'agent' : 'terminal',
         kind: 'external',
         attach: (container) => {
           expandContainerRef.current = container

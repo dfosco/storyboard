@@ -306,6 +306,44 @@ export function killSession(tmuxName) {
 }
 
 /**
+ * Bulk cleanup — kill all sessions matching the given statuses.
+ * Returns { removed, remaining: { live, background, archived, total } }.
+ */
+export function bulkCleanup({ statuses }) {
+  const statusSet = new Set(statuses)
+  const toKill = []
+
+  for (const [name, entry] of sessions) {
+    if (statusSet.has(entry.status)) {
+      toKill.push(name)
+    }
+  }
+
+  for (const name of toKill) {
+    cancelOrphanTimer(name)
+    killTmuxSession(name)
+    sessions.delete(name)
+  }
+
+  if (toKill.length > 0) persist()
+
+  return { removed: toKill.length, remaining: getSessionStats() }
+}
+
+/**
+ * Get session counts by status.
+ */
+export function getSessionStats() {
+  let live = 0, background = 0, archived = 0
+  for (const entry of sessions.values()) {
+    if (entry.status === 'live') live++
+    else if (entry.status === 'background') background++
+    else if (entry.status === 'archived') archived++
+  }
+  return { live, background, archived, total: live + background + archived }
+}
+
+/**
  * Get a session entry by tmux name.
  */
 export function getSession(tmuxName) {

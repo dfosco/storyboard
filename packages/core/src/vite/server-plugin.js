@@ -22,7 +22,7 @@ import { setupSelectedWidgets } from '../canvas/selectedWidgets.js'
 import { HotPoolManager } from '../canvas/hot-pool.js'
 import { createAutosyncHandler } from '../autosync/server.js'
 import { setupTerminalServer } from '../canvas/terminal-server.js'
-import { listSessions, detachSession, killSession, orphanSession } from '../canvas/terminal-registry.js'
+import { listSessions, detachSession, killSession, orphanSession, bulkCleanup, getSessionStats } from '../canvas/terminal-registry.js'
 import { execSync as cpExecSync } from 'node:child_process'
 import { list as listRunningServers } from '../worktree/serverRegistry.js'
 
@@ -311,6 +311,36 @@ export default function storyboardServer() {
           const url = new URL(req.url, 'http://localhost')
           const filterBranch = url.searchParams.get('branch') || null
           sendJsonLogged(res, 200, { sessions: listSessions(filterBranch) })
+          return
+        }
+
+        // GET /sessions/stats — quick session counts by status
+        if (ctx.method === 'GET' && subpath === 'sessions/stats') {
+          sendJsonLogged(res, 200, getSessionStats())
+          return
+        }
+
+        // POST /sessions/cleanup — bulk remove sessions by status
+        if (ctx.method === 'POST' && subpath === 'sessions/cleanup') {
+          let body = ''
+          for await (const chunk of req) body += chunk
+          try {
+            const { statuses } = JSON.parse(body)
+            const allowed = new Set(['archived', 'background'])
+            if (!Array.isArray(statuses) || statuses.length === 0) {
+              sendJsonLogged(res, 400, { error: 'statuses must be a non-empty array' })
+              return
+            }
+            const invalid = statuses.filter(s => !allowed.has(s))
+            if (invalid.length > 0) {
+              sendJsonLogged(res, 400, { error: `Invalid statuses: ${invalid.join(', ')}. Allowed: archived, background` })
+              return
+            }
+            const result = bulkCleanup({ statuses })
+            sendJsonLogged(res, 200, { success: true, ...result })
+          } catch {
+            sendJsonLogged(res, 400, { error: 'Invalid JSON body' })
+          }
           return
         }
 

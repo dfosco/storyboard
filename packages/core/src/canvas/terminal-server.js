@@ -42,6 +42,8 @@ import {
   generateTmuxName,
   findTmuxNameForWidget,
   killSession,
+  bulkCleanup,
+  getSessionStats,
 } from './terminal-registry.js'
 import {
   writeTerminalConfig as writeTermConfig,
@@ -139,6 +141,58 @@ let actualServerPort = null
 
 /** Hot pool manager reference (set by setupTerminalServer) */
 let hotPoolRef = null
+
+// ── PTY exhaustion detection & recovery ──
+
+const PTY_ERROR_PATTERNS = [
+  /ENXIO/, /posix_openpt/, /Device not configured/,
+  /no available pty/i, /too many pty/i, /out of pty/i,
+]
+
+function isPtyExhausted(err) {
+  const msg = err?.message || ''
+  return PTY_ERROR_PATTERNS.some(p => p.test(msg))
+}
+
+/**
+ * Spawn a PTY process with automatic cleanup on PTY exhaustion.
+ * On failure: kills archived sessions → retries → kills background → retries → throws.
+ * If all cleanup attempts fail, throws an error with `err.resourceLimited = true`
+ * and `err.stats` containing session counts.
+ */
+function spawnWithCleanup(command, args, opts) {
+  try {
+    return pty.spawn(command, args, opts)
+  } catch (err) {
+    if (!isPtyExhausted(err)) throw err
+
+    devLog().logEvent('warn', 'PTY exhaustion detected, attempting cleanup', { error: err.message })
+
+    // Wave 1: clean archived sessions
+    const wave1 = bulkCleanup({ statuses: ['archived'] })
+    if (wave1.removed > 0) {
+      devLog().logEvent('info', `Cleaned ${wave1.removed} archived sessions, retrying spawn`)
+      try { return pty.spawn(command, args, opts) } catch (e) {
+        if (!isPtyExhausted(e)) throw e
+      }
+    }
+
+    // Wave 2: clean background sessions
+    const wave2 = bulkCleanup({ statuses: ['background'] })
+    if (wave2.removed > 0) {
+      devLog().logEvent('info', `Cleaned ${wave2.removed} background sessions, retrying spawn`)
+      try { return pty.spawn(command, args, opts) } catch (e) {
+        if (!isPtyExhausted(e)) throw e
+      }
+    }
+
+    // All cleanup exhausted — throw with resource-limited metadata
+    const resourceErr = new Error('No PTY devices available — all cleanup attempts exhausted')
+    resourceErr.resourceLimited = true
+    resourceErr.stats = getSessionStats()
+    throw resourceErr
+  }
+}
 
 /** Active snapshot intervals keyed by tmuxName */
 const snapshotIntervals = new Map()
@@ -747,7 +801,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
       } catch {}
     }
 
-    ptyProcess = pty.spawn('tmux', args, {
+    ptyProcess = spawnWithCleanup('tmux', args, {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,
@@ -1041,7 +1095,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
   } else {
     const noRcFlag = shell.endsWith('/zsh') ? '--no-rcs' : shell.endsWith('/bash') ? '--norc' : ''
     const shellArgs = noRcFlag ? [noRcFlag] : []
-    ptyProcess = pty.spawn(shell, shellArgs, {
+    ptyProcess = spawnWithCleanup(shell, shellArgs, {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,
@@ -1051,9 +1105,22 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
   }
   } catch (spawnErr) {
     devLog().logEvent('error', 'Terminal spawn failed', { error: spawnErr.message })
+
+    // Roll back registry — mark as background (not live) since spawn failed
+    disconnectSession(tmuxName, entry.generation)
+
     if (ws.readyState === ws.OPEN) {
-      ws.send(`\r\n\x1b[31m✖ Terminal failed to start: ${spawnErr.message}\x1b[0m\r\n`)
-      ws.send(`\x1b[2mTry: chmod +x node_modules/node-pty/prebuilds/darwin-*/spawn-helper\x1b[0m\r\n`)
+      if (spawnErr.resourceLimited) {
+        // PTY exhaustion — send structured error so browser can show cleanup UI
+        sendJson(ws, {
+          type: 'resource-limited',
+          message: 'No PTY devices available. Too many terminal sessions are open.',
+          counts: spawnErr.stats || getSessionStats(),
+        })
+      } else {
+        ws.send(`\r\n\x1b[31m✖ Terminal failed to start: ${spawnErr.message}\x1b[0m\r\n`)
+        ws.send(`\x1b[2mTry: chmod +x node_modules/node-pty/prebuilds/darwin-*/spawn-helper\x1b[0m\r\n`)
+      }
       ws.close()
     }
     return

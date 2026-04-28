@@ -15,26 +15,40 @@ export function useBranches(basePath) {
   })
 
   const [gitUser, setGitUser] = useState(null)
+  const branchBasePath = (basePath || '/').replace(/\/branch--[^/]*\/?$/, '/')
 
   useEffect(() => {
     const apiBase = (basePath || '/').replace(/\/$/, '')
+    const branchManifestUrl = `${branchBasePath.replace(/\/$/, '')}/branches.json`
 
     fetch(`${apiBase}/_storyboard/git-user`).then(r => r.ok ? r.json() : null)
       .then(data => { if (data?.name) setGitUser(data.name) })
       .catch(() => {})
 
-    // Always fetch live branch list
+    // Keep dev behavior: prefer live branch list from server API.
+    // On static deployments (GitHub Pages), fallback to branches.json.
     fetch(`${apiBase}/_storyboard/worktrees`).then(r => r.ok ? r.json() : null)
-      .then(data => { if (Array.isArray(data) && data.length > 0) setBranches(data) })
-      .catch(() => {})
-  }, [basePath])
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setBranches(data)
+          return true
+        }
+        return false
+      })
+      .catch(() => false)
+      .then((hasLiveData) => {
+        if (hasLiveData || isLocalDev) return
+        return fetch(branchManifestUrl)
+          .then(r => r.ok ? r.json() : null)
+          .then(data => { if (Array.isArray(data) && data.length > 0) setBranches(data) })
+          .catch(() => {})
+      })
+  }, [basePath, branchBasePath])
 
   const currentBranch = useMemo(() => {
     const m = (basePath || '').match(/\/branch--([^/]+)\/?$/)
     return m ? m[1] : 'main'
   }, [basePath])
-
-  const branchBasePath = (basePath || '/').replace(/\/branch--[^/]*\/$/, '/')
 
   return { branches, currentBranch, branchBasePath, gitUser }
 }

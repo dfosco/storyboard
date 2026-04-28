@@ -38,7 +38,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { Buffer } from 'node:buffer'
 import { materializeFromText, serializeEvent } from './materializer.js'
-import { toCanvasId, parseCanvasId, canvasIdBasename, isLegacyCanvasId } from './identity.js'
+import { toCanvasId, parseCanvasId } from './identity.js'
 import {
   GH_INSTALL_URL,
   GitHubEmbedError,
@@ -207,39 +207,15 @@ function parseExportNames(filePath) {
 
 /**
  * Find a canvas JSONL file by canonical ID.
- * Tries an exact canonical match first. If the input is a legacy bare name
- * (no path segments), falls back to basename matching across all canvases.
- * Basename fallback only succeeds when exactly one canvas matches — ambiguous
- * lookups return null with a console warning.
+ * Only matches canonical path-based IDs from toCanvasId().
  */
 function findCanvasPath(root, canvasId) {
   const files = findCanvasFiles(root)
 
-  // 1. Exact canonical match — always wins
   for (const file of files) {
     const id = toCanvasId(file)
     if (id === canvasId) {
       return path.resolve(root, file)
-    }
-  }
-
-  // 2. Legacy basename fallback — only for bare names like "overview"
-  if (isLegacyCanvasId(canvasId)) {
-    const matches = []
-    for (const file of files) {
-      if (canvasIdBasename(toCanvasId(file)) === canvasId) {
-        matches.push(file)
-      }
-    }
-    if (matches.length === 1) {
-      return path.resolve(root, matches[0])
-    }
-    if (matches.length > 1) {
-      console.warn(
-        `[storyboard] Ambiguous canvas name "${canvasId}" matches ${matches.length} canvases: ` +
-        matches.map(f => toCanvasId(f)).join(', ') +
-        '. Use the full path-based ID to disambiguate.'
-      )
     }
   }
 

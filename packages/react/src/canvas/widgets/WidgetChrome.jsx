@@ -406,7 +406,7 @@ export default function WidgetChrome({
     >
       <div ref={slotRef} className={`tc-drag-surface ${styles.widgetSlot} ${selected ? styles.widgetSlotSelected : ''} ${multiSelected ? styles.widgetSlotMultiSelected : ''}`} data-widget-selected={selected || undefined} data-widget-interacting={interacting || undefined}>
         {children}
-        {gate.enabled && !interacting && (
+        {gate.enabled && !interacting && !readOnly && (
           <div
             className={overlayStyles.interactOverlay}
             onClick={handleGateClick}

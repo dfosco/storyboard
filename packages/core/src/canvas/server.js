@@ -2221,15 +2221,25 @@ export function Default() {
       const now = new Date()
       const pad = (n) => String(n).padStart(2, '0')
       const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}--${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`
+      const suffix = `-${Math.random().toString(36).slice(2, 6)}`
       const prefix = canvasName ? `${canvasName.replace(/[/:]/g, '--')}--` : ''
 
       // Support explicit filename for snapshot uploads (stable naming)
+      // and cropped image uploads (user-initiated crop)
       const explicitName = body.filename
       let filename
       if (explicitName && /^snapshot-[a-z0-9_-]+--(latest|light|dark)\.webp$/i.test(explicitName)) {
         filename = explicitName
+      } else if (explicitName && /--cropped--\d{4}-\d{2}-\d{2}--\d{2}-\d{2}-\d{2}\.\w+$/.test(explicitName)) {
+        // Cropped image: validate format, strip path traversal
+        const safeName = explicitName.replace(/[/\\]/g, '')
+        if (safeName === explicitName && !explicitName.includes('..')) {
+          filename = explicitName
+        } else {
+          filename = `${prefix}${dateStr}${suffix}.${ext}`
+        }
       } else {
-        filename = `${prefix}${dateStr}.${ext}`
+        filename = `${prefix}${dateStr}${suffix}.${ext}`
       }
       const targetDir = resolveWriteDir(canvasName || '')
 

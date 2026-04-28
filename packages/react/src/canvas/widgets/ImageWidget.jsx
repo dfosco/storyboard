@@ -1,14 +1,17 @@
-import { useRef, useCallback, useState, forwardRef, useImperativeHandle } from 'react'
+import { useRef, useCallback, useState, useMemo, forwardRef, useImperativeHandle } from 'react'
 import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
+import ExpandedPane from './ExpandedPane.jsx'
+import CropOverlay from './CropOverlay.jsx'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetConfig.js'
-import { toggleImagePrivacy } from '../canvasApi.js'
+import { toggleImagePrivacy, cropAndUpload } from '../canvasApi.js'
+import { findAllConnectedSplitTargets, getSplitPaneLabel, buildPaneForWidget, buildSplitLayout } from './expandUtils.js'
 import styles from './ImageWidget.module.css'
 
 const imageSchema = schemas['image']
 
-function getImageUrl(src) {
+export function getImageUrl(src) {
   if (!src) return ''
   const base = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '')
   return `${base}/_storyboard/canvas/images/${src}`
@@ -16,11 +19,18 @@ function getImageUrl(src) {
 
 /**
  * Canvas widget that displays a pasted image.
- * Supports aspect-ratio locked resize and privacy toggle.
+ * Supports aspect-ratio locked resize, privacy toggle, and expand/split-screen.
  */
-const ImageWidget = forwardRef(function ImageWidget({ props, onUpdate, resizable }, ref) {
+const ImageWidget = forwardRef(function ImageWidget({ id, props, onUpdate, resizable }, ref) {
   const containerRef = useRef(null)
+  const imgRef = useRef(null)
   const [naturalRatio, setNaturalRatio] = useState(null)
+  const [naturalSize, setNaturalSize] = useState(null)
+  const [expandMode, setExpandMode] = useState(null)
+  const expanded = expandMode !== null
+  const [cropping, setCropping] = useState(false)
+  const [previousSrc, setPreviousSrc] = useState(null)
+  const [containerSize, setContainerSize] = useState(null)
 
   const src = readProp(props, 'src', imageSchema)
   const isPrivate = readProp(props, 'private', imageSchema)
@@ -34,6 +44,7 @@ const ImageWidget = forwardRef(function ImageWidget({ props, onUpdate, resizable
     const img = e.target
     if (img.naturalWidth && img.naturalHeight) {
       setNaturalRatio(img.naturalWidth / img.naturalHeight)
+      setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight })
     }
   }, [])
 
@@ -43,8 +54,44 @@ const ImageWidget = forwardRef(function ImageWidget({ props, onUpdate, resizable
     onUpdate?.({ width: newWidth, height: newHeight })
   }, [naturalRatio, width, height, onUpdate])
 
+  const handleCropSave = useCallback(async (cropRect) => {
+    if (!src) return
+    const canvasId = window.__storyboardCanvasBridgeState?.canvasId || ''
+    try {
+      const result = await cropAndUpload(src, cropRect, canvasId)
+      if (result.success) {
+        setPreviousSrc(src)
+        onUpdate?.({ src: result.filename })
+      }
+    } catch (err) {
+      console.error('[canvas] Failed to crop image:', err)
+    }
+    setCropping(false)
+  }, [src, onUpdate])
+
+  const handleCropCancel = useCallback(() => {
+    setCropping(false)
+  }, [])
+
+  const handleCropUndo = useCallback(() => {
+    if (previousSrc) {
+      onUpdate?.({ src: previousSrc })
+      setPreviousSrc(null)
+    }
+    setCropping(false)
+  }, [previousSrc, onUpdate])
+
   useImperativeHandle(ref, () => ({
     handleAction(actionId) {
+      if (actionId === 'expand' || actionId === 'expand-single') { setExpandMode('single'); return true }
+      if (actionId === 'split-screen') { setExpandMode('split'); return true }
+      if (actionId === 'crop-image') {
+        // Measure container at activation time (not during render)
+        const el = containerRef.current
+        if (el) setContainerSize({ width: el.offsetWidth, height: el.offsetHeight })
+        setCropping(true)
+        return true
+      }
       if (actionId === 'toggle-private') {
         if (!src) return
         toggleImagePrivacy(src).then((result) => {
@@ -86,23 +133,37 @@ const ImageWidget = forwardRef(function ImageWidget({ props, onUpdate, resizable
   if (typeof width === 'number') sizeStyle.width = `${width}px`
 
   return (
+    <>
     <WidgetWrapper className={styles.imageWrapper}>
-      <div ref={containerRef} className={styles.container} style={sizeStyle}>
+      <div ref={containerRef} className={styles.container} style={sizeStyle} data-crop-active={cropping || undefined}>
         <div className={styles.frame}>
           <img
+            ref={imgRef}
             src={getImageUrl(src)}
             alt=""
             className={styles.image}
             onLoad={handleImageLoad}
             draggable={false}
           />
-          {isPrivate && (
+          {isPrivate && !cropping && (
             <span className={styles.privateBadge} title="Private — not committed to git">
               Private
             </span>
           )}
+          {cropping && (
+            <CropOverlay
+              containerWidth={containerSize?.width || width || 400}
+              containerHeight={containerSize?.height || height || 300}
+              naturalWidth={naturalSize?.width}
+              naturalHeight={naturalSize?.height}
+              onSave={handleCropSave}
+              onCancel={handleCropCancel}
+              onUndo={handleCropUndo}
+              canUndo={!!previousSrc}
+            />
+          )}
         </div>
-        {resizable && (
+        {resizable && !cropping && (
           <ResizeHandle
             targetRef={containerRef}
             minWidth={100}
@@ -112,7 +173,67 @@ const ImageWidget = forwardRef(function ImageWidget({ props, onUpdate, resizable
         )}
       </div>
     </WidgetWrapper>
+    {expanded && (
+      <ImageExpandPane
+        widgetId={id}
+        src={src}
+        splitMode={expandMode === 'split'}
+        onClose={() => setExpandMode(null)}
+      />
+    )}
+    </>
   )
 })
+
+/**
+ * Builds pane configs and renders ExpandedPane for an expanded image widget.
+ */
+function ImageExpandPane({ widgetId, src, splitMode, onClose }) {
+  const connectedWidgets = useMemo(
+    () => splitMode ? findAllConnectedSplitTargets(widgetId) : [],
+    [widgetId, splitMode],
+  )
+  const primaryWidget = useMemo(() => {
+    const bridge = window.__storyboardCanvasBridgeState
+    return bridge?.widgets?.find((w) => w.id === widgetId) || { id: widgetId, type: 'image', position: { x: 0, y: 0 }, props: {} }
+  }, [widgetId])
+
+  const surface = splitMode ? 'splitbar' : 'fullbar'
+
+  const buildPaneFn = useCallback((widget) => {
+    if (widget.id === widgetId) {
+      return {
+        id: widgetId,
+        label: getSplitPaneLabel(primaryWidget) || 'Image',
+        widgetType: 'image',
+        kind: 'react',
+        render: () => (
+          <div className={styles.expandedImageContainer}>
+            <img
+              src={getImageUrl(src)}
+              alt=""
+              className={styles.expandedImage}
+              draggable={false}
+            />
+          </div>
+        ),
+      }
+    }
+    return buildPaneForWidget(widget, surface)
+  }, [widgetId, primaryWidget, src, surface])
+
+  const layout = useMemo(
+    () => buildSplitLayout(primaryWidget, connectedWidgets, buildPaneFn),
+    [primaryWidget, connectedWidgets, buildPaneFn],
+  )
+
+  return (
+    <ExpandedPane
+      initialLayout={layout}
+      variant={layout.flat().length <= 1 ? 'modal' : 'full'}
+      onClose={onClose}
+    />
+  )
+}
 
 export default ImageWidget

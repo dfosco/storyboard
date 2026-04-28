@@ -307,6 +307,7 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
         <div className={styles.pane} key={pane.id}>
           <ExpandedPaneTopBar
             label={pane.label}
+            widgetType={pane.widgetType}
             actions={pane.actions}
             features={pane.features}
             getState={pane.getState}
@@ -334,6 +335,7 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
           >
             <ExpandedPaneTopBar
               label={pane.label}
+              widgetType={pane.widgetType}
               actions={pane.actions}
               features={pane.features}
               getState={pane.getState}
@@ -363,6 +365,7 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
         <div className={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
           <ExpandedPaneTopBar
             label={pane.label}
+            widgetType={pane.widgetType}
             actions={pane.actions}
             features={pane.features}
             getState={pane.getState}
@@ -410,6 +413,7 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
         <>
           <ExpandedPaneTopBar
             label={allPanes[0]?.label}
+            widgetType={allPanes[0]?.widgetType}
             actions={allPanes[0]?.actions}
             features={allPanes[0]?.features}
             getState={allPanes[0]?.getState}

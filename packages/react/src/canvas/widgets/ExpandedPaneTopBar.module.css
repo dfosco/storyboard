@@ -15,6 +15,16 @@
   user-select: none;
 }
 
+.widgetIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8b949e;
+  font-size: 12px;
+  line-height: 1;
+}
+
 .label {
   white-space: nowrap;
   overflow: hidden;

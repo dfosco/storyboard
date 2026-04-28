@@ -263,6 +263,7 @@ function MarkdownExpandPane({ widgetId, content, splitMode, onClose, onUpdate })
       return {
         id: widgetId,
         label: getSplitPaneLabel(primaryWidget) || 'Markdown',
+        widgetType: 'markdown',
         kind: 'react',
         features: surfaceFeatures,
         getState,

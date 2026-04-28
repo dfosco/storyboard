@@ -405,6 +405,7 @@ function LinkPreviewExpandPane({ widgetId, label, splitMode, onClose, children }
       return {
         id: widgetId,
         label,
+        widgetType: 'link-preview',
         kind: 'react',
         render: () => children,
       }

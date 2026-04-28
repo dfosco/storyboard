@@ -8,7 +8,9 @@ import { createElement, useCallback, useState } from 'react'
 import { getStoryData } from '@dfosco/storyboard-core'
 import { isSplitScreenCapable, getWidgetMeta, getFeaturesForSurface } from './widgetConfig.js'
 import { ExpandedMarkdownEditor } from './MarkdownBlock.jsx'
+import { getImageUrl } from './ImageWidget.jsx'
 import linkStyles from './LinkPreview.module.css'
+import imageStyles from './ImageWidget.module.css'
 
 // Re-export for convenience
 export { isSplitScreenCapable }
@@ -55,6 +57,7 @@ export function buildPaneForWidget(widget, surface = 'splitbar') {
     return {
       id: widget.id,
       label,
+      widgetType: widget.type,
       kind: 'external',
       attach: (container) => reparentTerminalInto(widget.id, container),
       onResize: (rect) => {
@@ -86,6 +89,7 @@ export function buildPaneForWidget(widget, surface = 'splitbar') {
     return {
       id: widget.id,
       label,
+      widgetType: widget.type,
       kind: 'react',
       render: () => createElement('iframe', {
         src: iframeUrl,
@@ -109,6 +113,7 @@ export function buildPaneForWidget(widget, surface = 'splitbar') {
     return {
       id: widget.id,
       label,
+      widgetType: widget.type,
       kind: 'react',
       features: surfaceFeatures,
       getState: (key) => {
@@ -127,8 +132,20 @@ export function buildPaneForWidget(widget, surface = 'splitbar') {
     return {
       id: widget.id,
       label,
+      widgetType: widget.type,
       kind: 'react',
       render: () => createElement(LazyLinkPreviewPane, { widget }),
+    }
+  }
+
+  // Image: display at full size within the pane
+  if (widget.type === 'image') {
+    return {
+      id: widget.id,
+      label,
+      widgetType: widget.type,
+      kind: 'react',
+      render: () => createElement(LazyImagePane, { widget }),
     }
   }
 
@@ -198,6 +215,20 @@ function LazyLinkPreviewPane({ widget }) {
 function DangerousHtmlDiv({ html, className }) {
   const setRef = useCallback((el) => { if (el) el.innerHTML = html }, [html])
   return createElement('div', { ref: setRef, className })
+}
+
+/** Image renderer for secondary expanded/split-screen panes. */
+function LazyImagePane({ widget }) {
+  const src = widget.props?.src
+  if (!src) return null
+  return createElement('div', { className: imageStyles.expandedImageContainer },
+    createElement('img', {
+      src: getImageUrl(src),
+      alt: '',
+      className: imageStyles.expandedImage,
+      draggable: false,
+    }),
+  )
 }
 
 /**
@@ -516,6 +547,11 @@ export function getSplitPaneLabel(widget) {
   }
   if (widget.type === 'link-preview') {
     return `${widget.props?.github ? 'GitHub' : 'Link'} · ${widget.props?.title || widget.props?.url || '…'}`
+  }
+  if (widget.type === 'image') {
+    const filename = widget.props?.src || ''
+    const name = filename.replace(/^~/, '').replace(/\.[^.]+$/, '') || '…'
+    return `Image · ${name}`
   }
   return typeName
 }

@@ -46,6 +46,7 @@ export function NoActions() {
       <div style={barWrapperStyle}>
         <ExpandedPaneTopBar
           label="Terminal · pearl-wren"
+          widgetType="terminal"
           showClose
           onClose={() => {}}
         />
@@ -55,6 +56,7 @@ export function NoActions() {
       <div style={barWrapperStyle}>
         <ExpandedPaneTopBar
           label="Prototype · /Dashboard"
+          widgetType="prototype"
           onClose={() => {}}
         />
       </div>
@@ -100,6 +102,7 @@ export function MarkdownToggle() {
       <div style={barWrapperStyle}>
         <ExpandedPaneTopBar
           label="Markdown · Design decisions in the mock"
+          widgetType="markdown"
           features={features}
           getState={getState}
           onAction={onAction}
@@ -112,6 +115,7 @@ export function MarkdownToggle() {
       <div style={barWrapperStyle}>
         <ExpandedPaneTopBar
           label="Markdown · Requirements"
+          widgetType="markdown"
           features={features}
           getState={getState}
           onAction={onAction}
@@ -132,6 +136,7 @@ export function MultipleActions() {
       <div style={barWrapperStyle}>
         <ExpandedPaneTopBar
           label="Story · LoginForm / Default"
+          widgetType="story"
           features={[
             { id: 'show-code', type: 'action', action: 'show-code', label: 'Show code', icon: 'code' },
             { id: 'open-external', type: 'action', action: 'open-external', label: 'Open in new tab', icon: 'open-external' },
@@ -146,6 +151,7 @@ export function MultipleActions() {
       <div style={barWrapperStyle}>
         <ExpandedPaneTopBar
           label="Story · LoginForm / Default"
+          widgetType="story"
           features={[
             { id: 'show-code', type: 'action', action: 'show-code', label: 'Show code', icon: 'code' },
             { id: 'open-external', type: 'action', action: 'open-external', label: 'Open in new tab', icon: 'open-external' },
@@ -183,6 +189,7 @@ export function SplitSimulation() {
         <div style={{ flex: 1 }}>
           <ExpandedPaneTopBar
             label="Markdown · API Notes"
+            widgetType="markdown"
             features={mdFeatures}
             getState={(key) => key === 'editing' ? editing : undefined}
             onAction={(id) => { if (id === 'toggle-edit') setEditing(v => !v) }}
@@ -196,6 +203,7 @@ export function SplitSimulation() {
         <div style={{ flex: 1 }}>
           <ExpandedPaneTopBar
             label="Story · prototype-selector-mock"
+            widgetType="story"
             features={[
               { id: 'show-code', type: 'action', action: 'show-code', label: 'Show code', icon: 'code' },
             ]}

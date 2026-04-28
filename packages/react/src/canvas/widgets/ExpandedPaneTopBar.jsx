@@ -15,7 +15,14 @@
 import { ScreenNormalIcon } from '@primer/octicons-react'
 import { Tooltip } from '@primer/react'
 import { ICON_REGISTRY } from './widgetIcons.jsx'
+import { getWidgetMeta } from './widgetConfig.js'
+import Icon from '../../Icon.jsx'
 import styles from './ExpandedPaneTopBar.module.css'
+
+/** Named icons use only lowercase alphanumeric, hyphens, and slashes. */
+function isNamedIcon(str) {
+  return str && /^[a-z0-9/-]+$/i.test(str)
+}
 
 /**
  * Resolve a feature's icon and label, applying toggle state if configured.
@@ -41,6 +48,7 @@ function resolveFeatureDisplay(feature, getState) {
 /**
  * @param {Object} props
  * @param {string} props.label — pane display label
+ * @param {string} [props.widgetType] — widget type string for icon resolution
  * @param {boolean} [props.showClose] — show close button (rightmost pane)
  * @param {() => void} [props.onClose] — close entire ExpandedPane
  * @param {Array<{ label: string, onClick: () => void }>} [props.actions] — legacy action buttons
@@ -48,10 +56,18 @@ function resolveFeatureDisplay(feature, getState) {
  * @param {(key: string) => any} [props.getState] — state accessor for toggle resolution
  * @param {(actionId: string) => void} [props.onAction] — action dispatch callback
  */
-export default function ExpandedPaneTopBar({ label, showClose, onClose, actions, features, getState, onAction }) {
+export default function ExpandedPaneTopBar({ label, widgetType, showClose, onClose, actions, features, getState, onAction }) {
   const resolvedActions = typeof actions === 'function' ? actions() : actions
+  const meta = widgetType ? getWidgetMeta(widgetType) : null
+  const iconName = meta?.icon || null
+
   return (
     <div className={styles.bar}>
+      {iconName && (
+        <span className={styles.widgetIcon} aria-hidden="true">
+          {isNamedIcon(iconName) ? <Icon name={iconName} size={12} /> : iconName}
+        </span>
+      )}
       <span className={styles.label}>{label}</span>
 
       {/* Config-driven feature actions */}

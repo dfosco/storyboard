@@ -76,7 +76,7 @@ const { x, y, adjusted } = findFreePosition({
 |------|------------|-------------|-------------|
 | `sticky-note` | 270×170 | `text` | `color` (yellow, blue, green, pink, purple, orange), `width`, `height` |
 | `markdown` | 530×240 | `content` (markdown) | `width` |
-| `prototype` | 800×600 | `src` (URL/path) | `label`, `zoom` (25–200), `width`, `height` |
+| `prototype` | 800×600 | `src` (URL/path) | `label`, `zoom` (10–250), `width`, `height` |
 | `figma-embed` | 800×450 | `url` | `width`, `height` |
 | `codepen-embed` | 800×450 | `url` | `width`, `height` |
 | `story` | 780×420 | `storyId` + `exportName` | `width`, `height`, `showCode` |

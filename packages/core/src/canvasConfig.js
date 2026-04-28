@@ -22,6 +22,7 @@
 let _pasteRules = []
 let _terminal = {}
 let _agents = {}
+let _zoom = { min: 10, max: 250, step: 10 }
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -31,12 +32,15 @@ let _agents = {}
  * Initialize canvas config from storyboard.config.json's "canvas" key.
  * Called by mountStoryboardCore.
  *
- * @param {{ pasteRules?: object[], terminal?: object, agents?: object }} [config]
+ * @param {{ pasteRules?: object[], terminal?: object, agents?: object, zoom?: object }} [config]
  */
 export function initCanvasConfig(config = {}) {
   _pasteRules = Array.isArray(config.pasteRules) ? config.pasteRules : []
   _terminal = config.terminal && typeof config.terminal === 'object' ? config.terminal : {}
   _agents = config.agents && typeof config.agents === 'object' ? config.agents : {}
+  _zoom = config.zoom && typeof config.zoom === 'object'
+    ? { min: config.zoom.min ?? 10, max: config.zoom.max ?? 250, step: config.zoom.step ?? 10 }
+    : { min: 10, max: 250, step: 10 }
 }
 
 /**
@@ -64,6 +68,15 @@ export function getTerminalConfig() {
  */
 export function getAgentsConfig() {
   return _agents
+}
+
+/**
+ * Get canvas zoom configuration (min, max, step).
+ *
+ * @returns {{ min: number, max: number, step: number }}
+ */
+export function getCanvasZoom() {
+  return _zoom
 }
 
 /**
@@ -117,4 +130,5 @@ export function _resetCanvasConfig() {
   _pasteRules = []
   _terminal = {}
   _agents = {}
+  _zoom = { min: 10, max: 250, step: 10 }
 }

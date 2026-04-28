@@ -28,11 +28,19 @@
  */
 
 /**
+ * @typedef {object} CanvasZoomConfig
+ * @property {number} min  — minimum zoom percentage (default 10)
+ * @property {number} max  — maximum zoom percentage (default 250)
+ * @property {number} step — zoom increment/decrement step (default 10)
+ */
+
+/**
  * @typedef {object} CanvasConfig
  * @property {PasteRule[]} pasteRules       — URL→widget conversion rules (evaluated in order, first match wins)
  * @property {{ embedBehavior: string, ghGuard: string }} github — GitHub-specific embed settings
  * @property {CanvasTerminalConfig} [terminal] — terminal widget settings
  * @property {Record<string, CanvasAgentConfig>} [agents] — per-agent overrides
+ * @property {CanvasZoomConfig} [zoom] — zoom min/max/step settings
  */
 
 /**
@@ -153,6 +161,11 @@ export const configDefaults = {
     github: {
       embedBehavior: 'link-preview', // "link-preview" | "rich-embed"
       ghGuard: 'copy',               // "copy" | "link" | "off"
+    },
+    zoom: {
+      min: 10,
+      max: 250,
+      step: 10,
     },
     terminal: {
       resizable: false,

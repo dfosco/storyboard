@@ -230,12 +230,13 @@ export async function handler(ctx) {
 
 ```js
 export async function handler(ctx) {
+  // Reads min/max/step from storyboard.config.json → canvas.zoom
   return {
     zoomIn(currentZoom) { ... },
     zoomOut(currentZoom) { ... },
     zoomReset() { ... },
-    ZOOM_MIN: 25,
-    ZOOM_MAX: 200,
+    ZOOM_MIN,  // from config (default: 10)
+    ZOOM_MAX,  // from config (default: 250)
   }
 }
 ```
@@ -377,7 +378,7 @@ A visual divider between tool groups. No handler or component needed.
 A specialized compound control for canvas zoom (zoom in, zoom out, reset, current level display).
 
 - **Surface:** `canvas-toolbar`
-- **Handler return:** `{ zoomIn(zoom), zoomOut(zoom), zoomReset(), ZOOM_MIN, ZOOM_MAX }`
+- **Handler return:** `{ zoomIn(zoom), zoomOut(zoom), zoomReset(), ZOOM_MIN, ZOOM_MAX }` (min/max read from `canvas.zoom` config)
 - **Component:** Custom Svelte component required
 
 ### `link`
@@ -644,11 +645,11 @@ A specialized zoom control for the canvas surface.
 // tools/handlers/canvasZoom.js
 export const id = 'canvas-zoom'
 
-const ZOOM_STEP = 10
-const ZOOM_MIN = 25
-const ZOOM_MAX = 200
+import { getCanvasZoom } from '../../canvasConfig.js'
 
 export async function handler() {
+  const { min: ZOOM_MIN, max: ZOOM_MAX, step: ZOOM_STEP } = getCanvasZoom()
+
   return {
     zoomIn(currentZoom) {
       const next = Math.min(ZOOM_MAX, currentZoom + ZOOM_STEP)

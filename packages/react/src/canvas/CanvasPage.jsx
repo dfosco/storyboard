@@ -11,6 +11,7 @@ import { createPasteContext, resolvePaste } from './widgets/pasteRules.js'
 import { getPasteRules } from '@dfosco/storyboard-core'
 import { isTerminalResizable, getTerminalDimensions } from '@dfosco/storyboard-core'
 import { getFlag } from '@dfosco/storyboard-core'
+import { getCanvasZoom } from '@dfosco/storyboard-core'
 import { registerSmoothCorners } from '@dfosco/storyboard-core/smooth-corners'
 import { registerHotPoolDevLogs } from './hotPoolDevLogs.js'
 import { isGitHubEmbedUrl } from './widgets/githubUrl.js'
@@ -41,8 +42,11 @@ import { stories as storyIndex } from 'virtual:storyboard-data-index'
 import styles from './CanvasPage.module.css'
 import ConnectorLayer from './ConnectorLayer.jsx'
 
-const ZOOM_MIN = 25
-const ZOOM_MAX = 200
+/** Canvas zoom limits — read from storyboard.config.json via canvasConfig. */
+function zoomLimits() {
+  const z = getCanvasZoom()
+  return { ZOOM_MIN: z.min, ZOOM_MAX: z.max, ZOOM_STEP: z.step }
+}
 
 /** Saved viewport state older than this is considered stale — zoom-to-fit instead. */
 const VIEWPORT_TTL_MS = 15 * 60 * 1000
@@ -150,6 +154,7 @@ function loadViewportState(canvasId) {
       return null
     }
     if (getFlag('dev-logs')) console.log('[viewport] loaded state for', canvasId, '— age:', Math.round(age / 1000), 's, zoom:', state.zoom, 'scroll:', state.scrollLeft, state.scrollTop)
+    const { ZOOM_MIN, ZOOM_MAX } = zoomLimits()
     return {
       zoom: typeof state.zoom === 'number' ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, state.zoom)) : null,
       scrollLeft: typeof state.scrollLeft === 'number' ? state.scrollLeft : null,
@@ -1617,7 +1622,8 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
         const boxW = bounds.maxX - bounds.minX + FIT_PADDING * 2
         const boxH = bounds.maxY - bounds.minY + FIT_PADDING * 2
         const fitScale = Math.min(el.clientWidth / boxW, el.clientHeight / boxH)
-        const fitZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(fitScale * 100)))
+        const { ZOOM_MIN: zMin, ZOOM_MAX: zMax } = zoomLimits()
+        const fitZoom = Math.min(zMax, Math.max(zMin, Math.round(fitScale * 100)))
         const newScale = fitZoom / 100
         zoomRef.current = fitZoom
         // Imperative DOM update for initial zoom-to-fit — same path as applyZoom
@@ -1803,6 +1809,7 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
   function applyZoom(newZoom, clientX, clientY) {
     const el = scrollRef.current
     const zoomEl = zoomElRef.current
+    const { ZOOM_MIN, ZOOM_MAX } = zoomLimits()
     const clampedZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newZoom))
 
     if (!el || !zoomEl) {
@@ -2121,7 +2128,8 @@ export default function CanvasPage({ canvasId: canvasIdProp, name, siblingPages 
 
       // Find the zoom level that fits the bounding box in the viewport
       const fitScale = Math.min(viewW / boxW, viewH / boxH)
-      const fitZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(fitScale * 100)))
+      const { ZOOM_MIN: zMin, ZOOM_MAX: zMax } = zoomLimits()
+      const fitZoom = Math.min(zMax, Math.max(zMin, Math.round(fitScale * 100)))
       const newScale = fitZoom / 100
 
       // Imperative DOM update — same path as applyZoom

@@ -5,13 +5,13 @@
  * handler. The component() export returns the component matching the tool's
  * render type, resolved at load time via the toolConfig passed to component().
  */
+import { getCanvasZoom } from '../../canvasConfig.js'
+
 export const id = 'canvas-toolbar'
 
-const ZOOM_STEP = 10
-const ZOOM_MIN = 25
-const ZOOM_MAX = 200
-
 export async function handler() {
+  const { min: ZOOM_MIN, max: ZOOM_MAX, step: ZOOM_STEP } = getCanvasZoom()
+
   return {
     zoomIn(currentZoom) {
       const next = Math.min(ZOOM_MAX, currentZoom + ZOOM_STEP)

@@ -29,6 +29,11 @@
     ]
   },
   "canvas": {
+    "zoom": {
+      "min": 10,
+      "max": 250,
+      "step": 10
+    },
     "terminal": {
       "fontSize": 18,
       "fontFamily": "'Ghostty', 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace",

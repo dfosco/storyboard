@@ -53,7 +53,9 @@ In `parseDataFile()` for canvas files, set a new `id` field using `toCanvasId()`
 
 ### 4. Wire `identity.js` into canvas server
 
-`findCanvasPath()` tries path-based ID first, falls back to basename match. No API change — callers still pass a name string, server resolves it.
+~~`findCanvasPath()` tries path-based ID first, falls back to basename match. No API change — callers still pass a name string, server resolves it.~~
+
+**Revised (2026-04-28):** Server-side basename fallback is unnecessary. The data-plugin's `canvasAliases` system already resolves legacy bare names → canonical IDs on the client before any server requests. `findCanvasPath()` only needs exact canonical ID matching, which was already implemented. ✅ No change needed.
 
 ### 5. Wire into context.jsx
 
@@ -61,7 +63,9 @@ In `parseDataFile()` for canvas files, set a new `id` field using `toCanvasId()`
 
 ### 6. Update scaffold and repo configs
 
-Add the new keys with defaults to both `storyboard.config.json` files.
+~~Add the new keys with defaults to both `storyboard.config.json` files.~~
+
+**Revised (2026-04-28):** Added `canvas.github` and `commandPalette.ranking` to scaffold only. Array-valued defaults (`pasteRules`, `providers`, `sections`) are intentionally omitted — they flow through from `configSchema.js` defaults and would freeze behavior if scaffolded (arrays replace, not merge). Repo config left unchanged since this project doesn't override any new keys. ✅ Done.
 
 ### 7. Wire `getConfig()` into server-plugin
 
@@ -69,7 +73,7 @@ Add the new keys with defaults to both `storyboard.config.json` files.
 
 ## Edge Cases & Risks
 
-- **Existing projects** must work unchanged — all new config keys have defaults, and canvas name-based lookup is a fallback path.
-- **Duplicate canvas names in different folders** — currently throws. Path-based IDs fix this by making the key unique. But legacy name lookups remain ambiguous — log a warning when two canvases share a name.
+- **Existing projects** must work unchanged — all new config keys have defaults, and canvas name-based lookup is handled by the data-plugin's `canvasAliases`.
+- **Duplicate canvas names in different folders** — the data-plugin's `canvasAliases` only alias unique basenames; ambiguous ones are dropped from the alias map.
 - **Branch base-path** — `isSameOriginPrototype()` in CanvasPage.jsx already handles `BRANCH_PREFIX_RE`. No changes needed for the contract layer.
 - **No runtime breaking changes** — all new exports are additive. No existing API signatures change.

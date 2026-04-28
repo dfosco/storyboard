@@ -129,8 +129,8 @@
   "icons": {
     "prototype": "prototype",
     "canvas": "canvas",
-    "story": "component",
-    "component": "component",
+    "story": "iconoir/keyframe",
+    "component": "iconoir/keyframe",
     "starred": "primer/star-fill",
     "recent": "primer/clock",
     "create": "iconoir/plus-circle",

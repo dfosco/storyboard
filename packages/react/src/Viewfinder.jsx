@@ -176,7 +176,7 @@ function getTypeLabel(type) {
 function getTypeIcon(type, size = 14) {
   if (type === 'prototype') return <Icon name="prototype" size={size} />
   if (type === 'canvas') return <Icon name="canvas" size={size} />
-  if (type === 'component') return <Icon name="component" size={size} />
+  if (type === 'component') return <Icon name="iconoir/keyframe" size={size} />
   return null
 }
 
@@ -876,7 +876,7 @@ function CreateMenu({ onClose, basePath }) {
   const items = [
     { icon: <Icon name="canvas" size={18} />, title: 'Canvas', desc: 'Interactive board for prototypes, components, and documents' },
     { icon: <Icon name="prototype" size={18} />, title: 'Prototype', desc: 'Interactive page flow' },
-    { icon: <Icon name="component" size={18} />, title: 'Component', desc: 'Reusable component' },
+    { icon: <Icon name="iconoir/-couple-solid" size={18} />, title: 'Component', desc: 'Reusable component' },
   ]
 
   const moreItems = [

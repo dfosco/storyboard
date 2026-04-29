@@ -196,7 +196,7 @@ function parseDataFile(filePath) {
  * Look up the git author who first created a file.
  * Used to auto-fill the author field in .prototype.json when missing.
  */
-function getGitAuthor(root, filePath) {
+function _getGitAuthor(root, filePath) {
   try {
     const result = execSync(
       `git log --follow --diff-filter=A --format="%aN" -- "${filePath}"`,
@@ -213,7 +213,7 @@ function getGitAuthor(root, filePath) {
  * Look up the most recent commit date for any file in a directory.
  * Returns an ISO 8601 timestamp, or null if unavailable.
  */
-function getLastModified(root, dirPath) {
+function _getLastModified(root, dirPath) {
   try {
     const result = execSync(
       `git log -1 --format="%aI" -- "${dirPath}"`,
@@ -581,25 +581,52 @@ function deepMergeBuild(target, source) {
  * Build the unified config object by reading and merging all config sources.
  *
  * Priority (lowest → highest):
- *   core defaults → user widgets → user paste → user toolbar → user commandpalette → storyboard.config.json
+ *   configSchema defaults → core domain configs → storyboard.config.json → user domain configs
+ *
+ * Domain-specific config files (toolbar.config.json, commandpalette.config.json, etc.)
+ * always win over storyboard.config.json — specificity beats generality.
+ * Deep merge is used at every layer: objects are recursively merged (keys append),
+ * arrays and scalars are replaced.
  *
  * Returns { unified, warnings } where warnings is an array of overlap messages.
  */
 function buildUnifiedConfig(root) {
   const warnings = []
 
-  // 1. Read core defaults
+  // 1. Read core defaults (lowest priority domain configs)
   const coreToolbar = readCoreConfigFile(root, 'toolbar.config.json') || {}
   const coreCommandPalette = readCoreConfigFile(root, 'commandpalette.config.json') || {}
   const corePaste = readCoreConfigFile(root, 'paste.config.json') || {}
   const coreWidgets = readCoreConfigFile(root, 'widgets.config.json') || {}
 
-  // 2. Read user config files (priority order)
+  // 2. Read storyboard.config.json (middle priority)
+  // Use the schema-defaulted config for most things, but also read
+  // the raw file to know which keys were explicitly set by the user.
+  const { config: sbConfig } = readConfig(root)
+  const rawSbConfig = readJsonFile(path.resolve(root, 'storyboard.config.json')) || {}
+
+  // 3. Apply storyboard.config.json overrides on top of core domain configs.
+  // Only merge when the user explicitly defined the key in storyboard.config.json
+  // (not from configSchema defaults, which would overwrite core config with empty arrays).
+  const afterSbToolbar = rawSbConfig.toolbar
+    ? deepMergeBuild(coreToolbar, sbConfig.toolbar)
+    : coreToolbar
+  const afterSbCommandPalette = rawSbConfig.commandPalette
+    ? deepMergeBuild(coreCommandPalette, sbConfig.commandPalette)
+    : coreCommandPalette
+  const afterSbPaste = rawSbConfig.paste
+    ? deepMergeBuild(corePaste, sbConfig.paste || {})
+    : corePaste
+  const afterSbWidgets = rawSbConfig.widgets
+    ? deepMergeBuild(coreWidgets, sbConfig.widgets || {})
+    : coreWidgets
+
+  // 4. Read user domain config files (highest priority)
   const userFiles = [
-    { domain: 'widgets', filename: 'widgets.config.json', priority: 1 },
-    { domain: 'paste', filename: 'paste.config.json', priority: 2 },
-    { domain: 'toolbar', filename: 'toolbar.config.json', priority: 3 },
-    { domain: 'commandPalette', filename: 'commandpalette.config.json', priority: 4 },
+    { domain: 'widgets', filename: 'widgets.config.json' },
+    { domain: 'paste', filename: 'paste.config.json' },
+    { domain: 'toolbar', filename: 'toolbar.config.json' },
+    { domain: 'commandPalette', filename: 'commandpalette.config.json' },
   ]
 
   const userConfigs = {}
@@ -609,47 +636,33 @@ function buildUnifiedConfig(root) {
     if (parsed) userConfigs[domain] = { data: parsed, filename }
   }
 
-  // 3. Read storyboard.config.json (highest priority)
-  // Use the schema-defaulted config for most things, but also read
-  // the raw file to know which keys were explicitly set by the user.
-  const { config: sbConfig } = readConfig(root)
-  const rawSbConfig = readJsonFile(path.resolve(root, 'storyboard.config.json')) || {}
+  // 5. Apply user domain configs on top of everything (highest priority)
+  const finalToolbar = userConfigs.toolbar
+    ? deepMergeBuild(afterSbToolbar, userConfigs.toolbar.data)
+    : afterSbToolbar
+  const finalCommandPalette = userConfigs.commandPalette
+    ? deepMergeBuild(afterSbCommandPalette, userConfigs.commandPalette.data)
+    : afterSbCommandPalette
+  const finalPaste = userConfigs.paste
+    ? deepMergeBuild(afterSbPaste, userConfigs.paste.data)
+    : afterSbPaste
+  const finalWidgets = userConfigs.widgets
+    ? deepMergeBuild(afterSbWidgets, userConfigs.widgets.data)
+    : afterSbWidgets
 
-  // 4. Merge core defaults with user overrides per domain
-  const toolbar = userConfigs.toolbar
-    ? deepMergeBuild(coreToolbar, userConfigs.toolbar.data)
-    : coreToolbar
-  const commandPalette = userConfigs.commandPalette
-    ? deepMergeBuild(coreCommandPalette, userConfigs.commandPalette.data)
-    : coreCommandPalette
-  const paste = userConfigs.paste
-    ? deepMergeBuild(corePaste, userConfigs.paste.data)
-    : corePaste
-  const widgets = userConfigs.widgets
-    ? deepMergeBuild(coreWidgets, userConfigs.widgets.data)
-    : coreWidgets
-
-  // 5. Apply storyboard.config.json overrides (highest priority for all domains)
-  // Only merge when the user explicitly defined the key in storyboard.config.json
-  // (not from configSchema defaults, which would overwrite core config with empty arrays).
-  const finalToolbar = rawSbConfig.toolbar
-    ? deepMergeBuild(toolbar, sbConfig.toolbar)
-    : toolbar
-  const finalCommandPalette = rawSbConfig.commandPalette
-    ? deepMergeBuild(commandPalette, sbConfig.commandPalette)
-    : commandPalette
-
-  // 6. Detect overlaps between user config files and storyboard.config.json
-  if (rawSbConfig.toolbar && userConfigs.toolbar) {
-    const overlaps = findOverlappingKeys(userConfigs.toolbar.data, rawSbConfig.toolbar)
-    for (const key of overlaps) {
-      warnings.push(`Config overlap: "${key}" is defined in both toolbar.config.json and storyboard.config.json.toolbar — storyboard.config.json wins.`)
-    }
-  }
-  if (rawSbConfig.commandPalette && userConfigs.commandPalette) {
-    const overlaps = findOverlappingKeys(userConfigs.commandPalette.data, rawSbConfig.commandPalette)
-    for (const key of overlaps) {
-      warnings.push(`Config overlap: "${key}" is defined in both commandpalette.config.json and storyboard.config.json.commandPalette — storyboard.config.json wins.`)
+  // 6. Detect overlaps between storyboard.config.json and user domain configs
+  const domainOverlapChecks = [
+    { sbKey: 'toolbar', domain: 'toolbar', label: 'toolbar.config.json' },
+    { sbKey: 'commandPalette', domain: 'commandPalette', label: 'commandpalette.config.json' },
+    { sbKey: 'paste', domain: 'paste', label: 'paste.config.json' },
+    { sbKey: 'widgets', domain: 'widgets', label: 'widgets.config.json' },
+  ]
+  for (const { sbKey, domain, label } of domainOverlapChecks) {
+    if (rawSbConfig[sbKey] && userConfigs[domain]) {
+      const overlaps = findOverlappingKeys(rawSbConfig[sbKey], userConfigs[domain].data)
+      for (const key of overlaps) {
+        warnings.push(`Config overlap: "${key}" is defined in both storyboard.config.json.${sbKey} and ${label} — ${label} wins.`)
+      }
     }
   }
 
@@ -657,8 +670,8 @@ function buildUnifiedConfig(root) {
   const unified = {
     toolbar: finalToolbar,
     commandPalette: finalCommandPalette,
-    paste,
-    widgets,
+    paste: finalPaste,
+    widgets: finalWidgets,
     featureFlags: sbConfig?.featureFlags || {},
     modes: sbConfig?.modes || {},
     ui: sbConfig?.ui || {},
@@ -1328,13 +1341,19 @@ export default function storyboardDataPlugin() {
       const { configPath } = readConfig(root)
       watcher.add(configPath)
 
-      // Watch root toolbar.config.json for changes
-      const clientToolbarConfigPath = path.resolve(root, 'toolbar.config.json')
-      watcher.add(clientToolbarConfigPath)
+      // Watch all root domain config files for changes
+      const domainConfigFiles = [
+        'toolbar.config.json',
+        'commandpalette.config.json',
+        'paste.config.json',
+        'widgets.config.json',
+      ].map(f => path.resolve(root, f))
+      const watchedConfigPaths = new Set([configPath, ...domainConfigFiles])
+      for (const p of domainConfigFiles) watcher.add(p)
 
       const invalidateConfig = (filePath) => {
         const resolved = path.resolve(filePath)
-        if (resolved === configPath || resolved === clientToolbarConfigPath) {
+        if (watchedConfigPaths.has(resolved)) {
           buildResult = null
           const mod = server.moduleGraph.getModuleById(RESOLVED_ID)
           if (mod) {

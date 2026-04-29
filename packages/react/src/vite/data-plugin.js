@@ -1397,9 +1397,10 @@ export default function storyboardDataPlugin() {
  *
  * Sources (in priority order):
  *   1. assets/.storyboard-public/terminal-snapshots/<widgetId>.snapshot.json (new, flat)
- *   2. .storyboard/terminal-snapshots/<canvasDir>/<widgetId>.json (legacy, nested)
+ *   2. assets/.storyboard-public/terminal-snapshots/<widgetId>.snapshot.txt  (human-readable companion)
+ *   3. .storyboard/terminal-snapshots/<canvasDir>/<widgetId>.json (legacy, nested)
  *
- * Both are emitted to `_storyboard/terminal-snapshots/` in the build.
+ * All are emitted to `_storyboard/terminal-snapshots/` in the build.
  * Tilde-prefixed files (~) are excluded (private).
  */
 export function terminalSnapshotPlugin() {
@@ -1409,14 +1410,18 @@ export function terminalSnapshotPlugin() {
     generateBundle() {
       const emittedIds = new Set()
 
-      // 1. New public snapshots (flat structure)
+      // 1. New public snapshots (flat structure) — .json and .txt
       const publicDir = path.resolve('assets/.storyboard-public/terminal-snapshots')
       if (fs.existsSync(publicDir)) {
         for (const file of fs.readdirSync(publicDir)) {
-          if (file.startsWith('~') || file.startsWith('.') || !file.endsWith('.json')) continue
-          // Extract widgetId from filename: <widgetId>.snapshot.json
-          const widgetId = file.replace(/\.snapshot\.json$/, '')
-          if (widgetId) emittedIds.add(widgetId)
+          if (file.startsWith('~') || file.startsWith('.')) continue
+          const isJson = file.endsWith('.snapshot.json')
+          const isTxt = file.endsWith('.snapshot.txt')
+          if (!isJson && !isTxt) continue
+          if (isJson) {
+            const widgetId = file.replace(/\.snapshot\.json$/, '')
+            if (widgetId) emittedIds.add(widgetId)
+          }
           this.emitFile({
             type: 'asset',
             fileName: `_storyboard/terminal-snapshots/${file}`,

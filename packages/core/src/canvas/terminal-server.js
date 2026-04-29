@@ -297,6 +297,7 @@ function isWidgetPrivate(widgetId, canvasId) {
  *
  * Buffer (private):  .storyboard/terminal-buffers/<widgetId>.buffer.json  — 5-min scrollback, full metadata
  * Snapshot (public):  assets/.storyboard-public/terminal-snapshots/<widgetId>.snapshot.json  — 1-min scrollback, stripped ANSI
+ *                     assets/.storyboard-public/terminal-snapshots/<widgetId>.snapshot.txt   — human-readable text
  *
  * When widget is private, the public snapshot is skipped and any existing
  * snapshot file is renamed to ~<filename> (tilde prefix = gitignored).
@@ -337,8 +338,9 @@ function captureSnapshot({ tmuxName, widgetId, canvasId, prettyName, cols, rows,
     mkdirSync(bDir, { recursive: true })
     writeFileSync(bufferTmpPath, JSON.stringify(bufferData, null, 2), 'utf8')
     renameSync(bufferTmpPath, bufferPath)
-  } catch {
-    try { if (existsSync(bufferTmpPath)) unlinkSync(bufferTmpPath) } catch {}
+  } catch (err) {
+    devLog().logEvent('error', 'Failed to write private buffer', { widgetId, error: err.message, path: bufferPath })
+    try { if (existsSync(bufferTmpPath)) unlinkSync(bufferTmpPath) } catch {} // eslint-disable-line no-empty
   }
 
   // ── Plain-text buffer (.storyboard/terminal-buffers/<widgetId>.buffer.txt) ──
@@ -359,30 +361,43 @@ function captureSnapshot({ tmuxName, widgetId, canvasId, prettyName, cols, rows,
 
     writeFileSync(txtTmpPath, txt, 'utf8')
     renameSync(txtTmpPath, txtPath)
-  } catch {
-    try { if (existsSync(txtTmpPath)) unlinkSync(txtTmpPath) } catch {}
+  } catch (err) {
+    devLog().logEvent('error', 'Failed to write private buffer txt', { widgetId, error: err.message })
+    try { if (existsSync(txtTmpPath)) unlinkSync(txtTmpPath) } catch {} // eslint-disable-line no-empty
   }
 
-  // ── Public snapshot (assets/.storyboard-public/terminal-snapshots/<widgetId>.snapshot.json) ──
+  // ── Public snapshot (assets/.storyboard-public/terminal-snapshots/) ──
   const isPrivate = isWidgetPrivate(widgetId, canvasId)
   const sDir = publicSnapshotDir()
   const snapshotPath = join(sDir, `${widgetId}.snapshot.json`)
+  const snapshotTxtPath = join(sDir, `${widgetId}.snapshot.txt`)
   const tildeSnapshotPath = join(sDir, `~${widgetId}.snapshot.json`)
+  const tildeSnapshotTxtPath = join(sDir, `~${widgetId}.snapshot.txt`)
 
   if (isPrivate) {
-    // Rename existing public snapshot to tilde-prefixed (gitignored) version
+    // Rename existing public snapshots to tilde-prefixed (gitignored) versions
     if (existsSync(snapshotPath)) {
-      try { renameSync(snapshotPath, tildeSnapshotPath) } catch {}
+      try { renameSync(snapshotPath, tildeSnapshotPath) } catch {} // eslint-disable-line no-empty
+    }
+    if (existsSync(snapshotTxtPath)) {
+      try { renameSync(snapshotTxtPath, tildeSnapshotTxtPath) } catch {} // eslint-disable-line no-empty
     }
     return
   }
 
-  // If un-privated, restore from tilde if the public file doesn't exist yet
+  // If un-privated, restore from tilde if the public files don't exist yet
   if (existsSync(tildeSnapshotPath) && !existsSync(snapshotPath)) {
-    try { renameSync(tildeSnapshotPath, snapshotPath) } catch {}
+    try { renameSync(tildeSnapshotPath, snapshotPath) } catch {} // eslint-disable-line no-empty
+  }
+  if (existsSync(tildeSnapshotTxtPath) && !existsSync(snapshotTxtPath)) {
+    try { renameSync(tildeSnapshotTxtPath, snapshotTxtPath) } catch {} // eslint-disable-line no-empty
   }
 
   const snapshotScrollback = getRollingBufferContent(tmuxName, SNAPSHOT_MAX_AGE_MS)
+  const strippedPane = stripAnsi(paneContent)
+  const strippedScrollback = stripAnsi(snapshotScrollback)
+
+  // ── JSON snapshot ──
   const snapshotData = {
     widgetId,
     canvasId,
@@ -390,17 +405,59 @@ function captureSnapshot({ tmuxName, widgetId, canvasId, prettyName, cols, rows,
     timestamp: now,
     cols: cols || 80,
     rows: rows || 24,
-    paneContent: stripAnsi(paneContent),
-    scrollback: stripAnsi(snapshotScrollback),
+    paneContent: strippedPane,
+    scrollback: strippedScrollback,
+  }
+
+  try {
+    mkdirSync(sDir, { recursive: true })
+  } catch (err) {
+    devLog().logEvent('error', 'Failed to create public snapshot dir', { dir: sDir, error: err.message })
+    return
   }
 
   const snapshotTmpPath = snapshotPath + '.tmp'
   try {
-    mkdirSync(sDir, { recursive: true })
     writeFileSync(snapshotTmpPath, JSON.stringify(snapshotData, null, 2), 'utf8')
     renameSync(snapshotTmpPath, snapshotPath)
-  } catch {
-    try { if (existsSync(snapshotTmpPath)) unlinkSync(snapshotTmpPath) } catch {}
+  } catch (err) {
+    devLog().logEvent('error', 'Failed to write public snapshot JSON', { widgetId, error: err.message, path: snapshotPath })
+    try { if (existsSync(snapshotTmpPath)) unlinkSync(snapshotTmpPath) } catch {} // eslint-disable-line no-empty
+  }
+
+  // ── Human-readable text snapshot ──
+  const snapshotTxtTmpPath = snapshotTxtPath + '.tmp'
+  try {
+    const screenText = strippedPane.replace(/\r\n/g, '\n').replace(/\n+$/, '')
+    const scrollText = strippedScrollback.replace(/\r\n/g, '\n').replace(/\n+$/, '')
+    const sep = '='.repeat(80)
+
+    let snpTxt = ''
+    snpTxt += `SESSION: ${widgetId}${prettyName ? ' | ' + prettyName : ''}\n`
+    snpTxt += `CANVAS:  ${canvasId}\n`
+    snpTxt += `BRANCH:  ${currentBranch}\n`
+    snpTxt += `TIME:    ${now}\n`
+    snpTxt += '\n'
+    snpTxt += sep + '\n'
+    snpTxt += 'SCREEN\n'
+    snpTxt += sep + '\n'
+    snpTxt += '\n'
+    snpTxt += (screenText || '(empty)') + '\n'
+
+    if (scrollText) {
+      snpTxt += '\n'
+      snpTxt += sep + '\n'
+      snpTxt += 'SCROLLBACK (last 60s)\n'
+      snpTxt += sep + '\n'
+      snpTxt += '\n'
+      snpTxt += scrollText + '\n'
+    }
+
+    writeFileSync(snapshotTxtTmpPath, snpTxt, 'utf8')
+    renameSync(snapshotTxtTmpPath, snapshotTxtPath)
+  } catch (err) {
+    devLog().logEvent('error', 'Failed to write public snapshot txt', { widgetId, error: err.message })
+    try { if (existsSync(snapshotTxtTmpPath)) unlinkSync(snapshotTxtTmpPath) } catch {} // eslint-disable-line no-empty
   }
 }
 
@@ -1137,11 +1194,10 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
     appendToRollingBuffer(tmuxName, data)
   })
 
-  // Start periodic snapshot capture for tmux sessions
+  // Start periodic snapshot capture (works for both tmux and direct pty —
+  // tmux capture-pane fails gracefully, rolling buffer provides content either way)
   const snapshotOpts = { tmuxName, widgetId, canvasId, prettyName, cols: 80, rows: 24, createdAt: new Date().toISOString() }
-  if (hasTmux) {
-    startSnapshotCapture(snapshotOpts)
-  }
+  startSnapshotCapture(snapshotOpts)
 
   ptyProcess.onExit(() => {
     ptyProcesses.delete(tmuxName)
@@ -1170,9 +1226,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
 
   // On disconnect: final snapshot, kill the pty (detaches from tmux) but leave the tmux session alive
   ws.on('close', () => {
-    if (hasTmux) {
-      stopSnapshotCapture(tmuxName, snapshotOpts)
-    }
+    stopSnapshotCapture(tmuxName, snapshotOpts)
     if (wsConnections.get(tmuxName) === ws) {
       wsConnections.delete(tmuxName)
     }
@@ -1185,9 +1239,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
   })
 
   ws.on('error', () => {
-    if (hasTmux) {
-      stopSnapshotCapture(tmuxName, snapshotOpts)
-    }
+    stopSnapshotCapture(tmuxName, snapshotOpts)
     if (wsConnections.get(tmuxName) === ws) {
       wsConnections.delete(tmuxName)
     }

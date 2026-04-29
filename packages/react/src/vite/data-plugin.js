@@ -533,6 +533,15 @@ function deepMergeBuild(target, source) {
     const tv = target[key]
     if (sv && typeof sv === 'object' && !Array.isArray(sv) && tv && typeof tv === 'object' && !Array.isArray(tv)) {
       result[key] = deepMergeBuild(tv, sv)
+    } else if (Array.isArray(sv) && Array.isArray(tv) && sv.length > 0 && tv.length > 0 && sv[0]?.id && tv[0]?.id) {
+      // Id-based array merge: override matching entries by id, keep the rest, append new ones
+      const targetMap = new Map(tv.map(item => [item.id, item]))
+      for (const item of sv) {
+        targetMap.set(item.id, item.id && targetMap.has(item.id)
+          ? deepMergeBuild(targetMap.get(item.id), item)
+          : item)
+      }
+      result[key] = [...targetMap.values()]
     } else {
       result[key] = sv
     }

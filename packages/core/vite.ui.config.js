@@ -110,10 +110,8 @@ export default defineConfig({
       external: [
         '@dfosco/storyboard-core',
         '@dfosco/storyboard-core/comments',
-        'react',
-        'react-dom',
-        'react/jsx-runtime',
-        'react/jsx-dev-runtime',
+        /^react($|\/)/,
+        /^react-dom($|\/)/,
         'node:fs',
         'node:path',
       ],

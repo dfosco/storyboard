@@ -1,5 +1,19 @@
 # @dfosco/storyboard-react
 
+## 4.2.0-beta.28
+
+### Patch Changes
+
+-   Id-based array merge for config + remove scaffold config files
+
+    -   `deepMergeBuild` now merges arrays of objects by `id` field instead of replacing wholesale
+    -   Users can customize command palette sections by defining only the ones they want to add/override
+    -   Removed `commandpalette.config.json` and `toolbar.config.json` from scaffold — they caused empty arrays to overwrite core defaults
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-beta.28
+    -   @dfosco/tiny-canvas@4.2.0-beta.28
+
 ## 4.2.0-beta.27
 
 ### Patch Changes

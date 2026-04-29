@@ -1,5 +1,7 @@
 # @dfosco/tiny-canvas
 
+## 4.2.0-beta.22
+
 ## 4.2.0-beta.21
 
 ## 4.2.0-beta.20

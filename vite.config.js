@@ -52,6 +52,8 @@ export default defineConfig(() => {
             '@dfosco/storyboard-core/canvas/materializer': path.resolve(__dirname, 'packages/core/src/canvas/materializer.js'),
             '@dfosco/storyboard-core/canvas/identity': path.resolve(__dirname, 'packages/core/src/canvas/identity.js'),
             '@dfosco/storyboard-core/canvas/collision': path.resolve(__dirname, 'packages/core/src/canvas/collision.js'),
+            '@dfosco/storyboard-core/canvas/writeGuard': path.resolve(__dirname, 'packages/core/src/canvas/writeGuard.js'),
+            '@dfosco/storyboard-core/worktree/serverRegistry': path.resolve(__dirname, 'packages/core/src/worktree/serverRegistry.js'),
             '@dfosco/storyboard-core/config': path.resolve(__dirname, 'packages/core/src/configSchema.js'),
             '@dfosco/storyboard-core/modes.css': path.resolve(__dirname, 'packages/core/src/modes.css'),
             '@dfosco/storyboard-core/inspector/highlighter': path.resolve(__dirname, 'packages/core/src/inspector/highlighter.js'),

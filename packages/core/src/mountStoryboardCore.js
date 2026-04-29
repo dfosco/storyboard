@@ -13,15 +13,17 @@
 import { installHideParamListener } from './interceptHideParams.js'
 import { installHistorySync } from './hideMode.js'
 import { installBodyClassSync } from './bodyClasses.js'
-import { initCommentsConfig, isCommentsEnabled } from './comments/config.js'
-import { initFeatureFlags } from './featureFlags.js'
-import { initPlugins } from './plugins.js'
-import { initUIConfig } from './uiConfig.js'
-import { initCanvasConfig } from './canvasConfig.js'
-import { initCommandPaletteConfig } from './commandPaletteConfig.js'
-import { initToolbarConfig, consumeClientToolbarOverrides } from './toolbarConfigStore.js'
-import { initCustomerModeConfig } from './customerModeConfig.js'
-import { getConfig } from './configStore.js'
+import {
+  initCommentsConfig, isCommentsEnabled,
+  initFeatureFlags,
+  initPlugins,
+  initUIConfig,
+  initCanvasConfig,
+  initCommandPaletteConfig,
+  initToolbarConfig, consumeClientToolbarOverrides,
+  initCustomerModeConfig,
+  getConfig,
+} from '@dfosco/storyboard-core'
 
 let _mounted = false
 
@@ -269,7 +271,7 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   // Load toolbar config from the unified store.
   // The unified store already has core defaults merged with client overrides.
   // Fall back to legacy merging if unified store wasn't seeded.
-  const { deepMerge } = await import('./loader.js')
+  const { deepMerge } = await import('@dfosco/storyboard-core')
   let toolbarConfig = uc.toolbar && Object.keys(uc.toolbar).length > 0
     ? { ...uc.toolbar }
     : null

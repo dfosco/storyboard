@@ -72,6 +72,7 @@ export default function SidePanel({ resizable = true, onClose }) {
     const savedWidth = localStorage.getItem('sb-sidepanel-width')
     if (savedWidth) {
       const w = parseInt(savedWidth, 10)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (w >= MIN_WIDTH && w <= MAX_WIDTH) setPanelWidth(w)
     }
 

@@ -84,13 +84,13 @@ export default function PwaInstallBanner() {
     deferredPromptRef.current = null
     setShowBanner(false)
     if (outcome === 'dismissed') {
-      try { localStorage.setItem(DISMISS_KEY, '1') } catch {}
+      try { localStorage.setItem(DISMISS_KEY, '1') } catch { /* empty */ }
     }
   }, [])
 
   const handleDismiss = useCallback(() => {
     setShowBanner(false)
-    try { localStorage.setItem(DISMISS_KEY, '1') } catch {}
+    try { localStorage.setItem(DISMISS_KEY, '1') } catch { /* empty */ }
   }, [])
 
   useEffect(() => {

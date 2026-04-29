@@ -22,7 +22,9 @@ export { isSplitScreenCapable }
  */
 function MarkdownSecondaryPane({ widget, editingRef, onUpdate }) {
   const [editing, setEditing] = useState(false)
+  // eslint-disable-next-line react-hooks/refs
   editingRef.current = editing
+  // eslint-disable-next-line react-hooks/refs
   editingRef.setter = (v) => {
     setEditing(v)
     // Notify ExpandedPane to re-render so titlebar features resolve updated toggle state
@@ -31,6 +33,7 @@ function MarkdownSecondaryPane({ widget, editingRef, onUpdate }) {
 
   const content = widget.props?.content || ''
 
+  // eslint-disable-next-line react-hooks/refs
   return createElement(ExpandedMarkdownEditor, {
     content,
     onUpdate,

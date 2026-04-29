@@ -122,7 +122,7 @@ async function ensureDevServer({ quiet = false } = {}) {
       try {
         const caddyfilePath = generateCaddyfile({ [worktreeName]: port })
         if (isCaddyRunning()) reloadCaddy(caddyfilePath)
-      } catch {}
+      } catch { /* empty */ }
       if (s) s.stop('Dev server started')
       return
     } catch {
@@ -171,7 +171,7 @@ async function postCreateFlow(resultPath, type) {
   try {
     const { execSync } = await import('child_process')
     execSync(`open "${viewUrl}"`, { stdio: 'ignore' })
-  } catch {}
+  } catch { /* empty */ }
 
   p.outro('')
 }

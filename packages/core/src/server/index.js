@@ -51,7 +51,7 @@ const routeHandlers = new Map()
 // ─── Dev Logger ───
 
 let _currentBranch = null
-try { _currentBranch = (await import('node:child_process')).execSync('git branch --show-current', { encoding: 'utf8', cwd: repoRoot() }).trim() } catch {}
+try { _currentBranch = (await import('node:child_process')).execSync('git branch --show-current', { encoding: 'utf8', cwd: repoRoot() }).trim() } catch { /* empty */ }
 const devLogger = createDevLogger({ root: repoRoot(), devDomain: DEV_DOMAIN.replace('.localhost', ''), branch: _currentBranch })
 
 // ─── JSON helpers ───

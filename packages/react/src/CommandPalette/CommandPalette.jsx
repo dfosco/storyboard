@@ -86,6 +86,7 @@ function isHiddenInPalette(tool, basePath) {
 function buildConfigSections(prefix, onNavigateToPage, onCreateAction) {
   const config = getCommandPaletteConfig()
   const sections = config?.sections || []
+  console.log('[devlog] CommandPalette buildConfigSections:', { sectionsCount: sections.length, providers: config?.providers, configKeys: Object.keys(config || {}) })
   const groups = []
   const toolMenus = []
   const usedToolIds = new Set()
@@ -417,7 +418,7 @@ function buildDynamicSection(section, prefix, onNavigateToPage, onCreateAction) 
   if (section.source === 'starred') {
     const STARRED_KEY = 'sb-workspace-starred'
     let starredIds = []
-    try { starredIds = JSON.parse(localStorage.getItem(STARRED_KEY)) || [] } catch {}
+    try { starredIds = JSON.parse(localStorage.getItem(STARRED_KEY)) || [] } catch { /* empty */ }
     if (starredIds.length === 0) return null
 
     const index = buildPrototypeIndex()
@@ -639,7 +640,7 @@ function buildToolsSection(section, prefix, onNavigateToPage) {
   const items = []
   const subPages = []
 
-  for (const { toolId, tool, label, toolIcon, toolMeta, closeOnSelect: entryCloseOnSelect } of entries) {
+  for (const { toolId, tool, label, closeOnSelect: entryCloseOnSelect } of entries) {
     // Inline actions
     if (tool.inlineAction === 'toggle-chrome') {
       const isHidden = document.documentElement.classList.contains('storyboard-chrome-hidden')
@@ -994,6 +995,7 @@ export default function StoryboardCommandPalette({ basePath }) {
   useEffect(() => {
     if (refreshKey === 0) return
     const built = buildPaletteItems(basePath, handleCreateAction, handleNavigateToPage)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setItems(built.groups)
     setToolMenus(built.toolMenus)
   }, [refreshKey, basePath])
@@ -1196,7 +1198,7 @@ export default function StoryboardCommandPalette({ basePath }) {
                 !search && <Command.Separator key={list.id} />
               ) : (
                 <Command.Group key={list.id} heading={list.heading}>
-                  {list.items.map(({ id, children, keywords, onClick, itemType, toolIcon, toolMeta, closeOnSelect, hideFromSearch, url, ...rest }) => {
+                  {list.items.map(({ id, children, keywords, onClick, itemType, toolIcon, toolMeta, closeOnSelect, hideFromSearch, url, ..._rest }) => {
                     if (search && hideFromSearch) return null
                     if (hiddenFromSearchIds.size > 0) {
                       for (const toolId of hiddenFromSearchIds) {

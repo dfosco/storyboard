@@ -345,7 +345,7 @@ export function createCanvasHandler(ctx) {
       let branch = 'unknown'
       try {
         branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
-      } catch {}
+      } catch { /* empty */ }
 
       const widgets = canvasData.widgets || []
       const widgetMap = new Map(widgets.map(w => [w.id, w]))
@@ -449,7 +449,7 @@ export function createCanvasHandler(ctx) {
       try {
         const { execSync } = await import('node:child_process')
         branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
-      } catch {}
+      } catch { /* empty */ }
       const serverUrl = `http://localhost:${req?.socket?.localPort || 1234}`
       preReserveTerminalIdentity({
         widgetId,
@@ -2451,7 +2451,7 @@ export function Default() {
         let branch = reqBranch || 'unknown'
         try {
           branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
-        } catch {}
+        } catch { /* empty */ }
 
         const tmuxName = generateTmuxName(branch, canvasId, widgetId)
 
@@ -2522,7 +2522,7 @@ export function Default() {
             const agents = config?.canvas?.agents || {}
             const defaultAgent = Object.values(agents).find(a => a.default) || Object.values(agents)[0]
             if (defaultAgent?.startupCommand) startupCmd = defaultAgent.startupCommand
-          } catch {}
+          } catch { /* empty */ }
           copilotCmd = `source ${envFile} && ${startupCmd}`
         }
 
@@ -2546,10 +2546,10 @@ export function Default() {
                   try {
                     execSync(`tmux send-keys -t "${tmuxName}" -l "/allow-all on"`, { stdio: 'ignore' })
                     execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-                  } catch {}
+                  } catch { /* empty */ }
                 }, 500)
               }
-            } catch {}
+            } catch { /* empty */ }
           }, 1000)
           setTimeout(() => { if (!sent) { sent = true; clearInterval(poll) } }, 15000)
         }, 500)
@@ -2570,7 +2570,7 @@ export function Default() {
                 })
               }
             }
-          } catch {}
+          } catch { /* empty */ }
         }, IDLE_TIMEOUT)
 
         sendJson(res, 200, { success: true, tmuxName, status: 'running' })
@@ -2596,7 +2596,7 @@ export function Default() {
         let branch = 'unknown'
         try {
           branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
-        } catch {}
+        } catch { /* empty */ }
 
         const tmuxName = generateTmuxName(branch, canvasId || 'unknown', widgetId)
 
@@ -2767,7 +2767,7 @@ export function Default() {
         let branch = 'unknown'
         try {
           branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
-        } catch {}
+        } catch { /* empty */ }
 
         const serverUrl = `http://localhost:${req.socket?.localPort || 1234}`
         const tmuxName = generateTmuxName(branch, canvasId, widgetId)
@@ -2816,7 +2816,7 @@ export function Default() {
         if (warmSession?.tmuxName) {
           try {
             // Kill any existing session with the canonical name first
-            try { execSync(`tmux kill-session -t "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+            try { execSync(`tmux kill-session -t "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' }) } catch { /* empty */ }
             // Rename the warm session to the canonical name
             execSync(`tmux rename-session -t "${warmSession.tmuxName}" "${tmuxName}"`, { stdio: 'ignore' })
             usedWarm = true
@@ -2872,7 +2872,7 @@ export function Default() {
           try {
             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(copilotCmd)}`, { stdio: 'ignore' })
             execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-          } catch {}
+          } catch { /* empty */ }
           // Inject identity after the agent command starts
           setTimeout(() => {
             const configFile = `.storyboard/terminals/${widgetId}.json`
@@ -2880,7 +2880,7 @@ export function Default() {
             try {
               execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(msg)}`, { stdio: 'ignore' })
               execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-            } catch {}
+            } catch { /* empty */ }
           }, 3000)
         }
 
@@ -2905,7 +2905,7 @@ export function Default() {
                 })
               }
             }
-          } catch {}
+          } catch { /* empty */ }
         }, 5 * 60 * 1000)
 
         sendJson(res, 200, { success: true, tmuxName, status: 'running', warm: usedWarm })
@@ -2950,11 +2950,11 @@ export function Default() {
         try {
           const { execSync } = await import('node:child_process')
           branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
-        } catch {}
+        } catch { /* empty */ }
 
         try {
           updateAgentStatus({ branch, canvasId: 'unknown', widgetId: targetWidgetId, status: 'cancelled', message: 'Cancelled by user' })
-        } catch {}
+        } catch { /* empty */ }
 
         // Notify via HMR
         if (__viteWs) {

@@ -84,7 +84,7 @@ async function canvasAdd() {
         const data = await res.json()
         canvases = data.canvases || data || []
       }
-    } catch {}
+    } catch { /* empty */ }
 
     if (canvases.length > 0) {
       const choice = await p.select({
@@ -151,7 +151,7 @@ async function canvasAdd() {
         const data = await res.json()
         stories = data.stories || []
       }
-    } catch {}
+    } catch { /* empty */ }
 
     if (stories.length > 0) {
       const storyId = await (async () => {

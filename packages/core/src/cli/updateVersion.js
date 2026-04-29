@@ -106,7 +106,7 @@ try {
     'scripts',
   ]
   for (const f of filesToStage) {
-    try { execSync(`git add ${f}`, { cwd: process.cwd(), stdio: 'pipe' }) } catch {}
+    try { execSync(`git add ${f}`, { cwd: process.cwd(), stdio: 'pipe' }) } catch { /* empty */ }
   }
 
   // Only commit if there are staged changes

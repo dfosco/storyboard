@@ -226,7 +226,7 @@ export default function storyboardServer() {
       // Initialize dev logger for structured o11y logging
       const devDomain = config.devDomain || null
       let currentBranch = null
-      try { currentBranch = cpExecSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim() } catch {}
+      try { currentBranch = cpExecSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim() } catch { /* empty */ }
       const logVerbose = config.featureFlags?.['dev-logs'] || false
       const devLogger = createDevLogger({ root, devDomain, branch: currentBranch, verbose: logVerbose })
       setDevLogger(devLogger) // make available to all server-side modules via devLog()
@@ -288,7 +288,7 @@ export default function storyboardServer() {
         let branch = 'unknown'
         try {
           branch = cpExecSync('git branch --show-current', { encoding: 'utf8', cwd: root }).trim()
-        } catch {}
+        } catch { /* empty */ }
         setupTerminalServer(server.httpServer, base, branch, hotPool)
       }
 

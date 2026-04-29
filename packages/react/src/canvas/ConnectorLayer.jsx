@@ -21,7 +21,7 @@ function getEndpointStyle(widgetType, side) {
 
 const DOT_OUTSET = 8
 
-function getDotOffset(anchor) {
+function _getDotOffset(anchor) {
   switch (anchor) {
     case 'top':    return { dx: 0, dy: -DOT_OUTSET }
     case 'bottom': return { dx: 0, dy: DOT_OUTSET }

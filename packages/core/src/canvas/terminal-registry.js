@@ -112,7 +112,7 @@ export function initRegistry(root, options = {}) {
   registryPath = join(dir, REGISTRY_FILE)
 
   // Ensure .storyboard/ exists
-  try { mkdirSync(dir, { recursive: true }) } catch {}
+  try { mkdirSync(dir, { recursive: true }) } catch { /* empty */ }
 
   // Load persisted state
   try {
@@ -391,7 +391,7 @@ function persist() {
   try {
     const entries = Array.from(sessions.values())
     writeFileSync(registryPath, JSON.stringify(entries, null, 2))
-  } catch {}
+  } catch { /* empty */ }
 }
 
 function listTmuxSessions() {
@@ -413,7 +413,7 @@ function listTmuxSessions() {
 function killTmuxSession(name) {
   try {
     execSync(`tmux kill-session -t "${name}" 2>/dev/null`, { stdio: 'ignore' })
-  } catch {}
+  } catch { /* empty */ }
 }
 
 function armOrphanTimer(tmuxName, delayMs) {

@@ -41,7 +41,7 @@ export default function CreateStoryForm({ onClose }) {
       const bridgeState = window.__storyboardCanvasBridgeState
       if (bridgeState?.canvasId) setCanvasId(bridgeState.canvasId)
       else if (bridgeState?.name) setCanvasId(bridgeState.name)
-    } catch {}
+    } catch { /* empty */ }
 
     try {
       const saved = sessionStorage.getItem(STORY_SUCCESS_KEY)
@@ -51,7 +51,7 @@ export default function CreateStoryForm({ onClose }) {
         setCreatedPath(parsed.path)
         sessionStorage.removeItem(STORY_SUCCESS_KEY)
       }
-    } catch {}
+    } catch { /* empty */ }
   }, [])
 
   async function submit() {
@@ -80,7 +80,7 @@ export default function CreateStoryForm({ onClose }) {
           success: `Created ${data.name}.story.${format}`,
           path: data.path,
         }))
-      } catch {}
+      } catch { /* empty */ }
     } catch (err) {
       setError(err.message || 'Network error')
     } finally {

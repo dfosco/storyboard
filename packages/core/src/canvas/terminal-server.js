@@ -97,12 +97,12 @@ const TMUX_SHELL_OVERRIDES = {
 /** Apply shell-config overrides to the tmux server's global environment */
 function applyTmuxShellOverrides() {
   for (const [key, val] of Object.entries(TMUX_SHELL_OVERRIDES)) {
-    try { execSync(`tmux set-environment -g ${key} "${val}" 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+    try { execSync(`tmux set-environment -g ${key} "${val}" 2>/dev/null`, { stdio: 'ignore' }) } catch { /* empty */ }
   }
   // Unset vars that should not exist at all inside storyboard terminals
   for (const key of Object.keys(process.env)) {
     if (isShellConfigVar(key) && !(key in TMUX_SHELL_OVERRIDES)) {
-      try { execSync(`tmux set-environment -g -u ${key} 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+      try { execSync(`tmux set-environment -g -u ${key} 2>/dev/null`, { stdio: 'ignore' }) } catch { /* empty */ }
     }
   }
 }
@@ -288,7 +288,7 @@ function isWidgetPrivate(widgetId, canvasId) {
   try {
     const config = readTerminalConfigById(widgetId)
     if (config?.widgetProps?.private) return true
-  } catch {}
+  } catch { /* empty */ }
   return false
 }
 
@@ -516,14 +516,14 @@ export function orphanTerminalSession(widgetId) {
   // Close the WS connection if any (notifies client)
   const ws = wsConnections.get(tmuxName)
   if (ws && ws.readyState <= 1) {
-    try { ws.close() } catch {}
+    try { ws.close() } catch { /* empty */ }
   }
   wsConnections.delete(tmuxName)
 
   // Kill the PTY process (detaches from tmux)
   const proc = ptyProcesses.get(tmuxName)
   if (proc) {
-    try { proc.kill() } catch {}
+    try { proc.kill() } catch { /* empty */ }
     ptyProcesses.delete(tmuxName)
   }
 }
@@ -533,7 +533,7 @@ function legacyKillSession(widgetId) {
   const legacyName = `sb-${widgetId}`
   try {
     execSync(`tmux kill-session -t "${legacyName}" 2>/dev/null`, { stdio: 'ignore' })
-  } catch {}
+  } catch { /* empty */ }
 }
 
 /**
@@ -556,13 +556,13 @@ export function setupTerminalServer(httpServer, base = '/', branch = 'unknown', 
   try {
     const addr = httpServer.address()
     if (addr && addr.port) actualServerPort = addr.port
-  } catch {}
+  } catch { /* empty */ }
 
   // Ensure node-pty spawn-helper has execute permission (npm install can strip it)
   try {
     const nodePtyDir = resolve(process.cwd(), 'node_modules/node-pty/prebuilds')
     execSync(`chmod +x "${nodePtyDir}"/darwin-*/spawn-helper 2>/dev/null || true`, { stdio: 'ignore' })
-  } catch {}
+  } catch { /* empty */ }
 
   // Initialize registry and terminal config
   const root = process.cwd()
@@ -629,7 +629,7 @@ function handleReadOnlyConnection(ws, widgetId, canvasId) {
     try {
       ws.send(JSON.stringify({ type: 'error', message: 'No active session to observe' }))
       ws.close()
-    } catch {}
+    } catch { /* empty */ }
     return
   }
 
@@ -637,7 +637,7 @@ function handleReadOnlyConnection(ws, widgetId, canvasId) {
   const roKey = `${tmuxName}:ro`
   const existingRo = wsConnections.get(roKey)
   if (existingRo && existingRo !== ws && existingRo.readyState <= 1) {
-    try { existingRo.close() } catch {}
+    try { existingRo.close() } catch { /* empty */ }
   }
   wsConnections.set(roKey, ws)
 
@@ -654,21 +654,21 @@ function handleReadOnlyConnection(ws, widgetId, canvasId) {
     try {
       ws.send(JSON.stringify({ type: 'error', message: `Failed to attach: ${err.message}` }))
       ws.close()
-    } catch {}
+    } catch { /* empty */ }
     return
   }
 
   // Forward pty output to WS (one-way only)
   ptyProcess.onData((data) => {
     if (ws.readyState === 1) {
-      try { ws.send(data) } catch {}
+      try { ws.send(data) } catch { /* empty */ }
     }
   })
 
   ptyProcess.onExit(() => {
     wsConnections.delete(roKey)
     if (ws.readyState <= 1) {
-      try { ws.close() } catch {}
+      try { ws.close() } catch { /* empty */ }
     }
   })
 
@@ -681,24 +681,24 @@ function handleReadOnlyConnection(ws, widgetId, canvasId) {
       if (parsed.type === 'resize' && parsed.cols && parsed.rows) {
         ptyProcess.resize(parsed.cols, parsed.rows)
       }
-    } catch {}
+    } catch { /* empty */ }
     // All other input is silently dropped (read-only)
   })
 
   ws.on('close', () => {
     wsConnections.delete(roKey)
-    try { ptyProcess.kill() } catch {}
+    try { ptyProcess.kill() } catch { /* empty */ }
   })
 
   ws.on('error', () => {
     wsConnections.delete(roKey)
-    try { ptyProcess.kill() } catch {}
+    try { ptyProcess.kill() } catch { /* empty */ }
   })
 
   // Send session info
   try {
     ws.send(JSON.stringify({ type: 'session-info', tmuxName, readOnly: true }))
-  } catch {}
+  } catch { /* empty */ }
 }
 
 function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupCommand = null) {
@@ -718,7 +718,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
       const name = detectWorktreeName()
       const servers = findByWorktree(name)
       if (servers.length > 0) serverPort = servers[0].port
-    } catch {}
+    } catch { /* empty */ }
   }
   if (!serverPort) serverPort = 1234
   const serverUrl = `http://localhost:${serverPort}`
@@ -729,14 +729,14 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
   // Close any existing WS for this session (one viewer at a time)
   const existingWs = wsConnections.get(tmuxName)
   if (existingWs && existingWs !== ws && existingWs.readyState <= 1) {
-    try { existingWs.close() } catch {}
+    try { existingWs.close() } catch { /* empty */ }
   }
   wsConnections.set(tmuxName, ws)
 
   // Kill any existing pty process for this session (stale connection)
   const existing = ptyProcesses.get(tmuxName)
   if (existing) {
-    try { existing.kill() } catch {}
+    try { existing.kill() } catch { /* empty */ }
     ptyProcesses.delete(tmuxName)
   }
 
@@ -823,7 +823,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
               }
             }
           }
-        } catch {}
+        } catch { /* empty */ }
       }
 
       // Try agent pool first, then fall back to terminal pool for bare shells
@@ -835,7 +835,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
       // If we got a warm session, rename it to the canonical tmux name
       if (poolSession?.tmuxName) {
         try {
-          try { execSync(`tmux kill-session -t "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+          try { execSync(`tmux kill-session -t "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' }) } catch { /* empty */ }
           execSync(`tmux rename-session -t "${poolSession.tmuxName}" "${tmuxName}"`, { stdio: 'ignore' })
           hotPoolRef.consume(targetPool, poolSession.id)
           usedWarmAgent = !!poolId // only true for agent pools, not terminal pools
@@ -855,7 +855,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
     if (hasLegacy) {
       try {
         execSync(`tmux rename-session -t "${legacyName}" "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' })
-      } catch {}
+      } catch { /* empty */ }
     }
 
     ptyProcess = spawnWithCleanup('tmux', args, {
@@ -917,7 +917,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
         // `start`, `copilot`, `claude`, `codex` available in ANY shell
         // inside the tmux session — even bare shells after a crash.
         const binDir = join(envDir, 'bin')
-        try { mkdirSync(binDir, { recursive: true }) } catch {}
+        try { mkdirSync(binDir, { recursive: true }) } catch { /* empty */ }
 
         // `start` — opens welcome screen (no args) or launches a command.
         // Uses `exec` to REPLACE the current shell, preventing nested
@@ -933,7 +933,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
         ].join('\n') + '\n'
         try {
           writeFileSync(join(binDir, 'start'), startScript, { mode: 0o755 })
-        } catch {}
+        } catch { /* empty */ }
 
         // Agent shorthand scripts (copilot, claude, codex, etc.)
         try {
@@ -948,10 +948,10 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
               ].join('\n') + '\n'
               try {
                 writeFileSync(join(binDir, id), agentScript, { mode: 0o755 })
-              } catch {}
+              } catch { /* empty */ }
             }
           }
-        } catch {}
+        } catch { /* empty */ }
 
         // Prepend bin dir to PATH in the tmux session environment.
         // Every new shell in this session will inherit the updated PATH.
@@ -960,7 +960,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
           if (!currentPath.includes(binDir)) {
             execSync(`tmux set-environment -t "${targetName}" PATH "${binDir}:${currentPath}" 2>/dev/null`, { stdio: 'ignore' })
           }
-        } catch {}
+        } catch { /* empty */ }
 
         // Also keep the sourceable aliases file for backwards compatibility
         const aliasLines = [
@@ -976,10 +976,10 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
               aliasLines.push(`${id}() { start ${cfg.startupCommand} "$@"; }`)
             }
           }
-        } catch {}
+        } catch { /* empty */ }
         const aliasFile = join(envDir, `${widgetId}.aliases.sh`)
-        try { writeFileSync(aliasFile, aliasLines.join('\n') + '\n') } catch {}
-      } catch {}
+        try { writeFileSync(aliasFile, aliasLines.join('\n') + '\n') } catch { /* empty */ }
+      } catch { /* empty */ }
     }
     setTimeout(hideStatus, 200)
 
@@ -1032,7 +1032,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
           try {
             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(envExports)}`, { stdio: 'ignore' })
             execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-          } catch {}
+          } catch { /* empty */ }
         }, 300)
 
         if (startupCommand) {
@@ -1046,7 +1046,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
               for (const cfg of Object.values(agentsConfig)) {
                 if (cfg.startupCommand && startupCommand.startsWith(cfg.startupCommand.split(' ')[0])) return cfg
               }
-            } catch {}
+            } catch { /* empty */ }
             return null
           })()
 
@@ -1058,7 +1058,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
               try {
                 execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(cmd)}`, { stdio: 'ignore' })
                 execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-              } catch {}
+              } catch { /* empty */ }
             }, 800)
           } else if (agentCfg || startupCommand !== 'shell') {
             // Agent or custom command — route through welcome with --startup
@@ -1072,7 +1072,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
               try {
                 execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(welcomeCmd)}`, { stdio: 'ignore' })
                 execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-              } catch {}
+              } catch { /* empty */ }
 
               if (readinessSignal) {
                 // Poll for readiness, then send postStartup command and deliver messages
@@ -1092,14 +1092,14 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
                           try {
                             execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(postStartup)}`, { stdio: 'ignore' })
                             execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-                          } catch {}
+                          } catch { /* empty */ }
                         }
                         // Inject identity, then deliver pending messages
                         injectIdentityMessage(tmuxName, { widgetId, displayName: prettyName, canvasId, branch, serverUrl })
                         setTimeout(() => deliverPendingMessages(tmuxName, widgetId), 2000)
                       }, 500)
                     }
-                  } catch {}
+                  } catch { /* empty */ }
                 }, 2000)
                 setTimeout(() => { if (!sent) { sent = true; clearInterval(pollInterval) } }, 30000)
               } else {
@@ -1120,7 +1120,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
             try {
               execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(`clear && ${welcomeBase}`)}`, { stdio: 'ignore' })
               execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-            } catch {}
+            } catch { /* empty */ }
           }, 800)
         }
       }
@@ -1232,7 +1232,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
     }
     const proc = ptyProcesses.get(tmuxName)
     if (proc === ptyProcess) {
-      try { ptyProcess.kill() } catch {}
+      try { ptyProcess.kill() } catch { /* empty */ }
       ptyProcesses.delete(tmuxName)
     }
     disconnectSession(tmuxName, generation)
@@ -1243,7 +1243,7 @@ function handleConnection(ws, widgetId, canvasId, prettyName, widgetStartupComma
     if (wsConnections.get(tmuxName) === ws) {
       wsConnections.delete(tmuxName)
     }
-    try { ptyProcess.kill() } catch {}
+    try { ptyProcess.kill() } catch { /* empty */ }
     ptyProcesses.delete(tmuxName)
     disconnectSession(tmuxName, generation)
   })
@@ -1273,7 +1273,7 @@ function deliverPendingMessages(tmuxName, widgetId) {
 
     // Write back via symlink path
     const symPath = join(process.cwd(), '.storyboard', 'terminals', `${widgetId}.json`)
-    try { writeFileSync(symPath, JSON.stringify(config, null, 2)) } catch {}
+    try { writeFileSync(symPath, JSON.stringify(config, null, 2)) } catch { /* empty */ }
 
     // Deliver each message with a small delay between them
     messages.forEach((msg, i) => {
@@ -1283,10 +1283,10 @@ function deliverPendingMessages(tmuxName, widgetId) {
           const formatted = `📩 [${msg.fromName || msg.from || 'unknown'} → you]\n\`\`\`\n${excerpt}\n\`\`\`${msg.from ? `\nFull context: cat .storyboard/terminals/${msg.from}.json | jq '.latestOutput.content'` : ''}`
           execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(formatted)}`, { stdio: 'ignore' })
           execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-        } catch {}
+        } catch { /* empty */ }
       }, i * 1500)
     })
-  } catch {}
+  } catch { /* empty */ }
 }
 
 /**
@@ -1419,7 +1419,7 @@ export function readTerminalSnapshot(widgetId, canvasId) {
     if (existsSync(newPath)) {
       return JSON.parse(readFileSync(newPath, 'utf8'))
     }
-  } catch {}
+  } catch { /* empty */ }
 
   // Legacy fallback: .storyboard/terminal-snapshots/<canvasDir>/<widgetId>.json
   if (canvasId) {
@@ -1428,7 +1428,7 @@ export function readTerminalSnapshot(widgetId, canvasId) {
       if (existsSync(legacyPath)) {
         return JSON.parse(readFileSync(legacyPath, 'utf8'))
       }
-    } catch {}
+    } catch { /* empty */ }
   }
 
   return null

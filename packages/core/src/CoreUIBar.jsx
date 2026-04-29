@@ -335,10 +335,13 @@ export default function CoreUIBar({ basePath = '/', toolbarConfig, customHandler
 
   // Stable refs for syncMobileActions
   const configRef = useRef(config)
+  // eslint-disable-next-line react-hooks/refs
   configRef.current = config
   const toolComponentsRef = useRef(toolComponents)
+  // eslint-disable-next-line react-hooks/refs
   toolComponentsRef.current = toolComponents
   const isMobileStateRef = useRef(isMobileState)
+  // eslint-disable-next-line react-hooks/refs
   isMobileStateRef.current = isMobileState
 
   const syncMobileActions = useCallback(async () => {

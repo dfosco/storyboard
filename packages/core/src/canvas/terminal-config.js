@@ -123,7 +123,7 @@ export function writeTerminalConfig({ branch, canvasId, widgetId, canvasFile = n
       const name = detectWorktreeName()
       const servers = findByWorktree(name)
       if (servers.length > 0) serverUrl = `http://localhost:${servers[0].port}`
-    } catch {}
+    } catch { /* empty */ }
   }
   if (!serverUrl) serverUrl = 'http://localhost:1234'
 

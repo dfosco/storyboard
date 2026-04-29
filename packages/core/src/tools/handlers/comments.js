@@ -6,7 +6,7 @@
 export const id = 'comments'
 
 export async function guard() {
-  const { isCommentsEnabled } = await import('../../comments/config.js')
+  const { isCommentsEnabled } = await import('@dfosco/storyboard-core')
   return isCommentsEnabled()
 }
 

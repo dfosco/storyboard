@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
 import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
-import { getActionChildren, subscribeToCommandActions } from './commandActions.js'
+import { getActionChildren, subscribeToCommandActions } from '@dfosco/storyboard-core'
 
 export default function ActionMenuButton({ config = {}, data, localOnly, tabindex = -1 }) {
   const [menuOpen, setMenuOpen] = useState(false)

@@ -3,7 +3,7 @@ import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
 import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
 import * as Panel from './lib/components/ui/panel/index.js'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
-import { isExcludedByRoute } from './commandActions.js'
+import { isExcludedByRoute } from '@dfosco/storyboard-core'
 
 export default function CreateMenuButton({ features: featuresProp = [], data, config = { label: 'Create' }, localOnly, tabindex }) {
   const features = featuresProp.length > 0 ? featuresProp : (data?.features || [])

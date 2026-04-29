@@ -11,8 +11,8 @@ import { Input } from './lib/components/ui/input/index.js'
 import { Label } from './lib/components/ui/label/index.js'
 import { SearchableList } from './lib/components/ui/searchable-list.jsx'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
-import { getConfig } from './configStore.js'
-import { buildPrototypeIndex } from './viewfinder.js'
+import { getConfig } from '@dfosco/storyboard-core'
+import { buildPrototypeIndex } from '@dfosco/storyboard-core'
 
 const widgetTypes = [
   { type: 'sticky-note', label: 'Sticky Note' },

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
 import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
-import { themeState, setTheme, getTheme, THEMES, themeSyncState, getThemeSyncTargets, setThemeSyncTarget } from './stores/themeStore.js'
+import { themeState, setTheme, getTheme, THEMES, themeSyncState, getThemeSyncTargets, setThemeSyncTarget } from '@dfosco/storyboard-core'
 
 export default function ThemeMenuButton({ config = {}, data, localOnly, tabindex = -1 }) {
   const [menuOpen, setMenuOpen] = useState(false)

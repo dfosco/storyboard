@@ -7,7 +7,7 @@
 export const id = 'palette-theme'
 
 export async function handler() {
-  const { themeState, setTheme, THEMES } = await import('../../stores/themeStore.js')
+  const { themeState, setTheme, THEMES } = await import('@dfosco/storyboard-core')
 
   return {
     getChildren() {

@@ -7,7 +7,7 @@ import { useState, useMemo } from 'react'
 import { TriggerButton } from './lib/components/ui/trigger-button/index.js'
 import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
-import { getConfig } from './configStore.js'
+import { getConfig } from '@dfosco/storyboard-core'
 
 export default function CanvasAgentsMenu({ config = {}, data, canvasName = '', zoom, tabindex }) {
   const [menuOpen, setMenuOpen] = useState(false)

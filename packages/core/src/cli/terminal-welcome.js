@@ -215,7 +215,16 @@ async function launchAgent(agent, { isInitialStartup = false } = {}) {
 
   try {
     const shell = process.env.SHELL || '/bin/zsh'
-    const child = spawn(shell, ['-lc', agent.startupCommand], { stdio: 'inherit' })
+    // Strip .storyboard/terminals/bin/ from PATH so the real agent binary is
+    // found instead of our wrapper scripts (which call `start` → `terminal-welcome`
+    // → launchAgent → wrapper → infinite recursion).
+    const cleanPath = (process.env.PATH || '').split(':')
+      .filter(p => !p.endsWith('.storyboard/terminals/bin'))
+      .join(':')
+    const child = spawn(shell, ['-lc', agent.startupCommand], {
+      stdio: 'inherit',
+      env: { ...process.env, PATH: cleanPath },
+    })
 
     // Context injection — inject identity, postStartup, and pending messages
     // after the agent reaches readiness. Skip on initial --startup since

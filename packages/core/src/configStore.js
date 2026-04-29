@@ -42,6 +42,7 @@ let _snapshotVersion = 0
  * @param {object} config - The unified config with all domains
  */
 export function initConfig(config) {
+  console.log('[devlog] configStore.initConfig called:', { keys: Object.keys(config || {}), cmdSections: config?.commandPalette?.sections?.length || 0, toolbarTools: config?.toolbar?.tools ? Object.keys(config.toolbar.tools).length : 0 })
   _baseConfig = config || {}
   _prototypeOverrides = {}
   _recompute()

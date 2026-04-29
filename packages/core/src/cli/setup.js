@@ -5,7 +5,7 @@
  */
 
 import * as p from '@clack/prompts'
-import { existsSync, writeFileSync, readFileSync, mkdirSync } from 'fs'
+import { existsSync, writeFileSync, readFileSync, mkdirSync, readdirSync, symlinkSync } from 'fs'
 import path from 'path'
 import { execSync } from 'child_process'
 import { generateCaddyfile, isCaddyInstalled, isCaddyRunning, startCaddy, reloadCaddy } from './proxy.js'
@@ -256,6 +256,28 @@ if (isInstalled('code')) {
       }
     } catch { /* ignore */ }
   }
+
+  // Create .github/agents/ symlinks so Copilot CLI discovers agent profiles.
+  // Claude Code reads from .agents/, Copilot CLI reads from .github/agents/.
+  // Symlinks keep one source of truth.
+  const ghAgentsDir = path.join('.github', 'agents')
+  try { mkdirSync(ghAgentsDir, { recursive: true }) } catch { /* ignore */ }
+  try {
+    const agentFiles = readdirSync(agentsDir).filter(f => f.endsWith('.agent.md'))
+    let linked = 0
+    for (const file of agentFiles) {
+      // terminal-agent.agent.md → terminal-agent.md
+      const linkName = file.replace('.agent.md', '.md')
+      const linkPath = path.join(ghAgentsDir, linkName)
+      const target = path.relative(ghAgentsDir, path.join(agentsDir, file))
+      if (!existsSync(linkPath)) {
+        try { symlinkSync(target, linkPath); linked++ } catch { /* ignore */ }
+      }
+    }
+    if (linked > 0) {
+      p.log.success(`Copilot CLI agent symlinks created (.github/agents/)`)
+    }
+  } catch { /* ignore */ }
 }
 
 // 8. Proxy

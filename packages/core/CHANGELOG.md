@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 4.2.0-beta.27
+
+### Patch Changes
+
+-   Add devlogs to trace command palette config flow end-to-end
+
 ## 4.2.0-beta.26
 
 ### Patch Changes

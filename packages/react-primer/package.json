@@ -1,6 +1,6 @@
 {
   "name": "@dfosco/storyboard-react-primer",
-  "version": "4.2.0-beta.26",
+  "version": "4.2.0-beta.27",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -12,7 +12,7 @@
     "src"
   ],
   "dependencies": {
-    "@dfosco/storyboard-react": "4.2.0-beta.26"
+    "@dfosco/storyboard-react": "4.2.0-beta.27"
   },
   "peerDependencies": {
     "@primer/react": ">=37",

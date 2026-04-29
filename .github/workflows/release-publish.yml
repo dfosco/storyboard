@@ -1,0 +1,125 @@
+name: Release Publish
+
+on:
+  push:
+    tags:
+      - '@dfosco/storyboard-core@*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Core package tag (e.g. @dfosco/storyboard-core@1.25.0)'
+        required: true
+
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag && format('refs/tags/{0}', github.event.inputs.tag) || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Configure git for HTTPS deps
+        run: git config --global url."https://github.com/".insteadOf ssh://git@github.com/
+
+      - run: npm ci --legacy-peer-deps
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Determine version and dist-tag
+        id: meta
+        run: |
+          VERSION=$(node -p "require('./packages/core/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          if [[ "$VERSION" == *"-beta."* ]]; then
+            echo "dist_tag=beta" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$VERSION" == *"-alpha."* ]]; then
+            echo "dist_tag=alpha" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "dist_tag=latest" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish packages to npm
+        run: |
+          DIST_TAG="${{ steps.meta.outputs.dist_tag }}"
+          VERSION="${{ steps.meta.outputs.version }}"
+
+          WORKSPACES=(
+            "@dfosco/storyboard-core"
+            "@dfosco/tiny-canvas"
+            "@dfosco/storyboard-react"
+            "@dfosco/storyboard-react-primer"
+            "@dfosco/storyboard-react-reshaped"
+          )
+
+          PUBLISH_ARGS=(--access public --provenance)
+          if [ "$DIST_TAG" != "latest" ]; then
+            PUBLISH_ARGS+=(--tag "$DIST_TAG")
+          fi
+
+          # OIDC trusted publishing requires npm 11.5.1+
+          # Node 22 ships npm 10.x, so we use npx to run npm@11 for publish
+          for ws in "${WORKSPACES[@]}"; do
+            PUBLISHED=$(npm view "${ws}@${VERSION}" version 2>/dev/null || true)
+            if [ "$PUBLISHED" = "$VERSION" ]; then
+              echo "⏭️  ${ws}@${VERSION} already published, skipping"
+            else
+              echo "📦 Publishing ${ws}@${VERSION}..."
+              npx --yes npm@11 publish --workspace "$ws" "${PUBLISH_ARGS[@]}"
+            fi
+          done
+        # No NODE_AUTH_TOKEN — OIDC Trusted Publishing handles auth
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          TAG="@dfosco/storyboard-core@${VERSION}"
+          TITLE="v${VERSION}"
+          CHANGELOG="packages/core/CHANGELOG.md"
+
+          if gh release view "$TAG" &>/dev/null; then
+            echo "⏭️  Release ${TITLE} already exists, skipping"
+            exit 0
+          fi
+
+          NOTES=$(awk -v ver="## ${VERSION}" \
+            '$0 ~ ver { found=1; next } found && /^## / { exit } found { print }' \
+            "$CHANGELOG")
+
+          RELEASE_ARGS=()
+          if [ "${{ steps.meta.outputs.prerelease }}" = "true" ]; then
+            RELEASE_ARGS+=(--prerelease)
+          else
+            RELEASE_ARGS+=(--latest)
+          fi
+
+          if [ -n "$NOTES" ]; then
+            echo "$NOTES" | gh release create "$TAG" --title "$TITLE" --notes-file - "${RELEASE_ARGS[@]}"
+          else
+            echo "⚠️  No changelog section for ${VERSION}, using auto-generated notes"
+            gh release create "$TAG" --title "$TITLE" --generate-notes "${RELEASE_ARGS[@]}"
+          fi
+
+          echo "✅ Created release ${TITLE}"

@@ -1,5 +1,15 @@
 # @dfosco/storyboard-react
 
+## 4.2.0-beta.26
+
+### Patch Changes
+
+-   Add temporary devlogs to command palette config flow for debugging
+
+-   Updated dependencies []:
+    -   @dfosco/storyboard-core@4.2.0-beta.26
+    -   @dfosco/tiny-canvas@4.2.0-beta.26
+
 ## 4.2.0-beta.25
 
 ### Patch Changes

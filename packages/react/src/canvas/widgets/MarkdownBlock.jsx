@@ -105,6 +105,7 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
 
   // Async-highlight code blocks after initial render or theme change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRenderedHtml(rawHtml)
     if (!rawHtml.includes('<code class="language-')) return
     let cancelled = false
@@ -149,6 +150,7 @@ export default forwardRef(function MarkdownBlock({ id, props, onUpdate, resizabl
         }
       }
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditHeight(null)
     }
   }, [editingActive])

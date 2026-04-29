@@ -1,5 +1,11 @@
 # @dfosco/storyboard-core
 
+## 4.2.0-beta.26
+
+### Patch Changes
+
+-   Add temporary devlogs to command palette config flow for debugging
+
 ## 4.2.0-beta.25
 
 ### Patch Changes

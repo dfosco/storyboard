@@ -21,7 +21,7 @@ export function DefaultState() {
     <div className={styles.storyFrame}>
       <div className={styles.storyLabel}>Scene 1 — Prototype selector (default)</div>
       <p className={styles.storyCaption}>
-        When the user clicks <strong>Prototype</strong> in the "Add to canvas" menu,
+        When the user clicks <strong>Prototype</strong> in the &quot;Add to canvas&quot; menu,
         a submenu opens with a searchable list of all prototypes. Prototypes with
         a single flow are directly selectable. Prototypes with multiple flows
         show a chevron — clicking expands the flow sub-items.
@@ -72,10 +72,10 @@ export function BeforeAfter() {
     <div className={styles.storyFrame} style={{ maxWidth: 720 }}>
       <div className={styles.storyLabel}>Scene 3 — Before → After</div>
       <p className={styles.storyCaption}>
-        <strong>Before:</strong> clicking "Prototype" in the add menu creates an
+        <strong>Before:</strong> clicking &quot;Prototype&quot; in the add menu creates an
         empty prototype widget that the user must then configure manually.
         <br />
-        <strong>After:</strong> clicking "Prototype" opens a submenu where the user
+        <strong>After:</strong> clicking &quot;Prototype&quot; opens a submenu where the user
         picks a specific prototype and flow — the widget is created pre-configured.
       </p>
 

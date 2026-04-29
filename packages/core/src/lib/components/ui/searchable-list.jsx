@@ -107,6 +107,7 @@ const SearchableList = forwardRef(function SearchableList(
   }, [])
 
   // Shift+Tab from any list item → return focus to the input
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const handleListKeyDown = useCallback((e) => {
     if (e.key === 'Tab' && e.shiftKey) {
       e.preventDefault()

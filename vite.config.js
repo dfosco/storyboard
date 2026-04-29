@@ -18,7 +18,7 @@ const __dirname = path.dirname(new URL(import.meta.url).pathname)
 // Read config with fs instead of a static import so Vite doesn't treat
 // storyboard.config.json as a config dependency (which would restart the
 // entire server on every edit instead of just hot-reloading).
-const { repository } = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'storyboard.config.json'), 'utf-8'))
+JSON.parse(fs.readFileSync(path.resolve(__dirname, 'storyboard.config.json'), 'utf-8'))
 
 export default defineConfig(() => {
     const base = process.env.VITE_BASE_PATH || '/'

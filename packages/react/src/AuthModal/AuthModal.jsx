@@ -30,11 +30,6 @@ export default function AuthModal() {
     return () => document.removeEventListener('storyboard:open-auth-modal', handleOpen)
   }, [])
 
-  const _handleClose = useCallback(() => {
-    setOpen(false)
-    setTokenValue('')
-  }, [])
-
   const handleSignIn = useCallback(() => {
     const trimmed = tokenValue.trim()
     if (!trimmed) return

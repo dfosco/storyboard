@@ -7,10 +7,9 @@ import WidgetWrapper from './WidgetWrapper.jsx'
 import ResizeHandle from './ResizeHandle.jsx'
 import { readProp, linkPreviewSchema } from './widgetProps.js'
 import ExpandedPane from './ExpandedPane.jsx'
-import { findAllConnectedSplitTargets, getSplitPaneLabel, buildPaneForWidget, buildSplitLayout } from './expandUtils.js'
+import { findAllConnectedSplitTargets, buildPaneForWidget, buildSplitLayout } from './expandUtils.js'
 import styles from './LinkPreview.module.css'
 
-const VIDEO_EXT_RE = /\.(mp4|mov|webm|ogg)(\?[^)]*)?$/i
 const VIDEO_URL_LINE_RE = /^<p>\s*(https?:\/\/[^\s<]+\.(mp4|mov|webm|ogg)(?:\?[^\s<]*)?)\s*<\/p>$/gim
 
 /**
@@ -119,6 +118,7 @@ function GitHubIssueCard({ id, url, title, github, width, collapsed, expanded, e
   const kindLabel = getCommentKindLabel(github)
 
   // Prefer pre-rendered bodyHtml (has signed image URLs), fall back to remark for discussions
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const bodyHtml = useMemo(() => {
     if (github?.bodyHtml) return postProcessHtml(github.bodyHtml)
     return renderMarkdown(github?.body || '')

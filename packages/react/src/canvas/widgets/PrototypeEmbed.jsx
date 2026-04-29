@@ -61,7 +61,6 @@ export default forwardRef(function PrototypeEmbed({ id: widgetId, props, onUpdat
   }, [src, basePath, baseSegment])
 
   const scale = zoom / 100
-  const isExternal = /^https?:\/\//.test(src || '')
 
   const [editing, setEditing] = useState(false)
   const [interactive, setInteractive] = useState(false)

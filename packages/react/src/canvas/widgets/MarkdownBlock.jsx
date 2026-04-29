@@ -310,6 +310,7 @@ export function ExpandedMarkdownEditor({ content, onUpdate, editing, onToggleEdi
   const [renderedHtml, setRenderedHtml] = useState(rawHtml)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRenderedHtml(rawHtml)
     if (!rawHtml.includes('<code class="language-')) return
     let cancelled = false

@@ -5,7 +5,7 @@
  * onto the canvas, including coordinate conversion and file filtering.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { fireEvent, render, act, waitFor } from '@testing-library/react'
+import { render, act } from '@testing-library/react'
 import CanvasPage from './CanvasPage.jsx'
 import { addWidget, uploadImage } from './canvasApi.js'
 

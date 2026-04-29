@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { setTheme, setThemeSyncTarget } from '@dfosco/storyboard-core'
 import { useThemeState, useThemeSyncTargets } from './useThemeState.js'
 

@@ -49,10 +49,6 @@ function parseDataFile(filePath) {
     const canvasCheck = normalized.match(/(?:^|\/)src\/canvas\//)
     if (canvasCheck) {
       const dirPath = normalized.substring(0, normalized.lastIndexOf('/'))
-      const routeBase = (dirPath + '/')
-        .replace(/^.*?src\/canvas\//, '')
-        .replace(/[^/]*\.folder\/?/g, '')
-        .replace(/\/$/, '')
       // Path-based ID: include folder context for uniqueness.
       // .folder dirs contribute their name (sans .folder suffix) to the ID.
       const idBase = (dirPath + '/')
@@ -190,39 +186,6 @@ function parseDataFile(filePath) {
   }
 
   return { name, suffix, ext: match[3], inferredRoute }
-}
-
-/**
- * Look up the git author who first created a file.
- * Used to auto-fill the author field in .prototype.json when missing.
- */
-function _getGitAuthor(root, filePath) {
-  try {
-    const result = execSync(
-      `git log --follow --diff-filter=A --format="%aN" -- "${filePath}"`,
-      { cwd: root, encoding: 'utf-8', timeout: 5000 },
-    ).trim()
-    const lines = result.split('\n').filter(Boolean)
-    return lines.length > 0 ? lines[lines.length - 1] : null
-  } catch {
-    return null
-  }
-}
-
-/**
- * Look up the most recent commit date for any file in a directory.
- * Returns an ISO 8601 timestamp, or null if unavailable.
- */
-function _getLastModified(root, dirPath) {
-  try {
-    const result = execSync(
-      `git log -1 --format="%aI" -- "${dirPath}"`,
-      { cwd: root, encoding: 'utf-8', timeout: 5000 },
-    ).trim()
-    return result || null
-  } catch {
-    return null
-  }
 }
 
 /**
@@ -667,6 +630,13 @@ function buildUnifiedConfig(root) {
   }
 
   // 7. Build the unified config object
+  console.log('[storyboard] [devlog] buildUnifiedConfig:', {
+    coreCPSections: coreCommandPalette?.sections?.length,
+    afterSbCPSections: afterSbCommandPalette?.sections?.length,
+    finalCPSections: finalCommandPalette?.sections?.length,
+    rawSbHasCP: !!rawSbConfig.commandPalette,
+    userHasCP: !!userConfigs.commandPalette,
+  })
   const unified = {
     toolbar: finalToolbar,
     commandPalette: finalCommandPalette,

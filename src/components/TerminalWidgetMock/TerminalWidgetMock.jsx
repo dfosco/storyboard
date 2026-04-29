@@ -21,30 +21,4 @@ function TerminalChrome({ title, status, actions, children }) {
   )
 }
 
-function TerminalLine({ prompt, command, output, muted }) {
-  return (
-    <div className={`${styles.line} ${muted ? styles.muted : ''}`}>
-      {prompt && <span className={styles.prompt}>{prompt}</span>}
-      {command && <span className={styles.command}>{command}</span>}
-      {output && <div className={styles.output}>{output}</div>}
-    </div>
-  )
-}
-
-function ActionButton({ icon, label, active }) {
-  return (
-    <button className={`${styles.actionBtn} ${active ? styles.active : ''}`}>
-      {icon} <span>{label}</span>
-    </button>
-  )
-}
-
-function CopilotBadge() {
-  return <span className={styles.copilotBadge}>✦ Copilot</span>
-}
-
-function ContextTag({ label }) {
-  return <span className={styles.contextTag}>{label}</span>
-}
-
 export default TerminalChrome

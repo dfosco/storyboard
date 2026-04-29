@@ -143,7 +143,7 @@ export function SessionPickerAllCanvases() {
     <div className={styles.storyFrame}>
       <div className={styles.storyLabel}>Scene 2 — Session Picker (All Canvases, This Branch)</div>
       <p className={styles.storyCaption}>
-        User tabs to "All canvases" — shows every session on the current branch,
+        User tabs to &quot;All canvases&quot; — shows every session on the current branch,
         grouped by canvas name. Still no cross-branch sessions visible.
       </p>
       <Chrome
@@ -246,7 +246,7 @@ export function SessionPickerAllBranches() {
     <div className={styles.storyFrame}>
       <div className={styles.storyLabel}>Scene 3 — Session Picker (All Branches)</div>
       <p className={styles.storyCaption}>
-        User tabs to "All branches" — shows sessions across all worktrees,
+        User tabs to &quot;All branches&quot; — shows sessions across all worktrees,
         grouped by branch. Current branch appears first.
       </p>
       <Chrome
@@ -367,7 +367,7 @@ export function ConflictDialog() {
             <strong>Session conflict</strong>
           </div>
           <div style={{ color: '#8b949e', lineHeight: 1.6 }}>
-            This terminal's session is currently <span className={styles.statusLive}>Live</span> on
+            This terminal&apos;s session is currently <span className={styles.statusLive}>Live</span> on
             another worktree:
             <br /><br />
             <span style={{ color: '#e6edf3' }}>
@@ -427,7 +427,7 @@ export function WarmStartBanner() {
             <strong>Previous session by @dfosco</strong>
           </div>
           <div className={styles.warmStartMeta}>
-            Last commit: <span style={{ color: '#e6edf3' }}>a1b2c3d</span> — "refactor: migrate Button to CSS modules"
+            Last commit: <span style={{ color: '#e6edf3' }}>a1b2c3d</span> — &quot;refactor: migrate Button to CSS modules&quot;
             <br />
             Branch: <span style={{ color: '#58a6ff' }}>4.2.0</span> · Canvas: <span style={{ color: '#58a6ff' }}>design-system</span> · 12 widgets
           </div>
@@ -622,7 +622,7 @@ export function FullLifecycle() {
               Opens canvas → terminal widget
               <br />→ No local session found
               <br />→ Reads <span style={{ color: '#8b949e' }}>.session.md</span>
-              <br />→ Warm-start: "Continue with Copilot"
+              <br />→ Warm-start: &quot;Continue with Copilot&quot;
             </div>
           </div>
         </div>

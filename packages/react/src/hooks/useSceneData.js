@@ -36,6 +36,7 @@ export function useFlowData(path, opts) {
   const storageString = useSyncExternalStore(subscribeToStorage, getStorageSnapshot)
 
   // Collect overrides relevant to this path
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const result = useMemo(() => {
     if (loading || error || data == null) return undefined
 

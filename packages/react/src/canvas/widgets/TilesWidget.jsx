@@ -47,8 +47,6 @@ const TilesWidget = forwardRef(function TilesWidget({ id, props, onUpdate, resiz
   const columns = (isProd ? localState?.columns : null) ?? (readProp(props, 'columns', tilesSchema) || 3)
   const rows = (isProd ? localState?.rows : null) ?? (readProp(props, 'rows', tilesSchema) || 3)
   const tileSize = readProp(props, 'tileSize', tilesSchema) || 80
-  const width = readProp(props, 'width', tilesSchema)
-  const height = readProp(props, 'height', tilesSchema)
   const savedTiles = (isProd ? localState?.tiles : null) ?? readProp(props, 'tiles', tilesSchema)
 
   // Local state for interactions

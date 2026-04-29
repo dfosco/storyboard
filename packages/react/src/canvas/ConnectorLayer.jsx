@@ -19,18 +19,6 @@ function getEndpointStyle(widgetType, side) {
   return connectorConfig[key]
 }
 
-const DOT_OUTSET = 8
-
-function _getDotOffset(anchor) {
-  switch (anchor) {
-    case 'top':    return { dx: 0, dy: -DOT_OUTSET }
-    case 'bottom': return { dx: 0, dy: DOT_OUTSET }
-    case 'left':   return { dx: -DOT_OUTSET, dy: 0 }
-    case 'right':  return { dx: DOT_OUTSET, dy: 0 }
-    default:       return { dx: 0, dy: 0 }
-  }
-}
-
 /**
  * Render an endpoint shape (circle, arrow-start, arrow-end, or none) at the given point.
  * - "circle" (default): filled dot

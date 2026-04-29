@@ -56,7 +56,7 @@ const MIN_PANE_HEIGHT_PX = 80
  * @param {() => void} props.onClose — close callback
  * @param {((panes: PaneConfig[]) => void)} [props.onPanesChange] — notify parent of pane changes
  */
-export default function ExpandedPane({ initialPanes, initialLayout, variant = 'modal', onClose, onPanesChange }) {
+export default function ExpandedPane({ initialPanes, initialLayout, variant = 'modal', onClose }) {
   // Normalize to 2D layout: outer = columns, inner = rows
   const [layout, setLayout] = useState(() => {
     if (initialLayout) return initialLayout
@@ -85,7 +85,7 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
   const [rowRatios, setRowRatios] = useState(() =>
     layout.map((col) => col.map(() => 1)),
   )
-  const [activePaneId, setActivePaneId] = useState(null)
+  const [, setActivePaneId] = useState(null)
 
   // Ref map: paneId → container DOM element (callback refs)
   const containerRefs = useRef(new Map())
@@ -96,7 +96,6 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
 
   const totalPanes = allPanes.length
   const isSplit = totalPanes >= 2
-  const useFullLayout = isSplit || variant === 'full'
 
   // ── External pane attach/detach via useLayoutEffect ──
   useLayoutEffect(() => {
@@ -109,7 +108,7 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
       detachRefs.current.set(pane.id, detach)
     }
     return () => {
-      for (const [id, detach] of detachRefs.current) {
+      for (const [, detach] of detachRefs.current) {
         detach?.()
       }
       detachRefs.current.clear()
@@ -456,7 +455,7 @@ function ColumnWithDivider({ colIndex, isLast, onDividerPointerDown, children })
 /**
  * Renders a pane within a row-split column, optionally followed by a horizontal row divider.
  */
-function PaneWithRowDivider({ pane, flex, isLast, colIndex, onRowDividerPointerDown, children }) {
+function PaneWithRowDivider({ flex, isLast, colIndex, onRowDividerPointerDown, children }) {
   return (
     <>
       <div className={styles.pane} style={{ flex }}>

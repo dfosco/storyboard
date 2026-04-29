@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
 import ExpandedPane from './ExpandedPane.jsx'
 
 // Mock createPortal to render inline for testing
@@ -135,7 +135,7 @@ describe('ExpandedPane', () => {
 
   describe('external pane attach/detach', () => {
     it('calls attach with container element on mount', async () => {
-      const { pane, attach, detach } = makeExternalPane('term-1')
+      const { pane, attach } = makeExternalPane('term-1')
       render(<ExpandedPane initialPanes={[pane]} variant="full" onClose={vi.fn()} />)
       // useLayoutEffect runs synchronously in test
       expect(attach).toHaveBeenCalledOnce()

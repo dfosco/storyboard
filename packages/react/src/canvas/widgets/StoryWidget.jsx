@@ -105,6 +105,7 @@ export default forwardRef(function StoryWidget({ id: widgetId, props, onUpdate, 
     if (!showCode || sourceCode !== null) return
     const story = getStoryData(storyId)
     if (!story?._storyModule) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSourceCode('// Source not available')
       return
     }
@@ -313,7 +314,7 @@ function StoryExpandPane({ widgetId, storyId, exportName, splitMode, onClose }) 
         kind: 'react',
         render: () => url
           ? <iframe src={url} style={{ border: 'none', width: '100%', height: '100%', display: 'block' }} title={storyId} onLoad={(e) => e.target.blur()} />
-          : <div style={{ padding: 32, color: 'var(--fgColor-muted)' }}>Story "{storyId}" not found</div>,
+          : <div style={{ padding: 32, color: 'var(--fgColor-muted)' }}>Story &quot;{storyId}&quot; not found</div>,
       }
     }
     return buildPaneForWidget(widget)

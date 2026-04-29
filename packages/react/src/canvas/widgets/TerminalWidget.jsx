@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { readProp } from './widgetProps.js'
 import { schemas } from './widgetProps.js'
-import { getTerminalConfig, getTerminalDimensions, getStoryData } from '@dfosco/storyboard-core'
+import { getTerminalConfig, getTerminalDimensions } from '@dfosco/storyboard-core'
 import { useOverride } from '../../hooks/useOverride.js'
 import { getSplitPaneLabel, findAllConnectedSplitTargets, buildPaneForWidget, buildSplitLayout } from './expandUtils.js'
 import ExpandedPane from './ExpandedPane.jsx'
@@ -79,46 +79,6 @@ function fitTerminalToElement(widgetId, containerEl) {
   }
 }
 
-const EMBED_TYPES = new Set(['prototype', 'story'])
-
-function findConnectedEmbed(widgetId) {
-  const bridge = window.__storyboardCanvasBridgeState
-  if (!bridge?.connectors || !bridge?.widgets) return null
-  const connectedIds = new Set()
-  for (const c of bridge.connectors) {
-    if (c.start?.widgetId === widgetId) connectedIds.add(c.end?.widgetId)
-    if (c.end?.widgetId === widgetId) connectedIds.add(c.start?.widgetId)
-  }
-  for (const w of bridge.widgets) {
-    if (connectedIds.has(w.id) && EMBED_TYPES.has(w.type)) return w
-  }
-  return null
-}
-
-function buildEmbedUrl(widget) {
-  if (!widget) return null
-  const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
-  const baseClean = base.endsWith('/') ? base.slice(0, -1) : base
-  if (widget.type === 'prototype') {
-    const src = widget.props?.src
-    if (!src) return null
-    if (/^https?:\/\//.test(src)) return src
-    return `${baseClean}${src.startsWith('/') ? '' : '/'}${src}?_sb_embed&_sb_hide_branch_bar`
-  }
-  if (widget.type === 'story') {
-    const storyId = widget.props?.storyId
-    const exportName = widget.props?.exportName
-    if (!storyId) return null
-    const storyData = getStoryData(storyId)
-    if (storyData?._route) {
-      const route = exportName ? `${storyData._route}?export=${exportName}` : storyData._route
-      return `${baseClean}${route}`
-    }
-    return null
-  }
-  return null
-}
-
 const DEFAULT_THEME = {
   background: '#0d1117',
   foreground: '#e6edf3',
@@ -142,7 +102,7 @@ const DEFAULT_THEME = {
   brightWhite: '#f0f6fc',
 }
 
-export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizable, multiSelected }, ref) {
+export default forwardRef(function TerminalWidget({ id, props, onUpdate, multiSelected }, ref) {
   const cfg = getTerminalConfig()
   const fontSize = cfg.fontSize ?? 13
   const agentId = props?.agentId || null
@@ -155,11 +115,6 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   const prettyName = props?.prettyName || null
   const startupCommand = props?.startupCommand || null
 
-  // Snap dimensions to cell grid so the terminal fills its container exactly
-  const { cols, rows } = useMemo(
-    () => calcDimensions(rawWidth, rawHeight, fontSize),
-    [rawWidth, rawHeight, fontSize],
-  )
   const width = rawWidth
   const height = rawHeight
   // Snapped dimensions computed from ghostty's actual cell metrics (set after open)
@@ -220,6 +175,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
 
   // Exit interactive when terminal becomes part of a multi-selection
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (multiSelected && interactive) setInteractive(false)
   }, [multiSelected])
 
@@ -385,6 +341,7 @@ export default forwardRef(function TerminalWidget({ id, props, onUpdate, resizab
   // Reveal mask — hide terminal for 750ms after ready to mask startup flash
   useEffect(() => {
     if (!ready) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRevealed(false)
       return
     }

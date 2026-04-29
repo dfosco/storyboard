@@ -56,7 +56,7 @@ const COMMENTS_TOKEN_KEY = 'sb-comments-token'
  * Resolve the current GitHub user for display in the sidebar.
  * Priority: 1) PAT-cached user (from comments auth), 2) gh CLI login via git-user endpoint.
  */
-function useGitHubUser(_basePath) {
+function useGitHubUser() {
   const [user, setUser] = useState(() => {
     try {
       const raw = localStorage.getItem(COMMENTS_USER_KEY)
@@ -152,16 +152,6 @@ function withBase(basePath, route) {
   const normalizedBase = (basePath || '/').replace(/\/+$/, '')
   if (!normalizedBase || normalizedBase === '/') return normalizedRoute
   return `${normalizedBase}${normalizedRoute}`.replace(/\/+/g, '/')
-}
-
-/* ─── Thumbnail color from name hash ─── */
-
-const THUMB_CLASSES = ['thumbBlue', 'thumbAmber', 'thumbGreen', 'thumbPurple', 'thumbRose', 'thumbSlate']
-
-function _thumbClass(name) {
-  let h = 0
-  for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) | 0
-  return css[THUMB_CLASSES[Math.abs(h) % THUMB_CLASSES.length]]
 }
 
 /* ─── Type helpers ─── */
@@ -1078,10 +1068,7 @@ export default function Workspace({
   basePath,
   title = 'Storyboard',
   subtitle,
-  hideDefaultFlow,
-  hideDefaultScene = false,
 }) {
-  const _shouldHideDefault = hideDefaultFlow ?? hideDefaultScene
   const themeAttrs = useToolbarTheme()
   const ghUser = useGitHubUser(basePath)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -1290,8 +1277,6 @@ export default function Workspace({
 
   // Starred items for sidebar
   const starredItems = useMemo(() => visibleItems.filter(i => starred.has(i.id)), [visibleItems, starred])
-
-  const _pageTitle = NAV_ITEMS.find(n => n.id === activeNav)?.label || 'All artifacts'
 
   return (
     <div className={css.layout} {...themeAttrs}>

@@ -57,9 +57,6 @@ const GH_INSTALL_URL = 'https://github.com/cli/cli'
 registerSmoothCorners()
 registerHotPoolDevLogs()
 
-/** Matches branch-deploy base path prefixes like /branch--my-feature/ */
-const _BRANCH_PREFIX_RE = /^\/branch--[^/]+/
-
 // Build a reverse map from story route paths → { storyId, route }
 const storyRouteIndex = new Map()
 for (const [storyId, data] of Object.entries(storyIndex || {})) {
@@ -415,6 +412,7 @@ const ChromeWrappedWidget = memo(function ChromeWrappedWidget({
     return adjusted
   }, [rawFeatures, widget.props?.github, widget.props?.collapsed, widget.type, widget.id, connectorCount, allWidgets])
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const handleAction = useCallback((actionId, opts) => {
     if (actionId === 'delete') {
       onRemove?.(widget.id)

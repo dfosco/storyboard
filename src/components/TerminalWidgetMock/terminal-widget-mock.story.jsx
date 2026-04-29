@@ -43,10 +43,6 @@ function CopilotBadge() {
   return <span className={styles.copilotBadge}>✦ Copilot</span>
 }
 
-function ContextTag({ label }) {
-  return <span className={styles.contextTag}>{label}</span>
-}
-
 
 /* ═══════════════════════════════════════════════
    Scene 1 — Empty terminal widget on canvas
@@ -119,7 +115,7 @@ export function CopilotLauncher() {
     <div className={styles.storyFrame}>
       <div className={styles.storyLabel}>Scene 3 — Launch Copilot</div>
       <p className={styles.storyCaption}>
-        The toolbar has a "✦ Copilot" button that sends <code>copilot</code> to the PTY.
+        The toolbar has a &quot;✦ Copilot&quot; button that sends <code>copilot</code> to the PTY.
         Canvas context (selected widgets, sticky notes) is auto-attached as initial context.
       </p>
       <Chrome
@@ -158,7 +154,7 @@ export function CanvasContext() {
       <p className={styles.storyCaption}>
         Widgets are connected to the terminal via connector lines drawn on the canvas.
         Connected widgets are automatically injected as context for the Copilot session.
-        Connections can be added or removed by dragging from a widget's connector port to the terminal.
+        Connections can be added or removed by dragging from a widget&apos;s connector port to the terminal.
       </p>
 
       <div className={styles.storyRow} style={{ alignItems: 'center' }}>
@@ -291,7 +287,7 @@ export function FullFlow() {
 
       <p className={styles.storyCaption}>
         The terminal acts as a command center. Connected widgets flow in as
-        context and get mutated by Copilot's actions. New widgets (diffs,
+        context and get mutated by Copilot&apos;s actions. New widgets (diffs,
         summaries) are created on the canvas and auto-connected back to
         the terminal session.
       </p>

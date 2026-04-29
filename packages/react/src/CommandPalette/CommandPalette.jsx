@@ -1198,7 +1198,7 @@ export default function StoryboardCommandPalette({ basePath }) {
                 !search && <Command.Separator key={list.id} />
               ) : (
                 <Command.Group key={list.id} heading={list.heading}>
-                  {list.items.map(({ id, children, keywords, onClick, itemType, toolIcon, toolMeta, closeOnSelect, hideFromSearch, url, ..._rest }) => {
+                  {list.items.map(({ id, children, keywords, onClick, itemType, toolIcon, toolMeta, closeOnSelect, hideFromSearch, url }) => {
                     if (search && hideFromSearch) return null
                     if (hiddenFromSearchIds.size > 0) {
                       for (const toolId of hiddenFromSearchIds) {

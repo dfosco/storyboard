@@ -5,7 +5,9 @@ import { isAuthenticated } from './comments/auth.js'
 import { isCommentModeActive, toggleCommentMode, subscribeToCommentMode } from './comments/commentMode.js'
 import { openAuthModal } from './comments/ui/authModal.js'
 
-export default function CommentsMenuButton({ config = {}, data, localOnly, tabindex }) {
+export default function CommentsMenuButton({ config = {}, data: _data, localOnly: _localOnly, tabindex }) {
+  void _data
+  void _localOnly
   const [commentModeOn, setCommentModeOn] = useState(isCommentModeActive())
 
   useEffect(() => {

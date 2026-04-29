@@ -22,7 +22,7 @@ import { existsSync } from 'fs'
 import { resolve } from 'path'
 import { repoRoot, worktreeDir, listWorktrees, getPort, detectWorktreeName } from '../worktree/port.js'
 import { hasUncommittedChanges, localBranchExists } from './dev-helpers.js'
-import { dim, green, yellow, bold, cyan } from './intro.js'
+import { dim, green, bold, cyan } from './intro.js'
 
 /** Check if a remote branch exists on origin. */
 function remoteBranchExists(name, cwd) {

@@ -8,7 +8,7 @@
  * Mounted via mountViewfinder() from the viewfinder plugin entry point.
  */
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import './Viewfinder.css'
 import { buildPrototypeIndex } from '../../viewfinder.js'
 import { getLocal, setLocal } from '../../localStorage.js'
@@ -293,7 +293,8 @@ export function Viewfinder({
   // Sorting
   const [sortBy, setSortBy] = useState('updated')
   const sortedProtos = prototypeIndex.sorted?.[sortBy]?.prototypes ?? ungroupedProtos
-  const sortedFolders = prototypeIndex.sorted?.[sortBy]?.folders ?? folders
+  const _sortedFolders = prototypeIndex.sorted?.[sortBy]?.folders ?? folders
+  void _sortedFolders
 
   // Canvases
   const ungroupedCanvases = prototypeIndex.canvases || []

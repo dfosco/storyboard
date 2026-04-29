@@ -4,9 +4,12 @@ import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
 import { getActionChildren, subscribeToCommandActions } from '@dfosco/storyboard-core'
 
-export default function ActionMenuButton({ config = {}, data, localOnly, tabindex = -1 }) {
+export default function ActionMenuButton({ config = {}, data: _data, localOnly: _localOnly, tabindex = -1 }) {
+  void _data
+  void _localOnly
   const [menuOpen, setMenuOpen] = useState(false)
-  const [actionsVersion, setActionsVersion] = useState(0)
+  const [_actionsVersion, setActionsVersion] = useState(0)
+  void _actionsVersion
 
   useEffect(() => {
     const unsub = subscribeToCommandActions(() => { setActionsVersion((v) => v + 1) })

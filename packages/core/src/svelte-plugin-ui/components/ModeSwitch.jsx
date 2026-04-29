@@ -5,7 +5,7 @@
  * Only visible when two or more modes are registered.
  */
 
-import React, { useSyncExternalStore } from 'react'
+import { useSyncExternalStore } from 'react'
 import './ModeSwitch.css'
 import { modeState, switchMode } from '../stores/modeStore.js'
 

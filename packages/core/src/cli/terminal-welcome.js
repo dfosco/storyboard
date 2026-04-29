@@ -20,7 +20,7 @@ import { execSync, spawn } from 'node:child_process'
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { parseFlags } from './flags.js'
-import { dim, cyan, bold } from './intro.js'
+import { dim, bold } from './intro.js'
 import { takePendingMessages } from '../canvas/terminal-config.js'
 
 const blue = (s) => `\x1b[34m${s}\x1b[0m`

@@ -10,7 +10,7 @@
  */
 
 import './CoreUIBar.css';
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import './core-ui-colors.css'
 import * as Panel from './lib/components/ui/panel/index.js'
 import PwaInstallBanner from './PwaInstallBanner.jsx'

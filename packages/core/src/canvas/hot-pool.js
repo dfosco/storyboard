@@ -492,6 +492,7 @@ export class HotPool {
               { encoding: 'utf8', timeout: 1000 }
             )
             // Strip ANSI escape sequences — agent CLIs use heavy formatting
+            // eslint-disable-next-line no-control-regex
             const clean = paneContent.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/[^\x20-\x7E\n]/g, '')
             if (clean.includes(readinessSignal)) {
               clearInterval(poll)
@@ -623,7 +624,6 @@ export class HotPoolManager {
   /** @type {Map<string, HotPool>} */
   #pools = new Map()
   #enabled = true
-  #config = {}
 
   /**
    * @param {Object} opts
@@ -634,7 +634,6 @@ export class HotPoolManager {
    */
   constructor({ root, config = {}, agentsConfig = {}, wsSend = null }) {
     this.#enabled = config.enabled !== false
-    this.#config = config
     const poolsConfig = config.pools || {}
 
     // Merge per-pool config with top-level defaults

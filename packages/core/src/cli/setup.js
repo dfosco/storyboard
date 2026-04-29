@@ -9,7 +9,7 @@ import { existsSync, writeFileSync, readFileSync, mkdirSync, readdirSync, symlin
 import path from 'path'
 import { execSync } from 'child_process'
 import { generateCaddyfile, isCaddyInstalled, isCaddyRunning, startCaddy, reloadCaddy } from './proxy.js'
-import { gettingStartedLines, dim, magenta, bold, green, yellow } from './intro.js'
+import { gettingStartedLines, dim, magenta, bold, yellow } from './intro.js'
 
 /**
  * Run a potentially slow task with a spinner that only appears after 500ms.

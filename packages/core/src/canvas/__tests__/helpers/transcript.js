@@ -52,7 +52,8 @@ export function logSection(sessionName, testId) {
 }
 
 /** Log stdin (input sent via sendKeys). */
-export function logStdin(sessionName, input, testId = '') {
+export function logStdin(sessionName, input, _testId = '') {
+  void _testId
   const t = transcripts.get(sessionName)
   if (!t) return
   const ts = elapsed(t.startTime)
@@ -65,7 +66,8 @@ export function logStdin(sessionName, input, testId = '') {
 }
 
 /** Log stdout (captured pane output). Only logs the diff from previous capture. */
-export function logStdout(sessionName, fullOutput, testId = '') {
+export function logStdout(sessionName, fullOutput, _testId = '') {
+  void _testId
   const t = transcripts.get(sessionName)
   if (!t) return
   const ts = elapsed(t.startTime)
@@ -85,7 +87,8 @@ export function logStdout(sessionName, fullOutput, testId = '') {
 }
 
 /** Log a non-IO event (session start, resize, etc.). */
-export function logEvent(sessionName, event, testId = '') {
+export function logEvent(sessionName, event, _testId = '') {
+  void _testId
   const t = transcripts.get(sessionName)
   if (!t) return
   const ts = elapsed(t.startTime)

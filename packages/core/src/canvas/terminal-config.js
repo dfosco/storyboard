@@ -11,10 +11,9 @@
  * from the materialized canvas state at read time to stay fresh.
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, symlinkSync, unlinkSync, lstatSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, symlinkSync, unlinkSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { createHash } from 'node:crypto'
-import { execSync } from 'node:child_process'
 import { findByWorktree } from '../worktree/serverRegistry.js'
 import { detectWorktreeName } from '../worktree/port.js'
 import { readCurrentViewport } from './selectedWidgets.js'

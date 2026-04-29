@@ -24,7 +24,7 @@
 
 import { execSync } from 'node:child_process'
 import { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync, unlinkSync } from 'node:fs'
-import { resolve, join, dirname } from 'node:path'
+import { resolve, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { devLog } from '../logger/devLogger.js'
 
@@ -49,7 +49,6 @@ import {
   writeTerminalConfig as writeTermConfig,
   initTerminalConfig,
   readTerminalConfigById,
-  updatePendingMessages,
 } from './terminal-config.js'
 import { findByWorktree } from '../worktree/serverRegistry.js'
 import { detectWorktreeName } from '../worktree/port.js'
@@ -239,7 +238,7 @@ function getRollingBufferContent(tmuxName, maxAgeMs = BUFFER_MAX_AGE_MS) {
 /** Strip ANSI escape sequences from a string */
 function stripAnsi(str) {
   // eslint-disable-next-line no-control-regex
-  return str.replace(/\x1b\[[0-9;]*[a-zA-Z]|\x1b\].*?(\x07|\x1b\\)|\x1b[()][0-9A-B]|\x1b[>=<]|\x1b\[[\?]?[0-9;]*[hlsur]/g, '')
+  return str.replace(/\x1b\[[0-9;]*[a-zA-Z]|\x1b\].*?(\x07|\x1b\\)|\x1b[()][0-9A-B]|\x1b[>=<]|\x1b\[[?]?[0-9;]*[hlsur]/g, '')
 }
 
 /**
@@ -250,7 +249,8 @@ function stripAnsi(str) {
  * Only injected for agent/prompt widgets — bare terminals skip this to avoid
  * cluttering the shell with system messages a human would see.
  */
-function injectIdentityMessage(tmuxName, { widgetId, displayName, canvasId, branch, serverUrl }) {
+function injectIdentityMessage(tmuxName, { widgetId, displayName, canvasId, branch: _branch, serverUrl }) {
+  void _branch
   if (!hasTmux) return
   const configFile = `.storyboard/terminals/${widgetId}.json`
   const msg = `[System] Your terminal identity has been set. widgetId=${widgetId} displayName=${displayName} canvasId=${canvasId} configFile=${configFile} serverUrl=${serverUrl} — this is a configuration step, no response needed.`
@@ -284,7 +284,8 @@ function publicSnapshotDir() {
  * Read the `private` prop for a widget from the terminal config.
  * Returns true if the widget has props.private === true.
  */
-function isWidgetPrivate(widgetId, canvasId) {
+function isWidgetPrivate(widgetId, _canvasId) {
+  void _canvasId
   try {
     const config = readTerminalConfigById(widgetId)
     if (config?.widgetProps?.private) return true

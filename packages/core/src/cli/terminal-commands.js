@@ -92,9 +92,10 @@ function getCurrentTmuxSession() {
 }
 
 /** Check if we're inside ANY tmux (storyboard or user's own) */
-function isInsideTmux() {
+function _isInsideTmux() {
   return Boolean(process.env.TMUX)
 }
+void _isInsideTmux
 
 // ── Close (archive) ──
 
@@ -132,7 +133,9 @@ async function closeSession(session, worktreeName, port) {
 
 // ── Open (attach) ──
 
-async function openSession(session, worktreeName, port) {
+async function openSession(session, _worktreeName, _port) {
+  void _worktreeName
+  void _port
   p.intro(bold('Open session'))
 
   const label = session.name || session.tmuxName

@@ -14,9 +14,9 @@
 
 import http from 'node:http'
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync, mkdirSync } from 'node:fs'
-import { resolve, join, dirname } from 'node:path'
-import { getPort, releasePort, repoRoot, worktreeDir, listWorktrees } from '../worktree/port.js'
+import { existsSync } from 'node:fs'
+import { resolve, join } from 'node:path'
+import { getPort, releasePort, repoRoot } from '../worktree/port.js'
 import { generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning, reloadCaddy, readDevDomain } from '../cli/proxy.js'
 import { compactAll } from '../canvas/compact.js'
 import { register, unregister, generateId, list, findByWorktree } from '../worktree/serverRegistry.js'
@@ -166,7 +166,8 @@ function spawnVite(branch) {
 
   child.stderr.on('data', () => { /* suppress */ })
 
-  child.on('exit', (code) => {
+  child.on('exit', (_code) => {
+    void _code
     entry.status = 'stopped'
     processes.delete(branch)
     unregister(entry.serverId)
@@ -229,7 +230,8 @@ routeHandlers.set('switch-branch', async (req, res, ctx) => {
     }
 
     // Check if Vite is already running in this server's process map
-    const port = getPort(branch)
+    const _port = getPort(branch)
+    void _port
     const existingInRegistry = findByWorktree(branch)
     if (existingInRegistry.length > 0) {
       const latest = existingInRegistry.reduce((a, b) =>

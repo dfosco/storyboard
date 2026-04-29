@@ -26,7 +26,6 @@ import {
   preflight,
   createTestCanvas,
   deleteTestCanvas,
-  resolveServerUrl,
   loadConfiguredAgents,
   checkAgentAvailability,
   writeResults,
@@ -140,7 +139,7 @@ for (const agent of loadConfiguredAgents()) {
     let stickyNoteId
     let connectorId
     let markdownId
-    let markdownConnectorId
+    let _markdownConnectorId
 
     browserSessions.push(browserSession)
 
@@ -229,6 +228,7 @@ for (const agent of loadConfiguredAgents()) {
         expect(output.trim().length).toBeGreaterThan(0)
 
         // Check that there are no broken escape sequences (raw \x1b[ without completion)
+        // eslint-disable-next-line no-control-regex
         const brokenEscapes = output.match(/\x1b\[[^a-zA-Z]*$/m)
         expect.soft(brokenEscapes).toBeNull()
 
@@ -273,7 +273,8 @@ for (const agent of loadConfiguredAgents()) {
 
         // Verify in browser
         try {
-          const snap = browser.snapshot(browserSession)
+          const _snap = browser.snapshot(browserSession)
+          void _snap
           // Best-effort: terminal content may not be in accessibility tree
         } catch { /* browser check is best-effort */ }
       }, 120_000)
@@ -485,7 +486,8 @@ for (const agent of loadConfiguredAgents()) {
           browser.open(browserSession, `${serverUrl}/storyboard/canvas/${CANVAS_NAME}`)
           browser.waitForLoad(browserSession, 'networkidle')
           // Best-effort visual check
-          const snap = browser.snapshot(browserSession)
+          const _snap = browser.snapshot(browserSession)
+          void _snap
         } catch { /* best-effort */ }
       })
 
@@ -527,7 +529,8 @@ for (const agent of loadConfiguredAgents()) {
           'left',
         )
         expect(connResult.success).toBe(true)
-        markdownConnectorId = connResult.connector?.id
+        _markdownConnectorId = connResult.connector?.id
+        void _markdownConnectorId
 
         // Wait for config update
         await new Promise((r) => setTimeout(r, 3000))

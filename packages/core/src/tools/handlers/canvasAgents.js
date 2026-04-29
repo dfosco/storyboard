@@ -6,7 +6,8 @@
  */
 export const id = 'canvas-agents'
 
-export async function guard(ctx) {
+export async function guard(_ctx) {
+  void _ctx
   const { getConfig } = await import('@dfosco/storyboard-core')
   const canvasConfig = getConfig('canvas')
   const agents = canvasConfig?.agents

@@ -4,7 +4,9 @@ import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
 import { themeState, setTheme, getTheme, THEMES, themeSyncState, getThemeSyncTargets, setThemeSyncTarget } from '@dfosco/storyboard-core'
 
-export default function ThemeMenuButton({ config = {}, data, localOnly, tabindex = -1 }) {
+export default function ThemeMenuButton({ config = {}, data: _data, localOnly: _localOnly, tabindex = -1 }) {
+  void _data
+  void _localOnly
   const [menuOpen, setMenuOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [canvasActive, setCanvasActive] = useState(false)

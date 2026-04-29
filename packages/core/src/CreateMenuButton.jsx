@@ -5,8 +5,9 @@ import * as Panel from './lib/components/ui/panel/index.js'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
 import { isExcludedByRoute } from '@dfosco/storyboard-core'
 
-export default function CreateMenuButton({ features: featuresProp = [], data, config = { label: 'Create' }, localOnly, tabindex }) {
+export default function CreateMenuButton({ features: featuresProp = [], data, config = { label: 'Create' }, localOnly: _localOnly, tabindex }) {
   const features = featuresProp.length > 0 ? featuresProp : (data?.features || [])
+  void _localOnly
   const menuWidth = config.menuWidth || null
 
   const [menuOpen, setMenuOpen] = useState(false)

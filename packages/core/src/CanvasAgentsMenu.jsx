@@ -9,7 +9,9 @@ import * as DropdownMenu from './lib/components/ui/dropdown-menu/index.js'
 import Icon from './svelte-plugin-ui/components/Icon.jsx'
 import { getConfig } from '@dfosco/storyboard-core'
 
-export default function CanvasAgentsMenu({ config = {}, data, canvasName = '', zoom, tabindex }) {
+export default function CanvasAgentsMenu({ config = {}, data: _data, canvasName = '', zoom: _zoom, tabindex }) {
+  void _data
+  void _zoom
   const [menuOpen, setMenuOpen] = useState(false)
 
   const agents = useMemo(() => {

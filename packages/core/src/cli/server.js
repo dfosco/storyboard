@@ -11,14 +11,13 @@
 import * as p from '@clack/prompts'
 import { startServer, SERVER_PORT, spawnViteForBranch } from '../server/index.js'
 import { parseFlags } from './flags.js'
-import { readDevDomain, generateCaddyfile, generateRouteConfig, upsertCaddyRoute, isCaddyRunning } from './proxy.js'
-import { detectWorktreeName, getPort, releasePort, repoRoot } from '../worktree/port.js'
+import { readDevDomain, generateRouteConfig, upsertCaddyRoute, isCaddyRunning } from './proxy.js'
+import { detectWorktreeName, releasePort } from '../worktree/port.js'
 import {
   list,
   findByWorktree,
   findById,
   unregister,
-  prune,
 } from '../worktree/serverRegistry.js'
 
 const flagSchema = {
@@ -52,7 +51,8 @@ function serverList() {
 
 async function serverStart(branchArg, flags) {
   const { background, bg, multiple } = flags
-  const isBackground = background || bg
+  const _isBackground = background || bg
+  void _isBackground
   const worktreeName = branchArg || detectWorktreeName()
 
   // Check for duplicate worktree servers

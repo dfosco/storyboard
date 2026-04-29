@@ -19,7 +19,7 @@ import * as tmux from './helpers/tmux.js'
 import * as browser from './helpers/browser.js'
 import * as transcript from './helpers/transcript.js'
 import * as perf from './helpers/perf.js'
-import { preflight, createTestCanvas, deleteTestCanvas, resolveServerUrl, writeResults } from './helpers/setup.js'
+import { preflight, createTestCanvas, deleteTestCanvas, writeResults } from './helpers/setup.js'
 
 const CANVAS_NAME = '__test__-terminal'
 const BROWSER_SESSION = 'test-terminal'
@@ -82,7 +82,8 @@ describe('Group 1: Terminal Widget — Shell Session', () => {
     browser.waitForLoad(BROWSER_SESSION, 'networkidle')
 
     // Take a snapshot to find the terminal widget and click it
-    const snap = browser.snapshot(BROWSER_SESSION, '-i')
+    const _snap = browser.snapshot(BROWSER_SESSION, '-i')
+    void _snap
 
     // The terminal widget should have a "Start" or "Continue" button/area
     // Try clicking the terminal widget area to start the session
@@ -150,7 +151,8 @@ describe('Group 1: Terminal Widget — Shell Session', () => {
 
     // Verify in the browser as well
     try {
-      const snap = browser.snapshot(BROWSER_SESSION)
+      const _snap = browser.snapshot(BROWSER_SESSION)
+      void _snap
       // The terminal output should be visible in the browser's terminal widget
       // Note: ghostty-web rendering may not expose text in the accessibility tree
       // This is a best-effort check

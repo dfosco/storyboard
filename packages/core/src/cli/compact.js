@@ -8,8 +8,6 @@
  */
 
 import * as p from '@clack/prompts'
-import { resolve } from 'path'
-import { existsSync } from 'fs'
 import { compactAll, compactCanvas, findCanvasFiles } from '../canvas/compact.js'
 
 const dim = (s) => `\x1b[2m${s}\x1b[0m`

@@ -40,7 +40,9 @@ function getApiUrl() {
   return basePath.replace(/\/$/, '') + '/_storyboard/canvas'
 }
 
-export default function CanvasCreateMenu({ config = {}, data, canvasName = '', zoom, tabindex }) {
+export default function CanvasCreateMenu({ config = {}, data: _data, canvasName = '', zoom: _zoom, tabindex }) {
+  void _data
+  void _zoom
   const [menuOpen, setMenuOpen] = useState(false)
   const [view, setView] = useState('menu')
   const [stories, setStories] = useState([])

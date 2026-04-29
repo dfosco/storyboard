@@ -104,10 +104,11 @@ export default function CommandMenu({
     setOpen(isOpen)
   }
 
-  function renderLocalDot(toolKey) {
+  function _renderLocalDot(toolKey) {
     if (!toolKey || !isToolbarToolLocalOnly(toolKey)) return null
     return <span style={localDotStyle} />
   }
+  void _renderLocalDot
 
   function renderAction(action, i) {
     const key = action.id || `_${action.type}_${i}`

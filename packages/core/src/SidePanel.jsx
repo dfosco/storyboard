@@ -10,7 +10,7 @@
  * Mounted lazily from CoreUIBar when a side panel trigger is clicked.
  */
 
-import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import octicons from '@primer/octicons'
 import { sidePanelState, closePanel } from './stores/sidePanelStore.js'
 import './sidepanel.css'

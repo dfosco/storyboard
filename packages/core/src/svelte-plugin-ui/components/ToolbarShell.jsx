@@ -10,7 +10,7 @@
  * Only renders when the current mode has visible tools.
  */
 
-import React, { useSyncExternalStore } from 'react'
+import { useSyncExternalStore } from 'react'
 import './ToolbarShell.css'
 import { toolState } from '../stores/toolStore.js'
 

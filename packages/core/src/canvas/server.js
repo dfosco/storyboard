@@ -2500,7 +2500,7 @@ export function Default() {
 
         // Write env file for this terminal session — sourced before copilot launch
         // This avoids race conditions with tmux send-keys export
-        const envFile = join(root, '.storyboard', 'terminals', `${tmuxName}.env`)
+        const envFile = path.join(root, '.storyboard', 'terminals', `${tmuxName}.env`)
         const envContent = Object.entries(envMap).map(([k, v]) => `export ${k}=${JSON.stringify(v)}`).join('\n') + '\n'
         fsModule.writeFileSync(envFile, envContent)
 
@@ -2945,7 +2945,8 @@ export function Default() {
 
         // Update agent status
         const pathParts = req.url.split('/')
-        const canvasIdx = pathParts.indexOf('canvas')
+        const _canvasIdx = pathParts.indexOf('canvas')
+        void _canvasIdx
         let branch = 'unknown'
         try {
           const { execSync } = await import('node:child_process')

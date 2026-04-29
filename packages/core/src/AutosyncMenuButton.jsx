@@ -10,7 +10,8 @@ export default function AutosyncMenuButton({ config = {}, basePath = '/', tabind
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [branches, setBranches] = useState([])
-  const [currentBranch, setCurrentBranch] = useState('')
+  const [_currentBranch, setCurrentBranch] = useState('')
+  void _currentBranch
   const [selectedBranch, setSelectedBranch] = useState('')
   const [enabledScopes, setEnabledScopes] = useState({ canvas: false, prototype: false })
   const [lastSyncTime, setLastSyncTime] = useState(null)

@@ -10,7 +10,7 @@
  */
 
 import fs from 'node:fs'
-import { parseFlags, hasFlags, formatFlagHelp } from './flags.js'
+import { parseFlags, formatFlagHelp } from './flags.js'
 import { ensureDevServer, serverPost } from './create.js'
 
 const batchSchema = {

@@ -5,7 +5,7 @@
  */
 
 import './InspectorPanel.css'
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import octicons from '@primer/octicons'
 import { inspectElement, inspectElementChain } from './inspector/fiberWalker.js'
 import { createMouseMode } from './inspector/mouseMode.js'
@@ -266,7 +266,7 @@ export default function InspectorPanel() {
   }, [])
 
   // Handle element selection
-  const handleSelect = useCallback((el) => {
+  const _handleSelect = useCallback((el) => {
     const info = inspectElement(el)
     const chain = inspectElementChain(el)
     setComponentInfo(info)
@@ -276,9 +276,11 @@ export default function InspectorPanel() {
     setInspectParam(generateSelector(el))
   }, [])
 
-  const handleDeactivate = useCallback(() => {
+  const _handleDeactivate = useCallback(() => {
     setInspecting(false)
   }, [])
+  void _handleSelect
+  void _handleDeactivate
 
   const startInspecting = useCallback(() => {
     mouseModeRef.current?.hideHighlight()

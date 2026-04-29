@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs'
+import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import {
@@ -7,7 +7,6 @@ import {
   filterFilesForAutosyncScope,
   isRetryablePushError,
   loadPersistedState,
-  persistState,
   clearPersistedState,
 } from './server.js'
 

@@ -1,9 +1,9 @@
 /**
- * Vite config for building the pre-compiled Svelte UI bundle.
+ * Vite config for building the pre-compiled UI bundle.
  *
  * Produces dist/storyboard-ui.js + dist/storyboard-ui.css.
- * Bundles Svelte runtime, bits-ui, Tailwind CSS, and all .svelte components
- * so consumers get a self-contained JS+CSS module with no Svelte toolchain needed.
+ * Bundles Radix UI, Tailwind CSS, and all React components
+ * so consumers get a self-contained JS+CSS module.
  *
  * IMPORTANT: Stateful core modules (loader, modes, commandActions, etc.) are
  * externalized as `@dfosco/storyboard-core` imports. This ensures the compiled
@@ -16,7 +16,6 @@
  */
 
 import { defineConfig } from 'vite'
-import { svelte } from '@sveltejs/vite-plugin-svelte'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
@@ -90,12 +89,11 @@ export default defineConfig({
   plugins: [
     externalizeSharedState(),
     tailwindcss(),
-    svelte({
-      compilerOptions: {
-        css: 'external',
-      },
-    }),
   ],
+
+  esbuild: {
+    jsx: 'automatic',
+  },
 
   build: {
     lib: {

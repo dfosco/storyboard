@@ -102,6 +102,7 @@
   {"folder":"branch--fix-canvas-optimistic-rollback","branch":"fix-canvas-optimistic-rollback"},
   {"folder":"branch--fix-canvas-reload-guard","branch":"fix-canvas-reload-guard"},
   {"folder":"branch--fix-cmd-palette-clear-btn","branch":"fix-cmd-palette-clear-btn"},
+  {"folder":"branch--fix-cold-start-agent-loop","branch":"fix-cold-start-agent-loop"},
   {"folder":"branch--fix-prototype-embed-hash-params","branch":"fix-prototype-embed-hash-params"},
   {"folder":"branch--fix-terminal-viewport-jump","branch":"fix-terminal-viewport-jump"},
   {"folder":"branch--fix-widget-resize-persistence","branch":"fix-widget-resize-persistence"},

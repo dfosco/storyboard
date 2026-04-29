@@ -42,8 +42,6 @@ let _snapshotVersion = 0
  * @param {object} config - The unified config with all domains
  */
 export function initConfig(config) {
-  console.log('[devlog] configStore.initConfig called:', 'cmdSections=' + (config?.commandPalette?.sections?.length || 0), 'toolbarTools=' + (config?.toolbar?.tools ? Object.keys(config.toolbar.tools).length : 0))
-  console.trace('[devlog] initConfig caller stack')
   _baseConfig = config || {}
   _prototypeOverrides = {}
   _recompute()

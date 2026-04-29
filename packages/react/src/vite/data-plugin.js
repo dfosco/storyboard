@@ -639,7 +639,6 @@ function buildUnifiedConfig(root) {
   }
 
   // 7. Build the unified config object
-  console.log('[storyboard] [devlog] buildUnifiedConfig:', {
     coreCPSections: coreCommandPalette?.sections?.length,
     afterSbCPSections: afterSbCommandPalette?.sections?.length,
     finalCPSections: finalCommandPalette?.sections?.length,

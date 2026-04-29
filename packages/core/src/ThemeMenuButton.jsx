@@ -34,6 +34,7 @@ export default function ThemeMenuButton({ config = {}, data, localOnly, tabindex
 
     const state = window.__storyboardCanvasBridgeState
     const active = state?.active === true
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCanvasActive(active)
     if (!active) {
       document.dispatchEvent(new CustomEvent('storyboard:canvas:status-request'))

@@ -6,7 +6,6 @@
  */
 import { useState, useEffect, useCallback } from 'react'
 import { Dialog } from '@base-ui/react/dialog'
-import { Button } from '@base-ui/react/button'
 import css from './AuthModal.module.css'
 
 const COMMENTS_TOKEN_KEY = 'sb-comments-token'
@@ -31,7 +30,7 @@ export default function AuthModal() {
     return () => document.removeEventListener('storyboard:open-auth-modal', handleOpen)
   }, [])
 
-  const handleClose = useCallback(() => {
+  const _handleClose = useCallback(() => {
     setOpen(false)
     setTokenValue('')
   }, [])

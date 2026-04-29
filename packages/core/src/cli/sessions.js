@@ -388,7 +388,7 @@ async function main() {
         p.outro('Opening tmux session manager...')
         try {
           execSyncFn('tmux choose-session', { stdio: 'inherit' })
-        } catch {}
+        } catch { /* empty */ }
         process.exit(0)
       }
 
@@ -420,7 +420,7 @@ async function main() {
             p.log.warn('API call failed, removing tmux session directly...')
             try {
               execSyncFn(`tmux kill-session -t "${session.tmuxName}" 2>/dev/null`, { stdio: 'ignore' })
-            } catch {}
+            } catch { /* empty */ }
             p.log.success(`Session ${cyan(label)} removed via tmux`)
           }
 

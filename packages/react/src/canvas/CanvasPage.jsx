@@ -58,7 +58,7 @@ registerSmoothCorners()
 registerHotPoolDevLogs()
 
 /** Matches branch-deploy base path prefixes like /branch--my-feature/ */
-const BRANCH_PREFIX_RE = /^\/branch--[^/]+/
+const _BRANCH_PREFIX_RE = /^\/branch--[^/]+/
 
 // Build a reverse map from story route paths → { storyId, route }
 const storyRouteIndex = new Map()

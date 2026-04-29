@@ -83,7 +83,7 @@ export default function CreateCanvasForm({ onClose }) {
         setCreatedRoute(parsed.route)
         sessionStorage.removeItem(CANVAS_SUCCESS_KEY)
       }
-    } catch {}
+    } catch { /* empty */ }
 
     async function fetchFolders() {
       try {
@@ -92,7 +92,7 @@ export default function CreateCanvasForm({ onClose }) {
           const data = await res.json()
           setFolders(data.folders || [])
         }
-      } catch {} finally {
+      } catch { /* empty */ } finally {
         setLoading(false)
       }
     }
@@ -139,7 +139,7 @@ export default function CreateCanvasForm({ onClose }) {
           CANVAS_SUCCESS_KEY,
           JSON.stringify({ success: msg, route: data.route }),
         )
-      } catch {}
+      } catch { /* empty */ }
     } catch (err) {
       setError(err.message || 'Network error')
     } finally {

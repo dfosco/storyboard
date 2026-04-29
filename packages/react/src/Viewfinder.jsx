@@ -5,8 +5,8 @@
  * Formerly known as Viewfinder — renamed to match the /workspace route.
  */
 import { useState, useEffect, useRef, useMemo, useCallback, useSyncExternalStore } from 'react'
-import { buildPrototypeIndex, listStories, getStoryData, getLocal, setLocal, BranchSelect } from '@dfosco/storyboard-core'
-import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, FileDirectoryFillIcon, PlusIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon, StackIcon, TrashIcon, ShieldLockIcon, KebabHorizontalIcon, PencilIcon } from '@primer/octicons-react'
+import { buildPrototypeIndex, listStories, getStoryData, BranchSelect } from '@dfosco/storyboard-core'
+import { MarkGithubIcon, GitBranchIcon, ChevronDownIcon, ChevronRightIcon, PlusIcon, StarIcon, StarFillIcon, ThreeBarsIcon, XIcon, StackIcon, TrashIcon, ShieldLockIcon, KebabHorizontalIcon, PencilIcon } from '@primer/octicons-react'
 import { Menu } from '@base-ui/react/menu'
 import { Dialog } from '@base-ui/react/dialog'
 import Icon from './Icon.jsx'
@@ -56,7 +56,7 @@ const COMMENTS_TOKEN_KEY = 'sb-comments-token'
  * Resolve the current GitHub user for display in the sidebar.
  * Priority: 1) PAT-cached user (from comments auth), 2) gh CLI login via git-user endpoint.
  */
-function useGitHubUser(basePath) {
+function useGitHubUser(_basePath) {
   const [user, setUser] = useState(() => {
     try {
       const raw = localStorage.getItem(COMMENTS_USER_KEY)
@@ -158,7 +158,7 @@ function withBase(basePath, route) {
 
 const THUMB_CLASSES = ['thumbBlue', 'thumbAmber', 'thumbGreen', 'thumbPurple', 'thumbRose', 'thumbSlate']
 
-function thumbClass(name) {
+function _thumbClass(name) {
   let h = 0
   for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) | 0
   return css[THUMB_CLASSES[Math.abs(h) % THUMB_CLASSES.length]]
@@ -1081,7 +1081,7 @@ export default function Workspace({
   hideDefaultFlow,
   hideDefaultScene = false,
 }) {
-  const shouldHideDefault = hideDefaultFlow ?? hideDefaultScene
+  const _shouldHideDefault = hideDefaultFlow ?? hideDefaultScene
   const themeAttrs = useToolbarTheme()
   const ghUser = useGitHubUser(basePath)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -1258,7 +1258,7 @@ export default function Workspace({
   const toggleGrouping = useCallback(() => {
     setGroupByFolders(prev => {
       const next = !prev
-      try { localStorage.setItem(GROUP_BY_FOLDERS_KEY, String(next)) } catch {}
+      try { localStorage.setItem(GROUP_BY_FOLDERS_KEY, String(next)) } catch { /* empty */ }
       return next
     })
   }, [])
@@ -1291,7 +1291,7 @@ export default function Workspace({
   // Starred items for sidebar
   const starredItems = useMemo(() => visibleItems.filter(i => starred.has(i.id)), [visibleItems, starred])
 
-  const pageTitle = NAV_ITEMS.find(n => n.id === activeNav)?.label || 'All artifacts'
+  const _pageTitle = NAV_ITEMS.find(n => n.id === activeNav)?.label || 'All artifacts'
 
   return (
     <div className={css.layout} {...themeAttrs}>

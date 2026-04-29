@@ -356,7 +356,7 @@ export class HotPool {
       const shellReady = await this.#waitForShell(tmuxName)
       if (!shellReady) {
         this.#log(`⊕ SPAWN ${id} failed (shell not responsive)`)
-        try { execSync(`tmux kill-session -t "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+        try { execSync(`tmux kill-session -t "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' }) } catch { /* empty */ }
         return null
       }
 
@@ -365,7 +365,7 @@ export class HotPool {
         const agentReady = await this.#warmAgent(tmuxName, id)
         if (!agentReady) {
           this.#log(`⊕ SPAWN ${id} failed (agent not ready)`)
-          try { execSync(`tmux kill-session -t "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+          try { execSync(`tmux kill-session -t "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' }) } catch { /* empty */ }
           return null
         }
       }
@@ -375,7 +375,7 @@ export class HotPool {
       return session
     } catch (err) {
       this.#log(`⊕ SPAWN ${id} error: ${err.message}`)
-      try { execSync(`tmux kill-session -t "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+      try { execSync(`tmux kill-session -t "${tmuxName}" 2>/dev/null`, { stdio: 'ignore' }) } catch { /* empty */ }
       return null
     }
   }
@@ -423,12 +423,12 @@ export class HotPool {
 
     if (readinessFile) {
       const hookDir = join(this.#root, '.storyboard', 'hot-pool')
-      try { mkdirSync(hookDir, { recursive: true }) } catch {}
+      try { mkdirSync(hookDir, { recursive: true }) } catch { /* empty */ }
       signalFilePath = join(hookDir, `${sessionId}.ready`)
       settingsFilePath = join(hookDir, `${sessionId}.settings.json`)
 
       // Clean up any stale signal file
-      try { unlinkSync(signalFilePath) } catch {}
+      try { unlinkSync(signalFilePath) } catch { /* empty */ }
 
       // Write a settings file with a SessionStart hook
       const settings = {
@@ -474,8 +474,8 @@ export class HotPool {
       })
 
       // Clean up hook files
-      try { unlinkSync(signalFilePath) } catch {}
-      try { unlinkSync(settingsFilePath) } catch {}
+      try { unlinkSync(signalFilePath) } catch { /* empty */ }
+      try { unlinkSync(settingsFilePath) } catch { /* empty */ }
     } else if (readinessSignal) {
       // Pane-content readiness — poll capture-pane for signal text
       ready = await new Promise((resolve) => {
@@ -523,7 +523,7 @@ export class HotPool {
         execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(postStartup)}`, { stdio: 'ignore' })
         execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
         this.#log(`⊕ AGENT ${sessionId} postStartup sent: ${postStartup}`)
-      } catch {}
+      } catch { /* empty */ }
     }
 
     this.#log(`⊕ AGENT ${sessionId} ready (${signalFilePath ? 'file' : 'signal'}: "${readinessSignal || 'file'}")`)

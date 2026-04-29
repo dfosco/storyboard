@@ -379,6 +379,7 @@ export default function InspectorPanel() {
   // Load source when componentInfo changes
   useEffect(() => {
     if (!componentInfo) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSourceCode('')
       setSourcePath('')
       setHighlightedHtml('')

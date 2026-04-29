@@ -42,7 +42,7 @@ function drainStdin() {
     while (process.stdin.read() !== null) { /* discard */ }
   } catch { /* best effort */ }
   if (wasPaused) {
-    try { process.stdin.pause() } catch {}
+    try { process.stdin.pause() } catch { /* empty */ }
   }
 }
 
@@ -92,7 +92,7 @@ const agents = loadAgents()
 // Enable/disable tmux mouse — must be off during Clack prompts (mouse
 // events crash Clack), on during shell/copilot sessions (for scrolling).
 function setMouse(on) {
-  try { execSync(`tmux set-option mouse ${on ? 'on' : 'off'} 2>/dev/null`, { stdio: 'ignore' }) } catch {}
+  try { execSync(`tmux set-option mouse ${on ? 'on' : 'off'} 2>/dev/null`, { stdio: 'ignore' }) } catch { /* empty */ }
 }
 
 const flagSchema = {
@@ -117,7 +117,7 @@ const startupCmd = flags.startup || null
 function resetTerminal() {
   // Leave alternate screen, show cursor, reset attributes
   process.stdout.write('\x1b[?1049l\x1b[?25h\x1b[0m')
-  try { execSync('stty sane 2>/dev/null', { stdio: 'ignore' }) } catch {}
+  try { execSync('stty sane 2>/dev/null', { stdio: 'ignore' }) } catch { /* empty */ }
 }
 
 /**
@@ -139,9 +139,9 @@ function spawnShell() {
           try {
             execSync(`tmux send-keys -l "clear"`, { stdio: 'ignore' })
             execSync(`tmux send-keys Enter`, { stdio: 'ignore' })
-          } catch {}
+          } catch { /* empty */ }
         }, 200)
-      } catch {}
+      } catch { /* empty */ }
     }, 500)
   }
 
@@ -178,7 +178,7 @@ function injectIdentityMessage(tmuxName) {
   try {
     execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(msg)}`, { stdio: 'ignore' })
     execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-  } catch {}
+  } catch { /* empty */ }
 }
 
 /**
@@ -197,7 +197,7 @@ function deliverPendingMessages(tmuxName) {
         const formatted = `📩 [${msg.fromName || msg.from || 'unknown'} → you]\n\`\`\`\n${excerpt}\n\`\`\`${msg.from ? `\nFull context: cat .storyboard/terminals/${msg.from}.json | jq '.latestOutput.content'` : ''}`
         execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(formatted)}`, { stdio: 'ignore' })
         execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-      } catch {}
+      } catch { /* empty */ }
     }, i * 1500)
   })
 }
@@ -266,13 +266,13 @@ async function launchAgent(agent, { isInitialStartup = false } = {}) {
                   try {
                     execSync(`tmux send-keys -t "${tmuxName}" -l ${JSON.stringify(agent.postStartup)}`, { stdio: 'ignore' })
                     execSync(`tmux send-keys -t "${tmuxName}" Enter`, { stdio: 'ignore' })
-                  } catch {}
+                  } catch { /* empty */ }
                 }
                 injectIdentityMessage(tmuxName)
                 setTimeout(() => deliverPendingMessages(tmuxName), 2000)
               }, 500)
             }
-          } catch {}
+          } catch { /* empty */ }
         }, 2000)
         // Timeout after 30s — don't wait forever
         readinessTimeout = setTimeout(() => {
@@ -340,7 +340,7 @@ async function welcomeLoop() {
       if (startupCmd === 'shell') {
         // Plain shell — spawn interactive shell, return to welcome on exit
         setMouse(true)
-        try { await spawnShell() } catch {}
+        try { await spawnShell() } catch { /* empty */ }
         resetTerminal()
         continue
       }
@@ -441,7 +441,7 @@ async function welcomeLoop() {
       p.outro(dim('Opening shell... Enter any command below.'))
       setMouse(true)
       // Spawn an interactive shell; when it exits, loop back to welcome
-      try { await spawnShell() } catch {}
+      try { await spawnShell() } catch { /* empty */ }
       continue
     }
 

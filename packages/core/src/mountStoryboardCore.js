@@ -206,6 +206,7 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   // Individual stores are initialized here for backward compatibility — consumers
   // that import directly from these stores still work.
   const uc = getConfig()
+  console.log('[devlog] mountStoryboardCore getConfig():', { ucKeys: Object.keys(uc || {}), ucToolbarTools: uc?.toolbar?.tools ? Object.keys(uc.toolbar.tools).length : 0, ucCmdSections: uc?.commandPalette?.sections?.length || 0, ucCanvasAgents: uc?.canvas?.agents ? Object.keys(uc.canvas.agents) : null })
 
   if (uc.featureFlags && Object.keys(uc.featureFlags).length > 0) {
     initFeatureFlags(uc.featureFlags)
@@ -235,7 +236,9 @@ export async function mountStoryboardCore(config = {}, options = {}) {
   // If the unified store has commandPalette data, use it directly.
   // Otherwise fall back to legacy merging with bundled defaults.
   const ucCmdPalette = uc.commandPalette
+  console.log('[devlog] mountStoryboardCore cmdPalette branch:', { ucCmdPaletteKeys: ucCmdPalette ? Object.keys(ucCmdPalette) : null, ucCmdSections: ucCmdPalette?.sections?.length || 0, configHasCmdPalette: !!config.commandPalette })
   if (ucCmdPalette && Object.keys(ucCmdPalette).length > 0) {
+    console.log('[devlog] mountStoryboardCore: using unified config for cmdPalette, sections:', ucCmdPalette.sections?.length)
     initCommandPaletteConfig(ucCmdPalette)
   } else {
     const defaultCmdPaletteConfig = (await import('../commandpalette.config.json')).default

@@ -66,6 +66,7 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
 
   // Sync layout when initialLayout changes (preserves column/row sizes)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (initialLayout) setLayout(initialLayout)
   }, [initialLayout])
 
@@ -113,7 +114,9 @@ export default function ExpandedPane({ initialPanes, initialLayout, variant = 'm
       }
       detachRefs.current.clear()
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps — intentional mount-only
+    // intentional mount-only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Handle pane list changes: attach new external panes, detach removed ones
   useLayoutEffect(() => {

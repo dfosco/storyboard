@@ -451,6 +451,7 @@ export default function WidgetChrome({
         <div className={`${styles.toolbarContent} ${showToolbar ? styles.toolbarContentVisible : ''}`}>
           {showFeatures && (
           <div className={styles.featureButtons}>
+            {/* eslint-disable-next-line react-hooks/refs */}
             {features.map((feature) => {
               // Menu features are rendered in WidgetOverflowMenu
               if (feature.menu) return null

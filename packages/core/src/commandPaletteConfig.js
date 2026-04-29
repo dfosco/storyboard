@@ -12,6 +12,7 @@ let _config = { sections: [] }
  * @param {object} config - The commandPalette object from storyboard.config.json
  */
 export function initCommandPaletteConfig(config) {
+  console.log('[devlog] initCommandPaletteConfig called:', { sectionsCount: config?.sections?.length || 0, keys: Object.keys(config || {}) })
   _config = { sections: [], ...config }
 }
 
@@ -23,6 +24,7 @@ export function initCommandPaletteConfig(config) {
 export function getCommandPaletteConfig() {
   if (_config.sections.length === 0) {
     const uc = getConfig('commandPalette')
+    console.log('[devlog] getCommandPaletteConfig fallback:', { ucSections: uc?.sections?.length || 0, localSections: _config.sections.length })
     if (uc?.sections?.length > 0) {
       _config = { sections: [], ...uc }
     }

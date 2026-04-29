@@ -352,7 +352,7 @@ p.note(
   let currentBranchName = 'main'
   try {
     currentBranchName = execSync('git branch --show-current', { encoding: 'utf8' }).trim() || 'main'
-  } catch {}
+  } catch { /* empty */ }
 
   const wantBranch = await p.select({
     message: 'Want to work from a different branch?',

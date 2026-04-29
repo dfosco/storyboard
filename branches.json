@@ -90,7 +90,6 @@
   {"folder":"branch--comments-next","branch":"comments-next"},
   {"folder":"branch--comments-system","branch":"comments-system"},
   {"folder":"branch--contracts-and-compatibility","branch":"contracts-and-compatibility"},
-  {"folder":"branch--copilot-fix-core-no-unused-vars","branch":"copilot-fix-core-no-unused-vars"},
   {"folder":"branch--create-widget-skill","branch":"create-widget-skill"},
   {"folder":"branch--design-modes","branch":"design-modes"},
   {"folder":"branch--design-system-catalog-skill","branch":"design-system-catalog-skill"},

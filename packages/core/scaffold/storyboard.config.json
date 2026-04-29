@@ -35,9 +35,6 @@
       "defaultHeight": 450
     }
   },
-  "commandPalette": {
-    "ranking": "frecency"
-  },
   "customerMode": {
     "enabled": false,
     "hideChrome": false,

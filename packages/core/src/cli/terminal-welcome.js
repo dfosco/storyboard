@@ -54,6 +54,19 @@ if (existsSync(binDir) && !process.env.PATH?.includes(binDir)) {
 }
 
 /**
+ * Return a copy of process.env with the .storyboard/terminals/bin/ dir
+ * stripped from PATH. Used when spawning agent commands so the real binary
+ * is found instead of the wrapper scripts that route back through
+ * terminal-welcome (which would cause infinite recursion).
+ */
+function agentEnv() {
+  const cleanPath = (process.env.PATH || '').split(':')
+    .filter(p => !p.endsWith('.storyboard/terminals/bin'))
+    .join(':')
+  return { ...process.env, PATH: cleanPath }
+}
+
+/**
  * Read agents config from storyboard.config.json.
  * Returns an array of { id, label, startupCommand, resumeCommand } entries.
  */
@@ -215,15 +228,9 @@ async function launchAgent(agent, { isInitialStartup = false } = {}) {
 
   try {
     const shell = process.env.SHELL || '/bin/zsh'
-    // Strip .storyboard/terminals/bin/ from PATH so the real agent binary is
-    // found instead of our wrapper scripts (which call `start` → `terminal-welcome`
-    // → launchAgent → wrapper → infinite recursion).
-    const cleanPath = (process.env.PATH || '').split(':')
-      .filter(p => !p.endsWith('.storyboard/terminals/bin'))
-      .join(':')
     const child = spawn(shell, ['-lc', agent.startupCommand], {
       stdio: 'inherit',
-      env: { ...process.env, PATH: cleanPath },
+      env: agentEnv(),
     })
 
     // Context injection — inject identity, postStartup, and pending messages
@@ -482,7 +489,10 @@ async function welcomeLoop() {
           setMouse(true)
           try {
             const shell = process.env.SHELL || '/bin/zsh'
-            const child = spawn(shell, ['-lc', agent.resumeCommand], { stdio: 'inherit' })
+            const child = spawn(shell, ['-lc', agent.resumeCommand], {
+              stdio: 'inherit',
+              env: agentEnv(),
+            })
             await new Promise((resolve) => {
               child.on('close', resolve)
               child.on('error', resolve)

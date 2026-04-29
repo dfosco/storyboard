@@ -39,11 +39,27 @@ export default [
   {
     files: ['**/*.test.{js,jsx}', 'vitest.setup.js'],
     languageOptions: {
-      globals: globals.vitest,
+      globals: { ...globals.vitest, ...globals.node },
     },
   },
   {
-    files: ['**/vite.config.js', '**/vitest.config.js', 'eslint.config.js', 'scripts/**/*.js', '**/scaffold.js'],
+    files: [
+      '**/vite.config.js',
+      '**/vitest.config.js',
+      '**/vitest.*.config.js',
+      'eslint.config.js',
+      'scripts/**/*.js',
+      '**/scaffold.js',
+      'packages/core/src/cli/**/*.js',
+      'packages/core/src/canvas/**/*.js',
+      'packages/core/src/worktree/**/*.js',
+      'packages/core/src/rename-watcher/**/*.js',
+      'packages/core/src/autosync/**/*.js',
+      'packages/core/src/server/**/*.js',
+      'packages/core/src/vite/**/*.js',
+      'packages/core/src/tools/**/*.js',
+      'packages/react/src/vite/**/*.js',
+    ],
     languageOptions: {
       globals: globals.node,
     },

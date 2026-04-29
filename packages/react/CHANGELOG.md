@@ -1,5 +1,25 @@
 # @dfosco/storyboard-react
 
+## 4.2.0
+
+### Patch Changes
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`1043b32`](https://github.com/dfosco/storyboard/commit/1043b32a2e7300087f9b7b04304abecac43d33d8) Thanks [@dfosco](https://github.com/dfosco)! - Fix live canvas updates — HMR handler was silently dropping all events due to wrong destructuring
+
+-   [`77d30b8`](https://github.com/dfosco/storyboard/commit/77d30b8488b0945a5e3641a0058cd250ce7d2e9d) Thanks [@dfosco](https://github.com/dfosco)! - Add temporary devlogs to command palette config flow for debugging
+
+-   [`8f88012`](https://github.com/dfosco/storyboard/commit/8f88012d579baf080eb96e495139c4eab3a53d87) Thanks [@dfosco](https://github.com/dfosco)! - Add devlogs to trace command palette config flow end-to-end
+
+-   [`3b50b16`](https://github.com/dfosco/storyboard/commit/3b50b16278afaa849b6e0f42f326f729f0cdb298) Thanks [@dfosco](https://github.com/dfosco)! - Id-based array merge for config + remove scaffold config files
+
+    -   `deepMergeBuild` now merges arrays of objects by `id` field instead of replacing wholesale
+    -   Users can customize command palette sections by defining only the ones they want to add/override
+    -   Removed `commandpalette.config.json` and `toolbar.config.json` from scaffold — they caused empty arrays to overwrite core defaults
+
+-   Updated dependencies [[`6fb27ac`](https://github.com/dfosco/storyboard/commit/6fb27ac747c541e0221f7588a0ff2a61a6306bcd), [`2897be6`](https://github.com/dfosco/storyboard/commit/2897be6616e90af00de072bf72fba53511df6bda), [`0f0021c`](https://github.com/dfosco/storyboard/commit/0f0021c1b3d0e222a76b2e7cbe269e970207c607), [`22f256b`](https://github.com/dfosco/storyboard/commit/22f256b64cea52550c4f37dd2b1aa28e0b6055e3), [`3ff3852`](https://github.com/dfosco/storyboard/commit/3ff3852481a157009a03818ca6c6b57ebd97655e), [`a9c8163`](https://github.com/dfosco/storyboard/commit/a9c8163bf228d5fd34e74ec8a5bc8be66433b4a7), [`5ec5ee7`](https://github.com/dfosco/storyboard/commit/5ec5ee7b5089029a1192cdb86d0ebdd64c8435aa), [`3745ba2`](https://github.com/dfosco/storyboard/commit/3745ba2f340753bf569be6495dddb32f8b321c1f), [`7ec002f`](https://github.com/dfosco/storyboard/commit/7ec002f63a4656209621317738a7e1eb94c31d0b), [`69d40ee`](https://github.com/dfosco/storyboard/commit/69d40ee79e6210d0edfa5741d831e1d43cb3cb70), [`237829b`](https://github.com/dfosco/storyboard/commit/237829b14083b14bd30c91fadb50cbda101de726), [`84624ec`](https://github.com/dfosco/storyboard/commit/84624ecf70b7b193c33d7e6a9be27ee724da60d0), [`d6f3e02`](https://github.com/dfosco/storyboard/commit/d6f3e02e2b8e750ebae2953496d657f906742930), [`5743b6b`](https://github.com/dfosco/storyboard/commit/5743b6b82e6a400201fff4477d6dfc6032675f0a), [`bd7a9e7`](https://github.com/dfosco/storyboard/commit/bd7a9e77db104855bb59ea4e3d814988a6201fd4), [`5e40eb8`](https://github.com/dfosco/storyboard/commit/5e40eb852b90011e3b36ea5bac1e3aa620237cb9), [`45788cc`](https://github.com/dfosco/storyboard/commit/45788cc1dc2fa25af58d3a8af35ce143e1f94587), [`800913c`](https://github.com/dfosco/storyboard/commit/800913cb9c769c517b4a7f4d508a3ac50b8e5c83), [`d0b0bca`](https://github.com/dfosco/storyboard/commit/d0b0bca620d72ec5b5fbc2301fea88b33b6dc85d), [`51628e6`](https://github.com/dfosco/storyboard/commit/51628e6a6a9ec0f3e8c064169df4495a9501f124), [`a2a026a`](https://github.com/dfosco/storyboard/commit/a2a026a5fc20ef6b169e33cd5c72134de362f579), [`4ba9461`](https://github.com/dfosco/storyboard/commit/4ba9461ff29794b55ce490393a1e589f6dab0e38), [`e182d46`](https://github.com/dfosco/storyboard/commit/e182d4686937ca942aaf16fb4a74f7fa5a25735e), [`77d30b8`](https://github.com/dfosco/storyboard/commit/77d30b8488b0945a5e3641a0058cd250ce7d2e9d), [`8f88012`](https://github.com/dfosco/storyboard/commit/8f88012d579baf080eb96e495139c4eab3a53d87), [`3b50b16`](https://github.com/dfosco/storyboard/commit/3b50b16278afaa849b6e0f42f326f729f0cdb298)]:
+    -   @dfosco/storyboard-core@4.2.0
+    -   @dfosco/tiny-canvas@4.2.0
+
 ## 4.2.0-beta.28
 
 ### Patch Changes

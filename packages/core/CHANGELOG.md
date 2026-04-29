@@ -1,5 +1,178 @@
 # @dfosco/storyboard-core
 
+## 4.2.0
+
+### Minor Changes
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`6fb27ac`](https://github.com/dfosco/storyboard/commit/6fb27ac747c541e0221f7588a0ff2a61a6306bcd) Thanks [@dfosco](https://github.com/dfosco)! - TMUX session management, terminal widget UX, interact gate system, and canvas page ordering.
+
+    -   Terminal sessions scoped by branch/canvas with persistent registry, friendly names (color-bird), and graceful orphan handling
+    -   `storyboard terminal` CLI: session browser, welcome prompt, close/open/remove subcommands
+    -   Widget interact gate system: configurable "Click to interact" overlay in WidgetChrome, double-Escape to exit
+    -   Terminal widget: title bar, zzz sleep animation, selection border radius, default size 800×450
+    -   Canvas folder page ordering via .meta.json with drag-and-drop persistence
+    -   Command palette focus fix (removed duplicate mount)
+    -   Viewfinder page order fix
+    -   Connector arrow endpoints (circle, arrow-in, arrow-out, none)
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`a9c8163`](https://github.com/dfosco/storyboard/commit/a9c8163bf228d5fd34e74ec8a5bc8be66433b4a7) Thanks [@dfosco](https://github.com/dfosco)! - Terminal agents: context awareness, auto-launch copilot, canvas update CLI
+
+    -   Terminal agents with context awareness, signal bus, and action widgets
+    -   Auto-launch copilot with agent instructions on new terminal sessions
+    -   Canvas update CLI command and PATCH /widget API endpoint
+    -   Inline full widget data in terminal config for zero-latency context
+    -   Fix: prevent accidental canvas wipes from PUT /update endpoint
+    -   Fix: reliable env var passing to terminal agents
+    -   Several fixes for copilot launch flow (pre-type, agent flag, env vars)
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`237829b`](https://github.com/dfosco/storyboard/commit/237829b14083b14bd30c91fadb50cbda101de726) Thanks [@dfosco](https://github.com/dfosco)! - Live canvas updates from CLI/API — no more page refresh needed
+
+    Canvas API endpoints now push real-time updates to the browser via HMR after every write. Widget adds, updates, deletes, and connector changes all propagate instantly without requiring a page refresh.
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`d6f3e02`](https://github.com/dfosco/storyboard/commit/d6f3e02e2b8e750ebae2953496d657f906742930) Thanks [@dfosco](https://github.com/dfosco)! - Terminal widget expand/collapse fixes and persistence
+
+    -   Fix expand: always render xterm container to prevent black screen on expand/collapse
+    -   Auto-focus terminal and set interactive mode on expand
+    -   Persist expanded state across page refreshes (URL hash)
+    -   Store terminal widget's own props in config (agents can read prettyName, etc.)
+    -   Use tmux session name as stable config lookup key
+    -   Refresh terminal config on every canvas mutation
+    -   Persist hide-chrome setting across page reloads
+    -   Improve toolbar tooltip shortcut labels
+    -   Command palette fixes (resilient config loading, empty state fix)
+    -   Rename surfaces: main-toolbar → command-toolbar, command-list → command-palette
+    -   BranchBar: blue accent, show on main in dev
+    -   Show both proxy and localhost URLs on dev server start
+    -   Change private image prefix from underscore to tilde (~)
+    -   Unified config store for all storyboard configuration
+    -   Enable folder grouping in all viewfinder nav views
+    -   Auto-discover root toolbar.config.json for client-repo tool overrides
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`bd7a9e7`](https://github.com/dfosco/storyboard/commit/bd7a9e77db104855bb59ea4e3d814988a6201fd4) Thanks [@dfosco](https://github.com/dfosco)! - Expandable widgets, split-screen, agent system, and command palette overhaul
+
+    -   Expandable modals for markdown and GitHub embed widgets (matching prototype/figma behavior)
+    -   Split-screen mode: connected widget pairs render side-by-side fullscreen with shared top bar, focus tracking, and x-coordinate ordering
+    -   Agent widget system with canvas toolbar integration, add-agent menu, and config-driven visibility
+    -   React Icon component supporting Primer Octicons, Feather, and Iconoir icon sources
+    -   Command palette rebuilt with cmdk (React 19 compatible), with icons and improved search
+    -   Terminal widget fixes: font-size scaling, non-resizable mode, viewport scroll prevention
+    -   Undo/redo fix: HMR echo no longer resets the history stack
+
+-   4.2.0 — Canvas agents, component sets, and image editing
+
+    -   **AI agent integration** — Add Copilot, Claude, and Codex directly to canvases with persistent terminal sessions and hot-pooling for instant startup
+    -   **ComponentSet widget** — Display story components in a resizable grid, flip layouts, and export compositions
+    -   **Image crop & upload** — Crop and replace images directly on the canvas with a floating toolbar
+    -   **Expanded pane** — Full-screen widget viewer now supports all widget types with a unified top bar
+    -   **Branch deploys** — Static branch deploy support via branches.json; autosync pauses automatically on inactive branches
+    -   **Canvas UX** — Categorized create menu, configurable zoom limits, improved connector hit areas, z-index stacking for dragged widgets
+    -   **Config system** — Domain-specific configs (toolbar, command palette) now merge by id instead of replacing; priority order fixed so specific configs override general ones
+    -   **Consumer compatibility** — Resolved singleton state splits, React externalization, and JSX runtime issues that prevented toolbars and command palettes from working in npm consumer apps
+
+### Patch Changes
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`2897be6`](https://github.com/dfosco/storyboard/commit/2897be6616e90af00de072bf72fba53511df6bda) Thanks [@dfosco](https://github.com/dfosco)! - Fix client repo crash: make `ws` import graceful (try/catch like node-pty) and add as explicit dependency.
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`0f0021c`](https://github.com/dfosco/storyboard/commit/0f0021c1b3d0e222a76b2e7cbe269e970207c607) Thanks [@dfosco](https://github.com/dfosco)! - Add node-pty as optionalDependency so client repos get terminal widget support on `npm install`.
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`22f256b`](https://github.com/dfosco/storyboard/commit/22f256b64cea52550c4f37dd2b1aa28e0b6055e3) Thanks [@dfosco](https://github.com/dfosco)! - Fix ghostty-web import crash for consumers without the package
+
+    -   Add @vite-ignore to dynamic import to prevent Vite pre-transform errors
+    -   Catch import failures gracefully instead of crashing
+    -   Declare ghostty-web as optional peerDependency
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`3ff3852`](https://github.com/dfosco/storyboard/commit/3ff3852481a157009a03818ca6c6b57ebd97655e) Thanks [@dfosco](https://github.com/dfosco)! - Fix command palette losing library-provided sections (like add-widget) when client overrides config
+
+    -   Sections are now merged by `id` instead of replaced wholesale
+    -   Client sections take priority, default sections not in client config are preserved
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`5ec5ee7`](https://github.com/dfosco/storyboard/commit/5ec5ee7b5089029a1192cdb86d0ebdd64c8435aa) Thanks [@dfosco](https://github.com/dfosco)! - Fix terminal widgets not connecting in client repos
+
+    -   Move ghostty-web from optional peerDependency to regular dependency in @dfosco/storyboard-react
+    -   Remove @vite-ignore from dynamic import so Vite resolves ghostty-web normally
+    -   Terminal widgets now work out of the box without clients manually installing ghostty-web
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`3745ba2`](https://github.com/dfosco/storyboard/commit/3745ba2f340753bf569be6495dddb32f8b321c1f) Thanks [@dfosco](https://github.com/dfosco)! - Deterministic server URL for terminal agents and setup scaffolding
+
+    -   Terminal server uses actual httpServer port instead of ports.json
+    -   `storyboard setup` scaffolds .storyboard/terminals/ and .github/agents/
+    -   ghostty-web moved from optional peer dep to regular dependency
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`7ec002f`](https://github.com/dfosco/storyboard/commit/7ec002f63a4656209621317738a7e1eb94c31d0b) Thanks [@dfosco](https://github.com/dfosco)! - Fix terminal crash on posix_spawnp failure
+
+    -   Catch pty.spawn errors so they don't crash the dev server
+    -   Auto-chmod node-pty spawn-helper at terminal server setup time
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`69d40ee`](https://github.com/dfosco/storyboard/commit/69d40ee79e6210d0edfa5741d831e1d43cb3cb70) Thanks [@dfosco](https://github.com/dfosco)! - Fix TDZ crash in terminal server — serverUrl was used before declaration
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`84624ec`](https://github.com/dfosco/storyboard/commit/84624ecf70b7b193c33d7e6a9be27ee724da60d0) Thanks [@dfosco](https://github.com/dfosco)! - Revert performance mode (broken), keep pause-embeds, terminal state machine, tmux mouse, scroll fix
+
+-   [#179](https://github.com/dfosco/storyboard/pull/179) [`5743b6b`](https://github.com/dfosco/storyboard/commit/5743b6b82e6a400201fff4477d6dfc6032675f0a) Thanks [@dfosco](https://github.com/dfosco)! - Fix blank terminal widget in consumer projects
+
+    -   Show error message when ghostty-web is unavailable instead of blank screen
+    -   Fix image paste on canvas now copies widget ID to clipboard
+
+-   [`5e40eb8`](https://github.com/dfosco/storyboard/commit/5e40eb852b90011e3b36ea5bac1e3aa620237cb9) Thanks [@dfosco](https://github.com/dfosco)! - Canvas UX overhaul — tiles widget, image crop, configurable zoom, and expanded pane improvements
+
+    -   Add tiles widget with randomizable decorative tile patterns
+    -   Image crop and upload with drag-to-select crop region
+    -   Configurable canvas zoom limits via storyboard.config.json (default 10–250%)
+    -   Expanded pane widgetType support and top bar improvements
+    -   Terminal session management with bulk cleanup API and CLI
+    -   Autosync persistence to survive server restarts + branch-aware pausing
+    -   BranchBar static deploy support via branches.json fallback
+    -   Revamped canvas create menu with categorized widget sections
+    -   Replace component icon with keyframes icons
+    -   Skip interact gate overlay for read-only widgets
+
+-   [`45788cc`](https://github.com/dfosco/storyboard/commit/45788cc1dc2fa25af58d3a8af35ce143e1f94587) Thanks [@dfosco](https://github.com/dfosco)! - Fix leaked monorepo imports in storyboard-react
+
+    -   Replace relative `../../../core/` imports in `data-plugin.js` with proper `@dfosco/storyboard-core/*` package imports
+    -   Add missing dependencies: `cmdk`, `@radix-ui/react-dialog`, `@radix-ui/react-visually-hidden`, `feather-icons`
+
+-   [`800913c`](https://github.com/dfosco/storyboard/commit/800913cb9c769c517b4a7f4d508a3ac50b8e5c83) Thanks [@dfosco](https://github.com/dfosco)! - Externalize React from ui-runtime bundle
+
+    -   Add `react`, `react-dom`, `react/jsx-runtime`, and `react/jsx-dev-runtime` to Rollup externals in `vite.ui.config.js`
+    -   Fixes `Uncaught ReferenceError: React is not defined` when consuming `storyboard-ui.js` in Vite ESM dev server
+
+-   [`d0b0bca`](https://github.com/dfosco/storyboard/commit/d0b0bca620d72ec5b5fbc2301fea88b33b6dc85d) Thanks [@dfosco](https://github.com/dfosco)! - Fix react-dom version mismatch in ui-runtime bundle
+
+    -   Use regex patterns for React externals to catch all subpath imports (`react-dom/client`, `react/jsx-runtime`, etc.)
+    -   Prevents react-dom internals from being bundled, which caused a version mismatch crash and prevented the toolbar from mounting
+    -   Bundle size reduced by ~900KB (2.6MB → 1.7MB)
+
+-   [`51628e6`](https://github.com/dfosco/storyboard/commit/51628e6a6a9ec0f3e8c064169df4495a9501f124) Thanks [@dfosco](https://github.com/dfosco)! - Fix React.createElement not defined in ui-runtime
+
+    -   Remove obsolete Svelte plugin from ui build config
+    -   Add `esbuild.jsx: 'automatic'` to use the React automatic JSX runtime
+    -   Eliminates 647 `React.createElement` calls that referenced an undefined `React` global
+
+-   [`a2a026a`](https://github.com/dfosco/storyboard/commit/a2a026a5fc20ef6b169e33cd5c72134de362f579) Thanks [@dfosco](https://github.com/dfosco)! - Fix singleton state split in tool handlers
+
+    -   Tool handlers (canvasAgents, featureFlags, canvasToolbar, devtools, flows) now import from `@dfosco/storyboard-core` instead of relative paths
+    -   Prevents Vite from creating separate module instances when pre-bundling, which caused configStore to appear empty in the toolbar (no agent tool, empty command palette)
+
+-   [`4ba9461`](https://github.com/dfosco/storyboard/commit/4ba9461ff29794b55ce490393a1e589f6dab0e38) Thanks [@dfosco](https://github.com/dfosco)! - Fix singleton state split in dynamically-loaded components
+
+    -   Convert relative imports in CanvasAgentsMenu, CanvasCreateMenu, ActionMenuButton, CreateMenuButton, ThemeMenuButton, and handler modules (comments, devtools, paletteTheme) to use `@dfosco/storyboard-core` self-reference
+    -   Fixes agent tool button not rendering despite guard passing, and command palette showing empty results in consumer apps
+
+-   [`e182d46`](https://github.com/dfosco/storyboard/commit/e182d4686937ca942aaf16fb4a74f7fa5a25735e) Thanks [@dfosco](https://github.com/dfosco)! - Fix command palette empty sections in consumer apps
+
+    -   Convert mountStoryboardCore singleton imports to @dfosco/storyboard-core self-reference
+    -   Export initCommandPaletteConfig and consumeClientToolbarOverrides from barrel
+    -   Fixes command palette showing "No results found" due to singleton state split between prebundled and source module instances
+
+-   [`77d30b8`](https://github.com/dfosco/storyboard/commit/77d30b8488b0945a5e3641a0058cd250ce7d2e9d) Thanks [@dfosco](https://github.com/dfosco)! - Add temporary devlogs to command palette config flow for debugging
+
+-   [`8f88012`](https://github.com/dfosco/storyboard/commit/8f88012d579baf080eb96e495139c4eab3a53d87) Thanks [@dfosco](https://github.com/dfosco)! - Add devlogs to trace command palette config flow end-to-end
+
+-   [`3b50b16`](https://github.com/dfosco/storyboard/commit/3b50b16278afaa849b6e0f42f326f729f0cdb298) Thanks [@dfosco](https://github.com/dfosco)! - Id-based array merge for config + remove scaffold config files
+
+    -   `deepMergeBuild` now merges arrays of objects by `id` field instead of replacing wholesale
+    -   Users can customize command palette sections by defining only the ones they want to add/override
+    -   Removed `commandpalette.config.json` and `toolbar.config.json` from scaffold — they caused empty arrays to overwrite core defaults
+
 ## 4.2.0-beta.28
 
 ### Patch Changes

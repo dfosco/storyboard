@@ -24,6 +24,27 @@ import { dim, cyan, bold } from './intro.js'
 import { takePendingMessages } from '../canvas/terminal-config.js'
 
 const blue = (s) => `\x1b[34m${s}\x1b[0m`
+const yellow = (s) => `\x1b[33m${s}\x1b[0m`
+
+/**
+ * Drain any pending bytes from stdin to prevent stale mouse escape sequences
+ * (or other buffered input) from being consumed by Clack prompts.
+ * This is critical after tmux mouse mode was on — mouse events from the
+ * browser widget are sent as escape sequences to stdin.
+ */
+function drainStdin() {
+  if (!process.stdin.readable) return
+  const wasPaused = process.stdin.isPaused?.()
+  try {
+    process.stdin.setRawMode?.(true)
+    process.stdin.resume()
+    // Read and discard all buffered data
+    while (process.stdin.read() !== null) { /* discard */ }
+  } catch { /* best effort */ }
+  if (wasPaused) {
+    try { process.stdin.pause() } catch {}
+  }
+}
 
 // Prepend .storyboard/terminals/bin/ to PATH so `start`, `copilot`, etc.
 // are available in child shells. Done once at startup; child shells inherit it.
@@ -189,6 +210,9 @@ async function launchAgent(agent, { isInitialStartup = false } = {}) {
   p.outro(dim(`Starting ${agent.label}...`))
   setMouse(true)
 
+  let exitCode = null
+  const startTime = Date.now()
+
   try {
     const shell = process.env.SHELL || '/bin/zsh'
     const child = spawn(shell, ['-lc', agent.startupCommand], { stdio: 'inherit' })
@@ -197,6 +221,7 @@ async function launchAgent(agent, { isInitialStartup = false } = {}) {
     // after the agent reaches readiness. Skip on initial --startup since
     // terminal-server.js handles that path independently.
     let pollInterval = null
+    let readinessTimeout = null
     const tmuxName = !isInitialStartup ? getTmuxName() : null
     const widgetId = process.env.STORYBOARD_WIDGET_ID
 
@@ -234,7 +259,7 @@ async function launchAgent(agent, { isInitialStartup = false } = {}) {
           } catch {}
         }, 2000)
         // Timeout after 30s — don't wait forever
-        setTimeout(() => {
+        readinessTimeout = setTimeout(() => {
           if (!contextSent) {
             contextSent = true
             if (pollInterval) { clearInterval(pollInterval); pollInterval = null }
@@ -251,30 +276,45 @@ async function launchAgent(agent, { isInitialStartup = false } = {}) {
       }
     }
 
-    await new Promise((resolve) => {
-      child.on('close', () => {
+    exitCode = await new Promise((resolve) => {
+      child.on('close', (code) => {
         if (pollInterval) {
           if (typeof pollInterval.clear === 'function') pollInterval.clear()
           else clearInterval(pollInterval)
         }
-        resolve()
+        if (readinessTimeout) clearTimeout(readinessTimeout)
+        resolve(code)
       })
       child.on('error', () => {
         if (pollInterval) {
           if (typeof pollInterval.clear === 'function') pollInterval.clear()
           else clearInterval(pollInterval)
         }
-        resolve()
+        if (readinessTimeout) clearTimeout(readinessTimeout)
+        resolve(1)
       })
     })
   } catch {
     p.log.error(`Failed to start ${agent.label}. Is it installed?`)
     await new Promise(r => setTimeout(r, 2000))
+    exitCode = 1
+  } finally {
+    // Always disable mouse and drain stdin before returning to the welcome
+    // loop. Without this, tmux mouse escape sequences from the browser widget
+    // accumulate in stdin while the agent runs, and Clack's p.select() reads
+    // them as keystrokes — auto-selecting menu options in a tight loop.
+    setMouse(false)
+    await new Promise(r => setTimeout(r, 50))
+    drainStdin()
   }
+
+  const durationMs = Date.now() - startTime
+  return { exitCode, durationMs }
 }
 
 async function welcomeLoop() {
   let firstIteration = true
+  const MAX_STARTUP_RETRIES = 2
 
   while (true) {
     // On first iteration with --startup, auto-launch the command
@@ -294,14 +334,35 @@ async function welcomeLoop() {
         startupCmd.startsWith(a.startupCommand?.split(' ')[0])
       )
       const agent = matchedAgent || { label: startupCmd.split(/\s+/)[0], startupCommand: startupCmd }
-      await launchAgent(agent, { isInitialStartup: true })
-      resetTerminal()
-      continue
+
+      let succeeded = false
+      for (let attempt = 0; attempt < MAX_STARTUP_RETRIES; attempt++) {
+        const result = await launchAgent(agent, { isInitialStartup: true })
+        resetTerminal()
+
+        // Normal exit (user quit the agent) — proceed to welcome menu
+        if (result.exitCode === 0 || result.exitCode === null) { succeeded = true; break }
+
+        // Non-zero exit — agent crashed or failed to start
+        const isLastAttempt = attempt === MAX_STARTUP_RETRIES - 1
+        if (isLastAttempt) {
+          p.log.warn(yellow(`${agent.label} failed to start (exit code ${result.exitCode}).`))
+          p.log.info(dim('Falling back to the welcome menu. You can retry from there.'))
+          await new Promise(r => setTimeout(r, 2000))
+        } else {
+          p.log.warn(yellow(`${agent.label} exited unexpectedly (exit code ${result.exitCode}). Retrying...`))
+          await new Promise(r => setTimeout(r, 3000))
+        }
+      }
+
+      if (succeeded) continue
+      // Fall through to the interactive welcome menu
     }
     firstIteration = false
 
     resetTerminal()
     setMouse(false)
+    drainStdin()
     console.clear()
     p.intro(`${bold('storyboard terminal')}`)
 
@@ -310,6 +371,7 @@ async function welcomeLoop() {
       ? { value: 'agents', label: '✦ Start a new agent session' }
       : { value: 'copilot', label: `✦ Start a new ${agents[0]?.label || 'Copilot'} session` }
 
+    drainStdin()
     const action = await p.select({
       message: 'How would you like to start?',
       options: [
@@ -326,6 +388,7 @@ async function welcomeLoop() {
 
     if (action === 'agents') {
       // Multi-agent sub-select
+      drainStdin()
       const agentChoice = await p.select({
         message: 'Which agent?',
         options: agents.map(a => ({
@@ -378,6 +441,7 @@ async function welcomeLoop() {
         { value: 'terminal', label: '⊞ Terminal sessions' },
       ]
 
+      drainStdin()
       const sessionChoice = await p.select({
         message: 'Browse sessions',
         options: sessionOptions,

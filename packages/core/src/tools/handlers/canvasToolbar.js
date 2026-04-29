@@ -5,7 +5,7 @@
  * handler. The component() export returns the component matching the tool's
  * render type, resolved at load time via the toolConfig passed to component().
  */
-import { getCanvasZoom } from '../../canvasConfig.js'
+import { getCanvasZoom } from '@dfosco/storyboard-core'
 
 export const id = 'canvas-toolbar'
 

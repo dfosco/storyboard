@@ -19,11 +19,11 @@ export async function handler(ctx) {
   let commentsAuth = null
   let prodMode = null
   let ff = null
-  try { loader = await import('../../loader.js') } catch { /* optional */ }
+  try { loader = await import('@dfosco/storyboard-core') } catch { /* optional */ }
   try { hm = await import('../../hideMode.js') } catch { /* optional */ }
   try { commentsAuth = await import('../../comments/auth.js') } catch { /* optional */ }
   try { prodMode = await import('../../prodMode.js') } catch { /* optional */ }
-  try { ff = await import('../../featureFlags.js') } catch { /* optional */ }
+  try { ff = await import('@dfosco/storyboard-core') } catch { /* optional */ }
 
   return {
     getChildren: () => {

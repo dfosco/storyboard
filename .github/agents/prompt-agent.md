@@ -1,1 +1,0 @@
-../../.agents/agents/prompt-agent.agent.md

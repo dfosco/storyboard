@@ -257,25 +257,31 @@ if (isInstalled('code')) {
     } catch { /* ignore */ }
   }
 
-  // Create .github/agents/ symlinks so Copilot CLI discovers agent profiles.
-  // Claude Code reads from .agents/, Copilot CLI reads from .github/agents/.
-  // Symlinks keep one source of truth.
-  const ghAgentsDir = path.join('.github', 'agents')
-  try { mkdirSync(ghAgentsDir, { recursive: true }) } catch { /* ignore */ }
+  // Create symlinks in each CLI's expected agent directory.
+  // Source of truth: .agents/*.agent.md
+  // Copilot CLI reads .github/agents/*.md
+  // Claude Code reads .claude/agents/*.md
+  // Codex CLI uses .codex/config.toml (no agent files needed)
   try {
     const agentFiles = readdirSync(agentsDir).filter(f => f.endsWith('.agent.md'))
-    let linked = 0
-    for (const file of agentFiles) {
-      // terminal-agent.agent.md → terminal-agent.md
-      const linkName = file.replace('.agent.md', '.md')
-      const linkPath = path.join(ghAgentsDir, linkName)
-      const target = path.relative(ghAgentsDir, path.join(agentsDir, file))
-      if (!existsSync(linkPath)) {
-        try { symlinkSync(target, linkPath); linked++ } catch { /* ignore */ }
+    const targets = [
+      { dir: path.join('.github', 'agents'), label: 'Copilot CLI' },
+      { dir: path.join('.claude', 'agents'), label: 'Claude Code' },
+    ]
+    for (const { dir, label } of targets) {
+      try { mkdirSync(dir, { recursive: true }) } catch { /* ignore */ }
+      let linked = 0
+      for (const file of agentFiles) {
+        const linkName = file.replace('.agent.md', '.md')
+        const linkPath = path.join(dir, linkName)
+        const target = path.relative(dir, path.join(agentsDir, file))
+        if (!existsSync(linkPath)) {
+          try { symlinkSync(target, linkPath); linked++ } catch { /* ignore */ }
+        }
       }
-    }
-    if (linked > 0) {
-      p.log.success(`Copilot CLI agent symlinks created (.github/agents/)`)
+      if (linked > 0) {
+        p.log.success(`${label} agent symlinks created (${dir}/)`)
+      }
     }
   } catch { /* ignore */ }
 }

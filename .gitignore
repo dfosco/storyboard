@@ -33,8 +33,13 @@ yarn-error.log*
 .github/skills/primer-url-builder
 .github/skills/playwright-cli
 .worktrees
+# Agent symlinks are build targets — source of truth is .agents/agents/
+# storyboard setup creates symlinks for Copilot CLI and Claude Code
 .github/agents/_buddy-rails.md
 .github/agents/_buddy.md
+.github/agents/terminal-agent.md
+.github/agents/prompt-agent.md
+.claude/agents/
 _*.md
 
 # Compiled UI bundle (built before publish, not tracked in git)
@@ -57,6 +62,3 @@ assets/.storyboard-public/terminal-snapshots/~*
 
 # Integration test results (ephemeral local artifacts)
 test-results/
-
-# .claude/agents/ is a build target — source of truth is .agents/agents/
-.claude/agents/

@@ -11,16 +11,6 @@
       "mode": "scaffold"
     },
     {
-      "source": "scaffold/toolbar.config.json",
-      "target": "toolbar.config.json",
-      "mode": "scaffold"
-    },
-    {
-      "source": "scaffold/commandpalette.config.json",
-      "target": "commandpalette.config.json",
-      "mode": "scaffold"
-    },
-    {
       "source": "scaffold/scripts/link.sh",
       "target": "scripts/link.sh",
       "mode": "updateable"

@@ -1,4 +1,0 @@
-{
-  "_comment": "Client command palette overrides. Deep-merged with core defaults. See @dfosco/storyboard-core/commandpalette.config.json for all options.",
-  "sections": []
-}
